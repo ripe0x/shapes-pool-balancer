@@ -34,15 +34,15 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Bounds every loop over listings (repricing, plan withdrawal, unwind).
     uint256 internal constant MAX_LISTINGS = 100;
     /// @dev Inventory operations (mint+list, withdraw, reprice) per upkeep; FWA batch limit is 20.
-    uint256 internal constant MAX_OPS = 10;
+    uint256 internal constant MAX_OPS = 6;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
 
     // Keeper compensation bounds, chosen from mainnet-fork gas measurements (see docs/GAS.md).
-    uint256 internal constant KEEPER_GAS_OVERHEAD = 30_000; // intrinsic + calldata + payout
-    uint256 internal constant KEEPER_MAX_GAS = 3_000_000;
+    uint256 internal constant KEEPER_GAS_OVERHEAD = 45_000; // intrinsic, calldata, guard and payout outside the measured span
+    uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 2 gwei;
-    uint256 internal constant KEEPER_MAX_GAS_PRICE = 20 gwei;
+    uint256 internal constant KEEPER_MAX_GAS_PRICE = 10 gwei;
     uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
     uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 
