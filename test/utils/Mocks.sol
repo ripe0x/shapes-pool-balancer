@@ -73,3 +73,28 @@ contract RejectingKeeper {
         revert("no");
     }
 }
+
+interface IAcquirePool {
+    function acquire(address, uint256, uint256, uint256, uint256, uint256) external payable returns (uint256);
+    function inventoryVersion() external view returns (uint256);
+}
+
+/// @dev On a transfer out of a holder, tries to buy from `pool` (a collection-hook purchase attempt).
+contract AcquiringNFT is MockNFT {
+    address public pool;
+    bool public acquired;
+
+    function arm(address p) external payable {
+        pool = p;
+    }
+
+    function _beforeTokenTransfer(address from, address, uint256) internal override {
+        if (pool == address(0) || from == address(0) || from == pool) return;
+        uint256 v = IAcquirePool(pool).inventoryVersion();
+        try IAcquirePool(pool).acquire{value: address(this).balance}(address(this), 0, 0, 10_000, v, block.timestamp + 1) {
+            acquired = true;
+        } catch {}
+    }
+
+    receive() external payable {}
+}

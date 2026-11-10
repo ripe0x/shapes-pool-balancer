@@ -308,10 +308,10 @@ contract PoolBalancer is ReentrancyGuard {
         returns (uint256 listingId)
     {
         _requireIdle();
+        _invalidate(); // before any external call: a collection hook must not see an admitting checkpoint
         uint256 price = _pullCurated(collection, tokenId, base);
         listingId = pool.listNFT(collection, tokenId, price);
         _recordCurated(listingId, collection, tokenId, base, price);
-        _invalidate();
     }
 
     function listCuratedBatch(CuratedInput[] calldata inputs)
@@ -321,6 +321,7 @@ contract PoolBalancer is ReentrancyGuard {
         returns (uint256[] memory listingIds)
     {
         _requireIdle();
+        _invalidate();
         uint256 n = inputs.length;
         if (n == 0 || n > 20) revert InvalidBatch();
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](n);
@@ -332,11 +333,11 @@ contract PoolBalancer is ReentrancyGuard {
         for (uint256 i; i < n; ++i) {
             _recordCurated(listingIds[i], batch[i].collection, batch[i].tokenId, inputs[i].base, batch[i].price);
         }
-        _invalidate();
     }
 
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
         _requireIdle();
+        _invalidate();
         Item storage it = items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         uint256 price = _priced(newBase);
@@ -345,7 +346,6 @@ contract PoolBalancer is ReentrancyGuard {
             pool.updatePrice(listingId, price);
             it.price = uint112(price);
         }
-        _invalidate();
         emit CuratedRepriced(listingId, newBase, price);
     }
 
@@ -398,14 +398,17 @@ contract PoolBalancer is ReentrancyGuard {
     ///         restoring the current plan plus a worst-case batch and one keeper reward.
     function claimSurplus(uint256 amount, address to) external onlyCreator nonReentrant {
         if (to == address(0)) revert InvalidRecipient();
+        // While open, reserve math uses reconciled inventory: draws settled on FWA must be reconciled first.
+        if (enabled) _requireIdle();
         _collect();
         if (amount > withdrawableSurplus()) revert InsufficientSurplus();
         SafeTransferLib.safeTransferETH(to, amount);
         emit SurplusClaimed(to, amount);
     }
 
-    /// @notice After closing, withdraw up to `maxCount` listed Shapes and redeem them with every spare
-    ///         Shape for their exact backing. Curated NFTs are withdrawn separately.
+    /// @notice After closing, withdraw up to `maxCount` (<= 20) listed Shapes and redeem up to 20 held
+    ///         Shapes for their exact backing. Repeat until nothing remains. Curated NFTs are withdrawn
+    ///         separately.
     function unwind(uint256 maxCount) external onlyCreator nonReentrant {
         if (enabled) revert NotClosed();
         _requireIdle();
@@ -431,18 +434,17 @@ contract PoolBalancer is ReentrancyGuard {
             }
             p.withdrawListingsTo(ids, address(this));
         }
+        uint256[] memory burn = new uint256[](20);
         uint256 total;
-        for (uint256 d; d < DENOMS; ++d) {
-            total += spareIds[d].length;
-        }
-        uint256[] memory burn = new uint256[](total);
-        uint256 k;
-        for (uint256 d; d < DENOMS; ++d) {
+        for (uint256 d; d < DENOMS && total < 20; ++d) {
             uint256[] storage s = spareIds[d];
-            for (uint256 j = s.length; j != 0; --j) {
-                burn[k++] = s[j - 1];
+            while (s.length != 0 && total < 20) {
+                burn[total++] = s[s.length - 1];
                 s.pop();
             }
+        }
+        assembly ("memory-safe") {
+            mstore(burn, total)
         }
         uint256 eth;
         if (total != 0) eth = SHAPES.redeemBatch(burn);
@@ -509,9 +511,10 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasStart = gasleft();
         Checkpoint memory before = checkpoint;
         uint8 statusBefore = lastStatus;
+        uint256 pendingBefore = pendingIds.length;
         (uint256 ops, bool batchReconciled) = _sync();
         Checkpoint memory afterCp = checkpoint;
-        bool changed = ops != 0 || batchReconciled || lastStatus != statusBefore || afterCp.valid != before.valid
+        bool changed = ops != 0 || batchReconciled || pendingIds.length != pendingBefore || lastStatus != statusBefore || afterCp.valid != before.valid
             || afterCp.inventoryVersion != before.inventoryVersion || afterCp.reserve != before.reserve
             || afterCp.mintFee != before.mintFee;
         if (!changed) revert NoUpkeepNeeded();
@@ -559,17 +562,20 @@ contract PoolBalancer is ReentrancyGuard {
                 delete items[lid];
                 emit DeliveryResolved(lid, true);
             } else if (lStatus == L_DELIVERY_REFUNDED) {
-                _removePending(lid);
-                p.recoverRefundedNFT(lid);
-                Item storage it = items[lid];
-                if (it.kind == SHAPE) {
-                    spareIds[it.denom].push(tokenId);
-                    delete items[lid];
-                } else {
-                    it.state = HELD;
-                }
-                ++ops;
-                emit DeliveryResolved(lid, false);
+                // Isolated: a collection that now blocks transfers must not brick upkeep. The item stays
+                // pending; the creator can retry with `recoverCuratedNFT`.
+                try p.recoverRefundedNFT(lid) {
+                    _removePending(lid);
+                    Item storage it = items[lid];
+                    if (it.kind == SHAPE) {
+                        spareIds[it.denom].push(tokenId);
+                        delete items[lid];
+                    } else {
+                        it.state = HELD;
+                    }
+                    ++ops;
+                    emit DeliveryResolved(lid, false);
+                } catch {}
             }
         }
 
@@ -620,6 +626,9 @@ contract PoolBalancer is ReentrancyGuard {
         returns (uint8)
     {
         (uint256 sW, uint256 sWP) = _shapeTotals(plan, markup);
+        // Independent of the weight sums (which derive curated totals from FWA's): FWA's active listing
+        // count must equal the tracked active set.
+        if (p.activeListingCount() != activeIds.length) return INVENTORY_MISMATCH;
         if (p.totalWeight() != cW + sW || p.weightedBackingTotal() != cWP + sWP) return INVENTORY_MISMATCH;
         if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
         uint256 reserve = _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
@@ -650,7 +659,9 @@ contract PoolBalancer is ReentrancyGuard {
 
     function _onDrawn(uint256 lid, bool delivered) internal {
         Item storage it = items[lid];
-        if (it.state != ACTIVE) revert InvalidItem(); // every pool listing is ours and active until drawn
+        // Every pool listing is ours and active until drawn. Never revert here: reconciliation must not be
+        // bricked; any desync is caught by the checkpoint's listing-count check and fails closed.
+        if (it.state != ACTIVE) return;
         uint8 kind = it.kind;
         uint8 d = it.denom;
         _removeActive(lid);

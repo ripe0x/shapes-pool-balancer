@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
-import {FreezableNFT, ReentrantNFT, LyingNFT, RejectingKeeper} from "./utils/Mocks.sol";
+import {FreezableNFT, ReentrantNFT, LyingNFT, RejectingKeeper, AcquiringNFT} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {LibString} from "solady/utils/LibString.sol";
 
@@ -287,7 +287,12 @@ contract BalancerTest is ForkBase {
     /*////////////////////////////// keeper //////////////////////////////*/
 
     function _drawOneShape() internal {
-        uint256 last = lastListingId();
+        uint256[] memory active = balancer.getActiveIds();
+        uint256 last;
+        for (uint256 i; i < active.length; ++i) {
+            (uint8 kind,,,,) = balancer.items(active[i]);
+            if (kind == 2) last = active[i];
+        }
         (,,,,,, uint256 slot, uint8 st) = pool.listings(last);
         require(st == 1, "not active");
         uint256[] memory ids = buy(buyer, 1);
@@ -582,5 +587,116 @@ contract BalancerTest is ForkBase {
         balancer.withdrawCurated(curatedA, creator);
         vm.stopPrank();
         assertEq(nft.ownerOf(1), creator);
+    }
+
+    /*////////////////////////////// review regressions //////////////////////////////*/
+
+    function _listFrozenAndFailDelivery() internal returns (FreezableNFT frozen, uint256 lid) {
+        frozen = new FreezableNFT();
+        frozen.mint(creator, 9);
+        vm.startPrank(creator);
+        frozen.approve(address(balancer), 9);
+        lid = balancer.listCurated(address(frozen), 9, 0.3 ether);
+        vm.stopPrank();
+        upkeep();
+        frozen.setFrozen(true);
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        upkeep();
+        assertEq(balancer.getPendingIds().length, 1);
+    }
+
+    /// Review finding (High): a refunded curated NFT whose collection blocks transfers bricked upkeep.
+    function test_blockedRefundRecoveryDoesNotBrickUpkeep() public {
+        (FreezableNFT frozen, uint256 lid) = _listFrozenAndFailDelivery();
+        vm.warp(block.timestamp + 7 days + 1);
+        vm.prank(buyer);
+        pool.refundFailedDelivery(lid);
+        // collection still blocks transfers: later draws must still reconcile and replenish
+        _drawOneShape();
+        upkeep();
+        assertTrue(balancer.canPurchase(buyer), "pool keeps operating");
+        assertEq(balancer.getPendingIds().length, 1, "blocked item stays pending");
+        vm.prank(creator);
+        vm.expectRevert();
+        balancer.recoverCuratedNFT(lid, creator);
+        // once transferable, upkeep recovers it and the creator withdraws it
+        frozen.setFrozen(false);
+        upkeep();
+        (,, uint8 state,,) = balancer.items(lid);
+        assertEq(state, 3, "HELD");
+        vm.prank(creator);
+        balancer.recoverCuratedNFT(lid, creator);
+        assertEq(frozen.ownerOf(9), creator);
+        // exits remain available throughout
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.unwind(20);
+        vm.stopPrank();
+    }
+
+    /// Review finding (Low): a delivery retried to success was cleaned up only to be rolled back.
+    function test_settledAfterRetryIsCleanedUp() public {
+        (FreezableNFT frozen, uint256 lid) = _listFrozenAndFailDelivery();
+        frozen.setFrozen(false);
+        pool.retryNFTDelivery(lid);
+        assertEq(frozen.ownerOf(9), buyer);
+        assertTrue(balancer.needsUpkeep());
+        upkeep();
+        assertEq(balancer.getPendingIds().length, 0);
+        assertFalse(balancer.needsUpkeep());
+        (uint8 kind,,,,) = balancer.items(lid);
+        assertEq(kind, 0);
+    }
+
+    /// A collection's transfer hook cannot buy while listCurated is mid-call.
+    function test_collectionHookCannotBuyDuringListing() public {
+        AcquiringNFT hook = new AcquiringNFT();
+        vm.deal(address(this), 1 ether);
+        hook.arm{value: 1 ether}(address(pool));
+        vm.deal(address(hook), 1 ether);
+        hook.mint(creator, 1);
+        vm.startPrank(creator);
+        hook.approve(address(balancer), 1);
+        balancer.listCurated(address(hook), 1, 0.3 ether);
+        vm.stopPrank();
+        assertFalse(hook.acquired(), "admission was closed during the call");
+        assertEq(pool.unsettledAcquisitionCount(), 0);
+        upkeep();
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    /// While open, surplus claims wait until settled draws are reconciled.
+    function test_claimWaitsForReconciliationWhileOpen() public {
+        _drawOneShape();
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.PoolBusy.selector);
+        balancer.claimSurplus(1, creator);
+        upkeep();
+        vm.prank(creator);
+        balancer.claimSurplus(1, creator);
+    }
+
+    function test_unwindRedeemsInBoundedSteps() public {
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(30), 0, 0, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 1 ether, 0, plans);
+        fillUp();
+        vm.startPrank(creator);
+        balancer.close();
+        uint256 before = address(balancer).balance;
+        for (uint256 i; i < 4; ++i) {
+            balancer.unwind(20);
+        }
+        vm.stopPrank();
+        uint16[9] memory active = balancer.getActiveShapes();
+        for (uint256 d; d < 9; ++d) {
+            assertEq(active[d], 0);
+            assertEq(balancer.getSpares(d).length, 0);
+        }
+        // 30 listed 0.01 Shapes plus the spares left by the plan change (3 x 0.05, 2 x 0.1)
+        assertEq(address(balancer).balance, before + 30 * 0.01 ether + 0.35 ether, "all backing redeemed");
     }
 }
