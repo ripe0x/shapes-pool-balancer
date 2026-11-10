@@ -6,7 +6,7 @@ import { execSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toHex, type Address } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toBytes, toHex, type Address } from 'viem';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 import { Keeper } from './keeper';
 
@@ -221,7 +221,28 @@ async function run() {
   console.log('✓ refunded Shape recovered and redeemed by the keeper');
   checkAudit(k);
 
-  // 9. one broken pool does not stop the others
+  // 9. FWA pool page: the creator approves FWA's exact message; viem verifyMessage (ERC-1271 path, as a
+  //    viem-based server would verify) accepts it and rejects any altered message.
+  const creator1 = ACCTS[1] as Address;
+  const issuedAt = new Date().toISOString();
+  const metadata = { name: 'Demo Shapes Pool', profile: { avatarUrl: '', bannerUrl: '', description: '', websiteUrl: '', xUrl: '', discordUrl: '' } };
+  const metadataHash = keccak256(toBytes(JSON.stringify(metadata)));
+  const ah = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: 'approvePoolPage', args: [issuedAt, metadataHash], account: creator1, chain: null });
+  assert.equal((await pub.waitForTransactionReceipt({ hash: ah })).status, 'success');
+  const pageMessage = (pool: string, meta: typeof metadata) => [
+    'Publish FWA Pools page\nSite: pools.fwa.fun\nChain: 1',
+    'Factories: 0x8919814d825a5af238cc04de06b1c18c9eaa477c, 0xf5a3a153164791ab579c3d9ba5dbecf7cdfd300c',
+    `Pool: ${pool.toLowerCase()}`, `Issued at: ${issuedAt}`, `Metadata hash: ${keccak256(toBytes(JSON.stringify(meta)))}`,
+  ].join('\n'); // pools.fwa.fun client template (V2 pool)
+  // The Balancer ignores signature bytes; viem treats 1-byte signatures as invalid before asking the
+  // contract, so the dashboard submits 66 zero bytes (no ECDSA interpretation is possible either).
+  const PLACEHOLDER_SIG = `0x${'00'.repeat(66)}` as const;
+  assert.equal(await pub.verifyMessage({ address: b1, message: pageMessage(pool1, metadata), signature: PLACEHOLDER_SIG }), true, 'approved page verifies');
+  assert.equal(await pub.verifyMessage({ address: b1, message: pageMessage(pool1, { ...metadata, name: 'Other' }), signature: PLACEHOLDER_SIG }), false, 'other content rejected');
+  assert.equal(await pub.verifyMessage({ address: b1, message: 'hello', signature: PLACEHOLDER_SIG }), false, 'arbitrary message rejected');
+  console.log('✓ pool page approval verifies through viem ERC-1271; other messages rejected');
+
+  // 10. one broken pool does not stop the others
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b04', 5n);
   await test.setCode({ address: b2, bytecode: '0xfe' });
   await tickUntil(k, async () => (await status(b1)) === 0);

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, useDisconnect, usePublicClient, useWriteContract } from 'wagmi';
-import { BaseError, ContractFunctionRevertedError, formatEther, parseAbi, parseAbiItem, parseEther, type Address, type Hash } from 'viem';
+import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
+  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { chain, ETHERSCAN, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 
@@ -12,6 +12,8 @@ const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
 const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'function poolCreationEnabled() view returns (bool)', 'function implementation() view returns (address)']);
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
+const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
+const L_DELIVERY_REFUNDED = 7;
 
 export const STATUS: Record<number, string> = {
   0: 'Open: purchases admitted',
@@ -19,7 +21,7 @@ export const STATUS: Record<number, string> = {
   2: 'Needs upkeep (run maintenance)',
   3: 'Waiting for an FWA purchase batch to settle',
   4: 'No curated NFTs listed',
-  5: 'No approved plan meets the price, odds and capital limits',
+  5: 'No approved plan meets the price and odds limits',
   6: 'Not enough ETH for the required reserve',
   7: 'Shapes mint fee rose above the funded level (run maintenance)',
   8: 'FWA price above the ceiling',
@@ -34,7 +36,7 @@ const fmt = (wei: bigint | undefined, d = 4) => (wei === undefined ? '-' : Numbe
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
-interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint }
+interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
 function useBalancer(b?: Address) {
   const pub = usePublicClient();
@@ -47,15 +49,20 @@ function useBalancer(b?: Address) {
     const pool = await r<Address>('pool');
     const p = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: functionName as never, args: args as never }) as Promise<T>;
-    const [creator, pendingCreator, config, plans, activePlan, enabled, repricing, lastStatus, admission, needs, required, surplus, activeIds, pendingIds, activeShapes, balance, checkpoint] =
+    const [creator, pendingCreator, config, plans, activePlan, enabled, repricing, lastStatus, admission, required, surplus, activeIds, activeShapes, balance, checkpoint] =
       await Promise.all([
-        r<Address>('creator'), r<Address>('pendingCreator'), r<readonly [bigint, bigint, number, number]>('config'), r<bigint[]>('getPlans'),
+        r<Address>('creator'), r<Address>('pendingCreator'), r<readonly [bigint, number, number]>('config'), r<bigint[]>('getPlans'),
         r<number>('activePlan'), r<boolean>('enabled'), r<boolean>('repricing'), r<number>('lastStatus'), r<number>('admissionStatus'),
-        r<boolean>('needsUpkeep'), r<bigint>('requiredReserve'), r<bigint>('withdrawableSurplus'), r<bigint[]>('getActiveIds'),
-        r<bigint[]>('getPendingIds'), r<number[]>('getActiveShapes'), pub.getBalance({ address: b }),
+        r<bigint>('requiredReserve'), r<bigint>('withdrawableSurplus'), r<bigint[]>('getActiveIds'),
+        r<number[]>('getActiveShapes'), pub.getBalance({ address: b }),
         r<readonly [boolean, bigint, bigint, bigint, bigint]>('checkpoint'),
       ]);
-    const spares = await Promise.all(DENOMS.map((_, d) => r<bigint[]>('getSpares', [BigInt(d)])));
+    // Upkeep is needed exactly when simulating it succeeds.
+    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: b })
+      .then(() => ({ needed: true }), () => ({ needed: false }));
+    // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
+    const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
+    const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
     const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'),
@@ -64,16 +71,16 @@ function useBalancer(b?: Address) {
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
-      return { id, kind: it[0], denom: it[1], state: it[2], base: it[3], price: it[4], collection: l[0], tokenId: l[3], weight: l[7] === 1 ? l[4] : 0n };
+      return { id, kind: it[0], denom: it[1], state: it[2], base: it[3], price: it[4], collection: l[0], tokenId: l[3], weight: l[7] === 1 ? l[4] : 0n, fwaStatus: l[7] };
     };
-    const listings = await Promise.all([...activeIds, ...pendingIds].map(listing));
+    const listings = await Promise.all(activeIds.map(listing));
+    const pending = (await Promise.all(failedIds.map(listing))).filter((l) => l.state === 2);
     return {
-      balancer: b, pool, creator, pendingCreator, enabled, repricing, lastStatus, admission, needs, required, surplus, balance, plans, activePlan,
-      config: { maxDrawPrice: config[0], maxShapeCapital: config[1], minCuratedOddsBps: config[2], markupBps: config[3] },
+      balancer: b, pool, creator, pendingCreator, enabled, repricing, lastStatus, admission, upkeep, required, surplus, balance, plans, activePlan,
+      config: { maxDrawPrice: config[0], minCuratedOddsBps: config[1], markupBps: config[2] },
       checkpoint: { valid: checkpoint[0], reserve: checkpoint[4] },
-      activeShapes: activeShapes.map(Number), spares: spares.map((s) => s.length),
-      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings,
-      held: listings.filter((l) => l.kind === 1 && l.state !== 1),
+      activeShapes: activeShapes.map(Number),
+      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings, pending,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -90,8 +97,10 @@ const ERRORS: Record<string, string> = {
   InsufficientSurplus: 'amount exceeds claimable surplus',
   Unauthorized: 'only the creator can do this',
   NotClosed: 'close purchases first',
-  InvalidPlan: 'a plan exceeds the capital limit or Shapes count',
+  InvalidPlan: 'a plan has no Shapes or more than 40',
   ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
+  ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
+  InvalidItem: 'not available for this action (check its FWA status)',
 };
 
 function explain(e: unknown): string {
@@ -106,7 +115,13 @@ function explain(e: unknown): string {
 
 function useTx(onDone: () => void) {
   const pub = usePublicClient();
+  const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  // Simulate before sending so a revert is reported by name, whatever the wallet does with estimation.
+  const write = (async (params: Record<string, unknown>) => {
+    await pub!.simulateContract({ ...params, account: address } as never);
+    return writeContractAsync(params as never);
+  }) as typeof writeContractAsync;
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   const send = async (label: string, calls: (() => Promise<Hash>)[]) => {
@@ -126,7 +141,7 @@ function useTx(onDone: () => void) {
       onDone();
     }
   };
-  return { send, busy, msg, write: writeContractAsync };
+  return { send, busy, msg, write };
 }
 
 export function App() {
@@ -250,7 +265,7 @@ function Dashboard({ balancer, me }: { balancer: Address; me: Address }) {
           <Stat label="Draw price (excl. VRF fee)" value={`${fmt(d.fee, 5)} ETH`} />
           <Stat label="Ceiling" value={`${fmt(d.config.maxDrawPrice, 5)} ETH`} />
           <Stat label="Unsettled FWA purchases" value={d.unsettled.toString()} />
-          <Stat label="Upkeep needed" value={d.needs ? 'Yes' : 'No'} />
+          <Stat label="Upkeep needed" value={d.upkeep.needed ? 'Yes' : 'No'} />
         </div>
         {!isCreator && <p className="muted">You are not this Balancer's creator. Actions are read-only except maintenance.</p>}
         {d.pendingCreator.toLowerCase() === me.toLowerCase() && (
@@ -265,11 +280,13 @@ function Dashboard({ balancer, me }: { balancer: Address; me: Address }) {
       </div>
       <div className="toast" role="status" aria-live="polite"><TxMsg tx={tx} /></div>
 
+      <Economics d={d} plan={plan} />
       <Funds d={d} tx={tx} isCreator={isCreator} me={me} />
       <Inventory d={d} plan={plan} />
       <Curated d={d} tx={tx} isCreator={isCreator} me={me} />
       {isCreator && <Configure d={d} tx={tx} />}
       <Ens d={d} tx={tx} isCreator={isCreator} />
+      {isCreator && <PoolPage d={d} tx={tx} />}
       {isCreator && <Lifecycle d={d} tx={tx} me={me} />}
     </>
   );
@@ -290,6 +307,59 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
 function TxMsg({ tx }: { tx: Tx }) {
   if (tx.busy) return <p className="muted">{tx.busy}…</p>;
   return tx.msg ? <p className={tx.msg.ok ? 'okText' : 'badText'}>{tx.msg.text}</p> : null;
+}
+
+const curatedOddsBps = (d: D) => {
+  if (!d.totalWeight) return 0;
+  const cw = d.listings.filter((l) => l.kind === 1).reduce((s, l) => s + l.weight, 0n);
+  return Number((cw * 10_000n) / d.totalWeight);
+};
+
+function Economics({ d, plan }: { d: D; plan: Counts }) {
+  const [gas, setGas] = useState('0.2');
+  const [perDay, setPerDay] = useState('40');
+  const bases = d.listings.filter((l) => l.kind === 1).map((l) => l.base);
+  const backing = d.activeShapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
+  const funded = d.enabled && d.balance >= d.required;
+  const econ = bases.length && plan.some(Boolean)
+    ? economics(plan, { curatedBases: bases, markupBps: d.config.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee }, { gasPriceGwei: Number(gas) || 0, drawsPerUpkeep: 1, safety: 0.25 })
+    : undefined;
+  const month = econ ? econ.expectedNetPerDraw * (Number(perDay) || 0) * 30 : 0;
+  return (
+    <div className="card">
+      <h2>Economics</h2>
+      <div className="row wrap">
+        <span className={funded ? 'pill ok' : 'pill bad'}>{funded ? 'Funded' : 'Not funded'}</span>
+        {econ && <span className={econ.outlook === 'sustainable' ? 'pill ok' : 'pill bad'}>{econ.outlook === 'sustainable' ? 'Projected sustainable' : 'Projected loss'}</span>}
+      </div>
+      <p className="muted small">
+        Funded: ETH covers the next purchase batch and its maintenance. Projected outcomes come from a model
+        with the assumptions below; they are estimates, not guarantees.
+      </p>
+      <div className="grid">
+        <Stat label="Draw price (excl. VRF fee)" value={`${fmt(d.fee, 5)} ETH`} />
+        <Stat label="Curated odds" value={pct(curatedOddsBps(d))} />
+        <Stat label="Shape backing listed" value={`${fmt(backing, 3)} ETH`} />
+        <Stat label="Required reserve" value={`${fmt(d.required)} ETH`} />
+        <Stat label="Available surplus" value={`${fmt(d.surplus)} ETH`} />
+        <Stat label="Shapes mint fee" value={`${fmt(d.mintFee, 4)} ETH`} />
+        {econ && (
+          <>
+            <Stat label="Maintenance cost / draw" value={`${econ.overheadPerDraw.toFixed(5)} ETH`} />
+            <Stat label="Projected minimum markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '-'} />
+            <Stat label="Expected net / draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />
+            <Stat label="Expected result / 30 days" value={<span className={month < 0 ? 'badText' : ''}>{month.toFixed(4)} ETH</span>} />
+          </>
+        )}
+      </div>
+      {econ?.belowModeledMarkup && <p className="badText">Markup {pct(d.config.markupBps)} is below the modeled sustainable level of {pct(econ.minMarkupBps)} at these assumptions.</p>}
+      {d.admission !== 0 && <p className="badText">Restriction: {STATUS[d.admission] ?? `status ${d.admission}`}</p>}
+      <div className="row wrap">
+        <label>Gas assumption (gwei) <input className="narrow" value={gas} onChange={(e) => setGas(e.target.value)} inputMode="decimal" /></label>
+        <label>Draws per day <input className="narrow" value={perDay} onChange={(e) => setPerDay(e.target.value)} inputMode="numeric" /></label>
+      </div>
+    </div>
+  );
 }
 
 function Funds({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; me: Address }) {
@@ -325,13 +395,13 @@ function Inventory({ d, plan }: { d: D; plan: Counts }) {
   return (
     <div className="card">
       <h2>Shapes inventory</h2>
-      <p className="muted small">Active plan {d.activePlan + 1} of {d.plans.length || 0}. Shapes are listed at backing × (1 + markup).</p>
+      <p className="muted small">Active plan {d.activePlan + 1} of {d.plans.length || 0}. Shapes are listed at backing × (1 + markup). Shapes above a new plan's target are redeemed for their backing.</p>
       <table>
-        <thead><tr><th>Denomination</th><th>Target</th><th>Listed</th><th>Spare</th><th>Missing</th><th>Backing listed</th></tr></thead>
+        <thead><tr><th>Denomination</th><th>Target</th><th>Listed</th><th>Missing</th><th>Backing listed</th></tr></thead>
         <tbody>
-          {DENOMS.map((amt, i) => (plan[i] || d.activeShapes[i] || d.spares[i]) ? (
+          {DENOMS.map((amt, i) => (plan[i] || d.activeShapes[i]) ? (
             <tr key={i}>
-              <td>{DENOM_LABELS[i]} ETH</td><td>{plan[i]}</td><td>{d.activeShapes[i]}</td><td>{d.spares[i]}</td>
+              <td>{DENOM_LABELS[i]} ETH</td><td>{plan[i]}</td><td>{d.activeShapes[i]}</td>
               <td className={plan[i] > d.activeShapes[i] ? 'badText' : ''}>{Math.max(0, plan[i] - d.activeShapes[i])}</td>
               <td>{fmt(amt * BigInt(d.activeShapes[i]), 2)}</td>
             </tr>
@@ -347,7 +417,7 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
   const [reprice, setReprice] = useState<Record<string, string>>({});
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
   const curated = d.listings.filter((l) => l.kind === 1 && l.state === 1);
-  const STATE = ['', 'Listed', 'Drawn; FWA delivery pending (recover after the buyer refunds)'];
+  const [stray, setStray] = useState({ collection: '', tokenId: '' });
   return (
     <div className="card">
       <h2>Curated NFTs</h2>
@@ -372,15 +442,21 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
               </td>
             </tr>
           ))}
-          {d.held.map((l) => (
-            <tr key={l.id.toString()}>
-              <td>#{l.id.toString()}</td>
-              <td className="mono">{short(l.collection)} #{l.tokenId.toString()}</td>
-              <td>{fmt(l.base)}</td>
-              <td colSpan={2}>{STATE[l.state]}</td>
-              <td>{isCreator && <button className="ghost" disabled={!!tx.busy} onClick={() => tx.send('Recover', [() => tx.write({ ...B, functionName: 'recoverCuratedNFT', args: [l.id, me] })])}>Recover</button>}</td>
-            </tr>
-          ))}
+          {d.pending.map((l) => {
+            const refunded = l.fwaStatus === L_DELIVERY_REFUNDED;
+            return (
+              <tr key={l.id.toString()}>
+                <td>#{l.id.toString()}</td>
+                <td className="mono">{l.kind === 2 ? `${DENOM_LABELS[l.denom]} ETH Shape` : `${short(l.collection)} #${l.tokenId.toString()}`}</td>
+                <td>{fmt(l.base)}</td>
+                <td colSpan={2}>{refunded ? 'Drawn; delivery refunded to the buyer' : 'Drawn; FWA delivery failed, awaiting retry or buyer refund'}</td>
+                <td>
+                  {refunded && l.kind === 1 && isCreator && <button className="ghost" disabled={!!tx.busy} onClick={() => tx.send('Recover', [() => tx.write({ ...B, functionName: 'recoverCuratedNFT', args: [l.id, me] })])}>Recover</button>}
+                  {refunded && l.kind === 2 && <button className="ghost" disabled={!!tx.busy} onClick={() => tx.send('Recover and redeem', [() => tx.write({ ...B, functionName: 'recoverRefundedShape', args: [l.id] })])}>Recover and redeem</button>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {curated.length === 0 && <p className="muted">No curated NFTs listed. Purchases stay closed until you add one.</p>}
@@ -399,6 +475,17 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
         </div>
       )}
       <p className="muted small">The FWA price is your value × (1 + markup). Odds are inversely proportional to price. Listing, repricing and withdrawing need FWA's purchase queue to be idle and reconciled; run upkeep afterwards to reopen.</p>
+      {isCreator && (
+        <>
+          <h3>Return an NFT sent to the Balancer directly</h3>
+          <div className="row wrap">
+            <input aria-label="Stray NFT collection" placeholder="Collection 0x…" value={stray.collection} onChange={(e) => setStray({ ...stray, collection: e.target.value })} />
+            <input className="narrow" aria-label="Stray NFT token ID" placeholder="Token ID" value={stray.tokenId} onChange={(e) => setStray({ ...stray, tokenId: e.target.value })} />
+            <button className="ghost" disabled={!!tx.busy || !stray.collection || !stray.tokenId} onClick={() => tx.send('Return NFT', [() => tx.write({ ...B, functionName: 'recoverUntrackedNFT', args: [stray.collection as Address, BigInt(stray.tokenId), me] })])}>Return to my wallet</button>
+          </div>
+          <p className="muted small">Only NFTs the Balancer holds outside FWA. Listed and drawn NFTs stay in FWA custody.</p>
+        </>
+      )}
     </div>
   );
 }
@@ -406,7 +493,7 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
 function Configure({ d, tx }: { d: D; tx: Tx }) {
   const [maxDraw, setMaxDraw] = useState(d.plans.length ? formatEther(d.config.maxDrawPrice) : '0.05');
   const [minOdds, setMinOdds] = useState(d.plans.length ? String(d.config.minCuratedOddsBps / 100) : '1');
-  const [maxCap, setMaxCap] = useState(d.plans.length ? formatEther(d.config.maxShapeCapital) : '1');
+  const [maxCap, setMaxCap] = useState(d.plans.length ? formatEther(capitalOf(unpackPlan(d.plans[0]))) : '1');
   const [markup, setMarkup] = useState(d.plans.length ? String(d.config.markupBps / 100) : '15');
   const [gas, setGas] = useState('1');
   const [allowed, setAllowed] = useState<number[]>([0, 1, 2]);
@@ -434,7 +521,7 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
       <div className="grid">
         <label>Max draw price (ETH, excl. VRF) <input value={maxDraw} onChange={(e) => setMaxDraw(e.target.value)} /></label>
         <label>Min curated odds (%) <input value={minOdds} onChange={(e) => setMinOdds(e.target.value)} /></label>
-        <label>Max Shapes capital (ETH) <input value={maxCap} onChange={(e) => setMaxCap(e.target.value)} /></label>
+        <label>Max Shapes capital (ETH, planner filter) <input value={maxCap} onChange={(e) => setMaxCap(e.target.value)} /></label>
         <label>Operating markup (%) <input value={markup} onChange={(e) => setMarkup(e.target.value)} /></label>
         <label>Max Shapes per plan <input value={maxShapes} onChange={(e) => setMaxShapes(e.target.value)} /></label>
         <label>Gas price assumption (gwei) <input value={gas} onChange={(e) => setGas(e.target.value)} /></label>
@@ -450,7 +537,7 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
       {bases.length === 0 && <p className="badText">List at least one curated NFT to plan.</p>}
       {result && (
         result.plans.length === 0
-          ? <p className="badText">Infeasible: no Shapes mix over these denominations meets the price ceiling, odds floor and capital limit together. Raise the ceiling or capital, lower the odds floor, or change curated values.</p>
+          ? <p className="badText">Infeasible: no Shapes mix over these denominations meets the price ceiling, odds floor and capital filter together. Raise the ceiling or capital, lower the odds floor, or change curated values.</p>
           : (
             <table>
               <thead><tr><th>Plan</th><th>Draw price</th><th>Curated odds</th><th>Capital</th><th>Batch reserve</th><th>Net / draw*</th><th></th></tr></thead>
@@ -481,14 +568,18 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
               <div className="grid">
                 <Stat label="Draw price" value={`${fmt(preview.drawPrice, 5)} ETH`} />
                 <Stat label="Curated odds" value={pct(preview.curatedOddsBps)} />
-                <Stat label="Shapes capital" value={`${fmt(preview.capital, 3)} ETH`} />
+                <Stat label="Shapes backing" value={`${fmt(preview.capital, 3)} ETH`} />
                 <Stat label="Required reserve" value={`${fmt(preview.requiredReserve)} ETH`} />
                 <Stat label="Initial mint fees" value={`${fmt(preview.initialMintFees)} ETH`} />
+                <Stat label="Total ETH committed" value={`${fmt(preview.capital + preview.initialMintFees + preview.requiredReserve, 3)} ETH`} />
                 <Stat label="Keeper cost / upkeep" value={`${econ.keeperCostPerUpkeepEth.toFixed(5)} ETH`} />
                 <Stat label="Projected minimum markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '-'} />
                 <Stat label="Expected net / draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />
               </div>
               {!preview.feasible && <p className="badText">{preview.reasons.join('; ')}</p>}
+              {econ.outlook === 'loss'
+                ? <p className="badText">Projected loss at these assumptions. You can still submit it while it is funded.</p>
+                : econ.belowModeledMarkup && <p className="badText">Markup is below the modeled sustainable level of {pct(econ.minMarkupBps)}.</p>}
               <table>
                 <thead><tr><th>Tier</th><th>Count</th><th>FWA price</th><th>Odds</th></tr></thead>
                 <tbody>{preview.tiers.map((t, i) => <tr key={i}><td>{t.label}</td><td>{t.count}</td><td>{fmt(t.listPrice, 5)}</td><td>{(t.oddsPpm / 10_000).toFixed(3)}%</td></tr>)}</tbody>
@@ -499,7 +590,7 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
             disabled={!!tx.busy || !limits}
             onClick={() => tx.send('Configure', [() => tx.write({
               address: d.balancer, abi: poolBalancerAbi, functionName: 'configure',
-              args: [{ maxDrawPrice: limits!.maxDrawPrice, maxShapeCapital: limits!.maxShapeCapital, minCuratedOddsBps: limits!.minCuratedOddsBps, markupBps: inputs.markupBps }, chosen.map(packPlan)],
+              args: [{ maxDrawPrice: limits!.maxDrawPrice, minCuratedOddsBps: limits!.minCuratedOddsBps, markupBps: inputs.markupBps }, chosen.map(packPlan)],
             })])}
           >Submit configuration</button>
           <p className="muted small">Changing the markup reprices every listing during upkeep; purchases stay closed until repricing completes.</p>
@@ -540,6 +631,48 @@ function Ens({ d, tx, isCreator }: { d: D; tx: Tx; isCreator: boolean }) {
   );
 }
 
+/** FWA's pool-page profile, in its schema's key order (the hash covers JSON.stringify of exactly this). */
+const PROFILE_KEYS = ['avatarUrl', 'bannerUrl', 'description', 'websiteUrl', 'xUrl', 'discordUrl'] as const;
+
+function PoolPage({ d, tx }: { d: D; tx: Tx }) {
+  const [name, setName] = useState('');
+  const [profile, setProfile] = useState<Record<string, string>>(Object.fromEntries(PROFILE_KEYS.map((k) => [k, ''])));
+  const [result, setResult] = useState<string>();
+  const publish = async () => {
+    const metadata = { name, profile: Object.fromEntries(PROFILE_KEYS.map((k) => [k, profile[k] ?? ''])) };
+    const issuedAt = new Date().toISOString();
+    const hash = keccak256(toBytes(JSON.stringify(metadata)));
+    await tx.send('Approve pool page', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'approvePoolPage', args: [issuedAt, hash] })]);
+    // The Balancer ignores signature bytes. 66 zero bytes: viem-style verifiers reject very short signatures
+    // before calling ERC-1271, and a non-65-byte value cannot be read as an ECDSA signature.
+    const body = { pool: d.pool, issuedAt, metadata, signature: `0x${'00'.repeat(66)}` };
+    if (chain.id !== 1) {
+      setResult(`Approved on this test chain. On mainnet the dashboard would now submit to FWA: ${JSON.stringify(body)}`);
+      return;
+    }
+    try {
+      const res = await fetch('https://pools.fwa.fun/api/fwa/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      setResult(res.ok ? 'FWA accepted the page.' : `FWA rejected it (${res.status}): ${await res.text()}`);
+    } catch (e) {
+      setResult(`Could not reach FWA from this page: ${(e as Error).message}`);
+    }
+  };
+  return (
+    <div className="card">
+      <h2>FWA pool page</h2>
+      <p className="muted small">FWA asks the pool owner to sign page edits. The Balancer approves exactly one FWA page message per submission, through ERC-1271. FWA has not confirmed that it accepts contract owners.</p>
+      <div className="grid">
+        <label>Name (2–64 characters) <input value={name} onChange={(e) => setName(e.target.value)} /></label>
+        {PROFILE_KEYS.map((k) => (
+          <label key={k}>{k} <input value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} /></label>
+        ))}
+      </div>
+      <button disabled={!!tx.busy || name.length < 2 || name.length > 64} onClick={publish}>Approve and publish</button>
+      {result && <p className="muted small">{result}</p>}
+    </div>
+  );
+}
+
 function Lifecycle({ d, tx, me }: { d: D; tx: Tx; me: Address }) {
   const [next, setNext] = useState('');
   const [confirmRetire, setConfirmRetire] = useState('');
@@ -547,7 +680,7 @@ function Lifecycle({ d, tx, me }: { d: D; tx: Tx; me: Address }) {
   return (
     <div className="card">
       <h2>Recover capital and retire</h2>
-      <p className="muted small">Close purchases first. Unwind withdraws listed Shapes (up to 20 per call) and redeems them and any spares for their exact backing; then claim the ETH. Withdraw curated NFTs from the table above.</p>
+      <p className="muted small">Close purchases first. Unwind withdraws listed Shapes (up to 20 per call) and redeems them for their exact backing; then claim the ETH. Withdraw curated NFTs from the table above.</p>
       <div className="row wrap">
         <button className="ghost" disabled={!!tx.busy || d.enabled} onClick={() => tx.send('Unwind', [() => tx.write({ ...B, functionName: 'unwind', args: [20n] })])}>Unwind Shapes</button>
       </div>

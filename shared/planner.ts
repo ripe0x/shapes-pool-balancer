@@ -8,9 +8,11 @@ export const MAX_BATCH = 5;
 export const MAX_SHAPES_PER_PLAN = 40;
 export const MAX_PLANS = 4;
 export const KEEPER_MAX_GAS = 3_200_000n;
-export const KEEPER_MAX_GAS_PRICE = 10n * 10n ** 9n;
+export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
+export const KEEPER_MAX_GAS_PRICE = 2n * 10n ** 9n;
 export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
-export const MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+/** Reimbursed gas is 4/5 of measured gas (EIP-3529 refund bound). */
+export const MAX_KEEPER_REWARD = ((KEEPER_MAX_GAS * 4n) / 5n) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 
 const E = 10n ** 18n;
 /** Mainnet Shapes ladder (wei), denomination index 0..8. */
@@ -19,12 +21,14 @@ export const DENOMS: readonly bigint[] = [
 ];
 export const DENOM_LABELS = ['0.01', '0.05', '0.1', '0.5', '1', '5', '10', '50', '100'];
 
-/** Mainnet-fork gas measurements (docs/GAS.md). Used only for cost estimates, never for limits. */
+/** Billed gas from isolated mainnet-fork transactions (docs/GAS.md). Cost estimates only, never limits.
+ *  The pool pays the keeper at most this (4/5 of measured gas is 80-99% of billed gas). */
 export const GAS = {
-  upkeepBase: 550_000, // reconcile + collect + checkpoint around the first replacement
-  perShape: 330_000, // each additional Shape replaced in the same denomination
-  perExtraDenom: 115_000, // separate mint call for each further denomination
-  reconcileOnly: 225_000, // curated-only or refund-only batch
+  upkeepBase: 833_000, // reconcile + collect + replace 1 Shape + checkpoint
+  perShape: 327_000, // each additional Shape replaced in the same denomination
+  perExtraDenom: 153_000, // separate mint call for each further denomination
+  reconcileOnly: 220_000, // curated-only or refund-only batch
+  redeemPerShape: 120_000, // plan switch: withdraw + redeem each surplus Shape (~1.0M for 6)
 };
 
 export type Counts = number[]; // length 9
@@ -37,9 +41,9 @@ export interface PoolInputs {
 }
 
 export interface Limits {
-  maxDrawPrice: bigint; // FWA acquisitionFee ceiling (incl. edge, excl. VRF fee)
-  minCuratedOddsBps: number;
-  maxShapeCapital: bigint;
+  maxDrawPrice: bigint; // FWA acquisitionFee ceiling (incl. edge, excl. VRF fee); enforced on chain
+  minCuratedOddsBps: number; // enforced on chain
+  maxShapeCapital: bigint; // planner preference only: the approved plans fix the capital on chain
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -86,14 +90,14 @@ export function shapeTotals(counts: Counts, markupBps: number) {
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
 export const shapeCount = (counts: Counts) => counts.reduce((s, n) => s + n, 0);
 
-/** Cash for the worst MAX_BATCH Shape draws from a full plan; `spares` per denomination cover draws. */
-export function batchReserve(counts: Counts, mintFee: bigint, spares: Counts = Array(9).fill(0)): bigint {
+/** Cash for the worst MAX_BATCH Shape draws from a full plan (PoolBalancer._batchReserve). */
+export function batchReserve(counts: Counts, mintFee: bigint): bigint {
   let left = MAX_BATCH;
   let r = 0n;
   for (let d = 8; d >= 0 && left > 0; d--) {
-    const cash = Math.min(left, Math.max(0, counts[d] - spares[d]));
-    r += BigInt(cash) * (DENOMS[d] + mintFee);
-    left -= cash;
+    const n = Math.min(left, counts[d]);
+    r += BigInt(n) * (DENOMS[d] + mintFee);
+    left -= n;
   }
   return r;
 }
@@ -195,13 +199,18 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const overhead = pShape * perShapeCost + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);
   const H0 = H / (1 + m); // harmonic mean of unmarked values
+  const net = grossMargin - overhead;
+  const minMarkupBps = H0 > 0 ? Math.ceil(((overhead * (1 + a.safety)) / H0) * 10_000) : Infinity;
   return {
     ownerProceeds: H,
     grossMarginPerDraw: grossMargin,
     overheadPerDraw: overhead,
-    expectedNetPerDraw: grossMargin - overhead,
-    minMarkupBps: H0 > 0 ? Math.ceil(((overhead * (1 + a.safety)) / H0) * 10_000) : Infinity,
+    expectedNetPerDraw: net,
+    minMarkupBps,
     keeperCostPerUpkeepEth: (GAS.upkeepBase + (k - 1) * GAS.perShape) * gp + toEth(KEEPER_INCENTIVE),
+    /** Model outlook, not a guarantee: individual draws and short runs can lose money either way. */
+    outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
+    belowModeledMarkup: inputs.markupBps < minMarkupBps,
   };
 }
 

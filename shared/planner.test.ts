@@ -42,11 +42,11 @@ describe('planner', () => {
     expect(Math.abs(sum - 1_000_000)).toBeLessThan(10);
   });
 
-  it('batch reserve takes the five most expensive replacements and credits spares', () => {
+  it('batch reserve takes the five most expensive replacements', () => {
     const fee = E / 1000n;
     expect(batchReserve([5, 3, 2, 0, 0, 0, 0, 0, 0], fee)).toBe(2n * (E / 10n + fee) + 3n * (E / 20n + fee));
-    expect(batchReserve([5, 3, 2, 0, 0, 0, 0, 0, 0], fee, [0, 0, 2, 0, 0, 0, 0, 0, 0])).toBe(3n * (E / 20n + fee) + 2n * (E / 100n + fee));
     expect(batchReserve([1, 0, 0, 0, 0, 0, 0, 0, 0], fee)).toBe(E / 100n + fee);
+    expect(batchReserve([0, 0, 0, 0, 0, 0, 0, 0, 7], fee)).toBe(5n * (100n * E + fee));
   });
 
   it('enumerates only feasible plans and respects limits', () => {
@@ -68,9 +68,13 @@ describe('planner', () => {
   it('min markup grows with gas price and shrinks with draw value', () => {
     const lo = economics([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs, { gasPriceGwei: 0.5, drawsPerUpkeep: 1, safety: 0.25 });
     const hi = economics([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
+    const thin = economics([5, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, markupBps: 100 }, { gasPriceGwei: 2, drawsPerUpkeep: 1, safety: 0.25 });
+    expect(thin.outlook).toBe('loss');
+    expect(thin.belowModeledMarkup).toBe(true);
     expect(hi.minMarkupBps).toBeGreaterThan(lo.minMarkupBps);
     const big = economics([0, 0, 0, 0, 3, 1, 0, 0, 0], { ...inputs, curatedBases: [20n * E] }, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
     expect(big.minMarkupBps).toBeLessThan(hi.minMarkupBps);
-    expect(MAX_KEEPER_REWARD).toBe(32_500_000_000_000_000n);
+    expect(MAX_KEEPER_REWARD).toBe(5_620_000_000_000_000n); // 3.2M * 4/5 * 2 gwei + 0.0005
+    expect(lo.outlook).toBe('sustainable');
   });
 });
