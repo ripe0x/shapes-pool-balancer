@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {LibString} from "solady/utils/LibString.sol";
+import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
 /// @title PoolBalancer
@@ -16,10 +18,13 @@ import {IFWAPoolFactory, IFWAPool, IShapes, IERC721Min, IENS, IReverseRegistrar}
 ///        inventory version. Any FWA batch (<= MAX_BATCH draws) advances the sequence and closes
 ///        admission until upkeep reconciles, restores inventory and re-checkpoints.
 ///      - A checkpoint requires the Shapes inventory to equal an approved plan exactly (verified
-///        against FWA totals), the plan to satisfy the creator's price/odds/capital limits, and liquid
+///        against FWA totals), the plan to satisfy the creator's price and odds limits, and liquid
 ///        ETH to cover the worst MAX_BATCH Shape replacements plus one maximum keeper reward.
+///      - Shapes are held only inside a transaction: minted then listed, or withdrawn then redeemed.
+///        Any NFT this contract owns between transactions is untracked and creator-recoverable.
+///      - No upkeep loop depends on history: drawn items awaiting FWA delivery are never scanned.
 ///      - No function sends ETH or NFTs to an address chosen by anyone but the creator, except the
-///        bounded keeper reward to `msg.sender` of `performUpkeep`.
+///        bounded keeper reward to `msg.sender` of `performUpkeep` / `recoverRefundedShape`.
 contract PoolBalancer is ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                 CONSTANTS
@@ -31,22 +36,29 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant DENOMS = 9;
     uint256 internal constant MAX_PLANS = 4;
     uint256 internal constant MAX_SHAPES_PER_PLAN = 40;
-    /// @dev Bounds every loop over listings (repricing, plan withdrawal, unwind).
+    /// @dev Bounds every loop over listings (repricing scan, plan withdrawal, unwind).
     uint256 internal constant MAX_LISTINGS = 100;
-    /// @dev Inventory operations (mint+list, withdraw, reprice) per upkeep; FWA batch limit is 20.
+    /// @dev Inventory operations (mint+list, withdraw+redeem, reprice) per upkeep; FWA batch limit is 20.
     uint256 internal constant MAX_OPS = 6;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
 
-    // Keeper compensation bounds, chosen from mainnet-fork gas measurements (see docs/GAS.md).
-    uint256 internal constant KEEPER_GAS_OVERHEAD = 45_000; // intrinsic, calldata, guard and payout outside the measured span
+    // Keeper compensation (see docs/GAS.md; collection-games#23 for the exploit these bounds prevent):
+    // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE): an overbid is the
+    //   keeper's own cost;
+    // - gas = 4/5 of (measured span + intrinsic), capped: EIP-3529 refunds cut the billed gas by at most
+    //   1/5 of execution gas and in-transaction measurement cannot see them, so 4/5 is always billed.
+    uint256 internal constant KEEPER_GAS_OVERHEAD = 21_000; // intrinsic only: a lower bound on gas outside the span
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
-    uint256 internal constant KEEPER_PRIORITY_CAP = 2 gwei;
-    uint256 internal constant KEEPER_MAX_GAS_PRICE = 10 gwei;
+    uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
+    uint256 internal constant KEEPER_MAX_GAS_PRICE = 2 gwei;
     uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
-    uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+    uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * 4 / 5 * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
+    /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
+    string internal constant FWA_V1_FACTORY = "0xf5a3a153164791ab579c3d9ba5dbecf7cdfd300c";
+    bytes4 internal constant ERC1271_MAGIC = 0x1626ba7e;
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
 
     // FWA ListingStatus / AcquisitionStatus values.
@@ -58,7 +70,7 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant CURATED = 1;
     uint8 internal constant SHAPE = 2;
     uint8 internal constant ACTIVE = 1;
-    uint8 internal constant PENDING = 2; // drawn, FWA delivery not yet completed
+    uint8 internal constant PENDING = 2; // drawn, FWA delivery failed; resolved per item, never scanned
 
     // Admission status codes returned by `admissionStatus`. Zero means purchases are admitted.
     uint8 internal constant OK = 0;
@@ -92,7 +104,6 @@ contract PoolBalancer is ReentrancyGuard {
 
     struct Config {
         uint128 maxDrawPrice; // FWA acquisitionFee ceiling (includes FWA edge, excludes VRF fee)
-        uint128 maxShapeCapital; // max Shapes backing in any approved plan
         uint16 minCuratedOddsBps; // min combined curated probability
         uint16 markupBps; // fixed operating markup applied to every listing price
     }
@@ -124,7 +135,6 @@ contract PoolBalancer is ReentrancyGuard {
     bool public enabled;
     bool public repricing;
     uint8 public lastStatus = NOT_CONFIGURED;
-    uint256 internal repriceCursor;
 
     Checkpoint public checkpoint;
     uint64 public reconciledSequence;
@@ -132,9 +142,9 @@ contract PoolBalancer is ReentrancyGuard {
     mapping(uint256 listingId => Item) public items;
     uint256[] internal activeIds;
     mapping(uint256 listingId => uint256) internal activeIndexPlusOne;
-    uint256[] internal pendingIds;
     uint16[9] internal activeShapes;
-    uint256[][9] internal spareIds;
+    /// @dev EIP-191 digests of FWA pool-page messages the creator approved (see `approvePoolPage`).
+    mapping(bytes32 digest => bool) public poolPageApproved;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -150,11 +160,12 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
     event CuratedRecovered(uint256 indexed listingId, address indexed to);
+    event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
-    event DeliveryResolved(uint256 indexed listingId, bool delivered);
+    event ShapeRecovered(uint256 indexed listingId, uint256 eth);
     event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost);
     event ShapeListed(uint256 indexed listingId, uint8 indexed denom, uint256 tokenId, uint256 price);
-    event ShapeUnlisted(uint256 indexed listingId, uint8 indexed denom, uint256 tokenId);
+    event ShapesUnlisted(uint256 count, uint256 ethRedeemed);
     event ListingRepriced(uint256 indexed listingId, uint256 price);
     event PlanActivated(uint8 indexed index);
     event Checkpointed(uint64 sequence, uint256 inventoryVersion, uint256 mintFee, uint256 reserve);
@@ -163,9 +174,10 @@ contract PoolBalancer is ReentrancyGuard {
     event Deposited(address indexed from, uint256 amount);
     event ProceedsCollected(uint256 amount);
     event SurplusClaimed(address indexed to, uint256 amount);
-    event Unwound(uint256 shapesWithdrawn, uint256 shapesRedeemed, uint256 ethRedeemed);
+    event Unwound(uint256 shapesRedeemed, uint256 ethRedeemed);
     event PoolRetired();
     event ENSNameSet(string name);
+    event PoolPageApproved(bytes32 indexed digest, string issuedAt, bytes32 metadataHash);
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -187,6 +199,7 @@ contract PoolBalancer is ReentrancyGuard {
     error InsufficientSurplus();
     error NoUpkeepNeeded();
     error InvalidBatch();
+    error ProtectedAsset();
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTION
@@ -259,13 +272,10 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 n = newPlans.length;
         if (n == 0 || n > MAX_PLANS) revert InvalidPlan();
         for (uint256 i; i < n; ++i) {
-            (uint256 shapes, uint256 capital) = _planTotals(newPlans[i]);
-            if (shapes == 0 || shapes > MAX_SHAPES_PER_PLAN || capital > cfg.maxShapeCapital) revert InvalidPlan();
+            uint256 shapes = _planShapes(newPlans[i]);
+            if (shapes == 0 || shapes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
         }
-        if (cfg.markupBps != config.markupBps && activeIds.length != 0) {
-            repricing = true;
-            repriceCursor = 0;
-        }
+        if (cfg.markupBps != config.markupBps && activeIds.length != 0) repricing = true;
         config = cfg;
         plans = newPlans;
         activePlan = 0;
@@ -362,17 +372,30 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice Recover a curated NFT whose FWA delivery was refunded. Upkeep never touches curated
-    ///         collections for this, so a hostile collection cannot burn keeper gas or block upkeep.
+    ///         collections, so a hostile collection cannot burn keeper gas or block upkeep.
     function recoverCuratedNFT(uint256 listingId, address to) external onlyCreator nonReentrant {
         Item storage it = items[listingId];
-        if (it.kind != CURATED || to == address(0)) revert InvalidItem();
+        if (it.kind != CURATED || it.state != PENDING || to == address(0)) revert InvalidItem();
         (address collection,,, uint256 tokenId,,,, uint8 status) = pool.listings(listingId);
-        if (it.state != PENDING || status != L_DELIVERY_REFUNDED) revert InvalidItem();
-        _removePending(listingId);
+        if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
         delete items[listingId];
         pool.recoverRefundedNFT(listingId);
         IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
         emit CuratedRecovered(listingId, to);
+    }
+
+    /// @notice Return an NFT this contract holds outside FWA, e.g. one sent to it directly.
+    /// @dev Tracked inventory is never held here between transactions: listings and pending deliveries
+    ///      are owned by the FWA pool, Shapes are minted-and-listed or withdrawn-and-redeemed within one
+    ///      call, and refunded curated NFTs are pulled from FWA only inside `recoverCuratedNFT`. So
+    ///      `ownerOf == this` (checked under the reentrancy lock) proves the NFT is untracked. Only the
+    ///      ERC721 transfer selector is called, and never on the FWA pool or factory.
+    function recoverUntrackedNFT(address collection, uint256 tokenId, address to) external onlyCreator nonReentrant {
+        if (to == address(0)) revert InvalidRecipient();
+        if (collection == address(pool) || collection == address(FWA_FACTORY)) revert ProtectedAsset();
+        if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert ProtectedAsset();
+        IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
+        emit UntrackedNFTRecovered(collection, tokenId, to);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -402,14 +425,12 @@ contract PoolBalancer is ReentrancyGuard {
         emit SurplusClaimed(to, amount);
     }
 
-    /// @notice After closing, withdraw up to `maxCount` (<= 20) listed Shapes and redeem up to 20 held
-    ///         Shapes for their exact backing. Repeat until nothing remains. Curated NFTs are withdrawn
-    ///         separately.
+    /// @notice After closing, withdraw up to `maxCount` (<= 20) listed Shapes from FWA and redeem them
+    ///         for their exact backing. Repeat until none remain. Curated NFTs are withdrawn separately.
     function unwind(uint256 maxCount) external onlyCreator nonReentrant {
         if (enabled) revert NotClosed();
         _requireIdle();
         if (maxCount > 20) maxCount = 20;
-        IFWAPool p = pool;
         uint256[] memory ids = new uint256[](maxCount);
         uint256 n;
         for (uint256 i = activeIds.length; i != 0 && n < maxCount;) {
@@ -419,33 +440,9 @@ contract PoolBalancer is ReentrancyGuard {
         assembly ("memory-safe") {
             mstore(ids, n)
         }
-        if (n != 0) {
-            for (uint256 i; i < n; ++i) {
-                (,,, uint256 tokenId,,,,) = p.listings(ids[i]);
-                uint8 d = items[ids[i]].denom;
-                _removeActive(ids[i]);
-                --activeShapes[d];
-                delete items[ids[i]];
-                spareIds[d].push(tokenId);
-            }
-            p.withdrawListingsTo(ids, address(this));
-        }
-        uint256[] memory burn = new uint256[](20);
-        uint256 total;
-        for (uint256 d; d < DENOMS && total < 20; ++d) {
-            uint256[] storage s = spareIds[d];
-            while (s.length != 0 && total < 20) {
-                burn[total++] = s[s.length - 1];
-                s.pop();
-            }
-        }
-        assembly ("memory-safe") {
-            mstore(burn, total)
-        }
-        uint256 eth;
-        if (total != 0) eth = SHAPES.redeemBatch(burn);
+        uint256 eth = _withdrawAndRedeem(pool, ids);
         _invalidate();
-        emit Unwound(n, total, eth);
+        emit Unwound(n, eth);
     }
 
     /// @notice Irreversibly retire the FWA pool. Withdrawals, unwind and recovery remain available.
@@ -468,6 +465,46 @@ contract PoolBalancer is ReentrancyGuard {
     function clearENSName() external onlyCreator {
         IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName("");
         emit ENSNameSet("");
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                           FWA POOL PAGE (ERC-1271)
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Approve one FWA pool-page publication. FWA's site asks the pool owner to personal_sign a
+    ///         fixed plain-text message; this contract rebuilds that exact message for its own pool and
+    ///         approves only its digest. `issuedAt` is the ISO-8601 time the site will submit
+    ///         (24 chars, e.g. 2026-11-10T12:34:56.789Z); `metadataHash` is keccak256 of the page JSON.
+    /// @dev Approved digests are always "Publish FWA Pools page" messages naming this pool, so
+    ///      `isValidSignature` cannot authorize anything else (no FWA, Shapes or ERC721 function
+    ///      accepts such a message). Format verified against pools.fwa.fun's client code 2026-11-10.
+    function approvePoolPage(string calldata issuedAt, bytes32 metadataHash) external onlyCreator returns (bytes32 digest) {
+        bytes calldata t = bytes(issuedAt);
+        if (t.length != 24) revert InvalidConfig();
+        for (uint256 i; i < 24; ++i) {
+            bytes1 c = t[i];
+            if ((c < "0" || c > "9") && c != "-" && c != ":" && c != "." && c != "T" && c != "Z") revert InvalidConfig();
+        }
+        bytes memory message = abi.encodePacked(
+            "Publish FWA Pools page\nSite: pools.fwa.fun\nChain: 1\nFactories: ",
+            LibString.toHexString(address(FWA_FACTORY)),
+            ", ",
+            FWA_V1_FACTORY,
+            "\nPool: ",
+            LibString.toHexString(address(pool)),
+            "\nIssued at: ",
+            issuedAt,
+            "\nMetadata hash: ",
+            LibString.toHexString(uint256(metadataHash), 32)
+        );
+        digest = SignatureCheckerLib.toEthSignedMessageHash(message);
+        poolPageApproved[digest] = true;
+        emit PoolPageApproved(digest, issuedAt, metadataHash);
+    }
+
+    /// @notice ERC-1271: valid only for digests approved by `approvePoolPage`; the signature bytes are ignored.
+    function isValidSignature(bytes32 hash, bytes calldata) external view returns (bytes4) {
+        return poolPageApproved[hash] ? ERC1271_MAGIC : bytes4(0xffffffff);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -500,34 +537,41 @@ contract PoolBalancer is ReentrancyGuard {
                                  UPKEEP
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Permissionless maintenance: reconcile settled draws, recover refunded deliveries,
-    ///         collect proceeds, reprice, restore the approved Shapes plan and re-checkpoint.
-    ///         Pays `msg.sender` a bounded reward only when real maintenance work was done.
-    function performUpkeep() external nonReentrant {
+    /// @notice Permissionless maintenance: reconcile settled draws, collect proceeds, reprice, restore
+    ///         the approved Shapes plan and re-checkpoint. Reverts `NoUpkeepNeeded` when it would change
+    ///         nothing and `PoolBusy` while an FWA batch is unresolved; simulate it to learn whether work
+    ///         exists and what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
+    function performUpkeep() external nonReentrant returns (uint256 reward) {
         uint256 gasStart = gasleft();
         Checkpoint memory before = checkpoint;
         uint8 statusBefore = lastStatus;
-        uint256 pendingBefore = pendingIds.length;
         (uint256 ops, bool batchReconciled) = _sync();
         Checkpoint memory afterCp = checkpoint;
-        bool changed = ops != 0 || batchReconciled || pendingIds.length != pendingBefore || lastStatus != statusBefore || afterCp.valid != before.valid
+        bool changed = ops != 0 || batchReconciled || lastStatus != statusBefore || afterCp.valid != before.valid
             || afterCp.inventoryVersion != before.inventoryVersion || afterCp.reserve != before.reserve
             || afterCp.mintFee != before.mintFee;
         if (!changed) revert NoUpkeepNeeded();
-        if (ops != 0 || batchReconciled) _payKeeper(gasStart, ops != 0);
+        if (ops != 0 || batchReconciled) reward = _payKeeper(gasStart, ops != 0);
     }
 
-    /// @notice Cheap hint for keepers; simulate `performUpkeep` before sending.
-    function needsUpkeep() external view returns (bool) {
+    /// @notice Permissionless: recover a drawn Shape whose FWA delivery was refunded and redeem it for its
+    ///         backing. Pays gas only. FWA allows the refund 7 days after the failed delivery, by which
+    ///         time upkeep has already replaced the drawn Shape, so the recovered one is surplus.
+    ///         (FWA delivers with `transferFrom`; a Shape transfer fails only to the Shapes contract itself.)
+    function recoverRefundedShape(uint256 listingId) external nonReentrant returns (uint256 reward) {
+        uint256 gasStart = gasleft();
+        Item storage it = items[listingId];
+        if (it.kind != SHAPE || it.state != PENDING) revert InvalidItem();
         IFWAPool p = pool;
-        if (address(p) == address(0) || p.unsettledAcquisitionCount() != 0) return false;
-        if (p.lastIssuedSequence() != reconciledSequence || repricing) return true;
-        if (enabled && !checkpoint.valid) return true;
-        for (uint256 i; i < pendingIds.length; ++i) {
-            (,,,,,,, uint8 s) = p.listings(pendingIds[i]);
-            if (s == L_SETTLED || (s == L_DELIVERY_REFUNDED && items[pendingIds[i]].kind == SHAPE)) return true;
-        }
-        return false;
+        (,,, uint256 tokenId,,,, uint8 status) = p.listings(listingId);
+        if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
+        delete items[listingId];
+        p.recoverRefundedNFT(listingId);
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = tokenId;
+        uint256 eth = SHAPES.redeemBatch(ids);
+        emit ShapeRecovered(listingId, eth);
+        reward = _payKeeper(gasStart, false);
     }
 
     function _sync() internal returns (uint256 ops, bool batchReconciled) {
@@ -549,32 +593,10 @@ contract PoolBalancer is ReentrancyGuard {
             batchReconciled = true;
         }
 
-        // 2. Resolve drawn items awaiting FWA delivery.
-        for (uint256 i = pendingIds.length; i != 0;) {
-            uint256 lid = pendingIds[--i];
-            (,,, uint256 tokenId,,,, uint8 lStatus) = p.listings(lid);
-            if (lStatus == L_SETTLED) {
-                _removePending(lid);
-                delete items[lid];
-                emit DeliveryResolved(lid, true);
-            } else if (lStatus == L_DELIVERY_REFUNDED && items[lid].kind == SHAPE) {
-                // Only Shapes are recovered here: their transfer is trusted and hook-free. A refunded curated
-                // NFT calls an untrusted collection, which could revert or burn the keeper's gas forever, so
-                // it stays pending for the creator's `recoverCuratedNFT`.
-                uint8 d = items[lid].denom;
-                _removePending(lid);
-                p.recoverRefundedNFT(lid);
-                spareIds[d].push(tokenId);
-                delete items[lid];
-                ++ops;
-                emit DeliveryResolved(lid, false);
-            }
-        }
-
-        // 3. Settled proceeds fund maintenance.
+        // 2. Settled proceeds fund maintenance.
         _collect();
 
-        // 4. Maintain inventory only while open.
+        // 3. Maintain inventory only while open.
         if (enabled) {
             (uint256 more, uint8 status) = _maintain(p);
             ops += more;
@@ -658,31 +680,28 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 d = it.denom;
         _removeActive(lid);
         if (kind == SHAPE) --activeShapes[d];
-        if (delivered) {
-            delete items[lid];
-        } else {
-            it.state = PENDING;
-            pendingIds.push(lid);
-        }
+        if (delivered) delete items[lid];
+        else it.state = PENDING;
         emit ItemDrawn(lid, kind, d, delivered);
     }
 
+    /// @dev Bring up to MAX_OPS listings to the current markup. Every call rescans all active listings
+    ///      (<= MAX_LISTINGS), so a removal can never cause a listing to be skipped and an interrupted
+    ///      run resumes where the last one stopped. Only `it.price` changes; `it.base` is creator-set.
     function _reprice(IFWAPool p) internal returns (uint256 ops) {
-        uint256 i = repriceCursor;
         uint256 n = activeIds.length;
-        for (; i < n && ops < MAX_OPS; ++i) {
+        for (uint256 i; i < n; ++i) {
             uint256 lid = activeIds[i];
             Item storage it = items[lid];
             uint256 price = _priced(it.base);
-            if (price != it.price) {
-                p.updatePrice(lid, price);
-                it.price = uint112(price);
-                ++ops;
-                emit ListingRepriced(lid, price);
-            }
+            if (price == it.price) continue;
+            if (ops == MAX_OPS) return ops; // more remain
+            p.updatePrice(lid, price);
+            it.price = uint112(price);
+            ++ops;
+            emit ListingRepriced(lid, price);
         }
-        repriceCursor = i;
-        if (i == n) repricing = false;
+        repricing = false;
     }
 
     function _rebalance(IFWAPool p, uint256 plan, uint256 markup, uint256 fee, uint256 budget)
@@ -700,33 +719,45 @@ contract PoolBalancer is ReentrancyGuard {
         complete = true;
     }
 
-    /// @dev Only after a plan change: withdraw Shapes above target back into spares.
+    /// @dev Only after a plan change: withdraw Shapes above target from FWA and redeem them.
     function _unlistSurplus(IFWAPool p, uint256 plan, uint256 budget) internal returns (uint256 used) {
         uint256[] memory out = new uint256[](budget);
-        for (uint256 d; d < DENOMS; ++d) {
+        for (uint256 d; d < DENOMS && used < budget; ++d) {
+            uint256 have = activeShapes[d];
             uint256 target = _count(plan, d);
-            for (uint256 i = activeIds.length; i != 0 && activeShapes[d] > target && used < budget;) {
-                uint256 lid = activeIds[--i];
-                Item storage it = items[lid];
-                if (it.kind != SHAPE || it.denom != d) continue;
-                (,,, uint256 tokenId,,,,) = p.listings(lid);
-                _removeActive(lid);
-                --activeShapes[d];
-                delete items[lid];
-                spareIds[d].push(tokenId);
-                out[used++] = lid;
-                emit ShapeUnlisted(lid, uint8(d), tokenId);
+            uint256 surplus = have > target ? have - target : 0;
+            for (uint256 i = activeIds.length; i != 0 && surplus != 0 && used < budget;) {
+                Item storage it = items[activeIds[--i]];
+                if (it.kind == SHAPE && it.denom == d) {
+                    out[used++] = activeIds[i];
+                    --surplus;
+                }
             }
         }
-        if (used != 0) {
-            assembly ("memory-safe") {
-                mstore(out, used)
-            }
-            p.withdrawListingsTo(out, address(this));
+        if (used == 0) return 0;
+        assembly ("memory-safe") {
+            mstore(out, used)
         }
+        emit ShapesUnlisted(used, _withdrawAndRedeem(p, out));
     }
 
-    /// @dev List spares first, then mint like-for-like with available ETH, in one FWA batch.
+    /// @dev Stop tracking the given Shape listings, withdraw them from FWA and redeem them here.
+    function _withdrawAndRedeem(IFWAPool p, uint256[] memory lids) internal returns (uint256 eth) {
+        uint256 n = lids.length;
+        if (n == 0) return 0;
+        uint256[] memory tokenIds = new uint256[](n);
+        for (uint256 i; i < n; ++i) {
+            uint256 lid = lids[i];
+            (,,, tokenIds[i],,,,) = p.listings(lid);
+            --activeShapes[items[lid].denom];
+            _removeActive(lid);
+            delete items[lid];
+        }
+        p.withdrawListingsTo(lids, address(this));
+        eth = SHAPES.redeemBatch(tokenIds);
+    }
+
+    /// @dev Mint like-for-like with available ETH and list the new Shapes in one FWA batch.
     function _fillDeficit(IFWAPool p, uint256 plan, uint256 markup, uint256 fee, uint256 budget)
         internal
         returns (uint256 used, bool funded)
@@ -739,23 +770,16 @@ contract PoolBalancer is ReentrancyGuard {
             if (have >= target) continue;
             uint256 need = target - have;
             if (need > budget - used) need = budget - used;
-            uint256 price = _amount(d) * (BPS + markup) / BPS;
-            uint256[] storage spares = spareIds[d];
-            for (; need != 0 && spares.length != 0; --need) {
-                batch[used++] = IFWAPool.ListingInput(address(SHAPES), spares[spares.length - 1], price);
-                spares.pop();
+            uint256 cost = need * (_amount(d) + fee);
+            if (address(this).balance < cost) {
+                funded = false;
+                break;
             }
-            if (need != 0) {
-                uint256 cost = need * (_amount(d) + fee);
-                if (address(this).balance < cost) {
-                    funded = false;
-                    break;
-                }
-                uint256 first = SHAPES.mintBatch{value: cost}(_amount(d), need);
-                emit ShapesMinted(uint8(d), first, need, cost);
-                for (uint256 j; j < need; ++j) {
-                    batch[used++] = IFWAPool.ListingInput(address(SHAPES), first + j, price);
-                }
+            uint256 first = SHAPES.mintBatch{value: cost}(_amount(d), need);
+            emit ShapesMinted(uint8(d), first, need, cost);
+            uint256 price = _amount(d) * (BPS + markup) / BPS;
+            for (uint256 j; j < need; ++j) {
+                batch[used++] = IFWAPool.ListingInput(address(SHAPES), first + j, price);
             }
         }
         if (used == 0) return (0, funded);
@@ -779,16 +803,17 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
-    function _payKeeper(uint256 gasStart, bool incentive) internal {
+    function _payKeeper(uint256 gasStart, bool incentive) internal returns (uint256 reward) {
         uint256 gasUsed = gasStart - gasleft() + KEEPER_GAS_OVERHEAD;
         if (gasUsed > KEEPER_MAX_GAS) gasUsed = KEEPER_MAX_GAS;
+        gasUsed = gasUsed * 4 / 5;
         uint256 price = tx.gasprice;
         uint256 cap = block.basefee + KEEPER_PRIORITY_CAP;
         if (price > cap) price = cap;
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
-        uint256 reward = gasUsed * price + (incentive ? KEEPER_INCENTIVE : 0);
+        reward = gasUsed * price + (incentive ? KEEPER_INCENTIVE : 0);
         if (reward > address(this).balance) reward = address(this).balance;
-        if (reward == 0) return;
+        if (reward == 0) return 0;
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
         emit KeeperPaid(msg.sender, reward, gasUsed);
     }
@@ -811,7 +836,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 plan = plans[activePlan];
         uint256 fee = SHAPES.mintFee();
         for (uint256 d; d < DENOMS; ++d) {
-            uint256 have = activeShapes[d] + spareIds[d].length;
+            uint256 have = activeShapes[d];
             uint256 target = _count(plan, d);
             if (target > have) r += (target - have) * (_amount(d) + fee);
         }
@@ -824,14 +849,6 @@ contract PoolBalancer is ReentrancyGuard {
 
     function getActiveIds() external view returns (uint256[] memory) {
         return activeIds;
-    }
-
-    function getPendingIds() external view returns (uint256[] memory) {
-        return pendingIds;
-    }
-
-    function getSpares(uint256 d) external view returns (uint256[] memory) {
-        return spareIds[d];
     }
 
     function getActiveShapes() external view returns (uint16[9] memory) {
@@ -901,18 +918,6 @@ contract PoolBalancer is ReentrancyGuard {
         activeIndexPlusOne[lastId] = idx;
         activeIds.pop();
         delete activeIndexPlusOne[lid];
-        if (repricing) repriceCursor = 0; // swap-pop may move an unvisited listing behind the cursor
-    }
-
-    function _removePending(uint256 lid) internal {
-        uint256 n = pendingIds.length;
-        for (uint256 i; i < n; ++i) {
-            if (pendingIds[i] == lid) {
-                pendingIds[i] = pendingIds[n - 1];
-                pendingIds.pop();
-                return;
-            }
-        }
     }
 
     /// @dev Curated weight sums = FWA totals minus our active Shapes. Valid only when every active
@@ -952,38 +957,29 @@ contract PoolBalancer is ReentrancyGuard {
         returns (bool)
     {
         Config memory c = config;
-        (, uint256 capital) = _planTotals(plan);
-        if (capital > c.maxShapeCapital) return false;
         (uint256 sW, uint256 sWP) = _shapeTotals(plan, markup);
         uint256 tW = cW + sW;
         if ((cWP + sWP) / tW * (BPS + edge) / BPS > c.maxDrawPrice) return false;
         return cW * BPS >= uint256(c.minCuratedOddsBps) * tW;
     }
 
-    /// @dev Cash for the worst MAX_BATCH Shape draws from a full plan. Each spare of a denomination
-    ///      covers one draw of it without cash; spare backing is never counted as liquid ETH.
-    function _batchReserve(uint256 plan, uint256 fee) internal view returns (uint256 r) {
+    /// @dev Cash to replace the worst MAX_BATCH Shape draws from a full plan: the largest denominations
+    ///      first, each at backing plus the current mint fee.
+    function _batchReserve(uint256 plan, uint256 fee) internal pure returns (uint256 r) {
         uint256 left = MAX_BATCH;
         for (uint256 d = DENOMS; d != 0 && left != 0;) {
             --d;
             uint256 n = _count(plan, d);
-            // Spares already needed to fill a current deficit cannot also cover a future draw.
-            uint256 have = activeShapes[d] + spareIds[d].length;
-            uint256 spare = have > n ? have - n : 0;
-            if (spare > spareIds[d].length) spare = spareIds[d].length;
-            uint256 cash = n > spare ? n - spare : 0;
-            if (cash > left) cash = left;
-            r += cash * (_amount(d) + fee);
-            left -= cash;
+            if (n > left) n = left;
+            r += n * (_amount(d) + fee);
+            left -= n;
         }
     }
 
-    function _planTotals(uint256 plan) internal pure returns (uint256 shapes, uint256 capital) {
+    function _planShapes(uint256 plan) internal pure returns (uint256 shapes) {
         if (plan >> (16 * DENOMS) != 0) revert InvalidPlan();
         for (uint256 d; d < DENOMS; ++d) {
-            uint256 n = _count(plan, d);
-            shapes += n;
-            capital += n * _amount(d);
+            shapes += _count(plan, d);
         }
     }
 

@@ -125,7 +125,7 @@ contract InvariantTest is ForkBase {
         uint256[] memory plans = new uint256[](2);
         plans[0] = plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]);
         plans[1] = plan([uint256(2), 1, 1, 0, 0, 0, 0, 0, 0]);
-        configure(0.05 ether, 1 ether, 50, plans);
+        configure(0.05 ether, 50, plans);
         vm.prank(creator);
         balancer.open();
         fillUp();
@@ -142,7 +142,7 @@ contract InvariantTest is ForkBase {
         (bool valid,,,, uint256 reserve) = balancer.checkpoint();
         assertTrue(valid);
         assertGe(address(balancer).balance, reserve);
-        (uint128 maxDrawPrice,,,) = balancer.config();
+        (uint128 maxDrawPrice,,) = balancer.config();
         assertLe(pool.acquisitionFee(), maxDrawPrice);
         // tracked active set equals FWA's active set
         assertEq(balancer.getActiveIds().length, pool.activeListingCount());
@@ -167,13 +167,11 @@ contract InvariantTest is ForkBase {
         assertFalse(pool.tokenOfferEnabled());
     }
 
-    function invariant_sparesHeldByBalancer() public view {
-        for (uint256 d; d < 9; ++d) {
-            uint256[] memory s = balancer.getSpares(d);
-            for (uint256 i; i < s.length; ++i) {
-                assertEq(shapes.ownerOf(s[i]), address(balancer));
-            }
-        }
+    /// @dev Shapes are only held inside a transaction (mint-then-list, withdraw-then-redeem).
+    function invariant_noShapesHeldBetweenCalls() public view {
+        (bool ok, bytes memory r) = SHAPES.staticcall(abi.encodeWithSignature("balanceOf(address)", address(balancer)));
+        assertTrue(ok);
+        assertEq(abi.decode(r, (uint256)), 0);
     }
 
     /// @dev Whenever reconciled, the tracked active set matches FWA exactly.

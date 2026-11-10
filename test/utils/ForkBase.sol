@@ -71,12 +71,11 @@ abstract contract ForkBase is Test {
         vm.stopPrank();
     }
 
-    function configure(uint256 maxDrawPrice, uint256 maxCapital, uint16 minOdds, uint256[] memory plans) internal {
+    function configure(uint256 maxDrawPrice, uint16 minOdds, uint256[] memory plans) internal {
         vm.prank(creator);
         balancer.configure(
             PoolBalancer.Config({
                 maxDrawPrice: uint128(maxDrawPrice),
-                maxShapeCapital: uint128(maxCapital),
                 minCuratedOddsBps: minOdds,
                 markupBps: MARKUP
             }),

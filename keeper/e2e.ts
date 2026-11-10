@@ -6,7 +6,7 @@ import { execSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toHex, type Address } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toHex, type Address } from 'viem';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 import { Keeper } from './keeper';
 
@@ -73,7 +73,8 @@ async function tickUntil(k: Keeper, done: () => Promise<boolean>, max = 12) {
   throw new Error('condition not reached ' + JSON.stringify(info));
 }
 
-async function buyAndSettle(b: Address, count: number, buyer: Address, word: bigint) {
+/** Buy `count` draws directly through FWA with ETH and deliver randomness. `purchaser` defaults to `buyer`. */
+async function buyAndSettle(b: Address, count: number, buyer: Address, word: bigint, purchaser: Address = buyer) {
   const pool = (await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
   await test.impersonateAccount({ address: buyer });
   await test.setBalance({ address: buyer, value: 10n ** 20n });
@@ -82,7 +83,8 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
   const before = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'lastIssuedSequence' });
   const now = (await pub.getBlock()).timestamp;
   // The VRF fee follows the tx gas price, so overpay; FWA refunds the excess.
-  const h = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'acquireBatch', args: [buyer, BigInt(count), 0n, 0n, 10_000n, v as bigint, now + 600n], value: total * 2n + 10n ** 16n, account: buyer, chain: null, gas: 3_000_000n });
+  const value = total * 2n + 10n ** 16n;
+  const h = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'acquireBatch', args: [purchaser, BigInt(count), 0n, 0n, 10_000n, v as bigint, now + 600n], value, account: buyer, chain: null, gas: 3_000_000n });
   assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success', 'purchase');
   await test.mine({ blocks: 3 });
   const coord = (await pub.readContract({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'coordinator' })) as Address;
@@ -110,7 +112,7 @@ async function run() {
   const dir = mkdtempSync(join(tmpdir(), 'keeper-e2e-'));
   const stateFile = join(dir, 'state.json');
   const keeperAddr = ACCTS[3] as Address;
-  const mk = () => new Keeper({ rpcUrl: RPC, factory, fromBlock: FORK_BLOCK, stateFile, account: keeperAddr, replaceAfterBlocks: 2, log: (m, e) => logs.push(`${m} ${JSON.stringify(e ?? {})}`) });
+  const mk = () => new Keeper({ rpcUrl: RPC, factory, fromBlock: FORK_BLOCK, stateFile, account: keeperAddr, replaceAfterBlocks: 2, maxLossWei: 10n ** 14n, log: (m, e) => logs.push(`${m} ${JSON.stringify(e ?? {})}`) });
   let k = mk();
 
   // 1. discovery and initial fill of both pools
@@ -127,7 +129,8 @@ async function run() {
   await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
   const kb1 = await pub.getBalance({ address: keeperAddr });
   assert.ok(kb1 > kb0 - 10n ** 16n, 'keeper reimbursed');
-  console.log('✓ reconciled and replenished after draws on both pools');
+  console.log('✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)');
+  checkAudit(k);
 
   // 3. restart from persisted state: no rediscovery duplicates, no redundant sends
   const sentBefore = k.state.stats.sent;
@@ -169,13 +172,70 @@ async function run() {
   assert.ok(!k.state.balancers.includes(b3));
   console.log('✓ reorg handled');
 
-  // 6. one broken pool does not stop the others
+  // 6. keeper downtime: draws happen while no keeper runs; a fresh instance catches up from state
+  await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b05', 21n);
+  await buyAndSettle(b2, 4, '0x00000000000000000000000000000000000b0b06', 22n);
+  k = mk();
+  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  console.log('✓ downtime: restarted keeper restored both pools');
+
+  // 7. gas policy: above the bid cap the keeper waits instead of overbidding
+  await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b07', 31n);
+  await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 3n * 10n ** 9n });
+  await test.mine({ blocks: 1 });
+  const sentBeforeSpike = k.state.stats.sent;
+  await k.tick();
+  assert.equal(k.state.stats.sent, sentBeforeSpike, 'no send above the 2 gwei bid cap');
+  assert.ok(logs.some((l) => l.startsWith('skip: basefee above bid cap')));
+  await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
+  await test.mine({ blocks: 1 });
+  await tickUntil(k, async () => (await status(b1)) === 0);
+  console.log('✓ waited through a basefee spike, then serviced');
+
+  // 8. refunded Shape. FWA delivers with transferFrom and Shapes rejects only transfers to itself, so a
+  //    purchase naming the Shapes contract as purchaser makes the real delivery fail; after 7 days that
+  //    purchaser refunds (impersonated here) and the keeper recovers and redeems the Shape (gas-only reward).
+  const SHAPES = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0' as Address;
+  let watched: string | undefined;
+  for (let i = 0; i < 6 && !watched; i++) {
+    await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b08', 40n + BigInt(i), SHAPES);
+    await tickUntil(k, async () => (await status(b1)) === 0);
+    await k.discover(await pub.getBlockNumber()); // the reconciling upkeep's ItemDrawn is seen on the next scan
+    watched = k.state.refundWatch[b1]?.[0];
+  }
+  assert.ok(watched, 'a Shape delivery failed and is watched');
+  const pool1 = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
+  await test.increaseTime({ seconds: 7 * 86400 + 60 });
+  await test.mine({ blocks: 1 });
+  await test.impersonateAccount({ address: SHAPES });
+  await test.setBalance({ address: SHAPES, value: 10n ** 18n });
+  const rh = await wallet.writeContract({ address: pool1, abi: fwaPoolAbi, functionName: 'refundFailedDelivery', args: [BigInt(watched)], account: SHAPES, chain: null });
+  assert.equal((await pub.waitForTransactionReceipt({ hash: rh })).status, 'success', 'refund');
+  await tickUntil(k, async () => !(k.state.refundWatch[b1] ?? []).includes(watched!) && !k.state.pending[b1]);
+  const item = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'items', args: [BigInt(watched)] })) as readonly unknown[];
+  assert.equal(Number(item[0]), 0, 'refunded Shape recovered');
+  const recovered = await pub.getLogs({ address: b1, event: parseAbiItem('event ShapeRecovered(uint256 indexed listingId, uint256 eth)'), args: { listingId: BigInt(watched) }, fromBlock: FORK_BLOCK });
+  assert.equal(recovered.length, 1, 'recovered on-chain');
+  const tx = await pub.getTransaction({ hash: recovered[0].transactionHash! });
+  assert.equal(tx.from.toLowerCase(), keeperAddr.toLowerCase(), 'recovered by the keeper');
+  console.log('✓ refunded Shape recovered and redeemed by the keeper');
+  checkAudit(k);
+
+  // 9. one broken pool does not stop the others
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b04', 5n);
   await test.setCode({ address: b2, bytecode: '0xfe' });
   await tickUntil(k, async () => (await status(b1)) === 0);
   assert.ok(k.errors[b2], 'b2 error recorded');
   assert.equal(k.health().balancers, 2);
   console.log('✓ per-pool error isolation; health', JSON.stringify(k.health()));
+}
+
+/** Reimbursed gas must never exceed the gas the receipt billed (after EVM refunds). */
+function checkAudit(k: Keeper) {
+  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), reimbursedGas: Number(a.reimbursedGas), ratio: a.reimbursedGas ? Number(a.reimbursedGas) / Number(a.gasUsed) : 0, rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
+  console.table(rows);
+  for (const a of k.audit) assert.ok(a.reimbursedGas <= a.gasUsed, `reimbursed ${a.reimbursedGas} > billed ${a.gasUsed} (${a.hash})`);
+  console.log('✓ reimbursed gas <= billed gas for', k.audit.length, 'keeper txs');
 }
 
 main().catch((e) => {

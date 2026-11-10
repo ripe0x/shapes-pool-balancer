@@ -43,7 +43,7 @@ contract DevSetup is Script {
         }
         uint256[] memory plans = new uint256[](1);
         plans[0] = 5 | (3 << 16) | (2 << 32); // 5 x 0.01, 3 x 0.05, 2 x 0.1
-        b.configure(PoolBalancer.Config(0.05 ether, 1 ether, 30, 1500), plans);
+        b.configure(PoolBalancer.Config(0.05 ether, 30, 1500), plans);
         b.open();
         vm.stopBroadcast();
         console.log("Balancer", address(b));

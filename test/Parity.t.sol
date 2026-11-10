@@ -28,7 +28,7 @@ contract ParityFixture is ForkBase {
         }
         uint256[] memory plans = new uint256[](1);
         plans[0] = p;
-        b.configure(PoolBalancer.Config(type(uint128).max, 200 ether, 0, markup), plans);
+        b.configure(PoolBalancer.Config(type(uint128).max, 0, markup), plans);
         b.open();
         vm.stopPrank();
         for (uint256 i; i < 12 && b.admissionStatus() != 0; ++i) {

@@ -28,7 +28,7 @@ contract ForkScenarioTest is ForkBase {
         mainPlan = plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]);
         uint256[] memory plans = new uint256[](1);
         plans[0] = mainPlan;
-        configure(0.03 ether, 1 ether, 30, plans); // 0.30% floor; one curated at 0.5 base is ~0.34%
+        configure(0.03 ether, 30, plans); // 0.30% floor; one curated at 0.5 base is ~0.34%
         vm.prank(creator);
         balancer.open();
     }
@@ -120,7 +120,7 @@ contract ForkScenarioTest is ForkBase {
         // with a stricter floor the same inventory is infeasible and admission closes
         uint256[] memory plans = new uint256[](1);
         plans[0] = mainPlan;
-        configure(0.03 ether, 1 ether, 50, plans);
+        configure(0.03 ether, 50, plans);
         vm.prank(keeper);
         balancer.performUpkeep();
         assertEq(balancer.admissionStatus(), 5, "INFEASIBLE");
