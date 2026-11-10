@@ -1,0 +1,17 @@
+# foundry
+out/
+cache/
+broadcast/*/31337/
+# node
+node_modules/
+dist/
+.vite/
+# keeper runtime state
+keeper/state*.json
+# secrets: never commit env files; examples are allowlisted
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+.DS_Store
