@@ -11,13 +11,14 @@ and automated tooling. It is bounded evidence, not a statement that the contract
 - Out of scope: TypeScript keeper and dashboard (tested functionally, not adversarially), FWA and Shapes themselves, and
   FWA's off-chain pool-page server.
 
-Two rounds:
+Four rounds:
 
 | Round | Target | Repairs |
 | --- | --- | --- |
 | 1 (initial build) | `c7ead79` | `ac99894`, `e7b1640` |
 | 2 (simplification and hardening pass) | `924bf99` | `d0b720a`, `c3203a4`, `cbc75d3`, `7fcdbe4` |
 | 3 (keeper liveness and griefing bound, owner review) | `1f352fa` | `6a2dabe` |
+| 4 (reimbursement re-evaluated against FWA V2; launch rehearsal) | `5161e8f`, then `0a48e84` | `0a48e84`, `31edef6` |
 
 ## Method
 
@@ -50,6 +51,35 @@ Two rounds:
 | I-4 | Info | A markup change and change back (A→B→A) before any upkeep leaves `repricing` set with nothing to reprice; that call scans 100 listings (~0.4M gas) and may also reconcile and mint, possibly exceeding 3.2M. | Accepted: the keeper is under-reimbursed for that one call; no funds or authority affected. |
 | I-6 | Info (repair review) | A batch bought before a creator action that closes admission (configure, close) is reconciled with the full incentive. The buyer cannot cause or time the creator action. Confirmed: no remaining path sets or keeps the creator-work flag while purchases can be admitted (only setters close admission; it clears in the call that writes the checkpoint; the keeper payout's 100k stipend cannot fund an FWA purchase). | Accepted. |
 | I-5 | Info | The 4/5 rule and the absent intrinsic credit mean single-call keepers absorb ~20% of gas plus 21k; gas-only paths (refund-only batches, `recoverRefundedShape`) always lose money for keepers. | Accepted by design: the incentive covers paid work at normal gas; the bundled keeper's `MAX_LOSS_WEI` covers the rest. |
+
+## Round 4 (keeper reimbursement vs FWA V2, launch rehearsal)
+
+The owner asked for the reimbursement policy to be re-derived against FWA V2's sponsored processing (gas + 55k at
+`min(bid, min(basefee, 5) + 1 gwei)`, ≤ 2.1M gas, ≤ 0.02 ETH, no incentive) and adversarial keeper competition.
+Evidence: 90-day basefee and inclusion-priority data, real fork receipts, `test/KeeperAdversarial.t.sol` (inflated
+bids and gas limits, caller-side refunds, self-dealing single / ten repeated batches / curated drain / forced plan
+switch, purchases during repricing, deposits, creator action during a batch), simulation of competing keepers, and
+the launch rehearsal (real keeper process, pinned basefee below, near and above the cap, restarts). A reviewer with
+clean context reviewed `5161e8f`, and another reviewed the final financial logic at `0a48e84`.
+
+| ID | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| V-1 | Low | The once-per-transaction intrinsic credit used a transient flag in each clone's storage, so a transaction calling several Balancers was credited 21k per clone. | Fixed (`0a48e84`): no intrinsic credit; the fixed 0.0005 ETH covers gas outside the measured span. |
+| V-2 | Low | The edge credit counted every drawn listing's escrowed fee, including failed deliveries whose fee the purchaser can refund in full, edge included; a buyer-keeper could recover the edge and also be paid incentives funded by it. | Fixed (`0a48e84`): only delivered draws (`A_FULFILLED`) add to `incentiveCredit`. |
+| V-3 | Medium (liveness) | Launch rehearsal at 4.9 gwei: the real keeper skipped profitable fill steps and the pool stayed closed. It costs work with `eth_estimateGas`, which exceeded billed gas by 71k–295k (median 78k, 25 transactions); the old `shortfall + 0.0001 ETH` margin did not cover that. | Fixed (`0a48e84`): incentive = the withheld 1/5 + 0.0005 ETH. Rehearsal rerun under the final rule (READINESS). |
+| V-4 | Low/Info | Gas-only calls (refund-only reconciliation, `recoverRefundedShape`) paid both fifths of measured gas; that stayed below billed gas only through fixed overhead, which a transaction making several such calls pays once while their refunds add up. Not farmable (refund-only batches need VRF expiry; refunded Shape deliveries need a purchaser the gate refuses). | Fixed (`31edef6`): gas-only calls get the 4/5 part only, so reimbursed gas ≤ billed holds by EIP-3529 on every path; the gas suite's `KeeperPaid` assertion is now the whole payment there. |
+| V-5 | Info | A creator action while a batch is unreconciled (e.g. `close`) makes that batch's reconciliation creator work, paid the full incentive instead of from the edge credit. | Accepted: at most one incentive, from the creator's own pool, after the creator acts. `test_creatorActionDuringOutstandingBatchBound`. |
+| V-6 | Info | A Shapes mint-fee rise after a batch was admitted makes its restoration cost up to 5 × the increase more than the held reserve; at the exact boundary the restore stops at `INSUFFICIENT_RESERVE`. | Accepted: fail-closed, buyers already received their draws, the held keeper reward is untouched; the creator tops up. |
+
+Policy decisions from this round (`docs/GAS.md`, `docs/simulation-results.md`): priority cap kept at 0.05 gwei
+(competing keepers bid the reimbursed priority; 1 gwei raised simulated keeper spend 91% with no faster inclusion);
+FWA V2's rule rejected for permissionless upkeep (no rational keeper sends without an incentive: 0% of upkeeps
+executed in simulation); no separate ETH payout cap (3.2M gas × 5 gwei already bounds every reward at 0.0165 ETH).
+
+Verified by the final reviewer: permissionless entry points; gas part ≤ billed for any composition and price ≤
+`tx.gasprice`; inflated bids, gas limits and caller-side refunds do not change payment; purchase-caused incentives
+≤ FWA's edge on delivered draws (all self-dealing variants negative: −0.0011 to −0.069 ETH); `_checkpoint` holds the
+worst batch + one maximum reward after paying its own keeper; 23,937 B at review (23,919 B after V-4).
 
 ## Round 3 (keeper liveness, purchaser griefing)
 
@@ -102,7 +132,8 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
   become uneconomic.
 - **Economics.** The reserve funds the next restoration, not profitability (`docs/simulation-results.md`).
 - **Keeper liveness.** Above 5 gwei basefee (~0.9% of blocks measured) keepers wait and new purchases pause; pools
-  with draw prices below ~0.012 ETH pause from ~2.9 gwei. Unpaid re-checkpoints rely on a keeper's loss allowance or
+  whose draws all cost ~0.01 ETH pause from ~4.2 gwei. Keepers judging work by `eth_estimateGas` need the estimate
+  within ~80–100k gas of billed for the thinnest paid upkeeps at the cap. Unpaid re-checkpoints rely on a keeper's loss allowance or
   the creator. Creators can always run upkeep themselves.
 - **Pool page.** Whether FWA's server accepts ERC-1271 from a contract owner is unverified; FWA's message template is
   copied from its client and could change.

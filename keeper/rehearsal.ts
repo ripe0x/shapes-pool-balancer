@@ -177,7 +177,7 @@ async function main() {
       arrivals: 0, foundOpen: 0, batches: 0, draws: 0, reopenMs: [] as number[],
       byPeriod: { normal: 0, below: 0, near: 0, above: 0 } as Record<string, number>,
       aboveCapWaited: 0, aboveCapSent: 0, resumedAfterSpike: 0,
-      purchaseCausedSwitches: 0, creatorCausedSwitches: 0, creatorEdits: 0, restarts: 0,
+      purchaseCausedSwitches: 0, creatorCausedSwitches: 0, creatorEdits: 0, creatorRanUpkeep: 0, restarts: 0,
     };
     let nextDemoId = 100n;
     for (let round = 0; round < ROUNDS; round++) {
@@ -193,7 +193,7 @@ async function main() {
       }
 
       // Purchase-caused fallback switch on pool B (normal gas), then the creator restores curated value.
-      if (round % 25 === 12 && (await status(bB)) === 0) {
+      if ((round % 50 === 12 || round % 50 === 44) && (await status(bB)) === 0) {
         const pool = await read<Address>(bB, poolBalancerAbi, 'pool');
         const ids = await read<bigint[]>(bB, poolBalancerAbi, 'getActiveIds');
         let curated: bigint | undefined;
@@ -248,7 +248,14 @@ async function main() {
           break;
         }
         stats.creatorEdits++;
-        await mustOpen(bA, 'reopened after a creator edit without the creator running upkeep');
+        // The unpaid re-checkpoint is within the keeper's loss allowance only at normal gas; above it the keeper
+        // waits and the creator runs upkeep (the documented fallback).
+        if (period === 'normal') await mustOpen(bA, 'reopened after a creator edit without the creator running upkeep');
+        else if ((await waitOpen(bA, 8_000, true)) < 0) {
+          await send({ address: bA, abi: poolBalancerAbi, functionName: 'performUpkeep', account: CREATORS[0] });
+          stats.creatorRanUpkeep++;
+          await mustOpen(bA, 'reopened after the creator ran upkeep', 60_000, true);
+        }
       }
     }
 
@@ -308,7 +315,7 @@ async function main() {
       reopenMs: { median: sorted[Math.floor(sorted.length / 2)], p90: sorted[Math.floor(sorted.length * 0.9)], max: sorted.at(-1) },
       aboveCap: { keeperWaited: stats.aboveCapWaited, keeperSent: stats.aboveCapSent, resumedWithoutIntervention: stats.resumedAfterSpike },
       fallback: { purchaseCaused: stats.purchaseCausedSwitches, creatorCaused: stats.creatorCausedSwitches },
-      creatorEdits: stats.creatorEdits, keeperRestarts: stats.restarts,
+      creatorEdits: stats.creatorEdits, creatorRanUpkeep: stats.creatorRanUpkeep, keeperRestarts: stats.restarts,
       keeper: { netWei: (kb1 - kb0).toString(), sent: health.stats.sent, mined: health.stats.mined, reverted: health.stats.reverted, replaced: health.stats.replaced, skippedUnprofitable: health.stats.skippedUnprofitable, errors: health.errors },
       healthOk: health.ok,
     };
