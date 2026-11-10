@@ -195,7 +195,10 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const gp = a.gasPriceGwei * 1e-9;
   const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
   const perShapeCost = toEth(inputs.mintFee) + GAS.perShape * gp;
-  const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + toEth(KEEPER_INCENTIVE);
+  // The contract caps the incentive at FWA's edge on one draw.
+  const edgePerDraw = toEth((ev.drawPrice * BigInt(inputs.edgeBps)) / (BPS + BigInt(inputs.edgeBps)));
+  const incentive = Math.min(toEth(KEEPER_INCENTIVE), edgePerDraw);
+  const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + incentive;
   const overhead = pShape * perShapeCost + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);
   const H0 = H / (1 + m); // harmonic mean of unmarked values
@@ -207,7 +210,7 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
     overheadPerDraw: overhead,
     expectedNetPerDraw: net,
     minMarkupBps,
-    keeperCostPerUpkeepEth: (GAS.upkeepBase + (k - 1) * GAS.perShape) * gp + toEth(KEEPER_INCENTIVE),
+    keeperCostPerUpkeepEth: (GAS.upkeepBase + (k - 1) * GAS.perShape) * gp + incentive,
     /** Model outlook, not a guarantee: individual draws and short runs can lose money either way. */
     outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
     belowModeledMarkup: inputs.markupBps < minMarkupBps,

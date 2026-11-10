@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {MockNFT, FreezableNFT, LyingNFT} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
@@ -330,5 +331,155 @@ contract HardeningTest is ForkBase {
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
         balancer.approvePoolPage("2026-11-10\nPool: 0x0000Z", metadataHash);
         vm.stopPrank();
+
+        // review L-2: approvals are revocable and die with a creator change
+        vm.prank(stranger);
+        vm.expectRevert(PoolBalancer.Unauthorized.selector);
+        balancer.revokePoolPages();
+        vm.prank(creator);
+        balancer.revokePoolPages();
+        assertEq(balancer.isValidSignature(digest, ""), bytes4(0xffffffff), "revoked");
+        vm.prank(creator);
+        balancer.approvePoolPage(issuedAt, metadataHash);
+        assertEq(balancer.isValidSignature(digest, ""), bytes4(0x1626ba7e), "re-approved");
+        address next = makeAddr("nextCreator");
+        vm.prank(creator);
+        balancer.transferCreator(next);
+        assertEq(balancer.isValidSignature(digest, ""), bytes4(0x1626ba7e), "valid until accepted");
+        vm.prank(next);
+        balancer.acceptCreator();
+        assertEq(balancer.isValidSignature(digest, ""), bytes4(0xffffffff), "former creator's approval void");
+    }
+
+    /// Review I-3: a plan that cannot fit beside the curated listings is infeasible instead of bricking upkeep.
+    function test_planBeyondListingLimitIsInfeasible() public {
+        vm.startPrank(creator);
+        nft.setApprovalForAll(address(balancer), true);
+        PoolBalancer.CuratedInput[] memory batch = new PoolBalancer.CuratedInput[](20);
+        for (uint256 r; r < 3; ++r) {
+            for (uint256 i; i < 20; ++i) {
+                uint256 id = 3000 + r * 20 + i;
+                nft.mint(creator, id);
+                batch[i] = PoolBalancer.CuratedInput(address(nft), id, 0.3 ether);
+            }
+            balancer.listCuratedBatch(batch);
+        }
+        vm.stopPrank();
+        // 62 curated + 40 Shapes > 100: infeasible; the 10-Shape fallback fits
+        uint256[] memory plans = new uint256[](2);
+        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
+        plans[1] = planA;
+        configure(1 ether, 0, plans);
+        fillUp();
+        assertEq(balancer.activePlan(), 1, "fallback that fits");
+        assertTrue(balancer.canPurchase(buyer));
+        plans = new uint256[](1);
+        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        upkeep(); // does not revert TooManyListings
+        assertEq(balancer.admissionStatus(), 5, "INFEASIBLE");
+        // reconciliation keeps working: draws still settle and the creator can act
+        vm.prank(creator);
+        balancer.withdrawCurated(curatedA, creator);
+    }
+    /*////////////////////////////// review round 2 regressions //////////////////////////////*/
+
+    function _opsInLogs(Vm.Log[] memory logs) internal pure returns (uint256 ops) {
+        for (uint256 i; i < logs.length; ++i) {
+            bytes32 t = logs[i].topics[0];
+            if (t == keccak256("ListingRepriced(uint256,uint256)")) ++ops;
+            if (t == keccak256("ShapesMinted(uint8,uint256,uint256,uint256)")) {
+                (, uint256 q,) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+                ops += q;
+            }
+            if (t == keccak256("ShapesUnlisted(uint256,uint256)")) {
+                (uint256 n,) = abi.decode(logs[i].data, (uint256, uint256));
+                ops += n;
+            }
+        }
+    }
+
+    /// F1 (Medium): repricing that finishes inside an upkeep shares the MAX_OPS budget with rebalancing.
+    function test_repricingAndRebalanceShareOpsBudget() public {
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0]); // +9 Shapes across 3 denominations
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
+        for (uint256 i; i < 10 && !balancer.canPurchase(buyer); ++i) {
+            vm.recordLogs();
+            uint256 g = gasleft();
+            upkeep();
+            uint256 used = g - gasleft();
+            uint256 ops = _opsInLogs(vm.getRecordedLogs());
+            assertLe(ops, 6, "at most MAX_OPS inventory operations per upkeep");
+            assertLt(used, 3_200_000, "within the reimbursable maximum");
+        }
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    /// F3: the incentive never exceeds FWA's edge on one draw, so buying one's own draws cannot earn it.
+    function test_incentiveCappedByDrawEdge() public {
+        creator = makeAddr("cheapCreator");
+        vm.deal(creator, 100 ether);
+        createBalancer(2 ether);
+        listCurated(7001, 0.001 ether);
+        listCurated(7002, 0.001 ether);
+        listCurated(7003, 0.001 ether);
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 0, 0), plans);
+        vm.prank(creator);
+        balancer.open();
+        fillUp();
+        assertTrue(balancer.canPurchase(buyer));
+        uint256 lid = lastListingId();
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        vm.recordLogs();
+        upkeep();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 reward;
+        uint256 gasPaid;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
+        }
+        uint256 edgePerDraw = pool.acquisitionFee() * 500 / 10_500;
+        assertLt(edgePerDraw, 0.0005 ether, "cheap pool: the cap binds");
+        // tx.gasprice 1 gwei, basefee 0.5 gwei (ForkBase): reimbursed price is basefee + 0.05 gwei
+        assertEq(reward, gasPaid * 0.55 gwei + edgePerDraw, "gas + edge-capped incentive");
+    }
+
+    /// F4: whenever upkeep writes a checkpoint, admission still holds after it pays its keeper.
+    function test_checkpointCoversItsOwnReward() public {
+        creator = makeAddr("thinCreator");
+        vm.deal(creator, 100 ether);
+        uint256 fee = shapes.mintFee();
+        // fill cost + exactly the advertised reserve, with nothing for the fill's keeper rewards
+        uint256 fill = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
+        uint256 reserve = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee) + 0.00562 ether;
+        createBalancer(fill + reserve);
+        listCurated(8001, 0.3 ether);
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = planA;
+        configure(1 ether, 0, plans);
+        vm.prank(creator);
+        balancer.open();
+        for (uint256 i; i < 40 && !balancer.canPurchase(buyer); ++i) {
+            if (balancer.admissionStatus() == 6) {
+                vm.prank(creator);
+                balancer.depositETH{value: 0.0005 ether}();
+            }
+            try this.upkeepExternal() {} catch {}
+            (bool valid,,,,) = balancer.checkpoint();
+            if (valid) assertTrue(balancer.canPurchase(buyer), "a written checkpoint stays admissible after the reward");
+        }
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    function upkeepExternal() external {
+        upkeep();
     }
 }

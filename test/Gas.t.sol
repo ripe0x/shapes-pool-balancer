@@ -5,6 +5,17 @@ import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 
+/// @dev One transaction, several paid upkeeps (review F2: intrinsic gas is paid once per transaction).
+contract MultiKeeper {
+    function run(PoolBalancer b, uint256 n) external {
+        for (uint256 i; i < n; ++i) {
+            try b.performUpkeep() {} catch {}
+        }
+    }
+
+    receive() external payable {}
+}
+
 /// @notice Mainnet-fork gas measurements used to set keeper reward bounds (docs/GAS.md).
 ///         Run isolated so each call is a real transaction (intrinsic gas, cold storage, final refunds):
 ///         forge test --match-contract GasBench --isolate -vv
@@ -128,6 +139,28 @@ contract GasBench is ForkBase {
         configure(1 ether, 0, plans);
         _upkeep("upkeep: plan switch, withdraw + redeem 6 Shapes");
         _upkeep("upkeep: plan switch, withdraw + redeem 2 Shapes + checkpoint");
+    }
+
+    function test_gas_multiCallPlanSwitchInOneTx() public {
+        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(5), 0, 0, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        MultiKeeper mk = new MultiKeeper();
+        vm.recordLogs();
+        vm.prank(keeper, keeper);
+        mk.run(balancer, 8);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 sum;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == KEEPER_PAID) {
+                (, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
+                sum += g;
+            }
+        }
+        _report("8 upkeeps in one tx: withdraw + redeem 35 Shapes", sum);
+        assertTrue(balancer.canPurchase(buyer));
     }
 
     function test_gas_recoverRefundedShape() public {

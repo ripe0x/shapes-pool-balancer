@@ -15,12 +15,12 @@ const MAX_OPS = 6;
 const MAX_BATCH = 5;
 
 export type Model = 'current' | 'previous' | 'current+spares';
-const CURRENT_REWARD = { priorityCap: GWEI / 20n, maxPrice: 2n * GWEI, gasNum: 4n, gasDen: 5n, overhead: 21_000n, bid: GWEI / 20n, maxReward: ((3_200_000n * 4n) / 5n) * 2n * GWEI + KEEPER_INCENTIVE };
+const CURRENT_REWARD = { priorityCap: GWEI / 20n, maxPrice: 2n * GWEI, gasNum: 4n, gasDen: 5n, overhead: 0n, capIncentive: true, bid: GWEI / 20n, maxReward: ((3_200_000n * 4n) / 5n) * 2n * GWEI + KEEPER_INCENTIVE };
 const MODEL = {
   current: { ...CURRENT_REWARD, keepSpares: false },
   // Isolates the inventory change: current reward rules, previous spare handling.
   'current+spares': { ...CURRENT_REWARD, keepSpares: true },
-  previous: { priorityCap: 2n * GWEI, maxPrice: 10n * GWEI, gasNum: 1n, gasDen: 1n, overhead: 45_000n, bid: GWEI / 10n, maxReward: 3_200_000n * 10n * GWEI + KEEPER_INCENTIVE, keepSpares: true },
+  previous: { priorityCap: 2n * GWEI, maxPrice: 10n * GWEI, gasNum: 1n, gasDen: 1n, overhead: 45_000n, capIncentive: false, bid: GWEI / 10n, maxReward: 3_200_000n * 10n * GWEI + KEEPER_INCENTIVE, keepSpares: true },
 } as const;
 /** Gas outside the measured span; billed gas ≈ measured + this (fork receipts, docs/GAS.md). */
 const OUTSIDE_SPAN = 30_000;
@@ -232,7 +232,9 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
       if (price > basefee + M.priorityCap) price = basefee + M.priorityCap;
       if (price > M.maxPrice) price = M.maxPrice;
       const measured = BigInt(gas - OUTSIDE_SPAN);
-      let reward = ((measured + M.overhead) * M.gasNum) / M.gasDen * price + (work ? KEEPER_INCENTIVE : 0n);
+      const edgePerDraw = (drawPrice() * edge) / (BPS + edge);
+      const incentive = M.capIncentive && edgePerDraw < KEEPER_INCENTIVE ? edgePerDraw : KEEPER_INCENTIVE;
+      let reward = ((measured + M.overhead) * M.gasNum) / M.gasDen * price + (work ? incentive : 0n);
       if (reward > balance) reward = balance;
       balance -= reward; stats.keeperPaid += reward;
     }
@@ -418,7 +420,8 @@ ${table}
   at min(bid, basefee + 2 gwei, 10 gwei); reserve with spare credit and a 0.0325 ETH keeper allowance; keeper
   bids 0.1 gwei priority.
 - current+spares: current reward rules with the previous spare handling. Isolates the inventory change.
-- current: surplus redeemed at once; 4/5 of measured gas at min(bid, basefee + 0.05 gwei, 2 gwei); reserve
+- current: surplus redeemed at once; 4/5 of measured gas (no intrinsic credit) at min(bid, basefee + 0.05 gwei,
+  2 gwei), incentive capped at FWA's edge on one draw; reserve
   without spare credit and a 0.00562 ETH keeper allowance; keeper bids 0.05 gwei priority.
 
 ${cmp}

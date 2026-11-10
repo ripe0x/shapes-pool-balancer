@@ -20,8 +20,9 @@ import {IFWAPoolFactory, IFWAPool, IShapes, IERC721Min, IENS, IReverseRegistrar}
 ///      - A checkpoint requires the Shapes inventory to equal an approved plan exactly (verified
 ///        against FWA totals), the plan to satisfy the creator's price and odds limits, and liquid
 ///        ETH to cover the worst MAX_BATCH Shape replacements plus one maximum keeper reward.
-///      - Shapes are held only inside a transaction: minted then listed, or withdrawn then redeemed.
-///        Any NFT this contract owns between transactions is untracked and creator-recoverable.
+///      - Managed Shapes are held only inside a transaction: minted then listed, or withdrawn then redeemed.
+///        Any NFT this contract owns between transactions is untracked and creator-recoverable (e.g. one
+///        sent directly, or a draw delivered to this contract because a buyer named it as purchaser).
 ///      - No upkeep loop depends on history: drawn items awaiting FWA delivery are never scanned.
 ///      - No function sends ETH or NFTs to an address chosen by anyone but the creator, except the
 ///        bounded keeper reward to `msg.sender` of `performUpkeep` / `recoverRefundedShape`.
@@ -46,9 +47,11 @@ contract PoolBalancer is ReentrancyGuard {
     // Keeper compensation (see docs/GAS.md; collection-games#23 for the exploit these bounds prevent):
     // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE): an overbid is the
     //   keeper's own cost;
-    // - gas = 4/5 of (measured span + intrinsic), capped: EIP-3529 refunds cut the billed gas by at most
-    //   1/5 of execution gas and in-transaction measurement cannot see them, so 4/5 is always billed.
-    uint256 internal constant KEEPER_GAS_OVERHEAD = 21_000; // intrinsic only: a lower bound on gas outside the span
+    // - gas = 4/5 of the measured span, capped: EIP-3529 refunds cut the billed gas by at most 1/5 of the gas
+    //   used and in-transaction measurement cannot see them, so 4/5 of any part of the transaction is always
+    //   billed. No intrinsic-gas credit: a contract making several paid calls in one transaction pays it once.
+    // - incentive = min(KEEPER_INCENTIVE, FWA's edge on one draw at the current price): buying one's own draws
+    //   to earn incentives costs at least that edge, so it cannot pay.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 2 gwei;
@@ -143,8 +146,10 @@ contract PoolBalancer is ReentrancyGuard {
     uint256[] internal activeIds;
     mapping(uint256 listingId => uint256) internal activeIndexPlusOne;
     uint16[9] internal activeShapes;
-    /// @dev EIP-191 digests of FWA pool-page messages the creator approved (see `approvePoolPage`).
-    mapping(bytes32 digest => bool) public poolPageApproved;
+    /// @dev Pool-page approvals are valid only in the epoch they were made; `revokePoolPages` and every creator
+    ///      change start a new epoch, so a former creator's approvals cannot be replayed.
+    uint256 public pageEpoch;
+    mapping(bytes32 digest => uint256) internal pageApprovedEpoch; // epoch + 1
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -178,6 +183,7 @@ contract PoolBalancer is ReentrancyGuard {
     event PoolRetired();
     event ENSNameSet(string name);
     event PoolPageApproved(bytes32 indexed digest, string issuedAt, bytes32 metadataHash);
+    event PoolPagesRevoked(uint256 epoch);
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -259,6 +265,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (msg.sender != pendingCreator || msg.sender == address(0)) revert Unauthorized();
         emit CreatorTransferred(creator, msg.sender);
         creator = msg.sender;
+        ++pageEpoch;
         pendingCreator = address(0);
     }
 
@@ -498,13 +505,18 @@ contract PoolBalancer is ReentrancyGuard {
             LibString.toHexString(uint256(metadataHash), 32)
         );
         digest = SignatureCheckerLib.toEthSignedMessageHash(message);
-        poolPageApproved[digest] = true;
+        pageApprovedEpoch[digest] = pageEpoch + 1;
         emit PoolPageApproved(digest, issuedAt, metadataHash);
+    }
+
+    /// @notice Invalidate every pool-page approval made so far.
+    function revokePoolPages() external onlyCreator {
+        emit PoolPagesRevoked(++pageEpoch);
     }
 
     /// @notice ERC-1271: valid only for digests approved by `approvePoolPage`; the signature bytes are ignored.
     function isValidSignature(bytes32 hash, bytes calldata) external view returns (bytes4) {
-        return poolPageApproved[hash] ? ERC1271_MAGIC : bytes4(0xffffffff);
+        return pageApprovedEpoch[hash] == pageEpoch + 1 ? ERC1271_MAGIC : bytes4(0xffffffff);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -623,9 +635,10 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 plan = _selectPlan(cW, cWP, markup);
         if (plan == 0) return (ops, INFEASIBLE);
 
-        // Restore the plan: unlist surplus Shapes, then fill deficits from spares or new mints.
+        // Restore the plan: withdraw and redeem surplus Shapes, then mint deficits.
         uint256 fee = SHAPES.mintFee();
-        (uint256 used, bool complete, bool funded) = _rebalance(p, plan, markup, fee, MAX_OPS);
+        // One MAX_OPS budget per call, shared with the repricing step that may have just finished.
+        (uint256 used, bool complete, bool funded) = _rebalance(p, plan, markup, fee, MAX_OPS - ops);
         ops += used;
         if (!funded) return (ops, INSUFFICIENT_RESERVE);
         if (!complete) return (ops, NEEDS_UPKEEP);
@@ -646,7 +659,8 @@ contract PoolBalancer is ReentrancyGuard {
         if (p.totalWeight() != cW + sW || p.weightedBackingTotal() != cWP + sWP) return INVENTORY_MISMATCH;
         if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
         uint256 reserve = _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
-        if (address(this).balance < reserve) return INSUFFICIENT_RESERVE;
+        // Also cover this call's own keeper reward, paid after the checkpoint, so admission holds afterwards.
+        if (address(this).balance < reserve + MAX_KEEPER_REWARD) return INSUFFICIENT_RESERVE;
         uint64 seq = reconciledSequence;
         uint256 version = p.inventoryVersion();
         checkpoint = Checkpoint({valid: true, sequence: seq, mintFee: uint128(fee), inventoryVersion: version, reserve: reserve});
@@ -804,14 +818,19 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _payKeeper(uint256 gasStart, bool incentive) internal returns (uint256 reward) {
-        uint256 gasUsed = gasStart - gasleft() + KEEPER_GAS_OVERHEAD;
+        uint256 gasUsed = gasStart - gasleft();
         if (gasUsed > KEEPER_MAX_GAS) gasUsed = KEEPER_MAX_GAS;
         gasUsed = gasUsed * 4 / 5;
         uint256 price = tx.gasprice;
         uint256 cap = block.basefee + KEEPER_PRIORITY_CAP;
         if (price > cap) price = cap;
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
-        reward = gasUsed * price + (incentive ? KEEPER_INCENTIVE : 0);
+        reward = gasUsed * price;
+        if (incentive) {
+            uint256 edge = FWA_FACTORY.edgeBps();
+            uint256 edgePerDraw = pool.acquisitionFee() * edge / (BPS + edge);
+            reward += edgePerDraw < KEEPER_INCENTIVE ? edgePerDraw : KEEPER_INCENTIVE;
+        }
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
@@ -956,6 +975,12 @@ contract PoolBalancer is ReentrancyGuard {
         view
         returns (bool)
     {
+        // The whole plan must fit beside the curated listings, or filling it would revert TooManyListings.
+        uint256 shapesListed;
+        for (uint256 d; d < DENOMS; ++d) {
+            shapesListed += activeShapes[d];
+        }
+        if (activeIds.length - shapesListed + _planShapes(plan) > MAX_LISTINGS) return false;
         Config memory c = config;
         (uint256 sW, uint256 sWP) = _shapeTotals(plan, markup);
         uint256 tW = cW + sW;

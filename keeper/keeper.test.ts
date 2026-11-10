@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { decide, KEEPER_MAX_GAS } from './keeper';
 
 const GWEI = 10n ** 9n;
-/** PoolBalancer._payKeeper: 4/5 of (measured + 21k) at min(bid, basefee + 0.05 gwei, 2 gwei), + incentive. */
+/** PoolBalancer._payKeeper: 4/5 of measured gas at min(bid, basefee + 0.05 gwei, 2 gwei), + incentive. */
 const reward = (measured: bigint, baseFee: bigint, bid: bigint, incentive: boolean) => {
   let price = bid;
   if (price > baseFee + GWEI / 20n) price = baseFee + GWEI / 20n;
   if (price > 2n * GWEI) price = 2n * GWEI;
-  return ((measured + 21_000n) * 4n) / 5n * price + (incentive ? 5n * 10n ** 14n : 0n);
+  return ((measured * 4n) / 5n) * price + (incentive ? 5n * 10n ** 14n : 0n);
 };
 
 describe('keeper profitability policy across gas prices', () => {
