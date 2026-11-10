@@ -81,12 +81,13 @@ Failures found during this verification, and what changed:
 - **Real Chainlink VRF fulfillment.** Randomness is delivered through the real FWA VRF service by impersonating its
   coordinator.
 - **Mainnet Etherscan verification.** `--verify` runs only on a real deployment.
-- **Real wallet extension.** The dashboard was exercised with a dev connector.
 - **External professional audit and formal verification.** None performed.
 - **Long invariant campaigns.** 64 runs × 64 calls per suite.
-- **Dashboard creator transactions under exact gas estimates.** The rehearsal saw `listCurated` with an exact
-  `eth_estimateGas` limit revert at inclusion (an inner call ran short). The dashboard adds 30% only for upkeep; for
-  creator calls it relies on the wallet's estimate and buffer, which was not tested with a real wallet.
+- **Real wallet extension.** Every dashboard write (creator calls, pool creation, upkeep) is simulated, then sent
+  with a gas limit of its estimate + 30% (`app/src/tx.ts`, after the rehearsal saw an exact `listCurated` estimate
+  revert at inclusion). Checked with the dev connector on a fork (upkeep, reprice, pool creation: limit = estimate ×
+  1.3, applied once; a failing claim reported by name with nothing sent), not with a wallet extension, which may
+  replace the supplied limit.
 
 ## Remaining risks
 

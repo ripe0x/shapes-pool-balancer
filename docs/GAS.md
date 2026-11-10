@@ -30,7 +30,7 @@ Other measurements: 100 listings take 17 repricing upkeeps after a markup change
 after 200 refunded curated deliveries (847k before, 836k after); `canPurchase` stays under FWA's 100k stipend.
 
 FWA listing dominates: each listing writes the listing struct and updates a 32-level segment tree. Shapes mint gas varies
-with each block's seed, so the keeper and dashboard send upkeep with a 30% gas-limit margin over the estimate. The margin
+with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin over the estimate. The margin
 is a limit only: the contract reimburses measured gas, never the limit.
 
 ## Why 4/5

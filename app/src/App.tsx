@@ -7,6 +7,7 @@ import {
   DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, requiredReserveAt, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { chain, ETHERSCAN, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
+import { prepareWrite } from './tx';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
@@ -118,11 +119,9 @@ function useTx(onDone: () => void) {
   const pub = usePublicClient();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
-  // Simulate before sending so a revert is reported by name, whatever the wallet does with estimation.
-  const write = (async (params: Record<string, unknown>) => {
-    await pub!.simulateContract({ ...params, account: address } as never);
-    return writeContractAsync(params as never);
-  }) as typeof writeContractAsync;
+  // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
+  const write = (async (params: Record<string, unknown>) =>
+    writeContractAsync((await prepareWrite(pub!, address, params)) as never)) as typeof writeContractAsync;
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   const send = async (label: string, calls: (() => Promise<Hash>)[]) => {
@@ -236,12 +235,6 @@ function Create({ prereq, onCreated }: { prereq?: { creation: boolean; impl: boo
   );
 }
 
-/** Shapes mint gas varies with each block's seed, so add headroom to the node's estimate. */
-async function upkeepGas(pub: ReturnType<typeof usePublicClient>, balancer: Address, from: Address) {
-  const est = await pub!.estimateContractGas({ address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep', account: from });
-  return (est * 13n) / 10n;
-}
-
 function Dashboard({ balancer, me }: { balancer: Address; me: Address }) {
   const pub = usePublicClient();
   const { data: d, error, refresh } = useBalancer(balancer);
@@ -273,7 +266,7 @@ function Dashboard({ balancer, me }: { balancer: Address; me: Address }) {
           <button disabled={!!tx.busy} onClick={() => tx.send('Accept creator role', [() => w({ ...B, functionName: 'acceptCreator' })])}>Accept creator role</button>
         )}
         <div className="row wrap">
-          <button disabled={!!tx.busy} onClick={() => tx.send('Run upkeep', [async () => w({ ...B, functionName: 'performUpkeep', gas: await upkeepGas(pub!, balancer, me) })])}>Run upkeep</button>
+          <button disabled={!!tx.busy} onClick={() => tx.send('Run upkeep', [() => w({ ...B, functionName: 'performUpkeep' })])}>Run upkeep</button>
           {isCreator && (d.enabled
             ? <button className="ghost" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => w({ ...B, functionName: 'close' })])}>Close purchases</button>
             : <button disabled={!!tx.busy || d.retired || !d.plans.length} onClick={() => tx.send('Open purchases', [() => w({ ...B, functionName: 'open' })])}>Open purchases</button>)}
