@@ -79,10 +79,10 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 
 - cost to restore the active plan from the Shapes currently listed (backing + current mint fee each), plus
 - the worst 5 Shape replacements from a full plan (largest denominations first, backing + mint fee), plus
-- one maximum keeper reward (`(3.2M + 21k) × 5 gwei + 0.0001 ETH = 0.016205 ETH`) held for the upkeep that restores
+- one maximum keeper reward (`3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH`) held for the upkeep that restores
   an admitted batch, at any price up to the cap, plus
 - one reward for the call that writes the next checkpoint and one per 6-Shape refill step still needed, each
-  `(3.2M + 21k) × current reimbursable price + 0.0005 ETH`. `_checkpoint` re-checks this at its own transaction's price,
+  `3.2M × current reimbursable price + 0.0005 ETH`. `_checkpoint` re-checks this at its own transaction's price,
   so a later gas spike only delays reopening. Funding exactly `requiredReserve()` opens a new pool (fork tests at 0.08,
   0.5 and 4.95 gwei).
 
@@ -119,13 +119,16 @@ Keeper reward:
 - gas = `min(measured, 3.2M) × 4/5`: EIP-3529 refunds cut billed gas by at most 1/5 of the gas used, so 4/5 of any
   measured span is always billed, even when one transaction makes several paid calls;
 - incentive for inventory work (draw reconciled, Shape listed/withdrawn, listing repriced) =
-  `max(0.0005 ETH, (measured/5 + 21k) × price + 0.0001 ETH)`: the fixed 0.0005 ETH at normal gas, rising with gas
-  only by the shortfall the 4/5 rule leaves, so paid work stays profitable up to the 5 gwei cap (intrinsic gas is
-  counted once per transaction). Work started by a creator action (configure, opening a closed pool, curated edits,
+  `min(measured, 3.2M) × 1/5 × price + 0.0005 ETH`: the withheld fifth plus a fixed part that covers gas outside the
+  measured span (intrinsic, calldata) and the `eth_estimateGas` gap keepers cost work with, so paid work stays
+  profitable up to the 5 gwei cap. No per-call intrinsic credit (it multiplied when one transaction made several
+  calls). Work started by a creator action (configure, opening a closed pool, curated edits,
   unwind) pays it in full until the next checkpoint; each of those closes admission first. Work caused by purchases
   pays it from `incentiveCredit`, which each reconciled batch resets to FWA's edge on that batch's escrowed fees and
-  every following paid call spends, so buying one's own draws earns at most the edge paid to FWA. A batch with only
-  refunds earns gas plus the shortfall without margin; `recoverRefundedShape` the same. Pure re-checkpoints (after creator
+  every following paid call spends, so buying one's own draws earns at most the edge paid to FWA. Only delivered
+  draws count: a failed delivery's fee can be refunded in full, edge included. A batch with only refunds earns the 4/5
+  gas part only; `recoverRefundedShape` the same (paying the withheld fifth there would rest on fixed overhead, which
+  a transaction making several such calls pays once). Pure re-checkpoints (after creator
   changes or deposits) pay nothing. The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
@@ -178,6 +181,6 @@ verified: whether FWA's server checks ERC-1271 (its client allows long contract 
 | Never list while FWA has an unresolved acquisition | Nothing is ever staged, so FWA's active totals equal the tracked set. |
 | Redeem surplus Shapes instead of keeping spares | Removes spare storage and spare credit from reserve math; managed Shapes never sit in the Balancer. Costs one mint fee per Shape re-minted when plans switch back (simulation: 0.02–0.11 ETH per 30 days at 10–42 switches; no change in closed time). |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
-| 4/5 gas reimbursement + price-linked incentive | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive covers the resulting shortfall only when gas is high (measured: a fixed incentive large enough would cost creators 25–70% of net). |
-| Clone factory, `via_ir` | Cheap deployment per creator; runtime 23.2 KB under EIP-170 (24.6 KB). |
+| 4/5 gas + (1/5 gas + 0.0005 ETH) incentive, 0.05 gwei priority cap | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive returns the other fifth only for useful work and within the edge credit, plus 0.0005 ETH that keeps upkeep economical to the 5 gwei cap for keepers pricing with `eth_estimateGas`. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep (1 gwei: +91% keeper spend, no faster inclusion). |
+| Clone factory, `via_ir` | Cheap deployment per creator; runtime 23,9xx B under EIP-170 (24,576 B). |
 | Hard-coded denomination ladder, checked against `Shapes.denominationAt` at deployment | Avoids external calls in hot paths. |

@@ -369,8 +369,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
-    // Default covers gas-only paid calls at the 5 gwei cap (worst measured loss 0.00017 ETH) and unpaid
-    // re-checkpoints (155k gas) up to ~1.2 gwei; set 0 for a strictly profitable keeper.
+    // Default covers gas-only paid calls (refund-only batches) to ~1.3 gwei and unpaid re-checkpoints (155k gas)
+    // to ~0.85 gwei, with estimates ~78k gas above billed; set 0 for a strictly profitable keeper.
     maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
   });
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));

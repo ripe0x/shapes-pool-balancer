@@ -586,6 +586,22 @@ contract HardeningTest is ForkBase {
         vm.prank(creator);
         balancer.claimSurplus(s, creator);
         assertTrue(balancer.canPurchase(buyer));
+        _drawWorstFive();
+        vm.fee(4.95 gwei);
+        vm.txGasPrice(5 gwei);
+        uint256 kBefore = keeper.balance;
+        upkeep();
+        uint16[9] memory have = balancer.getActiveShapes();
+        assertEq(have[0], 5);
+        assertEq(have[1], 3);
+        assertEq(have[2], 2, "worst batch fully restored at the cap");
+        assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
+        uint8 st = balancer.admissionStatus();
+        assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
+    }
+
+    /// planA = 5 x 0.01, 3 x 0.05, 2 x 0.1: buy five draws and force the 2 x 0.1 and 3 x 0.05 Shapes.
+    function _drawWorstFive() internal {
         // planA = 5 x 0.01, 3 x 0.05, 2 x 0.1: force the 2 x 0.1 and 3 x 0.05 Shapes
         uint256[] memory active = balancer.getActiveIds();
         uint256[] memory targets = new uint256[](5);
@@ -604,17 +620,40 @@ contract HardeningTest is ForkBase {
             fulfill(ids[k], wordForSlot(slot));
         }
         settle();
-        vm.fee(4.95 gwei);
-        vm.txGasPrice(5 gwei);
-        uint256 kBefore = keeper.balance;
-        upkeep();
-        uint16[9] memory have = balancer.getActiveShapes();
-        assertEq(have[0], 5);
-        assertEq(have[1], 3);
-        assertEq(have[2], 2, "worst batch fully restored at the cap");
-        assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
-        uint8 st = balancer.admissionStatus();
-        assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
+    }
+
+    /// Repeated maintenance at the boundary: each cycle the creator claims every wei of surplus at normal gas, the
+    /// worst batch is drawn, and the restoring upkeep runs at the cap. Every cycle restores the full plan and pays
+    /// the keeper. A cycle that ends closed for reserve (status 6: the cap-priced reward came out of the held reserve)
+    /// reopens after the creator deposits exactly requiredReserve() - balance and one normal-gas re-checkpoint runs.
+    function test_repeatedMaxClaimWorstBatchesAtCap() public {
+        for (uint256 c; c < 4; ++c) {
+            vm.fee(0.08 gwei);
+            vm.txGasPrice(0.13 gwei);
+            if (balancer.admissionStatus() == 6) {
+                uint256 short = balancer.requiredReserve() - address(balancer).balance;
+                vm.prank(creator);
+                balancer.depositETH{value: short}();
+                upkeep();
+            }
+            uint256 s = balancer.withdrawableSurplus();
+            vm.prank(creator);
+            balancer.claimSurplus(s, creator);
+            assertEq(balancer.withdrawableSurplus(), 0);
+            assertTrue(balancer.canPurchase(buyer), "open after an exact claim");
+            _drawWorstFive();
+            vm.fee(4.95 gwei);
+            vm.txGasPrice(5 gwei);
+            uint256 kBefore = keeper.balance;
+            upkeep();
+            uint16[9] memory have = balancer.getActiveShapes();
+            assertEq(have[0], 5);
+            assertEq(have[1], 3);
+            assertEq(have[2], 2, "worst batch restored at the cap");
+            assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
+            uint8 st = balancer.admissionStatus();
+            assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
+        }
     }
 
     /// Opening capital (requiredReserve with an empty plan) and running reserve (full plan), before and after the

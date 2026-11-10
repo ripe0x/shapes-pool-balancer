@@ -10,32 +10,32 @@ delivered - curated value delivered (creator-assigned). Redeemed backing is not 
 
 | Scenario | Draws | Revenue | Mint fees | Keeper | Value delivered | Net mean [p5, p95] | Margin % | Avg reserve | Closed % | Closures | Surplus | Plan switches | Top closed reason | Planner min markup | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| baseline | 473 | 11.1445 | 0.4788 | 0.2431 | 9.4717 | 0.9510 [-0.0913, 1.9536] | 8.7 | 0.3720 | 1.4 | 3.9 | 3.6364 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| markup 5% | 476 | 10.2357 | 0.4809 | 0.2424 | 9.8183 | -0.3060 [-1.7894, 0.8036] | -3.0 | 0.3720 | 1.4 | 4.5 | 2.6277 | 0.0 | needs upkeep | 9.8% | IMPRACTICAL: negative expected net |
-| markup 25% | 475 | 12.1691 | 0.4802 | 0.2439 | 9.8118 | 1.6331 [0.4330, 2.8668] | 13.5 | 0.3720 | 1.4 | 4.6 | 4.5952 | 0.0 | needs upkeep | 9.8% | viable |
-| markup 30% | 472 | 12.5823 | 0.4781 | 0.2426 | 9.5950 | 2.2667 [0.7912, 3.6675] | 18.0 | 0.3720 | 1.4 | 4.0 | 5.0455 | 0.0 | needs upkeep | 9.8% | viable |
-| no curated restock | 311 | 6.9735 | 0.3174 | 0.1273 | 6.0947 | 0.4340 [-0.6907, 2.3179] | -3.2 | 0.4017 | 50.1 | 0.0 | 2.3897 | 0.0 | no curated | 9.8% | IMPRACTICAL: closed most of the time |
-| high curated values | 472 | 11.2132 | 0.4813 | 0.2434 | 9.4638 | 1.0247 [-3.2001, 3.1538] | 9.2 | 0.3720 | 1.4 | 0.5 | 3.6535 | 0.0 | needs upkeep | 9.7% | viable on average; losses in bad runs |
-| large Shapes | 759 | 748.3800 | 0.7423 | 0.2451 | 670.6333 | 76.7592 [-3.4124, 134.0152] | 2.3 | 8.0331 | 9.6 | 23.0 | 240.4628 | 0.0 | insufficient reserve | 0.2% | viable on average; losses in bad runs |
-| large Shapes, markup 5% | 706 | 635.1849 | 0.6894 | 0.2275 | 630.5250 | 3.7431 [-46.8971, 56.7105] | -21.9 | 8.0319 | 16.1 | 22.7 | 162.5465 | 0.0 | insufficient reserve | 0.2% | viable on average; losses in bad runs |
-| only 0.01 Shapes | 1182 | 14.2369 | 1.1989 | 0.2892 | 12.3962 | 0.3526 [-0.2496, 0.8978] | 2.5 | 0.0721 | 1.4 | 0.0 | 2.6880 | 0.0 | needs upkeep | 19.2% | viable on average; losses in bad runs |
-| mint fee 0.01 (cap) | 291 | 6.8516 | 2.9800 | 0.1502 | 5.8968 | -2.1755 [-3.1162, -1.1939] | -32.6 | 0.4163 | 39.1 | 2.6 | 0.0058 | 0.0 | insufficient reserve | 64.1% | IMPRACTICAL: negative expected net |
-| mint fee rises day 10 | 473 | 11.1445 | 1.7351 | 0.2431 | 9.4717 | -0.3054 [-1.4177, 0.7096] | -2.6 | 0.3853 | 1.4 | 3.9 | 2.3601 | 0.0 | needs upkeep | 9.8% | IMPRACTICAL: negative expected net |
-| gas 1 gwei | 473 | 11.1488 | 0.4789 | 0.4042 | 9.4767 | 0.7890 [-0.2531, 1.7987] | 7.2 | 0.3720 | 1.4 | 3.9 | 3.4744 | 0.0 | needs upkeep | 14.4% | viable on average; losses in bad runs |
-| gas 1.8 gwei (near cap) | 473 | 11.1488 | 0.4789 | 0.5668 | 9.4767 | 0.6264 [-0.4143, 1.6398] | 5.7 | 0.3720 | 1.4 | 3.9 | 3.3118 | 0.0 | needs upkeep | 18.5% | viable on average; losses in bad runs |
-| gas spikes above cap 30% | 469 | 11.0670 | 0.4757 | 0.2400 | 9.3317 | 1.0196 [-0.2246, 1.9846] | 9.3 | 0.3720 | 2.2 | 3.7 | 3.6084 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| keeper every 30 min | 417 | 9.8368 | 0.4232 | 0.2141 | 8.4583 | 0.7411 [-0.7917, 2.0505] | 7.7 | 0.3721 | 13.5 | 3.7 | 3.3329 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| keeper every 6h | 134 | 3.1619 | 0.1416 | 0.0698 | 2.7582 | 0.1923 [-0.5420, 0.8017] | 6.3 | 0.3738 | 72.0 | 1.3 | 1.9016 | 0.0 | needs upkeep | 9.8% | IMPRACTICAL: closed most of the time |
-| low volume 2/day | 24 | 0.5670 | 0.0339 | 0.0142 | 0.4945 | 0.0244 [-0.4154, 0.2149] | 7.1 | 0.3854 | 0.1 | 0.1 | 1.3149 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| high volume 400/day | 4245 | 100.0744 | 4.2160 | 2.1614 | 86.7358 | 6.9612 [3.1382, 10.3306] | 7.0 | 0.3713 | 12.3 | 38.8 | 22.8582 | 0.0 | needs upkeep | 9.8% | viable |
-| expensive streak 10 batches | 31 | 0.7250 | 0.0407 | 0.0149 | 1.9162 | -1.2468 [-1.3357, -1.2550] | -321.9 | 0.3712 | 94.5 | 0.1 | 0.0667 | 0.0 | insufficient reserve | 9.8% | IMPRACTICAL: negative expected net |
-| inactive 10 days | 313 | 7.3786 | 0.3202 | 0.1622 | 6.3040 | 0.5921 [-0.6260, 1.6308] | 8.3 | 0.3723 | 1.4 | 2.7 | 2.8326 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| keeper absent 10 days | 316 | 7.4591 | 0.3239 | 0.1626 | 6.2868 | 0.6857 [-0.5422, 1.5148] | 9.3 | 0.3723 | 34.0 | 2.5 | 2.8245 | 0.0 | needs upkeep | 9.8% | viable on average; losses in bad runs |
-| thin reserve | 386 | 9.1040 | 0.3930 | 0.1991 | 7.7520 | 0.7599 [-0.1317, 1.9536] | -9.9 | 0.3718 | 19.1 | 3.1 | 2.0127 | 0.0 | insufficient reserve | 9.8% | viable on average; losses in bad runs |
-| plan switching (restock after 12h) | 471 | 12.1431 | 0.4972 | 0.2465 | 10.7480 | 0.6515 [-1.4273, 2.5279] | 5.4 | 0.3331 | 1.8 | 0.2 | 4.6647 | 9.9 | no feasible plan | 9.0% | viable on average; losses in bad runs |
-| plan switching, restock after 2h | 477 | 12.1928 | 0.5060 | 0.2486 | 10.7523 | 0.6858 [-1.7709, 2.7357] | 5.7 | 0.3657 | 1.4 | 0.2 | 4.5646 | 10.8 | no feasible plan | 9.0% | viable on average; losses in bad runs |
-| plan switching, high volume 400/day | 3345 | 90.4188 | 3.4025 | 1.8032 | 78.1720 | 7.0411 [1.3949, 14.9082] | 7.6 | 0.2372 | 27.1 | 5.5 | 30.2713 | 42.0 | no feasible plan | 9.0% | viable |
-| plan switching, mint fee 0.005 | 471 | 12.1431 | 2.4858 | 0.2465 | 10.7480 | -1.3372 [-3.5233, 0.5559] | -11.0 | 0.3523 | 1.8 | 0.2 | 2.6564 | 9.9 | no feasible plan | 31.3% | IMPRACTICAL: negative expected net |
+| baseline | 473 | 11.1589 | 0.4794 | 0.2524 | 9.4672 | 0.9600 [-0.1666, 2.0208] | 8.7 | 0.3723 | 1.4 | 3.9 | 3.6268 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| markup 5% | 476 | 10.2443 | 0.4816 | 0.2534 | 9.7180 | -0.2087 [-1.6659, 1.1109] | -2.1 | 0.3723 | 1.4 | 4.3 | 2.6281 | 0.0 | needs upkeep | 9.9% | IMPRACTICAL: negative expected net |
+| markup 25% | 477 | 12.2164 | 0.4821 | 0.2537 | 9.8860 | 1.5945 [0.1562, 2.9276] | 13.1 | 0.3723 | 1.4 | 4.5 | 4.5347 | 0.0 | needs upkeep | 9.9% | viable |
+| markup 30% | 473 | 12.6020 | 0.4787 | 0.2536 | 9.6332 | 2.2366 [0.7108, 3.8713] | 17.8 | 0.3723 | 1.4 | 4.2 | 5.0734 | 0.0 | needs upkeep | 9.9% | viable |
+| no curated restock | 322 | 7.2222 | 0.3288 | 0.1371 | 6.2968 | 0.4595 [-0.5913, 2.4657] | -1.8 | 0.3953 | 48.6 | 0.0 | 2.4149 | 0.0 | no curated | 9.9% | viable on average; losses in bad runs |
+| high curated values | 472 | 11.2065 | 0.4811 | 0.2537 | 9.4050 | 1.0667 [-3.2010, 3.0715] | 9.5 | 0.3723 | 1.4 | 0.5 | 3.6619 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| large Shapes | 760 | 748.6774 | 0.7431 | 0.2590 | 667.8750 | 79.8003 [-3.0549, 143.9109] | 2.7 | 8.0331 | 9.6 | 22.7 | 239.5037 | 0.0 | insufficient reserve | 0.2% | viable on average; losses in bad runs |
+| large Shapes, markup 5% | 705 | 634.0865 | 0.6889 | 0.2405 | 626.2333 | 6.9237 [-49.9201, 59.4669] | -21.5 | 8.0322 | 16.1 | 22.0 | 160.6436 | 0.0 | insufficient reserve | 0.2% | viable on average; losses in bad runs |
+| only 0.01 Shapes | 1183 | 14.2545 | 1.2004 | 0.3072 | 12.4172 | 0.3297 [-0.2522, 0.8779] | 2.3 | 0.0724 | 1.4 | 0.0 | 2.6716 | 0.0 | needs upkeep | 19.4% | viable on average; losses in bad runs |
+| mint fee 0.01 (cap) | 290 | 6.8288 | 2.9715 | 0.1551 | 5.8187 | -2.1165 [-3.0853, -1.1995] | -32.1 | 0.4166 | 39.5 | 2.5 | 0.0028 | 0.0 | insufficient reserve | 64.3% | IMPRACTICAL: negative expected net |
+| mint fee rises day 10 | 473 | 11.1589 | 1.7367 | 0.2524 | 9.4672 | -0.2974 [-1.4266, 0.7528] | -2.6 | 0.3856 | 1.4 | 3.9 | 2.3494 | 0.0 | needs upkeep | 9.9% | IMPRACTICAL: negative expected net |
+| gas 1 gwei | 473 | 11.1469 | 0.4786 | 0.4548 | 9.5305 | 0.6830 [-0.6018, 1.8187] | 6.2 | 0.3723 | 1.4 | 4.2 | 3.4398 | 0.0 | needs upkeep | 15.5% | viable on average; losses in bad runs |
+| gas 1.8 gwei (near cap) | 474 | 11.1634 | 0.4794 | 0.6513 | 9.5457 | 0.4870 [-0.9727, 1.6283] | 4.5 | 0.3723 | 1.4 | 4.1 | 3.2138 | 0.0 | needs upkeep | 20.3% | viable on average; losses in bad runs |
+| gas spikes above cap 30% | 469 | 11.0560 | 0.4750 | 0.2508 | 9.3815 | 0.9488 [-0.1198, 1.9605] | 8.6 | 0.3723 | 2.2 | 4.0 | 3.6323 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| keeper every 30 min | 416 | 9.8158 | 0.4222 | 0.2218 | 8.4620 | 0.7098 [-0.7446, 2.1566] | 7.3 | 0.3724 | 13.5 | 3.9 | 3.3630 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| keeper every 6h | 133 | 3.1443 | 0.1411 | 0.0731 | 2.6772 | 0.2530 [-0.4058, 0.9027] | 8.2 | 0.3741 | 72.3 | 1.2 | 1.9355 | 0.0 | needs upkeep | 9.9% | IMPRACTICAL: closed most of the time |
+| low volume 2/day | 24 | 0.5682 | 0.0340 | 0.0147 | 0.4957 | 0.0239 [-0.4125, 0.2164] | 6.9 | 0.3857 | 0.1 | 0.1 | 1.3141 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| high volume 400/day | 4244 | 100.0416 | 4.2135 | 2.2504 | 86.9777 | 6.6000 [3.4607, 11.0326] | 6.6 | 0.3716 | 12.3 | 39.9 | 22.8402 | 0.0 | needs upkeep | 9.9% | viable |
+| expensive streak 10 batches | 31 | 0.7265 | 0.0407 | 0.0159 | 1.9198 | -1.2499 [-1.3362, -1.2552] | -322.0 | 0.3715 | 94.5 | 0.1 | 0.0652 | 0.0 | insufficient reserve | 9.9% | IMPRACTICAL: negative expected net |
+| inactive 10 days | 313 | 7.3754 | 0.3202 | 0.1681 | 6.2530 | 0.6341 [-0.5205, 1.6211] | 8.8 | 0.3726 | 1.4 | 2.7 | 2.8393 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| keeper absent 10 days | 318 | 7.4872 | 0.3250 | 0.1690 | 6.2980 | 0.6952 [-0.6113, 1.5550] | 9.5 | 0.3726 | 34.0 | 2.5 | 2.8320 | 0.0 | needs upkeep | 9.9% | viable on average; losses in bad runs |
+| thin reserve | 371 | 8.7498 | 0.3781 | 0.1984 | 7.4403 | 0.7329 [-0.3997, 2.0208] | -11.9 | 0.3721 | 22.3 | 3.0 | 1.9160 | 0.0 | insufficient reserve | 9.9% | viable on average; losses in bad runs |
+| plan switching (restock after 12h) | 472 | 12.1725 | 0.4977 | 0.2575 | 10.6558 | 0.7615 [-1.3124, 2.4725] | 6.3 | 0.3341 | 1.8 | 0.2 | 4.6511 | 9.5 | no feasible plan | 9.1% | viable on average; losses in bad runs |
+| plan switching, restock after 2h | 478 | 12.2080 | 0.5061 | 0.2588 | 10.6938 | 0.7493 [-1.5324, 2.6419] | 6.2 | 0.3664 | 1.4 | 0.2 | 4.5579 | 10.6 | no feasible plan | 9.1% | viable on average; losses in bad runs |
+| plan switching, high volume 400/day | 3344 | 90.4380 | 3.4023 | 1.8761 | 78.0140 | 7.1456 [-0.6101, 12.8928] | 7.7 | 0.2377 | 27.1 | 6.4 | 30.3827 | 42.2 | no feasible plan | 9.1% | viable on average; losses in bad runs |
+| plan switching, mint fee 0.005 | 472 | 12.1725 | 2.4886 | 0.2575 | 10.6558 | -1.2294 [-3.2330, 0.4965] | -10.0 | 0.3533 | 1.8 | 0.2 | 2.6406 | 9.5 | no feasible plan | 31.4% | IMPRACTICAL: negative expected net |
 
 ## Previous design vs current
 
@@ -44,63 +44,80 @@ delivered - curated value delivered (creator-assigned). Redeemed backing is not 
   bids 0.1 gwei priority.
 - current+spares: current reward rules with the previous spare handling. Isolates the inventory change.
 - current: surplus redeemed at once; 4/5 of measured gas (no intrinsic credit) at min(bid, basefee + 0.05 gwei,
-  5 gwei), incentive max(0.0005, shortfall at price + 0.0001) capped by FWA's edge on the draws; reserve
-  without spare credit and a 0.0162 ETH keeper allowance; keeper bids 0.05 gwei priority.
+  5 gwei), incentive 1/5 of measured gas + 0.0005 ETH, capped by the edge credit for purchase-caused work;
+  reserve without spare credit and a 0.0165 ETH keeper allowance; keeper bids 0.05 gwei priority.
 
 | Scenario | Model | Keeper spend | Mint fees | Redeem gas | Avg reserve | Plan switches | Net mean [p5, p95] | Margin % | Closed % | Closures | Surplus |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| baseline | previous | 0.2769 | 0.4787 | 0.00000 | 0.3883 | 0.0 | 0.9176 [-0.1214, 1.9257] | 8.4 | 1.4 | 3.9 | 3.5868 |
-| baseline | current+spares | 0.2431 | 0.4788 | 0.00000 | 0.3720 | 0.0 | 0.9510 [-0.0913, 1.9536] | 8.7 | 1.4 | 3.9 | 3.6364 |
-| baseline | current | 0.2431 | 0.4788 | 0.00000 | 0.3720 | 0.0 | 0.9510 [-0.0913, 1.9536] | 8.7 | 1.4 | 3.9 | 3.6364 |
-| gas 1 gwei | previous | 0.4874 | 0.4789 | 0.00000 | 0.3883 | 0.0 | 0.7058 [-0.3353, 1.7172] | 6.5 | 1.4 | 3.9 | 3.3750 |
-| gas 1 gwei | current+spares | 0.4042 | 0.4789 | 0.00000 | 0.3720 | 0.0 | 0.7890 [-0.2531, 1.7987] | 7.2 | 1.4 | 3.9 | 3.4744 |
-| gas 1 gwei | current | 0.4042 | 0.4789 | 0.00000 | 0.3720 | 0.0 | 0.7890 [-0.2531, 1.7987] | 7.2 | 1.4 | 3.9 | 3.4744 |
-| high volume 400/day | previous | 2.4600 | 4.2198 | 0.00000 | 0.3876 | 0.0 | 6.6477 [2.8445, 10.0763] | 6.6 | 12.2 | 38.8 | 22.5618 |
-| high volume 400/day | current+spares | 2.1614 | 4.2160 | 0.00000 | 0.3713 | 0.0 | 6.9612 [3.1382, 10.3306] | 7.0 | 12.3 | 38.8 | 22.8582 |
-| high volume 400/day | current | 2.1614 | 4.2160 | 0.00000 | 0.3713 | 0.0 | 6.9612 [3.1382, 10.3306] | 7.0 | 12.3 | 38.8 | 22.8582 |
-| plan switching (restock after 12h) | previous | 0.2817 | 0.4751 | 0.00000 | 0.3202 | 9.8 | 0.6424 [-1.4191, 2.5097] | 5.4 | 1.8 | 0.1 | 4.6329 |
-| plan switching (restock after 12h) | current+spares | 0.2461 | 0.4751 | 0.00000 | 0.3048 | 9.9 | 0.6740 [-1.3822, 2.5370] | 5.6 | 1.8 | 0.2 | 4.6857 |
-| plan switching (restock after 12h) | current | 0.2465 | 0.4972 | 0.00057 | 0.3331 | 9.9 | 0.6515 [-1.4273, 2.5279] | 5.4 | 1.8 | 0.2 | 4.6647 |
-| plan switching, restock after 2h | previous | 0.2837 | 0.4820 | 0.00000 | 0.3767 | 10.8 | 0.6742 [-1.7636, 2.7095] | 5.6 | 1.4 | 0.2 | 4.5367 |
-| plan switching, restock after 2h | current+spares | 0.2482 | 0.4819 | 0.00000 | 0.3604 | 10.8 | 0.7104 [-1.7361, 2.7449] | 5.9 | 1.4 | 0.2 | 4.5892 |
-| plan switching, restock after 2h | current | 0.2486 | 0.5060 | 0.00052 | 0.3657 | 10.8 | 0.6858 [-1.7709, 2.7357] | 5.7 | 1.4 | 0.2 | 4.5646 |
-| plan switching, high volume 400/day | previous | 2.0403 | 3.3029 | 0.00000 | 0.2128 | 42.2 | 7.0713 [1.6576, 14.2314] | 7.7 | 27.2 | 5.8 | 30.0317 |
-| plan switching, high volume 400/day | current+spares | 1.8017 | 3.3061 | 0.00000 | 0.1973 | 42.0 | 7.1390 [1.4943, 14.9993] | 7.8 | 27.1 | 5.5 | 30.3637 |
-| plan switching, high volume 400/day | current | 1.8032 | 3.4025 | 0.00227 | 0.2372 | 42.0 | 7.0411 [1.3949, 14.9082] | 7.6 | 27.1 | 5.5 | 30.2713 |
-| plan switching, mint fee 0.005 | previous | 0.2817 | 2.3754 | 0.00000 | 0.3374 | 9.8 | -1.2580 [-3.3391, 0.5737] | -10.3 | 1.8 | 0.1 | 2.7138 |
-| plan switching, mint fee 0.005 | current+spares | 0.2461 | 2.3753 | 0.00000 | 0.3221 | 9.9 | -1.2262 [-3.3022, 0.6010] | -10.0 | 1.8 | 0.2 | 2.7667 |
-| plan switching, mint fee 0.005 | current | 0.2465 | 2.4858 | 0.00057 | 0.3523 | 9.9 | -1.3372 [-3.5233, 0.5559] | -11.0 | 1.8 | 0.2 | 2.6564 |
+| baseline | previous | 0.2730 | 0.4785 | 0.00000 | 0.3883 | 0.0 | 0.9447 [-0.4958, 2.0102] | 8.6 | 1.4 | 4.0 | 3.6139 |
+| baseline | current+spares | 0.2524 | 0.4794 | 0.00000 | 0.3723 | 0.0 | 0.9600 [-0.1666, 2.0208] | 8.7 | 1.4 | 3.9 | 3.6268 |
+| baseline | current | 0.2524 | 0.4794 | 0.00000 | 0.3723 | 0.0 | 0.9600 [-0.1666, 2.0208] | 8.7 | 1.4 | 3.9 | 3.6268 |
+| gas 1 gwei | previous | 0.4870 | 0.4785 | 0.00000 | 0.3883 | 0.0 | 0.6732 [-0.6207, 1.8000] | 6.1 | 1.4 | 4.1 | 3.3940 |
+| gas 1 gwei | current+spares | 0.4548 | 0.4786 | 0.00000 | 0.3723 | 0.0 | 0.6830 [-0.6018, 1.8187] | 6.2 | 1.4 | 4.2 | 3.4398 |
+| gas 1 gwei | current | 0.4548 | 0.4786 | 0.00000 | 0.3723 | 0.0 | 0.6830 [-0.6018, 1.8187] | 6.2 | 1.4 | 4.2 | 3.4398 |
+| high volume 400/day | previous | 2.4389 | 4.2208 | 0.00000 | 0.3876 | 0.0 | 6.6007 [2.4646, 10.1072] | 6.6 | 12.3 | 39.1 | 22.5864 |
+| high volume 400/day | current+spares | 2.2504 | 4.2135 | 0.00000 | 0.3716 | 0.0 | 6.6000 [3.4607, 11.0326] | 6.6 | 12.3 | 39.9 | 22.8402 |
+| high volume 400/day | current | 2.2504 | 4.2135 | 0.00000 | 0.3716 | 0.0 | 6.6000 [3.4607, 11.0326] | 6.6 | 12.3 | 39.9 | 22.8402 |
+| plan switching (restock after 12h) | previous | 0.2784 | 0.4763 | 0.00000 | 0.3217 | 9.5 | 0.7694 [-1.3184, 2.4661] | 6.4 | 1.8 | 0.2 | 4.6406 |
+| plan switching (restock after 12h) | current+spares | 0.2570 | 0.4765 | 0.00000 | 0.3057 | 9.5 | 0.7831 [-1.2675, 2.4815] | 6.5 | 1.8 | 0.2 | 4.6721 |
+| plan switching (restock after 12h) | current | 0.2575 | 0.4977 | 0.00046 | 0.3341 | 9.5 | 0.7615 [-1.3124, 2.4725] | 6.3 | 1.8 | 0.2 | 4.6511 |
+| plan switching, restock after 2h | previous | 0.2794 | 0.4826 | 0.00000 | 0.3773 | 10.6 | 0.7627 [-1.5687, 2.6363] | 6.3 | 1.4 | 0.2 | 4.5471 |
+| plan switching, restock after 2h | current+spares | 0.2583 | 0.4825 | 0.00000 | 0.3613 | 10.6 | 0.7733 [-1.4970, 2.6501] | 6.4 | 1.4 | 0.2 | 4.5820 |
+| plan switching, restock after 2h | current | 0.2588 | 0.5061 | 0.00053 | 0.3664 | 10.6 | 0.7493 [-1.5324, 2.6419] | 6.2 | 1.4 | 0.2 | 4.5579 |
+| plan switching, high volume 400/day | previous | 2.0084 | 3.2735 | 0.00000 | 0.2118 | 42.4 | 6.4538 [0.5821, 11.5825] | 7.0 | 27.6 | 5.5 | 29.8328 |
+| plan switching, high volume 400/day | current+spares | 1.8744 | 3.3051 | 0.00000 | 0.1967 | 42.2 | 7.2445 [-0.5119, 12.9853] | 7.8 | 27.1 | 6.4 | 30.4779 |
+| plan switching, high volume 400/day | current | 1.8761 | 3.4023 | 0.00198 | 0.2377 | 42.2 | 7.1456 [-0.6101, 12.8928] | 7.7 | 27.1 | 6.4 | 30.3827 |
+| plan switching, mint fee 0.005 | previous | 0.2784 | 2.3814 | 0.00000 | 0.3390 | 9.5 | -1.1358 [-3.0902, 0.5261] | -9.2 | 1.8 | 0.2 | 2.7165 |
+| plan switching, mint fee 0.005 | current+spares | 0.2570 | 2.3827 | 0.00000 | 0.3230 | 9.5 | -1.1230 [-3.0969, 0.5415] | -9.1 | 1.8 | 0.2 | 2.7472 |
+| plan switching, mint fee 0.005 | current | 0.2575 | 2.4886 | 0.00046 | 0.3533 | 9.5 | -1.2294 [-3.2330, 0.4965] | -10.0 | 1.8 | 0.2 | 2.6406 |
 
-## Keeper liveness: incentive options under measured mainnet gas
+## Keeper reimbursement policies under identical workloads
 
-Basefee is sampled from the mainnet distribution measured over 90 days (median 0.078 gwei, p90 0.33, p99 4.6,
-p99.9 29.9). Keepers are rational: they send only when the estimated reward covers the estimated cost and wait otherwise.
-- fixed 0.0005: 4/5 gas + 0.0005 ETH (design before this pass).
-- fixed 0.0013: 4/5 gas + 0.0013 ETH (covers the worst measured shortfall at 2 gwei).
-- cover: 4/5 gas + max(0.0005 ETH, (measured/5 + 21k) × price + 0.0001 ETH), so paid work stays profitable up to the
-  gas-price cap; purchase-caused incentives still capped by FWA's edge on the draws.
-Gas spikes are drawn independently per keeper check; real spikes cluster (median 1 minute, p90 21–52 minutes, longest
-~1.7 hours above 2 gwei), so pauses in practice are fewer and longer than modelled.
+Basefee is sampled from the measured 90-day mainnet distribution (median 0.078 gwei, p90 0.33, p99 4.6); spikes are
+drawn independently per keeper check, so they are shorter than real ones. Keepers compete: each bids the reimbursed
+priority cap (a keeper is indifferent to bidding up to it, and bidding more wins the race), and costs the work with
+eth_estimateGas, measured at billed gas + 78k. Inclusion: a bid lands in the first block whose cheapest included
+transactions (block p10 priority, 90 days of eth_feeHistory, by basefee regime) paid no more than it. "Keeper profit"
+is reward minus billed gas at the keeper's bid. "Opening reserve" is the creator's ETH to open a pool of ten 0.01 ETH
+Shapes at 0.08 gwei. Policies:
+- original PR: full measured gas + 45k at min(bid, basefee + 2 gwei, 10 gwei) + 0.0005 ETH.
+- previous: 4/5 gas + max(0.0005, (1/5 gas + 21k) x price + 0.0001), price min(bid, basefee + 0.05, 5 gwei).
+- FWA V2 rule: FWA's sponsored-processing formula (gas + 55k at min(bid, min(basefee, 5) + 1 gwei), at most 2.1M gas
+  and 0.02 ETH, no incentive) applied to permissionless upkeep.
+- final: 4/5 gas + (1/5 gas + 0.0005 ETH) at min(bid, basefee + priority cap, 5 gwei), incentive within the edge
+  credit for purchase-caused work; priority caps 0.05 to 1 gwei.
 
-| Scenario | Incentive | Keeper spend | Closed % | Upkeeps skipped (unprofitable or above cap) | Draws | Net mean [p5, p95] |
-| --- | --- | --- | --- | --- | --- | --- |
-| baseline | fixed 0.0005 | 0.2361 | 1.42 | 9 | 473 | 0.9665 [-0.0705, 1.9648] |
-| baseline | fixed 0.0013 | 0.5109 | 1.42 | 8 | 473 | 0.6916 [-0.3470, 1.6976] |
-| baseline | cover, 2 gwei cap | 0.2363 | 1.42 | 8 | 473 | 0.9662 [-0.0727, 1.9648] |
-| baseline | cover, 5 gwei cap | 0.2431 | 1.40 | 4 | 473 | 0.9510 [-0.0913, 1.9536] |
-| high volume 400/day | fixed 0.0005 | 2.0946 | 12.47 | 78 | 4236 | 6.9662 [2.5223, 10.9189] |
-| high volume 400/day | fixed 0.0013 | 4.5378 | 12.46 | 76 | 4237 | 4.4801 [0.1490, 8.5840] |
-| high volume 400/day | cover, 2 gwei cap | 2.0978 | 12.46 | 76 | 4237 | 6.9202 [2.5764, 10.9528] |
-| high volume 400/day | cover, 5 gwei cap | 2.1614 | 12.28 | 36 | 4245 | 6.9612 [3.1382, 10.3306] |
-| only 0.01 Shapes | fixed 0.0005 | 0.2729 | 1.45 | 10 | 1181 | 0.3683 [-0.2298, 0.9148] |
-| only 0.01 Shapes | fixed 0.0013 | 0.5348 | 1.44 | 8 | 1182 | 0.1065 [-0.4945, 0.6651] |
-| only 0.01 Shapes | cover, 2 gwei cap | 0.2765 | 1.44 | 8 | 1182 | 0.3648 [-0.2340, 0.9109] |
-| only 0.01 Shapes | cover, 5 gwei cap | 0.2892 | 1.42 | 4 | 1182 | 0.3526 [-0.2496, 0.8978] |
-| plan switching (restock after 12h) | fixed 0.0005 | 0.2388 | 1.84 | 12 | 471 | 0.6316 [-2.3855, 2.5306] |
-| plan switching (restock after 12h) | fixed 0.0013 | 0.5507 | 1.84 | 10 | 471 | 0.3197 [-2.6927, 2.2177] |
-| plan switching (restock after 12h) | cover, 2 gwei cap | 0.2396 | 1.84 | 10 | 471 | 0.6308 [-2.3855, 2.5306] |
-| plan switching (restock after 12h) | cover, 5 gwei cap | 0.2465 | 1.84 | 5 | 471 | 0.6515 [-1.4273, 2.5279] |
-| large Shapes | fixed 0.0005 | 0.2339 | 9.62 | 83 | 759 | 76.4559 [-3.4124, 130.0113] |
-| large Shapes | fixed 0.0013 | 0.5264 | 9.62 | 44 | 759 | 77.0173 [-3.4220, 134.6586] |
-| large Shapes | cover, 2 gwei cap | 0.2351 | 9.62 | 44 | 759 | 77.3087 [-3.4124, 134.9794] |
-| large Shapes | cover, 5 gwei cap | 0.2451 | 9.59 | 21 | 759 | 76.7592 [-3.4124, 134.0152] |
+| Scenario | Policy | Upkeeps executed % | Inclusion delay (s) | Keeper profit / upkeep | Keeper spend (30 d) | Closed % | Draws | Creator net mean [p5, p95] | Max reward | Opening reserve, ten 0.01 Shapes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline | original PR (gas + 45k, 2 gwei priority, 10 gwei cap) | 99.1 | 12.0 | 0.000533 | 0.7592 | 1.40 | 473 | 0.4449 [-0.6747, 1.5227] | 0.0325 | 0.2190 |
+| baseline | previous (cover + 0.0001) | 97.8 | 12.2 | 0.000459 | 0.2354 | 1.42 | 473 | 0.9466 [-0.4440, 2.0342] | 0.0162 | 0.1840 |
+| baseline | FWA V2 rule, permissionless | 0.0 | 0.0 | 0.000000 | 0.0000 | 100.00 | 0 | 0.0000 [0.0000, 0.0000] | 0.0200 | 0.1915 |
+| baseline | final, priority 0.05 gwei | 99.0 | 12.3 | 0.000493 | 0.2524 | 1.40 | 473 | 0.9600 [-0.1666, 2.0208] | 0.0165 | 0.1842 |
+| baseline | final, priority 0.1 gwei | 99.0 | 12.1 | 0.000492 | 0.2644 | 1.40 | 473 | 0.9515 [-0.5007, 2.0179] | 0.0165 | 0.1847 |
+| baseline | final, priority 0.25 gwei | 98.9 | 12.0 | 0.000487 | 0.3002 | 1.40 | 473 | 0.9245 [-0.5453, 1.9828] | 0.0165 | 0.1862 |
+| baseline | final, priority 0.5 gwei | 98.9 | 12.0 | 0.000480 | 0.3600 | 1.41 | 473 | 0.8541 [-0.2633, 1.9232] | 0.0165 | 0.1886 |
+| baseline | final, priority 1 gwei | 98.7 | 12.0 | 0.000465 | 0.4774 | 1.41 | 473 | 0.7190 [-0.5992, 1.7988] | 0.0165 | 0.1934 |
+| only 0.01 Shapes | original PR (gas + 45k, 2 gwei priority, 10 gwei cap) | 99.1 | 12.0 | 0.000533 | 1.2676 | 1.42 | 1184 | -0.6365 [-1.2002, -0.0645] | 0.0325 | 0.2190 |
+| only 0.01 Shapes | previous (cover + 0.0001) | 97.3 | 12.2 | 0.000438 | 0.2724 | 1.45 | 1183 | 0.3645 [-0.2242, 0.9185] | 0.0162 | 0.1840 |
+| only 0.01 Shapes | FWA V2 rule, permissionless | 0.0 | 0.0 | 0.000000 | 0.0000 | 100.00 | 0 | 0.0000 [0.0000, 0.0000] | 0.0200 | 0.1915 |
+| only 0.01 Shapes | final, priority 0.05 gwei | 98.7 | 12.3 | 0.000493 | 0.3072 | 1.43 | 1183 | 0.3297 [-0.2522, 0.8779] | 0.0165 | 0.1842 |
+| only 0.01 Shapes | final, priority 0.1 gwei | 98.7 | 12.1 | 0.000491 | 0.3304 | 1.43 | 1183 | 0.3034 [-0.2690, 0.8578] | 0.0165 | 0.1847 |
+| only 0.01 Shapes | final, priority 0.25 gwei | 98.7 | 12.0 | 0.000486 | 0.4007 | 1.42 | 1184 | 0.2334 [-0.3488, 0.7864] | 0.0165 | 0.1862 |
+| only 0.01 Shapes | final, priority 0.5 gwei | 98.6 | 12.0 | 0.000478 | 0.5161 | 1.43 | 1184 | 0.1182 [-0.4685, 0.6719] | 0.0165 | 0.1886 |
+| only 0.01 Shapes | final, priority 1 gwei | 98.2 | 12.0 | 0.000449 | 0.7452 | 1.43 | 1184 | -0.1110 [-0.6892, 0.4547] | 0.0165 | 0.1934 |
+| high volume 400/day | original PR (gas + 45k, 2 gwei priority, 10 gwei cap) | 99.1 | 12.0 | 0.000533 | 6.7286 | 12.28 | 4249 | 2.3772 [-1.7475, 6.8825] | 0.0325 | 0.2190 |
+| high volume 400/day | previous (cover + 0.0001) | 97.7 | 12.2 | 0.000459 | 2.0880 | 12.50 | 4238 | 6.7690 [2.5448, 10.7854] | 0.0162 | 0.1840 |
+| high volume 400/day | FWA V2 rule, permissionless | 0.0 | 0.0 | 0.000000 | 0.0000 | 100.00 | 0 | 0.0000 [0.0000, 0.0000] | 0.0200 | 0.1915 |
+| high volume 400/day | final, priority 0.05 gwei | 98.9 | 12.3 | 0.000493 | 2.2504 | 12.31 | 4244 | 6.6000 [3.4607, 11.0326] | 0.0165 | 0.1842 |
+| high volume 400/day | final, priority 0.1 gwei | 99.0 | 12.1 | 0.000492 | 2.3528 | 12.31 | 4248 | 6.8898 [2.6747, 10.4818] | 0.0165 | 0.1847 |
+| high volume 400/day | final, priority 0.25 gwei | 98.9 | 12.0 | 0.000487 | 2.6684 | 12.32 | 4248 | 6.4657 [3.3100, 10.6530] | 0.0165 | 0.1862 |
+| high volume 400/day | final, priority 0.5 gwei | 98.8 | 12.0 | 0.000480 | 3.1875 | 12.33 | 4246 | 5.8278 [1.9492, 10.3858] | 0.0165 | 0.1886 |
+| high volume 400/day | final, priority 1 gwei | 98.7 | 12.0 | 0.000465 | 4.2246 | 12.36 | 4244 | 4.7494 [0.8903, 8.8153] | 0.0165 | 0.1934 |
+| plan switching (restock after 12h) | original PR (gas + 45k, 2 gwei priority, 10 gwei cap) | 99.0 | 12.0 | 0.000533 | 0.7774 | 1.84 | 471 | 0.3087 [-1.8410, 1.9781] | 0.0325 | 0.2190 |
+| plan switching (restock after 12h) | previous (cover + 0.0001) | 97.7 | 12.2 | 0.000450 | 0.2386 | 1.84 | 473 | 0.7777 [-1.2880, 2.4717] | 0.0162 | 0.1840 |
+| plan switching (restock after 12h) | FWA V2 rule, permissionless | 0.0 | 0.0 | 0.000000 | 0.0000 | 100.00 | 0 | 0.0000 [0.0000, 0.0000] | 0.0200 | 0.1915 |
+| plan switching (restock after 12h) | final, priority 0.05 gwei | 99.1 | 12.3 | 0.000493 | 0.2575 | 1.82 | 472 | 0.7615 [-1.3124, 2.4725] | 0.0165 | 0.1842 |
+| plan switching (restock after 12h) | final, priority 0.1 gwei | 99.0 | 12.1 | 0.000492 | 0.2692 | 1.83 | 472 | 0.7579 [-1.3531, 2.4623] | 0.0165 | 0.1847 |
+| plan switching (restock after 12h) | final, priority 0.25 gwei | 98.9 | 12.0 | 0.000487 | 0.3063 | 1.83 | 472 | 0.7679 [-1.3931, 2.4559] | 0.0165 | 0.1862 |
+| plan switching (restock after 12h) | final, priority 0.5 gwei | 98.8 | 12.0 | 0.000480 | 0.3670 | 1.84 | 472 | 0.6955 [-1.3247, 2.3790] | 0.0165 | 0.1886 |
+| plan switching (restock after 12h) | final, priority 1 gwei | 98.6 | 12.0 | 0.000465 | 0.4899 | 1.85 | 471 | 0.5775 [-1.4407, 2.2552] | 0.0165 | 0.1934 |

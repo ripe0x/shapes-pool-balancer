@@ -56,7 +56,7 @@ contract PoolBalancer is ReentrancyGuard {
     //   checkpoint; those actions close admission first. Work purchases caused is paid from `incentiveCredit`:
     //   FWA's edge on the delivered draws of the last reconciled batch, reset by each batch and spent by every
     //   call after it, so buying one's own draws earns at most the edge those draws paid to FWA.
-    // - gas-only paid calls (a reconciled batch with no draws) get both fifths, no incentive.
+    // - gas-only paid calls (a reconciled batch with no draws, recoverRefundedShape) get the 4/5 part only.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
@@ -846,17 +846,14 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
         uint256 price = _rewardPrice(tx.gasprice);
         reward = gasUsed * price;
-        uint256 rest = (measured - gasUsed) * price; // the fifth the refund-safe part withholds
         if (incentive) {
-            uint256 inc = rest + KEEPER_INCENTIVE;
+            uint256 inc = (measured - gasUsed) * price + KEEPER_INCENTIVE;
             if (!creatorWork) {
                 uint256 credit = incentiveCredit;
                 if (credit < inc) inc = credit;
                 incentiveCredit = uint128(credit - inc);
             }
             reward += inc;
-        } else {
-            reward += rest;
         }
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
@@ -876,7 +873,8 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice ETH that must stay liquid: zero while closed; otherwise the cost of restoring the active
-    ///         plan from current inventory, plus a worst-case batch and two maximum keeper rewards.
+    ///         plan from current inventory, one keeper reward per refill step and one for the next checkpoint
+    ///         at the current price, plus a worst-case batch and one maximum keeper reward.
     function requiredReserve() public view returns (uint256 r) {
         if (!enabled || plans.length == 0) return 0;
         uint256 plan = plans[activePlan];

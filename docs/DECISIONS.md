@@ -17,14 +17,19 @@ Review the **Money and authority** section first.
    The 0.05 gwei priority cap was **(your call)**. I chose the 4/5 refund rule (provably never above billed gas) and,
    after your liveness review, a 5 gwei absolute cap from measured mainnet basefee (above 5 gwei ~0.9% of blocks; longest
    measured episode ~42 min). Above the cap keepers wait and new purchases pause; existing draws are unaffected. Max
-   reward 0.016205 ETH. `docs/GAS.md`.
-3. **Keeper incentive: `max(0.0005 ETH, the 4/5 shortfall at the reimbursed price + 0.0001 ETH)`** for inventory work,
-   from measured profitability. A fixed increase large enough for liveness (0.0013 ETH) would cost creators 25–70% of
-   net in simulation for no measurable uptime; this one is 0.0005 at normal gas and rises only with gas. Creator-started
+   reward 0.0165 ETH. Re-evaluated against FWA V2's sponsored rule (1 gwei over `min(basefee, 5)`, no incentive):
+   kept 0.05 gwei, because competing permissionless keepers bid the reimbursed priority and 90-day inclusion data
+   shows 0.05 gwei clears the cheapest included transactions in ~99% of normal blocks; at 1 gwei the simulation shows
+   +91% keeper spend for no faster inclusion. `docs/GAS.md`, `docs/simulation-results.md`.
+3. **Keeper incentive: the withheld 1/5 of measured gas + 0.0005 ETH** for inventory work. Replaced
+   `max(0.0005, shortfall + 0.0001)` after the launch rehearsal: keepers price work with `eth_estimateGas` (78k gas
+   median above billed), so near the cap the old 0.0001 margin made them skip profitable fill steps and the pool stayed
+   closed. Total creator cost per upkeep is now measured gas × price + 0.0005 ETH. Creator-started
    work pays it in full; purchase-caused work pays it from a credit equal to FWA's 5% edge on the last batch's fees, so
-   self-dealing can never earn more than it paid FWA. Consequences: pools with draw prices below ~0.012 ETH pause from
-   ~2.9 gwei; creator-caused work at high gas pays keepers margin plus refunds. Unpaid re-checkpoints stay unpaid (per
-   the brief); the bundled keeper's 0.0001 ETH `MAX_LOSS_WEI` default covers gas-only paths.
+   self-dealing can never earn more than it paid FWA (delivered draws only). Consequences: pools whose draws all cost
+   ~0.01 ETH pause from ~4.2 gwei; creator-caused work at high gas pays keepers its refunds as well. Unpaid
+   re-checkpoints stay unpaid (per the brief); the bundled keeper's 0.0002 ETH `MAX_LOSS_WEI` default covers gas-only
+   paths.
 4. **Reserve covers one keeper reward, not five.** The worst-5 Shape replacements are fully funded; keeper payment is
    funded once. If restoring a batch takes several upkeeps, a top-up may be needed and the pool fails closed until
    then (R-7 in `docs/SECURITY.md`).
@@ -88,7 +93,7 @@ Review the **Money and authority** section first.
 
 24. **One keeper key from an environment variable** (`KEEPER_PRIVATE_KEY`), never written to disk. The keeper
     simulates each call, bids basefee + 0.05 gwei, and sends only when the simulated reward + `MAX_LOSS_WEI` (default
-    0.0001 ETH) covers estimated gas × price. Gas limit = estimate × 1.3 (Shapes mint gas varies by block); the contract never
+    0.0002 ETH) covers estimated gas × price. Gas limit = estimate × 1.3 (Shapes mint gas varies by block); the contract never
     reimburses the limit. Stuck transactions are replaced after 3 blocks at +25%, up to 5 times, only while under 5 gwei
     and still profitable.
 25. **Dashboard is not hosted.** Vite + React + wagmi, injected wallet only. A mock connector exists only on chain

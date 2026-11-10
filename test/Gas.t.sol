@@ -350,14 +350,14 @@ contract GasBench is ForkBase {
         assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
     }
 
-    /// Gas-only path: measured gas only; the keeper absorbs the gas outside the measured span (~33k).
+    /// Gas-only path: 4/5 of measured gas; the keeper absorbs the other fifth and the gas outside the measured span.
     function test_profitAtCap_refundOnlyBatch() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         buy(buyer, 1);
         vm.roll(block.number + 40);
         pool.processAcquisitions(1);
-        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0002 ether));
+        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0004 ether));
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/

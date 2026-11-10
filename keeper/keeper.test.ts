@@ -4,7 +4,7 @@ import { decide, KEEPER_MAX_GAS } from './keeper';
 const GWEI = 10n ** 9n;
 /**
  * PoolBalancer._payKeeper: price = min(bid, basefee + 0.05 gwei, 5 gwei); 4/5 of measured gas, plus for work the
- * other 1/5 + 0.0005 ETH (capped by `credit` for purchase-caused work); gas-only calls get both fifths.
+ * other 1/5 + 0.0005 ETH (capped by `credit` for purchase-caused work); gas-only calls get the 4/5 part only.
  */
 const reward = (measured: bigint, baseFee: bigint, bid: bigint, incentive: boolean, credit = 10n ** 18n) => {
   let price = bid;
@@ -12,7 +12,7 @@ const reward = (measured: bigint, baseFee: bigint, bid: bigint, incentive: boole
   if (price > 5n * GWEI) price = 5n * GWEI;
   const gasPart = ((measured * 4n) / 5n) * price;
   const rest = (measured - (measured * 4n) / 5n) * price;
-  if (!incentive) return gasPart + rest;
+  if (!incentive) return gasPart;
   const inc = rest + 5n * 10n ** 14n;
   return gasPart + (inc < credit ? inc : credit);
 };
@@ -50,13 +50,20 @@ describe('keeper profitability policy across gas prices', () => {
     expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
   });
 
-  it('gas-only work is covered within the default loss allowance up to the cap', () => {
-    const baseFee = 4.95e9;
+  // Refund-only batch: ~164k measured, ~197k billed, estimate ~78k above billed.
+  it('gas-only work is covered by the default loss allowance at normal and elevated gas', () => {
     const prio = GWEI / 20n;
-    const bf = BigInt(baseFee);
-    const r = reward(160_000n, bf, bf + prio, false); // refund-only batch: ~160k measured, ~195k billed
-    expect(decide({ gasEstimate: 195_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
-    expect(decide({ gasEstimate: 195_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 2n * 10n ** 14n }).send).toBe(true);
+    for (const bf of [GWEI / 10n, GWEI]) {
+      const r = reward(164_000n, bf, bf + prio, false);
+      expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
+      expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 2n * 10n ** 14n }).send).toBe(true);
+    }
+  });
+
+  it('gas-only work waits for the creator near the cap', () => {
+    const bf = 4_950_000_000n;
+    const r = reward(164_000n, bf, bf + GWEI / 20n, false);
+    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: GWEI / 20n, maxLossWei: 2n * 10n ** 14n }).send).toBe(false);
   });
 
   it('never sends a call estimated above the reimbursable maximum', () => {

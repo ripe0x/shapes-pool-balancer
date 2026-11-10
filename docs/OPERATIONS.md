@@ -27,16 +27,18 @@ the same factory address; duplicate submissions just revert `NoUpkeepNeeded` in 
 
 ```bash
 FACTORY=<factory> FROM_BLOCK=<deploy block> KEEPER_PRIVATE_KEY=<from your secret store> \
-RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOSS_WEI=100000000000000 npm run keeper
+RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOSS_WEI=200000000000000 npm run keeper
 ```
 
 - Each tick the keeper simulates `performUpkeep` for every Balancer at the price it would bid (basefee + 0.05 gwei,
   `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` and `PoolBusy` mean nothing to do;
   any other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price,
   and never when the estimate exceeds the 3.2M reimbursable maximum.
-- `MAX_LOSS_WEI` (default 0.0001 ETH) is the subsidy the operator accepts per call. Paid work is profitable up to the
-  5 gwei cap by design; gas-only paid calls lose at most ~0.00006 ETH at the cap; unpaid re-checkpoints (after creator
-  edits, deposits or a mint-fee change) cost ~155k gas, covered up to ~0.6 gwei. Set 0 for a strictly profitable keeper.
+- `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate.
+  Paid work is profitable up to the 5 gwei cap by design (except pools whose draws all cost ~0.01 ETH, credit-limited
+  from ~4.2 gwei). Gas-only calls (paid 4/5 of measured gas) lose ~0.00033 ETH of billed gas at the cap; unpaid re-checkpoints (after creator
+  edits, deposits or a mint-fee change) cost ~155k gas. With an estimate ~78k gas above billed, the default covers
+  refund-only batches to ~1.3 gwei and re-checkpoints to ~0.85 gwei; above that the creator runs them. Set 0 for a strictly profitable keeper.
 - The keeper also watches `ItemDrawn` events for failed Shape deliveries and calls `recoverRefundedShape` once FWA marks
   them refunded.
 

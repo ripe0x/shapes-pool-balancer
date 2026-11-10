@@ -212,7 +212,7 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
     }
     const gasPart = ((measured + M.overhead) * M.gasNum) / M.gasDen * price;
     const rest = M.mode === 'final' ? (measured - (measured * 4n) / 5n) * price : 0n;
-    if (!work) return gasPart + rest;
+    if (!work) return gasPart;
     let inc = M.incentive + rest;
     if (M.mode === 'cover') {
       const cover = (measured - (measured * 4n) / 5n + 21_000n) * price + MARGIN;
@@ -521,8 +521,8 @@ ${table}
   bids 0.1 gwei priority.
 - current+spares: current reward rules with the previous spare handling. Isolates the inventory change.
 - current: surplus redeemed at once; 4/5 of measured gas (no intrinsic credit) at min(bid, basefee + 0.05 gwei,
-  5 gwei), incentive max(0.0005, shortfall at price + 0.0001) capped by FWA's edge on the draws; reserve
-  without spare credit and a 0.0162 ETH keeper allowance; keeper bids 0.05 gwei priority.
+  5 gwei), incentive 1/5 of measured gas + 0.0005 ETH, capped by the edge credit for purchase-caused work;
+  reserve without spare credit and a 0.0165 ETH keeper allowance; keeper bids 0.05 gwei priority.
 
 ${cmp}
 
