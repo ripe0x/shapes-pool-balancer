@@ -68,13 +68,21 @@ async function setBasefee(gwei: number) {
 }
 async function send(p: Record<string, unknown>) {
   await hold();
-  const h = await wallet.writeContract({ ...p, chain: null, ...FEE_OPTS } as never);
+  // 30% over the estimate, like the keeper and dashboard: FWA listing gas can exceed an exact estimate at inclusion.
+  const gas = (p.gas as bigint | undefined) ?? ((await pub.estimateContractGas({ ...p, ...FEE_OPTS } as never)) * 13n) / 10n;
+  const h = await wallet.writeContract({ ...p, chain: null, gas, ...FEE_OPTS } as never);
   // anvil automines, so the receipt exists at once; viem's receipt watcher would poll every 4 s.
   let r;
   for (let i = 0; !r; i++) {
     try { r = await pub.getTransactionReceipt({ hash: h }); } catch { if (i > 500) throw new Error(`no receipt for ${h}`); await sleep(20); }
   }
-  assert.equal(r.status, 'success', `tx ${String(p.functionName)}`);
+  if (r.status !== 'success') {
+    let why = 'unknown';
+    try { await pub.simulateContract({ ...p, blockNumber: r.blockNumber - 1n } as never); } catch (e) { why = (e as { shortMessage?: string }).shortMessage ?? String(e); }
+    const tx = await pub.getTransaction({ hash: h });
+    const blk = await pub.getBlock({ blockNumber: r.blockNumber });
+    assert.fail(`tx ${String(p.functionName)} reverted in block ${r.blockNumber} (gas ${r.gasUsed}/${tx.gas}, ${blk.transactions.length} txs in block, index ${r.transactionIndex}): ${why}`);
+  }
   await hold();
   return r;
 }
@@ -181,11 +189,36 @@ async function main() {
       arrivals: 0, foundOpen: 0, batches: 0, draws: 0, reopenMs: [] as number[],
       byPeriod: { normal: 0, below: 0, near: 0, above: 0 } as Record<string, number>,
       aboveCapWaited: 0, aboveCapSent: 0, resumedAfterSpike: 0,
-      purchaseCausedSwitches: 0, creatorCausedSwitches: 0, creatorEdits: 0, creatorRanUpkeep: 0, restarts: 0,
+      purchaseCausedSwitches: 0, creatorCausedSwitches: 0, creatorEdits: 0, creatorRanUpkeep: 0, creatorRestocks: 0, restarts: 0,
     };
     let nextDemoId = 100n;
+    const curatedCount = async (b: Address) => {
+      let n = 0;
+      for (const id of await read<bigint[]>(b, poolBalancerAbi, 'getActiveIds')) if (Number((await read<readonly unknown[]>(b, poolBalancerAbi, 'items', [id]))[0]) === 1) n++;
+      return n;
+    };
+    // Buyers draw curated NFTs; like a real creator, list a new one when a pool runs low (it closes at none).
+    const restock = async (i: number) => {
+      const id = nextDemoId++;
+      await test.impersonateAccount({ address: CREATORS[i] });
+      await send({ address: demo[i], abi: demoAbi, functionName: 'mint', args: [CREATORS[i], id], account: CREATORS[i] });
+      await send({ address: demo[i], abi: erc721Abi, functionName: 'approve', args: [balancers[i], id], account: CREATORS[i] });
+      await send({ address: balancers[i], abi: poolBalancerAbi, functionName: 'listCurated', args: [demo[i], id, 25n * 10n ** 16n], account: CREATORS[i] });
+      stats.creatorRestocks++;
+    };
+    const keepStocked = async () => {
+      for (let i = 0; i < balancers.length; i++) {
+        const st = await status(balancers[i]);
+        if ((st === 0 || st === 4) && (await curatedCount(balancers[i])) < 2) {
+          await restock(i);
+          await mustOpen(balancers[i], 'reopened after a curated restock', 60_000, true);
+        }
+      }
+    };
     for (let round = 0; round < ROUNDS; round++) {
       const { gwei, period } = basefeeFor(round);
+      await setBasefee(0.08);
+      await keepStocked();
       await setBasefee(gwei);
 
       // Keeper restarts from persisted state.
@@ -238,6 +271,7 @@ async function main() {
         stats.reopenMs.push(await mustOpen(b, 'pool reopened after the spike ended'));
         stats.resumedAfterSpike++;
       } else {
+        if ((await waitOpen(b, 60_000, true)) < 0 && (await status(b)) === 4) await keepStocked(); // last curated drawn
         stats.reopenMs.push(await mustOpen(b, `pool reopened at ${gwei} gwei`, 60_000, true));
       }
 
@@ -319,7 +353,7 @@ async function main() {
       reopenMs: { median: sorted[Math.floor(sorted.length / 2)], p90: sorted[Math.floor(sorted.length * 0.9)], max: sorted.at(-1) },
       aboveCap: { keeperWaited: stats.aboveCapWaited, keeperSent: stats.aboveCapSent, resumedWithoutIntervention: stats.resumedAfterSpike },
       fallback: { purchaseCaused: stats.purchaseCausedSwitches, creatorCaused: stats.creatorCausedSwitches },
-      creatorEdits: stats.creatorEdits, creatorRanUpkeep: stats.creatorRanUpkeep, keeperRestarts: stats.restarts,
+      creatorEdits: stats.creatorEdits, creatorRanUpkeep: stats.creatorRanUpkeep, creatorRestocks: stats.creatorRestocks, keeperRestarts: stats.restarts,
       keeper: { netWei: (kb1 - kb0).toString(), sent: health.stats.sent, mined: health.stats.mined, reverted: health.stats.reverted, replaced: health.stats.replaced, skippedUnprofitable: health.stats.skippedUnprofitable, errors: health.errors },
       healthOk: health.ok,
     };
