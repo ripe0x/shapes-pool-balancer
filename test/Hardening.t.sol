@@ -270,11 +270,13 @@ contract HardeningTest is ForkBase {
     function test_reserveWithDeficitAndNoSpares() public {
         uint256 fee = shapes.mintFee();
         uint256 batch = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee);
-        assertEq(balancer.requiredReserve(), batch + 2 * balancer.MAX_KEEPER_REWARD());
+        // one maximum reward held for the restoring upkeep, one re-checkpoint reward at the current price (0.55 gwei)
+        uint256 recheckpoint = (3_200_000 + 21_000) * 0.55 gwei + 0.0005 ether;
+        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint);
         // a drawn 0.1 Shape is a liability until replaced: deficit + worst batch + one keeper reward
         _drawListing(_lastShape());
         upkeep();
-        assertEq(balancer.requiredReserve(), batch + 2 * balancer.MAX_KEEPER_REWARD(), "replaced");
+        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint, "replaced");
         vm.prank(creator);
         balancer.close();
         assertEq(balancer.requiredReserve(), 0, "closed: everything claimable");
@@ -540,11 +542,15 @@ contract HardeningTest is ForkBase {
     }
 
     /// Funding exactly requiredReserve() opens a fresh pool (fill-step rewards are included).
-    function test_exactRequiredReserveOpens() public {
-        creator = makeAddr("exactCreator");
+    /// Funding exactly requiredReserve() opens a fresh pool when the keeper bids the reimbursable priority, at normal
+    /// gas and near the cap (the view prices refill and re-checkpoint rewards at the current basefee).
+    function _exactFundingOpens(uint256 basefee) internal {
+        vm.fee(basefee);
+        vm.txGasPrice(basefee + 0.05 gwei);
+        creator = makeAddr(string.concat("exactCreator", vm.toString(basefee)));
         vm.deal(creator, 100 ether);
         createBalancer(0);
-        listCurated(7301, 0.3 ether);
+        listCurated(7301 + basefee % 1000, 0.3 ether);
         uint256[] memory plans = new uint256[](1);
         plans[0] = plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]);
         vm.prank(creator);
@@ -556,6 +562,92 @@ contract HardeningTest is ForkBase {
         balancer.depositETH{value: need}();
         fillUp();
         assertTrue(balancer.canPurchase(buyer), "requiredReserve() was enough to open");
+    }
+
+    function test_exactRequiredReserveOpens() public {
+        _exactFundingOpens(0.5 gwei);
+    }
+
+    function test_exactRequiredReserveOpensNormalGas() public {
+        _exactFundingOpens(0.08 gwei);
+    }
+
+    function test_exactRequiredReserveOpensNearCap() public {
+        _exactFundingOpens(4.95 gwei);
+    }
+
+    /// Adverse sequence: the creator claims every wei of surplus at normal gas, the five most expensive Shapes are
+    /// drawn, and the restoring upkeep runs in a spike at the cap. The held reserve still funds the replacements and
+    /// the keeper's full reward; afterwards the pool reopens or fails closed, never stuck mid-restoration.
+    function test_maxClaimThenWorstBatchAtCapIsFunded() public {
+        vm.fee(0.08 gwei);
+        vm.txGasPrice(0.13 gwei);
+        uint256 s = balancer.withdrawableSurplus();
+        vm.prank(creator);
+        balancer.claimSurplus(s, creator);
+        assertTrue(balancer.canPurchase(buyer));
+        // planA = 5 x 0.01, 3 x 0.05, 2 x 0.1: force the 2 x 0.1 and 3 x 0.05 Shapes
+        uint256[] memory active = balancer.getActiveIds();
+        uint256[] memory targets = new uint256[](5);
+        uint256 n;
+        for (uint256 d = 2; d >= 1 && n < 5; --d) {
+            for (uint256 i; i < active.length && n < 5; ++i) {
+                (uint8 kind, uint8 dd,,,) = balancer.items(active[i]);
+                if (kind == 2 && dd == d) targets[n++] = active[i];
+            }
+            if (d == 1) break;
+        }
+        assertEq(n, 5);
+        uint256[] memory ids = buy(buyer, 5);
+        for (uint256 k; k < 5; ++k) {
+            (,,,,,, uint256 slot,) = pool.listings(targets[k]);
+            fulfill(ids[k], wordForSlot(slot));
+        }
+        settle();
+        vm.fee(4.95 gwei);
+        vm.txGasPrice(5 gwei);
+        uint256 kBefore = keeper.balance;
+        upkeep();
+        uint16[9] memory have = balancer.getActiveShapes();
+        assertEq(have[0], 5);
+        assertEq(have[1], 3);
+        assertEq(have[2], 2, "worst batch fully restored at the cap");
+        assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
+        uint8 st = balancer.admissionStatus();
+        assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
+    }
+
+    /// Opening capital (requiredReserve with an empty plan) and running reserve (full plan), before and after the
+    /// price-aware keeper allowance, for small, medium and large inventories.
+    function test_reserveSizes() public {
+        uint256[3] memory plansToTest = [plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]), planA, plan([uint256(0), 0, 0, 4, 2, 1, 0, 0, 0])];
+        string[3] memory names = ["small: 10 x 0.01", "medium: 5x0.01 3x0.05 2x0.1", "large: 4x0.5 2x1 1x5"];
+        uint256[2] memory fees = [uint256(0.08 gwei), 4.95 gwei];
+        for (uint256 i; i < 3; ++i) {
+            creator = makeAddr(string.concat("sizeCreator", vm.toString(i)));
+            vm.deal(creator, 100 ether);
+            createBalancer(20 ether);
+            listCurated(9000 + i, i == 2 ? 5 ether : 0.5 ether);
+            uint256[] memory plans = new uint256[](1);
+            plans[0] = plansToTest[i];
+            vm.prank(creator);
+            balancer.configure(PoolBalancer.Config(100 ether, 0, 1500), plans);
+            vm.prank(creator);
+            balancer.open();
+            emit log(names[i]);
+            for (uint256 f; f < 2; ++f) {
+                vm.fee(fees[f]);
+                uint256 empty = balancer.requiredReserve();
+                emit log_named_decimal_uint(string.concat("  opening capital at ", vm.toString(fees[f] / 1e7), "e-2 gwei"), empty, 18);
+            }
+            vm.fee(0.5 gwei);
+            fillUp();
+            for (uint256 f; f < 2; ++f) {
+                vm.fee(fees[f]);
+                emit log_named_decimal_uint(string.concat("  running reserve at ", vm.toString(fees[f] / 1e7), "e-2 gwei"), balancer.requiredReserve(), 18);
+            }
+            vm.fee(0.5 gwei);
+        }
     }
 
     /// F4: whenever upkeep writes a checkpoint, admission still holds after it pays its keeper.

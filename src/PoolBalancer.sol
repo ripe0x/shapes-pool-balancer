@@ -685,9 +685,11 @@ contract PoolBalancer is ReentrancyGuard {
         if (p.activeListingCount() != activeIds.length) return INVENTORY_MISMATCH;
         if (p.totalWeight() != cW + sW || p.weightedBackingTotal() != cWP + sWP) return INVENTORY_MISMATCH;
         if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
+        // Held: the worst batch's replacements and one maximum reward for the upkeep that restores them, at any price
+        // up to the cap. Also cover this call's own reward (paid after the checkpoint, at this transaction's price) so
+        // admission still holds afterwards.
         uint256 reserve = _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
-        // Also cover this call's own keeper reward, paid after the checkpoint, so admission holds afterwards.
-        if (address(this).balance < reserve + MAX_KEEPER_REWARD) return INSUFFICIENT_RESERVE;
+        if (address(this).balance < reserve + _rewardBound(_rewardPrice(tx.gasprice))) return INSUFFICIENT_RESERVE;
         uint64 seq = reconciledSequence;
         uint256 version = p.inventoryVersion();
         checkpoint = Checkpoint({valid: true, sequence: seq, mintFee: uint128(fee), inventoryVersion: version, reserve: reserve});
@@ -848,10 +850,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 measured = gasStart - gasleft();
         if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
         uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
-        uint256 price = tx.gasprice;
-        uint256 cap = block.basefee + KEEPER_PRIORITY_CAP;
-        if (price > cap) price = cap;
-        if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
+        uint256 price = _rewardPrice(tx.gasprice);
         reward = gasUsed * price;
         uint256 intrinsic = intrinsicCredited ? 0 : INTRINSIC_GAS;
         intrinsicCredited = true;
@@ -900,10 +899,23 @@ contract PoolBalancer is ReentrancyGuard {
                 missing += target - have;
             }
         }
-        // Keeper rewards: one per refill step still needed, one held in the checkpoint reserve, and one for the
-        // call that re-checkpoints (_checkpoint).
-        r += (missing + MAX_OPS - 1) / MAX_OPS * MAX_KEEPER_REWARD;
-        r += _batchReserve(plan, fee) + 2 * MAX_KEEPER_REWARD;
+        // Keeper rewards: the maximum held in the checkpoint reserve (any price up to the cap), plus one per refill
+        // step still needed and one for the re-checkpointing call, at the price an honest keeper is paid now.
+        r += ((missing + MAX_OPS - 1) / MAX_OPS + 1) * _rewardBound(_rewardPrice(type(uint256).max));
+        r += _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
+    }
+
+    /// @dev Reimbursed price: min(bid, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE).
+    function _rewardPrice(uint256 bid) internal view returns (uint256 price) {
+        price = block.basefee + KEEPER_PRIORITY_CAP;
+        if (bid < price) price = bid;
+        if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
+    }
+
+    /// @dev Upper bound of one call's reward at `price`: 4/5 gas + max(incentive, 1/5 gas + intrinsic + margin)
+    ///      <= (KEEPER_MAX_GAS + INTRINSIC_GAS) * price + KEEPER_INCENTIVE (KEEPER_MARGIN < KEEPER_INCENTIVE).
+    function _rewardBound(uint256 price) internal pure returns (uint256) {
+        return (KEEPER_MAX_GAS + INTRINSIC_GAS) * price + KEEPER_INCENTIVE;
     }
 
     function getPlans() external view returns (uint256[] memory) {

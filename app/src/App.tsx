@@ -4,7 +4,7 @@ import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parse
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_KEEPER_REWARD, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
+  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, requiredReserveAt, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { chain, ETHERSCAN, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 
@@ -63,6 +63,7 @@ function useBalancer(b?: Address) {
     // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
     const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
+    const baseFee = (await pub.getBlock()).baseFeePerGas ?? 0n;
     const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'),
@@ -80,7 +81,7 @@ function useBalancer(b?: Address) {
       config: { maxDrawPrice: config[0], minCuratedOddsBps: config[1], markupBps: config[2] },
       checkpoint: { valid: checkpoint[0], reserve: checkpoint[4] },
       activeShapes: activeShapes.map(Number),
-      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings, pending,
+      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings, pending, baseFee,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -487,7 +488,7 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
         </div>
       )}
       {restricted && restricted === `${form.collection}:${form.tokenId}` && (
-        <p className="badText">This collection refuses transfers to contracts. A buyer using a contract that never claims its refund could leave this NFT locked in FWA. The risk is highest in pools with few listings.</p>
+        <p className="badText">This collection refuses transfers to contracts. A buyer using a contract that never claims its refund can lock this NFT in FWA escrow permanently. In a pool with few listings, doing so can cost the buyer much less than the NFT is worth. Neither this warning nor the pool prevents it.</p>
       )}
       <p className="muted small">The FWA price is your value × (1 + markup). Odds are inversely proportional to price. Listing, repricing and withdrawing need FWA's purchase queue to be idle and reconciled; run upkeep afterwards to reopen.</p>
       {isCreator && (
@@ -584,9 +585,9 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
                 <Stat label="Draw price" value={`${fmt(preview.drawPrice, 5)} ETH`} />
                 <Stat label="Curated odds" value={pct(preview.curatedOddsBps)} />
                 <Stat label="Shapes backing" value={`${fmt(preview.capital, 3)} ETH`} />
-                <Stat label="Required reserve" value={`${fmt(preview.requiredReserve + MAX_KEEPER_REWARD)} ETH`} />
+                <Stat label="Required reserve (full)" value={`${fmt(requiredReserveAt(chosen[0], chosen[0], d.mintFee, d.baseFee))} ETH`} />
                 <Stat label="Initial mint fees" value={`${fmt(preview.initialMintFees)} ETH`} />
-                <Stat label="Total ETH committed" value={`${fmt(preview.capital + preview.initialMintFees + preview.requiredReserve + MAX_KEEPER_REWARD, 3)} ETH`} />
+                <Stat label="ETH to open (at current gas)" value={`${fmt(requiredReserveAt(chosen[0], Array(9).fill(0), d.mintFee, d.baseFee), 3)} ETH`} />
                 <Stat label="Keeper cost / upkeep" value={`${econ.keeperCostPerUpkeepEth.toFixed(5)} ETH`} />
                 <Stat label="Projected minimum markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '-'} />
                 <Stat label="Expected net / draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />

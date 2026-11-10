@@ -487,8 +487,10 @@ contract BalancerTest is ForkBase {
         uint256 fee = shapes.mintFee();
         uint256 expected = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee) + balancer.MAX_KEEPER_REWARD();
         assertEq(_cpReserve(), expected);
-        assertEq(balancer.requiredReserve(), expected + balancer.MAX_KEEPER_REWARD(), "no deficit while full; one reward for re-checkpointing");
-        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected - balancer.MAX_KEEPER_REWARD());
+        // plus one re-checkpoint reward at the current reimbursable price (basefee 0.5 + 0.05 gwei)
+        uint256 recheckpoint = (3_200_000 + 21_000) * 0.55 gwei + 0.0005 ether;
+        assertEq(balancer.requiredReserve(), expected + recheckpoint, "no deficit while full");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected - recheckpoint);
     }
 
     function test_claimSurplusRespectsReserveWhileOpen() public {

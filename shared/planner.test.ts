@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { batchReserve, economics, enumeratePlans, evaluate, MAX_KEEPER_REWARD, packPlan, unpackPlan } from './planner';
+import { batchReserve, economics, enumeratePlans, evaluate, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
@@ -76,5 +76,12 @@ describe('planner', () => {
     expect(big.minMarkupBps).toBeLessThan(hi.minMarkupBps);
     expect(MAX_KEEPER_REWARD).toBe(16_205_000_000_000_000n); // (3.2M + 21k) * 5 gwei + 0.0001
     expect(lo.outlook).toBe('sustainable');
+  });
+
+  it('required reserve matches the contract for the small pool at 0.08 gwei (fork test_reserveSizes)', () => {
+    const ten = [10, 0, 0, 0, 0, 0, 0, 0, 0];
+    const fee = E / 1000n;
+    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(183_961_190_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(72_123_730_000_000_000n);
   });
 });

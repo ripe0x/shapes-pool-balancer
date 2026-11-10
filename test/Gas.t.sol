@@ -360,6 +360,110 @@ contract GasBench is ForkBase {
         assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0001 ether));
     }
 
+    /*////////////////////// break-even basefee per upkeep type //////////////////////*/
+
+    /// @dev Keeper PnL of one upkeep (reward - billed gas x price) at each basefee, from the same state; logs the
+    ///      highest profitable basefee. Run with --isolate so billed gas includes intrinsic gas and refunds.
+    function _sweep(string memory label) internal returns (uint256 maxProfitable) {
+        uint256[8] memory fees = [uint256(0.08 gwei), 0.5 gwei, 1 gwei, 2 gwei, 2.8 gwei, 3.5 gwei, 4.2 gwei, 4.95 gwei];
+        emit log(label);
+        for (uint256 i; i < fees.length; ++i) {
+            uint256 snap = vm.snapshotState();
+            int256 pnl = _profitAt("", fees[i]);
+            vm.revertToState(snap);
+            if (pnl >= 0) maxProfitable = fees[i];
+        }
+        emit log_named_decimal_uint("  => highest profitable basefee tested (gwei)", maxProfitable, 9);
+    }
+
+    function _drawCurated() internal {
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], 1); // slot 1: the first curated NFT
+        settle();
+    }
+
+    function test_breakEven_replaceOneTypical() public {
+        _configure(plan([uint256(2), 2, 2, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(1);
+        assertEq(_sweep("replace 1 Shape, typical pool (purchase-caused, credit)"), 4.95 gwei);
+    }
+
+    function test_breakEven_replaceOneCheap() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(1);
+        assertGe(_sweep("replace 1 Shape, 0.01-only pool (purchase-caused, credit-limited)"), 2.8 gwei);
+    }
+
+    function test_breakEven_replaceFive() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(5);
+        assertEq(_sweep("replace 5 Shapes, one denomination (purchase-caused, credit)"), 4.95 gwei);
+    }
+
+    function test_breakEven_replaceFiveMixed() public {
+        _configure(plan([uint256(4), 2, 2, 1, 1, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(5);
+        assertEq(_sweep("replace 5 Shapes, four denominations (purchase-caused, credit)"), 4.95 gwei);
+    }
+
+    function test_breakEven_curatedReconcile() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawCurated();
+        assertEq(_sweep("reconcile 1 curated draw (purchase-caused, credit)"), 4.95 gwei);
+    }
+
+    function test_breakEven_fillStep() public {
+        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
+        assertEq(_sweep("fill step, 6 mints (creator-caused, full incentive)"), 4.95 gwei);
+    }
+
+    function test_breakEven_planSwitchCreator() public {
+        _configure(plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        assertEq(_sweep("plan switch, redeem 6 (creator-caused, full incentive)"), 4.95 gwei);
+    }
+
+    function test_breakEven_planSwitchPurchase() public {
+        uint256[] memory plans = new uint256[](2);
+        plans[0] = plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]);
+        plans[1] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
+        // a curated draw breaks plan 0's odds floor, so upkeep redeems down to plan 1 (purchase-caused)
+        configure(1 ether, 30, plans); // odds: plan 0 0.48%, 0.18% without the 0.3 ETH NFT; plan 1 0.36%
+        vm.prank(creator);
+        balancer.open();
+        fillUp();
+        require(balancer.activePlan() == 0, "starts on plan 0");
+        _drawCurated();
+        _sweep("plan switch after a curated draw, reconcile + redeem 6 (purchase-caused, credit)");
+    }
+
+    function test_breakEven_reprice() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
+        assertEq(_sweep("reprice 6 listings (creator-caused, full incentive)"), 4.95 gwei);
+    }
+
+    function test_breakEven_refundOnly() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        buy(buyer, 1);
+        vm.roll(block.number + 40);
+        pool.processAcquisitions(1);
+        _sweep("refund-only batch (gas only, no incentive)");
+    }
+
     function test_gas_createBalancer() public {
         address c = makeAddr("gasCreator");
         vm.prank(c);

@@ -14,6 +14,24 @@ export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
 export const KEEPER_MARGIN = 10n ** 14n;
 /** Reimbursed gas is 4/5 of measured gas (EIP-3529 refund bound); the incentive covers the rest at high gas. */
 export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + 21_000n) * KEEPER_MAX_GAS_PRICE + KEEPER_MARGIN;
+/** Bound on one call's reward at a price (PoolBalancer._rewardBound). */
+export const rewardBound = (price: bigint) => (KEEPER_MAX_GAS + 21_000n) * price + KEEPER_INCENTIVE;
+/** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
+export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
+/** PoolBalancer.requiredReserve() for a plan at a basefee: deficit + refill-step rewards + worst batch + held reward
+ *  + re-checkpoint reward. */
+export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, baseFee: bigint): bigint {
+  let r = 0n;
+  let missing = 0;
+  target.forEach((n, d) => {
+    if (n > have[d]) {
+      r += BigInt(n - have[d]) * (DENOMS[d] + mintFee);
+      missing += n - have[d];
+    }
+  });
+  const steps = BigInt(Math.ceil(missing / 6) + 1);
+  return r + steps * rewardBound(rewardPrice(baseFee)) + batchReserve(target, mintFee) + MAX_KEEPER_REWARD;
+}
 
 const E = 10n ** 18n;
 /** Mainnet Shapes ladder (wei), denomination index 0..8. */
