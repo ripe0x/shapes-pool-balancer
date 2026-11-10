@@ -9,7 +9,8 @@
     "keeper": "tsx keeper/keeper.ts",
     "dev": "vite --config app/vite.config.ts",
     "build:app": "vite build --config app/vite.config.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "keeper:e2e": "tsx keeper/e2e.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
