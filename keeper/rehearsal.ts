@@ -285,6 +285,18 @@ async function main() {
         gasPaid += r.gasUsed * r.effectiveGasPrice;
       }
     }
+    // eth_estimateGas vs billed gas for every keeper send: the gap a keeper's cost estimate adds over real cost.
+    const sent = new Map<string, number>();
+    const gaps: number[] = [];
+    for (const line of keeperLog) {
+      try {
+        const e = JSON.parse(line);
+        if (String(e.msg).startsWith('sent ') && e.gasEstimate) sent.set(e.hash, Number(e.gasEstimate));
+        if (e.msg === 'mined' && sent.has(e.hash)) gaps.push(sent.get(e.hash)! - Number(e.gasUsed));
+      } catch {}
+    }
+    gaps.sort((a, b) => a - b);
+    console.log(JSON.stringify({ estimateMinusBilled: { n: gaps.length, min: gaps[0], median: gaps[Math.floor(gaps.length / 2)], max: gaps.at(-1) } }));
     const recon = { balanceDelta: (kb1 - kb0).toString(), rewards: rewards.toString(), rewardEvents, gasPaid: gasPaid.toString(), keeperTxs, valueIn: valueIn.toString(), valueOut: valueOut.toString() };
     console.log(JSON.stringify(recon));
     assert.equal(kb1 - kb0, rewards - gasPaid + valueIn - valueOut, 'keeper balance reconciles to the wei');

@@ -81,6 +81,81 @@ Keeper PnL at 4.95 gwei basefee with a 0.05 gwei bid (price 5 gwei, the cap), `f
 Accepted costs of this rule: for creator-caused work at high gas the keeper earns the margin plus the call's refunds
 (up to ~0.0013 ETH per call at the cap); the reserve holds larger keeper rewards (below).
 
+## Reimbursement model comparison
+
+Question: does the universal 4/5 haircut plus the price-linked incentive cost creators more than an operation-aware
+model (full reimbursement for mint/list work, which produces ~1% refunds; 4/5 only for refund-heavy redeem and
+reconcile work)?
+
+| Criterion | 4/5 + price-linked incentive (kept) | Operation-aware haircut | Per-operation gas allowances |
+| --- | --- | --- | --- |
+| Reimbursed gas ≤ billed gas, any composition | yes: refunds are capped at 1/5 of the whole transaction's gas | **no**: a keeper can batch a refund-heavy upkeep (pool X redeems) with a mint-heavy one (pool Y) in one transaction; the shared refund lowers Y's billed gas below its 0.99 reimbursement | **no** for the same reason, unless each allowance is ≤ 4/5 of that operation's minimum, which is the 4/5 rule again |
+| Creator ETH per 1-Shape replacement at 0.08 gwei | 687k gas × 0.13 gwei + 0.0005 = 0.000589 ETH | ~843k × 0.13 + 0.0005 = 0.000610 ETH (pays the gas the haircut withholds) | similar to operation-aware |
+| Creator ETH at 4.95 gwei | (m + 21k) × 5 gwei + 0.0001 ≈ 0.0045 ETH | ≈ billed × 5 gwei + 0.0005 ≈ 0.0047 ETH | similar |
+| Keeper profitable to | the 5 gwei cap for every paid type (below) | same, with a fixed incentive | same |
+| Worst-case reward | `MAX_KEEPER_REWARD` 0.016205 ETH | same order | same order |
+| Bytecode / gas overhead | ~60 B, a few hundred gas per call (+ one SSTORE when credit is spent) | segment measurement around mint/list and redeem code paths, more state | per-operation constants that need re-measuring when FWA or Shapes gas changes |
+| Strategic bidding / refund manipulation | bid capped at basefee + 0.05 gwei; reward independent of the caller's own refunds (fork test) | adds a refund-composition surface | adds a calibration surface |
+
+Result: the operation-aware variants are not safer, not simpler and not cheaper for creators. At normal gas the haircut
+is ~0.00002 ETH per upkeep, borne by the keeper and dwarfed by the 0.0005 ETH incentive; above ~0.6 gwei the
+price-linked incentive returns it. The current model is kept.
+
+The FWA edge credit was also compared with a budget based on the Balancer's own markup. A self-dealer always loses the
+FWA edge (paid to FWA whatever the NFT is worth), but recovers the markup if the NFT drawn is worth more than its
+creator-set base, so a markup-based budget is only safe when creators price curated NFTs at or above market. The edge
+credit binds only for pools with draws under ~0.012 ETH and only above ~4.2 gwei (below), so it is kept.
+
+## Break-even basefee per upkeep type
+
+Keeper PnL (reward − billed gas × price) from the same fork state at each basefee, keeper bidding 0.05 gwei priority;
+`forge test --match-path test/Gas.t.sol --match-test breakEven --isolate -vv`. Tested points: 0.08, 0.5, 1, 2, 2.8,
+3.5, 4.2 and 4.95 gwei (the cap).
+
+| Upkeep | Incentive source | Profitable up to (tested) |
+| --- | --- | --- |
+| replace 1 Shape, typical pool | purchase-caused, edge credit | 4.95 gwei (cap) |
+| replace 1 Shape, 0.01-ETH-only pool | purchase-caused, credit-limited | 4.2 gwei |
+| replace 5 Shapes, one or four denominations | purchase-caused, edge credit | 4.95 gwei |
+| reconcile a curated draw | purchase-caused, edge credit | 4.95 gwei |
+| plan switch after a curated draw (reconcile + redeem 6) | purchase-caused, edge credit | 4.95 gwei |
+| fill step (6 mints) | creator-caused, full | 4.95 gwei |
+| plan switch after a configure (redeem 6) | creator-caused, full | 4.95 gwei |
+| reprice 6 listings | creator-caused, full | 4.95 gwei |
+| refund-only batch (no draw) | gas only, no incentive | never: gas outside the measured span exceeds the 21k credit by ~12k gas (−0.00006 ETH at the cap) |
+| re-checkpoint after a creator edit, deposit or mint-fee change | unpaid | never |
+
+Cases no rational independent keeper runs: refund-only batches (rare: VRF expiry) and unpaid re-checkpoints. They
+cannot be batched with paid work in the same pool (a re-checkpoint is what reopens admission, so no purchase-caused
+work exists until it runs). They are covered by the bundled keeper's `MAX_LOSS_WEI` allowance (default 0.0001 ETH:
+re-checkpoints (155k billed gas, `test_gas_unpaidRecheckpoint`) up to ~0.6 gwei, refund-only batches up to the cap) or by the creator. Paying them would create work an
+outsider can trigger (refund-only batches) or a payment for checkpointing that the brief excludes; neither is added.
+
+## Keeper reserve audit
+
+| Component of `requiredReserve()` while open | Protects | Sized at |
+| --- | --- | --- |
+| deficit: missing Shapes × (backing + mint fee) | restoring the active plan | exact |
+| worst batch: largest 5 Shapes × (backing + mint fee) | replacing what an admitted batch can draw | exact |
+| one maximum keeper reward | paying the upkeep that restores an admitted batch, at any price up to the cap | 0.016205 ETH (unchanged: the hard guarantee) |
+| one reward for the call that writes the next checkpoint | admission still holds after that call pays its keeper | **current** reimbursable price (was the 5 gwei maximum) |
+| one reward per remaining 6-Shape refill step | creator-started refills | **current** price (was the maximum) |
+
+Only one batch is ever admitted per checkpoint, so one held maximum reward covers every accepted obligation; the other
+allowances are availability, not obligations. Pricing them at the current gas is safe because each is checked again
+when used: `_checkpoint` requires `reserve + _rewardBound(this transaction's price)` before admitting anything, so a
+spike after a claim can only delay reopening (status 6), never admit an unfunded batch. Fork tests:
+`test_exactRequiredReserveOpens*` (0.08, 0.5, 4.95 gwei), `test_maxClaimThenWorstBatchAtCapIsFunded` (surplus claimed
+at 0.08 gwei, worst 5 Shapes drawn, restored and keeper paid at 4.95 gwei), `test_claimAllSurplusThenRecheckpointStaysOpen`.
+
+| Inventory (`test_reserveSizes`) | Opening capital, before → after (0.08 gwei) | Running reserve, before → after (0.08 gwei) |
+| --- | --- | --- |
+| small: ten 0.01 Shapes | 0.2298 → 0.1840 ETH (−20%) | 0.0874 → 0.0721 ETH (−17%) |
+| medium: 5×0.01, 3×0.05, 2×0.1 | 0.8298 → 0.7840 ETH (−5.5%) | 0.3874 → 0.3721 ETH (−4%) |
+| large: 4×0.5, 2×1, 1×5 | 17.078 → 17.031 ETH (−0.3%) | 8.038 → 8.022 ETH (−0.2%) |
+
+At 4.95 gwei the values equal the previous ones. Opening capital excludes the curated NFTs.
+
 ## Keeper bounds (constants in `PoolBalancer`)
 
 | Constant | Value | Basis |
@@ -92,11 +167,9 @@ Accepted costs of this rule: for creator-caused work at high gas the keeper earn
 | `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
 | `KEEPER_INCENTIVE` | 0.0005 ETH floor | paid only with inventory work; creator-started work in full, purchase-caused work from the edge credit |
 | `KEEPER_MARGIN` | 0.0001 ETH | profit over the measured shortfall when gas is high; covers gas outside the measured span |
-| `MAX_KEEPER_REWARD` | 0.016205 ETH | `(3.2M + 21k) × 5 gwei + 0.0001`; the open reserve holds two plus one per refill step still needed (previously 0.0325 ETH, then 0.00562) |
+| `MAX_KEEPER_REWARD` | 0.016205 ETH | `(3.2M + 21k) × 5 gwei + 0.0001`; the checkpoint holds one; other allowances use the current price (previously 0.0325 ETH, then 0.00562) |
 
-The reserve cost of the 5 gwei cap is idle capital, not spending: a pool with ten 0.01 ETH Shapes needs 0.2298 ETH
-liquid when empty (of which ~0.113 ETH is keeper allowance for 2 refill steps and 2 held rewards) and 0.0874 ETH when
-full.
+The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
 
 Creating work is not profitable for a keeper: work comes from purchases, which cost the buyer FWA's 5% edge plus the
 markup plus the VRF fee on top of the expected value received, and the incentives that batch can fund never exceed

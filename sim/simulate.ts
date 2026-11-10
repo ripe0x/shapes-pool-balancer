@@ -14,23 +14,39 @@ const toEth = (x: bigint) => Number(x) / 1e18;
 const MAX_OPS = 6;
 const MAX_BATCH = 5;
 
-export type Model = 'current' | 'previous' | 'current+spares' | 'fixed 0.0005' | 'fixed 0.0013' | 'cover, 2 gwei cap' | 'cover, 5 gwei cap';
-/** Incentive per paid work call: 'fixed' = `incentive`; 'cover' = max(`incentive`, shortfall bound × price + margin). */
-type IncentiveMode = 'fixed' | 'cover';
-const MARGIN = 10n ** 14n; // 0.0001 ETH
-const CURRENT_REWARD = { priorityCap: GWEI / 20n, maxPrice: 5n * GWEI, gasNum: 4n, gasDen: 5n, overhead: 0n, capIncentive: true, bid: GWEI / 20n, incentive: KEEPER_INCENTIVE, mode: 'cover' as IncentiveMode, maxReward: (3_221_000n * 5n * GWEI) + MARGIN };
-const maxRewardFor = (maxPrice: bigint, mode: IncentiveMode, inc: bigint) =>
-  mode === 'cover' ? 3_221_000n * maxPrice + MARGIN : ((3_200_000n * 4n) / 5n) * maxPrice + inc;
-const MODEL = {
-  current: { ...CURRENT_REWARD, keepSpares: false },
-  'fixed 0.0005': { ...CURRENT_REWARD, keepSpares: false, mode: 'fixed' as IncentiveMode, maxPrice: 2n * GWEI, maxReward: maxRewardFor(2n * GWEI, 'fixed', KEEPER_INCENTIVE) },
-  'fixed 0.0013': { ...CURRENT_REWARD, keepSpares: false, mode: 'fixed' as IncentiveMode, maxPrice: 2n * GWEI, incentive: 13n * 10n ** 14n, maxReward: maxRewardFor(2n * GWEI, 'fixed', 13n * 10n ** 14n) },
-  'cover, 2 gwei cap': { ...CURRENT_REWARD, keepSpares: false, maxPrice: 2n * GWEI, maxReward: maxRewardFor(2n * GWEI, 'cover', KEEPER_INCENTIVE) },
-  'cover, 5 gwei cap': { ...CURRENT_REWARD, keepSpares: false, maxPrice: 5n * GWEI, maxReward: maxRewardFor(5n * GWEI, 'cover', KEEPER_INCENTIVE) },
-  // Isolates the inventory change: current reward rules, previous spare handling.
-  'current+spares': { ...CURRENT_REWARD, keepSpares: true },
-  previous: { priorityCap: 2n * GWEI, maxPrice: 10n * GWEI, gasNum: 1n, gasDen: 1n, overhead: 45_000n, capIncentive: false, bid: GWEI / 10n, incentive: KEEPER_INCENTIVE, mode: 'fixed' as IncentiveMode, maxReward: 3_200_000n * 10n * GWEI + KEEPER_INCENTIVE, keepSpares: true },
-} as const;
+export type Model = string;
+/** 'final': 4/5 gas + (1/5 gas + incentive); 'cover': 4/5 gas + max(incentive, 1/5 gas + 21k + 0.0001);
+ *  'fixed': gas x gasNum/gasDen + incentive; 'fwa': FWA V2 sponsored rule (gas + 55k at min(bid, min(basefee, 5) + 1)
+ *  gwei, gas <= 2.1M, payout <= 0.02 ETH, no incentive). */
+type IncentiveMode = 'fixed' | 'cover' | 'final' | 'fwa';
+const MARGIN = 10n ** 14n; // 0.0001 ETH ('cover' only)
+/** eth_estimateGas exceeds billed gas by this much (median of 25 keeper txs, launch rehearsal); keepers cost with it. */
+const ESTIMATE_GAP = 78_000;
+const finalPolicy = (prio: bigint) => ({ priorityCap: prio, maxPrice: 5n * GWEI, gasNum: 4n, gasDen: 5n, overhead: 0n, capIncentive: true, bid: prio, incentive: KEEPER_INCENTIVE, mode: 'final' as IncentiveMode, maxReward: 3_200_000n * 5n * GWEI + KEEPER_INCENTIVE, keepSpares: false });
+const MODEL: Record<string, ReturnType<typeof finalPolicy>> = {
+  current: finalPolicy(GWEI / 20n),
+  'final, priority 0.05 gwei': finalPolicy(GWEI / 20n),
+  'final, priority 0.1 gwei': finalPolicy(GWEI / 10n),
+  'final, priority 0.25 gwei': finalPolicy(GWEI / 4n),
+  'final, priority 0.5 gwei': finalPolicy(GWEI / 2n),
+  'final, priority 1 gwei': finalPolicy(GWEI),
+  'previous (cover + 0.0001)': { ...finalPolicy(GWEI / 20n), mode: 'cover', maxReward: 3_221_000n * 5n * GWEI + MARGIN },
+  'FWA V2 rule, permissionless': { ...finalPolicy(GWEI), mode: 'fwa', capIncentive: false, maxReward: 2n * 10n ** 16n },
+  'current+spares': { ...finalPolicy(GWEI / 20n), keepSpares: true },
+  'original PR (gas + 45k, 2 gwei priority, 10 gwei cap)': { priorityCap: 2n * GWEI, maxPrice: 10n * GWEI, gasNum: 1n, gasDen: 1n, overhead: 45_000n, capIncentive: false, bid: 2n * GWEI, incentive: KEEPER_INCENTIVE, mode: 'fixed', maxReward: 3_200_000n * 10n * GWEI + KEEPER_INCENTIVE, keepSpares: true },
+};
+MODEL.previous = { ...MODEL['original PR (gas + 45k, 2 gwei priority, 10 gwei cap)'], bid: GWEI / 10n };
+
+/** Priority fee included transactions needed to land in the next block (block p10), 90 days of eth_feeHistory. */
+const PRIO_P10: [number, [number, number, number]][] = [[0.3, [0, 0.001, 0.05]], [1, [0.0001, 0.0212, 0.2255]], [2, [0.0013, 0.1, 0.9947]], [5, [0.01, 0.1375, 1.5438]], [Infinity, [0.0003, 0.15, 1.5616]]];
+function requiredPriority(baseGwei: number, u: number) {
+  const [, [p50, p90, p99]] = PRIO_P10.find(([hi]) => baseGwei < hi)!;
+  const lerp = (a: number, b: number, t: number) => (a <= 0 ? b * t : Math.exp(Math.log(a) + t * (Math.log(b) - Math.log(a))));
+  if (u < 0.5) return p50 * (u / 0.5);
+  if (u < 0.9) return lerp(p50, p90, (u - 0.5) / 0.4);
+  if (u < 0.99) return lerp(p90, p99, (u - 0.9) / 0.09);
+  return p99 * (1 + (u - 0.99) * 100);
+}
 /** Gas outside the measured span; billed gas ≈ measured + this (fork receipts, docs/GAS.md). */
 const OUTSIDE_SPAN = 30_000;
 /** Withdrawing a listing without redeeming (previous model) vs withdraw + redeem (current). */
@@ -125,7 +141,7 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
   const stats = {
     draws: 0, refunds: 0, attempts: 0, rejected: 0, proceeds: 0n, mintFees: 0n, keeperPaid: 0n, keeperRuns: 0,
     redeemGasEth: 0n, redeemedBacking: 0n, backingLost: 0n, curatedLost: 0n, minBalance: balance,
-    minutesClosed: 0, minutesOpenable: 0, closures: 0, upkeepsSkippedForGas: 0, planSwitches: 0, reserveSum: 0n, reserveSamples: 0,
+    minutesClosed: 0, minutesOpenable: 0, closures: 0, upkeepsSkippedForGas: 0, attempts2: 0, sends: 0, inclusionSeconds: 0, keeperProfit: 0n, planSwitches: 0, reserveSum: 0n, reserveSamples: 0,
     endBalance: 0n, endRequired: 0n, endShapes: 0n, closedReasons: {} as Record<string, number>,
   };
 
@@ -189,9 +205,15 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
 
   /** On-chain reward for this model. Purchase-caused work is capped by FWA's edge on the reconciled draws. */
   const rewardFor = (measured: bigint, price: bigint, work: boolean, draws: number) => {
+    if (M.mode === 'fwa') {
+      const g = measured + 55_000n > 2_100_000n ? 2_100_000n : measured + 55_000n;
+      const r = g * price;
+      return r > 2n * 10n ** 16n ? 2n * 10n ** 16n : r;
+    }
     const gasPart = ((measured + M.overhead) * M.gasNum) / M.gasDen * price;
-    if (!work) return gasPart;
-    let inc = M.incentive;
+    const rest = M.mode === 'final' ? (measured - (measured * 4n) / 5n) * price : 0n;
+    if (!work) return gasPart + rest;
+    let inc = M.incentive + rest;
     if (M.mode === 'cover') {
       const cover = (measured - (measured * 4n) / 5n + 21_000n) * price + MARGIN;
       if (cover > inc) inc = cover;
@@ -201,6 +223,17 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
       if (credit < inc) inc = credit;
     }
     return gasPart + inc;
+  };
+
+  const priceFor = (basefee: bigint) => {
+    if (M.mode === 'fwa') {
+      const cap = (basefee > 5n * GWEI ? 5n * GWEI : basefee) + GWEI;
+      return basefee + M.bid > cap ? cap : basefee + M.bid;
+    }
+    let price = basefee + M.bid;
+    if (price > basefee + M.priorityCap) price = basefee + M.priorityCap;
+    if (price > M.maxPrice) price = M.maxPrice;
+    return price;
   };
 
   const upkeep = (t: number, basefee: bigint) => {
@@ -264,9 +297,7 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
     // Keeper reward as computed on chain for this model.
     const work = ops > 0 || draws > 0;
     if (work || reconciledBatch) {
-      let price = basefee + M.bid;
-      if (price > basefee + M.priorityCap) price = basefee + M.priorityCap;
-      if (price > M.maxPrice) price = M.maxPrice;
+      const price = priceFor(basefee);
       const measured = BigInt(gas - OUTSIDE_SPAN);
       let reward = rewardFor(measured, price, work, draws);
       if (reward > balance) reward = balance;
@@ -296,16 +327,24 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
       const spike = r.u() < (sc.gasSpikeProb ?? 0);
       const g = spike ? sc.gasSpikeGwei ?? sc.gasGwei : sc.gasModel === 'lognormal' ? sc.gasGwei * Math.exp((r.u() - 0.5) * 0.8) : measuredBasefee(r.u());
       const basefee = BigInt(Math.round(g * 1e9));
-      // A rational keeper sends only when the estimated reward covers its estimated cost (no subsidy).
+      // A rational keeper sends only when the simulated reward covers its cost estimated with eth_estimateGas
+      // (billed + ESTIMATE_GAP); competing keepers bid the reimbursed priority cap.
       const n = unreconciled.length;
-      const estGas = n ? GAS.upkeepBase + (n - 1) * GAS.perShape : 3_000_000;
-      let price = basefee + M.bid;
-      if (price > basefee + M.priorityCap) price = basefee + M.priorityCap;
-      if (price > M.maxPrice) price = M.maxPrice;
-      const estReward = rewardFor(BigInt(estGas - OUTSIDE_SPAN), price, true, n);
-      const estCost = BigInt(estGas) * (basefee + M.bid);
-      if (basefee + M.bid > M.maxPrice || estReward < estCost) stats.upkeepsSkippedForGas++;
-      else upkeep(t, basefee);
+      const billedGas = n ? GAS.upkeepBase + (n - 1) * GAS.perShape : 3_000_000;
+      const price = priceFor(basefee);
+      const estReward = rewardFor(BigInt(billedGas - OUTSIDE_SPAN), price, true, n);
+      const estCost = BigInt(billedGas + ESTIMATE_GAP) * (basefee + M.bid);
+      stats.attempts2++;
+      if ((M.mode !== 'fwa' && basefee + M.bid > M.maxPrice) || estReward < estCost) stats.upkeepsSkippedForGas++;
+      else {
+        // Inclusion: blocks until the bid clears the priority that block's cheapest included transactions paid.
+        let blocks = 1;
+        while (blocks < 50 && Number(M.bid) / 1e9 < requiredPriority(g, r.u())) blocks++;
+        stats.inclusionSeconds += blocks * 12;
+        stats.sends++;
+        stats.keeperProfit += estReward - BigInt(billedGas) * (basefee + M.bid);
+        upkeep(t, basefee);
+      }
     }
 
     if (!inactive) {
@@ -372,6 +411,9 @@ export function summarize(sc: Scenario, runs: number, model: Model = 'current') 
     surplus: mean((s) => Math.max(0, toEth(s.endBalance - s.endRequired))),
     switches: mean((s) => s.planSwitches),
     skippedForGas: mean((s) => s.upkeepsSkippedForGas),
+    executedPct: mean((s) => (100 * s.sends) / Math.max(1, s.attempts2)),
+    inclusionSec: mean((s) => s.inclusionSeconds / Math.max(1, s.sends)),
+    profitPerUpkeep: mean((s) => toEth(s.keeperProfit) / Math.max(1, s.sends)),
     topClosedReason: topReason,
   };
   const minMarkupBps = economics(sc.plans[0], { curatedBases: sc.curated.map(eth), markupBps: sc.markupBps, edgeBps: 500, mintFee: eth(sc.mintFeeEth) }, { gasPriceGwei: sc.gasGwei + 0.05, drawsPerUpkeep: 1, safety: 0.25 }).minMarkupBps;
@@ -443,17 +485,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const cmp = [cmpHeader, '|' + ' --- |'.repeat(12), ...cmpLines].join('\n');
 
-  const liveScenarios = ['baseline', 'high volume 400/day', 'only 0.01 Shapes', 'plan switching (restock after 12h)', 'large Shapes'];
-  const liveHeader = '| Scenario | Incentive | Keeper spend | Closed % | Upkeeps skipped (unprofitable or above cap) | Draws | Net mean [p5, p95] |';
+  const liveScenarios = ['baseline', 'only 0.01 Shapes', 'high volume 400/day', 'plan switching (restock after 12h)'];
+  const policies = ['original PR (gas + 45k, 2 gwei priority, 10 gwei cap)', 'previous (cover + 0.0001)', 'FWA V2 rule, permissionless', 'final, priority 0.05 gwei', 'final, priority 0.1 gwei', 'final, priority 0.25 gwei', 'final, priority 0.5 gwei', 'final, priority 1 gwei'];
+  const liveHeader = '| Scenario | Policy | Upkeeps executed % | Inclusion delay (s) | Keeper profit / upkeep | Keeper spend (30 d) | Closed % | Draws | Creator net mean [p5, p95] | Max reward | Opening reserve, ten 0.01 Shapes |';
   const liveLines: string[] = [];
   for (const name of liveScenarios) {
     const sc = scenarios.find((x) => x.name === name)!;
-    for (const model of ['fixed 0.0005', 'fixed 0.0013', 'cover, 2 gwei cap', 'cover, 5 gwei cap'] as Model[]) {
+    for (const model of policies) {
       const r = summarize(sc, runs, model);
-      liveLines.push(`| ${name} | ${model} | ${fmt(r.keeper)} | ${fmt(r.closedPct, 2)} | ${fmt(r.skippedForGas, 0)} | ${fmt(r.draws, 0)} | ${fmt(r.netMean)} [${fmt(r.netP5)}, ${fmt(r.netP95)}] |`);
+      const Mx = MODEL[model];
+      const p08 = 8n * 10n ** 7n + Mx.priorityCap; // honest reimbursed price at 0.08 gwei basefee
+      const bound = Mx.mode === 'fwa' ? 2_155_000n * (p08 > GWEI ? GWEI : p08) : 3_200_000n * p08 + Mx.incentive;
+      const opening = 11n * 10n ** 16n + 3n * bound + 55n * 10n ** 15n + Mx.maxReward; // deficit + 3 rewards + batch + held
+      liveLines.push(`| ${name} | ${model} | ${fmt(r.executedPct, 1)} | ${fmt(r.inclusionSec, 1)} | ${fmt(r.profitPerUpkeep, 6)} | ${fmt(r.keeper)} | ${fmt(r.closedPct, 2)} | ${fmt(r.draws, 0)} | ${fmt(r.netMean)} [${fmt(r.netP5)}, ${fmt(r.netP95)}] | ${fmt(toEth(Mx.maxReward), 4)} | ${fmt(toEth(opening), 4)} |`);
     }
   }
-  const live = [liveHeader, '|' + ' --- |'.repeat(7), ...liveLines].join('\n');
+  const live = [liveHeader, '|' + ' --- |'.repeat(11), ...liveLines].join('\n');
   console.log(table + '\n\n' + cmp + '\n\n' + live);
   writeFileSync('docs/simulation-results.md', `# Simulation results
 
@@ -479,16 +526,21 @@ ${table}
 
 ${cmp}
 
-## Keeper liveness: incentive options under measured mainnet gas
+## Keeper reimbursement policies under identical workloads
 
-Basefee is sampled from the mainnet distribution measured over 90 days (median 0.078 gwei, p90 0.33, p99 4.6,
-p99.9 29.9). Keepers are rational: they send only when the estimated reward covers the estimated cost and wait otherwise.
-- fixed 0.0005: 4/5 gas + 0.0005 ETH (design before this pass).
-- fixed 0.0013: 4/5 gas + 0.0013 ETH (covers the worst measured shortfall at 2 gwei).
-- cover: 4/5 gas + max(0.0005 ETH, (measured/5 + 21k) × price + 0.0001 ETH), so paid work stays profitable up to the
-  gas-price cap; purchase-caused incentives still capped by FWA's edge on the draws.
-Gas spikes are drawn independently per keeper check; real spikes cluster (median 1 minute, p90 21–52 minutes, longest
-~1.7 hours above 2 gwei), so pauses in practice are fewer and longer than modelled.
+Basefee is sampled from the measured 90-day mainnet distribution (median 0.078 gwei, p90 0.33, p99 4.6); spikes are
+drawn independently per keeper check, so they are shorter than real ones. Keepers compete: each bids the reimbursed
+priority cap (a keeper is indifferent to bidding up to it, and bidding more wins the race), and costs the work with
+eth_estimateGas, measured at billed gas + 78k. Inclusion: a bid lands in the first block whose cheapest included
+transactions (block p10 priority, 90 days of eth_feeHistory, by basefee regime) paid no more than it. "Keeper profit"
+is reward minus billed gas at the keeper's bid. "Opening reserve" is the creator's ETH to open a pool of ten 0.01 ETH
+Shapes at 0.08 gwei. Policies:
+- original PR: full measured gas + 45k at min(bid, basefee + 2 gwei, 10 gwei) + 0.0005 ETH.
+- previous: 4/5 gas + max(0.0005, (1/5 gas + 21k) x price + 0.0001), price min(bid, basefee + 0.05, 5 gwei).
+- FWA V2 rule: FWA's sponsored-processing formula (gas + 55k at min(bid, min(basefee, 5) + 1 gwei), at most 2.1M gas
+  and 0.02 ETH, no incentive) applied to permissionless upkeep.
+- final: 4/5 gas + (1/5 gas + 0.0005 ETH) at min(bid, basefee + priority cap, 5 gwei), incentive within the edge
+  credit for purchase-caused work; priority caps 0.05 to 1 gwei.
 
 ${live}
 `);

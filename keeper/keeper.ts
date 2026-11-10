@@ -84,7 +84,7 @@ export class Keeper {
   private readonly c: Required<Omit<KeeperConfig, 'log'>> & Pick<KeeperConfig, 'log'>;
 
   constructor(cfg: KeeperConfig) {
-    this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     const transport = http(cfg.rpcUrl);
     this.pub = createPublicClient({ transport }) as PublicClient;
     this.wallet = createWalletClient({ transport, account: cfg.account });
@@ -237,7 +237,7 @@ export class Keeper {
     const hash = await this.send(b, fn, callArgs, nonce, maxFeePerGas, priority, gas);
     this.state.pending[b] = { fn, args, hashes: [hash], nonce, gas: gas.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.state.stats.sent++;
-    this.log(`sent ${fn}`, { balancer: b, hash, nonce, expectedRewardWei: reward.toString() });
+    this.log(`sent ${fn}`, { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
     return true;
   }
 
@@ -369,9 +369,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
-    // Default covers gas-only paid calls at the 5 gwei cap (worst measured loss 0.00006 ETH) and cheap unpaid
-    // re-checkpoints at normal gas; set 0 for a strictly profitable keeper.
-    maxLossWei: BigInt(env('MAX_LOSS_WEI', '100000000000000')),
+    // Default covers gas-only paid calls at the 5 gwei cap (worst measured loss 0.00017 ETH) and unpaid
+    // re-checkpoints (155k gas) up to ~1.2 gwei; set 0 for a strictly profitable keeper.
+    maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
   });
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));
   process.on('SIGINT', () => { k.save(); process.exit(0); });

@@ -163,9 +163,9 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
-    /// Several paid upkeeps in one transaction at the cap: intrinsic gas is credited once, so the keeper earns no
-    /// more than billed gas + refunds + one margin per call (review of 1f352fa).
-    function test_profitAtCap_multiCallCreditsIntrinsicOnce() public {
+    /// Several paid upkeeps in one transaction at the cap: the keeper earns no more than billed gas + refunds + one
+    /// fixed incentive per call (no per-call intrinsic credit exists to multiply).
+    function test_profitAtCap_multiCallBound() public {
         _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
         fillUp();
         uint256[] memory plans = new uint256[](1);
@@ -190,7 +190,7 @@ contract GasBench is ForkBase {
         (bool ok, bytes memory b) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok);
         (, uint64 billed,, int64 refunded,) = abi.decode(b, (uint64, uint64, uint64, int64, uint64));
-        uint256 bound = (uint256(billed) + uint256(int256(refunded))) * 5 gwei + n * 0.0001 ether;
+        uint256 bound = (uint256(billed) + uint256(int256(refunded))) * 5 gwei + n * 0.0005 ether;
         emit log_named_uint("paid calls", n);
         emit log_named_decimal_int("rewards - bound (ETH)", int256(sum) - int256(bound), 18);
         assertGt(n, 1);
@@ -350,14 +350,14 @@ contract GasBench is ForkBase {
         assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
     }
 
-    /// Gas-only path: covered without margin; the residual is gas outside the measured span beyond 21k.
+    /// Gas-only path: measured gas only; the keeper absorbs the gas outside the measured span (~33k).
     function test_profitAtCap_refundOnlyBatch() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         buy(buyer, 1);
         vm.roll(block.number + 40);
         pool.processAcquisitions(1);
-        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0001 ether));
+        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0002 ether));
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/
@@ -462,6 +462,16 @@ contract GasBench is ForkBase {
         vm.roll(block.number + 40);
         pool.processAcquisitions(1);
         _sweep("refund-only batch (gas only, no incentive)");
+    }
+
+    /// Unpaid re-checkpoint after a creator edit: the gas a keeper's loss allowance must cover.
+    function test_gas_unpaidRecheckpoint() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory active = balancer.getActiveIds();
+        vm.prank(creator);
+        balancer.updateCuratedPrice(active[0], 0.31 ether);
+        _upkeep("upkeep: re-checkpoint after a creator edit (unpaid)");
     }
 
     function test_gas_createBalancer() public {

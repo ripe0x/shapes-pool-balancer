@@ -36,7 +36,7 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   and never when the estimate exceeds the 3.2M reimbursable maximum.
 - `MAX_LOSS_WEI` (default 0.0001 ETH) is the subsidy the operator accepts per call. Paid work is profitable up to the
   5 gwei cap by design; gas-only paid calls lose at most ~0.00006 ETH at the cap; unpaid re-checkpoints (after creator
-  edits, deposits or a mint-fee change) cost ~0.2M gas. Set 0 for a strictly profitable keeper.
+  edits, deposits or a mint-fee change) cost ~155k gas, covered up to ~0.6 gwei. Set 0 for a strictly profitable keeper.
 - The keeper also watches `ItemDrawn` events for failed Shape deliveries and calls `recoverRefundedShape` once FWA marks
   them refunded.
 

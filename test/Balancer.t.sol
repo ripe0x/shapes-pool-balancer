@@ -339,19 +339,19 @@ contract BalancerTest is ForkBase {
         vm.fee(0.15 gwei);
         vm.txGasPrice(3 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(stranger);
-        assertEq(reward, gasPaid * 0.2 gwei + 0.0005 ether, "basefee + 0.05 gwei priority cap");
+        assertApproxEqAbs(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0005 ether, 2 * 0.2 gwei, "measured gas at basefee + 0.05 gwei, plus incentive");
 
         // an honest keeper bidding below the cap is reimbursed exactly what it bid
         _drawOneShape();
         vm.txGasPrice(0.17 gwei);
         (reward, gasPaid) = _paidUpkeep(keeper);
-        assertEq(reward, gasPaid * 0.17 gwei + 0.0005 ether);
+        assertApproxEqAbs(reward, (gasPaid + gasPaid / 4) * 0.17 gwei + 0.0005 ether, 2 * 0.17 gwei);
 
         // absurd bids are capped the same way
         _drawOneShape();
         vm.txGasPrice(5_000 gwei);
         (reward, gasPaid) = _paidUpkeep(stranger);
-        assertEq(reward, gasPaid * 0.2 gwei + 0.0005 ether);
+        assertApproxEqAbs(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0005 ether, 2 * 0.2 gwei);
     }
 
     function test_basefeeSpikeCappedAtMaxGasPrice() public {
@@ -360,8 +360,9 @@ contract BalancerTest is ForkBase {
         vm.txGasPrice(80 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
         // price capped at 5 gwei; at that price the incentive covers the 4/5 shortfall plus a 0.0001 ETH margin
-        assertGe(reward, gasPaid * 5 gwei + 0.0005 ether, "absolute gas-price cap, liveness incentive");
-        assertLe(reward, gasPaid * 5 gwei + (gasPaid / 4 + 1 + 21_000) * 5 gwei + 0.0001 ether);
+        // price capped at 5 gwei; the incentive part is limited by the batch's edge credit
+        assertGe(reward, gasPaid * 5 gwei, "refund-safe gas at the capped price");
+        assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0005 ether, "never above measured gas x cap + incentive");
         assertLe(reward, balancer.MAX_KEEPER_REWARD());
     }
 
@@ -488,7 +489,7 @@ contract BalancerTest is ForkBase {
         uint256 expected = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee) + balancer.MAX_KEEPER_REWARD();
         assertEq(_cpReserve(), expected);
         // plus one re-checkpoint reward at the current reimbursable price (basefee 0.5 + 0.05 gwei)
-        uint256 recheckpoint = (3_200_000 + 21_000) * 0.55 gwei + 0.0005 ether;
+        uint256 recheckpoint = 3_200_000 * 0.55 gwei + 0.0005 ether;
         assertEq(balancer.requiredReserve(), expected + recheckpoint, "no deficit while full");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected - recheckpoint);
     }

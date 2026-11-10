@@ -271,7 +271,7 @@ contract HardeningTest is ForkBase {
         uint256 fee = shapes.mintFee();
         uint256 batch = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee);
         // one maximum reward held for the restoring upkeep, one re-checkpoint reward at the current price (0.55 gwei)
-        uint256 recheckpoint = (3_200_000 + 21_000) * 0.55 gwei + 0.0005 ether;
+        uint256 recheckpoint = 3_200_000 * 0.55 gwei + 0.0005 ether;
         assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint);
         // a drawn 0.1 Shape is a liability until replaced: deficit + worst batch + one keeper reward
         _drawListing(_lastShape());
@@ -289,7 +289,7 @@ contract HardeningTest is ForkBase {
         balancer.claimSurplus(s, creator);
         assertEq(address(balancer).balance, balancer.requiredReserve());
         assertTrue(balancer.canPurchase(buyer));
-        assertEq(balancer.MAX_KEEPER_REWARD(), (3_200_000 + 21_000) * 5 gwei + 0.0001 ether);
+        assertEq(balancer.MAX_KEEPER_REWARD(), 3_200_000 * 5 gwei + 0.0005 ether);
     }
 
     /*////////////////////////////// FWA pool page (ERC-1271) //////////////////////////////*/
@@ -502,7 +502,7 @@ contract HardeningTest is ForkBase {
         balancer.open();
         // creator-started fill: full incentive
         (uint256 reward, uint256 gasPaid) = _paid();
-        assertEq(reward - gasPaid * 0.55 gwei, 0.0005 ether, "creator work pays the full incentive");
+        assertApproxEqAbs(reward - gasPaid * 0.55 gwei, (gasPaid / 4) * 0.55 gwei + 0.0005 ether, 2 * 0.55 gwei, "creator work pays the full incentive");
         fillUp();
         assertTrue(balancer.canPurchase(buyer));
         assertEq(balancer.activePlan(), 0);

@@ -44,29 +44,24 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
 
-    // Keeper compensation (see docs/GAS.md; collection-games#23 for the exploit these bounds prevent):
-    // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE): an overbid is the
-    //   keeper's own cost;
-    // - gas = 4/5 of the measured span, capped: EIP-3529 refunds cut the billed gas by at most 1/5 of the gas
-    //   used and in-transaction measurement cannot see them, so 4/5 of any part of the transaction is always
-    //   billed. No intrinsic-gas credit: a contract making several paid calls in one transaction pays it once.
-    // - incentive (KEEPER_INCENTIVE per call with inventory work) is paid from one of two sources. Work a creator
-    //   action started (configure, open, curated edits, unwind) pays it in full until the next checkpoint; these
-    //   actions all close admission first, so no purchase happens while it applies. Work purchases caused is paid from `incentiveCredit`: FWA's edge on the draws of the last
-    //   reconciled batch, reset by each batch and spent by every call that follows it. Buying one's own draws
-    //   therefore earns at most the edge those draws paid to FWA.
+    // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
+    // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE). Upkeep is permissionless, so
+    //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
+    // - gas = 4/5 of the measured span (capped): EIP-3529 refunds cut billed gas by at most 1/5 of the gas used,
+    //   so this part never exceeds the gas billed, however calls are combined.
+    // - incentive for inventory work = the other 1/5 at that price + KEEPER_INCENTIVE, which covers the keeper's
+    //   gas outside the measured span and the margin by which eth_estimateGas exceeds the measured span (~70-80k
+    //   gas measured), so a keeper costing work with its estimate profits up to the price cap. Work a creator
+    //   action started (configure, opening a closed pool, curated edits, unwind) pays it in full until the next
+    //   checkpoint; those actions close admission first. Work purchases caused is paid from `incentiveCredit`:
+    //   FWA's edge on the delivered draws of the last reconciled batch, reset by each batch and spent by every
+    //   call after it, so buying one's own draws earns at most the edge those draws paid to FWA.
+    // - gas-only paid calls (a reconciled batch with no draws) get both fifths, no incentive.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
     uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
-    // Liveness: the 4/5 rule leaves a keeper short by at most measured/5 + intrinsic gas. When that shortfall at the
-    // reimbursed price plus KEEPER_MARGIN exceeds KEEPER_INCENTIVE (above ~0.6 gwei for a 3M-gas call), the incentive
-    // becomes that amount, so paid work stays profitable up to KEEPER_MAX_GAS_PRICE. Gas-only paid calls get the
-    // shortfall without margin. Incentives for purchase-caused work stay within the edge credit.
-    uint256 internal constant KEEPER_MARGIN = 0.0001 ether;
-    uint256 internal constant INTRINSIC_GAS = 21_000;
-    uint256 public constant MAX_KEEPER_REWARD =
-        (KEEPER_MAX_GAS + INTRINSIC_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_MARGIN;
+    uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
     /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
@@ -152,8 +147,6 @@ contract PoolBalancer is ReentrancyGuard {
     bool public creatorWork;
     /// @dev FWA edge paid by the draws of the last reconciled batch, not yet spent on incentives.
     uint128 public incentiveCredit;
-    /// @dev Intrinsic gas is paid once per transaction; credit it to the first paid call only.
-    bool transient intrinsicCredited;
 
     Checkpoint public checkpoint;
     uint64 public reconciledSequence;
@@ -620,7 +613,8 @@ contract PoolBalancer is ReentrancyGuard {
         for (uint64 s = reconciledSequence + 1; s <= last; ++s) {
             (,, uint256 escrowed, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(s));
             if (lid != 0) {
-                edgePaid += escrowed; // fee incl. edge; converted below
+                // Only delivered draws: a failed delivery's fee can be refunded in full, edge included.
+                if (aStatus == A_FULFILLED) edgePaid += escrowed; // fee incl. edge; converted below
                 _onDrawn(lid, aStatus == A_FULFILLED);
                 ++ops;
             }
@@ -852,12 +846,9 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
         uint256 price = _rewardPrice(tx.gasprice);
         reward = gasUsed * price;
-        uint256 intrinsic = intrinsicCredited ? 0 : INTRINSIC_GAS;
-        intrinsicCredited = true;
-        uint256 shortfall = (measured - gasUsed + intrinsic) * price;
+        uint256 rest = (measured - gasUsed) * price; // the fifth the refund-safe part withholds
         if (incentive) {
-            uint256 inc = shortfall + KEEPER_MARGIN;
-            if (inc < KEEPER_INCENTIVE) inc = KEEPER_INCENTIVE;
+            uint256 inc = rest + KEEPER_INCENTIVE;
             if (!creatorWork) {
                 uint256 credit = incentiveCredit;
                 if (credit < inc) inc = credit;
@@ -865,7 +856,7 @@ contract PoolBalancer is ReentrancyGuard {
             }
             reward += inc;
         } else {
-            reward += shortfall;
+            reward += rest;
         }
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
@@ -912,10 +903,9 @@ contract PoolBalancer is ReentrancyGuard {
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
     }
 
-    /// @dev Upper bound of one call's reward at `price`: 4/5 gas + max(incentive, 1/5 gas + intrinsic + margin)
-    ///      <= (KEEPER_MAX_GAS + INTRINSIC_GAS) * price + KEEPER_INCENTIVE (KEEPER_MARGIN < KEEPER_INCENTIVE).
+    /// @dev Upper bound of one call's reward at `price`: measured gas (<= KEEPER_MAX_GAS) x price + KEEPER_INCENTIVE.
     function _rewardBound(uint256 price) internal pure returns (uint256) {
-        return (KEEPER_MAX_GAS + INTRINSIC_GAS) * price + KEEPER_INCENTIVE;
+        return KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
     }
 
     function getPlans() external view returns (uint256[] memory) {

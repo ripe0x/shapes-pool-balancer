@@ -3,25 +3,24 @@ import { decide, KEEPER_MAX_GAS } from './keeper';
 
 const GWEI = 10n ** 9n;
 /**
- * PoolBalancer._payKeeper: 4/5 of measured gas at price = min(bid, basefee + 0.05 gwei, 5 gwei), plus an incentive
- * of max(0.0005 ETH, (measured/5 + 21k) * price + 0.0001 ETH) for work, capped by `credit` for purchase-caused work.
+ * PoolBalancer._payKeeper: price = min(bid, basefee + 0.05 gwei, 5 gwei); 4/5 of measured gas, plus for work the
+ * other 1/5 + 0.0005 ETH (capped by `credit` for purchase-caused work); gas-only calls get both fifths.
  */
 const reward = (measured: bigint, baseFee: bigint, bid: bigint, incentive: boolean, credit = 10n ** 18n) => {
   let price = bid;
   if (price > baseFee + GWEI / 20n) price = baseFee + GWEI / 20n;
   if (price > 5n * GWEI) price = 5n * GWEI;
   const gasPart = ((measured * 4n) / 5n) * price;
-  const shortfall = (measured - (measured * 4n) / 5n + 21_000n) * price;
-  if (!incentive) return gasPart + shortfall;
-  let inc = shortfall + 10n ** 14n;
-  if (inc < 5n * 10n ** 14n) inc = 5n * 10n ** 14n;
+  const rest = (measured - (measured * 4n) / 5n) * price;
+  if (!incentive) return gasPart + rest;
+  const inc = rest + 5n * 10n ** 14n;
   return gasPart + (inc < credit ? inc : credit);
 };
 
 describe('keeper profitability policy across gas prices', () => {
-  // A 1-Shape replacement: ~820k measured, ~843k billed (docs/GAS.md); the keeper bids 0.05 gwei priority.
+  // A 1-Shape replacement, costed the way a keeper must: eth_estimateGas, measured 70-80k above the measured span.
   const measured = 820_000n;
-  const billed = 843_000n;
+  const billed = 900_000n;
   for (const baseGwei of [0.05, 0.2, 1, 2, 4.9]) {
     it(`replacement upkeep is worth sending at ${baseGwei} gwei basefee`, () => {
       const baseFee = BigInt(Math.round(baseGwei * 1e9));
@@ -55,9 +54,9 @@ describe('keeper profitability policy across gas prices', () => {
     const baseFee = 4.95e9;
     const prio = GWEI / 20n;
     const bf = BigInt(baseFee);
-    const r = reward(170_000n, bf, bf + prio, false); // refund-only batch: ~170k measured, ~195k billed
+    const r = reward(160_000n, bf, bf + prio, false); // refund-only batch: ~160k measured, ~195k billed
     expect(decide({ gasEstimate: 195_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
-    expect(decide({ gasEstimate: 195_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 10n ** 14n }).send).toBe(true);
+    expect(decide({ gasEstimate: 195_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 2n * 10n ** 14n }).send).toBe(true);
   });
 
   it('never sends a call estimated above the reimbursable maximum', () => {

@@ -11,11 +11,10 @@ export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
 export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
 export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
-export const KEEPER_MARGIN = 10n ** 14n;
-/** Reimbursed gas is 4/5 of measured gas (EIP-3529 refund bound); the incentive covers the rest at high gas. */
-export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + 21_000n) * KEEPER_MAX_GAS_PRICE + KEEPER_MARGIN;
+/** Reward = 4/5 measured gas + (1/5 measured gas + 0.0005 ETH incentive), at min(bid, basefee + 0.05 gwei, 5 gwei). */
+export const MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 /** Bound on one call's reward at a price (PoolBalancer._rewardBound). */
-export const rewardBound = (price: bigint) => (KEEPER_MAX_GAS + 21_000n) * price + KEEPER_INCENTIVE;
+export const rewardBound = (price: bigint) => KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
 /** PoolBalancer.requiredReserve() for a plan at a basefee: deficit + refill-step rewards + worst batch + held reward
@@ -214,10 +213,9 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const gp = a.gasPriceGwei * 1e-9;
   const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
   const perShapeCost = toEth(inputs.mintFee) + GAS.perShape * gp;
-  // Incentive: max(0.0005, 4/5 shortfall at this price + margin), capped by FWA's edge on the draw.
+  // Incentive: the withheld 1/5 of gas + 0.0005 ETH, capped by FWA's edge on the draw.
   const edgePerDraw = toEth((ev.drawPrice * BigInt(inputs.edgeBps)) / (BPS + BigInt(inputs.edgeBps)));
-  const cover = (GAS.upkeepBase / 5 + 21_000) * gp + toEth(KEEPER_MARGIN);
-  const incentive = Math.min(Math.max(toEth(KEEPER_INCENTIVE), cover), edgePerDraw);
+  const incentive = Math.min((GAS.upkeepBase / 5) * gp + toEth(KEEPER_INCENTIVE), edgePerDraw);
   const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + incentive;
   const overhead = pShape * perShapeCost + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);

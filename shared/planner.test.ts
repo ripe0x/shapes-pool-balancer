@@ -74,14 +74,14 @@ describe('planner', () => {
     expect(hi.minMarkupBps).toBeGreaterThan(lo.minMarkupBps);
     const big = economics([0, 0, 0, 0, 3, 1, 0, 0, 0], { ...inputs, curatedBases: [20n * E] }, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
     expect(big.minMarkupBps).toBeLessThan(hi.minMarkupBps);
-    expect(MAX_KEEPER_REWARD).toBe(16_205_000_000_000_000n); // (3.2M + 21k) * 5 gwei + 0.0001
+    expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // 3.2M * 5 gwei + 0.0005
     expect(lo.outlook).toBe('sustainable');
   });
 
   it('required reserve matches the contract for the small pool at 0.08 gwei (fork test_reserveSizes)', () => {
     const ten = [10, 0, 0, 0, 0, 0, 0, 0, 0];
     const fee = E / 1000n;
-    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(183_961_190_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(72_123_730_000_000_000n);
+    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(184_248_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(72_416_000_000_000_000n);
   });
 });

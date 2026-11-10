@@ -79,9 +79,12 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 
 - cost to restore the active plan from the Shapes currently listed (backing + current mint fee each), plus
 - the worst 5 Shape replacements from a full plan (largest denominations first, backing + mint fee), plus
-- one maximum keeper reward (`(3.2M + 21k) × 5 gwei + 0.0001 ETH = 0.016205 ETH`) held in the checkpoint, one for
-  the call that writes the next checkpoint, and one per 6-Shape refill step still needed. Funding exactly
-  `requiredReserve()` opens a new pool (fork test).
+- one maximum keeper reward (`(3.2M + 21k) × 5 gwei + 0.0001 ETH = 0.016205 ETH`) held for the upkeep that restores
+  an admitted batch, at any price up to the cap, plus
+- one reward for the call that writes the next checkpoint and one per 6-Shape refill step still needed, each
+  `(3.2M + 21k) × current reimbursable price + 0.0005 ETH`. `_checkpoint` re-checks this at its own transaction's price,
+  so a later gas spike only delays reopening. Funding exactly `requiredReserve()` opens a new pool (fork tests at 0.08,
+  0.5 and 4.95 gwei).
 
 ETH inside Shapes and unsettled draw payments are never counted as liquid. The Balancer keeps no managed Shapes
 between transactions, so there is no spare credit (a Shape delivered to it because a buyer named it as purchaser is
