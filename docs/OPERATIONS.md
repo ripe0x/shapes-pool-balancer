@@ -42,9 +42,10 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json npm run
 ## Failed NFT delivery
 
 FWA quarantines a drawn NFT that cannot be transferred (status `DeliveryPending`). Anyone may retry via FWA
-`retryNFTDelivery(listingId)` for 7 days. After that the purchaser may `refundFailedDelivery`. Then either upkeep recovers
-the NFT into the Balancer (curated NFTs are held; Shapes become spares) or the creator calls
-`recoverCuratedNFT(listingId, to)`.
+`retryNFTDelivery(listingId)` for 7 days. After that the purchaser may `refundFailedDelivery`. Refunded Shapes are recovered into spares by
+upkeep; a refunded curated NFT is recovered by the creator with `recoverCuratedNFT(listingId, to)` (upkeep never calls
+curated collections, so a hostile collection cannot tax keepers). If the collection blocks the transfer, retry later. If
+the purchaser never refunds, the NFT stays in FWA's delivery escrow (FWA behavior).
 
 ## Shapes mint fee change
 
@@ -62,7 +63,7 @@ a reserve funded at the new fee. Planner and simulation show when a fee makes th
 1. `close()`.
 2. Wait for status 3 to clear (FWA batch settled), run upkeep once to reconcile.
 3. `unwind(20)` until no Shapes are listed (redeems Shapes for exact backing).
-4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverCuratedNFT` for any held or refunded one.
+4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverCuratedNFT` for any refunded one.
 5. `claimSurplus(balance, to)`; while closed the full balance is claimable.
 6. Optional and permanent: `retire()`.
 

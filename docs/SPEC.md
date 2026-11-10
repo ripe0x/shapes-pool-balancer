@@ -89,8 +89,8 @@ would change nothing):
 
 1. reconcile every FWA sequence issued since the last reconciliation (≤ 5): drawn listings leave the tracked set; failed
    deliveries are tracked as pending;
-2. pending deliveries: settled → forgotten; refunded → `recoverRefundedNFT` (Shapes become spares, curated NFTs are held
-   for the creator);
+2. pending deliveries: settled → forgotten; refunded Shapes → `recoverRefundedNFT` into spares. Refunded curated NFTs are
+   left for the creator (`recoverCuratedNFT`): upkeep never calls a curated collection;
 3. collect FWA owner proceeds;
 4. if open: reprice (≤ 6 listings per call), select a feasible plan, rebalance (≤ 6 Shape operations per call), verify FWA
    totals, checkpoint if funded.
@@ -104,8 +104,8 @@ nothing. The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 `listCurated` / `listCuratedBatch` pull from the creator (approve the Balancer first) and list on FWA. Shapes cannot be
 listed as curated. All curated edits require FWA idle and reconciled (`PoolBusy` otherwise) and invalidate the checkpoint.
-If FWA cannot deliver a drawn NFT, the purchaser may refund after FWA's 7-day window; the NFT is then recovered by upkeep
-or directly by the creator (`recoverCuratedNFT`).
+If FWA cannot deliver a drawn NFT, the purchaser may refund after FWA's 7-day window; the creator then recovers it with
+`recoverCuratedNFT`.
 
 ## Lifecycle
 
