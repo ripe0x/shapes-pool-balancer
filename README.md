@@ -12,6 +12,7 @@ draws from the Balancer's ETH and settled proceeds. Surplus above the funded res
 | Doc | Contents |
 | --- | --- |
 | [docs/SPEC.md](docs/SPEC.md) | Functional specification and design decisions |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Decisions made during the build that the owner should review |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security review report and residual risks |
 | [docs/GAS.md](docs/GAS.md) | Gas benchmarks and keeper reward bounds |
 | [docs/simulation-results.md](docs/simulation-results.md) | Economic simulation results |
