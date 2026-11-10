@@ -94,4 +94,12 @@ contract GasBench is ForkBase {
         pool.acquireBatch{value: total}(buyer, 5, 0, 0, 10_000, v, block.timestamp + 1);
         emit log_named_uint("FWA acquireBatch(5) incl. operator check", g - gasleft());
     }
+
+    function test_gas_createBalancer() public {
+        address c = makeAddr("gasCreator");
+        vm.prank(c);
+        uint256 g = gasleft();
+        factory.createBalancer(bytes32(0));
+        emit log_named_uint("createBalancer (clone + FWA pool + operator + approval)", g - gasleft());
+    }
 }

@@ -12,8 +12,12 @@ thousand gas).
 | `performUpkeep`: reconcile a refund-only batch + checkpoint | 224,992 |
 | `performUpkeep`: fill step, 6 Shapes (mint + list) | 2.9M–3.05M |
 | FWA `acquireBatch(5)` including the Balancer operator check | 1,673,764 |
+| `BalancerFactory.createBalancer` (clone, FWA pool, operator, Shapes approval) | 781,269 |
+| Deploy `PoolBalancer` implementation / `BalancerFactory` (fork rehearsal) | ~4.96M / ~0.32M |
 | `canPurchase` (pranked as the pool) | < 100,000 (asserted); ~30k |
 | Shapes `mintBatch` (mainnet estimate) | 162,820 first + ~75,600 each additional |
+
+Upkeep figures were measured before the review repairs (`ac99894`), which add about 2k gas per upkeep (re-measured: 875,550 for one replacement).
 
 FWA listing dominates: each listing writes the listing struct and updates a 32-level segment tree.
 
