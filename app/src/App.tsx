@@ -347,7 +347,7 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
   const [reprice, setReprice] = useState<Record<string, string>>({});
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
   const curated = d.listings.filter((l) => l.kind === 1 && l.state === 1);
-  const STATE = ['', 'Listed', 'Drawn, delivery pending', 'Recovered, held'];
+  const STATE = ['', 'Listed', 'Drawn; FWA delivery pending (recover after the buyer refunds)'];
   return (
     <div className="card">
       <h2>Curated NFTs</h2>

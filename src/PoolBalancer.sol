@@ -59,7 +59,6 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant SHAPE = 2;
     uint8 internal constant ACTIVE = 1;
     uint8 internal constant PENDING = 2; // drawn, FWA delivery not yet completed
-    uint8 internal constant HELD = 3; // curated NFT recovered into this contract
 
     // Admission status codes returned by `admissionStatus`. Zero means purchases are admitted.
     uint8 internal constant OK = 0;
@@ -362,19 +361,16 @@ contract PoolBalancer is ReentrancyGuard {
         emit CuratedWithdrawn(listingId, to);
     }
 
-    /// @notice Recover a curated NFT whose FWA delivery was refunded (or already recovered by upkeep).
+    /// @notice Recover a curated NFT whose FWA delivery was refunded. Upkeep never touches curated
+    ///         collections for this, so a hostile collection cannot burn keeper gas or block upkeep.
     function recoverCuratedNFT(uint256 listingId, address to) external onlyCreator nonReentrant {
         Item storage it = items[listingId];
         if (it.kind != CURATED || to == address(0)) revert InvalidItem();
         (address collection,,, uint256 tokenId,,,, uint8 status) = pool.listings(listingId);
-        if (it.state == PENDING) {
-            if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
-            _removePending(listingId);
-            pool.recoverRefundedNFT(listingId);
-        } else if (it.state != HELD) {
-            revert InvalidItem();
-        }
+        if (it.state != PENDING || status != L_DELIVERY_REFUNDED) revert InvalidItem();
+        _removePending(listingId);
         delete items[listingId];
+        pool.recoverRefundedNFT(listingId);
         IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
         emit CuratedRecovered(listingId, to);
     }
@@ -529,7 +525,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (enabled && !checkpoint.valid) return true;
         for (uint256 i; i < pendingIds.length; ++i) {
             (,,,,,,, uint8 s) = p.listings(pendingIds[i]);
-            if (s == L_SETTLED || s == L_DELIVERY_REFUNDED) return true;
+            if (s == L_SETTLED || (s == L_DELIVERY_REFUNDED && items[pendingIds[i]].kind == SHAPE)) return true;
         }
         return false;
     }
@@ -561,21 +557,17 @@ contract PoolBalancer is ReentrancyGuard {
                 _removePending(lid);
                 delete items[lid];
                 emit DeliveryResolved(lid, true);
-            } else if (lStatus == L_DELIVERY_REFUNDED) {
-                // Isolated: a collection that now blocks transfers must not brick upkeep. The item stays
-                // pending; the creator can retry with `recoverCuratedNFT`.
-                try p.recoverRefundedNFT(lid) {
-                    _removePending(lid);
-                    Item storage it = items[lid];
-                    if (it.kind == SHAPE) {
-                        spareIds[it.denom].push(tokenId);
-                        delete items[lid];
-                    } else {
-                        it.state = HELD;
-                    }
-                    ++ops;
-                    emit DeliveryResolved(lid, false);
-                } catch {}
+            } else if (lStatus == L_DELIVERY_REFUNDED && items[lid].kind == SHAPE) {
+                // Only Shapes are recovered here: their transfer is trusted and hook-free. A refunded curated
+                // NFT calls an untrusted collection, which could revert or burn the keeper's gas forever, so
+                // it stays pending for the creator's `recoverCuratedNFT`.
+                uint8 d = items[lid].denom;
+                _removePending(lid);
+                p.recoverRefundedNFT(lid);
+                spareIds[d].push(tokenId);
+                delete items[lid];
+                ++ops;
+                emit DeliveryResolved(lid, false);
             }
         }
 

@@ -98,3 +98,18 @@ contract AcquiringNFT is MockNFT {
 
     receive() external payable {}
 }
+
+/// @dev Once armed, transfers burn all forwarded gas and revert (gas-griefing collection).
+contract GasBurnNFT is MockNFT {
+    bool public burn;
+
+    function setBurn(bool b) external {
+        burn = b;
+    }
+
+    function _beforeTokenTransfer(address from, address, uint256) internal view override {
+        if (burn && from != address(0)) {
+            while (true) {}
+        }
+    }
+}

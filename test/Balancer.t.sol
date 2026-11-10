@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
-import {FreezableNFT, ReentrantNFT, LyingNFT, RejectingKeeper, AcquiringNFT} from "./utils/Mocks.sol";
+import {FreezableNFT, ReentrantNFT, LyingNFT, RejectingKeeper, AcquiringNFT, GasBurnNFT} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {LibString} from "solady/utils/LibString.sol";
 
@@ -245,19 +245,12 @@ contract BalancerTest is ForkBase {
         pool.refundFailedDelivery(lid);
         frozen.setFrozen(false);
 
-        uint256 kBefore = keeper.balance;
-        assertTrue(balancer.needsUpkeep());
-        // upkeep recovers the refunded NFT into the Balancer (paid work)
-        vm.prank(keeper, keeper);
-        balancer.performUpkeep();
-        assertGt(keeper.balance, kBefore);
-        assertEq(frozen.ownerOf(9), address(balancer));
-        (, , state,,) = balancer.items(lid);
-        assertEq(state, 3, "HELD");
-
+        // upkeep never calls the curated collection; the creator recovers it directly
+        assertFalse(balancer.needsUpkeep(), "refunded curated item is not keeper work");
         vm.prank(creator);
         balancer.recoverCuratedNFT(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
+        assertEq(balancer.getPendingIds().length, 0);
     }
 
     function test_creatorRecoversRefundedDirectly() public {
@@ -622,11 +615,8 @@ contract BalancerTest is ForkBase {
         vm.prank(creator);
         vm.expectRevert();
         balancer.recoverCuratedNFT(lid, creator);
-        // once transferable, upkeep recovers it and the creator withdraws it
+        // once transferable, the creator recovers it
         frozen.setFrozen(false);
-        upkeep();
-        (,, uint8 state,,) = balancer.items(lid);
-        assertEq(state, 3, "HELD");
         vm.prank(creator);
         balancer.recoverCuratedNFT(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
@@ -698,5 +688,34 @@ contract BalancerTest is ForkBase {
         }
         // 30 listed 0.01 Shapes plus the spares left by the plan change (3 x 0.05, 2 x 0.1)
         assertEq(address(balancer).balance, before + 30 * 0.01 ether + 0.35 ether, "all backing redeemed");
+    }
+
+    /// Repair review (Medium): a gas-burning refunded collection must not make upkeep expensive.
+    function test_gasGriefingCollectionCannotTaxUpkeep() public {
+        GasBurnNFT evil = new GasBurnNFT();
+        evil.mint(creator, 1);
+        vm.startPrank(creator);
+        evil.approve(address(balancer), 1);
+        uint256 lid = balancer.listCurated(address(evil), 1, 0.3 ether);
+        vm.stopPrank();
+        upkeep();
+        evil.setBurn(true);
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        upkeep();
+        vm.warp(block.timestamp + 7 days + 1);
+        vm.prank(buyer);
+        pool.refundFailedDelivery(lid);
+        assertFalse(balancer.needsUpkeep(), "hint matches: nothing for keepers");
+        vm.prank(keeper);
+        vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
+        balancer.performUpkeep();
+        _drawOneShape();
+        uint256 g = gasleft();
+        upkeep();
+        assertLt(g - gasleft(), 1_500_000, "upkeep never forwards gas to the curated collection");
+        assertTrue(balancer.canPurchase(buyer));
     }
 }
