@@ -16,3 +16,5 @@ keeper/state*.json
 *.pem
 .DS_Store
 deployments/31337.json
+.claude/
+app/dist/

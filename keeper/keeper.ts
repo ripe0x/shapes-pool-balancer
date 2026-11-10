@@ -29,7 +29,7 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { hashes: Hash[]; nonce: number; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { hashes: Hash[]; nonce: number; gas: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State { lastScanned: string; balancers: Address[]; pending: Record<string, Pending>; stats: { sent: number; mined: number; reverted: number; replaced: number } }
 
 export class Keeper {
@@ -137,17 +137,20 @@ export class Keeper {
       return;
     }
     const maxFeePerGas = baseFee * 2n + priority > cap ? cap : baseFee * 2n + priority;
+    // Shapes mint gas varies with the block seed: send with 30% headroom over the estimate.
+    const est = await this.pub.estimateContractGas({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: this.address });
+    const gas = (est * 13n) / 10n;
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
-    const hash = await this.send(b, nonce, maxFeePerGas, priority);
-    this.state.pending[b] = { hashes: [hash], nonce, maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    const hash = await this.send(b, nonce, maxFeePerGas, priority, gas);
+    this.state.pending[b] = { hashes: [hash], nonce, gas: gas.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.state.stats.sent++;
     this.log('sent performUpkeep', { balancer: b, hash, nonce });
   }
 
-  private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint) {
+  private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint) {
     return this.wallet.writeContract({
       address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: this.c.account, chain: null,
-      nonce, maxFeePerGas, maxPriorityFeePerGas, gas: 3_500_000n,
+      nonce, maxFeePerGas, maxPriorityFeePerGas, gas,
     });
   }
 
@@ -179,7 +182,7 @@ export class Keeper {
     if (max > cap) max = cap;
     if (prio > max) prio = max;
     try {
-      const hash = await this.send(b, p.nonce, max, prio);
+      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas));
       p.hashes.push(hash);
       p.maxFeePerGas = max.toString();
       p.maxPriorityFeePerGas = prio.toString();
