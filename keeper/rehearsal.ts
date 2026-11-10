@@ -69,7 +69,11 @@ async function setBasefee(gwei: number) {
 async function send(p: Record<string, unknown>) {
   await hold();
   const h = await wallet.writeContract({ ...p, chain: null, ...FEE_OPTS } as never);
-  const r = await pub.waitForTransactionReceipt({ hash: h });
+  // anvil automines, so the receipt exists at once; viem's receipt watcher would poll every 4 s.
+  let r;
+  for (let i = 0; !r; i++) {
+    try { r = await pub.getTransactionReceipt({ hash: h }); } catch { if (i > 500) throw new Error(`no receipt for ${h}`); await sleep(20); }
+  }
   assert.equal(r.status, 'success', `tx ${String(p.functionName)}`);
   await hold();
   return r;
@@ -171,7 +175,7 @@ async function main() {
       return t;
     };
     for (const b of balancers) await mustOpen(b, `pool ${b} filled and opened by the keeper`, 120_000);
-    console.log('pools filled and opened by the keeper service');
+    console.log('pools filled and opened by the keeper service', new Date().toISOString());
 
     const stats = {
       arrivals: 0, foundOpen: 0, batches: 0, draws: 0, reopenMs: [] as number[],
