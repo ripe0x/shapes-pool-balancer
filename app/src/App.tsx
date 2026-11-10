@@ -418,6 +418,22 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
   const curated = d.listings.filter((l) => l.kind === 1 && l.state === 1);
   const [stray, setStray] = useState({ collection: '', tokenId: '' });
+  const [restricted, setRestricted] = useState<string>();
+  const pub = usePublicClient();
+  const list = () => tx.send('Approve and list', [
+    () => tx.write({ address: form.collection as Address, abi: erc721Abi, functionName: 'approve', args: [d.balancer, BigInt(form.tokenId)] }),
+    () => tx.write({ ...B, functionName: 'listCurated', args: [form.collection as Address, BigInt(form.tokenId), parseEther(form.base)] }),
+  ]).then(() => setRestricted(undefined));
+  // A collection that refuses transfers to contracts lets a hostile buyer (a contract that never refunds) lock a
+  // drawn NFT in FWA escrow. Simulate a transfer from the creator to a contract address before listing.
+  const checkAndList = async () => {
+    const key = `${form.collection}:${form.tokenId}`;
+    if (restricted === key) return list(); // creator confirmed
+    const toContract = await pub!.simulateContract({ address: form.collection as Address, abi: erc721Abi, functionName: 'transferFrom', args: [me, SHAPES, BigInt(form.tokenId)], account: me }).then(() => true, () => false);
+    const toEoa = await pub!.simulateContract({ address: form.collection as Address, abi: erc721Abi, functionName: 'transferFrom', args: [me, '0x000000000000000000000000000000000000dEaD', BigInt(form.tokenId)], account: me }).then(() => true, () => false);
+    if (toEoa && !toContract) { setRestricted(key); return; }
+    return list();
+  };
   return (
     <div className="card">
       <h2>Curated NFTs</h2>
@@ -465,14 +481,13 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
           <input aria-label="Collection address" placeholder="Collection 0x…" value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })} />
           <input className="narrow" aria-label="Token ID" placeholder="Token ID" value={form.tokenId} onChange={(e) => setForm({ ...form, tokenId: e.target.value })} />
           <input className="narrow" aria-label="Value (ETH)" placeholder="Value (ETH)" value={form.base} onChange={(e) => setForm({ ...form, base: e.target.value })} />
-          <button
-            disabled={!!tx.busy || !form.collection || !form.tokenId || !form.base}
-            onClick={() => tx.send('Approve and list', [
-              () => tx.write({ address: form.collection as Address, abi: erc721Abi, functionName: 'approve', args: [d.balancer, BigInt(form.tokenId)] }),
-              () => tx.write({ ...B, functionName: 'listCurated', args: [form.collection as Address, BigInt(form.tokenId), parseEther(form.base)] }),
-            ])}
-          >Approve and list</button>
+          <button disabled={!!tx.busy || !form.collection || !form.tokenId || !form.base} onClick={checkAndList}>
+            {restricted === `${form.collection}:${form.tokenId}` ? 'List anyway' : 'Approve and list'}
+          </button>
         </div>
+      )}
+      {restricted && restricted === `${form.collection}:${form.tokenId}` && (
+        <p className="badText">This collection refuses transfers to contracts. A buyer using a contract that never claims its refund could leave this NFT locked in FWA. The risk is highest in pools with few listings.</p>
       )}
       <p className="muted small">The FWA price is your value × (1 + markup). Odds are inversely proportional to price. Listing, repricing and withdrawing need FWA's purchase queue to be idle and reconciled; run upkeep afterwards to reopen.</p>
       {isCreator && (

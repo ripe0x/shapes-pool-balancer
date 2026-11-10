@@ -181,11 +181,11 @@ async function run() {
 
   // 7. gas policy: above the bid cap the keeper waits instead of overbidding
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b07', 31n);
-  await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 3n * 10n ** 9n });
+  await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 6n * 10n ** 9n });
   await test.mine({ blocks: 1 });
   const sentBeforeSpike = k.state.stats.sent;
   await k.tick();
-  assert.equal(k.state.stats.sent, sentBeforeSpike, 'no send above the 2 gwei bid cap');
+  assert.equal(k.state.stats.sent, sentBeforeSpike, 'no send above the 5 gwei bid cap');
   assert.ok(logs.some((l) => l.startsWith('skip: basefee above bid cap')));
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });

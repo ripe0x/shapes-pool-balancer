@@ -9,10 +9,11 @@ export const MAX_SHAPES_PER_PLAN = 40;
 export const MAX_PLANS = 4;
 export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
-export const KEEPER_MAX_GAS_PRICE = 2n * 10n ** 9n;
+export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
 export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
-/** Reimbursed gas is 4/5 of measured gas (EIP-3529 refund bound). */
-export const MAX_KEEPER_REWARD = ((KEEPER_MAX_GAS * 4n) / 5n) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+export const KEEPER_MARGIN = 10n ** 14n;
+/** Reimbursed gas is 4/5 of measured gas (EIP-3529 refund bound); the incentive covers the rest at high gas. */
+export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + 21_000n) * KEEPER_MAX_GAS_PRICE + KEEPER_MARGIN;
 
 const E = 10n ** 18n;
 /** Mainnet Shapes ladder (wei), denomination index 0..8. */
@@ -195,9 +196,10 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const gp = a.gasPriceGwei * 1e-9;
   const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
   const perShapeCost = toEth(inputs.mintFee) + GAS.perShape * gp;
-  // The contract caps the incentive at FWA's edge on one draw.
+  // Incentive: max(0.0005, 4/5 shortfall at this price + margin), capped by FWA's edge on the draw.
   const edgePerDraw = toEth((ev.drawPrice * BigInt(inputs.edgeBps)) / (BPS + BigInt(inputs.edgeBps)));
-  const incentive = Math.min(toEth(KEEPER_INCENTIVE), edgePerDraw);
+  const cover = (GAS.upkeepBase / 5 + 21_000) * gp + toEth(KEEPER_MARGIN);
+  const incentive = Math.min(Math.max(toEth(KEEPER_INCENTIVE), cover), edgePerDraw);
   const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + incentive;
   const overhead = pShape * perShapeCost + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);

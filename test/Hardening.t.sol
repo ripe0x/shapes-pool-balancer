@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
-import {MockNFT, FreezableNFT, LyingNFT} from "./utils/Mocks.sol";
+import {MockNFT, FreezableNFT, LyingNFT, ContractBlockingNFT, NonRefundingBuyer} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 
 interface IShapesMint {
@@ -287,7 +287,7 @@ contract HardeningTest is ForkBase {
         balancer.claimSurplus(s, creator);
         assertEq(address(balancer).balance, balancer.requiredReserve());
         assertTrue(balancer.canPurchase(buyer));
-        assertEq(balancer.MAX_KEEPER_REWARD(), 3_200_000 * 4 / 5 * 2 gwei + 0.0005 ether);
+        assertEq(balancer.MAX_KEEPER_REWARD(), (3_200_000 + 21_000) * 5 gwei + 0.0001 ether);
     }
 
     /*////////////////////////////// FWA pool page (ERC-1271) //////////////////////////////*/
@@ -576,7 +576,7 @@ contract HardeningTest is ForkBase {
         for (uint256 i; i < 40 && !balancer.canPurchase(buyer); ++i) {
             if (balancer.admissionStatus() == 6) {
                 vm.prank(creator);
-                balancer.depositETH{value: 0.0005 ether}();
+                balancer.depositETH{value: 0.002 ether}();
             }
             try this.upkeepExternal() {} catch {}
             (bool valid,,,,) = balancer.checkpoint();
@@ -595,6 +595,106 @@ contract HardeningTest is ForkBase {
         balancer.updateCuratedPrice(curatedA, 0.31 ether);
         upkeep();
         assertTrue(balancer.canPurchase(buyer), "re-checkpointed without a top-up");
+    }
+
+    /*////////////////////////////// griefing bound //////////////////////////////*/
+
+    /// Remaining griefing route after the purchaser gate: a purchaser contract that never refunds, drawing a curated
+    /// NFT from a collection that refuses transfers to contracts. The NFT stays in FWA escrow. Bound: each attempt
+    /// forfeits the draw fee net of any Shape received, and the lock probability is the NFT's FWA odds, so the
+    /// expected cost to lock it is attempt cost / odds. Asserted against the NFT's value on the real FWA pool.
+    function test_griefingBoundForRestrictedCurated() public {
+        ContractBlockingNFT r = new ContractBlockingNFT();
+        r.allow(address(pool));
+        r.allow(address(balancer));
+        r.mint(creator, 1);
+        vm.startPrank(creator);
+        r.approve(address(balancer), 1);
+        uint256 lid = balancer.listCurated(address(r), 1, 0.5 ether);
+        vm.stopPrank();
+        upkeep();
+        assertTrue(balancer.canPurchase(buyer));
+
+        // Expected cost to lock it, from FWA's own weights and price.
+        (,,,, uint256 w,,,) = pool.listings(lid);
+        uint256 total = pool.totalWeight();
+        (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
+        // A non-locking draw returns a Shape or a deliverable curated NFT; the attacker keeps value at most its
+        // creator base, which is below the fee paid on average (FWA edge + markup). Conservative attempt cost: VRF fee
+        // plus FWA's edge on the fee.
+        uint256 attemptCost = vrf + fee * 500 / 10_500;
+        uint256 expectedCostToLock = attemptCost * total / w;
+        emit log_named_decimal_uint("lock probability per draw (ppm)", w * 1e6 / total, 0);
+        emit log_named_decimal_uint("attempt cost (ETH, lower bound)", attemptCost, 18);
+        emit log_named_decimal_uint("expected attacker cost to lock (ETH)", expectedCostToLock, 18);
+        assertGt(expectedCostToLock, 0.5 ether, "locking the NFT costs the attacker more than its value in expectation");
+
+        // Forced: the word that selects it shows the lock and the attacker's forfeited fee.
+        NonRefundingBuyer g = new NonRefundingBuyer();
+        vm.deal(address(g), 1 ether);
+        (,, uint256 pay) = pool.quoteAcquisitionPrice(1);
+        uint256[] memory ids = g.buy{value: pay}(address(pool), 1);
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        (,,,,,,, uint8 st) = pool.listings(lid);
+        assertEq(st, 6, "DeliveryPending: locked unless the purchaser refunds");
+        upkeep();
+        assertTrue(balancer.canPurchase(buyer), "the pool keeps operating");
+        vm.warp(block.timestamp + 7 days + 1);
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InvalidItem.selector);
+        balancer.recoverCuratedNFT(lid, creator);
+
+        // Repeated attempts with random words: every non-locking draw costs the attacker; the pool stays open.
+        uint256 spent;
+        uint256 shapesBacking;
+        for (uint256 i; i < 8; ++i) {
+            (,, pay) = pool.quoteAcquisitionPrice(5);
+            vm.deal(address(g), pay);
+            ids = g.buy{value: pay}(address(pool), 5);
+            spent += pay;
+            for (uint256 k; k < 5; ++k) {
+                fulfill(ids[k], uint256(keccak256(abi.encode(i, k))));
+            }
+            settle();
+            upkeep();
+            assertTrue(balancer.canPurchase(buyer));
+        }
+        (bool ok, bytes memory b) = SHAPES.staticcall(abi.encodeWithSignature("balanceOf(address)", address(g)));
+        require(ok);
+        uint256 got = abi.decode(b, (uint256));
+        shapesBacking = got * 0.01 ether; // setUp plan holds 0.01/0.05/0.1 Shapes; 0.01 is a lower bound per Shape
+        emit log_named_decimal_uint("40 attack draws: ETH spent", spent, 18);
+        emit log_named_uint("Shapes received", got);
+        assertGt(spent, shapesBacking, "repeated attempts are a net cost to the attacker");
+    }
+
+    /// The bound depends on dilution: in a thin pool a restricted curated NFT is cheap to lock. Recorded, not
+    /// accepted silently: the dashboard warns before listing a collection that refuses transfers to contracts.
+    function test_griefingThinPoolIsCheap() public {
+        creator = makeAddr("thinPoolCreator");
+        vm.deal(creator, 100 ether);
+        createBalancer(2 ether);
+        ContractBlockingNFT r = new ContractBlockingNFT();
+        r.allow(address(pool));
+        r.allow(address(balancer));
+        r.mint(creator, 1);
+        vm.startPrank(creator);
+        r.approve(address(balancer), 1);
+        uint256 lid = balancer.listCurated(address(r), 1, 0.5 ether);
+        vm.stopPrank();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        vm.prank(creator);
+        balancer.open();
+        fillUp();
+        (,,,, uint256 w,,,) = pool.listings(lid);
+        (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
+        uint256 expectedCostToLock = (vrf + fee * 500 / 10_500) * pool.totalWeight() / w;
+        emit log_named_decimal_uint("thin pool: expected attacker cost to lock a 0.5 ETH NFT (ETH)", expectedCostToLock, 18);
+        assertLt(expectedCostToLock, 0.5 ether, "thin pools do not protect restricted collections");
     }
 
     function upkeepExternal() external {

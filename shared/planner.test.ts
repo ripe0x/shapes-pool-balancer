@@ -74,7 +74,7 @@ describe('planner', () => {
     expect(hi.minMarkupBps).toBeGreaterThan(lo.minMarkupBps);
     const big = economics([0, 0, 0, 0, 3, 1, 0, 0, 0], { ...inputs, curatedBases: [20n * E] }, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
     expect(big.minMarkupBps).toBeLessThan(hi.minMarkupBps);
-    expect(MAX_KEEPER_REWARD).toBe(5_620_000_000_000_000n); // 3.2M * 4/5 * 2 gwei + 0.0005
+    expect(MAX_KEEPER_REWARD).toBe(16_205_000_000_000_000n); // (3.2M + 21k) * 5 gwei + 0.0001
     expect(lo.outlook).toBe('sustainable');
   });
 });

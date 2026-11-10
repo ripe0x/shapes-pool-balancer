@@ -53,7 +53,7 @@ export interface KeeperConfig {
   stateFile: string;
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
-  maxGasPriceGwei?: number; // never bid above this; the contract reimburses at most 2 gwei
+  maxGasPriceGwei?: number; // never bid above this; the contract reimburses at most 5 gwei
   priorityGwei?: number; // the contract reimburses at most 0.05 gwei over basefee
   maxLossWei?: bigint;
   replaceAfterBlocks?: number;
@@ -84,7 +84,7 @@ export class Keeper {
   private readonly c: Required<Omit<KeeperConfig, 'log'>> & Pick<KeeperConfig, 'log'>;
 
   constructor(cfg: KeeperConfig) {
-    this.c = { reorgWindow: 64, maxGasPriceGwei: 2, priorityGwei: 0.05, maxLossWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     const transport = http(cfg.rpcUrl);
     this.pub = createPublicClient({ transport }) as PublicClient;
     this.wallet = createWalletClient({ transport, account: cfg.account });
@@ -367,9 +367,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     fromBlock: BigInt(env('FROM_BLOCK')),
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
-    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '2')),
+    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
-    maxLossWei: BigInt(env('MAX_LOSS_WEI', '0')),
+    // Default covers gas-only paid calls at the 5 gwei cap (worst measured loss 0.00006 ETH) and cheap unpaid
+    // re-checkpoints at normal gas; set 0 for a strictly profitable keeper.
+    maxLossWei: BigInt(env('MAX_LOSS_WEI', '100000000000000')),
   });
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));
   process.on('SIGINT', () => { k.save(); process.exit(0); });

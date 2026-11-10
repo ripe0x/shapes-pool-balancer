@@ -113,3 +113,34 @@ contract GasBurnNFT is MockNFT {
         }
     }
 }
+
+/// @dev Transfer-restricted collection (ERC721-C style): refuses transfers to contracts other than `allowed`.
+contract ContractBlockingNFT is MockNFT {
+    mapping(address => bool) public allowed;
+
+    function allow(address a) external {
+        allowed[a] = true;
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256) internal view override {
+        if (from != address(0) && to.code.length != 0 && !allowed[to]) revert("restricted");
+    }
+}
+
+interface IFWABuy {
+    function acquireBatch(address, uint256, uint256, uint256, uint256, uint256, uint256)
+        external
+        payable
+        returns (uint256[] memory);
+    function inventoryVersion() external view returns (uint256);
+}
+
+/// @dev Griefing purchaser: buys for itself, accepts Shapes, never refunds a failed delivery.
+contract NonRefundingBuyer {
+    function buy(address pool, uint256 count) external payable returns (uint256[] memory) {
+        uint256 v = IFWABuy(pool).inventoryVersion();
+        return IFWABuy(pool).acquireBatch{value: msg.value}(address(this), count, 0, 0, 10_000, v, block.timestamp + 1);
+    }
+
+    receive() external payable {}
+}

@@ -168,15 +168,16 @@ contract GasBench is ForkBase {
         fillUp();
         uint256 lid = lastListingId();
         (,,,,,, uint256 slot,) = pool.listings(lid);
-        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
-        uint256 v = pool.inventoryVersion();
-        vm.prank(buyer, buyer); // purchaser = Shapes contract: the only recipient a Shape transfer rejects
-        uint256[] memory ids = pool.acquireBatch{value: total}(SHAPES, 1, 0, 0, 10_000, v, block.timestamp + 1);
+        (,,, uint256 tokenId,,,,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        // unreachable with mainnet Shapes behind the purchaser gate: mock the delivery transfer failing
+        vm.mockCallRevert(SHAPES, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
         fulfill(ids[0], wordForSlot(slot));
         settle();
+        vm.clearMockedCalls();
         upkeep();
         vm.warp(block.timestamp + 7 days + 1);
-        vm.prank(SHAPES);
+        vm.prank(buyer);
         pool.refundFailedDelivery(lid);
         vm.recordLogs();
         vm.prank(keeper, keeper);
@@ -230,6 +231,99 @@ contract GasBench is ForkBase {
         vm.prank(buyer, buyer);
         pool.acquireBatch{value: total}(buyer, 5, 0, 0, 10_000, v, block.timestamp + 1);
         _report("FWA acquireBatch(5) incl. operator check", 0);
+    }
+
+    /*////////////////////// keeper profitability at the gas-price cap //////////////////////*/
+
+    function _profitAtCap(string memory label) internal returns (int256 pnl) {
+        return _profitAt(label, 4.95 gwei);
+    }
+
+    /// @dev Keeper PnL of one upkeep at `basefee` with a 0.05 gwei priority bid (the reimbursable priority).
+    function _profitAt(string memory label, uint256 basefee) internal returns (int256 pnl) {
+        vm.fee(basefee);
+        vm.txGasPrice(basefee + 0.05 gwei);
+        vm.recordLogs();
+        upkeep();
+        uint256 reward;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == KEEPER_PAID) (reward,) = abi.decode(logs[i].data, (uint256, uint256));
+        }
+        (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        require(ok);
+        (, uint64 billed,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
+        pnl = int256(reward) - int256(uint256(billed) * (basefee + 0.05 gwei));
+        emit log(label);
+        emit log_named_uint("  billed gas", billed);
+        emit log_named_decimal_uint("  basefee (gwei)", basefee, 9);
+        emit log_named_decimal_int("  keeper PnL (ETH)", pnl, 18);
+        vm.fee(0.5 gwei);
+        vm.txGasPrice(1 gwei);
+    }
+
+    /// Cheapest pool shape (0.01 ETH Shapes, ~0.012 ETH draw price): one draw pays FWA ~0.00057 ETH of edge, which
+    /// caps the keeper's incentive for the work it caused. Profitable to ~2.9 gwei; at the 5 gwei cap the keeper
+    /// waits (or the creator runs upkeep).
+    function test_profitAtCap_replaceOneCheapPool() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(1);
+        uint256 snap = vm.snapshotState();
+        assertGe(_profitAt("replace 1 Shape, cheap pool, 2.8 gwei", 2.8 gwei), 0);
+        vm.revertToState(snap);
+        assertLt(_profitAt("replace 1 Shape, cheap pool, 4.95 gwei", 4.95 gwei), 0);
+    }
+
+    /// A typical pool (0.05-0.1 ETH Shapes in the mix): one draw's edge covers the shortfall at the cap.
+    function test_profitAtCap_replaceOne() public {
+        _configure(plan([uint256(2), 2, 2, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(1);
+        assertGe(_profitAtCap("replace 1 Shape, typical pool"), 0);
+    }
+
+    function test_profitAtCap_replaceFiveMixed() public {
+        _configure(plan([uint256(4), 2, 2, 1, 1, 0, 0, 0, 0]));
+        fillUp();
+        _drawShapes(5);
+        assertGe(_profitAtCap("replace 5 Shapes, 4 denominations"), 0);
+    }
+
+    function test_profitAtCap_fillSteps() public {
+        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
+        for (uint256 i; i < 7; ++i) {
+            assertGe(_profitAtCap("fill step"), 0);
+        }
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    function test_profitAtCap_planSwitch() public {
+        _configure(plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        assertGe(_profitAtCap("plan switch, redeem 6"), 0);
+    }
+
+    function test_profitAtCap_curatedReconcile() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], 1);
+        settle();
+        assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
+    }
+
+    /// Gas-only path: covered without margin; the residual is gas outside the measured span beyond 21k.
+    function test_profitAtCap_refundOnlyBatch() public {
+        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        buy(buyer, 1);
+        vm.roll(block.number + 40);
+        pool.processAcquisitions(1);
+        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0001 ether));
     }
 
     function test_gas_createBalancer() public {

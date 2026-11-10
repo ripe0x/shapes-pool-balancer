@@ -267,14 +267,14 @@ contract BalancerTest is ForkBase {
     function test_refundedShapeRecoveredAndRedeemed() public {
         uint256 lid = _lastShape();
         (,,,,,, uint256 slot,) = pool.listings(lid);
-        // FWA delivers with transferFrom; Shapes rejects only transfers to itself, so a purchaser set to the
-        // Shapes contract makes the real delivery fail.
-        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
-        uint256 v = pool.inventoryVersion();
-        vm.prank(buyer, buyer);
-        uint256[] memory ids = pool.acquireBatch{value: total}(SHAPES, 1, 0, 0, 10_000, v, block.timestamp + 1);
+        // Mainnet Shapes only fails a transfer to itself, and the gate refuses that purchaser, so the path is
+        // unreachable with real Shapes; mock the delivery transfer failing to exercise the recovery code.
+        (,,, uint256 tokenId,,,,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        vm.mockCallRevert(SHAPES, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
         fulfill(ids[0], wordForSlot(slot));
         settle();
+        vm.clearMockedCalls();
         (,,,,,,, uint8 status) = pool.listings(lid);
         assertEq(status, 6, "FWA DeliveryPending");
         upkeep(); // reconciles and replaces the drawn Shape
@@ -285,7 +285,7 @@ contract BalancerTest is ForkBase {
         balancer.recoverRefundedShape(lid);
 
         vm.warp(block.timestamp + 7 days + 1);
-        vm.prank(SHAPES); // only the purchaser may refund
+        vm.prank(buyer); // only the purchaser may refund
         pool.refundFailedDelivery(lid);
         uint256 balBefore = address(balancer).balance;
         uint256 kBefore = stranger.balance;
@@ -359,8 +359,27 @@ contract BalancerTest is ForkBase {
         vm.fee(80 gwei);
         vm.txGasPrice(80 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
-        assertEq(reward, gasPaid * 2 gwei + 0.0005 ether, "absolute gas-price cap");
+        // price capped at 5 gwei; at that price the incentive covers the 4/5 shortfall plus a 0.0001 ETH margin
+        assertGe(reward, gasPaid * 5 gwei + 0.0005 ether, "absolute gas-price cap, liveness incentive");
+        assertLe(reward, gasPaid * 5 gwei + (gasPaid / 4 + 1 + 21_000) * 5 gwei + 0.0001 ether);
         assertLe(reward, balancer.MAX_KEEPER_REWARD());
+    }
+
+    /// The gate refuses purchasers whose deliveries could never be refunded or tracked.
+    function test_gateRefusesUnrefundablePurchasers() public {
+        assertTrue(balancer.canPurchase(buyer));
+        assertFalse(balancer.canPurchase(address(balancer)), "Balancer");
+        assertFalse(balancer.canPurchase(SHAPES), "Shapes rejects self-custody");
+        assertFalse(balancer.canPurchase(address(pool)), "pool");
+        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
+        uint256 v = pool.inventoryVersion();
+        address[3] memory bad = [address(balancer), SHAPES, address(pool)];
+        for (uint256 i; i < 3; ++i) {
+            vm.prank(buyer, buyer);
+            vm.expectRevert(); // FWA PurchaseNotAllowed
+            pool.acquireBatch{value: total}(bad[i], 1, 0, 0, 10_000, v, block.timestamp + 1);
+        }
+        assertTrue(balancer.canPurchase(buyer), "admission unaffected");
     }
 
     function test_noRewardForUnnecessaryWork() public {

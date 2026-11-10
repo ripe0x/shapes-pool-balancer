@@ -57,9 +57,16 @@ contract PoolBalancer is ReentrancyGuard {
     //   therefore earns at most the edge those draws paid to FWA.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
-    uint256 internal constant KEEPER_MAX_GAS_PRICE = 2 gwei;
+    uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
     uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
-    uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * 4 / 5 * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+    // Liveness: the 4/5 rule leaves a keeper short by at most measured/5 + intrinsic gas. When that shortfall at the
+    // reimbursed price plus KEEPER_MARGIN exceeds KEEPER_INCENTIVE (above ~0.6 gwei for a 3M-gas call), the incentive
+    // becomes that amount, so paid work stays profitable up to KEEPER_MAX_GAS_PRICE. Gas-only paid calls get the
+    // shortfall without margin. Incentives for purchase-caused work stay within the edge credit.
+    uint256 internal constant KEEPER_MARGIN = 0.0001 ether;
+    uint256 internal constant INTRINSIC_GAS = 21_000;
+    uint256 public constant MAX_KEEPER_REWARD =
+        (KEEPER_MAX_GAS + INTRINSIC_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_MARGIN;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
     /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
@@ -533,7 +540,11 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice FWA purchase-operator hook. Must stay read-only and under FWA's 100k gas stipend.
-    function canPurchase(address) external view returns (bool) {
+    /// @dev FWA passes the purchaser it will deliver to. Refused: this contract (a failed delivery to it could never
+    ///      be refunded, and a delivered NFT would be untracked), the Shapes contract (Shapes rejects self-custody, so
+    ///      a drawn Shape could never be delivered or refunded) and the FWA pool itself.
+    function canPurchase(address purchaser) external view returns (bool) {
+        if (purchaser == address(this) || purchaser == address(SHAPES) || purchaser == address(pool)) return false;
         return admissionStatus() == OK;
     }
 
@@ -832,22 +843,26 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _payKeeper(uint256 gasStart, bool incentive) internal returns (uint256 reward) {
-        uint256 gasUsed = gasStart - gasleft();
-        if (gasUsed > KEEPER_MAX_GAS) gasUsed = KEEPER_MAX_GAS;
-        gasUsed = gasUsed * 4 / 5;
+        uint256 measured = gasStart - gasleft();
+        if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
+        uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
         uint256 price = tx.gasprice;
         uint256 cap = block.basefee + KEEPER_PRIORITY_CAP;
         if (price > cap) price = cap;
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
         reward = gasUsed * price;
+        uint256 shortfall = (measured - gasUsed + INTRINSIC_GAS) * price;
         if (incentive) {
-            uint256 inc = KEEPER_INCENTIVE;
+            uint256 inc = shortfall + KEEPER_MARGIN;
+            if (inc < KEEPER_INCENTIVE) inc = KEEPER_INCENTIVE;
             if (!creatorWork) {
                 uint256 credit = incentiveCredit;
                 if (credit < inc) inc = credit;
                 incentiveCredit = uint128(credit - inc);
             }
             reward += inc;
+        } else {
+            reward += shortfall;
         }
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
