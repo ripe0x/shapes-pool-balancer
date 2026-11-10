@@ -8,7 +8,7 @@ import { execSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toHex, type Address } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toHex, type Address } from 'viem';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 
 const PORT = Number(process.env.REHEARSAL_PORT ?? 18547);
@@ -17,7 +17,9 @@ const RPC = `http://127.0.0.1:${PORT}`;
 const FORK_BLOCK = 26382349n;
 const DEPLOYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
 const CREATORS = ['0x70997970C51812dc3A010C7d01b50e0d17dc79C8', '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'] as const;
-const KEEPER = '0x90F79bf6EB2c4f870365E785982E1f101E93b906' as Address;
+// A fresh, code-free address: the Hardhat test accounts carry EIP-7702 sweeper delegations on mainnet, which
+// forward any ETH they receive (keeper rewards would vanish from the balance).
+const KEEPER = '0x00000000000000000000000000000000000ce3e5' as Address;
 const VRF_SERVICE = '0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d' as const;
 const serviceAbi = parseAbi(['function coordinator() view returns (address)', 'function rawFulfillRandomWords(uint256 requestId, uint256[] randomWords)']);
 const GWEI = 10n ** 9n;
@@ -43,9 +45,14 @@ function basefeeFor(round: number) {
   return 0.08;
 }
 
+/** Current spike level; every block the driver produces is pinned to it (anvil otherwise decays basefee per block). */
+let level = 0.08;
+const hold = () => test.setNextBlockBaseFeePerGas({ baseFeePerGas: BigInt(Math.round(level * 1e9)) });
 async function setBasefee(gwei: number) {
-  await test.setNextBlockBaseFeePerGas({ baseFeePerGas: BigInt(Math.round(gwei * 1e9)) });
+  level = gwei;
+  await hold();
   await test.mine({ blocks: 1 });
+  await hold(); // also pins the block that will include the keeper's next transaction
 }
 
 async function buyAndSettle(b: Address, count: number, buyer: Address, word: bigint) {
@@ -56,18 +63,21 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
   const v = (await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'inventoryVersion' })) as bigint;
   const before = Number(await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'lastIssuedSequence' }));
   const now = (await pub.getBlock()).timestamp;
+  await hold();
   const h = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'acquireBatch', args: [buyer, BigInt(count), 0n, 0n, 10_000n, v, now + 600n], value: total * 3n + 10n ** 17n, account: buyer, chain: null, gas: 3_000_000n, maxFeePerGas: 100n * GWEI, maxPriorityFeePerGas: GWEI / 10n });
   assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success', 'purchase');
-  await test.mine({ blocks: 3 });
+  for (let i = 0; i < 3; i++) { await hold(); await test.mine({ blocks: 1 }); }
   const coord = (await pub.readContract({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'coordinator' })) as Address;
   await test.impersonateAccount({ address: coord });
   await test.setBalance({ address: coord, value: 10n ** 18n });
   for (let s = before + 1; s <= before + count; s++) {
     const id = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'requestIdAtSequence', args: [BigInt(s)] });
+    await hold();
     const fh = await wallet.writeContract({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'rawFulfillRandomWords', args: [id as bigint, [BigInt(keccak256(toHex(word * 1000n + BigInt(s))))]], account: coord, chain: null, gas: 5_000_000n, maxFeePerGas: 100n * GWEI, maxPriorityFeePerGas: 0n });
     await pub.waitForTransactionReceipt({ hash: fh });
   }
   if (await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'unsettledAcquisitionCount' })) {
+    await hold();
     const ph = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'processAcquisitions', args: [5n], account: DEPLOYER, chain: null, maxFeePerGas: 100n * GWEI, maxPriorityFeePerGas: 0n });
     await pub.waitForTransactionReceipt({ hash: ph });
   }
@@ -87,9 +97,11 @@ async function main() {
       const out = sh(`forge script script/DevSetup.s.sol --tc DevSetup --rpc-url ${RPC} --unlocked --sender ${c} --broadcast`, { FACTORY: factory });
       balancers.push(out.match(/Balancer (0x[0-9a-fA-F]{40})/)![1] as Address);
     }
+    await test.impersonateAccount({ address: KEEPER });
     await test.setBalance({ address: KEEPER, value: 10n ** 18n });
     await setBasefee(0.08);
     const kb0 = await pub.getBalance({ address: KEEPER });
+    const startBlock = await pub.getBlockNumber();
 
     // The production keeper entrypoint, as its own process.
     const dir = mkdtempSync(join(tmpdir(), 'rehearsal-'));
@@ -110,7 +122,12 @@ async function main() {
       return -1;
     };
     // Initial fill by the keeper alone.
-    for (const b of balancers) assert.ok((await waitOpen(b, 90_000)) >= 0, `pool ${b} filled and opened by the keeper`);
+    for (const b of balancers) {
+      if ((await waitOpen(b, 90_000)) < 0) {
+        console.error(keeperLog.slice(-25).join('\n'));
+        assert.fail(`pool ${b} filled and opened by the keeper`);
+      }
+    }
     console.log('pools filled and opened by the keeper service');
 
     const stats = { arrivals: 0, foundOpen: 0, batches: 0, draws: 0, reopenMs: [] as number[], spikeWaits: 0, overCapSends: 0 };
@@ -160,8 +177,28 @@ async function main() {
       }
     }
 
+    await setBasefee(0.08);
+    await sleep(3000); // let the last in-flight keeper tx resolve
     const health = await (await fetch(`http://127.0.0.1:${HEALTH}/health`)).json();
     const kb1 = await pub.getBalance({ address: KEEPER });
+    // Cross-check the keeper's balance against every transaction it sent (gas paid) and every reward event.
+    const head = await pub.getBlockNumber();
+    let gasPaid = 0n;
+    let rewards = 0n;
+    const paidEvent = parseAbiItem('event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed)');
+    for (const b of balancers) {
+      for (const l of await pub.getLogs({ address: b, event: paidEvent, args: { keeper: KEEPER }, fromBlock: FORK_BLOCK, toBlock: head })) rewards += l.args.amount!;
+    }
+    for (let n = startBlock; n <= head; n++) {
+      const blk = await pub.getBlock({ blockNumber: n, includeTransactions: true });
+      for (const t of blk.transactions) {
+        if (typeof t === 'string' || t.from.toLowerCase() !== KEEPER.toLowerCase()) continue;
+        const r = await pub.getTransactionReceipt({ hash: t.hash });
+        gasPaid += r.gasUsed * r.effectiveGasPrice;
+      }
+    }
+    console.log(JSON.stringify({ balanceDelta: (kb1 - kb0).toString(), rewardsFromEvents: rewards.toString(), gasPaidFromReceipts: gasPaid.toString(), check: (rewards - gasPaid).toString() }));
+    assert.equal(kb1 - kb0, rewards - gasPaid, 'keeper balance = rewards - gas paid');
     const sorted = [...stats.reopenMs].sort((a, b) => a - b);
     const summary = {
       rounds: ROUNDS, arrivals: stats.arrivals, foundOpenPct: +(100 * stats.foundOpen / stats.arrivals).toFixed(1),

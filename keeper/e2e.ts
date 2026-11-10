@@ -111,7 +111,10 @@ async function run() {
 
   const dir = mkdtempSync(join(tmpdir(), 'keeper-e2e-'));
   const stateFile = join(dir, 'state.json');
-  const keeperAddr = ACCTS[3] as Address;
+  // Fresh code-free keeper address: Hardhat test accounts carry EIP-7702 sweeper delegations on mainnet.
+  const keeperAddr = '0x00000000000000000000000000000000000ce3e5' as Address;
+  await test.impersonateAccount({ address: keeperAddr });
+  await test.setBalance({ address: keeperAddr, value: 10n ** 18n });
   const mk = () => new Keeper({ rpcUrl: RPC, factory, fromBlock: FORK_BLOCK, stateFile, account: keeperAddr, replaceAfterBlocks: 2, maxLossWei: 10n ** 14n, log: (m, e) => logs.push(`${m} ${JSON.stringify(e ?? {})}`) });
   let k = mk();
 
@@ -128,7 +131,7 @@ async function run() {
   assert.notEqual(await status(b2), 0);
   await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
   const kb1 = await pub.getBalance({ address: keeperAddr });
-  assert.ok(kb1 > kb0 - 10n ** 16n, 'keeper reimbursed');
+  assert.ok(kb1 > kb0, 'keeper earned more than it spent');
   console.log('✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)');
   checkAudit(k);
 

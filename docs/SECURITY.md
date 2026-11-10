@@ -16,7 +16,8 @@ Two rounds:
 | Round | Target | Repairs |
 | --- | --- | --- |
 | 1 (initial build) | `c7ead79` | `ac99894`, `e7b1640` |
-| 2 (simplification and hardening pass) | `924bf99` | `d0b720a`, `c3203a4`, `cbc75d3`, and the N-2 fix |
+| 2 (simplification and hardening pass) | `924bf99` | `d0b720a`, `c3203a4`, `cbc75d3`, `7fcdbe4` |
+| 3 (keeper liveness and griefing bound, owner review) | `1f352fa` | `6a2dabe` |
 
 ## Method
 
@@ -43,12 +44,28 @@ Two rounds:
 | N-1 | Info (repair review) | After `d0b720a`, claiming all reported surplus left the balance below what the next re-checkpoint needed, so any creator edit closed purchases. | Fixed in `c3203a4`. |
 | L-2 | Low | Pool-page approvals could not be revoked and survived a creator transfer; `isValidSignature` ignores signature bytes, so any approved digest is replayable by anyone. | Fixed (`d0b720a`): approvals are scoped to an epoch; `revokePoolPages()` and every accepted creator transfer start a new one. Re-review: fixed. `issuedAt` is format-checked, not range-checked (Info: the creator can revoke). |
 | I-3 | Info | A plan that could not fit beside the curated listings within the 100-listing limit made every upkeep revert `TooManyListings` while open, blocking reconciliation and creator edits until `close()`. | Fixed (`d0b720a`): such a plan is infeasible. Re-review: fixed, including a plan switch at capacity. `test_planBeyondListingLimitIsInfeasible`. |
-| L-1 | Low | FWA lets a buyer name any purchaser. Naming the Balancer: if a curated NFT's delivery then fails (transfer-restricted collection), only the Balancer could refund, and it has no function for that; after the 7-day window the NFT stays in FWA (executed). | Accepted and documented: the attacker pays the full draw price for a random draw and the collection must reject transfers to the Balancer. A fix would add an FWA refund path. |
-| I-1 | Info | Naming the Balancer as purchaser delivers the drawn NFT (e.g. a Shape) to the Balancer, which then holds it between transactions. | Accepted: untracked, creator-recoverable with `recoverUntrackedNFT`; not counted in reserve. |
-| I-2 | Info | Naming the Shapes contract as purchaser makes a drawn Shape undeliverable (Shapes rejects self-custody) and unrefundable; its backing stays in FWA (executed). `recoverRefundedShape` is effectively unreachable with mainnet Shapes. | Accepted: costs the attacker about the damage in expectation. |
+| L-1 | Low | FWA lets a buyer name any purchaser. Naming the Balancer: if a curated NFT's delivery then fails (transfer-restricted collection), only the Balancer could refund, and it has no function for that; after the 7-day window the NFT stays in FWA (executed). | Fixed (`1f352fa`): `canPurchase` refuses the Balancer, Shapes and the FWA pool as purchasers. Re-review: correct, 52k gas cold, no other acquire path. Remaining class bounded below (G-1). |
+| I-1 | Info | Naming the Balancer as purchaser delivers the drawn NFT (e.g. a Shape) to the Balancer, which then holds it between transactions. | Fixed by the same purchaser gate (`1f352fa`). |
+| I-2 | Info | Naming the Shapes contract as purchaser makes a drawn Shape undeliverable (Shapes rejects self-custody) and unrefundable; its backing stays in FWA (executed). `recoverRefundedShape` is effectively unreachable with mainnet Shapes. | Fixed by the same purchaser gate (`1f352fa`). |
 | I-4 | Info | A markup change and change back (A→B→A) before any upkeep leaves `repricing` set with nothing to reprice; that call scans 100 listings (~0.4M gas) and may also reconcile and mint, possibly exceeding 3.2M. | Accepted: the keeper is under-reimbursed for that one call; no funds or authority affected. |
 | I-6 | Info (repair review) | A batch bought before a creator action that closes admission (configure, close) is reconciled with the full incentive. The buyer cannot cause or time the creator action. Confirmed: no remaining path sets or keeps the creator-work flag while purchases can be admitted (only setters close admission; it clears in the call that writes the checkpoint; the keeper payout's 100k stipend cannot fund an FWA purchase). | Accepted. |
 | I-5 | Info | The 4/5 rule and the absent intrinsic credit mean single-call keepers absorb ~20% of gas plus 21k; gas-only paths (refund-only batches, `recoverRefundedShape`) always lose money for keepers. | Accepted by design: the incentive covers paid work at normal gas; the bundled keeper's `MAX_LOSS_WEI` covers the rest. |
+
+## Round 3 (keeper liveness, purchaser griefing)
+
+Owner review of `bc1d916` asked for keeper liveness from measured profitability and a specific griefing bound. Changes in
+`1f352fa`: price-linked incentive, 5 gwei cap, purchaser gate. Both reviewers re-reviewed the change with executed tests.
+
+| ID | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| K-1 | Low/Info | The liveness shortfall re-added 21k intrinsic gas per paid call: 7 calls in one transaction earned ~0.00014 ETH per extra call above margin + refunds (executed). Only creator-caused chunked work; purchase-caused calls are credit-capped. | Fixed (`6a2dabe`): intrinsic credited once per transaction (transient flag). `test_profitAtCap_multiCallCreditsIntrinsicOnce`. |
+| K-2 | Info | For creator-caused work at high gas the incentive pays margin + refunds, so the 4/5 protection is neutral there (e.g. +0.00126 ETH for a redeem-heavy plan switch at 5 gwei). | Accepted: creator-initiated; bounded by `MAX_KEEPER_REWARD`. |
+| K-3 | Info | Keeper allowances in the reserve are large at a 5 gwei cap: ~0.113 of 0.2298 ETH for an empty ten-0.01-Shape pool. | Accepted: idle capital, claimable once closed; documented in GAS.md. |
+| K-4 | Info | Pools with draw prices below ~0.012 ETH: credit-capped replacement work loses money for keepers above ~2.9 gwei, so those pools pause earlier. | Accepted: fails closed; creator can run upkeep. |
+| G-1 | Low | A purchaser contract that never refunds can lock a curated NFT from a collection that refuses transfers to contracts (or transfers to itself, or needs more than FWA's 150k delivery gas). Expected attacker cost to lock it = (VRF fee + FWA edge on the fee) × totalWeight / its weight; worst case use the creator's odds floor in place of its share; repeatable by fresh contracts once per such NFT. Lower bound assumes the attacker values other drawn NFTs at no more than their creator base. Executed: ~1.06 ETH for a 0.5 ETH NFT in a typical pool, ~0.18 ETH in a thin pool; a processor cannot force a delivery failure by gas-limiting `processAcquisitions` (857 gas levels, 0 failures). | Mitigated, not closed: dashboard simulates a transfer to a contract before listing and requires "List anyway". Closing it would require refusing all contract purchasers (owner decision). `test_griefingBoundForRestrictedCurated`, `test_griefingThinPoolIsCheap`. |
+
+Verified in re-review: self-dealing PnL negative in all four attack variants (−0.00014 to −0.00023 ETH); keeper PnL at the cap
+matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding opens a pool.
 
 ## Round 1 findings (initial build)
 
@@ -64,7 +81,7 @@ Two rounds:
 | Property | Evidence | Outcome |
 | --- | --- | --- |
 | Reimbursed gas ≤ billed gas after refunds | proof sketch (EIP-3529 cap ≥ 1/5) + isolated benchmarks of 13 paths + real anvil receipts in keeper e2e and review (single and multi-call) | held after F2 repair |
-| Reimbursed price ≤ basefee + 0.05 gwei and ≤ 2 gwei | fork tests with a 3 gwei bid at 0.15 gwei basefee (ApeBall pattern), 5,000 gwei bid, 80 gwei basefee | held |
+| Reimbursed price ≤ basefee + 0.05 gwei and ≤ 5 gwei | fork tests with a 3 gwei bid at 0.15 gwei basefee (ApeBall pattern), 5,000 gwei bid, 80 gwei basefee | held |
 | No paid self-created work | self-dealing PnL tests by reviewer (three rounds), credit tests; incentives from purchase-caused work are bounded by FWA's edge on the purchases by construction | held after the third F3 repair |
 | ≤ 6 inventory operations and ≤ 3.2M gas per upkeep | F1 tests, worst bounded case 3.10M | held except I-4 |
 | Upkeep gas independent of history | 200 refunded curated deliveries on a frozen collection: 847k before, 836k after | held |
@@ -79,12 +96,14 @@ Two rounds:
 
 - **FWA trust.** FWA's factory owner can pause purchases or VRF and set withdraw-only globally; the reviewed pool
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
-- **Purchaser naming (L-1, I-1, I-2).** Griefing at roughly the attacker's own cost.
+- **Restricted collections (G-1).** A hostile purchaser contract can lock curated NFTs from collections that refuse
+  transfers to contracts; cheap in thin pools. Do not list such collections.
 - **Shapes admin** can raise the mint fee up to 0.01 ETH; admission closes until re-funded, and small denominations
   become uneconomic.
 - **Economics.** The reserve funds the next restoration, not profitability (`docs/simulation-results.md`).
-- **Keeper liveness.** Above 2 gwei basefee keepers wait and new purchases pause. Fill steps are unprofitable for keepers
-  above ~0.76 gwei. Creators can always run upkeep themselves.
+- **Keeper liveness.** Above 5 gwei basefee (~0.9% of blocks measured) keepers wait and new purchases pause; pools
+  with draw prices below ~0.012 ETH pause from ~2.9 gwei. Unpaid re-checkpoints rely on a keeper's loss allowance or
+  the creator. Creators can always run upkeep themselves.
 - **Pool page.** Whether FWA's server accepts ERC-1271 from a contract owner is unverified; FWA's message template is
   copied from its client and could change.
 - **No professional audit, no formal verification.** Invariant campaigns are short (64 runs × 64 calls).

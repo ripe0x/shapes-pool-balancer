@@ -57,13 +57,15 @@ Feasibility uses FWA's exact integer formulas: listing weight `1e36 / price`, fe
 FWA calls the purchase operator once per `acquire`/`acquireBatch` (up to 5 draws) with a 100k gas stipend and only the
 purchaser address. The Balancer therefore admits at most one batch per checkpoint:
 
-1. creator has opened purchases;
-2. the last checkpoint is valid and FWA's `lastIssuedSequence` and `inventoryVersion` still equal it (any purchase advances
+1. the purchaser FWA will deliver to is not the Balancer, the Shapes contract or the FWA pool (deliveries to them
+   could never be refunded or tracked);
+2. creator has opened purchases;
+3. the last checkpoint is valid and FWA's `lastIssuedSequence` and `inventoryVersion` still equal it (any purchase advances
    the sequence, so the next buyer is refused until upkeep reconciles);
-3. FWA token offers are disabled;
-4. Shapes `mintFee()` is not above the fee the reserve was funded for;
-5. liquid ETH ≥ the checkpoint reserve;
-6. FWA `acquisitionFee()` ≤ `maxDrawPrice`.
+4. FWA token offers are disabled;
+5. Shapes `mintFee()` is not above the fee the reserve was funded for;
+6. liquid ETH ≥ the checkpoint reserve;
+7. FWA `acquisitionFee()` ≤ `maxDrawPrice`.
 
 A checkpoint is written only when the Shapes inventory equals the active plan, FWA's `activeListingCount`, `totalWeight`
 and `weightedBackingTotal` equal curated + plan exactly, the plan satisfies price and odds, and liquid ETH covers the
@@ -77,7 +79,7 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 
 - cost to restore the active plan from the Shapes currently listed (backing + current mint fee each), plus
 - the worst 5 Shape replacements from a full plan (largest denominations first, backing + mint fee), plus
-- one maximum keeper reward (`3.2M × 4/5 gas × 2 gwei + 0.0005 ETH = 0.00562 ETH`) held in the checkpoint, one for
+- one maximum keeper reward (`(3.2M + 21k) × 5 gwei + 0.0001 ETH = 0.016205 ETH`) held in the checkpoint, one for
   the call that writes the next checkpoint, and one per 6-Shape refill step still needed. Funding exactly
   `requiredReserve()` opens a new pool (fork test).
 
@@ -110,16 +112,17 @@ so a Shape delivery fails only when the purchaser named is the Shapes contract.
 
 Keeper reward:
 
-- price = `min(tx.gasprice, basefee + 0.05 gwei, 2 gwei)`: a keeper that bids more priority pays the excess itself;
+- price = `min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)`: a keeper that bids more priority pays the excess itself;
 - gas = `min(measured, 3.2M) × 4/5`: EIP-3529 refunds cut billed gas by at most 1/5 of the gas used, so 4/5 of any
-  measured span is always billed, even when one transaction makes several paid calls. Fork: reimbursed gas is 66–97% of
-  billed gas;
-- plus a 0.0005 ETH incentive when inventory work was done (draw reconciled, Shape listed/withdrawn, listing
-  repriced). Work started by a creator action (configure, opening a closed pool, curated edits, unwind) pays it in full
-  until the next checkpoint; each of those closes admission first, so no purchase happens while it applies. Work caused by purchases pays it from `incentiveCredit`, which each reconciled batch resets
-  to FWA's edge on that batch's escrowed fees and every following paid call spends, so buying one's own draws earns at
-  most the edge paid to FWA. A batch with only refunds earns gas without the incentive; `recoverRefundedShape` earns
-  gas only. Pure re-checkpoints (after creator
+  measured span is always billed, even when one transaction makes several paid calls;
+- incentive for inventory work (draw reconciled, Shape listed/withdrawn, listing repriced) =
+  `max(0.0005 ETH, (measured/5 + 21k) × price + 0.0001 ETH)`: the fixed 0.0005 ETH at normal gas, rising with gas
+  only by the shortfall the 4/5 rule leaves, so paid work stays profitable up to the 5 gwei cap (intrinsic gas is
+  counted once per transaction). Work started by a creator action (configure, opening a closed pool, curated edits,
+  unwind) pays it in full until the next checkpoint; each of those closes admission first. Work caused by purchases
+  pays it from `incentiveCredit`, which each reconciled batch resets to FWA's edge on that batch's escrowed fees and
+  every following paid call spends, so buying one's own draws earns at most the edge paid to FWA. A batch with only
+  refunds earns gas plus the shortfall without margin; `recoverRefundedShape` the same. Pure re-checkpoints (after creator
   changes or deposits) pay nothing. The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
@@ -172,6 +175,6 @@ verified: whether FWA's server checks ERC-1271 (its client allows long contract 
 | Never list while FWA has an unresolved acquisition | Nothing is ever staged, so FWA's active totals equal the tracked set. |
 | Redeem surplus Shapes instead of keeping spares | Removes spare storage and spare credit from reserve math; managed Shapes never sit in the Balancer. Costs one mint fee per Shape re-minted when plans switch back (simulation: 0.02–0.11 ETH per 30 days at 10–42 switches; no change in closed time). |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
-| 4/5 gas reimbursement | The only in-transaction rule that provably never pays more gas than billed after refunds. |
+| 4/5 gas reimbursement + price-linked incentive | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive covers the resulting shortfall only when gas is high (measured: a fixed incentive large enough would cost creators 25–70% of net). |
 | Clone factory, `via_ir` | Cheap deployment per creator; runtime 23.2 KB under EIP-170 (24.6 KB). |
 | Hard-coded denomination ladder, checked against `Shapes.denominationAt` at deployment | Avoids external calls in hot paths. |

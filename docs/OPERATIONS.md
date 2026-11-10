@@ -34,9 +34,9 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` and `PoolBusy` mean nothing to do;
   any other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price,
   and never when the estimate exceeds the 3.2M reimbursable maximum.
-- `MAX_LOSS_WEI` (default 0) is the subsidy the operator accepts per call. Re-checkpoints after creator edits or deposits
-  pay nothing, and gas-only work (refund-only batches, refunded Shapes) pays slightly under cost, so an operator who wants
-  those pools reopened automatically sets a small allowance (0.0001 ETH covers them below ~0.4 gwei).
+- `MAX_LOSS_WEI` (default 0.0001 ETH) is the subsidy the operator accepts per call. Paid work is profitable up to the
+  5 gwei cap by design; gas-only paid calls lose at most ~0.00006 ETH at the cap; unpaid re-checkpoints (after creator
+  edits, deposits or a mint-fee change) cost ~0.2M gas. Set 0 for a strictly profitable keeper.
 - The keeper also watches `ItemDrawn` events for failed Shape deliveries and calls `recoverRefundedShape` once FWA marks
   them refunded.
 
@@ -45,12 +45,14 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 - State: `STATE_FILE` holds discovered Balancers, the last scanned block and in-flight transactions. Deleting it is safe:
   the keeper rescans from `FROM_BLOCK`.
 - Stuck transaction: the keeper replaces it after 3 blocks with +25% fees, up to 5 times, only while the bid stays under
-  `MAX_GAS_PRICE_GWEI` (default 2, the contract's reimbursement cap) and the simulated reward still covers the cost.
-  Otherwise it waits. During a basefee spike above 2 gwei pools pause new purchases until gas falls; existing draws are
-  unaffected.
+  `MAX_GAS_PRICE_GWEI` (default 5, the contract's reimbursement cap) and the simulated reward still covers the cost.
+  Otherwise it waits. During a basefee spike above 5 gwei (~0.9% of blocks over the last 90 days; longest measured
+  episode ~42 min) pools pause new purchases until gas falls; existing draws are unaffected. Pools whose draws cost
+  less than ~0.012 ETH pause from ~2.9 gwei, because one draw's FWA edge caps the keeper's incentive.
 - Reorgs: the last 64 blocks are rescanned every tick; Balancers whose creation was reorged out are dropped.
-- Fund the keeper address with ETH for gas; rewards come back from each pool. Initial fills (~3M gas per 6 Shapes) are
-  only profitable for keepers below a ~0.75 gwei basefee; the creator can run them from the dashboard at any time.
+- Fund the keeper address with ETH for gas; rewards come back from each pool to the address that sent the call. Use
+  a plain account: an account with code that forwards incoming ETH (for example an EIP-7702 delegation to a sweeper,
+  as the public Hardhat test keys carry on mainnet) passes rewards on instead of keeping them.
 
 ## Failed NFT delivery
 
@@ -60,8 +62,9 @@ deliveries from `ItemDrawn` events. A refunded Shape is recovered and redeemed b
 `recoverRefundedShape(listingId)` (the keeper does this). A refunded curated NFT is recovered by the creator with
 `recoverCuratedNFT(listingId, to)`; upkeep never calls curated collections, so a hostile collection cannot tax keepers. If
 the collection blocks the transfer, retry later. If the purchaser never refunds, the NFT stays in FWA's delivery escrow
-(FWA behavior). FWA delivers with `transferFrom`, so a Shape delivery fails only if the purchaser named is the Shapes
-contract itself; such a purchaser can never refund, so that Shape's backing stays in FWA escrow.
+(FWA behavior). The gate refuses the Balancer, the Shapes contract and the pool as purchasers, so Shape deliveries cannot
+fail with mainnet Shapes. Do not list collections that refuse transfers to contracts: a purchaser contract that never
+refunds can lock such an NFT in FWA escrow (the dashboard warns before listing).
 
 ## NFT sent to the Balancer directly
 
