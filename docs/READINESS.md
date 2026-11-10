@@ -5,24 +5,55 @@ below; it does not establish that the contracts are safe.
 
 ## Candidate
 
-Commit `7fcdbe4` (contracts, keeper, planner, dashboard, simulation). Later commits change documentation only. Run once
-with `CANDIDATE_RUN=1` on 2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
+Commit `3f1735f`. Contracts, keeper service, planner and dashboard are identical to `13a61ed`, where the suites
+ran; later commits change only the e2e and rehearsal harnesses, which were re-run at `b6ffee9` (e2e) and `3f1735f`
+(rehearsals). Later commits change documentation only. Run with `CANDIDATE_RUN=1` on
+2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 23,680 B (limit 24,576, margin 896), BalancerFactory 1,212 B |
-| Foundry suites (fork) | `forge test --no-match-path test/Gas.t.sol` | 61 passed, 0 failed (6 suites: scenario 11, behavior 31, hardening 15, parity 1, invariants 2 suites at 64 runs × 64 calls) |
-| Gas benchmarks, refund-checked | `forge test --match-path test/Gas.t.sol --isolate -vv` | 13 passed; every keeper path reimbursed ≤ billed gas |
-| Planner parity and keeper policy | `npx vitest run` | 21 passed (5 exact-parity cases vs on-chain FWA) |
-| Typecheck | `npm run typecheck` | pass |
+| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 23,919 B (limit 24,576, margin 657), BalancerFactory 1,212 B |
+| Foundry suites (fork) | `forge test --no-match-path test/Gas.t.sol` | 78 passed, 0 failed (7 suites incl. `KeeperAdversarial` 9, hardening 22, behavior 32, scenario 11, parity 1, invariants at 64 runs × 64 calls) |
+| Gas benchmarks and break-even, refund-checked | `forge test --match-path test/Gas.t.sol --isolate -vv` | 32 passed; every keeper path reimbursed ≤ billed gas; PnL table in GAS.md |
+| Planner parity and keeper policy | `npx vitest run` | 25 passed |
+| Typecheck | `npm run typecheck` | pass (also at `3f1735f`) |
 | Dashboard build | `npm run build:app` | pass |
-| Keeper integration (2 real FWA pools on a fork) | `npm run keeper:e2e` | pass: fill, direct FWA ETH draws incl. a 5-draw batch, receipt audit (reimbursed ≤ billed on all keeper txs), restart, replacement, reorg, downtime, basefee spike wait, refunded-Shape recovery, pool-page ERC-1271 verification, per-pool error isolation |
+| Keeper integration (2 real FWA pools on a fork) | `npm run keeper:e2e` | pass at `b6ffee9` (failed at `13a61ed`: stale refunded-Shape step, see below): fill, direct FWA draws incl. a 5-draw batch, receipt audit on 8 keeper txs, restart, replacement, reorg, downtime, spike wait, purchaser gate, pool-page ERC-1271, per-pool error isolation |
 | Economic simulation | `npm run sim -- --runs 60` | completed; `docs/simulation-results.md` unchanged (deterministic) |
-| Deploy rehearsal | `forge script script/Deploy.s.sol` on a chain-id 31337 fork | pass (inside keeper e2e) |
-| Dashboard in a browser | dev server against a chain-id 31337 fork | fill, reprice, decoded errors, pool-page approval, stray-NFT error, 375 px width; re-checked against the candidate contracts (fill to open, Economics panel, reserve 0.3662 ETH incl. the re-checkpoint reward) |
-| Independent review | two clean-context AI reviewers + three repair re-review rounds | 1 Medium and 6 Low/Info fixed; 5 Info/Low accepted; see SECURITY.md |
+| Launch rehearsal, short | `npm run rehearsal -- --rounds 50` | **pass** at `3f1735f` (also at `13a61ed`): 48/48 arrivals found the pool open; 4 batches each at 3 gwei and 4.9 gwei serviced; above 8 gwei the keeper waited 4/4 and resumed unaided; 2 purchase-caused and 2 creator-caused plan switches; 2 keeper restarts; 57 keeper txs, 0 reverted, 0 skipped as unprofitable; reopen median 58 ms, max 1.5 s |
+| Launch rehearsal, sustained | `npm run rehearsal -- --rounds 300` | **pass** at `3f1735f`, 15 min: 288/288 arrivals found the pool open; 832 draws; 24 batches each at 3 gwei and 4.9 gwei serviced; above 8 gwei the keeper waited 24/24 and resumed unaided; 12 purchase-caused and 12 creator-caused plan switches; 7 creator edits (2 at 4.9 gwei, where the unpaid re-checkpoint is beyond the keeper allowance, run by the creator); 3 curated restocks; 2 keeper restarts; 324 keeper txs, 0 reverted; reopen median 64 ms, max 1.2 s; estimate − billed 7k–295k gas (median 75.5k) |
+| Keeper ETH reconciliation | inside both rehearsals | exact to the wei: Δbalance = Σ`KeeperPaid` − Σ(receipt gas × effective price) + other value (300 rounds: 0.375721938518941543 − 0.215830965555422905 = 0.159890972963518638 ETH over 317 reward events and 324 receipts; 50 rounds: 0.067842415288632562 − 0.039510238693974763 = 0.028332176594657799 ETH; no other transfers) |
+| Deploy rehearsal | `forge script script/Deploy.s.sol` on a chain-id 31337 fork | pass (inside keeper e2e and both rehearsals) |
+| Independent review of the final financial logic | clean-context AI reviewer at `0a48e84` | no extraction found; 1 Low/Info fixed (`31edef6`), 2 Info accepted; SECURITY.md round 4 |
 
-No mainnet contracts were deployed and no mainnet transactions were sent.
+No mainnet contracts were deployed and no mainnet transactions were sent. The dashboard was built, not re-exercised
+in a browser this round (its code is unchanged; only planner constants changed, covered by parity tests).
+
+Failures found during this verification, and what changed:
+- First short rehearsal (`0a48e84`): the purchase-caused plan switch was scheduled inside the 8 gwei window, where the
+  keeper correctly waits. Driver fixed (`13a61ed`); rerun passed.
+- Keeper e2e (`13a61ed`): the refunded-Shape step bought a draw naming the Shapes contract as purchaser, which the
+  purchaser gate now refuses. Step replaced by a gate assertion (`b6ffee9`); passed. The keeper's refund-watch path
+  has no end-to-end exercise any more.
+- Sustained rehearsal: anvil did not start within the driver's 10 s wait (wait raised to 60 s, `b6ffee9`); rounds
+  took ~18 s because viem polled receipts every 4 s (direct receipt fetch, ~3 s, `5b36729`); then three driver gaps,
+  each fixed in `3f1735f`: the creator never restocked curated NFTs, so a pool correctly closed for `NO_CURATED`;
+  `listCurated` sent with an exact gas estimate reverted at 63/64 of its limit (driver now adds 30%); failed driver
+  transactions now report decoded reasons. No contract or keeper-service change.
+
+## Requirement status (reimbursement re-evaluated against FWA V2)
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Priority allowance from first principles (0.05–1 gwei, fee schedule) | done: kept 0.05 gwei | GAS.md "Priority allowance" (90-day inclusion data); simulation policy table |
+| Reimbursement and bonus together; operation-aware; separate ETH cap | done: 4/5 gas + (1/5 gas + 0.0005 ETH); no ETH cap (bounded by gas × price caps) | GAS.md "Keeper reward", "Reimbursement model comparison" |
+| Real receipts with refunds | done | isolated gas suite (32), e2e receipt audit, rehearsal receipts |
+| Batching protections preserved | done; strengthened (gas-only 4/5, no per-call intrinsic) | `test_gas_multiCallPlanSwitchInOneTx`, `test_profitAtCap_multiCallBound`, SECURITY V-1, V-4 |
+| Adversarial competition: bids at/above cap, max reimbursement, self-dealing, multi-call, refund-heavy, spikes | done | `test/KeeperAdversarial.t.sol` (9), spike tests; all self-dealing net negative (−0.0011 to −0.069 ETH) |
+| Liveness and capital per policy (executed %, reopen time, max economical gas, 30-day spend, exposure, reserve, creator net) | done | `docs/simulation-results.md` policy table; GAS.md PnL table; rehearsals |
+| Reserve reduction without weakening obligations; exact boundary; repeated maintenance | done | `test_exactRequiredReserveOpens*`, `test_claimSurplusRespectsReserveWhileOpen`, `test_repeatedMaxClaimWorstBatchesAtCap` |
+| Launch rehearsal: fresh keeper, wei reconciliation, pinned basefee, short + sustained | done (see Candidate) | `keeper/rehearsal.ts` |
+| Independent review of final financial logic | done | SECURITY.md round 4 |
 
 ## Requirement status (simplification and hardening pass)
 
@@ -53,12 +84,15 @@ No mainnet contracts were deployed and no mainnet transactions were sent.
 - **Real wallet extension.** The dashboard was exercised with a dev connector.
 - **External professional audit and formal verification.** None performed.
 - **Long invariant campaigns.** 64 runs × 64 calls per suite.
+- **Dashboard creator transactions under exact gas estimates.** The rehearsal saw `listCurated` with an exact
+  `eth_estimateGas` limit revert at inclusion (an inner call ran short). The dashboard adds 30% only for upkeep; for
+  creator calls it relies on the wallet's estimate and buffer, which was not tested with a real wallet.
 
 ## Remaining risks
 
-See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; purchaser-naming griefing at roughly the attacker's own
-cost (L-1, I-1, I-2); keepers wait above a 2 gwei basefee and skip fill steps above ~0.76 gwei (creators can run them);
-pools with very cheap curated NFTs give keepers little incentive for purchase-caused work; economics (losses at low
+See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; restricted-collection griefing (G-1); keepers wait
+above a 5 gwei basefee (~0.9% of blocks) and pools whose draws all cost ~0.01 ETH pause from ~4.2 gwei; unpaid
+re-checkpoints above ~0.85 gwei and refund-only batches above ~1.3 gwei need the creator or a larger keeper allowance; economics (losses at low
 markup, small denominations, high mint fee); the FWA page template could change; no professional audit.
 
 ## Your actions to deploy
@@ -75,6 +109,6 @@ markup, small denominations, high mint fee); the FWA page template could change;
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.
 6. Start the keeper with a funded keeper key from your secret store (`docs/OPERATIONS.md`), `FROM_BLOCK` = deployment
-   block, and a `MAX_LOSS_WEI` allowance if it should also run unpaid re-checkpoints.
+   block, and `MAX_LOSS_WEI` (default 0.0002 ETH) for unpaid re-checkpoints and gas-only calls.
 7. Build the dashboard with `VITE_CHAIN_ID=1`, `VITE_FACTORY=<factory>`, `VITE_FROM_BLOCK=<block>` and host it.
 8. Create a first pool with a small deposit and a conservative markup, and watch one full draw-and-upkeep cycle.
