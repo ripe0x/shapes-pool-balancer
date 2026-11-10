@@ -50,8 +50,8 @@ contract PoolBalancer is ReentrancyGuard {
     // - gas = 4/5 of the measured span, capped: EIP-3529 refunds cut the billed gas by at most 1/5 of the gas
     //   used and in-transaction measurement cannot see them, so 4/5 of any part of the transaction is always
     //   billed. No intrinsic-gas credit: a contract making several paid calls in one transaction pays it once.
-    // - incentive = min(KEEPER_INCENTIVE, FWA's edge on one draw at the current price): buying one's own draws
-    //   to earn incentives costs at least that edge, so it cannot pay.
+    // - incentive = min(KEEPER_INCENTIVE, FWA's edge on the cheapest draw reconciled in the call, or on one draw at
+    //   the current price for draw-free work): buying one's own draws to earn incentives costs at least that edge.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 2 gwei;
@@ -557,13 +557,13 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasStart = gasleft();
         Checkpoint memory before = checkpoint;
         uint8 statusBefore = lastStatus;
-        (uint256 ops, bool batchReconciled) = _sync();
+        (uint256 ops, bool batchReconciled, uint256 drawFee) = _sync();
         Checkpoint memory afterCp = checkpoint;
         bool changed = ops != 0 || batchReconciled || lastStatus != statusBefore || afterCp.valid != before.valid
             || afterCp.inventoryVersion != before.inventoryVersion || afterCp.reserve != before.reserve
             || afterCp.mintFee != before.mintFee;
         if (!changed) revert NoUpkeepNeeded();
-        if (ops != 0 || batchReconciled) reward = _payKeeper(gasStart, ops != 0);
+        if (ops != 0 || batchReconciled) reward = _payKeeper(gasStart, ops != 0, drawFee);
     }
 
     /// @notice Permissionless: recover a drawn Shape whose FWA delivery was refunded and redeem it for its
@@ -583,10 +583,11 @@ contract PoolBalancer is ReentrancyGuard {
         ids[0] = tokenId;
         uint256 eth = SHAPES.redeemBatch(ids);
         emit ShapeRecovered(listingId, eth);
-        reward = _payKeeper(gasStart, false);
+        reward = _payKeeper(gasStart, false, 0);
     }
 
-    function _sync() internal returns (uint256 ops, bool batchReconciled) {
+    /// @dev `drawFee`: lowest acquisition fee escrowed by a draw reconciled here (0 if none); caps the incentive.
+    function _sync() internal returns (uint256 ops, bool batchReconciled, uint256 drawFee) {
         IFWAPool p = pool;
         if (p.unsettledAcquisitionCount() != 0) revert PoolBusy();
         checkpoint.valid = false;
@@ -594,8 +595,9 @@ contract PoolBalancer is ReentrancyGuard {
         // 1. Reconcile every FWA sequence issued since the last reconciliation (<= MAX_BATCH).
         uint64 last = p.lastIssuedSequence();
         for (uint64 s = reconciledSequence + 1; s <= last; ++s) {
-            (,,, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(s));
+            (,, uint256 escrowed, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(s));
             if (lid != 0) {
+                if (drawFee == 0 || escrowed < drawFee) drawFee = escrowed;
                 _onDrawn(lid, aStatus == A_FULFILLED);
                 ++ops;
             }
@@ -817,7 +819,9 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
-    function _payKeeper(uint256 gasStart, bool incentive) internal returns (uint256 reward) {
+    /// @param drawFee fee paid by the cheapest draw this call reconciled, or 0 for draw-free work (fills,
+    ///        repricing, plan changes), which is capped at the current price instead.
+    function _payKeeper(uint256 gasStart, bool incentive, uint256 drawFee) internal returns (uint256 reward) {
         uint256 gasUsed = gasStart - gasleft();
         if (gasUsed > KEEPER_MAX_GAS) gasUsed = KEEPER_MAX_GAS;
         gasUsed = gasUsed * 4 / 5;
@@ -828,7 +832,7 @@ contract PoolBalancer is ReentrancyGuard {
         reward = gasUsed * price;
         if (incentive) {
             uint256 edge = FWA_FACTORY.edgeBps();
-            uint256 edgePerDraw = pool.acquisitionFee() * edge / (BPS + edge);
+            uint256 edgePerDraw = (drawFee != 0 ? drawFee : pool.acquisitionFee()) * edge / (BPS + edge);
             reward += edgePerDraw < KEEPER_INCENTIVE ? edgePerDraw : KEEPER_INCENTIVE;
         }
         if (reward > address(this).balance) reward = address(this).balance;
@@ -849,7 +853,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice ETH that must stay liquid: zero while closed; otherwise the cost of restoring the active
-    ///         plan from current inventory, plus a worst-case batch and one maximum keeper reward.
+    ///         plan from current inventory, plus a worst-case batch and two maximum keeper rewards.
     function requiredReserve() public view returns (uint256 r) {
         if (!enabled || plans.length == 0) return 0;
         uint256 plan = plans[activePlan];
@@ -859,7 +863,8 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 target = _count(plan, d);
             if (target > have) r += (target - have) * (_amount(d) + fee);
         }
-        r += _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
+        // Two keeper rewards: one held in the checkpoint reserve, one for the call that re-checkpoints (_checkpoint).
+        r += _batchReserve(plan, fee) + 2 * MAX_KEEPER_REWARD;
     }
 
     function getPlans() external view returns (uint256[] memory) {

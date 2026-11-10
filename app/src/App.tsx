@@ -4,7 +4,7 @@ import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parse
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
+  DENOM_LABELS, DENOMS, MAX_KEEPER_REWARD, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { chain, ETHERSCAN, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 
@@ -569,9 +569,9 @@ function Configure({ d, tx }: { d: D; tx: Tx }) {
                 <Stat label="Draw price" value={`${fmt(preview.drawPrice, 5)} ETH`} />
                 <Stat label="Curated odds" value={pct(preview.curatedOddsBps)} />
                 <Stat label="Shapes backing" value={`${fmt(preview.capital, 3)} ETH`} />
-                <Stat label="Required reserve" value={`${fmt(preview.requiredReserve)} ETH`} />
+                <Stat label="Required reserve" value={`${fmt(preview.requiredReserve + MAX_KEEPER_REWARD)} ETH`} />
                 <Stat label="Initial mint fees" value={`${fmt(preview.initialMintFees)} ETH`} />
-                <Stat label="Total ETH committed" value={`${fmt(preview.capital + preview.initialMintFees + preview.requiredReserve, 3)} ETH`} />
+                <Stat label="Total ETH committed" value={`${fmt(preview.capital + preview.initialMintFees + preview.requiredReserve + MAX_KEEPER_REWARD, 3)} ETH`} />
                 <Stat label="Keeper cost / upkeep" value={`${econ.keeperCostPerUpkeepEth.toFixed(5)} ETH`} />
                 <Stat label="Projected minimum markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '-'} />
                 <Stat label="Expected net / draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />

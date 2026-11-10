@@ -270,11 +270,11 @@ contract HardeningTest is ForkBase {
     function test_reserveWithDeficitAndNoSpares() public {
         uint256 fee = shapes.mintFee();
         uint256 batch = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee);
-        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD());
+        assertEq(balancer.requiredReserve(), batch + 2 * balancer.MAX_KEEPER_REWARD());
         // a drawn 0.1 Shape is a liability until replaced: deficit + worst batch + one keeper reward
         _drawListing(_lastShape());
         upkeep();
-        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD(), "replaced");
+        assertEq(balancer.requiredReserve(), batch + 2 * balancer.MAX_KEEPER_REWARD(), "replaced");
         vm.prank(creator);
         balancer.close();
         assertEq(balancer.requiredReserve(), 0, "closed: everything claimable");
@@ -446,10 +446,41 @@ contract HardeningTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
         }
-        uint256 edgePerDraw = pool.acquisitionFee() * 500 / 10_500;
+        (,, uint256 paid,,,) = pool.acquisitions(ids[0]);
+        uint256 edgePerDraw = paid * 500 / 10_500;
         assertLt(edgePerDraw, 0.0005 ether, "cheap pool: the cap binds");
         // tx.gasprice 1 gwei, basefee 0.5 gwei (ForkBase): reimbursed price is basefee + 0.05 gwei
         assertEq(reward, gasPaid * 0.55 gwei + edgePerDraw, "gas + edge-capped incentive");
+    }
+
+    /// F3 residual: the cap uses the fee the reconciled draw actually paid, not the price after it. Drawing a
+    /// pool's only cheap curated NFT (which closes the pool) cannot raise the incentive above the edge paid.
+    function test_incentiveCapUsesEscrowedFee() public {
+        creator = makeAddr("drainCreator");
+        vm.deal(creator, 100 ether);
+        createBalancer(2 ether);
+        uint256 lid = listCurated(7101, 0.0001 ether);
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 0, 0), plans);
+        vm.prank(creator);
+        balancer.open();
+        fillUp();
+        _drawListing(lid);
+        vm.recordLogs();
+        upkeep();
+        assertEq(balancer.admissionStatus(), 4, "NO_CURATED");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 reward;
+        uint256 gasPaid;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
+        }
+        uint256 seq = pool.lastIssuedSequence();
+        (,, uint256 paid,,,) = pool.acquisitions(pool.requestIdAtSequence(uint64(seq)));
+        assertEq(reward - gasPaid * 0.55 gwei, paid * 500 / 10_500, "incentive = edge actually paid");
+        assertLt(reward - gasPaid * 0.55 gwei, pool.acquisitionFee() * 500 / 10_500, "below the post-draw price edge");
     }
 
     /// F4: whenever upkeep writes a checkpoint, admission still holds after it pays its keeper.
@@ -477,6 +508,18 @@ contract HardeningTest is ForkBase {
             if (valid) assertTrue(balancer.canPurchase(buyer), "a written checkpoint stays admissible after the reward");
         }
         assertTrue(balancer.canPurchase(buyer));
+    }
+
+    /// N-1: after claiming all surplus, a creator edit and re-checkpoint keeps the pool open.
+    function test_claimAllSurplusThenRecheckpointStaysOpen() public {
+        uint256 s = balancer.withdrawableSurplus();
+        vm.prank(creator);
+        balancer.claimSurplus(s, creator);
+        assertTrue(balancer.canPurchase(buyer));
+        vm.prank(creator);
+        balancer.updateCuratedPrice(curatedA, 0.31 ether);
+        upkeep();
+        assertTrue(balancer.canPurchase(buyer), "re-checkpointed without a top-up");
     }
 
     function upkeepExternal() external {

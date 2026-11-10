@@ -120,7 +120,7 @@ export interface Evaluation {
   capital: bigint;
   shapes: number;
   batchReserve: bigint;
-  requiredReserve: bigint; // batchReserve + MAX_KEEPER_REWARD
+  requiredReserve: bigint; // checkpoint reserve = batchReserve + MAX_KEEPER_REWARD; requiredReserve() on chain holds one more reward while open
   initialMintFees: bigint;
   ownerProceedsPerDraw: bigint; // EV paid to the owner on each delivered draw
 }
