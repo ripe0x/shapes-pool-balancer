@@ -483,6 +483,70 @@ contract HardeningTest is ForkBase {
         assertLt(reward - gasPaid * 0.55 gwei, pool.acquisitionFee() * 500 / 10_500, "below the post-draw price edge");
     }
 
+    /// F3, third round: a cheap draw that forces a multi-call plan switch earns at most the edge it paid, across
+    /// every follow-up call. Creator-started work still pays the full incentive.
+    function test_drawCausedWorkEarnsAtMostEdgePaid() public {
+        creator = makeAddr("switchCreator");
+        vm.deal(creator, 100 ether);
+        createBalancer(5 ether);
+        uint256 cheap = listCurated(7201, 0.0001 ether);
+        listCurated(7202, 0.5 ether);
+        uint256[] memory plans = new uint256[](2);
+        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
+        plans[1] = plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 10, 0), plans);
+        vm.prank(creator);
+        balancer.open();
+        // creator-started fill: full incentive
+        (uint256 reward, uint256 gasPaid) = _paid();
+        assertEq(reward - gasPaid * 0.55 gwei, 0.0005 ether, "creator work pays the full incentive");
+        fillUp();
+        assertTrue(balancer.canPurchase(buyer));
+        assertEq(balancer.activePlan(), 0);
+
+        _drawListing(cheap);
+        uint256 seq = pool.lastIssuedSequence();
+        (,, uint256 paid,,,) = pool.acquisitions(pool.requestIdAtSequence(uint64(seq)));
+        uint256 edgePaid = paid * 500 / 10_500;
+        uint256 incentives;
+        for (uint256 i; i < 12 && !balancer.canPurchase(buyer); ++i) {
+            (reward, gasPaid) = _paid();
+            incentives += reward - gasPaid * 0.55 gwei;
+        }
+        assertEq(balancer.activePlan(), 1, "the draw forced a plan switch");
+        assertTrue(balancer.canPurchase(buyer));
+        assertLe(incentives, edgePaid, "incentives for draw-caused work never exceed the edge paid");
+    }
+
+    function _paid() internal returns (uint256 reward, uint256 gasPaid) {
+        vm.recordLogs();
+        upkeep();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
+        }
+    }
+
+    /// Funding exactly requiredReserve() opens a fresh pool (fill-step rewards are included).
+    function test_exactRequiredReserveOpens() public {
+        creator = makeAddr("exactCreator");
+        vm.deal(creator, 100 ether);
+        createBalancer(0);
+        listCurated(7301, 0.3 ether);
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config(1 ether, 0, 1500), plans);
+        vm.prank(creator);
+        balancer.open();
+        uint256 need = balancer.requiredReserve();
+        vm.prank(creator);
+        balancer.depositETH{value: need}();
+        fillUp();
+        assertTrue(balancer.canPurchase(buyer), "requiredReserve() was enough to open");
+    }
+
     /// F4: whenever upkeep writes a checkpoint, admission still holds after it pays its keeper.
     function test_checkpointCoversItsOwnReward() public {
         creator = makeAddr("thinCreator");
