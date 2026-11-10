@@ -5,7 +5,20 @@ below; it does not establish that the contracts are safe.
 
 ## Candidate
 
-CANDIDATE_RESULTS
+Commit `c3842b3` (contracts, keeper, app, docs) plus `1b6186e` (vitest include scope only). Run once with
+`CANDIDATE_RUN=1` on 2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 22,536 B (limit 24,576), BalancerFactory 1,212 B |
+| Foundry suite (fork) | `forge test` | 52 passed, 0 failed (6 suites); invariants 64 runs × 64 calls (4,096 calls) per suite |
+| Planner parity and unit tests | `npx vitest run` | 13 passed (5 exact-parity cases vs on-chain FWA) |
+| Typecheck | `npm run typecheck` | pass |
+| Dashboard build | `npm run build:app` | pass |
+| Keeper integration (2 real FWA pools on a fork) | `npm run keeper:e2e` | pass: fill, draws, restart, replacement, reorg, error isolation |
+| Economic simulation | `npm run sim -- --runs 60` | completed; results unchanged in `docs/simulation-results.md` |
+| Deploy rehearsal | `forge script script/Deploy.s.sol` on a chain-id 31337 fork | pass (run inside keeper e2e) |
+| Independent review | two blind AI reviewers + repair re-review | High fixed, Medium (introduced by first repair) fixed; see SECURITY.md |
 
 ## Requirement status
 
