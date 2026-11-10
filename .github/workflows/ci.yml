@@ -15,6 +15,6 @@ jobs:
       - run: npm ci
       - run: forge build --sizes
       - run: npm run typecheck
-      - run: npx vitest run shared/planner.test.ts
+      - run: npx vitest run shared/planner.test.ts keeper/keeper.test.ts
       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
       - run: forge test --match-path test/Fork.t.sol

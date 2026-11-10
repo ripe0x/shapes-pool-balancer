@@ -528,6 +528,17 @@ contract HardeningTest is ForkBase {
         }
     }
 
+    /// Round 3 re-review: a creator top-up while open must not re-enable the full incentive for purchase-caused work.
+    function test_creatorTopUpWhileOpenKeepsCredit() public {
+        assertFalse(balancer.creatorWork());
+        vm.prank(creator);
+        balancer.depositETH{value: 0.01 ether}();
+        vm.prank(creator);
+        balancer.open(); // already open
+        assertFalse(balancer.creatorWork(), "no creator-work flag while purchases are admitted");
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
     /// Funding exactly requiredReserve() opens a fresh pool (fill-step rewards are included).
     function test_exactRequiredReserveOpens() public {
         creator = makeAddr("exactCreator");

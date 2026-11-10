@@ -51,8 +51,8 @@ contract PoolBalancer is ReentrancyGuard {
     //   used and in-transaction measurement cannot see them, so 4/5 of any part of the transaction is always
     //   billed. No intrinsic-gas credit: a contract making several paid calls in one transaction pays it once.
     // - incentive (KEEPER_INCENTIVE per call with inventory work) is paid from one of two sources. Work a creator
-    //   action started (configure, open, curated edits, unwind, creator deposit) pays it in full until the next
-    //   checkpoint. Work purchases caused is paid from `incentiveCredit`: FWA's edge on the draws of the last
+    //   action started (configure, open, curated edits, unwind) pays it in full until the next checkpoint; these
+    //   actions all close admission first, so no purchase happens while it applies. Work purchases caused is paid from `incentiveCredit`: FWA's edge on the draws of the last
     //   reconciled batch, reset by each batch and spent by every call that follows it. Buying one's own draws
     //   therefore earns at most the edge those draws paid to FWA.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
@@ -301,7 +301,8 @@ contract PoolBalancer is ReentrancyGuard {
     function open() external onlyCreator {
         if (plans.length == 0) revert InvalidConfig();
         enabled = true;
-        creatorWork = true;
+        // Only while admission is closed: creatorWork must never be set while purchases can happen.
+        if (!checkpoint.valid) creatorWork = true;
         pool.setBool(ACQUISITIONS_ENABLED_KEY, true);
         emit PurchasesOpened();
     }
@@ -420,7 +421,6 @@ contract PoolBalancer is ReentrancyGuard {
     receive() external payable {}
 
     function depositETH() external payable {
-        if (msg.sender == creator) creatorWork = true; // a top-up may resume a stalled refill
         emit Deposited(msg.sender, msg.value);
     }
 

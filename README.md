@@ -61,17 +61,24 @@ forge test --match-path test/Balancer.t.sol
 ```
 
 ```bash
+forge test --match-path test/Hardening.t.sol
+```
+
+```bash
 forge test --match-path test/Invariant.t.sol
 ```
 
+Gas benchmarks (isolated: each call is a real transaction, so EVM refunds are applied):
+
 ```bash
-forge test --match-contract GasBench -vv
+forge test --match-contract GasBench --isolate -vv
 ```
 
-Planner parity (regenerate the fork fixture with `forge test --match-contract ParityFixture` first if contracts change):
+Planner parity and keeper policy (regenerate the fork fixture with `forge test --match-contract ParityFixture` first if
+contracts change):
 
 ```bash
-npx vitest run shared/planner.test.ts
+npx vitest run shared/planner.test.ts keeper/keeper.test.ts
 ```
 
 Keeper integration (starts its own anvil fork on port 18546, deploys, runs two real FWA pools):
@@ -110,7 +117,7 @@ npm run dev
 ## Keeper
 
 ```bash
-FACTORY=<factory> FROM_BLOCK=<block> KEEPER_PRIVATE_KEY=<from your secret store> npm run keeper
+FACTORY=<factory> FROM_BLOCK=<block> KEEPER_PRIVATE_KEY=<from your secret store> MAX_LOSS_WEI=100000000000000 npm run keeper
 ```
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md). The pool keeps working for existing players if the keeper stops; anyone can

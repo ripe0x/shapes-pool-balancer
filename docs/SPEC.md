@@ -1,6 +1,7 @@
 # Functional specification
 
-Status: implemented at the commit that contains this file. Supersedes earlier exploratory designs.
+Status: implemented at the commit that contains this file. Supersedes earlier designs (spare Shapes, on-chain capital
+limit, `needsUpkeep`, uncapped keeper priority fees).
 
 ## What it is
 
@@ -24,13 +25,13 @@ for its Shapes. Nothing can ever change the operator, enable token offers or exe
 
 | Actor | Can |
 | --- | --- |
-| Creator | configure, open/close, list/reprice/withdraw/recover curated NFTs, claim surplus, unwind, retire, set ENS name, start creator transfer |
+| Creator | configure, open/close, list/reprice/withdraw/recover curated NFTs, return untracked NFTs, claim surplus, unwind, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer |
 | Pending creator | accept the creator role |
-| Anyone (keeper) | `performUpkeep`, `collectProceeds`, `depositETH` |
+| Anyone (keeper) | `performUpkeep`, `recoverRefundedShape`, `collectProceeds`, `depositETH` |
 | FWA pool | calls `canPurchase` (view) |
 
-The keeper's only payout is a bounded reward to `msg.sender`. Curated NFTs go only to a creator-chosen address; Shapes
-are never sent anywhere except the FWA pool and, via redemption, become ETH in the Balancer.
+The keeper's only payout is a bounded reward to `msg.sender`. Curated and untracked NFTs go only to a creator-chosen
+address; Shapes go only to the FWA pool or are redeemed into the Balancer.
 
 ## Configuration
 
@@ -38,15 +39,16 @@ are never sent anywhere except the FWA pool and, via redemption, become ETH in t
 
 - `maxDrawPrice`: ceiling on FWA `acquisitionFee()` (includes FWA's 5% edge, excludes the VRF fee).
 - `minCuratedOddsBps`: floor on the combined probability that a draw selects a curated NFT.
-- `maxShapeCapital`: maximum Shapes backing in any approved plan (checked at configure time).
 - `markupBps`: fixed operating markup (0–100%). Every FWA listing price is `base × (1 + markup)`: the creator's value for
   curated NFTs, the backing for Shapes. A change sets `repricing`; upkeep reprices every listing before reopening.
-- `plans`: 1–4 approved Shape inventories, each nine 16-bit counts (denomination 0 = 0.01 ETH … 8 = 100 ETH), at most 40
-  Shapes. The first is preferred.
+- `plans`: 1–4 approved Shape inventories, each nine 16-bit counts (denomination 0 = 0.01 ETH … 8 = 100 ETH), 1–40
+  Shapes. The first is preferred. Each plan fixes its own capital, so there is no separate on-chain capital limit; the
+  dashboard planner filters plans by a capital preference and shows the total ETH committed.
 
-Upkeep keeps the active plan while it satisfies all limits with the current curated set; otherwise it activates the first
-feasible approved plan. Shapes above a new target are unlisted into spares; deficits use spares first, then mint
-like-for-like. There is no on-chain solver and no splitting or composing of Shapes. If no plan is feasible, purchases close.
+Upkeep keeps the active plan while it satisfies the price and odds limits with the current curated set; otherwise it
+activates the first feasible approved plan. Shapes above a new target are withdrawn from FWA and redeemed for their backing
+in the same call; deficits are minted like-for-like. No on-chain solver, no new plans, no splitting or composing of Shapes.
+If no plan is feasible, purchases close (status 5).
 
 Feasibility uses FWA's exact integer formulas: listing weight `1e36 / price`, fee `(Σw·p / Σw) × (1 + edge)`.
 
@@ -63,9 +65,9 @@ purchaser address. The Balancer therefore admits at most one batch per checkpoin
 5. liquid ETH ≥ the checkpoint reserve;
 6. FWA `acquisitionFee()` ≤ `maxDrawPrice`.
 
-A checkpoint is written only when the Shapes inventory equals the active plan, FWA's `totalWeight` and
-`weightedBackingTotal` equal curated + plan exactly, the plan satisfies price/odds/capital, and liquid ETH covers the
-reserve. Measured cost: ~30k gas.
+A checkpoint is written only when the Shapes inventory equals the active plan, FWA's `activeListingCount`, `totalWeight`
+and `weightedBackingTotal` equal curated + plan exactly, the plan satisfies price and odds, and liquid ETH covers the
+reserve. Measured cost: ~47–49k gas under the real 100k stipend.
 
 Outstanding FWA draws, refunds, deliveries and claims never depend on the Balancer or the keeper.
 
@@ -73,39 +75,64 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 
 `requiredReserve` (0 while closed):
 
-- cost to restore the active plan from current listed + spare Shapes (backing + current mint fee each), plus
-- the worst 5 Shape replacements from a full plan, where each spare not needed for a deficit covers one draw of its
-  denomination, plus
-- one maximum keeper reward (`3.2M gas × 10 gwei + 0.0005 ETH = 0.0325 ETH`).
+- cost to restore the active plan from the Shapes currently listed (backing + current mint fee each), plus
+- the worst 5 Shape replacements from a full plan (largest denominations first, backing + mint fee), plus
+- one maximum keeper reward (`3.2M × 4/5 gas × 2 gwei + 0.0005 ETH = 0.00562 ETH`) held in the checkpoint, one for
+  the call that writes the next checkpoint, and one per 6-Shape refill step still needed. Funding exactly
+  `requiredReserve()` opens a new pool (fork test).
 
-ETH inside Shapes and unsettled draw payments are never counted as liquid. `claimSurplus` releases only
-`balance − requiredReserve`. `unwind` (closed only) withdraws listed Shapes and redeems all spares for their exact
-backing.
+ETH inside Shapes and unsettled draw payments are never counted as liquid. The Balancer keeps no managed Shapes
+between transactions, so there is no spare credit (a Shape delivered to it because a buyer named it as purchaser is
+untracked and creator-recoverable). `claimSurplus` releases only `balance − requiredReserve` and, while open, only
+when every FWA draw has been reconciled. `unwind` (closed only) withdraws up to 20 listed Shapes per call and redeems them
+for their exact backing.
 
 ## Upkeep
 
-`performUpkeep` (permissionless, reverts `PoolBusy` while FWA has an unresolved acquisition, `NoUpkeepNeeded` when it
-would change nothing):
+`performUpkeep` (permissionless; returns the reward; reverts `PoolBusy` while FWA has an unresolved acquisition and
+`NoUpkeepNeeded` when it would change nothing — simulating it is how keepers learn whether work exists):
 
-1. reconcile every FWA sequence issued since the last reconciliation (≤ 5): drawn listings leave the tracked set; failed
-   deliveries are tracked as pending;
-2. pending deliveries: settled → forgotten; refunded Shapes → `recoverRefundedNFT` into spares. Refunded curated NFTs are
-   left for the creator (`recoverCuratedNFT`): upkeep never calls a curated collection;
-3. collect FWA owner proceeds;
-4. if open: reprice (≤ 6 listings per call), select a feasible plan, rebalance (≤ 6 Shape operations per call), verify FWA
-   totals, checkpoint if funded.
+1. reconcile every FWA sequence issued since the last reconciliation (≤ 5): drawn listings leave the tracked set; a failed
+   delivery marks the item `PENDING` (never scanned again by upkeep);
+2. collect FWA owner proceeds;
+3. if open: reprice, select a feasible plan, rebalance, verify FWA totals, checkpoint if funded. Repricing and
+   rebalancing share one budget of 6 operations per call. Repricing rescans all ≤ 100 listings each call, so a removal
+   cannot skip one and an interrupted run resumes. A plan that would not fit beside the curated listings within the
+   100-listing limit is infeasible. A checkpoint also requires one extra maximum keeper reward, so admission still
+   holds after the checkpointing call pays its keeper.
 
-Keeper reward: `min(gasUsed + 45k, 3.2M) × min(tx.gasprice, basefee + 2 gwei, 10 gwei)`, plus `0.0005 ETH` when inventory
-work was done (draw reconciled, Shape listed/unlisted, listing repriced, refunded NFT recovered). A reconciled batch with
-only refunds earns gas reimbursement without the incentive. Pure re-checkpoints (after creator changes or deposits) pay
-nothing. The reward is force-sent, so a reverting keeper cannot block upkeep.
+No upkeep loop depends on history: refunded or stuck deliveries cost nothing per upkeep (fork test: 200 refunded curated
+deliveries, routine upkeep gas 847k before vs 836k after).
+
+`recoverRefundedShape(listingId)` (permissionless): for a Shape whose FWA delivery was refunded, recovers it from FWA and
+redeems it for its backing; pays gas only. FWA delivers with `transferFrom`, and Shapes rejects only transfers to itself,
+so a Shape delivery fails only when the purchaser named is the Shapes contract.
+
+Keeper reward:
+
+- price = `min(tx.gasprice, basefee + 0.05 gwei, 2 gwei)`: a keeper that bids more priority pays the excess itself;
+- gas = `min(measured, 3.2M) × 4/5`: EIP-3529 refunds cut billed gas by at most 1/5 of the gas used, so 4/5 of any
+  measured span is always billed, even when one transaction makes several paid calls. Fork: reimbursed gas is 66–97% of
+  billed gas;
+- plus a 0.0005 ETH incentive when inventory work was done (draw reconciled, Shape listed/withdrawn, listing
+  repriced). Work started by a creator action (configure, opening a closed pool, curated edits, unwind) pays it in full
+  until the next checkpoint; each of those closes admission first, so no purchase happens while it applies. Work caused by purchases pays it from `incentiveCredit`, which each reconciled batch resets
+  to FWA's edge on that batch's escrowed fees and every following paid call spends, so buying one's own draws earns at
+  most the edge paid to FWA. A batch with only refunds earns gas without the incentive; `recoverRefundedShape` earns
+  gas only. Pure re-checkpoints (after creator
+  changes or deposits) pay nothing. The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
 
 `listCurated` / `listCuratedBatch` pull from the creator (approve the Balancer first) and list on FWA. Shapes cannot be
-listed as curated. All curated edits require FWA idle and reconciled (`PoolBusy` otherwise) and invalidate the checkpoint.
-If FWA cannot deliver a drawn NFT, the purchaser may refund after FWA's 7-day window; the creator then recovers it with
-`recoverCuratedNFT`.
+listed as curated. All curated edits require FWA idle and reconciled (`PoolBusy` otherwise) and invalidate the checkpoint
+before any external call. If FWA cannot deliver a drawn NFT, the purchaser may refund after FWA's 7-day window; the creator
+then recovers it with `recoverCuratedNFT`. Upkeep never calls a curated collection.
+
+`recoverUntrackedNFT(collection, tokenId, to)` returns an NFT the Balancer holds outside FWA (sent to it directly).
+Tracked inventory is never held by the Balancer between transactions (listings and pending deliveries are owned by the
+FWA pool), so `ownerOf == this`, checked under the reentrancy lock, proves the NFT is untracked. It never calls the FWA pool
+or factory.
 
 ## Lifecycle
 
@@ -117,20 +144,34 @@ permanent; withdrawals and recovery keep working.
 `setENSName` / `clearENSName` call `setName` on whichever contract owns `addr.reverse` in the ENS registry. A primary name
 also needs the name's ETH address record set to the Balancer (dashboard checks both). Optional.
 
+## FWA pool page (ERC-1271)
+
+FWA stores pool-page metadata off-chain and asks the pool owner to `personal_sign` a fixed plain-text message
+(`Publish FWA Pools page`, site, chain 1, factories, pool, issued-at time, metadata hash), POSTed to
+`pools.fwa.fun/api/fwa/profile`. The Balancer is the owner and cannot sign, so `approvePoolPage(issuedAt, metadataHash)`
+(creator only) rebuilds that exact message for its own pool and stores its EIP-191 digest; `isValidSignature` returns the
+ERC-1271 magic value only for digests approved in the current epoch and ignores the signature bytes. `revokePoolPages`
+(creator) and every accepted creator transfer start a new epoch. Approved digests are always pool-page
+messages naming this pool, so no other protocol can accept them. Verified on a fork with viem `verifyMessage`. Not
+verified: whether FWA's server checks ERC-1271 (its client allows long contract signatures; server code is not public).
+
 ## Off-chain
 
 - `shared/planner.ts`: plan evaluation and bounded enumeration with the contract's exact arithmetic (fork parity test).
-- `keeper/`: one service for all Balancers of a factory.
+- `keeper/`: one service for all Balancers of a factory; simulates calls, sends only when the reward covers cost under
+  its policy, recovers refunded Shapes.
 - `app/`: creator dashboard. No player interface.
-- `sim/`: Monte Carlo economics.
+- `sim/`: Monte Carlo economics, including the previous design for comparison.
 
 ## Design decisions
 
 | Decision | Reason |
 | --- | --- |
-| Checkpoint = FWA sequence + inventory version | Cheap (2 SLOADs) and exact: any purchase or inventory change invalidates it. |
+| Checkpoint = FWA sequence + inventory version | Cheap and exact: any purchase or inventory change invalidates it. |
 | Pre-approved fallback plans instead of an on-chain search | Bounded, auditable; the keeper only applies creator-approved inventories. |
 | Never list while FWA has an unresolved acquisition | Nothing is ever staged, so FWA's active totals equal the tracked set. |
-| Clone factory, `via_ir` | Cheap deployment per creator; runtime 22.4 KB under EIP-170. |
+| Redeem surplus Shapes instead of keeping spares | Removes spare storage and spare credit from reserve math; managed Shapes never sit in the Balancer. Costs one mint fee per Shape re-minted when plans switch back (simulation: 0.02–0.11 ETH per 30 days at 10–42 switches; no change in closed time). |
+| Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
+| 4/5 gas reimbursement | The only in-transaction rule that provably never pays more gas than billed after refunds. |
+| Clone factory, `via_ir` | Cheap deployment per creator; runtime 23.2 KB under EIP-170 (24.6 KB). |
 | Hard-coded denomination ladder, checked against `Shapes.denominationAt` at deployment | Avoids external calls in hot paths. |
-| No ERC-1271 signing | FWA's off-chain pool-page edits need an owner signature; adding contract signatures widens the authority surface for an unconfirmed benefit. See READINESS.md. |
