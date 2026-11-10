@@ -10,7 +10,8 @@
     "dev": "vite --config app/vite.config.ts",
     "build:app": "vite build --config app/vite.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "keeper:e2e": "tsx keeper/e2e.ts"
+    "keeper:e2e": "tsx keeper/e2e.ts",
+    "rehearsal": "tsx keeper/rehearsal.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",

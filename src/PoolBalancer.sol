@@ -152,6 +152,8 @@ contract PoolBalancer is ReentrancyGuard {
     bool public creatorWork;
     /// @dev FWA edge paid by the draws of the last reconciled batch, not yet spent on incentives.
     uint128 public incentiveCredit;
+    /// @dev Intrinsic gas is paid once per transaction; credit it to the first paid call only.
+    bool transient intrinsicCredited;
 
     Checkpoint public checkpoint;
     uint64 public reconciledSequence;
@@ -851,7 +853,9 @@ contract PoolBalancer is ReentrancyGuard {
         if (price > cap) price = cap;
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
         reward = gasUsed * price;
-        uint256 shortfall = (measured - gasUsed + INTRINSIC_GAS) * price;
+        uint256 intrinsic = intrinsicCredited ? 0 : INTRINSIC_GAS;
+        intrinsicCredited = true;
+        uint256 shortfall = (measured - gasUsed + intrinsic) * price;
         if (incentive) {
             uint256 inc = shortfall + KEEPER_MARGIN;
             if (inc < KEEPER_INCENTIVE) inc = KEEPER_INCENTIVE;

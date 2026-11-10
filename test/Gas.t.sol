@@ -163,6 +163,40 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
+    /// Several paid upkeeps in one transaction at the cap: intrinsic gas is credited once, so the keeper earns no
+    /// more than billed gas + refunds + one margin per call (review of 1f352fa).
+    function test_profitAtCap_multiCallCreditsIntrinsicOnce() public {
+        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(5), 0, 0, 0, 0, 0, 0, 0, 0]);
+        configure(1 ether, 0, plans);
+        MultiKeeper mk = new MultiKeeper();
+        vm.fee(4.95 gwei);
+        vm.txGasPrice(5 gwei);
+        vm.recordLogs();
+        vm.prank(keeper, keeper);
+        mk.run(balancer, 8);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 sum;
+        uint256 n;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == KEEPER_PAID) {
+                (uint256 r,) = abi.decode(logs[i].data, (uint256, uint256));
+                sum += r;
+                ++n;
+            }
+        }
+        (bool ok, bytes memory b) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        require(ok);
+        (, uint64 billed,, int64 refunded,) = abi.decode(b, (uint64, uint64, uint64, int64, uint64));
+        uint256 bound = (uint256(billed) + uint256(int256(refunded))) * 5 gwei + n * 0.0001 ether;
+        emit log_named_uint("paid calls", n);
+        emit log_named_decimal_int("rewards - bound (ETH)", int256(sum) - int256(bound), 18);
+        assertGt(n, 1);
+        assertLe(sum, bound, "multi-call rewards within billed + refunds + margins");
+    }
+
     function test_gas_recoverRefundedShape() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
