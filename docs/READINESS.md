@@ -5,73 +5,68 @@ below; it does not establish that the contracts are safe.
 
 ## Candidate
 
-Commit `c3842b3` (contracts, keeper, app, docs) plus `1b6186e` (vitest include scope only). Run once with
-`CANDIDATE_RUN=1` on 2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
+Commit `7fcdbe4` (contracts, keeper, planner, dashboard, simulation). Later commits change documentation only. Run once
+with `CANDIDATE_RUN=1` on 2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 22,536 B (limit 24,576), BalancerFactory 1,212 B |
-| Foundry suite (fork) | `forge test` | 52 passed, 0 failed (6 suites); invariants 64 runs × 64 calls (4,096 calls) per suite |
-| Planner parity and unit tests | `npx vitest run` | 13 passed (5 exact-parity cases vs on-chain FWA) |
+| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 23,680 B (limit 24,576, margin 896), BalancerFactory 1,212 B |
+| Foundry suites (fork) | `forge test --no-match-path test/Gas.t.sol` | 61 passed, 0 failed (6 suites: scenario 11, behavior 31, hardening 15, parity 1, invariants 2 suites at 64 runs × 64 calls) |
+| Gas benchmarks, refund-checked | `forge test --match-path test/Gas.t.sol --isolate -vv` | 13 passed; every keeper path reimbursed ≤ billed gas |
+| Planner parity and keeper policy | `npx vitest run` | 21 passed (5 exact-parity cases vs on-chain FWA) |
 | Typecheck | `npm run typecheck` | pass |
 | Dashboard build | `npm run build:app` | pass |
-| Keeper integration (2 real FWA pools on a fork) | `npm run keeper:e2e` | pass: fill, draws, restart, replacement, reorg, error isolation |
-| Economic simulation | `npm run sim -- --runs 60` | completed; results unchanged in `docs/simulation-results.md` |
-| Deploy rehearsal | `forge script script/Deploy.s.sol` on a chain-id 31337 fork | pass (run inside keeper e2e) |
-| Independent review | two blind AI reviewers + repair re-review | High fixed, Medium (introduced by first repair) fixed; see SECURITY.md |
+| Keeper integration (2 real FWA pools on a fork) | `npm run keeper:e2e` | pass: fill, direct FWA ETH draws incl. a 5-draw batch, receipt audit (reimbursed ≤ billed on all keeper txs), restart, replacement, reorg, downtime, basefee spike wait, refunded-Shape recovery, pool-page ERC-1271 verification, per-pool error isolation |
+| Economic simulation | `npm run sim -- --runs 60` | completed; `docs/simulation-results.md` unchanged (deterministic) |
+| Deploy rehearsal | `forge script script/Deploy.s.sol` on a chain-id 31337 fork | pass (inside keeper e2e) |
+| Dashboard in a browser | dev server against a chain-id 31337 fork | fill, reprice, decoded errors, pool-page approval, stray-NFT error, 375 px width; re-checked against the candidate contracts (fill to open, Economics panel, reserve 0.3662 ETH incl. the re-checkpoint reward) |
+| Independent review | two clean-context AI reviewers + three repair re-review rounds | 1 Medium and 6 Low/Info fixed; 5 Info/Low accepted; see SECURITY.md |
 
-## Requirement status
+No mainnet contracts were deployed and no mainnet transactions were sent.
+
+## Requirement status (simplification and hardening pass)
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| One Balancer per FWA pool; Balancer owns the pool permanently | done | fork: `test_ownershipAndOperator`, `test_factory_isolatedBalancersAndPools` |
-| FWA standard pools only, reviewed implementation pinned | done | `initialize` checks code hash and passes the expected implementation to `createPool`; deploy script preflight |
-| ETH purchases only; token purchases impossible | done | fork: `test_tokenPurchasesImpossible`; no executor, no delegatecall beyond the fixed clone |
-| No custom player interface | done | players use pools.fwa.fun; dashboard is creator-only |
-| Curated NFTs: list, batch, reprice, withdraw, recover | done | fork tests incl. failed delivery and refund recovery |
-| Automatic Shapes replenishment | done | fork: single draw, 5-draw batch, mixed denominations, keeper e2e on two pools |
-| Configurable price ceiling, odds floor, capital limit, markup | done | `configure`; fork tests for each gate and fallback plans |
-| Dynamic Shapes mint fee | done | fork: real `setMintFee` by the Shapes admin |
-| Permissionless upkeep with bounded keeper compensation | done | fork: gas-price manipulation, redundant calls, reverting keeper |
-| On-chain admission protection (one batch, assume 5) | done | fork scenario and invariant suite |
-| ENS reverse naming | done | fork: reverse and forward resolution |
-| No central custody authority | done | factory ownerless; creator-only asset functions |
-| Surplus to the creator | done | `claimSurplus` with reserve floor |
-| Fixed inventory planner with infeasibility display | done | `shared/planner.ts`, fork parity test, dashboard |
-| Keeper service: discovery, reorgs, replacement, restart, health, isolation | done | `npm run keeper:e2e` |
-| Creator dashboard | done | exercised in a browser against a fork (fill, plan switch, listing, errors, mobile width) |
-| Economic simulation | done | `docs/simulation-results.md` |
-| Security review | done (internal, AI agents) | `docs/SECURITY.md` |
-| Deployment and verification scripts | done | `script/Deploy.s.sol` rehearsed on a chain-id 31337 fork |
+| Remove `needsUpkeep`; keeper simulates `performUpkeep` | done | `performUpkeep` returns the reward; keeper classifies `NoUpkeepNeeded`/`PoolBusy`, surfaces other reverts; e2e |
+| Remove on-chain `maxShapeCapital`; keep it in the planner; show ETH committed | done | `Config` has three fields; dashboard "Total ETH committed" |
+| Keep up to four fallback plans with first-feasible selection | done | `test_switchesToFallbackPlanWhenInfeasible`, `test_planBeyondListingLimitIsInfeasible` |
+| Remove spare Shapes; redeem surplus; simplify reserve | done | `test_planShrinkRedeemsAndRegrowthPaysMintFees` (re-growth pays 6 mint fees), invariant `noShapesHeldBetweenCalls` |
+| Untracked NFT recovery that cannot release protected assets | done | `test_recoverUntrackedNFTs`, `test_cannotRecoverProtectedAssets`, reviewer tests |
+| No pending-delivery accumulation; bounded loops | done | `test_historicalRefundsDoNotGrowUpkeepGas` (200 refunds: 847k → 836k) |
+| Configurable markup with bounded, resumable repricing | done | `test_interruptedRepricingAtListingLimit` (100 listings, 17 steps, out-of-gas call and removals mid-run) |
+| ApeBall-safe reimbursement: priority cap 0.05 gwei, max gas price, refund-safe gas | done | `test_priorityOverbidIsNotReimbursed`, isolated gas suite, e2e receipt audit, multi-call test |
+| Incentive not farmable, not paid for no-ops | done | `test_drawCausedWorkEarnsAtMostEdgePaid`, `test_creatorTopUpWhileOpenKeepsCredit`, reviewer PnL tests (all negative) |
+| Keeper profitability policy, waits in spikes, never exceeds reimbursable gas | done | `keeper/keeper.test.ts`, e2e spike step |
+| Rebenchmark 8 operations; justify caps | done | `docs/GAS.md` |
+| Dashboard economics: Funded / Projected sustainable / Projected loss, 10 figures, markup warning | done | `app/src/App.tsx` Economics panel |
+| FWA pool metadata investigation and narrow ERC-1271 | done (server unverified) | client template reconstructed; viem `verifyMessage` on fork; epochs and revocation |
+| Simulation: previous vs simplified | done | `docs/simulation-results.md`: redemption costs 0.02–0.11 ETH/30 days in re-mint fees under frequent plan switching, same uptime |
 
 ## Checks that could not be executed
 
-- **Real Chainlink VRF fulfillment.** Fork tests deliver randomness through the real FWA VRF service by impersonating its
-  Chainlink coordinator. Real oracle timing and billing were not exercised.
-- **FWA's website with a Balancer-owned pool.** Not testable without deploying. FWA's "Edit page" (pool name, images)
-  needs an owner-wallet signature; the Balancer cannot sign, so the pool page may show without custom metadata unless
-  FWA supports contract owners. Purchases do not depend on it.
+- **FWA's pool-page server.** Whether `pools.fwa.fun` verifies ERC-1271 for a contract owner, and its freshness policy,
+  cannot be tested without a mainnet pool and a live POST. The dashboard submits only on chain 1.
+- **Real Chainlink VRF fulfillment.** Randomness is delivered through the real FWA VRF service by impersonating its
+  coordinator.
 - **Mainnet Etherscan verification.** `--verify` runs only on a real deployment.
-- **Real wallet extension.** Dashboard was exercised with a dev connector that signs via an unlocked anvil account.
-- **External professional audit.** None performed. Recommended before holding significant value.
-- **Long invariant campaigns.** Runs were short (see candidate).
+- **Real wallet extension.** The dashboard was exercised with a dev connector.
+- **External professional audit and formal verification.** None performed.
+- **Long invariant campaigns.** 64 runs × 64 calls per suite.
 
 ## Remaining risks
 
-See `docs/SECURITY.md` residual risks: FWA and Shapes admin powers, economics (losses at low markup, small
-denominations, high gas or high mint fee), curated delivery escrow when a buyer never refunds, creator-chosen hostile
-collections, no professional audit.
-
-Economic guidance from the simulation (30-day, 40 draws/day baseline): 15% markup on a 0.01–0.1 ETH Shapes mix is
-marginal (mean +0.71 ETH, p5 −0.97 ETH); 0.01-ETH-only Shapes, the 0.01 ETH mint-fee cap, and 6 gwei gas at 15% are
-uneconomic; larger Shapes make gas negligible. Use the planner's projected minimum markup per configuration.
+See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; purchaser-naming griefing at roughly the attacker's own
+cost (L-1, I-1, I-2); keepers wait above a 2 gwei basefee and skip fill steps above ~0.76 gwei (creators can run them);
+pools with very cheap curated NFTs give keepers little incentive for purchase-caused work; economics (losses at low
+markup, small denominations, high mint fee); the FWA page template could change; no professional audit.
 
 ## Your actions to deploy
 
 1. Review and merge [PR #1](https://github.com/ripe0x/shapes-pool-balancer/pull/1).
 2. Decide whether to commission an external audit first.
-3. Ask FWA whether pool-page metadata can be published for a contract-owned pool (optional).
-4. Create or choose a deployer keystore (no keys on the command line), fund it for about 5.3M gas.
+3. Optional: ask FWA to confirm ERC-1271 support for pool pages, or to allow a creator editor address.
+4. Create or choose a deployer keystore (no keys on the command line) and fund it for about 5.3M gas.
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):
 
    ```bash
@@ -80,6 +75,6 @@ uneconomic; larger Shapes make gas negligible. Use the planner's projected minim
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.
 6. Start the keeper with a funded keeper key from your secret store (`docs/OPERATIONS.md`), `FROM_BLOCK` = deployment
-   block.
+   block, and a `MAX_LOSS_WEI` allowance if it should also run unpaid re-checkpoints.
 7. Build the dashboard with `VITE_CHAIN_ID=1`, `VITE_FACTORY=<factory>`, `VITE_FROM_BLOCK=<block>` and host it.
 8. Create a first pool with a small deposit and a conservative markup, and watch one full draw-and-upkeep cycle.

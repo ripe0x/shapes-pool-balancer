@@ -22,8 +22,9 @@ reimbursed gas ≤ billed gas. The keeper e2e (`npm run keeper:e2e`) asserts the
 | FWA `acquireBatch(5)` including the Balancer operator check | 1,661,074 | – | – |
 | `BalancerFactory.createBalancer` (clone, FWA pool, operator, Shapes approval) | 776,162 | – | – |
 
-Real receipts from the keeper e2e (anvil fork): fill step 3,044,419 billed / 2,441,257 reimbursed (80.2%); 3–5 draw
-replacement 895,047 / 739,360 (82.6%); `recoverRefundedShape` 155,432 / 131,416 (84.5%).
+Real receipts from the keeper e2e at the release candidate (`7fcdbe4`, anvil fork): fill steps 2,208,949 and
+3,029,258 billed / 1,753,673 and 2,409,738 reimbursed (79–80%); 1–5 draw replacements 847,103–939,643 / 675,939–757,651
+(80–81%); `recoverRefundedShape` 155,443 / 114,616 (74%). No keeper transaction was reimbursed more gas than billed.
 
 Other measurements: 100 listings take 17 repricing upkeeps after a markup change; routine Shape upkeep gas is unchanged
 after 200 refunded curated deliveries (847k before, 836k after); `canPurchase` stays under FWA's 100k stipend.
@@ -47,7 +48,7 @@ prices (at 0.2 gwei a 1-Shape replacement costs ~0.0002 ETH; the incentive is 0.
 
 | Constant | Value | Basis |
 | --- | --- | --- |
-| `MAX_OPS` | 6 | keeps a fill step under ~3.05M billed gas |
+| `MAX_OPS` | 6, shared by repricing and rebalancing in one call | keeps a fill step under ~3.05M billed gas; worst bounded upkeep (5 reconciles + 6 mints in 6 denominations) 3.10M |
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep (fill step, 3.04M on a real receipt) plus headroom for mint-seed variance |
 | refund factor | 4/5 of the measured span | EIP-3529 refund bound (above); no intrinsic-gas credit |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
