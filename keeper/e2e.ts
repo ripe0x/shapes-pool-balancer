@@ -6,7 +6,7 @@ import { execSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toBytes, toHex, type Address } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toBytes, toHex, type Address } from 'viem';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 import { Keeper } from './keeper';
 
@@ -195,33 +195,21 @@ async function run() {
   await tickUntil(k, async () => (await status(b1)) === 0);
   console.log('✓ waited through a basefee spike, then serviced');
 
-  // 8. refunded Shape. FWA delivers with transferFrom and Shapes rejects only transfers to itself, so a
-  //    purchase naming the Shapes contract as purchaser makes the real delivery fail; after 7 days that
-  //    purchaser refunds (impersonated here) and the keeper recovers and redeems the Shape (gas-only reward).
+  // 8. Purchaser gate. The only known way to make a Shape delivery fail is a purchase naming the Shapes contract
+  //    (Shapes rejects only transfers to itself); the Balancer refuses it, so FWA reverts the purchase.
+  //    `recoverRefundedShape` stays for unknown failures and is covered by the fork test with a mocked revert.
   const SHAPES = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0' as Address;
-  let watched: string | undefined;
-  for (let i = 0; i < 6 && !watched; i++) {
-    await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b08', 40n + BigInt(i), SHAPES);
-    await tickUntil(k, async () => (await status(b1)) === 0);
-    await k.discover(await pub.getBlockNumber()); // the reconciling upkeep's ItemDrawn is seen on the next scan
-    watched = k.state.refundWatch[b1]?.[0];
-  }
-  assert.ok(watched, 'a Shape delivery failed and is watched');
   const pool1 = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
-  await test.increaseTime({ seconds: 7 * 86400 + 60 });
-  await test.mine({ blocks: 1 });
-  await test.impersonateAccount({ address: SHAPES });
-  await test.setBalance({ address: SHAPES, value: 10n ** 18n });
-  const rh = await wallet.writeContract({ address: pool1, abi: fwaPoolAbi, functionName: 'refundFailedDelivery', args: [BigInt(watched)], account: SHAPES, chain: null });
-  assert.equal((await pub.waitForTransactionReceipt({ hash: rh })).status, 'success', 'refund');
-  await tickUntil(k, async () => !(k.state.refundWatch[b1] ?? []).includes(watched!) && !k.state.pending[b1]);
-  const item = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'items', args: [BigInt(watched)] })) as readonly unknown[];
-  assert.equal(Number(item[0]), 0, 'refunded Shape recovered');
-  const recovered = await pub.getLogs({ address: b1, event: parseAbiItem('event ShapeRecovered(uint256 indexed listingId, uint256 eth)'), args: { listingId: BigInt(watched) }, fromBlock: FORK_BLOCK });
-  assert.equal(recovered.length, 1, 'recovered on-chain');
-  const tx = await pub.getTransaction({ hash: recovered[0].transactionHash! });
-  assert.equal(tx.from.toLowerCase(), keeperAddr.toLowerCase(), 'recovered by the keeper');
-  console.log('✓ refunded Shape recovered and redeemed by the keeper');
+  const gateBuyer = '0x00000000000000000000000000000000000b0b08' as Address;
+  await test.setBalance({ address: gateBuyer, value: 10n ** 20n });
+  const v1 = await pub.readContract({ address: pool1, abi: fwaPoolAbi, functionName: 'inventoryVersion' });
+  const deadline = (await pub.getBlock()).timestamp + 600n;
+  await assert.rejects(
+    pub.simulateContract({ address: pool1, abi: fwaPoolAbi, functionName: 'acquireBatch', args: [SHAPES, 1n, 0n, 0n, 10_000n, v1 as bigint, deadline], value: 10n ** 17n, account: gateBuyer }),
+    'a purchase naming the Shapes contract as purchaser is refused',
+  );
+  assert.equal(await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'canPurchase', args: [SHAPES] }), false);
+  console.log('✓ purchaser gate refuses the Shapes contract (no failed Shape delivery can be bought)');
   checkAudit(k);
 
   // 9. FWA pool page: the creator approves FWA's exact message; viem verifyMessage (ERC-1271 path, as a

@@ -116,7 +116,7 @@ async function main() {
   let keeper: ChildProcess | undefined;
   const keeperLog: string[] = [];
   try {
-    for (let i = 0; i < 50; i++) { try { await pub.getBlockNumber(); break; } catch { await sleep(200); } }
+    for (let i = 0; i < 300; i++) { try { await pub.getBlockNumber(); break; } catch { await sleep(200); } }
     assert.equal(await pub.getCode({ address: KEEPER, blockNumber: FORK_BLOCK }), undefined, 'keeper has no code or delegation at the fork block');
     sh(`forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${DEPLOYER} --broadcast`);
     const factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory as Address;
