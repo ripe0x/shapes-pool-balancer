@@ -95,16 +95,19 @@ npm run sim -- --runs 60
 
 ## Local fork rehearsal and dashboard
 
+The dev fork uses anvil's standard port, 8545. If a mainnet fork with `--chain-id 31337` already runs there, deploy onto
+it; otherwise start one:
+
 ```bash
-anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --chain-id 31337 --port 18545
+anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --chain-id 31337 --port 8545
 ```
 
 ```bash
-forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:18545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
+forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
 ```
 
 ```bash
-FACTORY=$(jq -r .balancerFactory deployments/31337.json) forge script script/DevSetup.s.sol --tc DevSetup --rpc-url http://127.0.0.1:18545 --unlocked --sender 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --broadcast
+FACTORY=$(jq -r .balancerFactory deployments/31337.json) forge script script/DevSetup.s.sol --tc DevSetup --rpc-url http://127.0.0.1:8545 --unlocked --sender 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --broadcast
 ```
 
 Copy `app/.env.example` to `app/.env.local`, set `VITE_FACTORY` and, for the fork only, `VITE_DEV_ACCOUNT` (an unlocked
