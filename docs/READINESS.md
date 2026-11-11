@@ -13,7 +13,7 @@ margin; round-5 fixes S1–S3), re-checked with the app tests, typecheck, build 
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Build and sizes | `forge build --sizes` | pass; PoolBalancer runtime 23,919 B (limit 24,576, margin 657), BalancerFactory 1,212 B |
+| Build and sizes | `forge build --sizes` | pass at `57510f3`; PoolBalancer runtime 24,315 B (limit 24,576, margin 261), PoolPage 1,201 B, ShapePacks 17,768 B, BalancerFactory 1,212 B |
 | Foundry suites (fork) | `forge test --no-match-path test/Gas.t.sol` | 78 passed, 0 failed (7 suites incl. `KeeperAdversarial` 9, hardening 22, behavior 32, scenario 11, parity 1, invariants at 64 runs × 64 calls) |
 | Gas benchmarks and break-even, refund-checked | `forge test --match-path test/Gas.t.sol --isolate -vv` | 32 passed; every keeper path reimbursed ≤ billed gas; PnL table in GAS.md |
 | Planner parity and keeper policy | `npx vitest run` | 25 passed |
@@ -108,7 +108,7 @@ markup, small denominations, high mint fee); the FWA page template could change;
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):
 
    ```bash
-   forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
+   PACKS_ADMIN=<address> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
    ```
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.

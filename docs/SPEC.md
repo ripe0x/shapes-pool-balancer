@@ -14,7 +14,9 @@ leave the pool, anyone may call `performUpkeep` to restore the configured Shapes
 | Contract | Role |
 | --- | --- |
 | `BalancerFactory` | Ownerless. Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Keeps no authority over clones. |
-| `PoolBalancer` | Non-upgradeable logic shared by all clones. Immutables pin the FWA factory, the reviewed FWA implementation and its runtime code hash, Shapes and the ENS registry. |
+| `PoolBalancer` | Non-upgradeable logic shared by all clones. Immutables pin the FWA factory, the reviewed FWA implementation and its runtime code hash, Shapes, this system's Draw Packs instance and the ENS registry. |
+| `PoolPage` | External library (pure) that builds the FWA pool-page message digest; kept outside `PoolBalancer` for the 24 KB limit. |
+| Draw Packs | `ShapePacks` from ripe0x/shape-packs `draw-packs` at `3a463f7` (vendored, unmodified, the code ape-Ball deploys), deployed once per system by `script/Deploy.s.sol` with a 2-unit (0.02 ETH) minimum. An ERC-721 holding Shapes in custody; `redeem` pays exactly their backing. Its admin controls presentation only (renderer, description). |
 
 `initialize` (called by the factory in the same transaction) verifies the FWA implementation code hash and the 5-purchase
 batch limit, calls `PoolFactory.createPool(0, reviewedImplementation)` so the Balancer becomes the FWA owner (FWA allows
@@ -43,13 +45,16 @@ anyone, and NFTs sent to it directly, belong to the creator; there is no contrib
   Later draws in the same batch see the inventory the earlier ones left.
 - `markupBps`: fixed operating markup (0–100%). Every FWA listing price is `base × (1 + markup)`: the creator's value for
   curated NFTs, the backing for Shapes. A change sets `repricing`; upkeep reprices every listing before reopening.
-- `plans`: 1–4 approved Shape inventories, each nine 16-bit counts (denomination 0 = 0.01 ETH … 8 = 100 ETH), 1–40
-  Shapes. The first is preferred. Each plan fixes its own capital, so there is no separate on-chain capital limit; the
+- `plans`: 1–4 approved prize inventories, each sixteen 16-bit counts, 1–40 prizes. Sizes 0–8 are the Shapes
+  denominations (0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100 ETH), each prize one Shape. Sizes 9–15 are 0.02, 0.03, 0.2,
+  0.25, 2, 2.5 and 25 ETH, each prize one Draw Pack holding the fewest Shapes that sum to it (2 or 3; e.g.
+  0.25 = 2×0.1 + 0.05). Plans saved with only the first nine sizes decode unchanged. The first is preferred. Each plan fixes its own capital, so there is no separate on-chain capital limit; the
   dashboard planner filters plans by a capital preference and shows the total ETH committed.
 
 Upkeep keeps the active plan while it satisfies the price and odds limits with the current curated set; otherwise it
 activates the first feasible approved plan. Shapes above a new target are withdrawn from FWA and redeemed for their backing
-in the same call; deficits are minted like-for-like. No on-chain solver, no new plans, no splitting or composing of Shapes.
+in the same call; deficits are minted like-for-like (a pack prize is a new pack whose Shapes are minted inside it). No
+on-chain solver and no new plans; packs are only created whole and redeemed whole.
 If no plan is feasible, purchases close (status 5).
 
 Feasibility uses FWA's exact integer formulas: listing weight `1e36 / price`, fee `(Σw·p / Σw) × (1 + edge)`.
@@ -83,11 +88,13 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 
 `requiredReserve` (0 while closed):
 
-- cost to restore the active plan from the Shapes currently listed (backing + current mint fee each), plus
-- the worst 5 Shape replacements from a full plan (largest denominations first, backing + mint fee), plus
+- cost to restore the active plan from the prizes currently listed (backing + current mint fee per Shape inside), plus
+- the worst 5 prize replacements from a full plan: the 5 largest values, each charged backing + 3 mint fees (the most
+  Shapes any prize holds), an upper bound on any 5 prizes' true cost whatever the mint fee, plus
 - one maximum keeper reward (`3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH`) held for the upkeep that restores
   an admitted batch, at any price up to the cap, plus
-- one reward for the call that writes the next checkpoint and one per 6-Shape refill step still needed, each
+- one reward for the call that writes the next checkpoint and one per refill step still needed (6 Shape units per
+  step, a pack counting its Shapes), each
   `3.2M × current reimbursable price + 0.0005 ETH`. `_checkpoint` re-checks this at its own transaction's price,
   so a later gas spike only delays reopening. Funding exactly `requiredReserve()` opens a new pool (fork tests at 0.08,
   0.5 and 4.95 gwei).
@@ -197,5 +204,6 @@ verified: whether FWA's server checks ERC-1271 (its client allows long contract 
 | Redeem surplus Shapes instead of keeping spares | Removes spare storage and spare credit from reserve math; managed Shapes never sit in the Balancer. Costs one mint fee per Shape re-minted when plans switch back (simulation: 0.02–0.11 ETH per 30 days at 10–42 switches; no change in closed time). |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
 | 4/5 gas + (1/5 gas + 0.0005 ETH) incentive, 0.05 gwei priority cap | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive returns the other fifth only for useful work and within the edge credit, plus 0.0005 ETH that keeps upkeep economical to the 5 gwei cap for keepers pricing with `eth_estimateGas`. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep (1 gwei: +91% keeper spend, no faster inclusion). |
-| Clone factory, `via_ir` | Cheap deployment per creator; runtime 23,9xx B under EIP-170 (24,576 B). |
-| Hard-coded denomination ladder, checked against `Shapes.denominationAt` at deployment | Avoids external calls in hot paths. |
+| Clone factory, `via_ir` | Cheap deployment per creator; runtime 24,315 B under EIP-170 (24,576 B), with the pool-page message builder in the `PoolPage` library. |
+| Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |
+| A fixed menu of 16 prize sizes instead of arbitrary values | Keeps plans, per-size counts, reserve and weight checks structurally unchanged; a 1–2–2.5–5 ladder lands within about 25% of any target value. |

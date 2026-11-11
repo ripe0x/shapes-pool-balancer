@@ -157,7 +157,7 @@ the brief excludes; neither is added.
 | Component of `requiredReserve()` while open | Protects | Sized at |
 | --- | --- | --- |
 | deficit: missing Shapes × (backing + mint fee) | restoring the active plan | exact |
-| worst batch: largest 5 Shapes × (backing + mint fee) | replacing what an admitted batch can draw | exact |
+| worst batch: largest 5 prize values × (backing + 3 mint fees) | replacing what an admitted batch can draw | upper bound: exact for packs of 3 Shapes, +2 mint fees for each single Shape counted (+0.01 ETH at a 0.001 ETH fee) |
 | one maximum keeper reward | paying the upkeep that restores an admitted batch, at any price up to the cap | 0.0165 ETH (the hard guarantee) |
 | one reward for the call that writes the next checkpoint | admission still holds after that call pays its keeper | 3.2M gas × **current** reimbursable price + 0.0005 ETH |
 | one reward per remaining 6-Shape refill step | creator-started refills | same, per step |
@@ -188,7 +188,7 @@ balance`; that exact amount reopens it.
 
 | Constant | Value | Basis |
 | --- | --- | --- |
-| `MAX_OPS` | 6, shared by repricing and rebalancing in one call | keeps a fill step under ~3.05M billed gas; worst bounded upkeep (5 reconciles + 6 mints in 6 denominations) 3.10M |
+| `MAX_OPS` | 6 Shape units, shared by reconciling, repricing and rebalancing in one call; a pack counts the Shapes it holds (2 or 3) | keeps a fill step under ~3.05M billed gas; worst bounded upkeep (5 reconciles + 6 mints in 6 denominations) 3.10M. Packs: ~870k gas per three-Shape pack mint+list against ~380k per Shape; six packs in one call billed 5.8M before unit budgeting, now pack fill steps bill 1.5–2.25M and replacing 5 drawn three-Shape packs 2.37M (`test_gas_packFillStep`, `test_gas_replaceFivePacks`) |
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
 | refund factor | 4/5 of the measured span | EIP-3529 refund bound (above) |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |

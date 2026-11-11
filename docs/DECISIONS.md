@@ -117,9 +117,10 @@ Review the **Money and authority** section first.
 31. **Fork tests pin block 26,382,349** for reproducibility. They prove behavior against FWA and Shapes as deployed
     at that block.
 32. **Solidity 0.8.28, `via_ir`, Solady** (clones, safe ETH transfers, reentrancy guard, string and signature
-    helpers). `via_ir` was needed to fit the 24 KB limit (runtime 23,208 B of 24,576).
-33. **The gate refuses three purchasers**: the Balancer, the Shapes contract and the FWA pool (FWA passes the named
-    purchaser to `canPurchase`). Deliveries to them could never be refunded or tracked. **Remaining griefing:** a
+    helpers). `via_ir` was needed to fit the 24 KB limit (runtime 23,208 B of 24,576; 24,315 B after pack prizes,
+    with the pool-page message builder moved to the `PoolPage` library).
+33. **The gate refuses four purchasers**: the Balancer, the Shapes contract, the Draw Packs contract and the FWA pool
+    (FWA passes the named purchaser to `canPurchase`). Deliveries to them could never be refunded or tracked. **Remaining griefing:** a
     purchaser contract that never refunds can lock a curated NFT from a collection that refuses transfers to contracts.
     Expected attacker cost to lock one = (VRF fee + FWA edge on the fee) / the NFT's draw odds: ~1.06 ETH for a 0.5 ETH
     NFT in a typical pool, ~0.18 ETH in a thin pool; worst case uses the creator's odds floor; repeatable once per such
@@ -127,3 +128,26 @@ Review the **Money and authority** section first.
     contract purchasers (smart wallets, EIP-7702 accounts) **(your call)**.
 34. **Keeper bids exactly the 0.05 gwei reimbursable priority.** In a congested block that bid may lose to other
     transactions; the keeper then waits rather than overbid, because the excess would not be reimbursed.
+
+## Pack prizes (2026-11-11)
+
+35. **Prize sizes between the Shapes denominations use Draw Packs** (owner request: more flexible ETH denominations).
+    Sizes 9–15 (0.02, 0.03, 0.2, 0.25, 2, 2.5, 25 ETH) are appended after the nine Shapes sizes, so existing plans,
+    tests and fixtures keep their indices. A fixed menu, not arbitrary values: it keeps plans, counts, reserve and
+    weight checks structurally unchanged.
+36. **This system deploys its own Draw Packs instance** (ripe0x/shape-packs `draw-packs` at `3a463f7`, unmodified,
+    the code ape-Ball deploys) with a 2-unit minimum, not the mainnet Shape Packs contract (3-unit minimum, no audit,
+    unverified on Etherscan). Name "Pool Prize Packs", symbol "PRIZEPACK", and the presentation admin (`PACKS_ADMIN`,
+    renderer and description only) are deploy values **(your call)**. Draw Packs' own audit status as used in ape-Ball
+    is not confirmed here.
+37. **Single-Shape sizes stay plain Shapes**, not one-Shape packs: a pack's wrapper roughly doubles mint+list gas
+    (~870k for a three-Shape pack against ~380k per Shape), which would land on the most frequent replacements, and
+    winners of ordinary prizes keep receiving Shapes.
+38. **Upkeep work is budgeted in Shape units**: a pack counts the Shapes it holds against `MAX_OPS` (6). Without it,
+    six pack mints billed 5.8M gas against the 3.2M reimbursement cap, so keepers would lose money after pack draws.
+    Consequence: refilling several drawn packs takes more upkeep calls, so a pool with packs reopens a little later.
+39. **Worst-batch reserve charges every prize three mint fees**, an upper bound on any five prizes' cost whatever the
+    mint fee. Simpler than an exact search; costs +0.01 ETH of reserve at the current 0.001 ETH fee.
+40. **Withdrawal redeems prizes one at a time** through `redeem(uint256)`, which Shapes and Draw Packs share, instead of
+    one Shapes batch: smaller code; a little more gas on unwind and plan switches (unwind of 20 Shapes: 2.62M, creator-paid).
+

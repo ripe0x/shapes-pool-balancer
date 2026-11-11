@@ -103,7 +103,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
 }
 
 async function run() {
-  sh(`forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
+  sh(`PACKS_ADMIN=${ACCTS[0]} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
   factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory;
   const b1 = await setupPool(ACCTS[1]);
   const b2 = await setupPool(ACCTS[2]);
