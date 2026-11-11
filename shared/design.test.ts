@@ -1,14 +1,13 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { available, describe, ethNeeded, playerView, recommend, type DesignInputs } from './design';
-import { DENOMS, capitalOf, shapeCount, type Counts } from './planner';
+import { available, cheapest, describe, ethNeeded, fallbacksFor, playerView, type DesignInputs } from './design';
+import { DENOMS, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
   markupBps: 1500,
   edgeBps: 500,
   mintFee: parseEther('0.0005'),
-  budget: parseEther('2'),
   have: Array(9).fill(0),
   baseFee: 1_000_000_000n,
   minCuratedOddsBps: 500,
@@ -33,45 +32,61 @@ suite('playerView', () => {
   });
 });
 
-suite('recommend', () => {
-  it('fits the budget, the 40-Shape limit and the odds floor for every style', () => {
-    for (const style of ['steady', 'balanced', 'jackpot'] as const) {
-      const r = recommend(style, base);
-      expect(r.best, style).toBeDefined();
-      for (const c of [r.best!, ...r.fallbacks]) {
-        expect(ethNeeded(c, base) <= available(base.budget, base.have, c)).toBe(true);
-        expect(shapeCount(c)).toBeLessThanOrEqual(40);
-        expect(describe(c, base).curatedOddsBps).toBeGreaterThanOrEqual(base.minCuratedOddsBps);
-      }
+suite('cheapest', () => {
+  const one = { ...base, curatedBases: [parseEther('0.05')] };
+  const odds = (c: Counts, d = one) => describe(c, d).curatedOddsBps;
+  const plusOne = (c: Counts) => c.map((n, i) => (i === c.findIndex((x) => x > 0) ? n + 1 : n));
+
+  it('meets the NFT odds exactly enough: one more of its smallest Shape would break the floor', () => {
+    for (const floor of [5000, 2000, 500, 100]) {
+      const d = { ...one, minCuratedOddsBps: floor };
+      const c = cheapest(d)!;
+      expect(odds(c, d), `floor ${floor}`).toBeGreaterThanOrEqual(floor);
+      expect(odds(plusOne(c), d), `floor ${floor}`).toBeLessThan(floor);
     }
   });
 
-  it('each style wins on its own measure: steady the draw price, balanced 2x wins, jackpot the top prize', () => {
-    const ev = (s: 'steady' | 'balanced' | 'jackpot') => describe(recommend(s, base).best!, base);
-    const [steady, balanced, jackpot] = [ev('steady'), ev('balanced'), ev('jackpot')];
-    const top = (e: typeof steady) => e.tiers.filter((t) => t.kind === 'shape').reduce((m, t) => (t.listPrice > m ? t.listPrice : m), 0n);
-    const win2x = (e: typeof steady) => playerView(e, base.markupBps, 0n).win2x;
-    expect(steady.drawPrice <= balanced.drawPrice && steady.drawPrice <= jackpot.drawPrice).toBe(true);
-    expect(win2x(balanced)).toBeGreaterThanOrEqual(Math.max(win2x(steady), win2x(jackpot)));
-    expect(top(jackpot) > top(steady)).toBe(true);
+  it('fills with the smallest Shapes: a 0.05 ETH NFT at 1 in 20 needs three 0.01 ETH Shapes', () => {
+    expect(cheapest(one)).toEqual(mix({ 0: 3 }));
   });
 
-  it('fallbacks raise curated odds', () => {
-    const r = recommend('steady', base);
-    const odds = (c: Counts) => describe(c, base).curatedOddsPpm;
-    expect(r.fallbacks.length).toBeGreaterThan(0);
-    for (const f of r.fallbacks) expect(odds(f)).toBeGreaterThan(odds(r.best!));
+  it('with the same Shape size, rarer NFT odds mean more Shapes, more ETH and a cheaper draw', () => {
+    const at = (floor: number) => { const d = { ...one, minCuratedOddsBps: floor }; const c = cheapest(d)!; return { n: shapeCount(c), eth: ethNeeded(c, d), price: describe(c, d).drawPrice }; };
+    const [common, rare] = [at(500), at(100)]; // both filled with 0.01 ETH Shapes
+    expect(rare.n).toBeGreaterThan(common.n);
+    expect(rare.eth > common.eth).toBe(true);
+    expect(rare.price < common.price).toBe(true);
   });
 
-  it('counts Shapes the switch would redeem as available, and finds nothing without NFTs or budget', () => {
+  it('a valuable NFT is filled with larger Shapes, since one 0.01 ETH Shape would already make it too rare', () => {
+    const d = { ...one, curatedBases: [parseEther('10')] };
+    const c = cheapest(d)!;
+    expect(c[0]).toBe(0);
+    expect(odds(c, d)).toBeGreaterThanOrEqual(d.minCuratedOddsBps);
+  });
+
+  it('keeps the bonus Shapes and shrinks the filler to hold the odds', () => {
+    const bonus = mix({ 2: 2 });
+    const c = cheapest(one, bonus)!;
+    expect(c[2]).toBeGreaterThanOrEqual(2);
+    expect(odds(c)).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
+    expect(c[0]).toBeLessThanOrEqual(cheapest(one)![0]);
+  });
+
+  it('stays within 40 Shapes and finds nothing without NFTs', () => {
+    expect(shapeCount(cheapest({ ...one, minCuratedOddsBps: 1 })!)).toBeLessThanOrEqual(40);
+    expect(cheapest({ ...one, curatedBases: [] })).toBeUndefined();
+  });
+
+  it('fallbacks raise the chance of an NFT and need no more ETH', () => {
+    const d = { ...one, minCuratedOddsBps: 200 };
+    const best = cheapest(d)!;
+    const fb = fallbacksFor(best);
+    expect(fb.length).toBeGreaterThan(0);
+    for (const f of fb) { expect(odds(f, d)).toBeGreaterThan(odds(best, d)); expect(ethNeeded(f, d) <= ethNeeded(best, d)).toBe(true); }
+  });
+
+  it('counts Shapes the switch would redeem as available', () => {
     expect(available(parseEther('0.1'), mix({ 3: 2 }), mix({ 3: 1 }))).toBe(parseEther('0.6'));
-    expect(recommend('balanced', { ...base, curatedBases: [] }).best).toBeUndefined();
-    expect(recommend('balanced', { ...base, budget: parseEther('0.01') }).best).toBeUndefined();
-  });
-
-  it('a larger budget never yields less Shapes capital for the jackpot style', () => {
-    const small = capitalOf(recommend('jackpot', base).best!);
-    const large = capitalOf(recommend('jackpot', { ...base, budget: parseEther('20') }).best!);
-    expect(large >= small).toBe(true);
   });
 });

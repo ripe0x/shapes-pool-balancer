@@ -1,12 +1,9 @@
 import {
-  BPS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, enumeratePlans, evaluate, requiredReserveAt,
+  BPS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
-export type Style = 'steady' | 'balanced' | 'jackpot';
-
 export interface DesignInputs extends PoolInputs {
-  budget: bigint; // ETH the creator commits: the Balancer's balance plus Shapes already listed
   have: Counts; // Shapes listed now
   baseFee: bigint;
   minCuratedOddsBps: number;
@@ -46,44 +43,62 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
 export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'baseFee'>) =>
   requiredReserveAt(target, d.have, d.mintFee, d.baseFee);
 
-/** Largest Shape prize in a mix (listed price). */
-const topShape = (ev: Evaluation) => ev.tiers.filter((t) => t.kind === 'shape').reduce((m, t) => (t.listPrice > m ? t.listPrice : m), 0n);
-const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
+const NONE: Counts = DENOMS.map(() => 0);
+const NO_CEILING = 2n ** 255n;
 
 /**
- * The mix that fits the budget and best matches the style, judged from the player's side:
- * steady: lowest draw price; balanced: highest chance of a prize worth 2x the draw or more; jackpot: largest top prize,
- * then lowest draw price. Fallbacks drop some of the smallest Shapes, which raises curated odds, so the pool can stay
- * open after a curated NFT is drawn.
+ * The cheapest mix for the creator's NFT odds. Each listing is drawn in inverse proportion to its price, so the chance of
+ * an NFT fixes how much Shape weight the pool may hold; the smallest Shapes supply that weight with the fewest items
+ * and the least ETH, which also gives the lowest draw price. Filler Shapes go on top of the creator's bonus Shapes for
+ * as long as the chance of an NFT stays at or above `minCuratedOddsBps` (the on-chain floor).
+ *
+ * Search: each filler size, plus up to 4 of the next size and 1 of the size after (more of those is always matched by
+ * one more of the smaller size with fewer items). Lowest draw price wins. Draw prices within 0.5% count as equal; then
+ * the chance of an NFT closest to the floor wins (the odds the creator asked for), then less ETH. Undefined when no mix
+ * with at least one Shape meets the floor.
  */
-export function recommend(style: Style, d: DesignInputs) {
-  const none = { best: undefined, fallbacks: [] as Counts[], options: 0 };
-  // A single Shape needs its backing twice (listed + held for its replacement), so larger ones cannot fit.
-  const affordable = DENOMS.map((_, i) => i).filter((i) => 2n * (DENOMS[i] + d.mintFee) <= d.budget);
-  if (!affordable.length || !d.curatedBases.length) return none;
-  const small = affordable.slice(0, 3);
-  const allowed = style === 'jackpot' ? [...new Set([...small.slice(0, 2), affordable[affordable.length - 1]])] : style === 'steady' ? small : affordable.slice(0, 4);
-  const limits = { maxDrawPrice: d.maxDrawPrice ?? 2n ** 255n, minCuratedOddsBps: d.minCuratedOddsBps, maxShapeCapital: d.budget };
-  const { plans } = enumeratePlans(d, limits, allowed, MAX_SHAPES_PER_PLAN, { gasPriceGwei: 1, drawsPerUpkeep: 1, safety: 0.25 }, 100_000, 150_000);
-  const fits = (c: Counts) => ethNeeded(c, d) <= available(d.budget, d.have, c);
-  const fit = plans.filter((p) => fits(p.counts));
-  if (!fit.length) return none;
-  const win2x = (ev: Evaluation) => playerView(ev, d.markupBps, d.vrfFee ?? 0n).win2x;
-  const ranked = [...fit].sort((a, b) =>
-    style === 'steady' ? cmp(a.ev.drawPrice, b.ev.drawPrice) || b.net - a.net
-      : style === 'jackpot' ? cmp(topShape(b.ev), topShape(a.ev)) || cmp(a.ev.drawPrice, b.ev.drawPrice)
-        : win2x(b.ev) - win2x(a.ev) || cmp(a.ev.drawPrice, b.ev.drawPrice));
-  const best = ranked[0].counts;
+export function cheapest(d: DesignInputs, bonus: Counts = NONE): Counts | undefined {
+  if (!d.curatedBases.length) return undefined;
+  const used = bonus.reduce((a, b) => a + b, 0);
+  let best: { c: Counts; price: bigint; odds: number; eth: bigint } | undefined;
+  const better = (x: NonNullable<typeof best>, y: NonNullable<typeof best>) => {
+    const tie = (x.price > y.price ? x.price - y.price : y.price - x.price) * 200n <= (x.price > y.price ? x.price : y.price);
+    if (!tie) return x.price < y.price;
+    return x.odds !== y.odds ? x.odds < y.odds : x.eth < y.eth;
+  };
+  for (let j = 0; j < DENOMS.length; j++) {
+    for (let b = 0; b <= (j + 1 < DENOMS.length ? 4 : 0); b++) {
+      for (let k = 0; k <= (j + 2 < DENOMS.length ? 1 : 0); k++) {
+        for (let a = 0; used + a + b + k <= MAX_SHAPES_PER_PLAN; a++) {
+          const c = bonus.map((n, i) => n + (i === j ? a : 0) + (i === j + 1 ? b : 0) + (i === j + 2 ? k : 0));
+          if (!c.some(Boolean)) continue;
+          const ev = describe(c, d, NO_CEILING);
+          // More Shapes only lower the chance of an NFT, so once below the floor this line is done.
+          if (!ev.feasible) break;
+          const x = { c, price: ev.drawPrice, odds: ev.curatedOddsPpm, eth: ethNeeded(c, d) };
+          if (!best || better(x, best)) best = x;
+        }
+      }
+    }
+  }
+  return best?.c;
+}
+
+/**
+ * Plans upkeep can switch to when `best` stops meeting the limits (after an NFT is drawn the remaining NFTs are rarer):
+ * the same mix with fewer of its smallest Shapes, which raises the chance of an NFT.
+ */
+export function fallbacksFor(best: Counts): Counts[] {
   const low = best.findIndex((n) => n > 0);
   const seen = new Set([best.join()]);
-  const fallbacks: Counts[] = [];
+  const out: Counts[] = [];
   for (const keep of [0.75, 0.5, 0.25, 0]) {
     const c = best.map((n, i) => (i === low ? Math.floor(n * keep) : n));
-    if (c.every((n) => n === 0) || seen.has(c.join()) || !fits(c) || fallbacks.length === MAX_PLANS - 1) continue;
+    if (c.every((n) => n === 0) || seen.has(c.join()) || out.length === MAX_PLANS - 1) continue;
     seen.add(c.join());
-    fallbacks.push(c);
+    out.push(c);
   }
-  return { best, fallbacks, options: fit.length };
+  return out;
 }
 
 /** Evaluate a mix for display; `limits` omitted means no ceiling or floor check. */
