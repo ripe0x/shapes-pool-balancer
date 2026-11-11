@@ -516,7 +516,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   // Shown rounded up to 6 decimals, so re-saving never lowers the saved ceiling; left as shown, the saved value is kept.
   const savedCeiling = has ? String(Math.ceil(Number(formatEther(d.config.maxDrawPrice)) * 1e6) / 1e6) : '';
   const [ceiling, setCeiling] = useState(savedCeiling);
-  const [gas, setGas] = useState('1');
+  // Gas for cost estimates: the price a keeper is reimbursed at now (basefee + 0.05 gwei).
+  const liveGas = (Number(d.baseFee) / 1e9 + 0.05).toFixed(2);
+  const [gas, setGas] = useState(liveGas);
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const [open, setOpen] = useState({ bonus: false, fallbacks: false, advanced: false, numbers: false });
@@ -550,7 +552,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   }, [has, markup, small, style, custom, nfts]); // eslint-disable-line react-hooks/exhaustive-deps
   const setNft = (i: number, x: Partial<DraftNft>) => { setEdited(true); setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
   const reset = () => {
-    setGas('1'); setPicking(undefined);
+    setGas(liveGas); setPicking(undefined);
     setOpen({ bonus: false, fallbacks: false, advanced: false, numbers: false });
     if (has) {
       setEdited(false); setMarkup(d.config.markupBps / 100); setCeiling(savedCeiling);
@@ -874,9 +876,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           <div className="limit" style={{ marginTop: 0 }}>
             <div className="top"><label htmlFor="markup">Added to every draw price, and yours to keep</label><b>{markup}%</b></div>
             <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
-            {econ?.belowModeledMarkup && Number.isFinite(econ.minMarkupBps)
-              ? <p className="note error">Below {pct(econ.minMarkupBps)}, mint fees and upkeep cost more than you keep. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.minMarkupBps / 100))}>Use {Math.ceil(econ.minMarkupBps / 100)}%</button></p>
-              : <p className="note">Higher markup raises the draw price.</p>}
+            {econ && markupBps < econ.breakEvenBps && Number.isFinite(econ.breakEvenBps)
+              ? <p className="note error">Below {pct(econ.breakEvenBps)}, mint fees and upkeep cost more than you keep. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.breakEvenBps / 100))}>Use {Math.ceil(econ.breakEvenBps / 100)}%</button></p>
+              : econ?.belowModeledMarkup && Number.isFinite(econ.minMarkupBps)
+                ? <p className="note">Covers costs at {gas} gwei. {pct(econ.minMarkupBps)} adds a 25% safety margin.</p>
+                : <p className="note">Higher markup raises the draw price.</p>}
           </div>
         </div>
 

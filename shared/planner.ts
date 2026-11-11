@@ -258,12 +258,15 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const H0 = H / (1 + m); // harmonic mean of unmarked values
   const net = grossMargin - overhead;
   const minMarkupBps = H0 > 0 ? Math.ceil(((overhead * (1 + a.safety)) / H0) * 10_000) : Infinity;
+  // Where the markup exactly covers the modelled costs, without the safety allowance.
+  const breakEvenBps = H0 > 0 ? Math.ceil((overhead / H0) * 10_000) : Infinity;
   return {
     ownerProceeds: H,
     grossMarginPerDraw: grossMargin,
     overheadPerDraw: overhead,
     expectedNetPerDraw: net,
     minMarkupBps,
+    breakEvenBps,
     keeperCostPerUpkeepEth: (GAS.upkeepBase + (k - 1) * GAS.perShape) * gp + incentive,
     /** Model outlook, not a guarantee: individual draws and short runs can lose money either way. */
     outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
