@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { BaseError, ContractFunctionRevertedError, decodeFunctionResult, encodeFunctionData, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, requiredReserveAt, economics, enumeratePlans, evaluate, packPlan, unpackPlan, type Counts,
+  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, economics, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
+import { available, describe, ethNeeded, playerView, recommend, type DesignInputs, type Style } from '../../shared/design';
 import { chain, ETHERSCAN, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
 
@@ -66,11 +67,15 @@ function useBalancer(b?: Address) {
     const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
     const baseFee = (await pub.getBlock()).baseFeePerGas ?? 0n;
-    const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps] = await Promise.all([
+    const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, vrfFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'),
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
+      // FWA charges the VRF fee at the buyer's gas price, so quote one draw at the current network gas price.
+      pub.getGasPrice()
+        .then((gasPrice) => pub.call({ to: pool, gasPrice, data: encodeFunctionData({ abi: fwaPoolAbi, functionName: 'quoteAcquisitionPrice', args: [1n] }) }))
+        .then(({ data }) => decodeFunctionResult({ abi: fwaPoolAbi, functionName: 'quoteAcquisitionPrice', data: data! })[1], () => 0n),
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
@@ -83,7 +88,7 @@ function useBalancer(b?: Address) {
       config: { maxDrawPrice: config[0], minCuratedOddsBps: config[1], markupBps: config[2] },
       checkpoint: { valid: checkpoint[0], reserve: checkpoint[4] },
       activeShapes: activeShapes.map(Number),
-      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings, pending, baseFee,
+      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, vrfFee, listings, pending, baseFee,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -495,113 +500,172 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
   );
 }
 
+const STYLES: { key: Style; label: string; hint: string }[] = [
+  { key: 'steady', label: 'Low draw price', hint: 'Lowest draw price your NFT odds allow' },
+  { key: 'balanced', label: 'More big wins', hint: 'Most chances to win 2× the draw or more' },
+  { key: 'jackpot', label: 'Jackpot', hint: 'Largest Shape prize your budget allows' },
+];
+const ZERO: Counts = Array(9).fill(0);
+const oneIn = (p: number) => (p <= 0 ? '–' : p >= 0.995 ? 'always' : `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.round(1 / p).toLocaleString()}`);
+const pctOf = (p: number) => `${(p * 100).toFixed(p < 0.01 ? 2 : 1)}%`;
+const mixText = (c: Counts) => c.map((n, j) => (n ? `${n} × ${DENOM_LABELS[j]}` : '')).filter(Boolean).join(', ') || 'no Shapes';
+const ethOr = (s: string, fallback: bigint) => { try { return parseEther(s || '0'); } catch { return fallback; } };
+
 function Configure({ d, tx }: { d: D; tx: Tx }) {
-  const [maxDraw, setMaxDraw] = useState(d.plans.length ? formatEther(d.config.maxDrawPrice) : '0.05');
-  const [minOdds, setMinOdds] = useState(d.plans.length ? String(d.config.minCuratedOddsBps / 100) : '1');
-  const [maxCap, setMaxCap] = useState(d.plans.length ? formatEther(capitalOf(unpackPlan(d.plans[0]))) : '1');
-  const [markup, setMarkup] = useState(d.plans.length ? String(d.config.markupBps / 100) : '15');
-  const [gas, setGas] = useState('1');
-  const [allowed, setAllowed] = useState<number[]>([0, 1, 2]);
-  const [maxShapes, setMaxShapes] = useState('20');
-  const [chosen, setChosen] = useState<Counts[]>([]);
-  const [manual, setManual] = useState<string>('');
+  const has = d.plans.length > 0;
   const bases = d.listings.filter((l) => l.kind === 1 && l.state === 1).map((l) => l.base);
-  const inputs = { curatedBases: bases, markupBps: Math.round(Number(markup) * 100), edgeBps: Number(d.edgeBps), mintFee: d.mintFee };
-  let limits: { maxDrawPrice: bigint; minCuratedOddsBps: number; maxShapeCapital: bigint } | undefined;
-  try { limits = { maxDrawPrice: parseEther(maxDraw), minCuratedOddsBps: Math.round(Number(minOdds) * 100), maxShapeCapital: parseEther(maxCap) }; } catch { limits = undefined; }
-  const cost = { gasPriceGwei: Number(gas) || 1, drawsPerUpkeep: 1, safety: 0.25 };
-  const result = useMemo(() => (limits && bases.length ? enumeratePlans(inputs, limits, allowed, Math.min(MAX_SHAPES_PER_PLAN, Number(maxShapes) || 1), cost) : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [maxDraw, minOdds, maxCap, markup, gas, allowed.join(), maxShapes, bases.join()]);
-  const preview = chosen[0] ? evaluate(chosen[0], inputs, limits) : undefined;
-  const econ = chosen[0] ? economics(chosen[0], inputs, cost) : undefined;
-  const addManual = () => {
-    const c = manual.split(',').map((x) => Number(x.trim() || 0));
-    while (c.length < 9) c.push(0);
-    setChosen([...chosen, c.slice(0, 9)].slice(0, MAX_PLANS));
+  const [budget, setBudget] = useState(formatEther(available(d.balance, d.activeShapes, ZERO)));
+  const [markup, setMarkup] = useState(has ? d.config.markupBps / 100 : 15);
+  const [floor, setFloor] = useState(has ? d.config.minCuratedOddsBps / 100 : 5);
+  const [style, setStyle] = useState<Style>();
+  const [counts, setCounts] = useState<Counts>(has ? unpackPlan(d.plans[d.activePlan]) : ZERO);
+  const [fallbacks, setFallbacks] = useState<Counts[]>(has ? d.plans.filter((_, i) => i !== d.activePlan).map(unpackPlan) : []);
+  const [ceiling, setCeiling] = useState(has ? formatEther(d.config.maxDrawPrice) : '');
+  const [gas, setGas] = useState('1');
+  const [note, setNote] = useState<string>();
+  const markupBps = Math.round(markup * 100);
+  const floorBps = Math.round(floor * 100);
+  const inputs: DesignInputs = {
+    curatedBases: bases, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, budget: ethOr(budget, 0n),
+    have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: floorBps, vrfFee: d.vrfFee,
   };
+  const pick = (st: Style) => {
+    const r = recommend(st, inputs);
+    setStyle(st);
+    if (!r.best) { setNote('No Shapes mix fits this budget and NFT odds floor. Raise the budget or lower the floor.'); return; }
+    setNote(undefined);
+    setCounts(r.best);
+    setFallbacks(r.fallbacks);
+  };
+  const total = counts.reduce((a, b) => a + b, 0);
+  const setCount = (i: number, n: number) => { setStyle(undefined); setCounts(counts.map((x, j) => (j === i ? n : x))); };
+  const ready = bases.length > 0 && total > 0;
+  const ev = ready ? describe(counts, inputs) : undefined;
+  const view = ev ? playerView(ev, markupBps, d.vrfFee) : undefined;
+  const plans = [counts, ...fallbacks];
+  // Default ceiling: 25% above the highest draw price among the selected plans, so fallbacks stay admissible.
+  const autoCeiling = ready ? (plans.map((c) => describe(c, inputs).drawPrice).reduce((a, b) => (b > a ? b : a), 0n) * 125n) / 100n : 0n;
+  const ceilingWei = ceiling ? ethOr(ceiling, autoCeiling) : autoCeiling;
+  const checked = ready ? describe(counts, inputs, ceilingWei) : undefined;
+  const needed = ready ? ethNeeded(counts, inputs) : 0n;
+  const have = available(d.balance, d.activeShapes, counts);
+  const econ = ready ? economics(counts, inputs, { gasPriceGwei: Number(gas) || 1, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
+  const largeShown = counts.slice(5).some(Boolean) || inputs.budget >= 10n * 10n ** 18n;
+  const rows = DENOMS.map((_, i) => i).filter((i) => i < 5 || largeShown);
+  const tierOdds = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.label.startsWith(`${DENOM_LABELS[i]} ETH`));
   return (
     <div className="card">
-      <h2>Configure</h2>
+      <h2>Design your pool</h2>
+      {bases.length === 0 && <p className="badText">List at least one curated NFT first: odds and prices depend on your NFTs.</p>}
       <div className="grid">
-        <label>Max draw price (ETH, excl. VRF) <input value={maxDraw} onChange={(e) => setMaxDraw(e.target.value)} /></label>
-        <label>Min curated odds (%) <input value={minOdds} onChange={(e) => setMinOdds(e.target.value)} /></label>
-        <label>Max Shapes capital (ETH, planner filter) <input value={maxCap} onChange={(e) => setMaxCap(e.target.value)} /></label>
-        <label>Operating markup (%) <input value={markup} onChange={(e) => setMarkup(e.target.value)} /></label>
-        <label>Max Shapes per plan <input value={maxShapes} onChange={(e) => setMaxShapes(e.target.value)} /></label>
-        <label>Gas price assumption (gwei) <input value={gas} onChange={(e) => setGas(e.target.value)} /></label>
+        <label>Budget (ETH) <input value={budget} onChange={(e) => setBudget(e.target.value)} inputMode="decimal" /></label>
+        <label>Markup: {markup}% <input type="range" min={0} max={100} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} /></label>
+        <label>Minimum chance of one of your NFTs: {floor}% <input type="range" min={0} max={50} step={0.5} value={floor} onChange={(e) => setFloor(Number(e.target.value))} /></label>
       </div>
       <div className="row wrap">
-        <span className="muted small">Denominations:</span>
-        {DENOM_LABELS.map((l, i) => (
-          <label key={i} className="chip">
-            <input type="checkbox" checked={allowed.includes(i)} onChange={(e) => setAllowed(e.target.checked ? [...allowed, i].sort() : allowed.filter((x) => x !== i))} /> {l}
-          </label>
+        {STYLES.map((s) => (
+          <button key={s.key} className={style === s.key ? '' : 'ghost'} disabled={!bases.length} title={s.hint} onClick={() => pick(s.key)}>{s.label}</button>
         ))}
       </div>
-      {bases.length === 0 && <p className="badText">List at least one curated NFT to plan.</p>}
-      {result && (
-        result.plans.length === 0
-          ? <p className="badText">Infeasible: no Shapes mix over these denominations meets the price ceiling, odds floor and capital filter together. Raise the ceiling or capital, lower the odds floor, or change curated values.</p>
-          : (
-            <table>
-              <thead><tr><th>Plan</th><th>Draw price</th><th>Curated odds</th><th>Capital</th><th>Batch reserve</th><th>Net / draw*</th><th></th></tr></thead>
-              <tbody>
-                {result.plans.slice(0, 8).map((p, i) => (
-                  <tr key={i}>
-                    <td className="mono small">{p.counts.map((n, j) => (n ? `${n}×${DENOM_LABELS[j]}` : '')).filter(Boolean).join(' ')}</td>
-                    <td>{fmt(p.ev.drawPrice, 5)}</td><td>{pct(p.ev.curatedOddsBps)}</td><td>{fmt(p.ev.capital, 2)}</td><td>{fmt(p.ev.requiredReserve)}</td>
-                    <td className={p.net < 0 ? 'badText' : ''}>{p.net.toFixed(5)}</td>
-                    <td><button className="ghost" disabled={chosen.length >= MAX_PLANS} onClick={() => setChosen([...chosen, p.counts])}>Add</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
+      <p className="muted small">{style ? STYLES.find((s) => s.key === style)!.hint : 'Pick a style for a recommended mix, then adjust it below.'}</p>
+      {note && <p className="badText">{note}</p>}
+
+      <table className="mix">
+        <thead><tr><th>Prize</th><th>Count</th><th>Chance per draw</th><th>Worth vs draw cost</th></tr></thead>
+        <tbody>
+          {view?.tiers.filter((t) => t.kind === 'curated').map((t, i) => (
+            <tr key={`c${i}`}><td>Your NFT #{i + 1} ({fmt(t.value, 3)} ETH)</td><td>1</td><Odds p={t.odds} /><td>{t.multiple.toFixed(2)}×</td></tr>
+          ))}
+          {rows.map((i) => {
+            const t = tierOdds(i);
+            return (
+              <tr key={i}>
+                <td>{DENOM_LABELS[i]} ETH Shape</td>
+                <td>
+                  <div className="row">
+                    <input type="range" aria-label={`${DENOM_LABELS[i]} ETH Shapes`} min={0} max={Math.min(MAX_SHAPES_PER_PLAN, MAX_SHAPES_PER_PLAN - total + counts[i])} value={counts[i]} onChange={(e) => setCount(i, Number(e.target.value))} />
+                    <span className="mono">{counts[i]}</span>
+                  </div>
+                </td>
+                <Odds p={t?.odds ?? 0} />
+                <td>{t ? `${t.multiple.toFixed(2)}×` : '–'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="muted small">{total} of {MAX_SHAPES_PER_PLAN} Shapes.</p>
+
+      {view && ev && econ && checked && (
+        <div className="split">
+          <div>
+            <h3>What players see</h3>
+            <div className="grid">
+              <Stat label="Cost per draw" value={<>{fmt(view.cost, 5)} ETH<div className="muted small">{fmt(ev.drawPrice, 5)} + {fmt(d.vrfFee, 5)} VRF fee</div></>} />
+              <Stat label="Wins one of your NFTs" value={`${oneIn(view.curated)} (${pctOf(view.curated)})`} />
+              <Stat label="Wins more than they paid" value={pctOf(view.winMore)} />
+              <Stat label="Wins 2× or more" value={pctOf(view.win2x)} />
+              <Stat label="Top prize" value={`${fmt(view.top.value, 3)} ETH, ${oneIn(view.top.odds)}`} />
+              <Stat label="Average prize value" value={`${(view.avgReturn * 100).toFixed(0)}% of cost`} />
+            </div>
+          </div>
+          <div>
+            <h3>What you need</h3>
+            <div className="grid">
+              <Stat label="Shapes backing" value={`${fmt(ev.capital, 3)} ETH`} />
+              <Stat label="ETH needed to open" value={`${fmt(needed, 3)} ETH`} />
+              <Stat label="Available" value={<>{fmt(have, 3)} ETH<div className={needed > have ? 'badText small' : 'okText small'}>{needed > have ? `Deposit ${fmt(needed - have, 3)} more` : 'Fits'}</div></>} />
+              <Stat label="Your expected net per draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />
+              <Stat label="Minimum sustainable markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'} />
+            </div>
+          </div>
+        </div>
       )}
-      <p className="muted small">*Expected creator gain per draw after mint fees and keeper gas at the assumed gas price. Randomized outcomes vary; individual draws can lose money.</p>
-      <div className="row wrap">
-        <input aria-label="Manual plan: counts for 0.01,0.05,0.1,0.5,1,5,10,50,100" placeholder="Manual plan: counts for 0.01,0.05,0.1,0.5,1,5,10,50,100" value={manual} onChange={(e) => setManual(e.target.value)} />
-        <button className="ghost" onClick={addManual}>Add manual plan</button>
-      </div>
-      {chosen.length > 0 && (
-        <>
-          <h3>Selected plans (first is preferred; later ones are fallbacks)</h3>
-          <ol>{chosen.map((c, i) => <li key={i} className="mono small">{c.map((n, j) => (n ? `${n}×${DENOM_LABELS[j]}` : '')).filter(Boolean).join(' ')} <button className="ghost" onClick={() => setChosen(chosen.filter((_, k) => k !== i))}>Remove</button></li>)}</ol>
-          {preview && econ && (
-            <>
-              <div className="grid">
-                <Stat label="Draw price" value={`${fmt(preview.drawPrice, 5)} ETH`} />
-                <Stat label="Curated odds" value={pct(preview.curatedOddsBps)} />
-                <Stat label="Shapes backing" value={`${fmt(preview.capital, 3)} ETH`} />
-                <Stat label="Required reserve (full)" value={`${fmt(requiredReserveAt(chosen[0], chosen[0], d.mintFee, d.baseFee))} ETH`} />
-                <Stat label="Initial mint fees" value={`${fmt(preview.initialMintFees)} ETH`} />
-                <Stat label="ETH to open (at current gas)" value={`${fmt(requiredReserveAt(chosen[0], Array(9).fill(0), d.mintFee, d.baseFee), 3)} ETH`} />
-                <Stat label="Keeper cost / upkeep" value={`${econ.keeperCostPerUpkeepEth.toFixed(5)} ETH`} />
-                <Stat label="Projected minimum markup" value={Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '-'} />
-                <Stat label="Expected net / draw" value={<span className={econ.expectedNetPerDraw < 0 ? 'badText' : ''}>{econ.expectedNetPerDraw.toFixed(5)} ETH</span>} />
-              </div>
-              {!preview.feasible && <p className="badText">{preview.reasons.join('; ')}</p>}
-              {econ.outlook === 'loss'
-                ? <p className="badText">Projected loss at these assumptions. You can still submit it while it is funded.</p>
-                : econ.belowModeledMarkup && <p className="badText">Markup is below the modeled sustainable level of {pct(econ.minMarkupBps)}.</p>}
-              <table>
-                <thead><tr><th>Tier</th><th>Count</th><th>FWA price</th><th>Odds</th></tr></thead>
-                <tbody>{preview.tiers.map((t, i) => <tr key={i}><td>{t.label}</td><td>{t.count}</td><td>{fmt(t.listPrice, 5)}</td><td>{(t.oddsPpm / 10_000).toFixed(3)}%</td></tr>)}</tbody>
-              </table>
-            </>
-          )}
-          <button
-            disabled={!!tx.busy || !limits}
-            onClick={() => tx.send('Configure', [() => tx.write({
-              address: d.balancer, abi: poolBalancerAbi, functionName: 'configure',
-              args: [{ maxDrawPrice: limits!.maxDrawPrice, minCuratedOddsBps: limits!.minCuratedOddsBps, markupBps: inputs.markupBps }, chosen.map(packPlan)],
-            })])}
-          >Submit configuration</button>
-          <p className="muted small">Changing the markup reprices every listing during upkeep; purchases stay closed until repricing completes.</p>
-        </>
+      {checked && !checked.feasible && <p className="badText">{checked.reasons.join('; ')}.</p>}
+      {econ?.belowModeledMarkup && <p className="badText">Markup is below the modeled sustainable level of {pct(econ.minMarkupBps)}.</p>}
+
+      <h3>Fallback mixes</h3>
+      {fallbacks.length === 0 ? <p className="muted small">None. Picking a style adds them.</p> : (
+        <ol className="small">
+          {fallbacks.map((c, i) => {
+            const f = describe(c, inputs, ceilingWei);
+            return (
+              <li key={i}>
+                {mixText(c)} · draw {fmt(f.drawPrice, 5)} ETH · NFT chance {pct(f.curatedOddsBps)}{!f.feasible && <span className="badText"> · {f.reasons.join('; ')}</span>}{' '}
+                <button className="ghost" onClick={() => setFallbacks(fallbacks.filter((_, k) => k !== i))}>Remove</button>
+              </li>
+            );
+          })}
+        </ol>
       )}
+      <p className="muted small">Upkeep switches to the first fallback that meets your limits when the main mix stops meeting them, for example after one of your NFTs is drawn.</p>
+
+      <details>
+        <summary className="small">Advanced</summary>
+        <div className="grid">
+          <label>Max draw price (ETH, excl. VRF fee) <input value={ceiling} placeholder={`auto: ${fmt(autoCeiling, 5)}`} onChange={(e) => setCeiling(e.target.value)} /></label>
+          <label>Keeper gas assumption (gwei) <input value={gas} onChange={(e) => setGas(e.target.value)} inputMode="decimal" /></label>
+        </div>
+      </details>
+
+      <button
+        disabled={!!tx.busy || !ready || !checked?.feasible}
+        onClick={() => tx.send('Configure', [() => tx.write({
+          address: d.balancer, abi: poolBalancerAbi, functionName: 'configure',
+          args: [{ maxDrawPrice: ceilingWei, minCuratedOddsBps: floorBps, markupBps }, plans.slice(0, MAX_PLANS).map(packPlan)],
+        })])}
+      >Save configuration</button>
+      <p className="muted small">A markup change reprices every listing during upkeep; purchases stay closed until it completes.</p>
     </div>
+  );
+}
+
+function Odds({ p }: { p: number }) {
+  return (
+    <td>
+      <div className="odds"><span className="bar" style={{ width: `${Math.min(100, p * 100)}%` }} /></div>
+      <span className="small">{oneIn(p)} · {pctOf(p)}</span>
+    </td>
   );
 }
 
