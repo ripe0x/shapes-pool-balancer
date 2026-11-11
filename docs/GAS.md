@@ -188,6 +188,7 @@ balance`; that exact amount reopens it.
 
 | Constant | Value | Basis |
 | --- | --- | --- |
+| `MAX_SHAPES_PER_PLAN` | 80 (100 listings with 20 curated) | per-call gas unchanged; at 100 listings the highest upkeep billed 3.00M (`test_gas_fullPoolAtLimits`) |
 | `MAX_OPS` | 6 Shape units, shared by reconciling, repricing and rebalancing in one call; a pack counts the Shapes it holds (2 or 3) | keeps a fill step under ~3.05M billed gas; worst bounded upkeep (5 reconciles + 6 mints in 6 denominations) 3.10M. Packs: ~870k gas per three-Shape pack mint+list against ~380k per Shape; six packs in one call billed 5.8M before unit budgeting, now pack fill steps bill 1.5–2.25M and replacing 5 drawn three-Shape packs 2.37M (`test_gas_packFillStep`, `test_gas_replaceFivePacks`) |
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
 | refund factor | 4/5 of the measured span | EIP-3529 refund bound (above) |

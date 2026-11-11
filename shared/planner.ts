@@ -5,7 +5,7 @@
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
 export const MAX_BATCH = 5;
-export const MAX_SHAPES_PER_PLAN = 40;
+export const MAX_SHAPES_PER_PLAN = 80; // PoolBalancer.MAX_SHAPES_PER_PLAN
 export const MAX_PLANS = 4;
 export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee

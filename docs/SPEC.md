@@ -45,7 +45,8 @@ anyone, and NFTs sent to it directly, belong to the creator; there is no contrib
   Later draws in the same batch see the inventory the earlier ones left.
 - `markupBps`: fixed operating markup (0–100%). Every FWA listing price is `base × (1 + markup)`: the creator's value for
   curated NFTs, the backing for Shapes. A change sets `repricing`; upkeep reprices every listing before reopening.
-- `plans`: 1–4 approved prize inventories, each sixteen 16-bit counts, 1–40 prizes. Sizes 0–8 are the Shapes
+- `plans`: 1–4 approved prize inventories, each sixteen 16-bit counts, 1–80 prizes (with up to 20 curated NFTs this
+  fills the 100-listing cap). Sizes 0–8 are the Shapes
   denominations (0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100 ETH), each prize one Shape. Sizes 9–15 are 0.02, 0.03, 0.2,
   0.25, 2, 2.5 and 25 ETH, each prize one Draw Pack holding the fewest Shapes that sum to it (2 or 3; e.g.
   0.25 = 2×0.1 + 0.05). Plans saved with only the first nine sizes decode unchanged. The first is preferred. Each plan fixes its own capital, so there is no separate on-chain capital limit; the

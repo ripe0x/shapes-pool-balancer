@@ -65,13 +65,13 @@ export const BIG_WIN_SHARE = 0.1;
 export const JACKPOT_MULTIPLE = 50;
 
 /**
- * Bonus Shapes for a style, on top of `small` 0.01 ETH Shapes, within the 40-Shape limit:
+ * Bonus Shapes for a style, on top of `small` 0.01 ETH Shapes, within the per-plan Shape limit:
  * steady: none;
  * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
  * current price) until about 1 in 10 draws wins 2x or more;
  * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
  * board: ape-Ball's proportions scaled to `small` (at least one 0.1 and one 0.5 ETH prize), trimmed from the most
- * numerous sizes to fit the 40-Shape limit.
+ * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
   const room = MAX_SHAPES_PER_PLAN - small;

@@ -614,7 +614,7 @@ contract BalancerTest is ForkBase {
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(PoolBalancer.Config(1 ether, 0, 1500), plans);
-        plans[0] = plan([uint256(41), 0, 0, 0, 0, 0, 0, 0, 0]); // > MAX_SHAPES_PER_PLAN
+        plans[0] = plan([uint256(81), 0, 0, 0, 0, 0, 0, 0, 0]); // > MAX_SHAPES_PER_PLAN (80)
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(PoolBalancer.Config(1 ether, 0, 1500), plans);

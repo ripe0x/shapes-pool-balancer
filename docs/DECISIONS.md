@@ -76,12 +76,13 @@ Review the **Money and authority** section first.
     odds are shown in the planner but not enforced.
 16. **Price ceiling includes FWA's 5% edge, excludes the VRF fee**, as the brief specified. The dashboard labels prices "excl. VRF fee"; the VRF fee is not shown.
 17. **All 9 Shapes denominations are allowed** (0.01 to 100 ETH). Planner enumeration is bounded; plans cap at 40
-    Shapes; a pool caps at 100 listings (curated plus Shapes).
+    Shapes (80 since decision 42); a pool caps at 100 listings (curated plus Shapes).
 18. **Markup range 0–100%.** Planner suggests 15% and shows a projected minimum per configuration.
 19. **Mint fee rise closes admission** until upkeep re-checkpoints with a reserve funded at the new fee. A fall needs
     no action.
 20. **Upkeep work is chunked**: at most 6 Shape operations and 6 repricings per call, measured to stay under the
-    3.2M gas reward cap. A 40-Shape fill takes about 7 upkeeps; repricing 100 listings takes 17. Repricing rescans all
+    3.2M gas reward cap. A 40-Shape fill takes about 7 upkeeps (80 Shapes with 18 new NFTs: 17); repricing 100
+    listings takes 17. Repricing rescans all
     listings each call instead of keeping a cursor (up to ~0.4M extra gas per repricing step) so it cannot skip one.
 21. **Unwind is chunked at 20 Shapes per call** (withdraw and redeem together). Redemption returns exact backing; mint
     fees paid are not recoverable.
@@ -154,4 +155,9 @@ Review the **Money and authority** section first.
     the margin was 8 bytes. Worst Shape fill step bills 3.04M gas (was 3.03M), under the 3.2M reimbursement cap.
 40. **Withdrawal redeems prizes one at a time** through `redeem(uint256)`, which Shapes and Draw Packs share, instead of
     one Shapes batch: smaller code; a little more gas on unwind and plan switches (unwind of 20 Shapes: 2.62M, creator-paid).
-
+42. **Plans hold up to 80 prizes** (was 40), owner request: more small Shapes allow rarer NFT odds and cheaper draws.
+    With up to 20 curated NFTs this fills the existing 100-listing cap. Upkeep gas per call is unchanged (bounded by
+    the 6-unit work budget and the 100-listing loops): at 100 listings the highest measured upkeep billed 3.00M against
+    the 3.2M reimbursement cap (`test_gas_fullPoolAtLimits`: fill, 5-draw replacement, repricing). Costs: a full fill
+    takes about twice as many upkeeps (paid from the pool as keeper rewards), and plan switches and repricing touch more
+    listings.

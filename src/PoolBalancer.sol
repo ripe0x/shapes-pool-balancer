@@ -48,7 +48,9 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev The most Shapes any one prize holds; reserve math charges every prize this many mint fees.
     uint256 internal constant MAX_SHAPES_IN = 3;
     uint256 internal constant MAX_PLANS = 4;
-    uint256 internal constant MAX_SHAPES_PER_PLAN = 40;
+    /// @dev Prizes per plan. With up to 20 curated NFTs this fills MAX_LISTINGS exactly; per-upkeep work stays bounded by
+    ///      MAX_OPS and loops over listings by MAX_LISTINGS, so the limit sets refill time, not upkeep gas.
+    uint256 internal constant MAX_SHAPES_PER_PLAN = 80;
     /// @dev Bounds every loop over listings (repricing scan, plan withdrawal, unwind).
     uint256 internal constant MAX_LISTINGS = 100;
     /// @dev Inventory work per upkeep, in Shape units: reconciling a draw, repricing a listing, or minting+listing or

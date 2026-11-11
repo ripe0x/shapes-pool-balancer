@@ -113,6 +113,32 @@ contract GasBench is ForkBase {
         _upkeep("upkeep: reconcile + replace 5 three-Shape packs");
     }
 
+    /// @dev A full pool at the limits: 20 curated NFTs and an 80-Shape plan (100 listings). Every upkeep stays within the
+    ///      reimbursed gas: filling, replacing a 5-draw batch, and repricing all 100 listings after a markup change.
+    function test_gas_fullPoolAtLimits() public {
+        for (uint256 i = 3; i <= 20; ++i) listCurated(i, 0.3 ether);
+        vm.prank(creator);
+        balancer.depositETH{value: 20 ether}();
+        _configure(plan([uint256(60), 10, 10, 0, 0, 0, 0, 0, 0]));
+        uint256 calls;
+        while (!balancer.canPurchase(buyer) && calls < 20) {
+            _upkeep("upkeep: fill step, 80-Shape plan");
+            ++calls;
+        }
+        assertTrue(balancer.canPurchase(buyer), "open at 100 listings");
+        assertEq(balancer.getActiveIds().length, 100);
+        assertLe(calls, 18, "80 Shapes and 18 new NFTs fill in 17 calls (measured)");
+        _drawShapes(5);
+        _upkeep("upkeep: reconcile + replace 5 Shapes at 100 listings");
+        while (!balancer.canPurchase(buyer) && calls < 40) { _upkeep("upkeep: finish restock"); ++calls; }
+        assertTrue(balancer.canPurchase(buyer), "restocked");
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan([uint256(60), 10, 10, 0, 0, 0, 0, 0, 0]);
+        vm.prank(creator);
+        balancer.configure(PoolBalancer.Config({maxDrawPrice: 1 ether, minCuratedOddsBps: 0, markupBps: MARKUP + 100}), plans);
+        _upkeep("upkeep: reprice step at 100 listings");
+    }
+
     function test_gas_replaceOne() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();

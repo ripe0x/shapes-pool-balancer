@@ -1,7 +1,7 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, styleBonus, type DesignInputs } from './design';
-import { DENOMS, shapeCount, type Counts } from './planner';
+import { DENOMS, MAX_SHAPES_PER_PLAN, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
@@ -51,10 +51,10 @@ suite('pool size and styles', () => {
     expect(styleBonus('steady', one, 10)).toEqual(mix({}));
   });
 
-  it('more big wins: about 1 in 10 draws wins 2x the price or more, within 40 Shapes', () => {
+  it('more big wins: about 1 in 10 draws wins 2x the price or more, within the Shape limit', () => {
     const c = mixOf(10, styleBonus('balanced', one, 10));
     expect(at(c).v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
-    expect(shapeCount(c)).toBeLessThanOrEqual(40);
+    expect(shapeCount(c)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 
   it('jackpot: one bonus Shape near 50x the draw price', () => {
@@ -65,8 +65,8 @@ suite('pool size and styles', () => {
     expect(ratio).toBeLessThan(JACKPOT_MULTIPLE * 3);
   });
 
-  it('a style never pushes the pool past 40 Shapes', () => {
-    for (const st of ['board', 'balanced', 'jackpot'] as const) expect(shapeCount(mixOf(38, styleBonus(st, one, 38)))).toBeLessThanOrEqual(40);
+  it('a style never pushes the pool past the Shape limit', () => {
+    for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 
   it('fallbacks raise the chance of an NFT and need no more ETH', () => {
@@ -91,11 +91,11 @@ suite('balanced style (ape-Ball board)', () => {
     expect(shapeCount(c)).toBe(40);
   });
 
-  it('keeps a 0.1 and a 0.5 ETH prize in a small pool and never exceeds 40 Shapes', () => {
+  it('keeps a 0.1 and a 0.5 ETH prize in a small pool and never exceeds the Shape limit', () => {
     const small = counts(4);
     expect(small[2]).toBeGreaterThanOrEqual(1);
     expect(small[3]).toBeGreaterThanOrEqual(1);
-    for (const n of [1, 10, 24, 30, 38]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(40);
+    for (const n of [1, 10, 24, 30, 38, 60, 78, 80]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 });
 

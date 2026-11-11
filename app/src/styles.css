@@ -48,7 +48,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Top bar, tabs, status */
 .topbar { height: 64px; padding: 0 var(--gutter); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 40px; }
-.wordmark { font-weight: 800; font-size: 22px; letter-spacing: -.03em; white-space: nowrap; }
+.wordmark { color: inherit; text-decoration: none; font-weight: 800; font-size: 22px; letter-spacing: -.03em; white-space: nowrap; }
 .poolhead { padding: 32px var(--gutter) 0; border-bottom: 1px solid var(--line); }
 .ph-row { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
 .ph-id { min-width: 0; }

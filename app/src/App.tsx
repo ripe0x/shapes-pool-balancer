@@ -107,7 +107,7 @@ const ERRORS: Record<string, string> = {
   InsufficientSurplus: 'amount exceeds claimable surplus',
   Unauthorized: 'only the creator can do this',
   NotClosed: 'close purchases first',
-  InvalidPlan: 'a plan has no Shapes or more than 40',
+  InvalidPlan: `a plan has no Shapes or more than ${MAX_SHAPES_PER_PLAN}`,
   ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
   ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
   InvalidItem: 'not available for this action (check its FWA status)',
@@ -258,7 +258,7 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <span className="wordmark">FWA Pool Balancer</span>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); setHelp(false); if (isConnected && loaded) setPage(mine.length ? 'list' : 'new'); window.scrollTo(0, 0); }}>FWA Pool Balancer</a>
         <nav className="topnav" aria-label="Main">
           {isConnected && loaded && <button aria-current={!help && page === 'list' ? 'page' : undefined} onClick={() => { setHelp(false); setPage('list'); }}>Your pools</button>}
           <button aria-current={help ? 'page' : undefined} onClick={() => setHelp(true)}>How it works</button>
