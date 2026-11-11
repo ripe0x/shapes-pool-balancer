@@ -413,6 +413,7 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
   const [gas, setGas] = useState('1');
   const [note, setNote] = useState<string>();
   const [open, setOpen] = useState({ mix: false, fallbacks: false, advanced: false, numbers: false });
+  const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
   const markupBps = Math.round(markup * 100);
   const floorBps = Math.round(floor * 100);
@@ -482,6 +483,21 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
     return `${verb} ${what}${v < 1 ? ', less than they paid' : `, ${v.toFixed(1)}× what they paid`}`;
   };
 
+  // Inventory: one square per item in the pool, each with its own chance per draw.
+  const nftGroup = groups.find((g) => g.nft);
+  const items: InvItem[] = view ? [
+    ...view.tiers.filter((t) => t.kind === 'curated').map((t, k) => ({
+      key: `n${k}`, label: curated[k] ? nftName(curated[k]) : `Your NFT ${k + 1}`, nft: true, value: t.value, price: t.listPrice, p: t.odds, mult: t.multiple, style: nftGroup ? sw(nftGroup) : {},
+    })),
+    ...counts.flatMap((n, i) => {
+      const t = tierOf(i);
+      const g = shapeGroups.find((x) => x.i === i);
+      return n && t && g ? Array.from({ length: n }, (_, j) => ({
+        key: `s${i}-${j}`, label: `${DENOM_LABELS[i]} ETH Shape`, nft: false, value: t.value, price: t.listPrice, p: t.odds / n, mult: t.multiple, style: sw(g),
+      })) : [];
+    }),
+  ] : [];
+
   if (!bases.length && !preview) {
     return (
       <main className="page">
@@ -502,7 +518,25 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
   ) : null;
   const gridBlock = view ? (
         <div className="result-block">
-          <h2 className="h3">Out of 100 draws</h2>
+          <div className="seg" role="group" aria-label="View">
+            <button aria-pressed={gridView === 'inventory'} onClick={() => setGridView('inventory')}>Inventory</button>
+            <button aria-pressed={gridView === 'draws'} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+          </div>
+          {gridView === 'inventory' ? (
+            <>
+              <InventoryGrid items={items} />
+              <div className="legend">
+                {curated.length > 0 && nftGroup && (
+                  <div><span className="sw" style={sw(nftGroup)} /><span><b>{curated.length}</b> {curated.length === 1 ? 'of your NFTs' : 'of your NFTs'} · {oneIn(view.curated)} draws for any of them</span></div>
+                )}
+                {shapeGroups.map((g) => (
+                  <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {DENOM_LABELS[g.i]} ETH Shape · each {oneIn(g.p / g.n)}</span></div>
+                ))}
+              </div>
+              <p className="note" style={{ marginTop: 14 }}>Each square is one item in the pool. Hover or tap a square for its chance and value. Cheaper items come up more often.</p>
+            </>
+          ) : (
+            <>
           <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>
           <div className="legend">
             {ordered.map(({ g, n }) => (
@@ -510,6 +544,8 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
             ))}
           </div>
           <p className="note" style={{ marginTop: 14 }}>Rounded to whole draws. On average a prize is worth {(view.avgReturn * 100).toFixed(0)}% of what the player paid.</p>
+            </>
+          )}
         </div>
   ) : null;
 
@@ -1101,4 +1137,39 @@ function Thumb({ n }: { n: WalletNft }) {
     return () => { live = false; io.disconnect(); };
   }, [pub, n.collection, n.tokenId]);
   return <span ref={ref} className="thumb pt">{src ? <img src={src} alt="" loading="lazy" onError={() => setSrc(null)} /> : <span>{src === null ? 'No image' : ''}</span>}</span>;
+}
+
+type InvItem = { key: string; label: string; nft: boolean; value: bigint; price: bigint; p: number; mult: number; style: React.CSSProperties };
+
+/** One square per pool item; hovering, focusing or tapping a square shows its chance, value and price. */
+function InventoryGrid({ items }: { items: InvItem[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<{ i: number; x: number; y: number }>();
+  const show = (i: number, el: HTMLElement) => {
+    const w = ref.current?.clientWidth ?? 0;
+    const x = el.offsetLeft + el.offsetWidth / 2;
+    setTip({ i, x: Math.min(Math.max(x, 120), Math.max(120, w - 120)), y: el.offsetTop + el.offsetHeight + 8 });
+  };
+  const it = tip && items[tip.i];
+  return (
+    <div className="inv" ref={ref} onMouseLeave={() => setTip(undefined)}>
+      <div className="grid100" role="list" aria-label="Pool inventory">
+        {items.map((x, i) => (
+          <button key={x.key} role="listitem" className="cell" style={x.style}
+            aria-label={`${x.label}: ${oneIn(x.p)} draws, worth ${eth(x.value)} ETH`}
+            onMouseEnter={(e) => show(i, e.currentTarget)} onFocus={(e) => show(i, e.currentTarget)} onClick={(e) => show(i, e.currentTarget)}
+            onBlur={() => setTip(undefined)} />
+        ))}
+      </div>
+      {it && (
+        <div className="tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>
+          <div className="tt">{it.label}</div>
+          <div className="kvline"><span className="muted">Chance per draw</span><span>{oneIn(it.p)} · {pctOf(it.p)}</span></div>
+          <div className="kvline"><span className="muted">{it.nft ? 'Your value' : 'Redeems for'}</span><span>{eth(it.value, 4)} ETH</span></div>
+          <div className="kvline"><span className="muted">Price on FWA</span><span>{eth(it.price, 5)} ETH</span></div>
+          <div className="kvline"><span className="muted">Worth vs draw cost</span><span>{it.mult.toFixed(2)}×</span></div>
+        </div>
+      )}
+    </div>
+  );
 }

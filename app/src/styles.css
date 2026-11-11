@@ -204,3 +204,15 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .picker .pn { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .picker .pid { font: 500 12px var(--font-mono); color: var(--ink-3); }
 @media (max-width: 640px) { .picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* View switch and inventory grid */
+.seg { display: inline-flex; border: 1px solid var(--line-control); margin-bottom: 4px; }
+.seg button { height: 36px; padding: 0 14px; background: transparent; border: 0; color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-control); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #000; font-weight: 700; }
+.inv { position: relative; }
+.grid100 .cell { width: 22px; height: 22px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.grid100 .cell:hover, .grid100 .cell:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 640px) { .grid100 .cell { width: auto; height: auto; aspect-ratio: 1; } }
+.tip { position: absolute; z-index: 5; transform: translateX(-50%); width: 240px; background: #000; border: 1px solid var(--ink); padding: 12px 14px; font-size: 13px; display: grid; gap: 6px; pointer-events: none; }
+.tip .tt { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
