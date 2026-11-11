@@ -10,6 +10,7 @@ import {
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { HowItWorks } from './HowItWorks';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
@@ -222,6 +223,10 @@ export function App() {
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState<string>();
+  // How it works lives at #how, so it can be linked to and the back button leaves it.
+  const [help, setHelpState] = useState(() => location.hash === '#how');
+  useEffect(() => { const h = () => { const on = location.hash === '#how'; setHelpState(on); if (on) window.scrollTo(0, 0); }; window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
+  const setHelp = (on: boolean) => { if (on !== (location.hash === '#how')) location.hash = on ? 'how' : ''; setHelpState(on); if (on) window.scrollTo(0, 0); };
 
   const loadMine = useCallback(async () => {
     if (!pub || !address || !FACTORY) return;
@@ -254,11 +259,10 @@ export function App() {
     <>
       <header className="topbar">
         <span className="wordmark">FWA Pool Balancer</span>
-        {isConnected && loaded && (
-          <nav className="topnav" aria-label="Main">
-            <button aria-current={page === 'list' ? 'page' : undefined} onClick={() => setPage('list')}>Your pools</button>
-          </nav>
-        )}
+        <nav className="topnav" aria-label="Main">
+          {isConnected && loaded && <button aria-current={!help && page === 'list' ? 'page' : undefined} onClick={() => { setHelp(false); setPage('list'); }}>Your pools</button>}
+          <button aria-current={help ? 'page' : undefined} onClick={() => setHelp(true)}>How it works</button>
+        </nav>
         {!isConnected && (
           <div className="right">
             {dev.map((c) => <button key={c.uid} className="btn sec" onClick={() => { markConnectIntent(); connect({ connector: c, chainId: chain.id }); }}>Local dev account</button>)}
@@ -274,6 +278,8 @@ export function App() {
         )}
       </header>
       {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
+      {help && <HowItWorks onDesign={() => { setHelp(false); if (isConnected) setPage('new'); }} />}
+      <div hidden={help}>
       {fresh && (
         <div className="status">
           <span>{isConnected ? <><b>New pool.</b> Nothing is sent until you create it and confirm in your wallet.</> : <><b>Preview.</b> Design a pool. Nothing is sent until you connect a wallet and create it.</>}</span>
@@ -287,6 +293,7 @@ export function App() {
       )}
       {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setNotice(undefined); setPage('new'); }} />}
       {isConnected && loaded && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} notice={notice} />}
+      </div>
     </>
   );
 }
@@ -523,7 +530,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
-  const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : draft?.style ? 'board' : 'steady'));
+  const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
   const initial = useRef({ style, custom, small });
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.baseFee]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -549,7 +556,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       setStyle(initial.current.style); setCustom(initial.current.custom); setSmall(initial.current.small);
       return;
     }
-    setMarkup(DEFAULT_MARKUP); setSmall(DEFAULT_SMALL); setStyle('steady'); setCustom(ZERO); setCeiling('');
+    setMarkup(DEFAULT_MARKUP); setSmall(DEFAULT_SMALL); setStyle('board'); setCustom(ZERO); setCeiling('');
     setNfts(fresh || !listed.length ? [DEFAULT_NFT] : []);
   };
   const total = counts.reduce((a, b) => a + b, 0);
@@ -768,6 +775,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           : 'Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: your NFTs, and Shapes you fund with ETH.'}</p>
         <div className="row" style={{ marginTop: 14, gap: 24 }}>
           {!has && <button className="disclose quiet" onClick={() => setHow(!how)}>How a pool works {how ? '▴' : '▾'}</button>}
+          {!has && <a className="link quiet" style={{ fontSize: 14 }} href="#how">More in How it works</a>}
           <button className="link quiet" style={{ fontSize: 14 }} onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
         </div>
         {how && !has && (

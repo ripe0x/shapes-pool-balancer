@@ -258,3 +258,30 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .title.t2 { font-size: 32px; }
 .tlink { color: inherit; text-decoration: none; }
 .tlink:hover, .tlink:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* How it works */
+.hiw { max-width: 760px; }
+.hiw-sec { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line); }
+.hiw-p { font-size: 15px; line-height: 1.55; color: var(--ink-2); margin: 10px 0 0; }
+.hiw-p b { color: var(--ink); }
+.hiw-squares { display: grid; gap: 4px; margin: 18px 0 14px; max-width: 560px; }
+.hiw-squares span { display: block; }
+.hiw-bar { display: flex; height: 28px; margin-top: 18px; gap: 2px; }
+.hiw-bar span { min-width: 3px; }
+.hiw-stats { display: flex; gap: 40px; flex-wrap: wrap; margin-top: 22px; }
+.hiw-cycle { list-style: none; counter-reset: step; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0; margin: 20px 0 14px; }
+.hiw-cycle li { counter-increment: step; border: 1px solid var(--line-control); padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-3); position: relative; }
+.hiw-cycle li::before { content: counter(step); font: 500 12px var(--font-mono); color: var(--ink-4); }
+.hiw-cycle li b { color: var(--ink); font-size: 15px; }
+.hiw-cycle li:not(:last-child)::after { content: '→'; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--ink-3); background: var(--bg); }
+.hiw-styles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; margin-top: 20px; }
+.hiw-styles .hiw-squares { margin: 10px 0 8px; }
+.hiw-faq { margin-top: 12px; border-top: 1px solid var(--line); }
+.hiw-faq details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+.hiw-faq summary { cursor: pointer; font-weight: 700; font-size: 15px; }
+.hiw-faq p { margin: 10px 0 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+@media (max-width: 760px) {
+  .hiw-cycle { grid-template-columns: 1fr; }
+  .hiw-cycle li:not(:last-child)::after { content: '↓'; right: auto; left: 50%; top: auto; bottom: -13px; transform: translateX(-50%); }
+  .hiw-styles { grid-template-columns: 1fr; }
+}
