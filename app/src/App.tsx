@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { BaseError, ContractFunctionRevertedError, decodeFunctionResult, encodeFunctionData, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
@@ -10,6 +10,7 @@ import {
 import { available, describe, ethNeeded, playerView, recommend, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { nftImage, scanWalletNfts, type WalletNft } from './wallet';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
@@ -660,11 +661,13 @@ function Nfts({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; me: 
   const [edit, setEdit] = useState<{ id: bigint; value: string }>();
   const [restricted, setRestricted] = useState<string>();
   const [stray, setStray] = useState({ open: false, collection: '', tokenId: '' });
+  const [manual, setManual] = useState(false);
+  const [listedNow, setListedNow] = useState<string[]>([]);
   const key = `${form.collection}:${form.tokenId}`;
   const list = () => tx.send('List NFT', [
     () => tx.write({ address: form.collection as Address, abi: erc721Abi, functionName: 'approve', args: [d.balancer, BigInt(form.tokenId)] }),
     () => tx.write({ ...B, functionName: 'listCurated', args: [form.collection as Address, BigInt(form.tokenId), ethOr(form.base, 0n)] }),
-  ]).then((ok) => { setRestricted(undefined); if (ok) setForm({ collection: '', tokenId: '', base: '' }); });
+  ]).then((ok) => { setRestricted(undefined); if (ok) { setListedNow([...listedNow, key.toLowerCase()]); setForm({ collection: '', tokenId: '', base: '' }); } });
   // A collection that refuses transfers to contracts lets a hostile buyer (a contract that never refunds) lock a
   // drawn NFT in FWA escrow. Simulate a transfer from the creator to a contract address before listing.
   const checkAndList = async () => {
@@ -726,22 +729,24 @@ function Nfts({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; me: 
       {isCreator && (
         <section>
           <h2 className="h3" style={{ fontSize: 22 }}>Add an NFT</h2>
-          <label className="form-label" htmlFor="collection">Collection address</label>
-          <div className="field"><input id="collection" className="mono" placeholder="0x…" value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })} /></div>
-          <div className="row" style={{ gap: 12, alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <WalletPicker me={me} selected={form} listed={listedNow}
+            onPick={(n) => { setManual(false); setForm({ ...form, collection: n.collection, tokenId: n.tokenId.toString() }); }}
+            onEmpty={() => setManual(true)} />
+          <button className="disclose quiet" style={{ marginTop: 14 }} onClick={() => setManual(!manual)}>Enter a contract and token ID instead {manual ? '▴' : '▾'}</button>
+          {manual && (
+            <>
+              <label className="form-label" htmlFor="collection">Collection address</label>
+              <div className="field"><input id="collection" className="mono" placeholder="0x…" value={form.collection} onChange={(e) => setForm({ ...form, collection: e.target.value })} /></div>
               <label className="form-label" htmlFor="token">Token ID</label>
               <div className="field"><input id="token" placeholder="e.g. 31" value={form.tokenId} onChange={(e) => setForm({ ...form, tokenId: e.target.value })} inputMode="numeric" /></div>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <label className="form-label" htmlFor="value">Your value</label>
-              <div className="field"><input id="value" placeholder="0.000" value={form.base} onChange={(e) => setForm({ ...form, base: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-            </div>
-          </div>
+            </>
+          )}
+          <label className="form-label" htmlFor="value">Your value</label>
+          <div className="field"><input id="value" placeholder="0.000" value={form.base} onChange={(e) => setForm({ ...form, base: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
           {restricted === key && (
             <p className="note error" style={{ marginTop: 16 }}>This collection refuses transfers to contracts. A buyer using a contract that never claims its refund can lock this NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
           )}
-          <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !form.collection || !form.tokenId || !form.base} onClick={checkAndList}>{restricted === key ? 'List anyway' : 'List NFT'}</button>
+          <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !form.collection || !form.tokenId || !form.base} onClick={checkAndList}>{restricted === key ? 'List anyway' : form.base ? `List NFT at ${form.base} ETH` : 'List NFT'}</button>
           <p className="note" style={{ marginTop: 14 }}>List only collections you trust: a collection whose contract can move or freeze tokens can take or strand an NFT listed here.</p>
           <p className="note" style={{ marginTop: 8 }}>Listing closes purchases until upkeep runs.</p>
           <div className="section">
@@ -958,4 +963,75 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
       </section>
     </main>
   );
+}
+
+const SHOWN = 120;
+
+/** The connected wallet's ERC-721s, found by scanning its transfer history; picking one fills the listing form. */
+function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; selected: { collection: string; tokenId: string }; listed: string[]; onPick: (n: WalletNft) => void; onEmpty: () => void }) {
+  const pub = usePublicClient();
+  const [nfts, setNfts] = useState<WalletNft[]>();
+  const [error, setError] = useState<string>();
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    if (!pub) return;
+    let live = true;
+    setNfts(undefined); setError(undefined);
+    scanWalletNfts(pub, me, chain.id, [SHAPES])
+      .then((r) => { if (!live) return; setNfts(r); if (!r.length) onEmpty(); })
+      .catch((e) => { if (!live) return; setError((e as Error & { shortMessage?: string }).shortMessage ?? (e as Error).message); onEmpty(); });
+    return () => { live = false; };
+  }, [pub, me]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keyOf = (n: { collection: string; tokenId: bigint | string }) => `${n.collection}:${n.tokenId}`.toLowerCase();
+  const sel = keyOf(selected);
+  const words = q.trim().toLowerCase();
+  const shown = (nfts ?? []).filter((n) => !listed.includes(keyOf(n)) && (!words || `${n.name} #${n.tokenId} ${n.collection}`.toLowerCase().includes(words)));
+  const pick = (nfts ?? []).find((n) => keyOf(n) === sel);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div className="section-head" style={{ marginBottom: 8 }}>
+        <span style={{ fontSize: 14 }} className="soft">From your wallet</span>
+        {nfts && <span className="label">{shown.length} NFT{shown.length === 1 ? '' : 's'}</span>}
+      </div>
+      {!nfts && !error && <p className="note">Scanning your wallet for NFTs. The first scan can take a minute; later ones are quick.</p>}
+      {error && <p className="note error">Could not scan your wallet ({error}). Enter a contract and token ID instead.</p>}
+      {nfts && nfts.length === 0 && <p className="note">No NFTs found in this wallet. Enter a contract and token ID instead.</p>}
+      {nfts && nfts.length > 0 && (
+        <>
+          {nfts.length > 12 && <div className="field" style={{ marginBottom: 10 }}><input aria-label="Search your NFTs" placeholder="Search by name, token ID or contract" value={q} onChange={(e) => setQ(e.target.value)} /></div>}
+          <div className="picker" role="listbox" aria-label="Your NFTs">
+            {shown.slice(0, SHOWN).map((n) => (
+              <button key={keyOf(n)} role="option" aria-selected={keyOf(n) === sel} onClick={() => onPick(n)} title={`${n.name} #${n.tokenId}`}>
+                <Thumb n={n} />
+                <span className="pn">{n.name}</span>
+                <span className="pid">#{n.tokenId.toString()}</span>
+              </button>
+            ))}
+          </div>
+          {shown.length > SHOWN && <p className="note" style={{ marginTop: 8 }}>Showing {SHOWN} of {shown.length}. Search to narrow the list.</p>}
+          {pick && <p style={{ marginTop: 12, fontSize: 15 }}><span className="muted">Selected:</span> <b>{pick.name} #{pick.tokenId.toString()}</b></p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** NFT image, fetched only once the tile scrolls into view. */
+function Thumb({ n }: { n: WalletNft }) {
+  const pub = usePublicClient();
+  const ref = useRef<HTMLSpanElement>(null);
+  const [src, setSrc] = useState<string | null>();
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !pub) return;
+    let live = true;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      nftImage(pub, n.collection, n.tokenId).then((u) => live && setSrc(u ?? null), () => live && setSrc(null));
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => { live = false; io.disconnect(); };
+  }, [pub, n.collection, n.tokenId]);
+  return <span ref={ref} className="thumb pt">{src ? <img src={src} alt="" loading="lazy" onError={() => setSrc(null)} /> : <span>{src === null ? 'No image' : ''}</span>}</span>;
 }
