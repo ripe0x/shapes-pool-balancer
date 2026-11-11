@@ -10,7 +10,7 @@ import {
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
-import { nftImage, scanWalletNfts, type WalletNft } from './wallet';
+import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
@@ -390,7 +390,7 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
 }
 
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
-type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string };
+type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
 /** Design work not yet saved on chain: one for the pool not yet created, and one per pool whose design is unsaved. */
 type Draft = { markup: number; small?: number; style?: Style | null; bonus?: Counts; nfts?: DraftNft[]; values?: string[] };
 const draftKey = (b?: Address) => (b ? `pool-design-draft:${b.toLowerCase()}` : 'pool-design-draft');
@@ -789,16 +789,19 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           <p className="note" style={{ marginBottom: 10 }}>The value is your asking price: across the draws until it is won, players pay about that plus your markup. A higher value makes it rarer.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
           {listed.map((l) => (
             <div className="mixrow" key={l.id.toString()}>
-              <div><div className="t">{nftName(l)}</div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`}</div></div>
+              <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} small />
+              <div><div className="t">{nftName(l)}</div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`} · <a href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer">OpenSea ↗</a></div></div>
               <span className="end mono">{eth(l.base)} ETH</span>
             </div>
           ))}
           {pending.map(({ n, i }, k) => (
             <Fragment key={i}>
               <div className="mixrow">
+                {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} small />}
                 <div style={{ minWidth: 0 }}>
                   <div className="t">{rowName(n, listed.length + k)}</div>
                   {oddsLine(`d${i}`) && <div className="s">{oddsLine(`d${i}`)}</div>}
+                  {n.collection && <div className="s">{n.floor ? `Collection floor ${floorText(n.floor)} · ` : ''}<a href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>}
                   {mode !== 'preview' && <button className="link" style={{ fontSize: 13 }} onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : n.collection ? 'Change' : 'Choose from your wallet'}</button>}
                 </div>
                 <div className="field end" style={{ width: 150 }}><input aria-label={`Value of ${rowName(n, listed.length + k)}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
@@ -846,7 +849,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             </>
           )}
         </div>
-        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{playBlock}{gridBlock}</div>}
+        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{gridBlock}{playBlock}</div>}
 
         <div className="step">
           <div className="step-head"><span className="n">{has ? 2 : 3}</span><h2 className="h3">Pool size</h2></div>
@@ -917,10 +920,10 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         {view && ev && econ ? (
           <>
             {compare}
-            <div className="desktop-only">{payBlock}{playBlock}</div>
+            <div className="desktop-only">{payBlock}</div>
             {!open.numbers ? (
               <>
-                <div className="desktop-only">{gridBlock}</div>
+                <div className="desktop-only">{gridBlock}{playBlock}</div>
                 {fresh ? (
                   <div className="result-block">
                     <div className="kvline"><div><div>ETH to create the pool</div><p className="note">Deposited when you create it</p></div><div><span className="figure-s">{eth(deposit, 2)}</span><span className="unit">ETH</span></div></div>
@@ -989,9 +992,9 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
           {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
           {curated.map((l) => (
             <div className="nft" key={l.id.toString()}>
-              <div className="thumb">NFT</div>
+              <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
               <div>
-                <div className="t">{name(l)}</div>
+                <div className="t">{name(l)} <a className="note" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>
                 <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
                 <div className="s">Won about {oneIn(odds(l))} draws</div>
                 {edit?.id === l.id && (
@@ -1086,7 +1089,11 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
       <h2 className="h3" style={{ fontSize: 22 }}>Add an NFT</h2>
       {pick.collection && !choosing ? (
         <div className="mixrow" style={{ marginTop: 12 }}>
-          <div className="t">{nftLabel(pick)}</div>
+          <Thumb key={key} n={{ collection: pick.collection, tokenId: BigInt(pick.tokenId!), image: pick.image }} />
+          <div style={{ minWidth: 0 }}>
+            <div className="t">{nftLabel(pick)}</div>
+            <div className="s">{pick.floor ? `Collection floor ${floorText(pick.floor)} · ` : ''}<a href={openSeaAsset(pick.collection, pick.tokenId!)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>
+          </div>
           <button className="link end" onClick={() => setChoosing(true)}>Change</button>
         </div>
       ) : (
@@ -1374,7 +1381,7 @@ function NftChooser({ me, current, exclude, onPick }: { me: Address; current: Dr
   return (
     <div className="chooser">
       <WalletPicker me={me} selected={{ collection: current.collection ?? '', tokenId: current.tokenId ?? '' }} listed={exclude}
-        onPick={(n) => onPick({ collection: n.collection, tokenId: n.tokenId.toString(), name: n.name })} onEmpty={() => setManual(true)} />
+        onPick={(n, c) => onPick({ collection: n.collection, tokenId: n.tokenId.toString(), name: c.name, image: n.image, floor: c.floor, slug: c.slug })} onEmpty={() => setManual(true)} />
       <button className="disclose quiet" style={{ marginTop: 14 }} onClick={() => setManual(!manual)}>Enter a contract and token ID instead {manual ? '▴' : '▾'}</button>
       {manual && (
         <>
@@ -1391,49 +1398,88 @@ function NftChooser({ me, current, exclude, onPick }: { me: Address; current: Dr
   );
 }
 
-/** The connected wallet's ERC-721s, found by scanning its transfer history; picking one fills the listing form. */
-function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; selected: { collection: string; tokenId: string }; listed: string[]; onPick: (n: WalletNft) => void; onEmpty: () => void }) {
+const floorText = (f?: number) => (f === undefined ? undefined : f >= 1 ? `${f.toFixed(2)} ETH` : f >= 0.001 ? `${f.toPrecision(2)} ETH` : '<0.001 ETH');
+
+/**
+ * Finding an NFT in a large wallet: collections first, most valuable (OpenSea floor) at the top, with collections that
+ * have no recent price folded away; then the chosen collection's tokens with images.
+ */
+function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; selected: { collection: string; tokenId: string }; listed: string[]; onPick: (n: WalletNft, c: Collection) => void; onEmpty: () => void }) {
   const pub = usePublicClient();
-  const [nfts, setNfts] = useState<WalletNft[]>();
+  const [cols, setCols] = useState<Collection[]>();
   const [error, setError] = useState<string>();
   const [q, setQ] = useState('');
+  const [rest, setRest] = useState(false);
+  const [col, setCol] = useState<Collection>();
+  const [tokens, setTokens] = useState<WalletNft[]>();
   useEffect(() => {
     if (!pub) return;
     let live = true;
-    setNfts(undefined); setError(undefined);
-    scanWalletNfts(pub, me, chain.id, [SHAPES])
-      .then((r) => { if (!live) return; setNfts(r); if (!r.length) onEmpty(); })
+    setCols(undefined); setError(undefined);
+    walletCollections(pub, me, chain.id, [SHAPES])
+      .then((r) => { if (!live) return; setCols(r); if (!r.length) onEmpty(); })
       .catch((e) => { if (!live) return; setError((e as Error & { shortMessage?: string }).shortMessage ?? (e as Error).message); onEmpty(); });
     return () => { live = false; };
   }, [pub, me]); // eslint-disable-line react-hooks/exhaustive-deps
-  const keyOf = (n: { collection: string; tokenId: bigint | string }) => `${n.collection}:${n.tokenId}`.toLowerCase();
-  const sel = keyOf(selected);
+  useEffect(() => {
+    if (!col) return;
+    let live = true;
+    setTokens(undefined);
+    collectionTokens(me, col).then((t) => live && setTokens(t), () => live && setTokens([]));
+    return () => { live = false; };
+  }, [col, me]);
+  const keyOf = (n: { collection: string; tokenId: bigint | string }) => nftKey(n.collection, n.tokenId);
   const words = q.trim().toLowerCase();
-  const shown = (nfts ?? []).filter((n) => !listed.includes(keyOf(n)) && (!words || `${n.name} #${n.tokenId} ${n.collection}`.toLowerCase().includes(words)));
-  const pick = (nfts ?? []).find((n) => keyOf(n) === sel);
+  const match = (c: Collection) => !words || `${c.name} ${c.address}`.toLowerCase().includes(words);
+  const priced = (cols ?? []).filter((c) => c.floor && match(c));
+  const unpriced = (cols ?? []).filter((c) => !c.floor && match(c));
+  const row = (c: Collection) => (
+    <button key={c.address} onClick={() => setCol(c)}>
+      <span className="thumb cimg">{c.image ? <img src={c.image} alt="" loading="lazy" /> : null}</span>
+      <span className="cl-id"><span className="t">{c.name}</span><span className="s">{c.count} in your wallet</span></span>
+      <span className="cl-floor">{c.floor ? <><span className="muted">Floor</span> {floorText(c.floor)}</> : <span className="muted">No recent price</span>}</span>
+    </button>
+  );
+  if (col) {
+    const shown = (tokens ?? []).filter((n) => !listed.includes(keyOf(n)));
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div className="section-head" style={{ marginBottom: 10 }}>
+          <button className="link quiet" onClick={() => { setCol(undefined); setTokens(undefined); }}>← All collections</button>
+          <a className="note" href={col.slug ? `https://opensea.io/collection/${col.slug}` : `https://opensea.io/assets/ethereum/${col.address}`} target="_blank" rel="noreferrer">OpenSea ↗</a>
+        </div>
+        <div className="t" style={{ fontWeight: 700 }}>{col.name}</div>
+        <p className="note" style={{ margin: '2px 0 12px' }}>{col.floor ? `Floor ${floorText(col.floor)} on OpenSea` : 'No recent price on OpenSea'}</p>
+        {!tokens && <p className="note">Loading your tokens…</p>}
+        {tokens && !shown.length && <p className="note">No tokens left to choose in this collection.</p>}
+        <div className="picker" role="listbox" aria-label={`Your ${col.name} tokens`}>
+          {shown.slice(0, SHOWN).map((n) => (
+            <button key={keyOf(n)} role="option" aria-selected={keyOf(n) === keyOf(selected)} onClick={() => onPick(n, col)} title={`${n.name} #${n.tokenId}`}>
+              <Thumb n={n} />
+              <span className="pid">#{n.tokenId.toString()}</span>
+            </button>
+          ))}
+        </div>
+        {shown.length > SHOWN && <p className="note" style={{ marginTop: 8 }}>Showing {SHOWN} of {shown.length}.</p>}
+      </div>
+    );
+  }
   return (
     <div style={{ marginTop: 14 }}>
-      <div className="section-head" style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 14 }} className="soft">From your wallet</span>
-        {nfts && <span className="label">{shown.length} NFT{shown.length === 1 ? '' : 's'}</span>}
-      </div>
-      {!nfts && !error && <p className="note">Scanning your wallet for NFTs. The first scan can take a minute; later ones are quick.</p>}
-      {error && <p className="note error">Could not scan your wallet ({error}). Enter a contract and token ID instead.</p>}
-      {nfts && nfts.length === 0 && <p className="note">No NFTs found in this wallet. Enter a contract and token ID instead.</p>}
-      {nfts && nfts.length > 0 && (
+      {!cols && !error && <p className="note">Finding the NFTs in your wallet…</p>}
+      {error && <p className="note error">Could not read your wallet ({error}). Enter a contract and token ID instead.</p>}
+      {cols && cols.length === 0 && <p className="note">No NFTs found in this wallet. Enter a contract and token ID instead.</p>}
+      {cols && cols.length > 0 && (
         <>
-          {nfts.length > 12 && <div className="field" style={{ marginBottom: 10 }}><input aria-label="Search your NFTs" placeholder="Search by name, token ID or contract" value={q} onChange={(e) => setQ(e.target.value)} /></div>}
-          <div className="picker" role="listbox" aria-label="Your NFTs">
-            {shown.slice(0, SHOWN).map((n) => (
-              <button key={keyOf(n)} role="option" aria-selected={keyOf(n) === sel} onClick={() => onPick(n)} title={`${n.name} #${n.tokenId}`}>
-                <Thumb n={n} />
-                <span className="pn">{n.name}</span>
-                <span className="pid">#{n.tokenId.toString()}</span>
-              </button>
-            ))}
-          </div>
-          {shown.length > SHOWN && <p className="note" style={{ marginTop: 8 }}>Showing {SHOWN} of {shown.length}. Search to narrow the list.</p>}
-          {pick && <p style={{ marginTop: 12, fontSize: 15 }}><span className="muted">Selected:</span> <b>{pick.name} #{pick.tokenId.toString()}</b></p>}
+          {cols.length > 6 && <div className="field" style={{ marginBottom: 10 }}><input aria-label="Search your collections" placeholder="Search collections" value={q} onChange={(e) => setQ(e.target.value)} /></div>}
+          <div className="collist">{priced.map(row)}</div>
+          {unpriced.length > 0 && (
+            <>
+              <button className="disclose quiet" style={{ marginTop: 12 }} onClick={() => setRest(!rest)}>{unpriced.length} collection{unpriced.length === 1 ? '' : 's'} with no recent price {rest || !priced.length ? '▴' : '▾'}</button>
+              {(rest || !priced.length) && <div className="collist">{unpriced.map(row)}</div>}
+            </>
+          )}
+          <p className="note" style={{ marginTop: 10 }}>Sorted by OpenSea floor price, highest first. Spam collections are hidden.</p>
         </>
       )}
     </div>
@@ -1441,13 +1487,13 @@ function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; 
 }
 
 /** NFT image, fetched only once the tile scrolls into view. */
-function Thumb({ n }: { n: WalletNft }) {
+function Thumb({ n, small }: { n: Pick<WalletNft, 'collection' | 'tokenId' | 'image'>; small?: boolean }) {
   const pub = usePublicClient();
   const ref = useRef<HTMLSpanElement>(null);
-  const [src, setSrc] = useState<string | null>();
+  const [src, setSrc] = useState<string | null | undefined>(n.image);
   useEffect(() => {
     const el = ref.current;
-    if (!el || !pub) return;
+    if (!el || !pub || n.image) return;
     let live = true;
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return;
@@ -1457,7 +1503,7 @@ function Thumb({ n }: { n: WalletNft }) {
     io.observe(el);
     return () => { live = false; io.disconnect(); };
   }, [pub, n.collection, n.tokenId]);
-  return <span ref={ref} className="thumb pt">{src ? <img src={src} alt="" loading="lazy" onError={() => setSrc(null)} /> : <span>{src === null ? 'No image' : ''}</span>}</span>;
+  return <span ref={ref} className={small ? 'thumb pt sm' : 'thumb pt'}>{src ? <img src={src} alt="" loading="lazy" onError={() => setSrc(null)} /> : <span>{src === null ? 'No image' : ''}</span>}</span>;
 }
 
 type InvItem = { key: string; label: string; nft: boolean; value: bigint; price: bigint; p: number; mult: number; style: React.CSSProperties };

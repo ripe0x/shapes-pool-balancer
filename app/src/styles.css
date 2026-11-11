@@ -206,6 +206,16 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .nft:last-child { border-bottom: 1px solid var(--line); }
 .thumb { width: 72px; height: 72px; flex: none; background: var(--fill-media); display: flex; align-items: flex-end; padding: 6px; font: 500 9px var(--font-mono); color: var(--ink-4); text-transform: uppercase; overflow: hidden; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb.sm { width: 48px; height: 48px; padding: 0; }
+.thumb.pt:not(.sm) { padding: 0; }
+.collist { border-top: 1px solid var(--line); }
+.collist button { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: 100%; padding: 10px 0; background: none; border: 0; border-bottom: 1px solid var(--line); text-align: left; cursor: pointer; }
+.collist button:hover .t { text-decoration: underline; }
+.thumb.cimg { width: 44px; height: 44px; padding: 0; }
+.cl-id { display: flex; flex-direction: column; min-width: 0; }
+.cl-id .t { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-id .s { font-size: 12px; color: var(--ink-3); }
+.cl-floor { font: 500 13px var(--font-mono); white-space: nowrap; }
 .nft .t { font-weight: 700; font-size: 17px; }
 .nft .s { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
 .nft .acts { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
