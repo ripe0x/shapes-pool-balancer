@@ -552,7 +552,10 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     const c = cheapest({ ...inputs, minCuratedOddsBps: 1 }, bonus);
     return c ? Math.floor(1e6 / Math.max(1, describe(c, inputs).curatedOddsPpm)) : 1;
   }, [bases.join(), bonus.join(), markupBps]); // eslint-disable-line react-hooks/exhaustive-deps
-  const oddsChoices = [...new Set([...ODDS.filter((n) => n <= rarest), oddsN])].sort((x, y) => x - y);
+  // Preset steps up to the true limit, which is always the last stop.
+  // The target as the pool can reach it: never rarer than the limit for these NFTs and prizes.
+  const shownN = Math.min(oddsN, rarest);
+  const oddsChoices = [...new Set([...ODDS.filter((n) => n < rarest), rarest])].sort((x, y) => x - y);
   const change = <T,>(set: (v: T) => void) => (v: T) => { setEdited(true); set(v); };
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
   const current = (): Draft => ({ markup, oddsN, style: style ?? null, bonus: custom, nfts });
@@ -625,6 +628,20 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       key: `s${g.i}-${j}`, label: `${DENOM_LABELS[g.i]} ETH Shape`, nft: false, value: t.value, price: t.listPrice, p: t.odds / g.n, mult: t.multiple, style: sw(g),
     })) : [];
   }) : [];
+  // The player's side of one draw: the usual result, the chances of beating the price, the top prize and the average.
+  const common = view?.tiers.reduce((a, t) => (t.odds > a.odds ? t : a), view.tiers[0]);
+  const prize = (t: NonNullable<typeof common>) => (t.kind === 'curated' ? (rows.length > 1 ? 'One of your NFTs' : 'Your NFT') : `A ${t.label}`);
+  const playBlock = view && common ? (
+    <div className="result-block">
+      <h2 className="h3">What a player gets</h2>
+      <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}× the price</span></div>
+      <div className="kv"><span className="k">Win more than they paid</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
+      <div className="kv"><span className="k">Win 2× the price or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
+      <div className="kv"><span className="k">Top prize</span><span>{prize(view.top)} · {view.top.multiple.toFixed(1)}× · {oneIn(view.top.odds)}</span></div>
+      {view.top.kind !== 'curated' && <div className="kv"><span className="k">{rows.length > 1 ? 'One of your NFTs' : 'Your NFT'}</span><span>{oneIn(view.curated)}</span></div>}
+      <div className="kv"><span className="k">Average prize</span><span>{(view.avgReturn * 100).toFixed(0)}% of the price</span></div>
+    </div>
+  ) : null;
   const payBlock = view && ev ? (
     <div className="result-block">
       <span className="soft" style={{ fontSize: 14 }}>Players pay</span>
@@ -841,18 +858,18 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             </>
           )}
         </div>
-        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{gridBlock}</div>}
+        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{playBlock}{gridBlock}</div>}
 
         <div className="step">
-          <div className="step-head"><span className="n">{has ? 2 : 3}</span><h2 className="h3">How rare {rows.length > 1 ? 'your NFTs are' : 'your NFT is'}</h2></div>
+          <div className="step-head"><span className="n">{has ? 2 : 3}</span><h2 className="h3">Chance of winning {rows.length > 1 ? 'one of your NFTs' : 'your NFT'}</h2></div>
           <div className="limit" style={{ marginTop: 0 }}>
-            <div className="top"><label htmlFor="odds">{rows.length > 1 ? 'One of your NFTs is won about' : 'Won about'}</label><b>1 in {oddsN} draws</b></div>
-            <input id="odds" type="range" min={0} max={oddsChoices.length - 1} step={1} value={oddsChoices.indexOf(oddsN)} aria-valuetext={`1 in ${oddsN} draws`}
+            <div className="top"><label htmlFor="odds">Each draw</label><b>1 in {shownN}</b></div>
+            <input id="odds" type="range" min={0} max={oddsChoices.length - 1} step={1} value={Math.max(0, oddsChoices.findIndex((n) => n >= shownN))} aria-valuetext={`1 in ${shownN} draws`}
               onChange={(e) => change(setOddsN)(oddsChoices[Number(e.target.value)])} />
-            <p className="note">Rarer means more small Shapes in the pool and a cheaper draw.</p>
+            <p className="note">Rarer odds mean more small Shapes and a cheaper draw.{shownN >= rarest && ` 1 in ${rarest} is the rarest for ${rows.length > 1 ? 'these NFTs' : 'this NFT'}: a pool holds at most ${MAX_SHAPES_PER_PLAN} Shapes and the smallest is 0.01 ETH. A higher NFT value allows rarer odds.`}</p>
           </div>
-          {ready && view && view.curated * oddsN > 1.15 && (
-            <p className="note" style={{ marginTop: 8 }}>{total >= MAX_SHAPES_PER_PLAN ? `A pool holds at most ${MAX_SHAPES_PER_PLAN} Shapes, so ${oneIn(view.curated)} is as rare as it gets.` : `Shapes come in fixed sizes, so ${oneIn(view.curated)} is the closest.`}</p>
+          {ready && view && view.curated * shownN > 1.15 && (
+            <p className="note" style={{ marginTop: 8 }}>Shapes come in fixed sizes, so {oneIn(view.curated)} is the closest.</p>
           )}
         </div>
 
@@ -910,7 +927,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         {view && ev && econ ? (
           <>
             {compare}
-            <div className="desktop-only">{payBlock}</div>
+            <div className="desktop-only">{payBlock}{playBlock}</div>
             {!open.numbers ? (
               <>
                 <div className="desktop-only">{gridBlock}</div>
