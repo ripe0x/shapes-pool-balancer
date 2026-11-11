@@ -4,8 +4,9 @@ Creator-operated [FWA](https://pools.fwa.fun) community pools that use ETH-backe
 [Shapes](https://shapes.ripe.wtf) as automatically replenished inventory.
 
 A creator deploys a `PoolBalancer`, which creates and permanently owns an FWA standard pool. The creator lists curated
-NFTs and approves a Shapes plan; players buy on FWA's own site with ETH; a permissionless keeper restores Shapes after
-draws from the Balancer's ETH and settled proceeds. Surplus above the funded reserve belongs to the creator.
+NFTs and sets a target mix of ETH-backed prizes (Shapes and Draw Packs); players buy on FWA's own site with ETH; a
+permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. Surplus above the reserve
+belongs to the creator.
 
 **Not deployed to mainnet.** See [docs/READINESS.md](docs/READINESS.md).
 

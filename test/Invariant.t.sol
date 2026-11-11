@@ -19,23 +19,29 @@ contract Handler is Test {
     MockNFT public nft;
     address public creator;
     address constant VRF_SERVICE = 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d;
+    uint256 constant MARKUP = 1500;
     uint256[] public open;
     uint256 nextNft = 1000;
     uint256 public purchasesAdmitted;
     mapping(uint8 => uint256) public closedReasons;
 
-    constructor(PoolBalancer b_, MockNFT nft_, address creator_) {
+    uint256 immutable targetA;
+    uint256 immutable targetB;
+
+    constructor(PoolBalancer b_, MockNFT nft_, address creator_, uint256 a, uint256 bb) {
         b = b_;
         pool = b_.pool();
         nft = nft_;
         creator = creator_;
+        targetA = a;
+        targetB = bb;
     }
 
+    /// Overlapping purchases are allowed: buy while earlier draws are still pending.
     function buy(uint256 count, uint256 who) external {
         count = bound(count, 1, 5);
         address buyer = address(uint160(bound(who, 1, 50)) + 0x1000);
-        bool allowed = b.canPurchase(buyer);
-        if (!allowed) {
+        if (!b.canPurchase(buyer)) {
             ++closedReasons[b.admissionStatus()];
             return;
         }
@@ -43,13 +49,10 @@ contract Handler is Test {
         vm.deal(buyer, total);
         uint256 v = pool.inventoryVersion();
         vm.prank(buyer, buyer);
-        uint256[] memory ids = pool.acquireBatch{value: total}(buyer, count, 0, 0, 10_000, v, block.timestamp + 1);
-        for (uint256 i; i < ids.length; ++i) {
-            open.push(ids[i]);
-        }
-        ++purchasesAdmitted;
-        // a second purchase in the same state must be rejected
-        assertFalse(b.canPurchase(buyer), "admission must close after any batch");
+        try pool.acquireBatch{value: total}(buyer, count, 0, 0, 10_000, v, block.timestamp + 1) returns (uint256[] memory ids) {
+            for (uint256 i; i < ids.length; ++i) open.push(ids[i]);
+            ++purchasesAdmitted;
+        } catch {}
     }
 
     function fulfillAll(uint256 seed) external {
@@ -111,53 +114,73 @@ contract Handler is Test {
         vm.prank(creator);
         try b.withdrawCurated(lid, creator) {} catch {}
     }
+
+    /// Occasionally change the markup and target.
+    function reconfigure(uint256 pick) external {
+        uint256 t = pick % 2 == 0 ? targetA : targetB;
+        uint16 m = uint16(bound(pick, 0, 3000));
+        vm.prank(creator);
+        try b.configure(m, t) {} catch {}
+    }
+
+    /// Unlist a surplus Shape/pack prize (FWA reverts while draws are unsettled).
+    function unlist(uint256 idx) external {
+        uint256[] memory ids = b.getActiveIds();
+        if (ids.length == 0) return;
+        uint256 lid = ids[bound(idx, 0, ids.length - 1)];
+        (uint8 kind,,,,) = b.items(lid);
+        if (kind != 2) return;
+        uint256[] memory one = new uint256[](1);
+        one[0] = lid;
+        vm.prank(creator);
+        try b.unlistShapes(one) {} catch {}
+    }
 }
 
 contract InvariantTest is ForkBase {
     Handler handler;
+    uint256 constant MAX_PRIZE_WEIGHT = 1e36 / 0.01 ether;
+    uint256 constant FILL_BPS = 7_000;
 
     function setUp() public {
         setUpFork();
         createBalancer(5 ether);
+        configure(plan16([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0]));
         listCurated(1, 0.3 ether);
         listCurated(2, 0.5 ether);
         listCurated(3, 0.8 ether);
-        uint256[] memory plans = new uint256[](2);
-        // Shapes and packs: 2x0.02, 1x0.03 and 1x0.25 ETH packs in the preferred plan, one 0.02 pack in the fallback.
-        plans[0] = plan16([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0]);
-        plans[1] = plan16([uint256(2), 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
-        configure(0.05 ether, 50, plans);
         vm.prank(creator);
         balancer.open();
         fillUp();
-        handler = new Handler(balancer, nft, creator);
+        uint256 a = plan16([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0]);
+        uint256 bb = plan16([uint256(2), 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
+        handler = new Handler(balancer, nft, creator, a, bb);
         targetContract(address(handler));
     }
 
-    /// @dev Admission implies an exactly reconciled, funded, in-limits inventory.
-    function invariant_admissionImpliesSafeState() public view {
+    /// @dev Admission OK implies the gate conditions hold (idle enough, funded inventory, in-limits).
+    function invariant_admissionImpliesGateConditions() public view {
         if (!balancer.canPurchase(buyer)) return;
-        assertEq(pool.unsettledAcquisitionCount(), 0);
-        assertEq(pool.lastIssuedSequence(), balancer.reconciledSequence());
+        assertTrue(balancer.enabled());
+        assertFalse(balancer.creatorWork());
         assertFalse(pool.tokenOfferEnabled());
-        (bool valid,,,, uint256 reserve) = balancer.checkpoint();
-        assertTrue(valid);
-        assertGe(address(balancer).balance, reserve);
-        (uint128 maxDrawPrice,,) = balancer.config();
-        assertLe(pool.acquisitionFee(), maxDrawPrice);
-        // tracked active set equals FWA's active set
-        assertEq(balancer.getActiveIds().length, pool.activeListingCount());
-        // prize inventory (Shapes and packs) equals the active plan
-        uint256 p = balancer.getPlans()[balancer.activePlan()];
-        uint16[16] memory active = balancer.getActiveShapes();
-        for (uint256 d; d < 16; ++d) {
-            assertEq(active[d], (p >> (16 * d)) & 0xFFFF);
-        }
+        assertTrue(balancer.getActiveIds().length != _listedShapes(), "has a curated listing");
+        assertLt(pool.unsettledAcquisitionCount(), 5, "below BUSY");
+        assertLe(shapes.mintFee(), balancer.mintFeeCap());
+        uint256 lost = (pool.lastIssuedSequence() - balancer.reconciledSequence()) * MAX_PRIZE_WEIGHT;
+        uint256 w = balancer.prizeWeight();
+        assertGe(w, lost, "weight above the unreconciled allowance");
+        assertGe((w - lost) * 10_000, FILL_BPS * balancer.targetWeight(), "inventory at or above the fill floor");
+    }
+
+    function _listedShapes() internal view returns (uint256 n) {
+        uint16[16] memory a = balancer.getActiveShapes();
+        for (uint256 d; d < 16; ++d) n += a[d];
     }
 
     function afterInvariant() public {
         emit log_named_uint("purchases admitted this run", handler.purchasesAdmitted());
-        for (uint8 r; r < 14; ++r) {
+        for (uint8 r; r < 7; ++r) {
             if (handler.closedReasons(r) != 0) emit log_named_uint(string.concat("closed reason ", vm.toString(r)), handler.closedReasons(r));
         }
     }
@@ -178,17 +201,29 @@ contract InvariantTest is ForkBase {
         assertEq(abi.decode(r, (uint256)), 0, "no pack held between calls");
     }
 
-    /// @dev Whenever reconciled, the tracked active set matches FWA exactly.
+    /// @dev prizeWeight equals the sum of 1e36/price over tracked prize items.
+    function invariant_prizeWeightMatchesTrackedPrizes() public view {
+        uint256[] memory ids = balancer.getActiveIds();
+        uint256 sum;
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind,,,, uint112 price) = balancer.items(ids[i]);
+            if (kind == 2) sum += 1e36 / price;
+        }
+        assertEq(sum, balancer.prizeWeight());
+    }
+
+    /// @dev When idle and fully reconciled, every tracked active id is an active FWA listing (staged listings, which
+    ///      we track before FWA activates them, can only make our count the larger).
     function invariant_reconciledTrackingMatchesFWA() public view {
         if (pool.unsettledAcquisitionCount() != 0) return;
         if (pool.lastIssuedSequence() != balancer.reconciledSequence()) return;
-        assertEq(balancer.getActiveIds().length, pool.activeListingCount());
+        assertGe(balancer.getActiveIds().length, pool.activeListingCount());
     }
 }
 
 contract HandlerSmokeTest is InvariantTest {
-    function test_handlerBuys() public {
-        handler.buy(3, 7);
+    function test_handlerBuysAndSettles() public {
+        handler.buy(1, 7);
         assertEq(handler.purchasesAdmitted(), 1);
         handler.fulfillAll(1);
         handler.upkeep();

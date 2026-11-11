@@ -5,7 +5,10 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 
 /// @notice Records real FWA prices, odds and reserves on a fork for the TypeScript planner parity
-///         test (shared/planner.test.ts). Regenerate with: forge test --match-contract Parity
+///         test (shared/planner.test.ts). Regenerate with: forge test --match-path test/Parity.t.sol
+///         Each case records the target (packed counts), curated bases, markup, mint fee, the FWA draw
+///         price and curated odds once the target is fully listed, and `requiredReserve()` while open and
+///         fully reconciled (no draws): deficit 0 + 1 largest prize + (ceil(3/6)+1)=2 keeper rewards.
 contract ParityFixture is ForkBase {
     string json;
     uint256 n;
@@ -14,27 +17,41 @@ contract ParityFixture is ForkBase {
         setUpFork();
     }
 
-    function _case(uint16 markup, uint256[] memory bases, uint256 p) internal {
+    function _case(uint16 markup, uint256[] memory bases, uint256 target) internal {
         address c = makeAddr(string.concat("creator", vm.toString(n)));
         vm.deal(c, 1_000 ether);
         vm.prank(c);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 200 ether}(bytes32(0))));
+        // Configure the markup first so the curated NFTs are listed at that markup: the planner models every
+        // listing at the current markup, which the contract only produces when nothing predates the markup
+        // (listings made before `configure`, or before a markup change, keep their original price).
         vm.startPrank(c);
+        b.configure(markup, target);
         for (uint256 i; i < bases.length; ++i) {
             uint256 id = 10_000 * (n + 1) + i;
             nft.mint(c, id);
             nft.approve(address(b), id);
             b.listCurated(address(nft), id, bases[i]);
         }
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = p;
-        b.configure(PoolBalancer.Config(type(uint128).max, 0, markup), plans);
         b.open();
         vm.stopPrank();
-        for (uint256 i; i < 12 && b.admissionStatus() != 0; ++i) {
-            b.performUpkeep();
+        // Fully list the target (the gate opens at 70% inventory; the fixture needs every prize listed).
+        for (uint256 i; i < 40; ++i) {
+            vm.prank(keeper, keeper);
+            try b.performUpkeep() {} catch {
+                break;
+            }
         }
         require(b.admissionStatus() == 0, "not admitted");
+        {
+            uint16[16] memory have = b.getActiveShapes();
+            for (uint256 d; d < 16; ++d) {
+                require(have[d] == (target >> (16 * d)) & 0xFFFF, "target not fully listed");
+            }
+        }
+        // No draws have occurred, so lastIssuedSequence == reconciledSequence: requiredReserve() holds the
+        // reconciled-open reserve the TS planner computes with requiredReserveAt(target, target, mintFee).
+        require(b.pool().lastIssuedSequence() == b.reconciledSequence(), "unreconciled");
         uint256 cW;
         uint256[] memory ids = b.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {
@@ -42,16 +59,15 @@ contract ParityFixture is ForkBase {
             (,,,, uint256 w,,,) = b.pool().listings(ids[i]);
             if (kind == 1) cW += w;
         }
-        (,,,, uint256 reserve) = b.checkpoint();
         string memory key = vm.toString(n);
         string memory o = "case";
         vm.serializeUint(o, "markupBps", markup);
         vm.serializeUint(o, "bases", bases);
-        vm.serializeString(o, "plan", vm.toString(p));
+        vm.serializeString(o, "target", vm.toString(target));
         vm.serializeString(o, "drawPrice", vm.toString(b.pool().acquisitionFee()));
         vm.serializeString(o, "curatedOddsBps", vm.toString(cW * 10_000 / b.pool().totalWeight()));
         vm.serializeString(o, "mintFee", vm.toString(shapes.mintFee()));
-        string memory out = vm.serializeString(o, "reserve", vm.toString(reserve));
+        string memory out = vm.serializeString(o, "reserve", vm.toString(b.requiredReserve()));
         json = vm.serializeString("root", key, out);
         ++n;
     }

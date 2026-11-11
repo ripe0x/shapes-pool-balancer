@@ -1,12 +1,11 @@
-// Fixed-inventory planner. All price, odds and reserve checks use the same integer arithmetic as
-// PoolBalancer._feasible / _batchReserve and FWA StandardPool, so a plan this marks feasible is
-// feasible on chain for the same curated set, markup, edge and mint fee.
+// Prize-mix planner. Prices, odds and the reserve use the same integer arithmetic as PoolBalancer and FWA
+// StandardPool, so the numbers shown match the chain for the same curated set, markup, edge and mint fee.
 
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
 export const MAX_BATCH = 5;
+export const MAX_OPS = 5; // PoolBalancer.MAX_OPS: Shape units restocked per upkeep call
 export const MAX_SHAPES_PER_PLAN = 80; // PoolBalancer.MAX_SHAPES_PER_PLAN
-export const MAX_PLANS = 4;
 export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
 export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
@@ -17,33 +16,26 @@ export const MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_
 export const rewardBound = (price: bigint) => KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
-/** PoolBalancer.requiredReserve() for a plan at a basefee: deficit + refill-step rewards + worst batch + held reward
- *  + re-checkpoint reward. */
-export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, baseFee: bigint): bigint {
+/** PoolBalancer.requiredReserve() while open: restoring `target` from `have`, one largest prize for each unreconciled
+ *  draw and one spare, and a maximum keeper reward for each upkeep call that work takes plus one. */
+export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, unreconciled = 0): bigint {
   let r = 0n;
-  let missing = 0; // Shape units: refill steps are budgeted in Shapes minted, a pack counting its Shapes
+  let units = 0; // Shape units: upkeep steps are budgeted in Shapes minted, a pack counting its Shapes
+  let largest = 0n;
   target.forEach((n, d) => {
-    if (n > (have[d] ?? 0)) {
-      r += BigInt(n - (have[d] ?? 0)) * prizeCost(d, mintFee);
-      missing += (n - (have[d] ?? 0)) * SHAPES_IN[d];
+    if (!n) return;
+    const c = prizeCost(d, mintFee);
+    if (c > largest) largest = c;
+    const missing = n - (have[d] ?? 0);
+    if (missing > 0) {
+      r += BigInt(missing) * c;
+      units += missing * SHAPES_IN[d];
     }
   });
-  const steps = BigInt(Math.ceil(missing / 6) + 1);
-  return r + steps * rewardBound(rewardPrice(baseFee)) + batchReserve(target, mintFee) + BigInt(batchSteps(target)) * MAX_KEEPER_REWARD;
-}
-
-/** Upkeep calls that rebuild the worst MAX_BATCH draws (PoolBalancer._batchSteps): Shape units of the 5 prizes holding
- *  the most Shapes (unfilled slots counted as single Shapes), over the 6-unit step, rounded up. */
-export function batchSteps(counts: Counts): number {
-  let three = 0;
-  let two = 0;
-  for (let d = SHAPE_SIZES; d < DENOMS.length; d++) {
-    if (SHAPES_IN[d] === 3) three += counts[d] ?? 0;
-    else two += counts[d] ?? 0;
-  }
-  three = Math.min(three, MAX_BATCH);
-  two = Math.min(two, MAX_BATCH - three);
-  return Math.ceil((MAX_BATCH + 2 * three + two) / 6);
+  const draws = unreconciled + 1;
+  r += BigInt(draws) * largest;
+  units += draws * MAX_SHAPES_IN;
+  return r + BigInt(Math.ceil(units / MAX_OPS) + 1) * MAX_KEEPER_REWARD;
 }
 
 const E = 10n ** 18n;
@@ -86,12 +78,6 @@ export interface PoolInputs {
   markupBps: number;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
-}
-
-export interface Limits {
-  maxDrawPrice: bigint; // FWA acquisitionFee ceiling (incl. edge, excl. VRF fee); enforced on chain
-  minCuratedOddsBps: number; // enforced on chain
-  maxShapeCapital: bigint; // planner preference only: the approved plans fix the capital on chain
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -139,20 +125,6 @@ export function shapeTotals(counts: Counts, markupBps: number) {
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
 export const shapeCount = (counts: Counts) => counts.reduce((s, n) => s + n, 0);
 
-/** Cash for the worst MAX_BATCH prize draws from a full plan (PoolBalancer._batchReserve): largest values first, each
- *  charged MAX_SHAPES_IN mint fees. */
-export function batchReserve(counts: Counts, mintFee: bigint): bigint {
-  let left = MAX_BATCH;
-  let r = 0n;
-  for (let k = BY_VALUE.length - 1; k >= 0 && left > 0; k--) {
-    const d = BY_VALUE[k];
-    const n = Math.min(left, counts[d] ?? 0);
-    r += BigInt(n) * (DENOMS[d] + BigInt(MAX_SHAPES_IN) * mintFee);
-    left -= n;
-  }
-  return r;
-}
-
 export interface Tier {
   label: string;
   kind: 'curated' | 'shape'; // 'shape': a Shape or Pack prize of size `size`
@@ -171,13 +143,12 @@ export interface Evaluation {
   tiers: Tier[];
   capital: bigint;
   shapes: number;
-  batchReserve: bigint;
-  requiredReserve: bigint; // checkpoint reserve = batchReserve + MAX_KEEPER_REWARD; requiredReserve() on chain holds one more reward while open
+  requiredReserve: bigint; // PoolBalancer.requiredReserve() with the target fully listed and reconciled
   initialMintFees: bigint;
   ownerProceedsPerDraw: bigint; // EV paid to the owner on each delivered draw
 }
 
-export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): Evaluation {
+export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   const c = curatedTotals(inputs.curatedBases, inputs.markupBps);
   const s = shapeTotals(counts, inputs.markupBps);
   const tW = c.w + s.w;
@@ -192,11 +163,6 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
   if (c.w === 0n) reasons.push('No curated NFTs');
   if (shapes === 0) reasons.push('Plan has no Shapes');
   if (shapes > MAX_SHAPES_PER_PLAN) reasons.push(`More than ${MAX_SHAPES_PER_PLAN} Shapes`);
-  if (limits) {
-    if (capital > limits.maxShapeCapital) reasons.push('Shapes capital above limit');
-    if (drawPrice > limits.maxDrawPrice) reasons.push('Draw price above ceiling');
-    if (c.w * BPS < BigInt(limits.minCuratedOddsBps) * tW) reasons.push('Curated odds below floor');
-  }
 
   const tiers: Tier[] = [];
   inputs.curatedBases.forEach((b, i) => {
@@ -209,7 +175,6 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
     tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
   });
 
-  const br = batchReserve(counts, inputs.mintFee);
   return {
     feasible: reasons.length === 0,
     reasons,
@@ -219,8 +184,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
     tiers,
     capital,
     shapes,
-    batchReserve: br,
-    requiredReserve: br + BigInt(batchSteps(counts)) * MAX_KEEPER_REWARD,
+    requiredReserve: requiredReserveAt(counts, counts, inputs.mintFee),
     initialMintFees: counts.reduce((s, n, d) => s + BigInt(n * SHAPES_IN[d]) * inputs.mintFee, 0n),
     ownerProceedsPerDraw: ev,
   };
@@ -272,43 +236,4 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
     outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
     belowModeledMarkup: inputs.markupBps < minMarkupBps,
   };
-}
-
-/** Feasible plans over `allowed` denominations, best expected net margin first. Bounded search. */
-export function enumeratePlans(
-  inputs: PoolInputs,
-  limits: Limits,
-  allowed: number[],
-  maxShapes = MAX_SHAPES_PER_PLAN,
-  cost: CostAssumptions = { gasPriceGwei: 1, drawsPerUpkeep: 1, safety: 0.25 },
-  maxResults = 20,
-  maxVisits = 300_000,
-) {
-  const out: { counts: Counts; ev: Evaluation; net: number }[] = [];
-  const counts: Counts = Array(DENOMS.length).fill(0);
-  let visits = 0;
-  const c = curatedTotals(inputs.curatedBases, inputs.markupBps);
-  const rec = (i: number, left: number, capital: bigint) => {
-    if (visits++ > maxVisits) return;
-    if (i === allowed.length) {
-      if (shapeCount(counts) === 0) return;
-      const ev = evaluate(counts, inputs, limits);
-      if (ev.feasible) out.push({ counts: [...counts], ev, net: economics(counts, inputs, cost).expectedNetPerDraw });
-      return;
-    }
-    const d = allowed[i];
-    for (let n = 0; n <= left; n++) {
-      const cap = capital + BigInt(n) * DENOMS[d];
-      if (cap > limits.maxShapeCapital) break;
-      // Adding Shapes only lowers curated odds; stop once the floor is already broken.
-      const s = shapeTotals(counts.map((x, j) => (j === d ? n : x)), inputs.markupBps);
-      if (c.w * BPS < BigInt(limits.minCuratedOddsBps) * (c.w + s.w)) break;
-      counts[d] = n;
-      rec(i + 1, left - n, cap);
-    }
-    counts[d] = 0;
-  };
-  rec(0, maxShapes, 0n);
-  out.sort((a, b) => b.net - a.net || (a.ev.capital < b.ev.capital ? -1 : 1));
-  return { plans: out.slice(0, maxResults), truncated: visits > maxVisits, total: out.length };
 }

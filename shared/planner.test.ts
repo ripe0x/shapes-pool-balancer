@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { batchReserve, economics, enumeratePlans, evaluate, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
+import { economics, evaluate, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
 describe('planner parity with on-chain FWA (fork fixture)', () => {
   for (const [k, c] of Object.entries(fixture as Record<string, any>)) {
     it(`case ${k}`, () => {
-      const counts = unpackPlan(BigInt(c.plan));
+      const counts = unpackPlan(BigInt(c.target ?? c.plan));
       const inputs = { curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee) };
       const ev = evaluate(counts, inputs);
       expect(ev.drawPrice).toBe(BigInt(c.drawPrice));
@@ -28,12 +28,6 @@ describe('planner', () => {
     expect(unpackPlan(packPlan([5, 3, 2, 0, 0, 0, 0, 0, 1]))).toEqual([5, 3, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
   });
 
-  it('flags every violated constraint', () => {
-    const ev = evaluate([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs, { maxDrawPrice: 1n, minCuratedOddsBps: 9000, maxShapeCapital: 0n });
-    expect(ev.feasible).toBe(false);
-    expect(ev.reasons).toEqual(['Shapes capital above limit', 'Draw price above ceiling', 'Curated odds below floor']);
-  });
-
   it('reports infeasible with no curated NFTs', () => {
     expect(evaluate([1, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [] }).feasible).toBe(false);
   });
@@ -42,32 +36,6 @@ describe('planner', () => {
     const ev = evaluate([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs);
     const sum = ev.tiers.reduce((s, t) => s + t.oddsPpm, 0);
     expect(Math.abs(sum - 1_000_000)).toBeLessThan(10);
-  });
-
-  it('batch reserve takes the five most expensive replacements', () => {
-    const fee = E / 1000n;
-    // Every prize is charged three mint fees (the most Shapes a pack holds), largest values first.
-    expect(batchReserve([5, 3, 2, 0, 0, 0, 0, 0, 0], fee)).toBe(2n * (E / 10n + 3n * fee) + 3n * (E / 20n + 3n * fee));
-    expect(batchReserve([1, 0, 0, 0, 0, 0, 0, 0, 0], fee)).toBe(E / 100n + 3n * fee);
-    expect(batchReserve([0, 0, 0, 0, 0, 0, 0, 0, 7], fee)).toBe(5n * (100n * E + 3n * fee));
-    // packs sit between Shapes by value: 0.25 and 0.2 packs outrank the 0.1 Shape
-    expect(batchReserve([0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0], fee)).toBe(E / 4n + E / 5n + 3n * (E / 10n) + 15n * fee);
-  });
-
-  it('enumerates only feasible plans and respects limits', () => {
-    const limits = { maxDrawPrice: 4n * E / 100n, minCuratedOddsBps: 100, maxShapeCapital: E };
-    const r = enumeratePlans(inputs, limits, [0, 1, 2], 40);
-    expect(r.plans.length).toBeGreaterThan(0);
-    for (const p of r.plans) {
-      const ev = evaluate(p.counts, inputs, limits);
-      expect(ev.feasible).toBe(true);
-    }
-    expect(r.plans[0].net).toBeGreaterThanOrEqual(r.plans[r.plans.length - 1].net);
-  });
-
-  it('returns nothing when constraints conflict', () => {
-    const r = enumeratePlans(inputs, { maxDrawPrice: 1n, minCuratedOddsBps: 9_999, maxShapeCapital: E }, [0, 1, 2]);
-    expect(r.plans.length).toBe(0);
   });
 
   it('min markup grows with gas price and shrinks with draw value', () => {
@@ -83,10 +51,15 @@ describe('planner', () => {
     expect(lo.outlook).toBe('sustainable');
   });
 
-  it('required reserve matches the contract for the small pool at 0.08 gwei (fork test_reserveSizes)', () => {
+  it('required reserve: restock the target, one largest prize per unreconciled draw plus a spare, and keeper rewards', () => {
     const ten = [10, 0, 0, 0, 0, 0, 0, 0, 0];
     const fee = E / 1000n;
-    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(194_248_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(82_416_000_000_000_000n);
+    const r = MAX_KEEPER_REWARD;
+    const shape = E / 100n + fee;
+    expect(requiredReserveAt(ten, Array(9).fill(0), fee)).toBe(10n * shape + shape + 4n * r); // ceil((10 + 3) / 5) + 1 calls
+    expect(requiredReserveAt(ten, ten, fee)).toBe(shape + 2n * r);
+    expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
+    // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
+    expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
   });
 });

@@ -11,7 +11,11 @@ and automated tooling. It is bounded evidence, not a statement that the contract
 - Out of scope: TypeScript keeper and dashboard (tested functionally; round 5 reviewed them as secondary scope), FWA
   and Shapes themselves, and FWA's off-chain pool-page server.
 
-Six rounds:
+Rounds 1 to 6 reviewed the earlier design. The 2026-11-11 rewrite removed the exact checkpoint, one-batch-at-a-time
+admission, pre-approved fallback plans, the draw-price ceiling, the NFT odds floor, the worst-batch reserve, repricing,
+the 100-listing cap, `unwind` (now `unlistShapes`), the permissionless `recoverRefundedShape` (now creator-only
+`recoverRefunded`), `clearENSName` (now `setENSName("")`) and the token-offer check. **Findings about those mechanisms are
+superseded**: they describe code that no longer exists and are kept below only as history. Round 7 reviewed the rewrite (see below).
 
 | Round | Target | Repairs |
 | --- | --- | --- |
@@ -21,6 +25,25 @@ Six rounds:
 | 4 (reimbursement re-evaluated against FWA V2; launch rehearsal) | `5161e8f`, then `0a48e84` | `0a48e84`, `31edef6` |
 | 5 (independent adversarial audit, `audit/report.md`) | `0f01784` | dashboard only; contracts unchanged |
 | 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | `83cd752` |
+| 7 (independent review of the simplified gate/markup rewrite) | this rewrite | per-call limits, reserve fee, setup checks (same commit) |
+
+## Round 7 (rewrite, 2026-11-11)
+
+One independent AI reviewer, reasoning only (no probe tests), on a frozen copy of the rewrite with the adversarial-audit
+standard and the owner requirements. No attacker-forcible theft or brick was found; this is scoped evidence, not a
+statement that the rewrite is safe. Findings and outcome:
+
+| Severity | Finding | Outcome |
+| --- | --- | --- |
+| Medium | The reserve holds one spare top prize, but one gate check admits a batch of five draws | Kept by decision (DECISIONS 46): two top-prize wins in one batch is ~1 in 6,000 for Balanced; a shortfall delays that restock, purchases stay open |
+| Low | Reserve priced at the live mint fee while restocking runs at any fee up to the accepted one | Fixed: the reserve uses the higher of the two |
+| Low | Keeper credit backs out FWA's edge at today's `edgeBps`, not the edge a draw paid | Accepted, documented (DECISIONS 47) |
+| Low | Unchecked integration assumptions: FWA staging cap, Shapes size count | Fixed: `initialize` requires no staging cap; the constructor requires nine Shapes sizes |
+| Info | A draw still awaiting delivery when reconciled leaves its record and earns no credit if a retry later delivers it | Accepted, documented |
+| Info | Worst upkeep may approach the 3.2M gas cap | Confirmed by measurement (3.29M); fixed with 5 reconciles, 5 Shape units and 4 sizes per call (heaviest measured 2.76M) |
+| Info | Markup can be 0 | Creator's choice; the designer shows the break-even markup |
+
+The repairs were made after the review and were not re-reviewed independently; they are covered by the fork tests.
 
 ## Method
 
@@ -171,18 +194,26 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
 
 - **FWA trust.** FWA's factory owner can pause purchases or VRF and set withdraw-only globally; the reviewed pool
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
+- **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the
+  target's (charging each unreconciled draw the heaviest possible prize) and admits more than one batch between upkeeps.
+  Player protection against a draw that drifts the odds comes from FWA pricing each draw on live inventory and refunding
+  its acquisition fee past the player's slippage tolerance (the VRF fee is not refunded). Up to 5 draws may be unsettled
+  at once before FWA pauses the pool.
 - **Restricted collections (G-1).** A hostile purchaser contract can lock curated NFTs from collections that refuse
   transfers to contracts; cheap in thin pools. Do not list such collections.
 - **Hostile collections (F1, F2).** A collection whose contract can move, burn or freeze tokens can take a listed NFT
   out of FWA or block its withdrawal. List only collections you trust.
 - **FWA VRF capacity (F4).** FWA's VRF service can refuse purchases while the Balancer shows status 0.
-- **Shapes admin** can raise the mint fee up to 0.01 ETH; admission closes until re-funded, and small denominations
-  become uneconomic.
-- **Economics.** The reserve funds the next restoration, not profitability (`docs/simulation-results.md`).
-- **Keeper liveness.** Above 5 gwei basefee (~0.9% of blocks measured) keepers wait and new purchases pause; pools
-  whose draws all cost ~0.01 ETH pause from ~4.2 gwei. Keepers judging work by `eth_estimateGas` need the estimate
-  within ~80–100k gas of billed for the thinnest paid upkeeps at the cap. Unpaid re-checkpoints rely on a keeper's loss allowance or
-  the creator. Creators can always run upkeep themselves.
+- **Shapes admin** can raise the mint fee up to 0.01 ETH. Purchases and restocking pause (status 5, MINT_FEE_ROSE) until
+  the creator runs `configure` again, accepting the new fee; small denominations become uneconomic.
+- **Economics.** The reserve bounds withdrawals so the next restock can happen, not profitability. The creator pays
+  keeper gas up to 5 gwei; a Balanced pool at 15% markup loses money above about 2 gwei with 3 draws per upkeep. No gas
+  ceiling is implemented; this is open for the owner (DECISIONS 50). See `docs/simulation-results.md`.
+- **Keeper liveness.** Above 5 gwei basefee (~0.9% of blocks measured) keepers wait and new purchases pause; pools whose
+  draws all cost ~0.01 ETH pause earlier. Keepers judging work by `eth_estimateGas` need the estimate within ~80–100k gas
+  of billed for the thinnest paid upkeeps at the cap. Calls that reconcile only refunded draws (the 4/5 gas part only)
+  rely on a keeper's loss allowance, the next restocking call or the creator. Creators can always run upkeep themselves.
 - **Pool page.** Whether FWA's server accepts ERC-1271 from a contract owner is unverified; FWA's message template is
   copied from its client and could change.
-- **No professional audit, no formal verification.** Invariant campaigns are short (64 runs × 64 calls).
+- **No professional audit, no formal verification.** The rewrite had one AI review (round 7); its repairs were not re-reviewed. Invariant campaigns are
+  short (64 runs × 64 calls) and were last run against the earlier design.

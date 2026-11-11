@@ -7,35 +7,37 @@ import {PoolPage} from "./PoolPage.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
 /// @title PoolBalancer
-/// @notice Permanently owns one FWA standard pool. The creator curates NFTs and approves a Shapes
-///         inventory policy; anyone may call `performUpkeep` to restore that inventory from the
-///         Balancer's own ETH. Players buy on FWA directly; this contract is FWA's purchase operator.
-/// @dev Invariants:
-///      - Only this contract lists into the pool, and only while the pool has no unresolved
-///        acquisition, so nothing is ever staged and FWA's active totals equal our tracked set.
-///      - A purchase is admitted only while the last checkpoint matches FWA's issued sequence and
-///        inventory version. Any FWA batch (<= MAX_BATCH draws) advances the sequence and closes
-///        admission until upkeep reconciles, restores inventory and re-checkpoints.
-///      - A checkpoint requires the Shapes inventory to equal an approved plan exactly (verified
-///        against FWA totals), the plan to satisfy the creator's price and odds limits, and liquid
-///        ETH to cover the worst MAX_BATCH Shape replacements plus one maximum keeper reward.
-///      - Managed Shapes are held only inside a transaction: minted then listed, or withdrawn then redeemed.
-///        Any NFT this contract owns between transactions is untracked and creator-recoverable (e.g. one
-///        sent directly, or a draw delivered to this contract because a buyer named it as purchaser).
-///      - No upkeep loop depends on history: drawn items awaiting FWA delivery are never scanned.
-///      - No function sends ETH or NFTs to an address chosen by anyone but the creator, except the
-///        bounded keeper reward to `msg.sender` of `performUpkeep` / `recoverRefundedShape`.
+/// @notice Permanently owns one FWA standard pool. The creator lists NFTs and sets a target mix of Shape and Draw Pack
+///         prizes; anyone may call `performUpkeep` to restock drawn prizes from this contract's ETH. Players buy on FWA
+///         directly; this contract is FWA's purchase operator.
+/// @dev Design (money flows in docs/SPEC.md):
+///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
+///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
+///        no new draw while upkeep is finishing creator-started work, while no curated NFT is listed (the pool exists to
+///        give NFTs away), while MAX_BATCH draws are unsettled, while the
+///        Shapes mint fee is above what the creator accepted, or while the prizes' weight, after assuming every
+///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight.
+///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced.
+///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
+///        unsettled; FWA stages those listings and activates them in order.
+///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
+///        unreconciled draw and one spare, plus keeper rewards for that work.
+///      - Only this contract can list into the pool (FWA `OwnerOnlyInventory`).
+///      - Prize tokens are held only inside a transaction: minted then listed, or withdrawn then redeemed. Any NFT this
+///        contract owns between transactions is untracked and creator-recoverable.
+///      - No function sends ETH or NFTs to an address chosen by anyone but the creator, except the bounded keeper
+///        reward to `msg.sender` of `performUpkeep`.
 contract PoolBalancer is ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                 CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant BPS = 10_000;
-    /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation.
+    /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation. Also the unsettled-draw cap.
     uint256 public constant MAX_BATCH = 5;
     /// @dev Prize sizes: indices 0-8 are the nine Shapes denominations (each prize one Shape); indices 9-15 are values
     ///      between them, each prize one Draw Pack holding the fewest Shapes that sum to it (see `_amount`, `_makeup`).
-    ///      Plans pack sixteen 16-bit counts into one uint256.
+    ///      A target packs sixteen 16-bit counts into one uint256.
     uint256 internal constant DENOMS = 16;
     uint256 internal constant SHAPE_DENOMS = 9;
     /// @dev Size values in units of 0.01 ETH, 16 bits each, size 0 in the low bits:
@@ -45,35 +47,34 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant SHAPES_IN = 0x3323232111111111;
     /// @dev Size indices in ascending value order, 4 bits each, smallest first.
     uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
-    /// @dev The most Shapes any one prize holds; reserve math charges every prize this many mint fees.
+    /// @dev The most Shapes any one prize holds.
     uint256 internal constant MAX_SHAPES_IN = 3;
-    uint256 internal constant MAX_PLANS = 4;
-    /// @dev Prizes per plan. With up to 20 curated NFTs this fills MAX_LISTINGS exactly; per-upkeep work stays bounded by
-    ///      MAX_OPS and loops over listings by MAX_LISTINGS, so the limit sets refill time, not upkeep gas.
     uint256 internal constant MAX_SHAPES_PER_PLAN = 80;
-    /// @dev Bounds every loop over listings (repricing scan, plan withdrawal, unwind).
-    uint256 internal constant MAX_LISTINGS = 100;
-    /// @dev Inventory work per upkeep, in Shape units: reconciling a draw, repricing a listing, or minting+listing or
-    ///      withdrawing+redeeming one Shape is 1; a pack counts as the Shapes it holds (2 or 3), since each Shape
-    ///      inside is minted or redeemed (measured: ~380k gas per Shape op, ~870k per three-Shape pack). FWA batch
-    ///      limit is 20.
-    uint256 internal constant MAX_OPS = 6;
+    /// @dev Inventory work per upkeep, in Shape units: minting+listing or withdrawing+redeeming one Shape is 1; a pack
+    ///      counts as the Shapes it holds (measured: ~425k gas per Shape with its listing, ~870k per three-Shape pack).
+    ///      Six units with five reconciles measured 3.13M against KEEPER_MAX_GAS; five keeps a margin.
+    uint256 internal constant MAX_OPS = 5;
+    /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
+    uint256 internal constant MAX_RECONCILE = 5;
+    /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
+    ///      in one call measured 3.19M against KEEPER_MAX_GAS.
+    uint256 internal constant MAX_RESTOCK_SIZES = 4;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
+    /// @dev Purchases need the listed prizes' weight, less the unreconciled-draw allowance, at this share of the target's.
+    uint256 internal constant FILL_BPS = 7_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
+    /// @dev The heaviest prize listing: the smallest prize (0.01 ETH) at zero markup.
+    uint256 internal constant MAX_PRIZE_WEIGHT = INVERSE_WEIGHT_NUMERATOR / 0.01 ether;
 
     // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
     // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE). Upkeep is permissionless, so
     //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
     // - gas = 4/5 of the measured span (capped): EIP-3529 refunds cut billed gas by at most 1/5 of the gas used,
     //   so this part never exceeds the gas billed, however calls are combined.
-    // - incentive for inventory work = the other 1/5 at that price + KEEPER_INCENTIVE, which covers the keeper's
-    //   gas outside the measured span and the margin by which eth_estimateGas exceeds the measured span (~70-80k
-    //   gas measured), so a keeper costing work with its estimate profits up to the price cap. Work a creator
-    //   action started (configure, opening a closed pool, curated edits, unwind) pays it in full until the next
-    //   checkpoint; those actions close admission first. Work purchases caused is paid from `incentiveCredit`:
-    //   FWA's edge on the delivered draws of the last reconciled batch, reset by each batch and spent by every
-    //   call after it, so buying one's own draws earns at most the edge those draws paid to FWA.
-    // - gas-only paid calls (a reconciled batch with no draws, recoverRefundedShape) get the 4/5 part only.
+    // - incentive = the other 1/5 at that price + KEEPER_INCENTIVE, which covers the keeper's gas outside the
+    //   measured span. Work a creator action started (`creatorWork`: open, configure, unlisting) is paid in full;
+    //   purchases are refused until it is done. Otherwise it is paid from `incentiveCredit`, FWA's edge on reconciled
+    //   delivered draws, so buying one's own draws earns at most the edge they paid FWA.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
@@ -85,31 +86,23 @@ contract PoolBalancer is ReentrancyGuard {
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
 
     // FWA ListingStatus / AcquisitionStatus values.
-    uint8 internal constant L_SETTLED = 4;
     uint8 internal constant L_DELIVERY_REFUNDED = 7;
     uint8 internal constant A_FULFILLED = 2;
 
     // Item kinds and states.
     uint8 internal constant CURATED = 1;
-    uint8 internal constant SHAPE = 2;
+    uint8 internal constant SHAPE = 2; // a Shape or Draw Pack prize
     uint8 internal constant ACTIVE = 1;
     uint8 internal constant PENDING = 2; // drawn, FWA delivery failed; resolved per item, never scanned
 
-    // Admission status codes returned by `admissionStatus`. Zero means purchases are admitted.
+    // `admissionStatus` codes. Zero means purchases are admitted.
     uint8 internal constant OK = 0;
     uint8 internal constant CLOSED = 1;
-    uint8 internal constant NEEDS_UPKEEP = 2;
-    uint8 internal constant UNSETTLED = 3;
-    uint8 internal constant NO_CURATED = 4;
-    uint8 internal constant INFEASIBLE = 5;
-    uint8 internal constant INSUFFICIENT_RESERVE = 6;
-    uint8 internal constant MINT_FEE_ROSE = 7;
-    uint8 internal constant PRICE_ABOVE_MAX = 8;
-    uint8 internal constant TOKEN_OFFER_ACTIVE = 9;
-    uint8 internal constant REPRICING = 10;
-    uint8 internal constant FWA_UNAVAILABLE = 11;
-    uint8 internal constant INVENTORY_MISMATCH = 12;
-    uint8 internal constant NOT_CONFIGURED = 13;
+    uint8 internal constant SETTING_UP = 2;
+    uint8 internal constant NO_CURATED = 3;
+    uint8 internal constant BUSY = 4;
+    uint8 internal constant MINT_FEE_ROSE = 5;
+    uint8 internal constant LOW_INVENTORY = 6;
 
     /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
@@ -126,46 +119,32 @@ contract PoolBalancer is ReentrancyGuard {
                                  STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    struct Config {
-        uint128 maxDrawPrice; // FWA acquisitionFee ceiling (includes FWA edge, excludes VRF fee)
-        uint16 minCuratedOddsBps; // min combined curated probability
-        uint16 markupBps; // fixed operating markup applied to every listing price
-    }
-
     struct Item {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint112 base; // creator value (curated) or Shape backing
-        uint112 price; // price currently listed on FWA
-    }
-
-    struct Checkpoint {
-        bool valid;
-        uint64 sequence;
-        uint128 mintFee;
-        uint256 inventoryVersion;
-        uint256 reserve;
+        uint112 base; // creator value (curated) or prize backing
+        uint112 price; // price listed on FWA
     }
 
     address public creator;
     address public pendingCreator;
     IFWAPool public pool;
 
-    Config public config;
-    /// @dev Each plan packs sixteen 16-bit prize counts, size index 0 in the low bits.
-    uint256[] internal plans;
-    uint8 public activePlan;
+    /// @dev Prize counts per size, sixteen 16-bit counts, size 0 in the low bits.
+    uint256 public target;
+    uint16 public markupBps;
     bool public enabled;
-    bool public repricing;
-    uint8 public lastStatus = NOT_CONFIGURED;
-    /// @dev True from a creator action until the next checkpoint (see keeper compensation above).
+    /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
     bool public creatorWork;
-    /// @dev FWA edge paid by the draws of the last reconciled batch, not yet spent on incentives.
-    uint128 public incentiveCredit;
-
-    Checkpoint public checkpoint;
     uint64 public reconciledSequence;
+    /// @dev FWA edge paid by reconciled delivered draws, not yet spent on incentives.
+    uint128 public incentiveCredit;
+    /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
+    uint256 public mintFeeCap;
+    /// @dev FWA weight of the listed prizes (staged or active, not yet reconciled as drawn) and of the target.
+    uint256 public prizeWeight;
+    uint256 public targetWeight;
 
     mapping(uint256 listingId => Item) public items;
     uint256[] internal activeIds;
@@ -183,28 +162,22 @@ contract PoolBalancer is ReentrancyGuard {
     event Initialized(address indexed creator, address indexed pool);
     event CreatorTransferStarted(address indexed creator, address indexed pendingCreator);
     event CreatorTransferred(address indexed oldCreator, address indexed newCreator);
-    event Configured(Config config, uint256[] plans);
+    event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event PurchasesOpened();
     event PurchasesClosed();
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
-    event CuratedRecovered(uint256 indexed listingId, address indexed to);
+    event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
-    event ShapeRecovered(uint256 indexed listingId, uint256 eth);
     event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost);
     event ShapeListed(uint256 indexed listingId, uint8 indexed denom, uint256 tokenId, uint256 price);
     event ShapesUnlisted(uint256 count, uint256 ethRedeemed);
-    event ListingRepriced(uint256 indexed listingId, uint256 price);
-    event PlanActivated(uint8 indexed index);
-    event Checkpointed(uint64 sequence, uint256 inventoryVersion, uint256 mintFee, uint256 reserve);
-    event StatusChanged(uint8 status);
     event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed);
     event Deposited(address indexed from, uint256 amount);
     event ProceedsCollected(uint256 amount);
     event SurplusClaimed(address indexed to, uint256 amount);
-    event Unwound(uint256 shapesRedeemed, uint256 ethRedeemed);
     event PoolRetired();
     event ENSNameSet(string name);
     event PoolPageApproved(bytes32 indexed digest, string issuedAt, bytes32 metadataHash);
@@ -222,8 +195,6 @@ contract PoolBalancer is ReentrancyGuard {
     error InvalidPlan();
     error InvalidItem();
     error InvalidRecipient();
-    error PoolBusy();
-    error TooManyListings();
     error ValueTooHigh();
     error ShapesNotCurated();
     error NotClosed();
@@ -245,6 +216,8 @@ contract PoolBalancer is ReentrancyGuard {
         ENS = IENS(ens);
         // The size table below is hardcoded; refuse a Shapes deployment that disagrees, and a Packs instance that
         // wraps other Shapes or cannot make the smallest pack size.
+        // Draw Packs takes one mint count per Shapes size (`_makeup` has nine).
+        if (IShapes(shapes).denominationCount() != SHAPE_DENOMS) revert UnsupportedFWAConfig();
         for (uint256 d; d < SHAPE_DENOMS; ++d) {
             if (IShapes(shapes).denominationAt(uint8(d)) != _amount(d)) revert UnsupportedFWAConfig();
         }
@@ -263,7 +236,8 @@ contract PoolBalancer is ReentrancyGuard {
 
         IFWAPoolFactory factory = FWA_FACTORY;
         if (FWA_IMPLEMENTATION.codehash != FWA_IMPLEMENTATION_CODEHASH) revert UnreviewedImplementation();
-        if (factory.maxAcquisitionsPerTx() != MAX_BATCH) revert UnsupportedFWAConfig();
+        // A staging cap would make restocking while draws are unsettled revert (FWA StagingQueueFull), and with it upkeep.
+        if (factory.maxAcquisitionsPerTx() != MAX_BATCH || factory.maxStagedListings() != 0) revert UnsupportedFWAConfig();
         // Reverts inside FWA if the factory's implementation is not the reviewed one.
         address p = factory.createPool(bytes32(0), FWA_IMPLEMENTATION);
         if (factory.poolImplementation(p) != FWA_IMPLEMENTATION || IFWAPool(p).owner() != address(this)) {
@@ -300,33 +274,33 @@ contract PoolBalancer is ReentrancyGuard {
         pendingCreator = address(0);
     }
 
-    /// @notice Set the creator's limits, markup and approved Shapes plans (first plan preferred).
-    /// @dev Upkeep keeps the active plan while it satisfies the limits, else switches to the first
-    ///      approved plan that does. A markup change reprices every listing before reopening.
-    function configure(Config calldata cfg, uint256[] calldata newPlans) external onlyCreator {
-        if (cfg.markupBps > MAX_MARKUP_BPS || cfg.minCuratedOddsBps > BPS || cfg.maxDrawPrice == 0) {
-            revert InvalidConfig();
+    /// @notice Set the markup for new listings and the target prize mix, and accept the current Shapes mint fee.
+    /// @dev Existing listings keep their prices. A smaller target leaves extra prizes listed until `unlistShapes`.
+    function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator {
+        if (newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
+        if (newTarget >> (16 * DENOMS) != 0) revert InvalidPlan();
+        uint256 prizes;
+        uint256 w;
+        for (uint256 d; d < DENOMS; ++d) {
+            uint256 n = _count(newTarget, d);
+            prizes += n;
+            if (n != 0) w += n * (INVERSE_WEIGHT_NUMERATOR / (_amount(d) * (BPS + newMarkupBps) / BPS));
         }
-        uint256 n = newPlans.length;
-        if (n == 0 || n > MAX_PLANS) revert InvalidPlan();
-        for (uint256 i; i < n; ++i) {
-            uint256 shapes = _planShapes(newPlans[i]);
-            if (shapes == 0 || shapes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
-        }
-        if (cfg.markupBps != config.markupBps && activeIds.length != 0) repricing = true;
-        config = cfg;
-        plans = newPlans;
-        activePlan = 0;
-        _invalidate();
-        emit Configured(cfg, newPlans);
+        if (prizes == 0 || prizes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
+        uint256 fee = SHAPES.mintFee();
+        markupBps = newMarkupBps;
+        target = newTarget;
+        targetWeight = w;
+        mintFeeCap = fee;
+        _creatorChanged();
+        emit Configured(newMarkupBps, newTarget, fee);
     }
 
-    /// @notice Allow purchases once upkeep establishes a funded checkpoint.
+    /// @notice Allow purchases; they start once upkeep has restored the target.
     function open() external onlyCreator {
-        if (plans.length == 0) revert InvalidConfig();
+        if (target == 0) revert InvalidConfig();
         enabled = true;
-        // Only while admission is closed: creatorWork must never be set while purchases can happen.
-        if (!checkpoint.valid) creatorWork = true;
+        _creatorChanged();
         pool.setBool(ACQUISITIONS_ENABLED_KEY, true);
         emit PurchasesOpened();
     }
@@ -334,7 +308,7 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected.
     function close() external onlyCreator {
         enabled = false;
-        _invalidate();
+        creatorWork = false;
         if (!pool.retired()) pool.setBool(ACQUISITIONS_ENABLED_KEY, false);
         emit PurchasesClosed();
     }
@@ -349,15 +323,13 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 base;
     }
 
-    /// @notice Pull an NFT from the creator (approve this contract first) and list it on FWA.
+    /// @notice Pull an NFT from the creator (approve this contract first) and list it on FWA at `base` plus the markup.
     function listCurated(address collection, uint256 tokenId, uint256 base)
         external
         onlyCreator
         nonReentrant
         returns (uint256 listingId)
     {
-        _requireIdle();
-        _invalidate(); // before any external call: a collection hook must not see an admitting checkpoint
         uint256 price = _pullCurated(collection, tokenId, base);
         listingId = pool.listNFT(collection, tokenId, price);
         _recordCurated(listingId, collection, tokenId, base, price);
@@ -369,8 +341,6 @@ contract PoolBalancer is ReentrancyGuard {
         nonReentrant
         returns (uint256[] memory listingIds)
     {
-        _requireIdle();
-        _invalidate();
         uint256 n = inputs.length;
         if (n == 0 || n > 20) revert InvalidBatch();
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](n);
@@ -384,9 +354,9 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
+    /// @notice Set a curated NFT's value; it is listed at that value plus the current markup.
+    ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
-        _requireIdle();
-        _invalidate();
         Item storage it = items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         uint256 price = _priced(newBase);
@@ -398,36 +368,39 @@ contract PoolBalancer is ReentrancyGuard {
         emit CuratedRepriced(listingId, newBase, price);
     }
 
-    /// @notice Withdraw an active curated listing from FWA directly to `to`.
+    /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
+    ///         unsettled.
     function withdrawCurated(uint256 listingId, address to) external onlyCreator nonReentrant {
-        _requireIdle();
         Item storage it = items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         if (to == address(0)) revert InvalidRecipient();
         _removeActive(listingId);
         delete items[listingId];
-        _invalidate();
         pool.withdrawListingTo(listingId, to);
         emit CuratedWithdrawn(listingId, to);
     }
 
-    /// @notice Recover a curated NFT whose FWA delivery was refunded. Upkeep never touches curated
-    ///         collections, so a hostile collection cannot burn keeper gas or block upkeep.
-    function recoverCuratedNFT(uint256 listingId, address to) external onlyCreator nonReentrant {
+    /// @notice Recover an item whose FWA delivery was refunded to its winner: a curated NFT goes to `to`; a Shape or
+    ///         pack is redeemed here for its backing. FWA allows the refund 7 days after the failed delivery.
+    ///         Upkeep never touches curated collections, so a hostile collection cannot burn keeper gas or block upkeep.
+    function recoverRefunded(uint256 listingId, address to) external onlyCreator nonReentrant returns (uint256 eth) {
         Item storage it = items[listingId];
-        if (it.kind != CURATED || it.state != PENDING || to == address(0)) revert InvalidItem();
+        if (it.state != PENDING || to == address(0)) revert InvalidItem();
         (address collection,,, uint256 tokenId,,,, uint8 status) = pool.listings(listingId);
         if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
+        uint8 kind = it.kind;
+        uint8 d = it.denom;
         delete items[listingId];
         pool.recoverRefundedNFT(listingId);
-        IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
-        emit CuratedRecovered(listingId, to);
+        if (kind == CURATED) IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
+        else eth = _redeem(d, tokenId);
+        emit RefundedRecovered(listingId, to, eth);
     }
 
     /// @notice Return an NFT this contract holds outside FWA, e.g. one sent to it directly.
     /// @dev Tracked inventory is never held here between transactions: listings and pending deliveries
-    ///      are owned by the FWA pool, Shapes are minted-and-listed or withdrawn-and-redeemed within one
-    ///      call, and refunded curated NFTs are pulled from FWA only inside `recoverCuratedNFT`. So
+    ///      are owned by the FWA pool, prizes are minted-and-listed or withdrawn-and-redeemed within one
+    ///      call, and refunded NFTs are pulled from FWA only inside `recoverRefunded`. So
     ///      `ownerOf == this` (checked under the reentrancy lock) proves the NFT is untracked. Only the
     ///      ERC721 transfer selector is called, and never on the FWA pool or factory.
     function recoverUntrackedNFT(address collection, uint256 tokenId, address to) external onlyCreator nonReentrant {
@@ -453,39 +426,31 @@ contract PoolBalancer is ReentrancyGuard {
         amount = _collect();
     }
 
-    /// @notice Withdraw ETH above the funded reserve. While purchases are enabled the reserve covers
-    ///         restoring the current plan plus a worst-case batch and one keeper reward.
+    /// @notice Withdraw ETH above `requiredReserve`.
     function claimSurplus(uint256 amount, address to) external onlyCreator nonReentrant {
         if (to == address(0)) revert InvalidRecipient();
-        // While open, reserve math uses reconciled inventory: draws settled on FWA must be reconciled first.
-        if (enabled) _requireIdle();
         _collect();
         if (amount > withdrawableSurplus()) revert InsufficientSurplus();
         SafeTransferLib.safeTransferETH(to, amount);
         emit SurplusClaimed(to, amount);
     }
 
-    /// @notice After closing, withdraw up to `maxCount` (<= 20) listed Shapes from FWA and redeem them
-    ///         for their exact backing. Repeat until none remain. Curated NFTs are withdrawn separately.
-    function unwind(uint256 maxCount) external onlyCreator nonReentrant {
-        if (enabled) revert NotClosed();
-        _requireIdle();
-        if (maxCount > 20) maxCount = 20;
-        uint256[] memory ids = new uint256[](maxCount);
-        uint256 n;
-        for (uint256 i = activeIds.length; i != 0 && n < maxCount;) {
-            uint256 lid = activeIds[--i];
-            if (items[lid].kind == SHAPE) ids[n++] = lid;
+    /// @notice Withdraw up to 20 listed Shape or pack prizes from FWA and redeem them here for their backing: extra
+    ///         prizes after a smaller target, or everything after closing. FWA allows this only while no draw is
+    ///         unsettled. Prizes withdrawn below the target while open are restocked by upkeep.
+    function unlistShapes(uint256[] calldata listingIds) external onlyCreator nonReentrant {
+        uint256 n = listingIds.length;
+        if (n == 0 || n > 20) revert InvalidBatch();
+        uint256[] memory ids = listingIds;
+        for (uint256 i; i < n; ++i) {
+            Item storage it = items[ids[i]];
+            if (it.kind != SHAPE || it.state != ACTIVE) revert InvalidItem();
         }
-        assembly ("memory-safe") {
-            mstore(ids, n)
-        }
-        uint256 eth = _withdrawAndRedeem(pool, ids);
-        _invalidate();
-        emit Unwound(n, eth);
+        emit ShapesUnlisted(n, _withdrawAndRedeem(pool, ids));
+        _creatorChanged();
     }
 
-    /// @notice Irreversibly retire the FWA pool. Withdrawals, unwind and recovery remain available.
+    /// @notice Irreversibly retire the FWA pool. Withdrawals, unlisting and recovery remain available.
     function retire() external onlyCreator {
         if (enabled) revert NotClosed();
         pool.retirePool();
@@ -496,15 +461,10 @@ contract PoolBalancer is ReentrancyGuard {
                                    ENS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Set this contract's ENS reverse record via the current `addr.reverse` registrar.
+    /// @notice Set this contract's ENS reverse record via the current `addr.reverse` registrar ("" clears it).
     function setENSName(string calldata name) external onlyCreator {
         IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name);
         emit ENSNameSet(name);
-    }
-
-    function clearENSName() external onlyCreator {
-        IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName("");
-        emit ENSNameSet("");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -550,20 +510,19 @@ contract PoolBalancer is ReentrancyGuard {
         return admissionStatus() == OK;
     }
 
-    /// @notice Why purchases are or are not admitted right now (see status constants).
+    /// @notice Why purchases are or are not admitted right now (see status codes).
+    /// @dev FWA calls the hook before it activates staged listings, so the fill check uses tracked prize weight
+    ///      (including staged restocks) and assumes each unreconciled draw removed the heaviest possible prize.
     function admissionStatus() public view returns (uint8) {
         if (!enabled) return CLOSED;
-        Checkpoint memory cp = checkpoint;
-        if (!cp.valid) return lastStatus == OK ? NEEDS_UPKEEP : lastStatus;
+        if (creatorWork) return SETTING_UP;
+        if (activeIds.length == _listedShapes()) return NO_CURATED;
         IFWAPool p = pool;
-        if (p.lastIssuedSequence() != cp.sequence) {
-            return p.unsettledAcquisitionCount() != 0 ? UNSETTLED : NEEDS_UPKEEP;
-        }
-        if (p.inventoryVersion() != cp.inventoryVersion) return NEEDS_UPKEEP;
-        if (p.tokenOfferEnabled()) return TOKEN_OFFER_ACTIVE;
-        if (SHAPES.mintFee() > cp.mintFee) return MINT_FEE_ROSE;
-        if (address(this).balance < cp.reserve) return INSUFFICIENT_RESERVE;
-        if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
+        if (p.unsettledAcquisitionCount() >= MAX_BATCH) return BUSY;
+        if (SHAPES.mintFee() > mintFeeCap) return MINT_FEE_ROSE;
+        uint256 lost = (p.lastIssuedSequence() - reconciledSequence) * MAX_PRIZE_WEIGHT;
+        uint256 w = prizeWeight;
+        if (w < lost || (w - lost) * BPS < FILL_BPS * targetWeight) return LOW_INVENTORY;
         return OK;
     }
 
@@ -571,234 +530,80 @@ contract PoolBalancer is ReentrancyGuard {
                                  UPKEEP
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Permissionless maintenance: reconcile settled draws, collect proceeds, reprice, restore
-    ///         the approved Shapes plan and re-checkpoint. Reverts `NoUpkeepNeeded` when it would change
-    ///         nothing and `PoolBusy` while an FWA batch is unresolved; simulate it to learn whether work
-    ///         exists and what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
+    /// @notice Permissionless maintenance: reconcile settled draws, collect proceeds and restock toward the target.
+    ///         Reverts `NoUpkeepNeeded` when it would change nothing; simulate it to learn whether work exists and
+    ///         what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
     function performUpkeep() external nonReentrant returns (uint256 reward) {
         uint256 gasStart = gasleft();
-        Checkpoint memory before = checkpoint;
-        uint8 statusBefore = lastStatus;
-        (uint256 ops, bool batchReconciled) = _sync();
-        Checkpoint memory afterCp = checkpoint;
-        bool changed = ops != 0 || batchReconciled || lastStatus != statusBefore || afterCp.valid != before.valid
-            || afterCp.inventoryVersion != before.inventoryVersion || afterCp.reserve != before.reserve
-            || afterCp.mintFee != before.mintFee;
-        if (!changed) revert NoUpkeepNeeded();
-        if (ops != 0 || batchReconciled) reward = _payKeeper(gasStart, ops != 0);
-        if (checkpoint.valid) creatorWork = false;
-    }
-
-    /// @notice Permissionless: recover a drawn Shape whose FWA delivery was refunded and redeem it for its
-    ///         backing. Pays gas only. FWA allows the refund 7 days after the failed delivery, by which
-    ///         time upkeep has already replaced the drawn Shape, so the recovered one is surplus.
-    ///         (FWA delivers with `transferFrom`; a Shape transfer fails only to the Shapes contract itself.)
-    function recoverRefundedShape(uint256 listingId) external nonReentrant returns (uint256 reward) {
-        uint256 gasStart = gasleft();
-        Item storage it = items[listingId];
-        if (it.kind != SHAPE || it.state != PENDING) revert InvalidItem();
         IFWAPool p = pool;
-        (,,, uint256 tokenId,,,, uint8 status) = p.listings(listingId);
-        if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
-        uint8 d = it.denom;
-        delete items[listingId];
-        p.recoverRefundedNFT(listingId);
-        uint256 eth = _redeem(d, tokenId);
-        emit ShapeRecovered(listingId, eth);
-        reward = _payKeeper(gasStart, false);
-    }
 
-    function _sync() internal returns (uint256 ops, bool batchReconciled) {
-        IFWAPool p = pool;
-        if (p.unsettledAcquisitionCount() != 0) revert PoolBusy();
-        checkpoint.valid = false;
-
-        // 1. Reconcile every FWA sequence issued since the last reconciliation (<= MAX_BATCH).
-        uint64 last = p.lastIssuedSequence();
+        // 1. Reconcile settled FWA sequences in order. Processed sequences are final: their listing is fixed.
+        uint64 s = reconciledSequence;
+        uint64 end = p.nextSequenceToProcess() - 1;
+        if (end > s + MAX_RECONCILE) end = s + uint64(MAX_RECONCILE);
         uint256 edgePaid;
-        for (uint64 s = reconciledSequence + 1; s <= last; ++s) {
-            (,, uint256 escrowed, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(s));
+        while (s < end) {
+            (,, uint256 escrowed, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(++s));
             if (lid != 0) {
                 // Only delivered draws: a failed delivery's fee can be refunded in full, edge included.
-                if (aStatus == A_FULFILLED) edgePaid += escrowed; // fee incl. edge; converted below
+                if (aStatus == A_FULFILLED) edgePaid += escrowed;
                 _onDrawn(lid, aStatus == A_FULFILLED);
-                ++ops;
             }
         }
-        if (last != reconciledSequence) {
-            reconciledSequence = last;
-            batchReconciled = true;
+        bool reconciled = s != reconciledSequence;
+        if (reconciled) {
+            reconciledSequence = s;
             uint256 edge = FWA_FACTORY.edgeBps();
-            incentiveCredit = uint128(edgePaid * edge / (BPS + edge)); // a new batch replaces any unspent credit
+            incentiveCredit += uint128(edgePaid * edge / (BPS + edge));
         }
 
-        // 2. Settled proceeds fund maintenance.
-        _collect();
+        // 2. Settled proceeds fund restocking.
+        bool collected = _collect() != 0;
 
-        // 3. Maintain inventory only while open.
-        if (enabled) {
-            (uint256 more, uint8 status) = _maintain(p);
-            ops += more;
-            if (lastStatus != status) {
-                lastStatus = status;
-                emit StatusChanged(status);
+        // 3. Restock while open.
+        uint256 ops;
+        bool wasSetup = creatorWork;
+        if (enabled && !p.retired() && !FWA_FACTORY.globalWithdrawOnly()) {
+            uint256 fee = SHAPES.mintFee();
+            if (fee <= mintFeeCap) {
+                ops = _fillDeficit(p, fee);
+                if (wasSetup && _missingUnits() == 0) creatorWork = false;
             }
         }
-    }
 
-    /// @dev Reprice, select a feasible approved plan, restore it and checkpoint. Returns the status.
-    function _maintain(IFWAPool p) internal returns (uint256 ops, uint8) {
-        if (p.retired() || FWA_FACTORY.globalWithdrawOnly()) return (0, FWA_UNAVAILABLE);
-        if (repricing) {
-            ops = _reprice(p);
-            if (repricing) return (ops, REPRICING);
-        }
-
-        uint256 markup = config.markupBps;
-        (uint256 cW, uint256 cWP, bool ok) = _curatedTotals(p, markup);
-        if (!ok) return (ops, INVENTORY_MISMATCH);
-        if (cW == 0) return (ops, NO_CURATED);
-
-        uint256 plan = _selectPlan(cW, cWP, markup);
-        if (plan == 0) return (ops, INFEASIBLE);
-
-        // Restore the plan: withdraw and redeem surplus Shapes, then mint deficits.
-        uint256 fee = SHAPES.mintFee();
-        // One MAX_OPS budget per call, shared with the repricing step that may have just finished.
-        (uint256 used, bool complete, bool funded) = _rebalance(p, plan, markup, fee, MAX_OPS - ops);
-        ops += used;
-        if (!funded) return (ops, INSUFFICIENT_RESERVE);
-        if (!complete) return (ops, NEEDS_UPKEEP);
-
-        return (ops, _checkpoint(p, plan, cW, cWP, markup, fee));
-    }
-
-    /// @dev FWA's canonical totals must equal curated + plan exactly, and liquid ETH must cover the
-    ///      worst batch, before purchases are admitted.
-    function _checkpoint(IFWAPool p, uint256 plan, uint256 cW, uint256 cWP, uint256 markup, uint256 fee)
-        internal
-        returns (uint8)
-    {
-        (uint256 sW, uint256 sWP) = _shapeTotals(plan, markup);
-        // Independent of the weight sums (which derive curated totals from FWA's): FWA's active listing
-        // count must equal the tracked active set.
-        if (p.activeListingCount() != activeIds.length) return INVENTORY_MISMATCH;
-        if (p.totalWeight() != cW + sW || p.weightedBackingTotal() != cWP + sWP) return INVENTORY_MISMATCH;
-        if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
-        // Held: the worst batch's replacements and one maximum reward for each upkeep call that restores them (more than
-        // one when drawn packs exceed one call's Shape units), at any price up to the cap. Also cover this call's own
-        // reward (paid after the checkpoint, at this transaction's price) so admission still holds afterwards.
-        uint256 reserve = _batchReserve(plan, fee) + _batchSteps(plan) * MAX_KEEPER_REWARD;
-        if (address(this).balance < reserve + _rewardBound(_rewardPrice(tx.gasprice))) return INSUFFICIENT_RESERVE;
-        uint64 seq = reconciledSequence;
-        uint256 version = p.inventoryVersion();
-        checkpoint = Checkpoint({valid: true, sequence: seq, mintFee: uint128(fee), inventoryVersion: version, reserve: reserve});
-        emit Checkpointed(seq, version, fee, reserve);
-        return OK;
-    }
-
-    /// @dev Keep the active plan while feasible, else switch to the first feasible approved plan.
-    ///      Returns 0 when none is feasible (an empty plan is rejected by `configure`).
-    function _selectPlan(uint256 cW, uint256 cWP, uint256 markup) internal returns (uint256) {
-        uint256 edge = FWA_FACTORY.edgeBps();
-        uint8 current = activePlan;
-        if (_feasible(plans[current], cW, cWP, markup, edge)) return plans[current];
-        uint256 n = plans.length;
-        for (uint8 i; i < n; ++i) {
-            if (_feasible(plans[i], cW, cWP, markup, edge)) {
-                activePlan = i;
-                emit PlanActivated(i);
-                return plans[i];
-            }
-        }
-        return 0;
+        if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup) revert NoUpkeepNeeded();
+        if (ops != 0 || reconciled) reward = _payKeeper(gasStart, wasSetup);
     }
 
     function _onDrawn(uint256 lid, bool delivered) internal {
         Item storage it = items[lid];
-        // Every pool listing is ours and active until drawn. Never revert here: reconciliation must not be
-        // bricked; any desync is caught by the checkpoint's listing-count check and fails closed.
+        // Every pool listing is ours and tracked until drawn. Never revert here: reconciliation must not be bricked.
         if (it.state != ACTIVE) return;
         uint8 kind = it.kind;
         uint8 d = it.denom;
         _removeActive(lid);
-        if (kind == SHAPE) --activeShapes[d];
+        if (kind == SHAPE) {
+            --activeShapes[d];
+            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.price;
+        }
         if (delivered) delete items[lid];
         else it.state = PENDING;
         emit ItemDrawn(lid, kind, d, delivered);
     }
 
-    /// @dev Bring up to MAX_OPS listings to the current markup. Every call rescans all active listings
-    ///      (<= MAX_LISTINGS), so a removal can never cause a listing to be skipped and an interrupted
-    ///      run resumes where the last one stopped. Only `it.price` changes; `it.base` is creator-set.
-    function _reprice(IFWAPool p) internal returns (uint256 ops) {
-        uint256 n = activeIds.length;
-        for (uint256 i; i < n; ++i) {
-            uint256 lid = activeIds[i];
-            Item storage it = items[lid];
-            uint256 price = _priced(it.base);
-            if (price == it.price) continue;
-            if (ops == MAX_OPS) return ops; // more remain
-            p.updatePrice(lid, price);
-            it.price = uint112(price);
-            ++ops;
-            emit ListingRepriced(lid, price);
-        }
-        repricing = false;
-    }
-
-    function _rebalance(IFWAPool p, uint256 plan, uint256 markup, uint256 fee, uint256 budget)
-        internal
-        returns (uint256 used, bool complete, bool funded)
-    {
-        used = _unlistSurplus(p, plan, budget);
-        uint256 filled;
-        (filled, funded) = _fillDeficit(p, plan, markup, fee, budget - used);
-        used += filled;
-        if (!funded) return (used, false, false);
-        for (uint256 d; d < DENOMS; ++d) {
-            if (activeShapes[d] != _count(plan, d)) return (used, false, true);
-        }
-        complete = true;
-    }
-
-    /// @dev Only after a plan change: withdraw prizes above target from FWA and redeem them. Returns Shape units used.
-    function _unlistSurplus(IFWAPool p, uint256 plan, uint256 budget) internal returns (uint256 used) {
-        uint256[] memory out = new uint256[](budget);
-        uint256 n;
-        for (uint256 d; d < DENOMS; ++d) {
-            uint256 have = activeShapes[d];
-            uint256 target = _count(plan, d);
-            uint256 surplus = have > target ? have - target : 0;
-            uint256 w = _shapesIn(d);
-            for (uint256 i = activeIds.length; i != 0 && surplus != 0 && used + w <= budget;) {
-                Item storage it = items[activeIds[--i]];
-                if (it.kind == SHAPE && it.denom == d) {
-                    out[n++] = activeIds[i];
-                    used += w;
-                    --surplus;
-                }
-            }
-        }
-        if (n == 0) return 0;
-        assembly ("memory-safe") {
-            mstore(out, n)
-        }
-        emit ShapesUnlisted(n, _withdrawAndRedeem(p, out));
-    }
-
-    /// @dev Stop tracking the given Shape and pack listings, withdraw them from FWA and redeem each here.
+    /// @dev Stop tracking the given prize listings, withdraw them from FWA and redeem each here.
     function _withdrawAndRedeem(IFWAPool p, uint256[] memory lids) internal returns (uint256 eth) {
         uint256 n = lids.length;
-        if (n == 0) return 0;
         uint256[] memory tokenIds = new uint256[](n);
         uint8[] memory sizes = new uint8[](n);
         for (uint256 i; i < n; ++i) {
             uint256 lid = lids[i];
             (,,, tokenIds[i],,,,) = p.listings(lid);
-            uint8 d = items[lid].denom;
+            Item storage it = items[lid];
+            uint8 d = it.denom;
             sizes[i] = d;
             --activeShapes[d];
+            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.price;
             _removeActive(lid);
             delete items[lid];
         }
@@ -816,82 +621,81 @@ contract PoolBalancer is ReentrancyGuard {
         eth = address(this).balance - before;
     }
 
-    /// @dev Mint like-for-like with available ETH and list the new Shapes in one FWA batch.
-    function _fillDeficit(IFWAPool p, uint256 plan, uint256 markup, uint256 fee, uint256 budget)
-        internal
-        returns (uint256 used, bool funded)
-    {
-        funded = true;
-        IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](budget);
-        uint256 n; // listings in the batch; `used` counts Shape units
-        for (uint256 d; d < DENOMS; ++d) {
+    /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
+    ///      left after this call's keeper reward, and list them at the current markup in one FWA batch. FWA stages the batch while draws are
+    ///      unsettled. Returns Shape units used.
+    function _fillDeficit(IFWAPool p, uint256 fee) internal returns (uint256 used) {
+        uint256 plan = target;
+        uint256 markup = markupBps;
+        uint256 keep = _rewardBound(_rewardPrice(tx.gasprice));
+        IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](MAX_OPS);
+        uint8[] memory sizes = new uint8[](MAX_OPS);
+        uint256 n;
+        uint256 restocked; // sizes
+        for (uint256 k; k < DENOMS; ++k) {
+            uint256 d = (BY_VALUE >> (4 * k)) & 0xF;
             uint256 have = activeShapes[d];
-            uint256 target = _count(plan, d);
-            if (have >= target) continue;
-            uint256 need = target - have;
+            uint256 want = _count(plan, d);
+            if (have >= want) continue;
             uint256 w = _shapesIn(d);
-            if (need > (budget - used) / w) need = (budget - used) / w;
-            if (need == 0) continue;
-            uint256 cost = need * _cost(d, fee);
-            if (address(this).balance < cost) {
-                funded = false;
-                break;
-            }
+            uint256 need = want - have;
+            if (need > (MAX_OPS - used) / w) need = (MAX_OPS - used) / w;
+            uint256 each = _cost(d, fee);
+            uint256 bal = address(this).balance;
+            uint256 affordable = bal > keep ? (bal - keep) / each : 0;
+            if (need > affordable) need = affordable;
+            if (need == 0) break; // stop at the first size not fully restocked, so restocking stays in value order
             uint256 price = _amount(d) * (BPS + markup) / BPS;
             if (d < SHAPE_DENOMS) {
-                uint256 first = SHAPES.mintBatch{value: cost}(_amount(d), need);
-                emit ShapesMinted(uint8(d), first, need, cost);
+                uint256 first = SHAPES.mintBatch{value: need * each}(_amount(d), need);
+                emit ShapesMinted(uint8(d), first, need, need * each);
                 for (uint256 j; j < need; ++j) {
+                    sizes[n] = uint8(d);
                     batch[n++] = IFWAPool.ListingInput(address(SHAPES), first + j, price);
                 }
             } else {
                 // One pack per prize, each minting its Shapes inside; the pack token comes to this contract.
                 uint32[] memory makeup = _makeup(d);
-                uint256 each = _cost(d, fee);
                 for (uint256 j; j < need; ++j) {
                     uint256 id = PACKS.createPackTo{value: each}(new uint256[](0), makeup, address(this));
-                    if (j == 0) emit ShapesMinted(uint8(d), id, need, cost);
+                    if (j == 0) emit ShapesMinted(uint8(d), id, need, need * each);
+                    sizes[n] = uint8(d);
                     batch[n++] = IFWAPool.ListingInput(address(PACKS), id, price);
                 }
             }
             used += need * w;
+            if (need < want - have || ++restocked == MAX_RESTOCK_SIZES) break;
         }
-        if (n == 0) return (0, funded);
+        if (n == 0) return 0;
         assembly ("memory-safe") {
             mstore(batch, n)
         }
         uint256[] memory lids = p.listNFTs(batch);
+        uint256 added;
         for (uint256 i; i < n; ++i) {
-            // Denomination is recovered from the listed price, which is unique per denomination.
-            uint8 d = _denomOfPrice(batch[i].price, markup);
-            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_amount(d)), uint112(batch[i].price));
+            uint8 d = sizes[i];
+            uint256 price = batch[i].price;
+            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_amount(d)), uint112(price));
             _addActive(lids[i]);
             ++activeShapes[d];
-            emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
+            added += INVERSE_WEIGHT_NUMERATOR / price;
+            emit ShapeListed(lids[i], d, batch[i].tokenId, price);
         }
+        prizeWeight += added;
     }
 
-    function _denomOfPrice(uint256 price, uint256 markup) internal pure returns (uint8 d) {
-        while (_amount(d) * (BPS + markup) / BPS != price) {
-            if (++d == DENOMS) revert InvalidItem();
-        }
-    }
-
-    function _payKeeper(uint256 gasStart, bool incentive) internal returns (uint256 reward) {
+    function _payKeeper(uint256 gasStart, bool setup) internal returns (uint256 reward) {
         uint256 measured = gasStart - gasleft();
         if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
         uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
         uint256 price = _rewardPrice(tx.gasprice);
-        reward = gasUsed * price;
-        if (incentive) {
-            uint256 inc = (measured - gasUsed) * price + KEEPER_INCENTIVE;
-            if (!creatorWork) {
-                uint256 credit = incentiveCredit;
-                if (credit < inc) inc = credit;
-                incentiveCredit = uint128(credit - inc);
-            }
-            reward += inc;
+        uint256 inc = (measured - gasUsed) * price + KEEPER_INCENTIVE;
+        if (!setup) {
+            uint256 credit = incentiveCredit;
+            if (credit < inc) inc = credit;
+            incentiveCredit = uint128(credit - inc);
         }
+        reward = gasUsed * price + inc;
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
@@ -909,42 +713,32 @@ contract PoolBalancer is ReentrancyGuard {
         return bal > req ? bal - req : 0;
     }
 
-    /// @notice ETH that must stay liquid: zero while closed; otherwise the cost of restoring the active
-    ///         plan from current inventory, one keeper reward per refill step and one for the next checkpoint
-    ///         at the current price, plus a worst-case batch and one maximum keeper reward.
+    /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
+    ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
+    ///         upkeep call that work takes plus one. Zero while closed.
     function requiredReserve() public view returns (uint256 r) {
-        if (!enabled || plans.length == 0) return 0;
-        uint256 plan = plans[activePlan];
+        if (!enabled) return 0;
+        uint256 plan = target;
+        // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.
         uint256 fee = SHAPES.mintFee();
-        uint256 missing;
+        if (fee < mintFeeCap) fee = mintFeeCap;
+        uint256 units;
+        uint256 largest;
         for (uint256 d; d < DENOMS; ++d) {
+            uint256 want = _count(plan, d);
+            if (want == 0) continue;
+            uint256 c = _cost(d, fee);
+            if (c > largest) largest = c;
             uint256 have = activeShapes[d];
-            uint256 target = _count(plan, d);
-            if (target > have) {
-                r += (target - have) * _cost(d, fee);
-                missing += (target - have) * _shapesIn(d);
+            if (want > have) {
+                r += (want - have) * c;
+                units += (want - have) * _shapesIn(d);
             }
         }
-        // Keeper rewards: the maximum held in the checkpoint reserve (any price up to the cap), plus one per refill
-        // step still needed and one for the re-checkpointing call, at the price an honest keeper is paid now.
-        r += ((missing + MAX_OPS - 1) / MAX_OPS + 1) * _rewardBound(_rewardPrice(type(uint256).max));
-        r += _batchReserve(plan, fee) + _batchSteps(plan) * MAX_KEEPER_REWARD;
-    }
-
-    /// @dev Reimbursed price: min(bid, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE).
-    function _rewardPrice(uint256 bid) internal view returns (uint256 price) {
-        price = block.basefee + KEEPER_PRIORITY_CAP;
-        if (bid < price) price = bid;
-        if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
-    }
-
-    /// @dev Upper bound of one call's reward at `price`: measured gas (<= KEEPER_MAX_GAS) x price + KEEPER_INCENTIVE.
-    function _rewardBound(uint256 price) internal pure returns (uint256) {
-        return KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
-    }
-
-    function getPlans() external view returns (uint256[] memory) {
-        return plans;
+        uint256 draws = pool.lastIssuedSequence() - reconciledSequence + 1;
+        r += draws * largest;
+        units += draws * MAX_SHAPES_IN;
+        r += ((units + MAX_OPS - 1) / MAX_OPS + 1) * MAX_KEEPER_REWARD;
     }
 
     function getActiveIds() external view returns (uint256[] memory) {
@@ -967,16 +761,10 @@ contract PoolBalancer is ReentrancyGuard {
         return this.onERC721Received.selector;
     }
 
-    /// @dev No unresolved FWA acquisition and every issued draw reconciled into `items`.
-    function _requireIdle() internal view {
-        IFWAPool p = pool;
-        if (p.unsettledAcquisitionCount() != 0 || p.lastIssuedSequence() != reconciledSequence) revert PoolBusy();
-    }
-
-    /// @dev Called only from creator actions.
-    function _invalidate() internal {
-        checkpoint.valid = false;
-        creatorWork = true;
+    /// @dev After a creator action changes inventory or the target: purchases wait for upkeep to restore the target
+    ///      (paid in full), unless it already holds.
+    function _creatorChanged() internal {
+        creatorWork = enabled && _missingUnits() != 0;
     }
 
     function _collect() internal returns (uint256 amount) {
@@ -988,7 +776,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _priced(uint256 base) internal view returns (uint256 price) {
-        price = base * (BPS + config.markupBps) / BPS;
+        price = base * (BPS + markupBps) / BPS;
         if (base == 0 || price > type(uint112).max) revert ValueTooHigh();
     }
 
@@ -1009,7 +797,6 @@ contract PoolBalancer is ReentrancyGuard {
     function _addActive(uint256 lid) internal {
         activeIds.push(lid);
         activeIndexPlusOne[lid] = activeIds.length;
-        if (activeIds.length > MAX_LISTINGS) revert TooManyListings();
     }
 
     function _removeActive(uint256 lid) internal {
@@ -1022,94 +809,38 @@ contract PoolBalancer is ReentrancyGuard {
         delete activeIndexPlusOne[lid];
     }
 
-    /// @dev Curated weight sums = FWA totals minus our active Shapes. Valid only when every active
-    ///      Shape is priced at `markup` (true outside repricing).
-    function _curatedTotals(IFWAPool p, uint256 markup) internal view returns (uint256 cW, uint256 cWP, bool ok) {
-        uint256 sW;
-        uint256 sWP;
+    function _listedShapes() internal view returns (uint256 n) {
+        uint16[16] memory a = activeShapes;
         for (uint256 d; d < DENOMS; ++d) {
-            uint256 n = activeShapes[d];
-            if (n == 0) continue;
-            uint256 price = _amount(d) * (BPS + markup) / BPS;
-            uint256 w = INVERSE_WEIGHT_NUMERATOR / price;
-            sW += n * w;
-            sWP += n * w * price;
+            n += a[d];
         }
-        uint256 tW = p.totalWeight();
-        uint256 tWP = p.weightedBackingTotal();
-        if (tW < sW || tWP < sWP) return (0, 0, false);
-        return (tW - sW, tWP - sWP, true);
     }
 
-    function _shapeTotals(uint256 plan, uint256 markup) internal pure returns (uint256 sW, uint256 sWP) {
+    /// @dev Shape units missing from the target.
+    function _missingUnits() internal view returns (uint256 units) {
+        uint256 plan = target;
         for (uint256 d; d < DENOMS; ++d) {
-            uint256 n = _count(plan, d);
-            if (n == 0) continue;
-            uint256 price = _amount(d) * (BPS + markup) / BPS;
-            uint256 w = INVERSE_WEIGHT_NUMERATOR / price;
-            sW += n * w;
-            sWP += n * w * price;
+            uint256 want = _count(plan, d);
+            uint256 have = activeShapes[d];
+            if (want > have) units += (want - have) * _shapesIn(d);
         }
     }
 
-    /// @dev Exact FWA pricing: fee = (Σw·p / Σw) · (1 + edge), w = 1e36 / p.
-    function _feasible(uint256 plan, uint256 cW, uint256 cWP, uint256 markup, uint256 edge)
-        internal
-        view
-        returns (bool)
-    {
-        // The whole plan must fit beside the curated listings, or filling it would revert TooManyListings.
-        uint256 shapesListed;
-        for (uint256 d; d < DENOMS; ++d) {
-            shapesListed += activeShapes[d];
-        }
-        if (activeIds.length - shapesListed + _planShapes(plan) > MAX_LISTINGS) return false;
-        Config memory c = config;
-        (uint256 sW, uint256 sWP) = _shapeTotals(plan, markup);
-        uint256 tW = cW + sW;
-        if ((cWP + sWP) / tW * (BPS + edge) / BPS > c.maxDrawPrice) return false;
-        return cW * BPS >= uint256(c.minCuratedOddsBps) * tW;
+    /// @dev Reimbursed price: min(bid, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE).
+    function _rewardPrice(uint256 bid) internal view returns (uint256 price) {
+        price = block.basefee + KEEPER_PRIORITY_CAP;
+        if (bid < price) price = bid;
+        if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
     }
 
-    /// @dev Cash to replace the worst MAX_BATCH prize draws from a full plan: the largest values first, each charged
-    ///      backing plus MAX_SHAPES_IN mint fees. That bounds any 5 prizes' true cost (backing plus one fee per Shape
-    ///      inside) from above, whatever the mint fee, at most 2 extra fees per prize that is a single Shape.
-    function _batchReserve(uint256 plan, uint256 fee) internal pure returns (uint256 r) {
-        uint256 left = MAX_BATCH;
-        for (uint256 k = DENOMS; k != 0 && left != 0;) {
-            uint256 d = (BY_VALUE >> (4 * --k)) & 0xF;
-            uint256 n = _count(plan, d);
-            if (n > left) n = left;
-            r += n * (_amount(d) + MAX_SHAPES_IN * fee);
-            left -= n;
-        }
-    }
-
-    /// @dev Upkeep calls that rebuild the worst MAX_BATCH draws: the Shape units of the 5 prizes holding the most Shapes
-    ///      (three-Shape packs first, then two-Shape packs, the rest counted as single Shapes), over MAX_OPS, rounded up.
-    ///      1 for a plan of single Shapes; up to 3 when 5 three-Shape packs are drawn.
-    function _batchSteps(uint256 plan) internal pure returns (uint256) {
-        uint256 three;
-        uint256 two;
-        for (uint256 d = SHAPE_DENOMS; d < DENOMS; ++d) {
-            if (_shapesIn(d) == 3) three += _count(plan, d);
-            else two += _count(plan, d);
-        }
-        if (three > MAX_BATCH) three = MAX_BATCH;
-        if (two > MAX_BATCH - three) two = MAX_BATCH - three;
-        return (MAX_BATCH + 2 * three + two + MAX_OPS - 1) / MAX_OPS;
+    /// @dev Upper bound of one call's reward at `price`: measured gas (<= KEEPER_MAX_GAS) x price + KEEPER_INCENTIVE.
+    function _rewardBound(uint256 price) internal pure returns (uint256) {
+        return KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
     }
 
     /// @dev ETH to create one prize of size `d`: its backing plus the Shapes mint fee for each Shape inside.
     function _cost(uint256 d, uint256 fee) internal pure returns (uint256) {
         return _amount(d) + _shapesIn(d) * fee;
-    }
-
-    function _planShapes(uint256 plan) internal pure returns (uint256 shapes) {
-        if (plan >> (16 * DENOMS) != 0) revert InvalidPlan();
-        for (uint256 d; d < DENOMS; ++d) {
-            shapes += _count(plan, d);
-        }
     }
 
     function _count(uint256 plan, uint256 d) internal pure returns (uint256) {

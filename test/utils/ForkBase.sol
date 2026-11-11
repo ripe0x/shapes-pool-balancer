@@ -82,16 +82,10 @@ abstract contract ForkBase is Test {
         vm.stopPrank();
     }
 
-    function configure(uint256 maxDrawPrice, uint16 minOdds, uint256[] memory plans) internal {
+    /// @dev Configure at MARKUP with prize target `t` (see `plan`, `plan16`).
+    function configure(uint256 t) internal {
         vm.prank(creator);
-        balancer.configure(
-            PoolBalancer.Config({
-                maxDrawPrice: uint128(maxDrawPrice),
-                minCuratedOddsBps: minOdds,
-                markupBps: MARKUP
-            }),
-            plans
-        );
+        balancer.configure(MARKUP, t);
     }
 
     function upkeep() internal {
@@ -99,12 +93,17 @@ abstract contract ForkBase is Test {
         balancer.performUpkeep();
     }
 
-    /// @dev Run upkeep until the plan is fully listed (each call is bounded by MAX_OPS).
-    function fillUp() internal {
-        upkeep();
-        for (uint256 i; i < 10 && balancer.admissionStatus() == 2; ++i) {
-            upkeep();
+    /// @dev Run upkeep until it has nothing left to do (each call is bounded by MAX_OPS); returns the calls that worked.
+    function fillUp() internal returns (uint256 calls) {
+        for (uint256 i; i < 40; ++i) {
+            vm.prank(keeper, keeper);
+            try balancer.performUpkeep() {
+                ++calls;
+            } catch {
+                return calls;
+            }
         }
+        revert("upkeep never settled");
     }
 
     function buy(address who, uint256 count) internal returns (uint256[] memory ids) {

@@ -1,9 +1,36 @@
 # Mainnet deployment readiness
 
-**Not deployed. Mainnet deployment needs your explicit authorization.** This report covers the frozen candidate named
-below; it does not establish that the contracts are safe.
+**Not deployed. Mainnet deployment needs your explicit authorization.** This report does not establish that the contracts
+are safe.
 
-## Candidate
+## Rewrite status (2026-11-11)
+
+The contract was rewritten: simplified gate, markup applied at listing, `unlistShapes`, creator-only `recoverRefunded`,
+accumulating incentive credit and a withdrawal-only reserve (SPEC.md, DECISIONS 43-50). **This rewrite is a verified
+slice, not a frozen release candidate:** every fork test file passes when run one at a time, the invariants pass at 64
+runs × 4,096 calls, and one independent AI review (round 7) is resolved. The verification under "Earlier verification" below ran
+against the previous design (commit `3f1735f`); its suite results, gas numbers and rehearsals do not carry over to the
+rewrite and must be re-run against it before release.
+
+Open before release:
+
+1. **Review of the round 7 repairs** (per-call limits, reserve fee, setup checks), made after the independent review.
+2. **Re-run the fork suites, keeper e2e and both launch rehearsals** against the rewrite, then freeze a release
+   candidate. The keeper e2e and rehearsals start their own anvil fork on port 18546 and need that port's approval.
+3. **Owner decision on the gas finding (DECISIONS 50):** the creator pays keeper gas up to 5 gwei, and a Balanced pool at
+   15% markup loses money above about 2 gwei with 3 draws per upkeep. Options (a creator-set gas ceiling that pauses
+   restocking, or keepers restocking after several draws) are not implemented.
+4. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
+5. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
+6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
+   presentation admin `PACKS_ADMIN` are your call; Draw Packs' own audit status as used in ape-Ball is not confirmed
+   here.
+7. **Your explicit deployment authorization** and the release-candidate checks below, re-run on the frozen rewrite.
+
+## Earlier verification (previous design, commit `3f1735f`)
+
+The checks in this section ran against the pre-rewrite design and are kept as a record of the verification method. They
+must be re-run against the rewrite before release.
 
 Commit `3f1735f`. Contracts, keeper service, planner and dashboard are identical to `13a61ed`, where the suites
 ran; later commits change only the e2e and rehearsal harnesses, which were re-run at `b6ffee9` (e2e) and `3f1735f`
@@ -42,7 +69,7 @@ Failures found during this verification, and what changed:
   `listCurated` sent with an exact gas estimate reverted at 63/64 of its limit (driver now adds 30%); failed driver
   transactions now report decoded reasons. No contract or keeper-service change.
 
-## Requirement status (reimbursement re-evaluated against FWA V2)
+## Requirement status (previous design: reimbursement re-evaluated against FWA V2)
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
@@ -56,7 +83,7 @@ Failures found during this verification, and what changed:
 | Launch rehearsal: fresh keeper, wei reconciliation, pinned basefee, short + sustained | done (see Candidate) | `keeper/rehearsal.ts` |
 | Independent review of final financial logic | done | SECURITY.md round 4 |
 
-## Requirement status (simplification and hardening pass)
+## Requirement status (previous design: simplification and hardening pass)
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
@@ -86,19 +113,22 @@ Failures found during this verification, and what changed:
 - **Long invariant campaigns.** 64 runs × 64 calls per suite.
 - **Real wallet extension.** Every dashboard write (creator calls, pool creation, upkeep) is simulated, then sent
   with a gas limit of its estimate + 30% (`app/src/tx.ts`, after the rehearsal saw an exact `listCurated` estimate
-  revert at inclusion). Checked with the dev connector on a fork (upkeep, reprice, pool creation: limit = estimate ×
-  1.3, applied once; a failing claim reported by name with nothing sent), not with a wallet extension, which may
-  replace the supplied limit.
+  revert at inclusion). Checked with the dev connector on a fork (upkeep, a creator edit, pool creation: limit =
+  estimate × 1.3, applied once; a failing claim reported by name with nothing sent), not with a wallet extension, which
+  may replace the supplied limit.
 
 ## Remaining risks
 
-See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; restricted-collection griefing (G-1); collections that
-can move or freeze listed NFTs (F1, F2); FWA's VRF service refusing purchases while status shows 0 (F4); keepers wait
-above a 5 gwei basefee (~0.9% of blocks) and pools whose draws all cost ~0.01 ETH pause from ~4.2 gwei; unpaid
-re-checkpoints above ~0.85 gwei and refund-only batches above ~1.3 gwei need the creator or a larger keeper allowance; economics (losses at low
-markup, small denominations, high mint fee); the FWA page template could change; no professional audit.
+See `docs/SECURITY.md`. In short: the rewrite had one AI review (round 7); the gate is approximate and leans on FWA
+pricing and slippage refunds; FWA and Shapes admin powers; restricted-collection griefing (G-1); collections that can
+move or freeze listed NFTs (F1, F2); FWA's VRF service refusing purchases while status shows 0 (F4); keepers wait above a
+5 gwei basefee (~0.9% of blocks) and pools whose draws all cost ~0.01 ETH pause earlier; reconcile-only calls get the 4/5
+gas part only and rely on the creator or a larger keeper allowance; economics (losses at low markup above ~2 gwei, small
+denominations, high mint fee; DECISIONS 50); the FWA page template could change; no professional audit.
 
 ## Your actions to deploy
+
+These follow the rewrite being reviewed and re-verified (see "Rewrite status").
 
 1. Review and merge [PR #1](https://github.com/ripe0x/shapes-pool-balancer/pull/1).
 2. Decide whether to commission an external professional audit first. An independent AI audit (round 5,
@@ -113,6 +143,6 @@ markup, small denominations, high mint fee); the FWA page template could change;
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.
 6. Start the keeper with a funded keeper key from your secret store (`docs/OPERATIONS.md`), `FROM_BLOCK` = deployment
-   block, and `MAX_LOSS_WEI` (default 0.0002 ETH) for unpaid re-checkpoints and gas-only calls.
+   block, and `MAX_LOSS_WEI` (default 0.0002 ETH) for reconcile-only calls.
 7. Build the dashboard with `VITE_CHAIN_ID=1`, `VITE_FACTORY=<factory>`, `VITE_FROM_BLOCK=<block>` and host it.
 8. Create a first pool with a small deposit and a conservative markup, and watch one full draw-and-upkeep cycle.

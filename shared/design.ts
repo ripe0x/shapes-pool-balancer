@@ -1,13 +1,10 @@
 import {
-  BPS, BY_VALUE, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
+  BPS, BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
 export interface DesignInputs extends PoolInputs {
-  have: Counts; // Shapes listed now
-  baseFee: bigint;
-  minCuratedOddsBps: number;
-  maxDrawPrice?: bigint; // omitted: no ceiling while searching
+  have: Counts; // prizes listed now
   vrfFee?: bigint; // FWA's per-draw VRF service fee, paid by the player on top of the draw price
 }
 
@@ -39,9 +36,8 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
   return have.reduce((s, n, d) => s + (n > target[d] ? BigInt(n - target[d]) * DENOMS[d] : 0n), balance);
 }
 
-/** ETH required to open with `target`: PoolBalancer.requiredReserve() after the switch. */
-export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'baseFee'>) =>
-  requiredReserveAt(target, d.have, d.mintFee, d.baseFee);
+/** ETH that stays in the pool while open with `target`: PoolBalancer.requiredReserve() from the prizes listed now. */
+export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee'>) => requiredReserveAt(target, d.have, d.mintFee);
 
 const NONE: Counts = DENOMS.map(() => 0);
 export const shapeTotal = (c: Counts) => c.reduce((a, b) => a + b, 0);
@@ -103,23 +99,5 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   return bonus;
 }
 
-/**
- * Plans upkeep can switch to when `best` stops meeting the limits (after an NFT is drawn the remaining NFTs are rarer):
- * the same mix with fewer of its smallest Shapes, which raises the chance of an NFT.
- */
-export function fallbacksFor(best: Counts): Counts[] {
-  const low = BY_VALUE.find((i) => best[i] > 0) ?? -1; // the smallest size in the mix
-  const seen = new Set([best.join()]);
-  const out: Counts[] = [];
-  for (const keep of [0.75, 0.5, 0.25, 0]) {
-    const c = best.map((n, i) => (i === low ? Math.floor(n * keep) : n));
-    if (c.every((n) => n === 0) || seen.has(c.join()) || out.length === MAX_PLANS - 1) continue;
-    seen.add(c.join());
-    out.push(c);
-  }
-  return out;
-}
-
-/** Evaluate a mix for display; `limits` omitted means no ceiling or floor check. */
-export const describe = (counts: Counts, d: DesignInputs, maxDrawPrice?: bigint) =>
-  evaluate(counts, d, maxDrawPrice === undefined ? undefined : { maxDrawPrice, minCuratedOddsBps: d.minCuratedOddsBps, maxShapeCapital: 2n ** 255n });
+/** Evaluate a mix for display. */
+export const describe = (counts: Counts, d: DesignInputs) => evaluate(counts, d);

@@ -5,24 +5,14 @@ import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 
-/// @dev One transaction, several paid upkeeps (review F2: intrinsic gas is paid once per transaction).
-contract MultiKeeper {
-    function run(PoolBalancer b, uint256 n) external {
-        for (uint256 i; i < n; ++i) {
-            try b.performUpkeep() {} catch {}
-        }
-    }
-
-    receive() external payable {}
-}
-
 /// @notice Mainnet-fork gas measurements used to set keeper reward bounds (docs/GAS.md).
 ///         Run isolated so each call is a real transaction (intrinsic gas, cold storage, final refunds):
-///         forge test --match-contract GasBench --isolate -vv
+///         forge test --match-path test/Gas.t.sol --isolate -vv
 ///         Every keeper call asserts that the reimbursed gas never exceeds the gas the transaction is
 ///         billed after EVM refunds (collection-games#23).
 contract GasBench is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
+    uint256 constant KEEPER_MAX_GAS = 3_200_000;
 
     function setUp() public {
         setUpFork();
@@ -31,19 +21,14 @@ contract GasBench is ForkBase {
         listCurated(2, 0.5 ether);
     }
 
-    function _configure(uint256 p) internal {
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = p;
-        configure(1 ether, 0, plans);
+    function _configure(uint256 target) internal {
+        vm.prank(creator);
+        balancer.configure(0, target);
         vm.prank(creator);
         balancer.open();
     }
 
-    /// @dev With --isolate, the frame's gas is the transaction's billed gas: intrinsic included and the
-    ///      EIP-3529 refund already applied (a plan switch reports a measured span larger than the
-    ///      pre-refund reading would allow). The keeper e2e checks the same bound against real receipts.
     function _report(string memory label, uint256 reimbursed) internal {
-        // Decoded by hand: the installed forge binary returns the 5-field Gas struct (no state gas).
         (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
@@ -53,7 +38,6 @@ contract GasBench is ForkBase {
         emit log_named_uint("  billed gas (after refund)", billed);
         emit log_named_uint("  refund", refund);
         emit log_named_uint("  reimbursed gas", reimbursed);
-        // Isolation adds intrinsic gas (>= 21k) to the frame; without it the comparison is meaningless.
         if (reimbursed != 0 && billed > 21_000 + reimbursed / 2) {
             assertLe(reimbursed, billed, "keeper reimbursed more gas than it was billed");
         }
@@ -86,8 +70,8 @@ contract GasBench is ForkBase {
 
     function test_gas_initialFill() public {
         _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
-        for (uint256 i; i < 7; ++i) {
-            _upkeep("upkeep: fill step (<= 6 mint+list)");
+        for (uint256 i; i < 8 && !balancer.canPurchase(buyer); ++i) {
+            _upkeep("upkeep: fill step (<= 5 mint+list)");
         }
         assertTrue(balancer.canPurchase(buyer));
     }
@@ -97,46 +81,11 @@ contract GasBench is ForkBase {
         uint256[16] memory c;
         c[12] = 12;
         _configure(plan16(c));
-        // 6 Shape units per upkeep: at most two three-Shape packs per call, so 12 packs take about 7 calls.
-        for (uint256 i; i < 8 && !balancer.canPurchase(buyer); ++i) {
-            _upkeep("upkeep: pack fill step (<= 2 three-Shape packs mint+list)");
+        // MAX_OPS (5) Shape units: one three-Shape pack per call
+        for (uint256 i; i < 13 && !balancer.canPurchase(buyer); ++i) {
+            _upkeep("upkeep: pack fill step (1 three-Shape pack mint+list)");
         }
         assertTrue(balancer.canPurchase(buyer));
-    }
-
-    function test_gas_replaceFivePacks() public {
-        uint256[16] memory c;
-        c[12] = 10;
-        _configure(plan16(c));
-        fillUp();
-        _drawShapes(5);
-        _upkeep("upkeep: reconcile + replace 5 three-Shape packs");
-    }
-
-    /// @dev A full pool at the limits: 20 curated NFTs and an 80-Shape plan (100 listings). Every upkeep stays within the
-    ///      reimbursed gas: filling, replacing a 5-draw batch, and repricing all 100 listings after a markup change.
-    function test_gas_fullPoolAtLimits() public {
-        for (uint256 i = 3; i <= 20; ++i) listCurated(i, 0.3 ether);
-        vm.prank(creator);
-        balancer.depositETH{value: 20 ether}();
-        _configure(plan([uint256(60), 10, 10, 0, 0, 0, 0, 0, 0]));
-        uint256 calls;
-        while (!balancer.canPurchase(buyer) && calls < 20) {
-            _upkeep("upkeep: fill step, 80-Shape plan");
-            ++calls;
-        }
-        assertTrue(balancer.canPurchase(buyer), "open at 100 listings");
-        assertEq(balancer.getActiveIds().length, 100);
-        assertLe(calls, 18, "80 Shapes and 18 new NFTs fill in 17 calls (measured)");
-        _drawShapes(5);
-        _upkeep("upkeep: reconcile + replace 5 Shapes at 100 listings");
-        while (!balancer.canPurchase(buyer) && calls < 40) { _upkeep("upkeep: finish restock"); ++calls; }
-        assertTrue(balancer.canPurchase(buyer), "restocked");
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(60), 10, 10, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config({maxDrawPrice: 1 ether, minCuratedOddsBps: 0, markupBps: MARKUP + 100}), plans);
-        _upkeep("upkeep: reprice step at 100 listings");
     }
 
     function test_gas_replaceOne() public {
@@ -160,13 +109,152 @@ contract GasBench is ForkBase {
         _upkeep("upkeep: reconcile + replace 5 Shapes across 4 denominations");
     }
 
+    function test_gas_replaceFivePacks() public {
+        uint256[16] memory c;
+        c[10] = 10; // 0.03 packs, three Shapes each
+        _configure(plan16(c));
+        fillUp();
+        _drawShapes(5);
+        _upkeep("upkeep: reconcile + replace 5 three-Shape packs (staged)");
+    }
+
+    /// @dev The worst single upkeep: reconcile MAX_RECONCILE (5) settled draws and restock MAX_OPS (6) Shape units
+    ///      as two three-Shape packs. Must stay under KEEPER_MAX_GAS with margin.
+    function test_gas_worstCaseUpkeep() public {
+        // 44 x 0.01 Shapes carry the weight so 10 draws stay admitted; 10 x 0.03 packs are the prizes drawn.
+        uint256[16] memory c;
+        c[0] = 44;
+        c[10] = 10;
+        _configure(plan16(c));
+        fillUp();
+        assertTrue(balancer.canPurchase(buyer));
+        // draw ten 0.03 packs, settling each, without reconciling
+        for (uint256 k; k < 10; ++k) {
+            uint256 lid = _anyActivePack();
+            (,,,,,, uint256 slot,) = pool.listings(lid);
+            uint256[] memory ids = buy(buyer, 1);
+            fulfill(ids[0], wordForSlot(slot));
+            settle();
+        }
+        assertGe(pool.nextSequenceToProcess() - 1, 10, "ten settled, unreconciled");
+        assertEq(balancer.reconciledSequence(), 0);
+        // one upkeep: reconcile 10 + restock two three-Shape packs (6 Shape units)
+        uint256 g = gasleft();
+        uint256 reimbursed = _upkeep("WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 2 three-Shape packs");
+        uint256 used = g - gasleft();
+        emit log_named_uint("  actual gas used (measured span + overhead)", used);
+        assertEq(balancer.reconciledSequence(), 5, "reconciled exactly MAX_RECONCILE");
+        assertLt(used, KEEPER_MAX_GAS, "worst upkeep under KEEPER_MAX_GAS");
+        assertLt(used, (KEEPER_MAX_GAS * 85) / 100, "with >=15% margin");
+        reimbursed;
+    }
+
+    /// Heaviest restock: 10 settled draws (one of each Shapes size plus a second 0.01), MAX_RECONCILE of them reconciled,
+    /// then MAX_OPS single Shapes across several sizes, each size a separate mint call.
+    function test_gas_worstCaseUpkeepShapes() public {
+        vm.prank(creator);
+        balancer.depositETH{value: 200 ether}();
+        _configure(plan([uint256(44), 1, 1, 1, 1, 1, 1, 1, 1]));
+        fillUp();
+        uint8[10] memory sizes = [uint8(0), 0, 1, 2, 3, 4, 5, 6, 7, 8];
+        for (uint256 k; k < 10; ++k) {
+            assertTrue(balancer.canPurchase(buyer), "admitted while draws are unreconciled");
+            (,,,,,, uint256 slot,) = pool.listings(_anyActiveOfSize(sizes[k]));
+            uint256[] memory ids = buy(buyer, 1);
+            fulfill(ids[0], wordForSlot(slot));
+            settle();
+        }
+        assertEq(balancer.reconciledSequence(), 0);
+        uint256 g = gasleft();
+        _upkeep("WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 5 Shapes");
+        uint256 used = g - gasleft();
+        emit log_named_uint("  actual gas used (measured span + overhead)", used);
+        assertEq(balancer.reconciledSequence(), 5, "reconciled exactly MAX_RECONCILE");
+        assertLt(used, KEEPER_MAX_GAS, "worst upkeep under KEEPER_MAX_GAS");
+    }
+
+    /// Heaviest mix of work: MAX_RECONCILE (5) reconciles while six earlier draws (one each of six sizes) wait to be
+    /// restocked; restocking is held back by a temporary mint-fee rise above the accepted fee. One call then restocks
+    /// MAX_RESTOCK_SIZES (4) sizes, each a separate mint call.
+    function test_gas_worstCaseUpkeepSixSizes() public {
+        uint8[6] memory first = [uint8(1), 2, 3, 4, 5, 6];
+        uint256 used = _worstAfterHeldRestock(first, "WORST CASE upkeep: reconcile 5 draws + mint/list 4 Shapes in 4 sizes");
+        uint16[16] memory a = balancer.getActiveShapes();
+        for (uint256 d = 1; d <= 6; ++d) assertEq(a[d], d <= 4 ? 1 : 0, "four sizes per call, smallest first");
+        assertLt(used, KEEPER_MAX_GAS, "worst upkeep under KEEPER_MAX_GAS");
+    }
+
+    /// MAX_OPS (5) Shape units across the four-size cap: 0.01s, 0.05, 0.1, 0.5.
+    function test_gas_worstCaseUpkeepFullUnits() public {
+        uint8[6] memory first = [uint8(0), 0, 0, 1, 2, 3];
+        uint256 used = _worstAfterHeldRestock(first, "WORST CASE upkeep: reconcile 5 draws + mint/list 5 Shapes in 4 sizes");
+        assertLt(used, (KEEPER_MAX_GAS * 90) / 100, "worst upkeep under KEEPER_MAX_GAS with 10% margin");
+    }
+
+    /// Draws `first` (restock held back by a temporary mint-fee rise), reconciles them, then draws five large prizes and
+    /// measures the one upkeep that reconciles those five and restocks the held prizes.
+    function _worstAfterHeldRestock(uint8[6] memory first, string memory label) internal returns (uint256 used) {
+        vm.prank(creator);
+        balancer.depositETH{value: 600 ether}();
+        _configure(plan([uint256(44), 1, 1, 1, 1, 1, 1, 3, 3]));
+        fillUp();
+        for (uint256 k; k < 6; ++k) _drawSize(first[k]);
+        address admin = 0xCB43078C32423F5348Cab5885911C3B5faE217F9;
+        uint256 fee = shapes.mintFee();
+        vm.prank(admin);
+        (bool ok,) = SHAPES.call(abi.encodeWithSignature("setMintFee(uint256)", fee * 2));
+        assertTrue(ok);
+        upkeep(); // reconcile 5, no restock above the accepted fee
+        upkeep(); // reconcile the sixth
+        assertEq(balancer.reconciledSequence(), 6);
+        vm.prank(admin);
+        (ok,) = SHAPES.call(abi.encodeWithSignature("setMintFee(uint256)", fee));
+        assertTrue(ok);
+        uint8[5] memory big = [uint8(7), 7, 8, 8, 7];
+        for (uint256 k; k < 5; ++k) _drawSize(big[k]);
+        uint256 g = gasleft();
+        _upkeep(label);
+        used = g - gasleft();
+        emit log_named_uint("  actual gas used (measured span + overhead)", used);
+        assertEq(balancer.reconciledSequence(), 11);
+    }
+
+    function _drawSize(uint8 d) internal {
+        (,,,,,, uint256 slot,) = pool.listings(_anyActiveOfSize(d));
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+    }
+
+    function _anyActiveOfSize(uint8 size) internal view returns (uint256) {
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(ids[i]);
+            if (kind != 2 || d != size) continue;
+            (,,,,,,, uint8 st) = pool.listings(ids[i]);
+            if (st == 1) return ids[i];
+        }
+        revert("no active prize of that size");
+    }
+
+    function _anyActivePack() internal view returns (uint256) {
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(ids[i]);
+            if (kind != 2 || d != 10) continue;
+            (,,,,,,, uint8 st) = pool.listings(ids[i]);
+            if (st == 1) return ids[i];
+        }
+        revert("no active pack");
+    }
+
     function test_gas_curatedOnlyReconcile() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], 1); // slot 1: the first curated NFT
         settle();
-        _upkeep("upkeep: reconcile 1 curated draw + checkpoint");
+        _upkeep("upkeep: reconcile 1 curated draw");
     }
 
     function test_gas_refundOnlyBatch() public {
@@ -175,83 +263,32 @@ contract GasBench is ForkBase {
         buy(buyer, 1); // never fulfilled: refunded after the word deadline
         vm.roll(block.number + 40);
         pool.processAcquisitions(1);
-        _upkeep("upkeep: reconcile refund-only batch + checkpoint");
+        _upkeep("upkeep: reconcile refund-only batch");
     }
 
-    function test_gas_planSwitch() public {
-        _configure(plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]));
+    function test_gas_unlistShapes20() public {
+        _configure(plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        _upkeep("upkeep: plan switch, withdraw + redeem 6 Shapes");
-        _upkeep("upkeep: plan switch, withdraw + redeem 2 Shapes + checkpoint");
-    }
-
-    function test_gas_multiCallPlanSwitchInOneTx() public {
-        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(5), 0, 0, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        MultiKeeper mk = new MultiKeeper();
-        vm.recordLogs();
-        vm.prank(keeper, keeper);
-        mk.run(balancer, 8);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        uint256 sum;
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == KEEPER_PAID) {
-                (, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
-                sum += g;
-            }
-        }
-        _report("8 upkeeps in one tx: withdraw + redeem 35 Shapes", sum);
-        assertTrue(balancer.canPurchase(buyer));
-    }
-
-    /// Several paid upkeeps in one transaction at the cap: the keeper earns no more than billed gas + refunds + one
-    /// fixed incentive per call (no per-call intrinsic credit exists to multiply).
-    function test_profitAtCap_multiCallBound() public {
-        _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(5), 0, 0, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        MultiKeeper mk = new MultiKeeper();
-        vm.fee(4.95 gwei);
-        vm.txGasPrice(5 gwei);
-        vm.recordLogs();
-        vm.prank(keeper, keeper);
-        mk.run(balancer, 8);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        uint256 sum;
+        uint256[] memory all = new uint256[](20);
+        uint256[] memory ids = balancer.getActiveIds();
         uint256 n;
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == KEEPER_PAID) {
-                (uint256 r,) = abi.decode(logs[i].data, (uint256, uint256));
-                sum += r;
-                ++n;
-            }
+        for (uint256 i; i < ids.length && n < 20; ++i) {
+            (uint8 kind,,,,) = balancer.items(ids[i]);
+            if (kind == 2) all[n++] = ids[i];
         }
-        (bool ok, bytes memory b) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
-        require(ok);
-        (, uint64 billed,, int64 refunded,) = abi.decode(b, (uint64, uint64, uint64, int64, uint64));
-        uint256 bound = (uint256(billed) + uint256(int256(refunded))) * 5 gwei + n * 0.0005 ether;
-        emit log_named_uint("paid calls", n);
-        emit log_named_decimal_int("rewards - bound (ETH)", int256(sum) - int256(bound), 18);
-        assertGt(n, 1);
-        assertLe(sum, bound, "multi-call rewards within billed + refunds + margins");
+        vm.prank(creator);
+        balancer.close();
+        vm.prank(creator);
+        balancer.unlistShapes(all);
+        _report("unlistShapes(20): withdraw + redeem 20 Shapes (creator)", 0);
     }
 
-    function test_gas_recoverRefundedShape() public {
+    function test_gas_recoverRefunded() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         uint256 lid = lastListingId();
-        (,,,,,, uint256 slot,) = pool.listings(lid);
-        (,,, uint256 tokenId,,,,) = pool.listings(lid);
+        (,,, uint256 tokenId,,, uint256 slot,) = pool.listings(lid);
         uint256[] memory ids = buy(buyer, 1);
-        // unreachable with mainnet Shapes behind the purchaser gate: mock the delivery transfer failing
         vm.mockCallRevert(SHAPES, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
         fulfill(ids[0], wordForSlot(slot));
         settle();
@@ -260,48 +297,19 @@ contract GasBench is ForkBase {
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(buyer);
         pool.refundFailedDelivery(lid);
-        vm.recordLogs();
-        vm.prank(keeper, keeper);
-        balancer.recoverRefundedShape(lid);
-        _report("recoverRefundedShape: recover + redeem", _reimbursed());
+        vm.prank(creator);
+        balancer.recoverRefunded(lid, creator);
+        _report("recoverRefunded: recover + redeem a Shape (creator)", 0);
     }
 
-    function test_gas_repriceMaxListings() public {
+    function test_gas_canPurchase() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
-        PoolBalancer.CuratedInput[] memory batch = new PoolBalancer.CuratedInput[](20);
-        vm.startPrank(creator);
-        nft.setApprovalForAll(address(balancer), true);
-        for (uint256 r; r < 4; ++r) {
-            for (uint256 i; i < 20; ++i) {
-                uint256 id = 1000 + r * 20 + i;
-                nft.mint(creator, id);
-                batch[i] = PoolBalancer.CuratedInput(address(nft), id, 0.3 ether);
-            }
-            balancer.listCuratedBatch(batch);
-        }
-        for (uint256 i; i < 8; ++i) {
-            nft.mint(creator, 2000 + i);
-            balancer.listCurated(address(nft), 2000 + i, 0.3 ether);
-        }
-        vm.stopPrank();
-        assertEq(balancer.getActiveIds().length, 100);
-        upkeep();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
-        _upkeep("upkeep: reprice 6 of 100 listings (full scan)");
-    }
-
-    function test_gas_unwind() public {
-        _configure(plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        vm.startPrank(creator);
-        balancer.close();
-        balancer.unwind(20);
-        vm.stopPrank();
-        _report("unwind(20): withdraw + redeem 20 Shapes (creator)", 0);
+        uint256 g = gasleft();
+        vm.prank(address(pool));
+        balancer.canPurchase(buyer);
+        _report("canPurchase (operator check under the FWA 100k stipend)", 0);
+        emit log_named_uint("  canPurchase gas", g - gasleft());
     }
 
     function test_gas_purchaseWithOperator() public {
@@ -314,13 +322,19 @@ contract GasBench is ForkBase {
         _report("FWA acquireBatch(5) incl. operator check", 0);
     }
 
+    function test_gas_createBalancer() public {
+        address c = makeAddr("gasCreator");
+        vm.prank(c);
+        factory.createBalancer(bytes32(0));
+        _report("createBalancer (clone + FWA pool + operator + approval)", 0);
+    }
+
     /*////////////////////// keeper profitability at the gas-price cap //////////////////////*/
 
     function _profitAtCap(string memory label) internal returns (int256 pnl) {
         return _profitAt(label, 4.95 gwei);
     }
 
-    /// @dev Keeper PnL of one upkeep at `basefee` with a 0.05 gwei priority bid (the reimbursable priority).
     function _profitAt(string memory label, uint256 basefee) internal returns (int256 pnl) {
         vm.fee(basefee);
         vm.txGasPrice(basefee + 0.05 gwei);
@@ -337,15 +351,12 @@ contract GasBench is ForkBase {
         pnl = int256(reward) - int256(uint256(billed) * (basefee + 0.05 gwei));
         emit log(label);
         emit log_named_uint("  billed gas", billed);
-        emit log_named_decimal_uint("  basefee (gwei)", basefee, 9);
         emit log_named_decimal_int("  keeper PnL (ETH)", pnl, 18);
         vm.fee(0.5 gwei);
         vm.txGasPrice(1 gwei);
     }
 
-    /// Cheapest pool shape (0.01 ETH Shapes, ~0.012 ETH draw price): one draw pays FWA ~0.00057 ETH of edge, which
-    /// caps the keeper's incentive for the work it caused. Profitable to ~2.9 gwei; at the 5 gwei cap the keeper
-    /// waits (or the creator runs upkeep).
+    /// Cheapest pool shape: one draw's edge caps the keeper incentive; profitable to ~2.8 gwei, a loss at the 5 gwei cap.
     function test_profitAtCap_replaceOneCheapPool() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
@@ -356,7 +367,6 @@ contract GasBench is ForkBase {
         assertLt(_profitAt("replace 1 Shape, cheap pool, 4.95 gwei", 4.95 gwei), 0);
     }
 
-    /// A typical pool (0.05-0.1 ETH Shapes in the mix): one draw's edge covers the shortfall at the cap.
     function test_profitAtCap_replaceOne() public {
         _configure(plan([uint256(2), 2, 2, 0, 0, 0, 0, 0, 0]));
         fillUp();
@@ -373,44 +383,27 @@ contract GasBench is ForkBase {
 
     function test_profitAtCap_fillSteps() public {
         _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
-        for (uint256 i; i < 7; ++i) {
+        // 40 Shapes at MAX_OPS (5) per call
+        for (uint256 i; i < 12 && !balancer.canPurchase(buyer); ++i) {
             assertGe(_profitAtCap("fill step"), 0);
         }
         assertTrue(balancer.canPurchase(buyer));
     }
 
-    function test_profitAtCap_planSwitch() public {
-        _configure(plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        assertGe(_profitAtCap("plan switch, redeem 6"), 0);
-    }
-
+    /// A curated draw needs no restock, so the upkeep only reconciles it: 4/5 of measured gas plus the incentive,
+    /// capped by the FWA edge that draw paid.
     function test_profitAtCap_curatedReconcile() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], 1);
         settle();
-        assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
-    }
-
-    /// Gas-only path: 4/5 of measured gas; the keeper absorbs the other fifth and the gas outside the measured span.
-    function test_profitAtCap_refundOnlyBatch() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        buy(buyer, 1);
-        vm.roll(block.number + 40);
-        pool.processAcquisitions(1);
-        assertGe(_profitAtCap("refund-only batch (gas only)"), -int256(0.0004 ether));
+        int256 pnl = _profitAtCap("reconcile 1 curated draw");
+        assertGe(pnl, -int256(0.0004 ether), "at worst the withheld 1/5 of gas");
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/
 
-    /// @dev Keeper PnL of one upkeep (reward - billed gas x price) at each basefee, from the same state; logs the
-    ///      highest profitable basefee. Run with --isolate so billed gas includes intrinsic gas and refunds.
     function _sweep(string memory label) internal returns (uint256 maxProfitable) {
         uint256[8] memory fees = [uint256(0.08 gwei), 0.5 gwei, 1 gwei, 2 gwei, 2.8 gwei, 3.5 gwei, 4.2 gwei, 4.95 gwei];
         emit log(label);
@@ -421,12 +414,6 @@ contract GasBench is ForkBase {
             if (pnl >= 0) maxProfitable = fees[i];
         }
         emit log_named_decimal_uint("  => highest profitable basefee tested (gwei)", maxProfitable, 9);
-    }
-
-    function _drawCurated() internal {
-        uint256[] memory ids = buy(buyer, 1);
-        fulfill(ids[0], 1); // slot 1: the first curated NFT
-        settle();
     }
 
     function test_breakEven_replaceOneTypical() public {
@@ -443,88 +430,8 @@ contract GasBench is ForkBase {
         assertGe(_sweep("replace 1 Shape, 0.01-only pool (purchase-caused, credit-limited)"), 2.8 gwei);
     }
 
-    function test_breakEven_replaceFive() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        _drawShapes(5);
-        assertEq(_sweep("replace 5 Shapes, one denomination (purchase-caused, credit)"), 4.95 gwei);
-    }
-
-    function test_breakEven_replaceFiveMixed() public {
-        _configure(plan([uint256(4), 2, 2, 1, 1, 0, 0, 0, 0]));
-        fillUp();
-        _drawShapes(5);
-        assertEq(_sweep("replace 5 Shapes, four denominations (purchase-caused, credit)"), 4.95 gwei);
-    }
-
-    function test_breakEven_curatedReconcile() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        _drawCurated();
-        assertEq(_sweep("reconcile 1 curated draw (purchase-caused, credit)"), 4.95 gwei);
-    }
-
     function test_breakEven_fillStep() public {
         _configure(plan([uint256(20), 10, 10, 0, 0, 0, 0, 0, 0]));
-        assertEq(_sweep("fill step, 6 mints (creator-caused, full incentive)"), 4.95 gwei);
-    }
-
-    function test_breakEven_planSwitchCreator() public {
-        _configure(plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        assertEq(_sweep("plan switch, redeem 6 (creator-caused, full incentive)"), 4.95 gwei);
-    }
-
-    function test_breakEven_planSwitchPurchase() public {
-        uint256[] memory plans = new uint256[](2);
-        plans[0] = plan([uint256(10), 4, 2, 0, 0, 0, 0, 0, 0]);
-        plans[1] = plan([uint256(5), 2, 1, 0, 0, 0, 0, 0, 0]);
-        // a curated draw breaks plan 0's odds floor, so upkeep redeems down to plan 1 (purchase-caused)
-        configure(1 ether, 30, plans); // odds: plan 0 0.48%, 0.18% without the 0.3 ETH NFT; plan 1 0.36%
-        vm.prank(creator);
-        balancer.open();
-        fillUp();
-        require(balancer.activePlan() == 0, "starts on plan 0");
-        _drawCurated();
-        _sweep("plan switch after a curated draw, reconcile + redeem 6 (purchase-caused, credit)");
-    }
-
-    function test_breakEven_reprice() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
-        assertEq(_sweep("reprice 6 listings (creator-caused, full incentive)"), 4.95 gwei);
-    }
-
-    function test_breakEven_refundOnly() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        buy(buyer, 1);
-        vm.roll(block.number + 40);
-        pool.processAcquisitions(1);
-        _sweep("refund-only batch (gas only, no incentive)");
-    }
-
-    /// Unpaid re-checkpoint after a creator edit: the gas a keeper's loss allowance must cover.
-    function test_gas_unpaidRecheckpoint() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256[] memory active = balancer.getActiveIds();
-        vm.prank(creator);
-        balancer.updateCuratedPrice(active[0], 0.31 ether);
-        _upkeep("upkeep: re-checkpoint after a creator edit (unpaid)");
-    }
-
-    function test_gas_createBalancer() public {
-        address c = makeAddr("gasCreator");
-        vm.prank(c);
-        factory.createBalancer(bytes32(0));
-        _report("createBalancer (clone + FWA pool + operator + approval)", 0);
+        assertEq(_sweep("fill step, 5 mints (creator-caused, full incentive)"), 4.95 gwei);
     }
 }

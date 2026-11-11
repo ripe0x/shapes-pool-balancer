@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, styleBonus, type DesignInputs } from './design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, mixOf, playerView, styleBonus, type DesignInputs } from './design';
 import { DENOMS, MAX_SHAPES_PER_PLAN, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
@@ -9,8 +9,6 @@ const base: DesignInputs = {
   edgeBps: 500,
   mintFee: parseEther('0.0005'),
   have: Array(9).fill(0),
-  baseFee: 1_000_000_000n,
-  minCuratedOddsBps: 500,
 };
 const mix = (m: Record<number, number>): Counts => DENOMS.map((_, i) => m[i] ?? 0);
 
@@ -67,13 +65,6 @@ suite('pool size and styles', () => {
 
   it('a style never pushes the pool past the Shape limit', () => {
     for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
-  });
-
-  it('fallbacks raise the chance of an NFT and need no more ETH', () => {
-    const best = mixOf(20);
-    const fb = fallbacksFor(best);
-    expect(fb.length).toBeGreaterThan(0);
-    for (const f of fb) { expect(at(f).odds).toBeGreaterThan(at(best).odds); expect(ethNeeded(f, one) <= ethNeeded(best, one)).toBe(true); }
   });
 
   it('counts Shapes the switch would redeem as available', () => {

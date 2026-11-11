@@ -161,3 +161,44 @@ Review the **Money and authority** section first.
     the 3.2M reimbursement cap (`test_gas_fullPoolAtLimits`: fill, 5-draw replacement, repricing). Costs: a full fill
     takes about twice as many upkeeps (paid from the pool as keeper rewards), and plan switches and repricing touch more
     listings.
+
+## Simplified gate and markup at listing (2026-11-11)
+
+Owner decisions: markup applies at listing (option A), no repricing, no listing cap, simplify the contract. The money
+flows pass (`sim/flows.ts`, `docs/simulation-results.md`) set the details. This section supersedes entries 1 (repricing
+part), 39, 42 (listing cap) and every rule about checkpoints, approved fallback plans, the draw-price ceiling, the NFT
+odds floor, the worst-batch reserve and `unwind`.
+
+43. **Markup applies when a listing is made.** Listed prizes and NFTs keep their price; restocks and new NFTs use the
+    markup in force. Nothing is repriced, so `updatePrice` gas (FWA has no batch update) is never spent on markup changes.
+44. **Purchases are not one batch at a time.** FWA prices every draw on live inventory and refunds draws whose price moved
+    past the player's tolerance, so the gate keeps the game near its design instead of exact. Purchases pause while
+    upkeep finishes creator-started work, while 5 draws are unsettled, while the mint fee is above the one the creator
+    accepted, or while prize weight (less the heaviest prize per unreconciled draw) is below 70% of the target's.
+    Evidence: no unsettled limit refunded ~20% of draws in bursts; a count-based fill let NFT odds reach ×2.2 design.
+45. **One target mix**, no fallback plans, ceiling or odds floor. A smaller target leaves extra prizes listed until the
+    creator unlists them (`unlistShapes`, which also replaces `unwind`).
+46. **Withdrawal reserve while open**: restoring the target, one largest prize per unreconciled draw plus one spare,
+    and a maximum keeper reward per upkeep call that work takes plus one. It limits withdrawals only; it never closes
+    purchases. Evidence: without the spare, a creator withdrawing everything left the top prize missing half the time.
+    The reserve and restocking use the higher of the live mint fee and the accepted one. Review round 7 noted that one
+    gate check admits a batch of five draws while the reserve holds one spare top prize; kept at one: two top-prize wins
+    in one batch is about 1 in 6,000 for Balanced, a shortfall only delays that restock (proceeds or a deposit cover it),
+    and holding five would lock about 2.5 ETH more per Balanced pool.
+47. **Upkeep reconciles settled FWA sequences, 5 per call, and restocks while draws are pending** (FWA stages those
+    listings). The gate uses tracked prize weight because FWA calls it before activating staged listings. Per call:
+    at most 5 Shape units (was 6) and 4 prize sizes, because 5 reconciles + 6 Shapes in 4 sizes measured 3.13M and
+    6 sizes 3.19M against the 3.2M reimbursement cap. Pools take a few more upkeep calls to fill.
+    `initialize` requires FWA's staging cap to be off (a cap would make restocking revert while draws settle), and the
+    constructor checks Shapes has nine sizes (Draw Packs takes one count per size).
+    Known and accepted: the keeper credit backs FWA's edge out at today's `edgeBps`, so it can differ from the edge a
+    draw paid if FWA changes its edge before reconciliation; a draw still awaiting delivery at reconciliation is treated
+    as undelivered (no credit) and its record stays if a later retry delivers it.
+48. **Removed:** the token-offer check (only the owner can enable one, and this contract never does), the permissionless
+    `recoverRefundedShape` (merged into creator-only `recoverRefunded`), `clearENSName` (`setENSName("")`), and the
+    100-listing cap (FWA's tree holds 2^32 listings; no contract loop scans listings).
+49. **Kept:** keeper reimbursement (4/5 measured gas, 0.05 gwei priority cap, 5 gwei cap), full incentive only for
+    creator-started work while purchases are refused, otherwise capped by the FWA edge players paid (now accumulated).
+50. **Open for the owner:** the creator pays keeper gas up to 5 gwei, and a Balanced pool at 15% loses money above about
+    2 gwei with 3 draws per upkeep. Options: a creator-set gas ceiling that pauses restocking, or keepers restocking after
+    several draws. Not changed here.

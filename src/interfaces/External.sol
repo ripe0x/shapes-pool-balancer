@@ -8,6 +8,7 @@ interface IFWAPoolFactory {
     function createPool(bytes32 userSalt, address expectedImplementation) external returns (address pool);
     function edgeBps() external view returns (uint16);
     function maxAcquisitionsPerTx() external view returns (uint16);
+    function maxStagedListings() external view returns (uint256);
     function globalWithdrawOnly() external view returns (bool);
 }
 
@@ -116,6 +117,7 @@ interface IShapes {
     function mintBatch(uint256 amountWei, uint256 quantity) external payable returns (uint256 firstTokenId);
     function redeemBatch(uint256[] calldata tokenIds) external returns (uint256 totalWei);
     function denominationAt(uint8 index) external pure returns (uint256);
+    function denominationCount() external view returns (uint8);
     function denomIndexOf(uint256 tokenId) external view returns (uint8);
     function backingOf(uint256 tokenId) external view returns (uint256);
     function setApprovalForAll(address operator, bool approved) external;

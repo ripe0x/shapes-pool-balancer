@@ -6,7 +6,7 @@ import { describe, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, 
 // One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee.
 const EXAMPLE: DesignInputs = {
   curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.001'),
-  have: Array(16).fill(0), baseFee: 100_000_000n, minCuratedOddsBps: 1,
+  have: Array(16).fill(0),
 };
 const SMALL = 20;
 const STYLES: { key: Style; label: string }[] = [
@@ -103,11 +103,11 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <p className="hiw-p">You choose the mix once. When a prize is won, the pool replaces it with the same prize, so it keeps that mix draw after draw. Your NFTs are not replaced.</p>
         <ol className="hiw-cycle">
           <li><b>A player draws</b><span>and wins, say, a 0.05 ETH Shape.</span></li>
-          <li><b>Purchases pause</b><span>The pool waits until it is back to the mix you approved.</span></li>
+          <li><b>Draws continue</b><span>Other players keep drawing from the prizes still listed.</span></li>
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
-          <li><b>The pool reopens</b><span>Same mix, same odds, ready for the next draw.</span></li>
+          <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">The keeper is paid a capped reward from the pool. When Ethereum gas is above 5 gwei, keepers wait and the pool stays paused until gas comes down.</p>
+        <p className="note">The keeper is paid a capped reward from the pool. When Ethereum gas is above 5 gwei, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -129,7 +129,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'is held as reserve', share: Number(reserve) / Number(deposit), style: { background: '#555' }, note: `${eth(reserve)} ETH` },
           { label: 'is unused', share: Number(unused) / Number(deposit), style: { border: '1.5px solid #555' }, note: `${eth(unused)} ETH, withdraw any time` },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>The reserve covers mint fees and the replacement of the five costliest prizes (FWA settles up to five draws at once), plus keeper rewards. It is the pool's own money: when you close the pool and unwind, every prize is redeemed for its exact ETH and everything can be withdrawn.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>The reserve covers mint fees, a spare top prize (so a big win is restocked straight away) and keeper rewards. While the pool is open it stays in the pool; it is still your money: when you close the pool and unlist the prizes, each is redeemed for its exact ETH and everything can be withdrawn.</p>
       </section>
 
       <section className="hiw-sec">
@@ -165,10 +165,10 @@ const FAQ: [string, string][] = [
   ['What is a Shape?', 'An NFT from the Shapes project that holds a fixed amount of ETH. Whoever owns it can redeem it for exactly that ETH at any time, or keep it.'],
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
-  ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running, switching to a mix with fewer small Shapes if needed to keep your minimum NFT chance. If it was your last NFT, purchases stop until you add another.'],
+  ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
   ['Can I lose money?', 'Over many draws your markup pays for mint fees and keeper rewards, and the page warns you when it does not. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
-  ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unwind the Shapes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
-  ['Why do purchases pause after draws?', 'The pool only sells draws while it holds exactly the mix you approved. After a draw it waits for upkeep to restock, usually within a block or two.'],
+  ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
+  ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
-  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A markup change reprices every listing during upkeep, and purchases stay closed until it finishes."],
+  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to prizes listed after the change; prizes already listed keep their price."],
 ];

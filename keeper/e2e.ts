@@ -60,6 +60,18 @@ async function status(b: Address) {
   return Number(await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'admissionStatus' }));
 }
 
+/** Admitting, every draw reconciled and the target fully listed: what the keeper restores after draws. */
+async function stocked(b: Address) {
+  const r = (fn: string) => pub.readContract({ address: b, abi: poolBalancerAbi, functionName: fn as never });
+  const pool = (await r('pool')) as Address;
+  const t = (await r('target')) as bigint;
+  const have = (await r('getActiveShapes')) as readonly number[];
+  const last = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'lastIssuedSequence' });
+  if ((await r('reconciledSequence')) !== last) return false;
+  for (let d = 0; d < 16; d++) if (Number((t >> BigInt(16 * d)) & 0xffffn) !== Number(have[d])) return false;
+  return (await status(b)) === 0;
+}
+
 async function tickUntil(k: Keeper, done: () => Promise<boolean>, max = 12) {
   for (let i = 0; i < max; i++) {
     await k.tick();
@@ -119,7 +131,7 @@ async function run() {
   let k = mk();
 
   // 1. discovery and initial fill of both pools
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   assert.equal(k.state.balancers.length, 2, 'discovered both');
   const kb0 = await pub.getBalance({ address: keeperAddr });
   console.log('✓ discovered and filled 2 pools; sent', k.state.stats.sent);
@@ -127,9 +139,9 @@ async function run() {
   // 2. real FWA draws on both pools, then reconciliation and replenishment
   await buyAndSettle(b1, 3, '0x00000000000000000000000000000000000b0b01', 11n);
   await buyAndSettle(b2, 5, '0x00000000000000000000000000000000000b0b02', 99n);
-  assert.notEqual(await status(b1), 0);
-  assert.notEqual(await status(b2), 0);
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  assert.equal(await stocked(b1), false, 'drawn prizes are missing until upkeep');
+  assert.equal(await stocked(b2), false, 'drawn prizes are missing until upkeep');
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   const kb1 = await pub.getBalance({ address: keeperAddr });
   assert.ok(kb1 > kb0, 'keeper earned more than it spent');
   console.log('✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)');
@@ -160,7 +172,7 @@ async function run() {
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });
   await test.setAutomine(true);
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   assert.equal(Object.keys(k.state.pending).length, 0);
   console.log('✓ replacement tx mined; stats', JSON.stringify(k.state.stats));
 
@@ -179,7 +191,7 @@ async function run() {
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b05', 21n);
   await buyAndSettle(b2, 4, '0x00000000000000000000000000000000000b0b06', 22n);
   k = mk();
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   console.log('✓ downtime: restarted keeper restored both pools');
 
   // 7. gas policy: above the bid cap the keeper waits instead of overbidding
@@ -192,12 +204,12 @@ async function run() {
   assert.ok(logs.some((l) => l.startsWith('skip: basefee above bid cap')));
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   console.log('✓ waited through a basefee spike, then serviced');
 
   // 8. Purchaser gate. The only known way to make a Shape delivery fail is a purchase naming the Shapes contract
   //    (Shapes rejects only transfers to itself); the Balancer refuses it, so FWA reverts the purchase.
-  //    `recoverRefundedShape` stays for unknown failures and is covered by the fork test with a mocked revert.
+  //    `recoverRefunded` stays for unknown failures and is covered by the fork test with a mocked revert.
   const SHAPES = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0' as Address;
   const pool1 = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
   const gateBuyer = '0x00000000000000000000000000000000000b0b08' as Address;
@@ -236,7 +248,7 @@ async function run() {
   // 10. one broken pool does not stop the others
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b04', 5n);
   await test.setCode({ address: b2, bytecode: '0xfe' });
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   assert.ok(k.errors[b2], 'b2 error recorded');
   assert.equal(k.health().balancers, 2);
   console.log('✓ per-pool error isolation; health', JSON.stringify(k.health()));

@@ -46,6 +46,17 @@ const rand = () => { seed = BigInt(keccak256(toHex(seed))); return Number(seed %
 const read = <T,>(address: Address, abi: readonly unknown[], functionName: string, args: unknown[] = []) =>
   pub.readContract({ address, abi: abi as never, functionName: functionName as never, args: args as never }) as Promise<T>;
 const status = (b: Address) => read<number>(b, poolBalancerAbi, 'admissionStatus').then(Number);
+/** Admitting, every draw reconciled and the target fully listed: what the keeper restores after each batch. */
+async function stocked(b: Address) {
+  const pool = await read<Address>(b, poolBalancerAbi, 'pool');
+  const [t, have, rec, last] = await Promise.all([
+    read<bigint>(b, poolBalancerAbi, 'target'), read<readonly number[]>(b, poolBalancerAbi, 'getActiveShapes'),
+    read<bigint>(b, poolBalancerAbi, 'reconciledSequence'), read<bigint>(pool, fwaPoolAbi, 'lastIssuedSequence'),
+  ]);
+  if (rec !== last) return false;
+  for (let d = 0; d < 16; d++) if (Number((t >> BigInt(16 * d)) & 0xffffn) !== Number(have[d])) return false;
+  return (await status(b)) === 0;
+}
 
 /** Basefee (gwei) by round: mainnet median, with periods below, near and above the 5 gwei reimbursement cap. */
 function basefeeFor(round: number): { gwei: number; period: 'normal' | 'below' | 'near' | 'above' } {
@@ -139,13 +150,7 @@ async function main() {
       balancers.push(out.match(/Balancer (0x[0-9a-fA-F]{40})/)![1] as Address);
       demo.push(out.match(/DemoNFT (0x[0-9a-fA-F]{40})/)![1] as Address);
     }
-    // Pool B gets a fallback plan: losing a curated NFT breaks plan A's 0.80% odds floor (switch to plan B); restoring
-    // curated value pushes plan B over the 0.028 ETH ceiling (switch back to plan A).
     const [bA, bB] = balancers;
-    await test.impersonateAccount({ address: CREATORS[1] });
-    const planA = 5n | (3n << 16n) | (2n << 32n);
-    const planB = 2n | (1n << 16n) | (1n << 32n);
-    await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [{ maxDrawPrice: 28n * 10n ** 15n, minCuratedOddsBps: 80, markupBps: 1500 }, [planA, planB]], account: CREATORS[1] });
 
     // Keeper account: fresh, funded once by the harness; this funding precedes the reconciliation window.
     await test.impersonateAccount({ address: KEEPER });
@@ -169,7 +174,7 @@ async function main() {
       const t0 = Date.now();
       while (Date.now() - t0 < maxMs) {
         if (pin) await setBasefee(level);
-        if ((await status(b)) === 0) return Date.now() - t0;
+        if (await stocked(b)) return Date.now() - t0;
         await sleep(300);
       }
       return -1;
@@ -189,7 +194,7 @@ async function main() {
       arrivals: 0, foundOpen: 0, batches: 0, draws: 0, reopenMs: [] as number[],
       byPeriod: { normal: 0, below: 0, near: 0, above: 0 } as Record<string, number>,
       aboveCapWaited: 0, aboveCapSent: 0, resumedAfterSpike: 0,
-      purchaseCausedSwitches: 0, creatorCausedSwitches: 0, creatorEdits: 0, creatorRanUpkeep: 0, creatorRestocks: 0, restarts: 0,
+      markupChanges: 0, creatorEdits: 0, creatorRestocks: 0, restarts: 0,
     };
     let nextDemoId = 100n;
     const curatedCount = async (b: Address) => {
@@ -209,7 +214,7 @@ async function main() {
     const keepStocked = async () => {
       for (let i = 0; i < balancers.length; i++) {
         const st = await status(balancers[i]);
-        if ((st === 0 || st === 4) && (await curatedCount(balancers[i])) < 2) {
+        if ((st === 0 || st === 3) && (await curatedCount(balancers[i])) < 2) { // 3: NO_CURATED
           await restock(i);
           await mustOpen(balancers[i], 'reopened after a curated restock', 60_000, true);
         }
@@ -229,26 +234,19 @@ async function main() {
         stats.restarts++;
       }
 
-      // Purchase-caused fallback switch on pool B (normal gas), then the creator restores curated value.
-      if ((round % 50 === 12 || round % 50 === 44) && (await status(bB)) === 0) {
-        const pool = await read<Address>(bB, poolBalancerAbi, 'pool');
-        const ids = await read<bigint[]>(bB, poolBalancerAbi, 'getActiveIds');
-        let curated: bigint | undefined;
-        for (const id of ids) if (Number((await read<readonly unknown[]>(bB, poolBalancerAbi, 'items', [id]))[0]) === 1) { curated = id; break; }
-        assert.ok(curated, 'pool B has a curated listing');
-        await buyAndSettle(bB, 1, `0x${(0xc0de0000 + round).toString(16).padStart(40, '0')}` as Address, [await wordFor(bB, pool, curated!)]);
-        await mustOpen(bB, 'pool B reopened on its fallback plan after a curated draw');
-        assert.equal(Number(await read<number>(bB, poolBalancerAbi, 'activePlan')), 1, 'purchase-caused switch to plan B');
-        stats.purchaseCausedSwitches++;
-        // Creator lists a replacement curated NFT: restores odds and pushes plan B over the ceiling.
-        const id = nextDemoId++;
+      // Markup change on pool B: existing listings keep their price; prizes restocked afterwards use the new markup.
+      if ((round % 50 === 12 || round % 50 === 44) && (await stocked(bB))) {
+        const markup = round % 50 === 12 ? 1000 : 1500;
+        const t = await read<bigint>(bB, poolBalancerAbi, 'target');
         await test.impersonateAccount({ address: CREATORS[1] });
-        await send({ address: demo[1], abi: demoAbi, functionName: 'mint', args: [CREATORS[1], id], account: CREATORS[1] });
-        await send({ address: demo[1], abi: erc721Abi, functionName: 'approve', args: [bB, id], account: CREATORS[1] });
-        await send({ address: bB, abi: poolBalancerAbi, functionName: 'listCurated', args: [demo[1], id, 25n * 10n ** 16n], account: CREATORS[1] });
-        await mustOpen(bB, 'pool B reopened on plan A after the creator relisted');
-        assert.equal(Number(await read<number>(bB, poolBalancerAbi, 'activePlan')), 0, 'creator-caused switch back to plan A');
-        stats.creatorCausedSwitches++;
+        await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [markup, t], account: CREATORS[1] });
+        assert.equal(await status(bB), 0, 'a markup change with the target listed keeps purchases open');
+        await buyAndSettle(bB, 1, `0x${(0xc0de0000 + round).toString(16).padStart(40, '0')}` as Address, [BigInt(keccak256(toHex(BigInt(round))))]);
+        await mustOpen(bB, 'pool B restocked after a markup change', 60_000, true);
+        const ids = await read<bigint[]>(bB, poolBalancerAbi, 'getActiveIds');
+        const last = await read<readonly unknown[]>(bB, poolBalancerAbi, 'items', [ids.reduce((a, x) => (x > a ? x : a))]);
+        if (Number(last[0]) === 2) assert.equal(last[4], ((last[3] as bigint) * BigInt(10_000 + markup)) / 10_000n, 'restocked prize priced at the new markup');
+        stats.markupChanges++;
         continue;
       }
 
@@ -275,7 +273,7 @@ async function main() {
         stats.reopenMs.push(await mustOpen(b, `pool reopened at ${gwei} gwei`, 60_000, true));
       }
 
-      // Creator edit on pool A: unpaid re-checkpoint, covered by the keeper's loss allowance.
+      // Creator edit on pool A: a curated price change needs no upkeep.
       if (round % 40 === 39) {
         const ids = await read<bigint[]>(bA, poolBalancerAbi, 'getActiveIds');
         for (const id of ids) {
@@ -286,14 +284,7 @@ async function main() {
           break;
         }
         stats.creatorEdits++;
-        // The unpaid re-checkpoint is within the keeper's loss allowance only at normal gas; above it the keeper
-        // waits and the creator runs upkeep (the documented fallback).
-        if (period === 'normal') await mustOpen(bA, 'reopened after a creator edit without the creator running upkeep');
-        else if ((await waitOpen(bA, 8_000, true)) < 0) {
-          await send({ address: bA, abi: poolBalancerAbi, functionName: 'performUpkeep', account: CREATORS[0] });
-          stats.creatorRanUpkeep++;
-          await mustOpen(bA, 'reopened after the creator ran upkeep', 60_000, true);
-        }
+        assert.ok(await stocked(bA), 'still open after a creator edit');
       }
     }
 
@@ -352,8 +343,8 @@ async function main() {
       batches: stats.batches, draws: stats.draws, batchesByPeriod: stats.byPeriod,
       reopenMs: { median: sorted[Math.floor(sorted.length / 2)], p90: sorted[Math.floor(sorted.length * 0.9)], max: sorted.at(-1) },
       aboveCap: { keeperWaited: stats.aboveCapWaited, keeperSent: stats.aboveCapSent, resumedWithoutIntervention: stats.resumedAfterSpike },
-      fallback: { purchaseCaused: stats.purchaseCausedSwitches, creatorCaused: stats.creatorCausedSwitches },
-      creatorEdits: stats.creatorEdits, creatorRanUpkeep: stats.creatorRanUpkeep, creatorRestocks: stats.creatorRestocks, keeperRestarts: stats.restarts,
+      markupChanges: stats.markupChanges,
+      creatorEdits: stats.creatorEdits, creatorRestocks: stats.creatorRestocks, keeperRestarts: stats.restarts,
       keeper: { netWei: (kb1 - kb0).toString(), sent: health.stats.sent, mined: health.stats.mined, reverted: health.stats.reverted, replaced: health.stats.replaced, skippedUnprofitable: health.stats.skippedUnprofitable, errors: health.errors },
       healthOk: health.ok,
     };
@@ -363,7 +354,7 @@ async function main() {
     assert.equal(health.stats.reverted, 0, 'no reverted keeper transactions since the last restart');
     assert.equal(stats.aboveCapSent, 0, 'keeper never serviced above the cap');
     if (ROUNDS >= 50) assert.ok(stats.byPeriod.above > 0 && stats.byPeriod.near > 0 && stats.byPeriod.below > 0, 'all gas periods exercised');
-    if (ROUNDS >= 25) assert.ok(stats.purchaseCausedSwitches > 0 && stats.creatorCausedSwitches > 0, 'fallback plans exercised');
+    if (ROUNDS >= 25) assert.ok(stats.markupChanges > 0, 'markup changes exercised');
     assert.ok(kb1 > kb0, 'keeper earned more than it spent');
     console.log('REHEARSAL PASSED');
   } finally {

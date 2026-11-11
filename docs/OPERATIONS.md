@@ -2,26 +2,22 @@
 
 Status codes come from `admissionStatus()`; the dashboard shows them as text.
 
-| Code | Meaning | Action |
-| --- | --- | --- |
-| 0 | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
-| 1 | Closed by creator | `open()` |
-| 2 | Needs upkeep | call `performUpkeep()` (keeper, creator or anyone); repeat while a fill or repricing is in progress |
-| 3 | FWA batch unresolved | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
-| 4 | No curated NFTs | list a curated NFT, then upkeep |
-| 5 | No approved plan feasible | add curated value, raise the price ceiling, lower the odds floor, or approve another plan |
-| 6 | Reserve not covered | `depositETH()`, then upkeep. The shown reserve includes keeper rewards for any refill steps |
-| 7 | Mint fee rose | upkeep re-checkpoints at the new fee if funded |
-| 8 | Price above ceiling | reconfigure |
-| 10 | Repricing | upkeep until done |
-| 11 | FWA retired or withdraw-only | unwind and withdraw |
-| 12 | FWA totals differ from plan | should not occur; close the pool and report |
+| Code | Name | Meaning | Action |
+| --- | --- | --- | --- |
+| 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
+| 1 | CLOSED | Closed by creator | `open()` |
+| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeep()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
+| 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
+| 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
+| 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
+| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep()` to restock; if it stays at 6, `depositETH()` and upkeep again |
 
 ## Keeper down
 
-New purchases stop after the next batch (status 2). Outstanding draws, refunds and NFT claims are unaffected: FWA
-settles them itself. Anyone, including the creator from the dashboard, can call `performUpkeep()`. Run a second keeper with
-the same factory address; duplicate submissions just revert `NoUpkeepNeeded` in simulation and are never sent.
+New purchases pause once prize weight falls below 70% of the target (status 6) or 5 draws are unsettled (status 4).
+Outstanding draws, refunds and NFT claims are unaffected: FWA settles them itself. Anyone, including the creator from the
+dashboard, can call `performUpkeep()`. Run a second keeper with the same factory address; duplicate submissions just
+revert `NoUpkeepNeeded` in simulation and are never sent.
 
 ## Keeper service
 
@@ -31,17 +27,16 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 ```
 
 - Each tick the keeper simulates `performUpkeep` for every Balancer at the price it would bid (basefee + 0.05 gwei,
-  `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` and `PoolBusy` mean nothing to do;
-  any other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price,
-  and never when the estimate exceeds the 3.2M reimbursable maximum.
+  `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` means nothing to do; any other revert
+  is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price, and never when
+  the estimate exceeds the 3.2M reimbursable maximum.
 - `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
   at the current basefee. A receipt can cost more if basefee rises before inclusion.
-  Paid work is profitable up to the 5 gwei cap by design (except pools whose draws all cost ~0.01 ETH, credit-limited
-  from ~4.2 gwei). Gas-only calls (paid 4/5 of measured gas) lose ~0.00033 ETH of billed gas at the cap; unpaid re-checkpoints (after creator
-  edits, deposits or a mint-fee change) cost ~155k gas. With an estimate ~78k gas above billed, the default covers
-  refund-only batches to ~1.3 gwei and re-checkpoints to ~0.85 gwei; above that the creator runs them. Set 0 for a strictly profitable keeper.
-- The keeper also watches `ItemDrawn` events for failed Shape deliveries and calls `recoverRefundedShape` once FWA marks
-  them refunded.
+  Paid restocking work is profitable up to the 5 gwei cap by design (except pools whose draws all cost ~0.01 ETH,
+  credit-limited earlier). Calls that reconcile only refunded draws (no edge was paid) get the 4/5 gas part only and lose
+  their remaining gas; the default covers them at normal gas, and the next restocking call reconciles them anyway. Set 0
+  for a strictly profitable keeper.
+- Refunded NFTs and prizes are recovered by the creator with `recoverRefunded(listingId, to)`, not by the keeper.
 
 - Health: `GET http://localhost:8787/health` (503 if no tick for 2 minutes). Per-pool errors are listed and do not stop
   other pools.
@@ -61,15 +56,14 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 
 FWA quarantines a drawn NFT that cannot be transferred (status `DeliveryPending`). Anyone may retry via FWA
 `retryNFTDelivery(listingId)` for 7 days. After that the purchaser may `refundFailedDelivery`. The dashboard lists failed
-deliveries from `ItemDrawn` events. A refunded Shape is recovered and redeemed by anyone with
-`recoverRefundedShape(listingId)` (the keeper does this). A refunded curated NFT is recovered by the creator with
-`recoverCuratedNFT(listingId, to)`; upkeep never calls curated collections, so a hostile collection cannot tax keepers. If
-the collection blocks the transfer, retry later. If the purchaser never refunds, the NFT stays in FWA's delivery escrow
-(FWA behavior). The gate refuses the Balancer, the Shapes contract and the pool as purchasers, so Shape deliveries cannot
-fail with mainnet Shapes. Do not list collections that refuse transfers to contracts: a purchaser contract that never
-refunds can lock such an NFT in FWA escrow (the dashboard warns before listing). List only collections you trust: one
-whose contract can move, burn or freeze tokens can take a listed NFT out of FWA or block its withdrawal; the dashboard
-says so beside the listing form.
+deliveries from `ItemDrawn` events. The creator recovers a refunded item with `recoverRefunded(listingId, to)`: a curated
+NFT goes to `to`, and a drawn prize is redeemed here for its backing. Upkeep never calls curated collections, so a hostile
+collection cannot tax keepers. If the collection blocks the transfer, retry later. If the purchaser never refunds, the NFT
+stays in FWA's delivery escrow (FWA behavior). The gate refuses the Balancer, the Shapes contract, the Draw Packs contract
+and the pool as purchasers, so prize deliveries cannot fail with mainnet Shapes or Draw Packs. Do not list collections
+that refuse transfers to contracts: a purchaser contract that never refunds can lock such an NFT in FWA escrow (the
+dashboard warns before listing). List only collections you trust: one whose contract can move, burn or freeze tokens can
+take a listed NFT out of FWA or block its withdrawal; the dashboard says so beside the listing form.
 
 ## NFT sent to the Balancer directly
 
@@ -78,21 +72,24 @@ pending deliveries are owned by the FWA pool and cannot be taken this way.
 
 ## Shapes mint fee change
 
-The Shapes admin can change `mintFee` up to 0.01 ETH. A rise closes admission (status 7) until upkeep re-checkpoints with
-a reserve funded at the new fee. Planner and simulation show when a fee makes the configuration uneconomic.
+The Shapes admin can change `mintFee` up to 0.01 ETH. A rise pauses purchases and restocking (status 5) until the creator
+runs `configure(markupBps, target)` again to accept the new fee, with the reserve funded for it. Planner and simulation
+show when a fee makes the configuration uneconomic.
 
 ## FWA changes
 
 - The Balancer only creates pools on the reviewed implementation and code hash. If FWA rotates its implementation, new
   Balancer creation reverts; existing pools are unaffected (FWA clones keep their implementation).
-- FWA `globalWithdrawOnly` or retirement: upkeep reports status 11; unwind and withdraw still work.
+- FWA `globalWithdrawOnly` or retirement: FWA refuses new purchases and listings, so upkeep stops restocking; proceeds
+  collection, `unlistShapes` and withdrawals still work.
 
 ## Recover all capital
 
 1. `close()`.
-2. Wait for status 3 to clear (FWA batch settled), run upkeep once to reconcile.
-3. `unwind(20)` until no Shapes are listed (withdraws and redeems Shapes for exact backing).
-4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverCuratedNFT` for any refunded one.
+2. Wait for FWA to settle any unsettled draws, then run `performUpkeep()` once to reconcile them.
+3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
+   `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
+4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
 5. `claimSurplus(balance, to)`; while closed the full balance is claimable.
 6. Optional and permanent: `retire()`.
 

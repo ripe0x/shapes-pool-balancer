@@ -1,43 +1,42 @@
 # Gas benchmarks and keeper bounds
 
-Measured on a mainnet fork at block 26,382,349 (real FWA StandardPoolBuyback and Shapes) with
-`forge test --match-contract GasBench --isolate -vv`. `--isolate` runs each call as its own transaction: cold storage,
-intrinsic gas, and EIP-3529 refunds applied, so "billed" is what the sender pays for. Every keeper benchmark asserts
-reimbursed gas ≤ billed gas. The keeper e2e (`npm run keeper:e2e`) asserts the same against real anvil receipts.
+Measured with `forge test --match-contract GasBench --isolate -vv` on a mainnet fork at block 26,382,349 (real FWA
+StandardPoolBuyback and Shapes). `--isolate` runs each call as its own transaction: cold storage, intrinsic gas, and
+EIP-3529 refunds applied, so "billed" is what the sender pays for. Every keeper benchmark asserts reimbursed gas ≤ billed
+gas, and the keeper e2e (`npm run keeper:e2e`) asserts the same against real anvil receipts.
+
+Measured on the 2026-11-11 rewrite (`forge test --match-path test/Gas.t.sol -vv`, mainnet fork block 26,382,349). The
+heaviest upkeep measured uses 2,756,732 gas in total, 14% under the 3.2M reimbursement cap; that is why one call restocks
+at most 5 Shape units in 4 sizes and reconciles at most 5 draws.
 
 | Operation | Billed gas | Reimbursed gas | Ratio |
 | --- | ---: | ---: | ---: |
-| `performUpkeep`: reconcile + replace 1 Shape + checkpoint | 842,897 | 687,016 | 82% |
-| `performUpkeep`: reconcile + replace 5 Shapes (one denomination) | 2,151,856 | 1,768,743 | 82% |
-| `performUpkeep`: reconcile + replace 5 Shapes (four denominations) | 2,611,488 | 2,154,688 | 83% |
-| `performUpkeep`: plan switch, withdraw + redeem 6 Shapes | 1,004,800 | 970,547 | 97% |
-| `performUpkeep`: plan switch, withdraw + redeem 2 Shapes + checkpoint | 591,177 | 538,121 | 91% |
-| 8 `performUpkeep` calls in one transaction (contract keeper), redeem 35 Shapes | 4,704,186 | 4,474,237 | 95% |
-| `recoverRefundedShape`: recover + redeem | 145,855 | 114,598 | 79% |
-| `performUpkeep`: reconcile 1 curated draw + checkpoint | 229,930 | 171,764 | 75% |
-| `performUpkeep`: reconcile a refund-only batch + checkpoint | 194,763 | 129,512 | 66% |
-| `performUpkeep`: reprice 6 of 100 listings (full scan) | 598,525 | 460,240 | 77% |
-| `performUpkeep`: fill step, 6 Shapes (mint + list) | 2.90M–3.01M | 2.30M–2.39M | 79–80% |
-| `unwind(20)`: withdraw + redeem 20 Shapes (creator, unpaid) | 2,407,321 | – | – |
-| FWA `acquireBatch(5)` including the Balancer operator check | 1,661,074 | – | – |
-| `BalancerFactory.createBalancer` (clone, FWA pool, operator, Shapes approval) | 776,162 | – | – |
+| `performUpkeep`: reconcile 5 settled draws + restock 5 Shapes in 4 sizes (heaviest measured) | 2,624,171 | 2,167,694 | 0.83 |
+| `performUpkeep`: reconcile 5 + 4 Shapes in 4 sizes | 2,158,709 | 1,788,604 | 0.83 |
+| `performUpkeep`: reconcile 1 draw + replace 1 Shape | 763,379 | 626,260 | 0.82 |
+| `performUpkeep`: reconcile 5 + replace 5 Shapes in 4 sizes | 2,526,701 | 2,089,718 | 0.83 |
+| `performUpkeep`: reconcile 1 curated draw (no restock) | 138,667 | 99,366 | 0.72 |
+| `performUpkeep`: reconcile a refund-only draw | 105,783 | 55,443 | 0.52 |
+| `performUpkeep`: fill step, 5 Shapes (mint + list) | 2,428,589 to 2,513,124 | 1,934,455 to 2,002,083 | 0.80 |
+| `performUpkeep`: fill step, 1 three-Shape pack | 1,248,382 to 1,368,081 | 999,249 to 1,095,008 | 0.80 |
+| `unlistShapes(20)`: withdraw + redeem 20 prizes (creator, unpaid) | 2,617,435 | – | – |
+| `recoverRefunded`: recover + redeem a Shape (creator, unpaid) | 140,130 | – | – |
+| `canPurchase` (admission gate, under FWA's 100k stipend) | 57,152 (call) | – | – |
+| FWA `acquireBatch(5)` including the Balancer operator check | 1,661,430 | – | – |
+| `BalancerFactory.createBalancer` (clone, FWA pool, operator, Shapes + Packs approval) | 806,548 | – | – |
 
-Real receipts from the keeper e2e at the release candidate (`7fcdbe4`, anvil fork): fill steps 2,208,949 and
-3,029,258 billed / 1,753,673 and 2,409,738 reimbursed (79–80%); 1–5 draw replacements 847,103–939,643 / 675,939–757,651
-(80–81%); `recoverRefundedShape` 155,443 / 114,616 (74%). No keeper transaction was reimbursed more gas than billed.
-
-Other measurements: 100 listings take 17 repricing upkeeps after a markup change; routine Shape upkeep gas is unchanged
-after 200 refunded curated deliveries (847k before, 836k after); `canPurchase` stays under FWA's 100k stipend.
+Delivery failures are resolved per item and never scanned, so routine upkeep gas does not grow with refund history or
+hostile collections (`test_historicalRefundsDoNotGrowUpkeepGas`: 200 refunded deliveries leave upkeep gas unchanged).
 
 FWA listing dominates: each listing writes the listing struct and updates a 32-level segment tree. Shapes mint gas varies
-with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin over the estimate. The margin
-is a limit only: the contract reimburses measured gas, never the limit.
+with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin
+over the estimate. The margin is a limit only: the contract reimburses measured gas, never the limit.
 
 ## Why 4/5
 
 In-transaction measurement (`gasStart - gasleft()`) runs before EIP-3529 refunds, which can cut the billed gas by up to
-1/5 of the gas used. Measured refunds on these paths ranged from about 1% (fill steps) to the full 20% (plan switches
-and unwind, which clear many slots in FWA and Shapes). Paying 4/5 of the measured span, a lower bound on the
+1/5 of the gas used. Measured refunds on these paths ranged from about 1% (fill steps) to the full 20% (redeems on
+unlisting, which clear many slots in FWA and Shapes). Paying 4/5 of the measured span, a lower bound on the
 transaction's pre-refund gas, can never exceed billed gas, whatever refunds FWA or Shapes produce. The `KeeperPaid`
 event's `gasUsed` is this reimbursed gas.
 
@@ -50,8 +49,8 @@ reward    = measured × 4/5 × price                                   (gas, nev
           + incentive                                                (inventory work)
 incentive = measured × 1/5 × price + 0.0005 ETH
             creator-caused work: in full
-            purchase-caused work: up to the remaining edge credit (FWA's edge on delivered draws of the batch)
-gas-only calls (refund-only batch, recoverRefundedShape): the 4/5 part only
+            purchase-caused work: up to the remaining edge credit (FWA's edge on reconciled delivered draws, accumulated)
+reconcile-only calls (sequences reconciled, no restocking): the 4/5 part only
 MAX_KEEPER_REWARD = 3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH
 ```
 
@@ -67,30 +66,24 @@ keeper prices work with `eth_estimateGas`, which exceeded billed gas by 71k–29
 transactions), i.e. ~0.0004 ETH at 5 gwei, so it skipped profitable fill steps and the pool stayed closed. With
 0.0005 ETH on top of the full measured gas, the median estimate gap is covered up to the cap.
 
-### Keeper PnL by operation and basefee (final rule)
+### Keeper PnL by operation and basefee
 
-Reward − billed gas × price, keeper bidding 0.05 gwei priority, real receipts on the fork:
-`forge test --match-path test/Gas.t.sol --match-test breakEven --isolate -vv`.
+Reward − billed gas × price, keeper bidding 0.05 gwei priority, from real receipts on the fork
+(`forge test --match-path test/Gas.t.sol --match-test "breakEven|profitAtCap" -vv`), measured on the rewrite.
 
-| Upkeep | Billed gas | Incentive source | PnL at 0.08 gwei | at 2 gwei | at 4.95 gwei (cap) | Profitable to |
-| --- | ---: | --- | ---: | ---: | ---: | --- |
-| replace 1 Shape, typical pool | 848,846 | edge credit | +0.00050 | +0.00054 | +0.00060 | cap (full) |
-| replace 1 Shape, 0.01-ETH-only pool | 841,636 | edge credit, binds | +0.00050 | +0.00038 | −0.00007 | 4.2 gwei (limited) |
-| replace 5 Shapes, one denomination | 2,154,065 | edge credit | +0.00051 | +0.00063 | +0.00081 | cap (full) |
-| replace 5 Shapes, four denominations | 2,613,847 | edge credit | +0.00051 | +0.00067 | +0.00093 | cap (full) |
-| reconcile 1 curated draw | 231,450 | edge credit | +0.00050 | +0.00048 | +0.00042 | cap (full) |
-| plan switch after a curated draw | 1,084,211 | edge credit | +0.00053 | +0.00087 | +0.00078 | cap (full) |
-| fill step (6 mints) | 2,194,477 | creator, full | +0.00050 | +0.00049 | +0.00047 | cap (full) |
-| plan switch after a configure | 1,001,750 | creator, full | +0.00053 | +0.00093 | +0.00156 | cap (full) |
-| reprice 6 listings | 594,709 | creator, full | +0.00050 | +0.00046 | +0.00040 | cap (full) |
-| refund-only batch | 197,008 | gas only (4/5) | −0.000009 | −0.00013 | −0.00033 | never (gas-only) |
-| re-checkpoint after a creator edit | 155,096 | unpaid | −0.00002 | −0.00032 | −0.00078 | never (unpaid) |
+| Upkeep | Incentive source | PnL at 4.95 gwei | Profitable up to |
+| --- | --- | --- | --- |
+| replace 1 Shape, typical pool | edge credit | +0.00060 ETH | 4.95 gwei (all tested) |
+| replace 5 Shapes in 4 sizes | edge credit | +0.00093 ETH | – |
+| replace 1 Shape, 0.01-ETH-only pool | edge credit, binds | see sweep | 4.2 gwei |
+| reconcile 1 curated draw (no restock) | edge credit | +0.00040 ETH | – |
+| fill step (5 Shape units) | creator, full | +0.00045 ETH | 4.95 gwei (all tested) |
+| reconcile a refund-only draw | none (no edge was paid) | 4/5 of gas only: a small loss by design | – |
 
-PnL above uses billed gas. A keeper that costs work with `eth_estimateGas` sees ~78k gas × price less (−0.0004 ETH
-at the cap), so at the cap the thinnest paid rows (reconcile, reprice, fill step) clear the median estimate gap by
-~0.00002–0.0001 ETH and the rest by more. Plan switches earn more at high gas because they produce large refunds,
-which raise the measured span above billed gas; the excess is bounded by the 1/5 refund cap and `MAX_KEEPER_REWARD`,
-and is paid only for creator-caused work or from the edge credit.
+Paid restocking work is designed to stay profitable to the 5 gwei cap, except pools whose draws all cost ~0.01 ETH, where
+the edge credit binds earlier. A keeper that costs work with `eth_estimateGas` sees the estimate gap (previously ~78k gas,
+median) less than billed; the fixed 0.0005 ETH covers that gap up to the cap. Reconcile-only calls get the 4/5 gas part
+only and are not profitable.
 
 ## Priority allowance
 
@@ -143,59 +136,41 @@ credit binds only for pools with draws under ~0.012 ETH and only above ~4.2 gwei
 
 ## Work no rational keeper runs
 
-Refund-only batches (4/5 of measured gas: −0.00033 ETH at the cap)
-and unpaid re-checkpoints after creator edits, deposits or mint-fee changes (155k billed gas,
-`test_gas_unpaidRecheckpoint`). They cannot be batched with paid work in the same pool (a re-checkpoint is what reopens
-admission, so no purchase-caused work exists until it runs). The bundled keeper's `MAX_LOSS_WEI` allowance (default
-0.0002 ETH, judged against the gas estimate) covers refund-only batches to ~1.3 gwei and re-checkpoints to ~0.85 gwei
-when the estimate runs 78k gas above billed (~3 gwei and ~1.2 gwei at billed gas); above that the creator runs
-them. Paying them would create work an outsider can trigger (refund-only batches) or a payment for checkpointing that
-the brief excludes; neither is added.
+Reconciling a delivered draw earns the incentive, capped by the FWA edge that draw paid, whether or not anything needs
+restocking (a curated draw: +0.00040 ETH at 4.95 gwei). A call that only reconciles draws FWA refunded (no edge was paid)
+gets the 4/5 gas part only and loses the rest; the bundled keeper's `MAX_LOSS_WEI` allowance (default 0.0002 ETH, judged
+against the gas estimate) covers these at normal gas, and the next restocking call reconciles them anyway. Paying them in
+full would create work an outsider can trigger, so it is not added.
 
 ## Keeper reserve audit
 
+`requiredReserve()` is a withdrawal bound only; it is not spent while the pool is open. Components, while open:
+
 | Component of `requiredReserve()` while open | Protects | Sized at |
 | --- | --- | --- |
-| deficit: missing Shapes × (backing + mint fee) | restoring the active plan | exact |
-| worst batch: largest 5 prize values × (backing + 3 mint fees) | replacing what an admitted batch can draw | upper bound: exact for packs of 3 Shapes, +2 mint fees for each single Shape counted (+0.01 ETH at a 0.001 ETH fee) |
-| one maximum keeper reward per restoring call | paying the upkeep calls that restore an admitted batch, at any price up to the cap: 1 for single Shapes, up to 3 when five three-Shape packs are drawn (`test_worstPackBatchRebuildsWithinTheReserve`) | 0.0165 ETH each (the hard guarantee) |
-| one reward for the call that writes the next checkpoint | admission still holds after that call pays its keeper | 3.2M gas × **current** reimbursable price + 0.0005 ETH |
-| one reward per remaining 6-Shape refill step | creator-started refills | same, per step |
+| deficit: missing prizes × (backing + mint fee per Shape inside) | restoring the target from the prizes currently listed | exact |
+| (unreconciled draws + 1) × the most expensive prize in the target (its backing + the mint fee for each Shape inside it) | one largest prize per unreconciled draw and one spare, so a big win is restocked | upper bound: a draw can remove at most the most expensive prize |
+| one maximum keeper reward per 6-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.0165 ETH each (the hard guarantee) |
 
-Only one batch is ever admitted per checkpoint, so one held maximum reward covers every accepted obligation; the other
-allowances are availability, not obligations. Pricing them at the current gas is safe because each is checked again
-when used: `_checkpoint` requires `reserve + _rewardBound(this transaction's price)` before admitting anything, so a
-spike after a claim can only delay reopening (status 6), never admit an unfunded batch. Fork tests:
-`test_exactRequiredReserveOpens*` (0.08, 0.5, 4.95 gwei), `test_maxClaimThenWorstBatchAtCapIsFunded` (surplus claimed
-at 0.08 gwei, worst 5 Shapes drawn, restored and keeper paid at 4.95 gwei), `test_claimAllSurplusThenRecheckpointStaysOpen`.
-
-| Inventory (`test_reserveSizes`) | Opening capital at 0.08 / 4.95 gwei | Running reserve at 0.08 / 4.95 gwei | Original PR opening / running (0.08 gwei) |
-| --- | --- | --- | --- |
-| small: ten 0.01 Shapes | 0.1842 / 0.2310 ETH | 0.0724 / 0.0880 ETH | 0.2298 / 0.0874 ETH |
-| medium: 5×0.01, 3×0.05, 2×0.1 | 0.7842 / 0.8310 ETH | 0.3724 / 0.3880 ETH | 0.8298 / 0.3874 ETH |
-| large: 4×0.5, 2×1, 1×5 | 17.0312 / 17.0780 ETH | 8.0224 / 8.0380 ETH | 17.078 / 8.038 ETH |
-
-The final rule adds 0.0003 ETH to the held maximum (0.016205 → 0.0165) and 0.0004 ETH per current-price allowance at
-0.08 gwei relative to the previous rule (small pool opening 0.1840 → 0.1842 ETH). Opening capital excludes the
-curated NFTs. Fork tests `test_exactRequiredReserveOpens*`, `test_maxClaimThenWorstBatchAtCapIsFunded` and
-`test_claimSurplusRespectsReserveWhileOpen` and `test_repeatedMaxClaimWorstBatchesAtCap` cover the exact boundary
-(claiming `withdrawableSurplus() + 1` reverts; claiming exactly it keeps the pool open), a maximum claim followed by
-the worst batch at the cap, and four such cycles in a row. A restore paid at the cap spends the held maximum reward, so
-the pool then fails closed (status 6) with inventory complete until the creator deposits `requiredReserve() −
-balance`; that exact amount reopens it.
+Each reward uses the fixed maximum (0.0165 ETH), so the bound does not move with the current gas price. A restore paid at
+the cap spends held ETH; if the balance then falls below `requiredReserve()`, the gate can read LOW_INVENTORY (status 6)
+until the creator deposits `requiredReserve() − balance`. Reserve sizes for representative inventories are **to be
+measured on the rewrite** (the previous design's `test_reserveSizes` numbers do not carry over).
 
 ## Keeper bounds (constants in `PoolBalancer`)
 
 | Constant | Value | Basis |
 | --- | --- | --- |
-| `MAX_SHAPES_PER_PLAN` | 80 (100 listings with 20 curated) | per-call gas unchanged; at 100 listings the highest upkeep billed 3.00M (`test_gas_fullPoolAtLimits`) |
-| `MAX_OPS` | 6 Shape units, shared by reconciling, repricing and rebalancing in one call; a pack counts the Shapes it holds (2 or 3) | keeps a fill step under ~3.05M billed gas; worst bounded upkeep (5 reconciles + 6 mints in 6 denominations) 3.10M. Packs: ~870k gas per three-Shape pack mint+list against ~380k per Shape; six packs in one call billed 5.8M before unit budgeting, now pack fill steps bill 1.5–2.25M and replacing 5 drawn three-Shape packs 2.37M (`test_gas_packFillStep`, `test_gas_replaceFivePacks`) |
+| `MAX_SHAPES_PER_PLAN` | 80 prizes in the target | bounds the target's prize count; no listing-scan loop remains |
+| `MAX_RECONCILE` | 5 settled sequences reconciled per call | ~33k gas each; a drawn listing is read and cleared, never scanned again |
+| `MAX_RESTOCK_SIZES` | 4 prize sizes restocked per call | each size is its own mint call (~0.5M gas with its listing); 6 sizes measured 3.19M |
+| `MAX_OPS` | 5 Shape units restocked per call; a pack counts the Shapes it holds (2 or 3) | ~425k gas per Shape with its listing, ~870k per three-Shape pack; 6 units with 5 reconciles measured 3.13M |
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
 | refund factor | 4/5 of the measured span | EIP-3529 refund bound (above) |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
 | `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
 | `KEEPER_INCENTIVE` | 0.0005 ETH | fixed part of the incentive (with the withheld 1/5 of gas); covers gas outside the measured span and the `eth_estimateGas` gap; creator-started work in full, purchase-caused work from the edge credit |
-| `MAX_KEEPER_REWARD` | 0.0165 ETH | `3.2M × 5 gwei + 0.0005`; the checkpoint holds one; other allowances use the current price (original PR 0.0325 ETH) |
+| `MAX_KEEPER_REWARD` | 0.0165 ETH | `3.2M × 5 gwei + 0.0005`; `requiredReserve` holds one per restocking call plus one |
 
 The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
 

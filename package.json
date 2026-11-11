@@ -5,7 +5,7 @@
   "scripts": {
     "abi": "node scripts/export-abi.mjs",
     "test:ts": "vitest run",
-    "sim": "tsx sim/simulate.ts",
+    "sim": "tsx sim/flows.ts",
     "keeper": "tsx keeper/keeper.ts",
     "dev": "vite --config app/vite.config.ts",
     "build:app": "vite build --config app/vite.config.ts",
