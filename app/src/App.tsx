@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, decodeFunctionResult, encodeFunctionData, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
@@ -68,15 +68,11 @@ function useBalancer(b?: Address) {
     const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
     const baseFee = (await pub.getBlock()).baseFeePerGas ?? 0n;
-    const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, vrfFee] = await Promise.all([
+    const [fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'),
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
-      // FWA charges the VRF fee at the buyer's gas price, so quote one draw at the current network gas price.
-      pub.getGasPrice()
-        .then((gasPrice) => pub.call({ to: pool, gasPrice, data: encodeFunctionData({ abi: fwaPoolAbi, functionName: 'quoteAcquisitionPrice', args: [1n] }) }))
-        .then(({ data }) => decodeFunctionResult({ abi: fwaPoolAbi, functionName: 'quoteAcquisitionPrice', data: data! })[1], () => 0n),
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
@@ -93,7 +89,7 @@ function useBalancer(b?: Address) {
       config: { maxDrawPrice: config[0], minCuratedOddsBps: config[1], markupBps: config[2] },
       checkpoint: { valid: checkpoint[0], reserve: checkpoint[4] },
       activeShapes: activeShapes.map(Number),
-      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, vrfFee, listings, pending, baseFee, names, ensName,
+      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, listings, pending, baseFee, names, ensName,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -413,24 +409,22 @@ const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
  *  picked. */
 const BONUS = BY_VALUE.filter((i) => DENOMS[i] >= 5n * 10n ** 16n && DENOMS[i] <= 25n * 10n ** 18n);
 const nftKey = (collection: string, tokenId: bigint | string) => `${collection}:${tokenId}`.toLowerCase();
-/** FWA's VRF fee is this much gas at the buyer's gas price, per purchase (measured on a mainnet-fork pool). */
-const VRF_GAS = 2_340_000n;
 const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)']);
 type Prereq = { creation: boolean; impl: boolean };
 
-/** The Design page for a pool that does not exist yet: live fees and gas from chain; NFTs and budget from the draft. */
+/** The Design page for a pool that does not exist yet: live fees from chain; NFTs and budget from the draft. */
 function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onCreated: Create['onCreated'] }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
-  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; baseFee: bigint; vrfFee: bigint }>();
+  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; baseFee: bigint }>();
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
     Promise.all([
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
-      pub.getBlock(), pub.getGasPrice(),
-    ]).then(([edgeBps, mintFee, block, gasPrice]) => setLive({ edgeBps, mintFee, baseFee: block.baseFeePerGas ?? 0n, vrfFee: VRF_GAS * gasPrice }))
+      pub.getBlock(),
+    ]).then(([edgeBps, mintFee, block]) => setLive({ edgeBps, mintFee, baseFee: block.baseFeePerGas ?? 0n }))
       .catch(() => undefined);
   }, [pub]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
@@ -516,9 +510,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   // Shown rounded up to 6 decimals, so re-saving never lowers the saved ceiling; left as shown, the saved value is kept.
   const savedCeiling = has ? String(Math.ceil(Number(formatEther(d.config.maxDrawPrice)) * 1e6) / 1e6) : '';
   const [ceiling, setCeiling] = useState(savedCeiling);
-  // Gas for cost estimates: the price a keeper is reimbursed at now (basefee + 0.05 gwei).
-  const liveGas = (Number(d.baseFee) / 1e9 + 0.05).toFixed(2);
-  const [gas, setGas] = useState(liveGas);
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const [open, setOpen] = useState({ bonus: false, fallbacks: false, advanced: false, numbers: false });
@@ -529,14 +520,14 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const markupBps = Math.round(markup * 100);
   const base: DesignInputs = {
     curatedBases: bases, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee,
-    have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: 1, vrfFee: d.vrfFee,
+    have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: 1,
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
   const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : draft?.style ?? 'steady'));
   const initial = useRef({ style, custom, small });
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
-    [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.baseFee, d.vrfFee]); // eslint-disable-line react-hooks/exhaustive-deps
+    [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.baseFee]); // eslint-disable-line react-hooks/exhaustive-deps
   const room = MAX_SHAPES_PER_PLAN - shapeTotal(bonus);
   const smallUsed = Math.max(0, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
@@ -552,7 +543,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   }, [has, markup, small, style, custom, nfts]); // eslint-disable-line react-hooks/exhaustive-deps
   const setNft = (i: number, x: Partial<DraftNft>) => { setEdited(true); setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
   const reset = () => {
-    setGas(liveGas); setPicking(undefined);
+    setPicking(undefined);
     setOpen({ bonus: false, fallbacks: false, advanced: false, numbers: false });
     if (has) {
       setEdited(false); setMarkup(d.config.markupBps / 100); setCeiling(savedCeiling);
@@ -567,7 +558,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
   const ready = bases.length > 0 && total > 0;
   const ev = ready ? describe(counts, inputs) : undefined;
-  const view = ev ? playerView(ev, markupBps, d.vrfFee) : undefined;
+  // Player figures are against the draw price; FWA's randomness fee and gas are set at draw time.
+  const view = ev ? playerView(ev, markupBps, 0n) : undefined;
   const plans = [counts, ...fallbacks];
   // Default ceiling: 25% above the highest draw price among the saved mixes, so fallbacks stay admissible.
   const autoCeiling = ready ? (plans.map((c) => describe(c, inputs).drawPrice).reduce((a, b) => (b > a ? b : a), 0n) * 125n) / 100n : 0n;
@@ -578,7 +570,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const deposit = fresh ? ((needed + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
   const have = fresh ? deposit : available(d.balance, d.activeShapes, counts);
   const shortBy = needed > have ? ((needed - have + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
-  const econ = ready ? economics(counts, inputs, { gasPriceGwei: Number(gas) || 1, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
+  // Costs counted: Shapes mint fees and keeper rewards. Gas is set at draw time and is not estimated.
+  const econ = ready ? economics(counts, inputs, { gasPriceGwei: 0, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
   const tierOf = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.size === i);
 
   // Out of 100 draws: whole draws per prize group by largest remainder, NFTs grouped.
@@ -635,8 +628,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const payBlock = view && ev ? (
     <div className="result-block">
       <span className="soft" style={{ fontSize: 14 }}>Players pay</span>
-      <div style={{ marginTop: 8 }}><span className="figure">{eth(view.cost, 5)}</span><span className="unit">ETH per draw</span></div>
-      <p className="note" style={{ marginTop: 10 }}>{eth(ev.drawPrice, 5)} draw price plus {fresh ? 'about ' : 'a '}{eth(d.vrfFee, 5)} randomness (VRF) fee</p>
+      <div style={{ marginTop: 8 }}><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH per draw</span></div>
+      <p className="note" style={{ marginTop: 10 }}>Draw price. FWA's randomness (VRF) fee and gas are added at draw time.</p>
     </div>
   ) : null;
   const gridBlock = view ? (
@@ -697,7 +690,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // On a configured pool: the saved design next to the one being edited.
   const savedEv = has && bases.length ? describe(savedCounts, { ...inputs, markupBps: d.config.markupBps, minCuratedOddsBps: d.config.minCuratedOddsBps }) : undefined;
-  const savedView = savedEv ? playerView(savedEv, d.config.markupBps, d.vrfFee) : undefined;
+  const savedView = savedEv ? playerView(savedEv, d.config.markupBps, 0n) : undefined;
   const compare = has && savedEv && savedView && view && ev ? (
     <div className="result-block" style={{ paddingTop: 0 }}>
       <span className="label">{configChanged ? 'Now → after saving' : 'Now'}</span>
@@ -877,10 +870,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <div className="top"><label htmlFor="markup">Added to every draw price, and yours to keep</label><b>{markup}%</b></div>
             <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
             {econ && markupBps < econ.breakEvenBps && Number.isFinite(econ.breakEvenBps)
-              ? <p className="note error">Below {pct(econ.breakEvenBps)}, mint fees and upkeep cost more than you keep. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.breakEvenBps / 100))}>Use {Math.ceil(econ.breakEvenBps / 100)}%</button></p>
+              ? <p className="note error">Below {pct(econ.breakEvenBps)}, mint fees and keeper rewards cost more than you keep. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.breakEvenBps / 100))}>Use {Math.ceil(econ.breakEvenBps / 100)}%</button></p>
               : econ?.belowModeledMarkup && Number.isFinite(econ.minMarkupBps)
-                ? <p className="note">Covers costs at {gas} gwei. {pct(econ.minMarkupBps)} adds a 25% safety margin.</p>
+                ? <p className="note">Covers mint fees and keeper rewards. {pct(econ.minMarkupBps)} adds a 25% safety margin.</p>
                 : <p className="note">Higher markup raises the draw price.</p>}
+            <p className="note">Gas and FWA's randomness fee are set at draw time and are not included.</p>
           </div>
         </div>
 
@@ -907,10 +901,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <div className="budget">
               <div><label htmlFor="ceiling" style={{ fontSize: 15 }}>Highest draw price allowed</label><p className="note">Auto is 25% above your highest mix.</p></div>
               <div className="field" style={{ width: 200 }}><input id="ceiling" value={ceiling} placeholder={`Auto ${eth(autoCeiling, 5)}`} onChange={(e) => setCeiling(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
-            </div>
-            <div className="budget">
-              <div><label htmlFor="gas" style={{ fontSize: 15 }}>Gas price for estimates</label><p className="note">Used to estimate your costs.</p></div>
-              <div className="field" style={{ width: 200 }}><input id="gas" value={gas} onChange={(e) => setGas(e.target.value)} inputMode="decimal" /><span className="u">GWEI</span></div>
             </div>
           </div>
         )}
@@ -960,7 +950,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 <div className="kv-group">
                   <span className="label">For players</span>
                   <div className="kv"><span className="k">Draw price</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
-                  <div className="kv"><span className="k">Randomness (VRF) fee</span><span>{eth(d.vrfFee, 5)} ETH</span></div>
                   <div className="kv"><span className="k">Wins one of your NFTs</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>
                   <div className="kv"><span className="k">Wins more than they paid</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
                   <div className="kv"><span className="k">Wins 2× or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
@@ -1077,11 +1066,11 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const plan = d.plans.length ? unpackPlan(d.plans[d.activePlan]) : undefined;
   const inputs: DesignInputs = {
     curatedBases: bases, markupBps: d.config.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee,
-    have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: d.config.minCuratedOddsBps, vrfFee: d.vrfFee,
+    have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: d.config.minCuratedOddsBps,
   };
   const before = plan && bases.length ? describe(plan, inputs, d.config.maxDrawPrice) : undefined;
   const after = plan && newBases.length ? describe(plan, { ...inputs, curatedBases: [...bases, ...newBases] }, d.config.maxDrawPrice) : undefined;
-  const cost = (ev: ReturnType<typeof describe>) => playerView(ev, d.config.markupBps, d.vrfFee).cost;
+  const cost = (ev: ReturnType<typeof describe>) => ev.drawPrice;
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;
@@ -1141,13 +1130,13 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
   const [mode, setMode] = useState<'deposit' | 'claim'>();
   const [amount, setAmount] = useState('');
-  const [assume, setAssume] = useState({ open: false, perDay: '40', gas: '1' });
+  const [assume, setAssume] = useState({ open: false, perDay: '40' });
   const [how, setHow] = useState(false);
   const plan = d.plans.length ? unpackPlan(d.plans[d.activePlan]) : ZERO;
   const backing = d.activeShapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
   const bases = d.listings.filter((l) => l.kind === 1 && l.state === 1).map((l) => l.base);
   const econ = bases.length && plan.some(Boolean)
-    ? economics(plan, { curatedBases: bases, markupBps: d.config.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee }, { gasPriceGwei: Number(assume.gas) || 1, drawsPerUpkeep: 1, safety: 0.25 })
+    ? economics(plan, { curatedBases: bases, markupBps: d.config.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee }, { gasPriceGwei: 0, drawsPerUpkeep: 1, safety: 0.25 })
     : undefined;
   const month = econ ? econ.expectedNetPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);
@@ -1157,7 +1146,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
-  const cost = d.fee + d.vrfFee;
+  const cost = d.fee; // the draw price; FWA's randomness fee and gas are set at draw time
   const live = d.listings.filter((l) => l.weight > 0n);
   const tw = live.reduce((s, l) => s + l.weight, 0n);
   const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y));
@@ -1179,7 +1168,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         <div className="result-block" style={{ paddingTop: 0 }}>
           <span className="soft" style={{ fontSize: 14 }}>Players pay</span>
           <div style={{ marginTop: 8 }}><span className="figure">{d.fee ? eth(cost, 5) : '–'}</span><span className="unit">ETH per draw</span></div>
-          {d.fee > 0n && <p className="note" style={{ marginTop: 10 }}>{eth(d.fee, 5)} draw price plus {eth(d.vrfFee, 5)} randomness (VRF) fee · markup {d.config.markupBps / 100}%</p>}
+          {d.fee > 0n && <p className="note" style={{ marginTop: 10 }}>Draw price at {d.config.markupBps / 100}% markup. FWA's randomness (VRF) fee and gas are added at draw time.</p>}
         </div>
         <div className="result-block">
           <div className="section-head"><h2 className="h3">In the pool now</h2>{isCreator && <button className="link" onClick={() => setTab('mix')}>Change prices or mix</button>}</div>
@@ -1236,11 +1225,10 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                 <div><span className="note">Per draw</span><div><span className={`figure-s${econ.expectedNetPerDraw < 0 ? ' error' : ''}`}>{signed(econ.expectedNetPerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
               </div>
-              <p className="note" style={{ marginTop: 10 }}>Assumes {assume.perDay} draws a day and {assume.gas} gwei gas. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
+              <p className="note" style={{ marginTop: 10 }}>Assumes {assume.perDay} draws a day. Gas is set at draw time and is not included. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
               {assume.open && (
                 <div className="row" style={{ marginTop: 10 }}>
                   <div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div>
-                  <div className="field" style={{ width: 150 }}><input aria-label="Gas price" value={assume.gas} onChange={(e) => setAssume({ ...assume, gas: e.target.value })} inputMode="decimal" /><span className="u">GWEI</span></div>
                 </div>
               )}
               <button className="disclose" style={{ marginTop: 16 }} onClick={() => setHow(!how)}>How this is worked out {how ? '▴' : '▾'}</button>
@@ -1248,7 +1236,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                 <div style={{ marginTop: 12 }}>
                   <div className="kv"><span className="k">Average prize value on FWA</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Your markup share</span><span>{econ.grossMarginPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Mint fees and upkeep gas</span><span>−{econ.overheadPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Mint fees and keeper rewards</span><span>−{econ.overheadPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Markup that covers costs with a 25% margin</span><span>{Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'}</span></div>
                   <p className="note" style={{ marginTop: 10 }}>An estimate from the current mix. Single draws vary; short runs can lose money either way.</p>
                 </div>
