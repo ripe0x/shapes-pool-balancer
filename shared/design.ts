@@ -44,45 +44,14 @@ export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFe
   requiredReserveAt(target, d.have, d.mintFee, d.baseFee);
 
 const NONE: Counts = DENOMS.map(() => 0);
-const NO_CEILING = 2n ** 255n;
+export const shapeTotal = (c: Counts) => c.reduce((a, b) => a + b, 0);
 
 /**
- * The cheapest mix for the creator's NFT odds. Each listing is drawn in inverse proportion to its price, so the chance of
- * an NFT fixes how much Shape weight the pool may hold; the smallest Shapes supply that weight with the fewest items
- * and the least ETH, which also gives the lowest draw price. Filler Shapes go on top of the creator's bonus Shapes for
- * as long as the chance of an NFT stays at or above `minCuratedOddsBps` (the on-chain floor).
- *
- * Search: each filler size, plus up to 4 of the next size and 1 of the size after (more of those is always matched by
- * one more of the smaller size with fewer items). Lowest draw price wins. Draw prices within 0.5% count as equal; then
- * the chance of an NFT closest to the floor wins (the odds the creator asked for), then less ETH. Undefined when no mix
- * with at least one Shape meets the floor.
+ * The pool's mix: `small` 0.01 ETH Shapes plus `bonus` Shapes. Each listing is drawn in inverse proportion to its price,
+ * so every listing returns the same expected value per draw: the small Shapes set how rare the NFTs are (more of them,
+ * rarer NFTs and a cheaper draw), and an NFT's own value is the other lever (a higher value is rarer).
  */
-export function cheapest(d: DesignInputs, bonus: Counts = NONE): Counts | undefined {
-  if (!d.curatedBases.length) return undefined;
-  const used = bonus.reduce((a, b) => a + b, 0);
-  let best: { c: Counts; price: bigint; odds: number; eth: bigint } | undefined;
-  const better = (x: NonNullable<typeof best>, y: NonNullable<typeof best>) => {
-    const tie = (x.price > y.price ? x.price - y.price : y.price - x.price) * 200n <= (x.price > y.price ? x.price : y.price);
-    if (!tie) return x.price < y.price;
-    return x.odds !== y.odds ? x.odds < y.odds : x.eth < y.eth;
-  };
-  for (let j = 0; j < DENOMS.length; j++) {
-    for (let b = 0; b <= (j + 1 < DENOMS.length ? 4 : 0); b++) {
-      for (let k = 0; k <= (j + 2 < DENOMS.length ? 1 : 0); k++) {
-        for (let a = 0; used + a + b + k <= MAX_SHAPES_PER_PLAN; a++) {
-          const c = bonus.map((n, i) => n + (i === j ? a : 0) + (i === j + 1 ? b : 0) + (i === j + 2 ? k : 0));
-          if (!c.some(Boolean)) continue;
-          const ev = describe(c, d, NO_CEILING);
-          // More Shapes only lower the chance of an NFT, so once below the floor this line is done.
-          if (!ev.feasible) break;
-          const x = { c, price: ev.drawPrice, odds: ev.curatedOddsPpm, eth: ethNeeded(c, d) };
-          if (!best || better(x, best)) best = x;
-        }
-      }
-    }
-  }
-  return best?.c;
-}
+export const mixOf = (small: number, bonus: Counts = NONE): Counts => bonus.map((n, i) => n + (i === 0 ? small : 0));
 
 export type Style = 'steady' | 'balanced' | 'jackpot' | 'ladder';
 /** "More big wins" adds bonus Shapes until about this share of draws wins 2x the draw price or more. */
@@ -91,35 +60,30 @@ export const BIG_WIN_SHARE = 0.1;
 export const JACKPOT_MULTIPLE = 50;
 
 /**
- * Bonus Shapes for a style, on top of the cheapest filler for the creator's NFT odds:
- * steady: none (the cheapest pool for those odds);
+ * Bonus Shapes for a style, on top of `small` 0.01 ETH Shapes, within the 40-Shape limit:
+ * steady: none;
  * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
- * current price) until about 1 in 10 draws wins one, or the 40-Shape limit or the odds stop it;
- * jackpot: one Shape, the size closest to 50x the draw price of the cheapest pool;
- * ladder: the jackpot Shape, then big wins grown on top of it (small, mid-size and one top prize).
+ * current price) until about 1 in 10 draws wins 2x or more;
+ * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
+ * ladder: the jackpot Shape, then big wins on top of it (small, mid-size and one top prize).
  */
-export function styleBonus(style: Style, d: DesignInputs): Counts {
-  const base = cheapest(d);
-  if (style === 'steady' || !base) return NONE;
-  const cost = (c: Counts) => playerView(describe(c, d), d.markupBps, d.vrfFee ?? 0n).cost;
+export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
+  const room = MAX_SHAPES_PER_PLAN - small;
+  if (style === 'steady' || !d.curatedBases.length || room <= 0) return NONE;
+  const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.markupBps, d.vrfFee ?? 0n);
   let bonus = NONE;
   if (style === 'jackpot' || style === 'ladder') {
-    const target = Number(cost(base)) * JACKPOT_MULTIPLE;
+    const target = Number(view(NONE).cost) * JACKPOT_MULTIPLE;
     const i = DENOMS.reduce((b, v, j) => (Math.abs(Math.log(Number(v) / target)) < Math.abs(Math.log(Number(DENOMS[b]) / target)) ? j : b), 0);
-    const one = NONE.map((_, j) => (j === i ? 1 : 0));
-    if (cheapest(d, one)) bonus = one;
+    bonus = NONE.map((_, j) => (j === i ? 1 : 0));
     if (style === 'jackpot') return bonus;
   }
-  for (let k = 0; k < MAX_SHAPES_PER_PLAN; k++) {
-    const mix = cheapest(d, bonus);
-    if (!mix) break;
-    const v = playerView(describe(mix, d), d.markupBps, d.vrfFee ?? 0n);
+  while (shapeTotal(bonus) < room) {
+    const v = view(bonus);
     if (v.win2x >= BIG_WIN_SHARE) break;
     const i = DENOMS.findIndex((x) => x >= 2n * v.cost);
     if (i < 0) break;
-    const next = bonus.map((n, j) => (j === i ? n + 1 : n));
-    if (!cheapest(d, next)) break;
-    bonus = next;
+    bonus = bonus.map((n, j) => (j === i ? n + 1 : n));
   }
   return bonus;
 }

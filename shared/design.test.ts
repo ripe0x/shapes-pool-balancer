@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, cheapest, describe, ethNeeded, fallbacksFor, playerView, styleBonus, type DesignInputs } from './design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, styleBonus, type DesignInputs } from './design';
 import { DENOMS, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
@@ -32,100 +32,59 @@ suite('playerView', () => {
   });
 });
 
-suite('cheapest', () => {
+suite('pool size and styles', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const odds = (c: Counts, d = one) => describe(c, d).curatedOddsBps;
-  const plusOne = (c: Counts) => c.map((n, i) => (i === c.findIndex((x) => x > 0) ? n + 1 : n));
+  const at = (c: Counts) => { const ev = describe(c, one); return { odds: ev.curatedOddsPpm, price: ev.drawPrice, v: playerView(ev, one.markupBps, 0n) }; };
 
-  it('meets the NFT odds exactly enough: one more of its smallest Shape would break the floor', () => {
-    for (const floor of [5000, 2000, 500, 100]) {
-      const d = { ...one, minCuratedOddsBps: floor };
-      const c = cheapest(d)!;
-      expect(odds(c, d), `floor ${floor}`).toBeGreaterThanOrEqual(floor);
-      expect(odds(plusOne(c), d), `floor ${floor}`).toBeLessThan(floor);
-    }
+  it('more small Shapes make the NFT rarer and the draw cheaper', () => {
+    const [few, many] = [at(mixOf(3)), at(mixOf(30))];
+    expect(many.odds).toBeLessThan(few.odds);
+    expect(many.price < few.price).toBe(true);
   });
 
-  it('fills with the smallest Shapes: a 0.05 ETH NFT at 1 in 20 needs three 0.01 ETH Shapes', () => {
-    expect(cheapest(one)).toEqual(mix({ 0: 3 }));
+  it('a higher NFT value makes it rarer with the same Shapes', () => {
+    const odds = (v: string) => describe(mixOf(10), { ...one, curatedBases: [parseEther(v)] }).curatedOddsPpm;
+    expect(odds('1')).toBeLessThan(odds('0.05'));
   });
 
-  it('with the same Shape size, rarer NFT odds mean more Shapes, more ETH and a cheaper draw', () => {
-    const at = (floor: number) => { const d = { ...one, minCuratedOddsBps: floor }; const c = cheapest(d)!; return { n: shapeCount(c), eth: ethNeeded(c, d), price: describe(c, d).drawPrice }; };
-    const [common, rare] = [at(500), at(100)]; // both filled with 0.01 ETH Shapes
-    expect(rare.n).toBeGreaterThan(common.n);
-    expect(rare.eth > common.eth).toBe(true);
-    expect(rare.price < common.price).toBe(true);
+  it('steady adds nothing', () => {
+    expect(styleBonus('steady', one, 10)).toEqual(mix({}));
   });
 
-  it('a valuable NFT is filled with larger Shapes, since one 0.01 ETH Shape would already make it too rare', () => {
-    const d = { ...one, curatedBases: [parseEther('10')] };
-    const c = cheapest(d)!;
-    expect(c[0]).toBe(0);
-    expect(odds(c, d)).toBeGreaterThanOrEqual(d.minCuratedOddsBps);
+  it('more big wins: about 1 in 10 draws wins 2x the price or more, within 40 Shapes', () => {
+    const c = mixOf(10, styleBonus('balanced', one, 10));
+    expect(at(c).v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
+    expect(shapeCount(c)).toBeLessThanOrEqual(40);
   });
 
-  it('keeps the bonus Shapes and shrinks the filler to hold the odds', () => {
-    const bonus = mix({ 2: 2 });
-    const c = cheapest(one, bonus)!;
-    expect(c[2]).toBeGreaterThanOrEqual(2);
-    expect(odds(c)).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
-    expect(c[0]).toBeLessThanOrEqual(cheapest(one)![0]);
+  it('jackpot: one bonus Shape near 50x the draw price', () => {
+    const bonus = styleBonus('jackpot', one, 10);
+    expect(shapeCount(bonus)).toBe(1);
+    const ratio = Number(DENOMS[bonus.findIndex((n) => n > 0)]) / Number(at(mixOf(10)).v.cost);
+    expect(ratio).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
+    expect(ratio).toBeLessThan(JACKPOT_MULTIPLE * 3);
   });
 
-  it('stays within 40 Shapes and finds nothing without NFTs', () => {
-    expect(shapeCount(cheapest({ ...one, minCuratedOddsBps: 1 })!)).toBeLessThanOrEqual(40);
-    expect(cheapest({ ...one, curatedBases: [] })).toBeUndefined();
+  it('ladder: big wins, a top prize near 50x and at least three Shape sizes', () => {
+    const c = mixOf(10, styleBonus('ladder', one, 10));
+    const v = at(c).v;
+    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
+    expect(c.filter((n) => n > 0).length).toBeGreaterThanOrEqual(3);
+    expect(Number(v.top.value) / Number(v.cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
+  });
+
+  it('a style never pushes the pool past 40 Shapes', () => {
+    for (const st of ['balanced', 'jackpot', 'ladder'] as const) expect(shapeCount(mixOf(38, styleBonus(st, one, 38)))).toBeLessThanOrEqual(40);
   });
 
   it('fallbacks raise the chance of an NFT and need no more ETH', () => {
-    const d = { ...one, minCuratedOddsBps: 200 };
-    const best = cheapest(d)!;
+    const best = mixOf(20);
     const fb = fallbacksFor(best);
     expect(fb.length).toBeGreaterThan(0);
-    for (const f of fb) { expect(odds(f, d)).toBeGreaterThan(odds(best, d)); expect(ethNeeded(f, d) <= ethNeeded(best, d)).toBe(true); }
+    for (const f of fb) { expect(at(f).odds).toBeGreaterThan(at(best).odds); expect(ethNeeded(f, one) <= ethNeeded(best, one)).toBe(true); }
   });
 
   it('counts Shapes the switch would redeem as available', () => {
     expect(available(parseEther('0.1'), mix({ 3: 2 }), mix({ 3: 1 }))).toBe(parseEther('0.6'));
-  });
-});
-
-suite('styleBonus', () => {
-  const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const view = (bonus: Counts) => { const c = cheapest(one, bonus)!; return { c, v: playerView(describe(c, one), one.markupBps, 0n) }; };
-
-  it('steady adds nothing: the cheapest pool for the odds', () => {
-    expect(styleBonus('steady', one)).toEqual(mix({}));
-  });
-
-  it('more big wins: about 1 in 10 draws wins 2x the price or more, and the NFT odds hold', () => {
-    const { c, v } = view(styleBonus('balanced', one));
-    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
-    expect(describe(c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
-    expect(shapeCount(c)).toBeLessThanOrEqual(40);
-  });
-
-  it('jackpot: one bonus Shape, sized near 50x the draw price, and the NFT odds hold', () => {
-    const bonus = styleBonus('jackpot', one);
-    expect(shapeCount(bonus)).toBe(1);
-    const top = DENOMS[bonus.findIndex((n) => n > 0)];
-    const cost = playerView(describe(cheapest(one)!, one), one.markupBps, 0n).cost;
-    expect(Number(top) / Number(cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
-    expect(Number(top) / Number(cost)).toBeLessThan(JACKPOT_MULTIPLE * 3);
-    expect(describe(view(bonus).c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
-  });
-});
-
-suite('ladder style', () => {
-  const one = { ...base, curatedBases: [parseEther('0.05')] };
-  it('has a top prize near 50x, big wins about 1 in 10, and at least three Shape sizes', () => {
-    const bonus = styleBonus('ladder', one);
-    const c = cheapest(one, bonus)!;
-    const v = playerView(describe(c, one), one.markupBps, 0n);
-    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
-    expect(c.filter((n) => n > 0).length).toBeGreaterThanOrEqual(3);
-    expect(Number(v.top.value) / Number(v.cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
-    expect(describe(c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
   });
 });
