@@ -84,6 +84,46 @@ export function cheapest(d: DesignInputs, bonus: Counts = NONE): Counts | undefi
   return best?.c;
 }
 
+export type Style = 'steady' | 'balanced' | 'jackpot' | 'ladder';
+/** "More big wins" adds bonus Shapes until about this share of draws wins 2x the draw price or more. */
+export const BIG_WIN_SHARE = 0.1;
+/** "Jackpot" adds one Shape worth about this many times the draw price. */
+export const JACKPOT_MULTIPLE = 50;
+
+/**
+ * Bonus Shapes for a style, on top of the cheapest filler for the creator's NFT odds:
+ * steady: none (the cheapest pool for those odds);
+ * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
+ * current price) until about 1 in 10 draws wins one, or the 40-Shape limit or the odds stop it;
+ * jackpot: one Shape, the size closest to 50x the draw price of the cheapest pool;
+ * ladder: the jackpot Shape, then big wins grown on top of it (small, mid-size and one top prize).
+ */
+export function styleBonus(style: Style, d: DesignInputs): Counts {
+  const base = cheapest(d);
+  if (style === 'steady' || !base) return NONE;
+  const cost = (c: Counts) => playerView(describe(c, d), d.markupBps, d.vrfFee ?? 0n).cost;
+  let bonus = NONE;
+  if (style === 'jackpot' || style === 'ladder') {
+    const target = Number(cost(base)) * JACKPOT_MULTIPLE;
+    const i = DENOMS.reduce((b, v, j) => (Math.abs(Math.log(Number(v) / target)) < Math.abs(Math.log(Number(DENOMS[b]) / target)) ? j : b), 0);
+    const one = NONE.map((_, j) => (j === i ? 1 : 0));
+    if (cheapest(d, one)) bonus = one;
+    if (style === 'jackpot') return bonus;
+  }
+  for (let k = 0; k < MAX_SHAPES_PER_PLAN; k++) {
+    const mix = cheapest(d, bonus);
+    if (!mix) break;
+    const v = playerView(describe(mix, d), d.markupBps, d.vrfFee ?? 0n);
+    if (v.win2x >= BIG_WIN_SHARE) break;
+    const i = DENOMS.findIndex((x) => x >= 2n * v.cost);
+    if (i < 0) break;
+    const next = bonus.map((n, j) => (j === i ? n + 1 : n));
+    if (!cheapest(d, next)) break;
+    bonus = next;
+  }
+  return bonus;
+}
+
 /**
  * Plans upkeep can switch to when `best` stops meeting the limits (after an NFT is drawn the remaining NFTs are rarer):
  * the same mix with fewer of its smallest Shapes, which raises the chance of an NFT.

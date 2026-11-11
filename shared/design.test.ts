@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { available, cheapest, describe, ethNeeded, fallbacksFor, playerView, type DesignInputs } from './design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, cheapest, describe, ethNeeded, fallbacksFor, playerView, styleBonus, type DesignInputs } from './design';
 import { DENOMS, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
@@ -88,5 +88,44 @@ suite('cheapest', () => {
 
   it('counts Shapes the switch would redeem as available', () => {
     expect(available(parseEther('0.1'), mix({ 3: 2 }), mix({ 3: 1 }))).toBe(parseEther('0.6'));
+  });
+});
+
+suite('styleBonus', () => {
+  const one = { ...base, curatedBases: [parseEther('0.05')] };
+  const view = (bonus: Counts) => { const c = cheapest(one, bonus)!; return { c, v: playerView(describe(c, one), one.markupBps, 0n) }; };
+
+  it('steady adds nothing: the cheapest pool for the odds', () => {
+    expect(styleBonus('steady', one)).toEqual(mix({}));
+  });
+
+  it('more big wins: about 1 in 10 draws wins 2x the price or more, and the NFT odds hold', () => {
+    const { c, v } = view(styleBonus('balanced', one));
+    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
+    expect(describe(c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
+    expect(shapeCount(c)).toBeLessThanOrEqual(40);
+  });
+
+  it('jackpot: one bonus Shape, sized near 50x the draw price, and the NFT odds hold', () => {
+    const bonus = styleBonus('jackpot', one);
+    expect(shapeCount(bonus)).toBe(1);
+    const top = DENOMS[bonus.findIndex((n) => n > 0)];
+    const cost = playerView(describe(cheapest(one)!, one), one.markupBps, 0n).cost;
+    expect(Number(top) / Number(cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
+    expect(Number(top) / Number(cost)).toBeLessThan(JACKPOT_MULTIPLE * 3);
+    expect(describe(view(bonus).c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
+  });
+});
+
+suite('ladder style', () => {
+  const one = { ...base, curatedBases: [parseEther('0.05')] };
+  it('has a top prize near 50x, big wins about 1 in 10, and at least three Shape sizes', () => {
+    const bonus = styleBonus('ladder', one);
+    const c = cheapest(one, bonus)!;
+    const v = playerView(describe(c, one), one.markupBps, 0n);
+    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
+    expect(c.filter((n) => n > 0).length).toBeGreaterThanOrEqual(3);
+    expect(Number(v.top.value) / Number(v.cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
+    expect(describe(c, one).curatedOddsBps).toBeGreaterThanOrEqual(one.minCuratedOddsBps);
   });
 });
