@@ -925,7 +925,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <div className="desktop-only">{payBlock}</div>
             {!open.numbers ? (
               <>
-                <div className="desktop-only">{gridBlock}{playBlock}</div>
+                <div className="desktop-only">{gridBlock}</div>
                 {fresh ? (
                   <div className="result-block">
                     <div className="kvline"><div><div>ETH to create the pool</div><p className="note">Deposited when you create it</p></div><div><span className="figure-s">{eth(deposit, 2)}</span><span className="unit">ETH</span></div></div>
@@ -947,6 +947,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                   <div><span className={`figure-s${econ.expectedNetPerDraw < 0 ? ' error' : ''}`}>{signed(econ.expectedNetPerDraw)}</span><span className="unit">ETH</span></div>
                 </div>
                 <div className="result-block"><button className="disclose" onClick={() => toggle('numbers')}>All numbers ▾</button></div>
+                <div className="desktop-only">{playBlock}</div>
               </>
             ) : (
               <div className="result-block">

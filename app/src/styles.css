@@ -186,6 +186,8 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .kv { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 52px; border-top: 1px solid var(--line); font-size: 15px; }
 .kv .k { color: var(--ink-3); }
 .kv:last-child { border-bottom: 1px solid var(--line); }
+/* A section heading directly above a list of rows. */
+.h3 + .kv { margin-top: 14px; }
 .kv-group { margin-top: 18px; }
 .kv-group .label { color: var(--ink-4); display: block; margin-bottom: 8px; }
 
