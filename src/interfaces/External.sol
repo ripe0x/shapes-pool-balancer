@@ -136,3 +136,16 @@ interface IENS {
 interface IReverseRegistrar {
     function setName(string calldata name) external returns (bytes32);
 }
+
+/// @dev Draw Packs (ripe0x/shape-packs `draw-packs` at 3a463f7): an ERC-721 whose token holds Shapes in custody and
+///      redeems for exactly their backing. Only what the Balancer calls.
+interface IShapePacks {
+    function createPackTo(uint256[] calldata shapeIds, uint32[] calldata mintCounts, address to)
+        external
+        payable
+        returns (uint256 packId);
+    function redeem(uint256 packId) external;
+    function shapes() external view returns (address);
+    function MIN_PACK_VALUE() external view returns (uint256);
+    function setApprovalForAll(address operator, bool approved) external;
+}

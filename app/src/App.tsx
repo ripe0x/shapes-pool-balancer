@@ -5,7 +5,7 @@ import { BaseError, ContractFunctionRevertedError, decodeFunctionResult, encodeF
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, prizeLabel, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, fallbacksFor, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -184,12 +184,11 @@ const ethOr = (s: string, fallback: bigint) => { try { return parseEther(s || '0
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const word = (n: number) => WORDS[n] ?? String(n);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** "Three 0.01 ETH Shapes and one 0.25 ETH Pack": every size in the mix, smallest value first. */
 const mixText = (c: Counts) => {
-  const parts = c.map((n, i) => (n ? `${word(n)} ${DENOM_LABELS[i]}` : '')).filter(Boolean);
+  const parts = BY_VALUE.filter((i) => c[i]).map((i) => `${word(c[i])} ${prizeLabel(i)}${c[i] > 1 ? 's' : ''}`);
   if (!parts.length) return 'No Shapes';
-  const total = c.reduce((a, b) => a + b, 0);
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
-  return `${cap(list)} ETH Shape${total > 1 ? 's' : ''}`;
+  return cap(parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]);
 };
 const poolName = (d: D) => d.ensName ?? `Pool ${short(d.balancer)}`;
 
@@ -409,8 +408,9 @@ const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the draw price.` },
   { key: 'ladder', label: 'Prize ladder', hint: 'Small, mid-size and one top prize. The most variety.' },
 ];
-/** Prize sizes offered for adjusting by hand (indices into DENOMS): 0.05 to 10 ETH, plus any size a style picked. */
-const BONUS = [1, 2, 3, 4, 5, 6];
+/** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
+ *  picked. */
+const BONUS = BY_VALUE.filter((i) => DENOMS[i] >= 5n * 10n ** 16n && DENOMS[i] <= 25n * 10n ** 18n);
 const nftKey = (collection: string, tokenId: bigint | string) => `${collection}:${tokenId}`.toLowerCase();
 /** FWA's VRF fee is this much gas at the buyer's gas price, per purchase (measured on a mainnet-fork pool). */
 const VRF_GAS = 2_340_000n;
@@ -576,12 +576,12 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const have = fresh ? deposit : available(d.balance, d.activeShapes, counts);
   const shortBy = needed > have ? ((needed - have + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
   const econ = ready ? economics(counts, inputs, { gasPriceGwei: Number(gas) || 1, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
-  const tierOf = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.label.startsWith(`${DENOM_LABELS[i]} ETH`));
+  const tierOf = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.size === i);
 
   // Out of 100 draws: whole draws per prize group by largest remainder, NFTs grouped.
   const groups = view ? [
     ...(view.curated > 0 ? [{ key: 'nft', i: -1, p: view.curated, nft: true, value: 0n, n: 0 }] : []),
-    ...counts.map((n, i) => ({ key: `s${i}`, i, n, p: tierOf(i)?.odds ?? 0, nft: false, value: DENOMS[i] })).filter((g) => g.n > 0),
+    ...BY_VALUE.filter((i) => counts[i] > 0).map((i) => ({ key: `s${i}`, i, n: counts[i], p: tierOf(i)?.odds ?? 0, nft: false, value: DENOMS[i] })),
   ] : [];
   const raw = groups.map((g) => g.p * 100);
   const whole = raw.map(Math.floor);
@@ -595,7 +595,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     const verb = n <= 1 ? 'wins' : 'win';
     if (g.nft) return `${verb} ${rows.length === 1 ? `your NFT, ${rows[0].name}` : 'one of your NFTs'}`;
     const v = Number(formatEther(g.value)) / Number(formatEther(view!.cost));
-    const what = g.n === 1 && shapeGroups.length > 1 && g === shapeGroups[shapeGroups.length - 1] ? `the ${DENOM_LABELS[g.i]} ETH Shape` : `a ${DENOM_LABELS[g.i]} ETH Shape`;
+    const what = `${g.n === 1 && shapeGroups.length > 1 && g === shapeGroups[shapeGroups.length - 1] ? 'the' : 'a'} ${prizeLabel(g.i)}`;
     return `${verb} ${what}${v < 1 ? ', less than they paid' : `, ${v.toFixed(1)}× what they paid`}`;
   };
 
@@ -609,7 +609,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     }));
     const t = tierOf(g.i);
     return t ? Array.from({ length: g.n }, (_, j) => ({
-      key: `s${g.i}-${j}`, label: `${DENOM_LABELS[g.i]} ETH Shape`, nft: false, value: t.value, price: t.listPrice, p: t.odds / g.n, mult: t.multiple, style: sw(g),
+      key: `s${g.i}-${j}`, label: prizeLabel(g.i), nft: false, value: t.value, price: t.listPrice, p: t.odds / g.n, mult: t.multiple, style: sw(g),
     })) : [];
   }) : [];
   // Each NFT's chance per draw, a result of its value and the rest of the pool.
@@ -648,7 +648,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               <div className="legend">
                 {ordered.map(({ g }) => (g.nft
                   ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{rows.length}</b> of your NFTs · {oneIn(view.curated)} draws for any of them</span></div>
-                  : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {DENOM_LABELS[g.i]} ETH Shape · each {oneIn(g.p / g.n)}</span></div>))}
+                  : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {prizeLabel(g.i)} · each {oneIn(g.p / g.n)}</span></div>))}
               </div>
               <p className="note" style={{ marginTop: 14 }}>Each square is one item in the pool. Hover or tap a square for its chance and value. Cheaper items come up more often.</p>
             </>
@@ -835,15 +835,15 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           {open.bonus && (
             <>
               <p className="note" style={{ margin: '10px 0 6px' }}>Prizes on top of the small Shapes. The small Shapes adjust to keep your NFT odds. Bigger prizes raise the draw price and the ETH needed.</p>
-              {[...new Set([...BONUS, ...bonus.flatMap((n, i) => (n ? [i] : []))])].sort((x, y) => x - y).map((i) => {
+              {[...new Set([...BONUS, ...bonus.flatMap((n, i) => (n ? [i] : []))])].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y)).map((i) => {
                 const t = bonus[i] ? tierOf(i) : undefined;
                 return (
                   <div className="mixrow" key={i}>
-                    <div><div className="t">{DENOM_LABELS[i]} ETH Shape</div>{t && <div className="s">Each {oneIn(t.odds / counts[i])} draws · {t.multiple.toFixed(1)}× the draw</div>}</div>
+                    <div><div className="t">{prizeLabel(i)}</div>{t && <div className="s">Each {oneIn(t.odds / counts[i])} draws · {t.multiple.toFixed(1)}× the draw</div>}</div>
                     <div className="stepper end">
-                      <button aria-label={`One fewer ${DENOM_LABELS[i]} ETH prize`} disabled={!bonus[i]} onClick={() => setBonusAt(i, bonus[i] - 1)}>−</button>
+                      <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!bonus[i]} onClick={() => setBonusAt(i, bonus[i] - 1)}>−</button>
                       <output aria-live="polite">{bonus[i]}</output>
-                      <button aria-label={`One more ${DENOM_LABELS[i]} ETH prize`} disabled={total >= MAX_SHAPES_PER_PLAN} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
+                      <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= MAX_SHAPES_PER_PLAN} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
                     </div>
                   </div>
                 );
@@ -1020,7 +1020,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               <div className="nft" key={l.id.toString()}>
                 <div className="thumb">{l.kind === 2 ? 'Shape' : 'NFT'}</div>
                 <div>
-                  <div className="t">{l.kind === 2 ? `${DENOM_LABELS[l.denom]} ETH Shape` : name(l)}</div>
+                  <div className="t">{l.kind === 2 ? prizeLabel(l.denom) : name(l)}</div>
                   <div className="s">{refunded ? 'Drawn. FWA refunded the buyer; you can take it back.' : 'Drawn. FWA could not deliver it yet; it retries or refunds the buyer after 7 days.'}</div>
                 </div>
                 <div className="acts">
@@ -1154,15 +1154,15 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const cost = d.fee + d.vrfFee;
   const live = d.listings.filter((l) => l.weight > 0n);
   const tw = live.reduce((s, l) => s + l.weight, 0n);
-  const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => x - y);
+  const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y));
   const look = (l: Listing): React.CSSProperties => (l.kind === 1 ? { border: '1.5px solid #fff' }
     : { background: sizes.length > 1 && l.denom === sizes[sizes.length - 1] ? '#fff' : SHADES[Math.min(SHADES.length - 1, sizes.indexOf(l.denom))] });
   const nftName = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
   // Shapes first, smallest (most often drawn) first; NFTs last, as in the designer.
-  const ordered = [...live].sort((x, y) => (y.kind - x.kind) || (x.denom - y.denom) || (y.weight > x.weight ? 1 : -1));
+  const ordered = [...live].sort((x, y) => (y.kind - x.kind) || (BY_VALUE.indexOf(x.denom) - BY_VALUE.indexOf(y.denom)) || (y.weight > x.weight ? 1 : -1));
   const items: InvItem[] = ordered.map((l) => {
     const value = l.kind === 2 ? DENOMS[l.denom] : l.base;
-    return { key: l.id.toString(), label: l.kind === 2 ? `${DENOM_LABELS[l.denom]} ETH Shape` : nftName(l), nft: l.kind === 1, value, price: l.price,
+    return { key: l.id.toString(), label: l.kind === 2 ? prizeLabel(l.denom) : nftName(l), nft: l.kind === 1, value, price: l.price,
       p: tw ? Number(l.weight) / Number(tw) : 0, mult: cost ? Number(value) / Number(cost) : 0, style: look(l) };
   });
   const nftOdds = items.filter((x) => x.nft).reduce((a, x) => a + x.p, 0);
@@ -1182,8 +1182,8 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               <InventoryGrid items={items} />
               <div className="legend">
                 {sizes.map((dn) => {
-                  const xs = items.filter((x) => !x.nft && x.label.startsWith(`${DENOM_LABELS[dn]} ETH`));
-                  return <div key={dn}><span className="sw" style={xs[0].style} /><span><b>{xs.length}</b> × {DENOM_LABELS[dn]} ETH Shape · each {oneIn(xs[0].p)}</span></div>;
+                  const xs = items.filter((x) => !x.nft && x.label === prizeLabel(dn));
+                  return <div key={dn}><span className="sw" style={xs[0].style} /><span><b>{xs.length}</b> × {prizeLabel(dn)} · each {oneIn(xs[0].p)}</span></div>;
                 })}
                 {nftOdds > 0 && <div><span className="sw" style={{ border: '1.5px solid #fff' }} /><span><b>{items.filter((x) => x.nft).length}</b> of your NFTs · {oneIn(nftOdds)} draws for any of them</span></div>}
               </div>

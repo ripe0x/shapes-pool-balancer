@@ -70,6 +70,9 @@ contract ParityFixture is ForkBase {
         _case(3000, _bases(2.5 ether, 0.77 ether, 13 ether), plan([uint256(0), 0, 0, 2, 3, 1, 0, 0, 0]));
         _case(777, _bases(0.123456789 ether, 4.2 ether, 0), plan([uint256(3), 0, 7, 0, 1, 0, 0, 0, 0]));
         _case(10_000, _bases(50 ether, 0, 0), plan([uint256(0), 0, 0, 0, 0, 0, 1, 1, 0]));
+        // Pack sizes (9-15: 0.02, 0.03, 0.2, 0.25, 2, 2.5, 25 ETH), alone and mixed with Shapes.
+        _case(1500, _bases(0.3 ether, 0, 0), plan16([uint256(4), 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 1, 0, 0, 0]));
+        _case(2500, _bases(1.5 ether, 0.05 ether, 0), plan16([uint256(0), 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 1, 0]));
         vm.writeJson(json, "./test/fixtures/parity.json");
     }
 }

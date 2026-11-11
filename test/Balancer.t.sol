@@ -484,9 +484,10 @@ contract BalancerTest is ForkBase {
     }
 
     function test_reserveMath() public view {
-        // planA: 5x0.01, 3x0.05, 2x0.1; worst 5 draws = 2x0.1 + 3x0.05, each + mint fee
+        // planA: 5x0.01, 3x0.05, 2x0.1; worst 5 draws = 2x0.1 + 3x0.05, each + 3 mint fees (the most Shapes any
+        // prize holds, so the bound covers packs whatever the mint fee)
         uint256 fee = shapes.mintFee();
-        uint256 expected = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee) + balancer.MAX_KEEPER_REWARD();
+        uint256 expected = 2 * (0.1 ether + 3 * fee) + 3 * (0.05 ether + 3 * fee) + balancer.MAX_KEEPER_REWARD();
         assertEq(_cpReserve(), expected);
         // plus one re-checkpoint reward at the current reimbursable price (basefee 0.5 + 0.05 gwei)
         uint256 recheckpoint = 3_200_000 * 0.55 gwei + 0.0005 ether;
@@ -561,7 +562,7 @@ contract BalancerTest is ForkBase {
         settle();
         fillUp();
         assertEq(balancer.activePlan(), 1, "fallback plan activated");
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[0], 2);
         assertEq(active[1], 1);
         assertEq(active[2], 1);
@@ -570,7 +571,7 @@ contract BalancerTest is ForkBase {
         assertEq(_shapesHeld(), 0);
         // planB has 4 Shapes; all of them are the worst batch
         uint256 fee = shapes.mintFee();
-        assertEq(_cpReserve(), 2 * (0.01 ether + fee) + (0.05 ether + fee) + (0.1 ether + fee) + balancer.MAX_KEEPER_REWARD());
+        assertEq(_cpReserve(), 2 * (0.01 ether + 3 * fee) + (0.05 ether + 3 * fee) + (0.1 ether + 3 * fee) + balancer.MAX_KEEPER_REWARD());
     }
 
     function _shapesHeld() internal view returns (uint256 n) {
@@ -783,7 +784,7 @@ contract BalancerTest is ForkBase {
             balancer.unwind(20);
         }
         vm.stopPrank();
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         for (uint256 d; d < 9; ++d) {
             assertEq(active[d], 0);
         }

@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {LibString} from "solady/utils/LibString.sol";
-import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
-import {IFWAPoolFactory, IFWAPool, IShapes, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
+import {PoolPage} from "./PoolPage.sol";
+import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
 /// @title PoolBalancer
 /// @notice Permanently owns one FWA standard pool. The creator curates NFTs and approves a Shapes
@@ -34,12 +33,28 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant BPS = 10_000;
     /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation.
     uint256 public constant MAX_BATCH = 5;
-    uint256 internal constant DENOMS = 9;
+    /// @dev Prize sizes: indices 0-8 are the nine Shapes denominations (each prize one Shape); indices 9-15 are values
+    ///      between them, each prize one Draw Pack holding the fewest Shapes that sum to it (see `_amount`, `_makeup`).
+    ///      Plans pack sixteen 16-bit counts into one uint256.
+    uint256 internal constant DENOMS = 16;
+    uint256 internal constant SHAPE_DENOMS = 9;
+    /// @dev Size values in units of 0.01 ETH, 16 bits each, size 0 in the low bits:
+    ///      0.01 0.05 0.1 0.5 1 5 10 50 100 | 0.02 0.03 0.2 0.25 2 2.5 25.
+    uint256 internal constant AMOUNTS = 0x9c400fa00c800190014000300022710138803e801f400640032000a00050001;
+    /// @dev Shapes inside one prize of each size, 4 bits each (1 for a Shape; 2 or 3 for a pack).
+    uint256 internal constant SHAPES_IN = 0x3323232111111111;
+    /// @dev Size indices in ascending value order, 4 bits each, smallest first.
+    uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
+    /// @dev The most Shapes any one prize holds; reserve math charges every prize this many mint fees.
+    uint256 internal constant MAX_SHAPES_IN = 3;
     uint256 internal constant MAX_PLANS = 4;
     uint256 internal constant MAX_SHAPES_PER_PLAN = 40;
     /// @dev Bounds every loop over listings (repricing scan, plan withdrawal, unwind).
     uint256 internal constant MAX_LISTINGS = 100;
-    /// @dev Inventory operations (mint+list, withdraw+redeem, reprice) per upkeep; FWA batch limit is 20.
+    /// @dev Inventory work per upkeep, in Shape units: reconciling a draw, repricing a listing, or minting+listing or
+    ///      withdrawing+redeeming one Shape is 1; a pack counts as the Shapes it holds (2 or 3), since each Shape
+    ///      inside is minted or redeemed (measured: ~380k gas per Shape op, ~870k per three-Shape pack). FWA batch
+    ///      limit is 20.
     uint256 internal constant MAX_OPS = 6;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
@@ -64,8 +79,6 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
-    /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
-    string internal constant FWA_V1_FACTORY = "0xf5a3a153164791ab579c3d9ba5dbecf7cdfd300c";
     bytes4 internal constant ERC1271_MAGIC = 0x1626ba7e;
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
 
@@ -104,6 +117,7 @@ contract PoolBalancer is ReentrancyGuard {
     address public immutable FWA_IMPLEMENTATION;
     bytes32 public immutable FWA_IMPLEMENTATION_CODEHASH;
     IShapes public immutable SHAPES;
+    IShapePacks public immutable PACKS;
     IENS public immutable ENS;
 
     /*//////////////////////////////////////////////////////////////
@@ -137,7 +151,7 @@ contract PoolBalancer is ReentrancyGuard {
     IFWAPool public pool;
 
     Config public config;
-    /// @dev Each plan packs nine 16-bit Shape counts, denomination index 0 in the low bits.
+    /// @dev Each plan packs sixteen 16-bit prize counts, size index 0 in the low bits.
     uint256[] internal plans;
     uint8 public activePlan;
     bool public enabled;
@@ -154,7 +168,7 @@ contract PoolBalancer is ReentrancyGuard {
     mapping(uint256 listingId => Item) public items;
     uint256[] internal activeIds;
     mapping(uint256 listingId => uint256) internal activeIndexPlusOne;
-    uint16[9] internal activeShapes;
+    uint16[16] internal activeShapes;
     /// @dev Pool-page approvals are valid only in the epoch they were made; `revokePoolPages` and every creator
     ///      change start a new epoch, so a former creator's approvals cannot be replayed.
     uint256 public pageEpoch;
@@ -220,15 +234,20 @@ contract PoolBalancer is ReentrancyGuard {
                               CONSTRUCTION
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address fwaFactory, address fwaImplementation, bytes32 fwaCodehash, address shapes, address ens) {
+    constructor(address fwaFactory, address fwaImplementation, bytes32 fwaCodehash, address shapes, address packs, address ens) {
         FWA_FACTORY = IFWAPoolFactory(fwaFactory);
         FWA_IMPLEMENTATION = fwaImplementation;
         FWA_IMPLEMENTATION_CODEHASH = fwaCodehash;
         SHAPES = IShapes(shapes);
+        PACKS = IShapePacks(packs);
         ENS = IENS(ens);
-        // The denomination table below is hardcoded; refuse a Shapes deployment that disagrees.
-        for (uint256 d; d < DENOMS; ++d) {
+        // The size table below is hardcoded; refuse a Shapes deployment that disagrees, and a Packs instance that
+        // wraps other Shapes or cannot make the smallest pack size.
+        for (uint256 d; d < SHAPE_DENOMS; ++d) {
             if (IShapes(shapes).denominationAt(uint8(d)) != _amount(d)) revert UnsupportedFWAConfig();
+        }
+        if (IShapePacks(packs).shapes() != shapes || IShapePacks(packs).MIN_PACK_VALUE() > _amount(9)) {
+            revert UnsupportedFWAConfig();
         }
         creator = address(1); // lock the implementation
     }
@@ -251,6 +270,7 @@ contract PoolBalancer is ReentrancyGuard {
         pool = IFWAPool(p);
         IFWAPool(p).setPurchaseOperator(address(this));
         SHAPES.setApprovalForAll(p, true);
+        PACKS.setApprovalForAll(p, true);
 
         emit Initialized(creator_, p);
         if (msg.value != 0) emit Deposited(msg.sender, msg.value);
@@ -497,25 +517,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///      `isValidSignature` cannot authorize anything else (no FWA, Shapes or ERC721 function
     ///      accepts such a message). Format verified against pools.fwa.fun's client code 2026-11-10.
     function approvePoolPage(string calldata issuedAt, bytes32 metadataHash) external onlyCreator returns (bytes32 digest) {
-        bytes calldata t = bytes(issuedAt);
-        if (t.length != 24) revert InvalidConfig();
-        for (uint256 i; i < 24; ++i) {
-            bytes1 c = t[i];
-            if ((c < "0" || c > "9") && c != "-" && c != ":" && c != "." && c != "T" && c != "Z") revert InvalidConfig();
-        }
-        bytes memory message = abi.encodePacked(
-            "Publish FWA Pools page\nSite: pools.fwa.fun\nChain: 1\nFactories: ",
-            LibString.toHexString(address(FWA_FACTORY)),
-            ", ",
-            FWA_V1_FACTORY,
-            "\nPool: ",
-            LibString.toHexString(address(pool)),
-            "\nIssued at: ",
-            issuedAt,
-            "\nMetadata hash: ",
-            LibString.toHexString(uint256(metadataHash), 32)
-        );
-        digest = SignatureCheckerLib.toEthSignedMessageHash(message);
+        digest = PoolPage.digest(address(FWA_FACTORY), address(pool), issuedAt, metadataHash);
         pageApprovedEpoch[digest] = pageEpoch + 1;
         emit PoolPageApproved(digest, issuedAt, metadataHash);
     }
@@ -536,10 +538,13 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice FWA purchase-operator hook. Must stay read-only and under FWA's 100k gas stipend.
     /// @dev FWA passes the purchaser it will deliver to. Refused: this contract (a failed delivery to it could never
-    ///      be refunded, and a delivered NFT would be untracked), the Shapes contract (Shapes rejects self-custody, so
-    ///      a drawn Shape could never be delivered or refunded) and the FWA pool itself.
+    ///      be refunded, and a delivered NFT would be untracked), the Shapes and Draw Packs contracts (each rejects
+    ///      self-custody, so a drawn prize could never be delivered or refunded) and the FWA pool itself.
     function canPurchase(address purchaser) external view returns (bool) {
-        if (purchaser == address(this) || purchaser == address(SHAPES) || purchaser == address(pool)) return false;
+        if (
+            purchaser == address(this) || purchaser == address(SHAPES) || purchaser == address(PACKS)
+                || purchaser == address(pool)
+        ) return false;
         return admissionStatus() == OK;
     }
 
@@ -593,11 +598,10 @@ contract PoolBalancer is ReentrancyGuard {
         IFWAPool p = pool;
         (,,, uint256 tokenId,,,, uint8 status) = p.listings(listingId);
         if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
+        uint8 d = it.denom;
         delete items[listingId];
         p.recoverRefundedNFT(listingId);
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = tokenId;
-        uint256 eth = SHAPES.redeemBatch(ids);
+        uint256 eth = _redeem(d, tokenId);
         emit ShapeRecovered(listingId, eth);
         reward = _payKeeper(gasStart, false);
     }
@@ -756,42 +760,58 @@ contract PoolBalancer is ReentrancyGuard {
         complete = true;
     }
 
-    /// @dev Only after a plan change: withdraw Shapes above target from FWA and redeem them.
+    /// @dev Only after a plan change: withdraw prizes above target from FWA and redeem them. Returns Shape units used.
     function _unlistSurplus(IFWAPool p, uint256 plan, uint256 budget) internal returns (uint256 used) {
         uint256[] memory out = new uint256[](budget);
-        for (uint256 d; d < DENOMS && used < budget; ++d) {
+        uint256 n;
+        for (uint256 d; d < DENOMS; ++d) {
             uint256 have = activeShapes[d];
             uint256 target = _count(plan, d);
             uint256 surplus = have > target ? have - target : 0;
-            for (uint256 i = activeIds.length; i != 0 && surplus != 0 && used < budget;) {
+            uint256 w = _shapesIn(d);
+            for (uint256 i = activeIds.length; i != 0 && surplus != 0 && used + w <= budget;) {
                 Item storage it = items[activeIds[--i]];
                 if (it.kind == SHAPE && it.denom == d) {
-                    out[used++] = activeIds[i];
+                    out[n++] = activeIds[i];
+                    used += w;
                     --surplus;
                 }
             }
         }
-        if (used == 0) return 0;
+        if (n == 0) return 0;
         assembly ("memory-safe") {
-            mstore(out, used)
+            mstore(out, n)
         }
-        emit ShapesUnlisted(used, _withdrawAndRedeem(p, out));
+        emit ShapesUnlisted(n, _withdrawAndRedeem(p, out));
     }
 
-    /// @dev Stop tracking the given Shape listings, withdraw them from FWA and redeem them here.
+    /// @dev Stop tracking the given Shape and pack listings, withdraw them from FWA and redeem each here.
     function _withdrawAndRedeem(IFWAPool p, uint256[] memory lids) internal returns (uint256 eth) {
         uint256 n = lids.length;
         if (n == 0) return 0;
         uint256[] memory tokenIds = new uint256[](n);
+        uint8[] memory sizes = new uint8[](n);
         for (uint256 i; i < n; ++i) {
             uint256 lid = lids[i];
             (,,, tokenIds[i],,,,) = p.listings(lid);
-            --activeShapes[items[lid].denom];
+            uint8 d = items[lid].denom;
+            sizes[i] = d;
+            --activeShapes[d];
             _removeActive(lid);
             delete items[lid];
         }
         p.withdrawListingsTo(lids, address(this));
-        eth = SHAPES.redeemBatch(tokenIds);
+        for (uint256 i; i < n; ++i) {
+            eth += _redeem(sizes[i], tokenIds[i]);
+        }
+    }
+
+    /// @dev Redeem one prize token this contract holds for its exact backing. Shapes and Draw Packs share
+    ///      `redeem(uint256)`, which pays the owner (this contract) and burns the token.
+    function _redeem(uint8 d, uint256 tokenId) internal returns (uint256 eth) {
+        uint256 before = address(this).balance;
+        IShapePacks(d < SHAPE_DENOMS ? address(SHAPES) : address(PACKS)).redeem(tokenId);
+        eth = address(this).balance - before;
     }
 
     /// @dev Mint like-for-like with available ETH and list the new Shapes in one FWA batch.
@@ -801,30 +821,45 @@ contract PoolBalancer is ReentrancyGuard {
     {
         funded = true;
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](budget);
-        for (uint256 d; d < DENOMS && used < budget; ++d) {
+        uint256 n; // listings in the batch; `used` counts Shape units
+        for (uint256 d; d < DENOMS; ++d) {
             uint256 have = activeShapes[d];
             uint256 target = _count(plan, d);
             if (have >= target) continue;
             uint256 need = target - have;
-            if (need > budget - used) need = budget - used;
-            uint256 cost = need * (_amount(d) + fee);
+            uint256 w = _shapesIn(d);
+            if (need > (budget - used) / w) need = (budget - used) / w;
+            if (need == 0) continue;
+            uint256 cost = need * _cost(d, fee);
             if (address(this).balance < cost) {
                 funded = false;
                 break;
             }
-            uint256 first = SHAPES.mintBatch{value: cost}(_amount(d), need);
-            emit ShapesMinted(uint8(d), first, need, cost);
             uint256 price = _amount(d) * (BPS + markup) / BPS;
-            for (uint256 j; j < need; ++j) {
-                batch[used++] = IFWAPool.ListingInput(address(SHAPES), first + j, price);
+            if (d < SHAPE_DENOMS) {
+                uint256 first = SHAPES.mintBatch{value: cost}(_amount(d), need);
+                emit ShapesMinted(uint8(d), first, need, cost);
+                for (uint256 j; j < need; ++j) {
+                    batch[n++] = IFWAPool.ListingInput(address(SHAPES), first + j, price);
+                }
+            } else {
+                // One pack per prize, each minting its Shapes inside; the pack token comes to this contract.
+                uint32[] memory makeup = _makeup(d);
+                uint256 each = _cost(d, fee);
+                for (uint256 j; j < need; ++j) {
+                    uint256 id = PACKS.createPackTo{value: each}(new uint256[](0), makeup, address(this));
+                    if (j == 0) emit ShapesMinted(uint8(d), id, need, cost);
+                    batch[n++] = IFWAPool.ListingInput(address(PACKS), id, price);
+                }
             }
+            used += need * w;
         }
-        if (used == 0) return (0, funded);
+        if (n == 0) return (0, funded);
         assembly ("memory-safe") {
-            mstore(batch, used)
+            mstore(batch, n)
         }
         uint256[] memory lids = p.listNFTs(batch);
-        for (uint256 i; i < used; ++i) {
+        for (uint256 i; i < n; ++i) {
             // Denomination is recovered from the listed price, which is unique per denomination.
             uint8 d = _denomOfPrice(batch[i].price, markup);
             items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_amount(d)), uint112(batch[i].price));
@@ -884,8 +919,8 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 have = activeShapes[d];
             uint256 target = _count(plan, d);
             if (target > have) {
-                r += (target - have) * (_amount(d) + fee);
-                missing += target - have;
+                r += (target - have) * _cost(d, fee);
+                missing += (target - have) * _shapesIn(d);
             }
         }
         // Keeper rewards: the maximum held in the checkpoint reserve (any price up to the cap), plus one per refill
@@ -914,7 +949,7 @@ contract PoolBalancer is ReentrancyGuard {
         return activeIds;
     }
 
-    function getActiveShapes() external view returns (uint16[9] memory) {
+    function getActiveShapes() external view returns (uint16[16] memory) {
         return activeShapes;
     }
 
@@ -956,7 +991,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
-        if (collection == address(SHAPES)) revert ShapesNotCurated();
+        if (collection == address(SHAPES) || collection == address(PACKS)) revert ShapesNotCurated();
         price = _priced(base);
         IERC721Min(collection).transferFrom(msg.sender, address(this), tokenId);
         if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert InvalidItem();
@@ -1034,17 +1069,23 @@ contract PoolBalancer is ReentrancyGuard {
         return cW * BPS >= uint256(c.minCuratedOddsBps) * tW;
     }
 
-    /// @dev Cash to replace the worst MAX_BATCH Shape draws from a full plan: the largest denominations
-    ///      first, each at backing plus the current mint fee.
+    /// @dev Cash to replace the worst MAX_BATCH prize draws from a full plan: the largest values first, each charged
+    ///      backing plus MAX_SHAPES_IN mint fees. That bounds any 5 prizes' true cost (backing plus one fee per Shape
+    ///      inside) from above, whatever the mint fee, at most 2 extra fees per prize that is a single Shape.
     function _batchReserve(uint256 plan, uint256 fee) internal pure returns (uint256 r) {
         uint256 left = MAX_BATCH;
-        for (uint256 d = DENOMS; d != 0 && left != 0;) {
-            --d;
+        for (uint256 k = DENOMS; k != 0 && left != 0;) {
+            uint256 d = (BY_VALUE >> (4 * --k)) & 0xF;
             uint256 n = _count(plan, d);
             if (n > left) n = left;
-            r += n * (_amount(d) + fee);
+            r += n * (_amount(d) + MAX_SHAPES_IN * fee);
             left -= n;
         }
+    }
+
+    /// @dev ETH to create one prize of size `d`: its backing plus the Shapes mint fee for each Shape inside.
+    function _cost(uint256 d, uint256 fee) internal pure returns (uint256) {
+        return _amount(d) + _shapesIn(d) * fee;
     }
 
     function _planShapes(uint256 plan) internal pure returns (uint256 shapes) {
@@ -1058,16 +1099,27 @@ contract PoolBalancer is ReentrancyGuard {
         return (plan >> (16 * d)) & 0xFFFF;
     }
 
-    /// @dev Mainnet Shapes ladder; checked against `Shapes.denominationAt` in the constructor.
+    /// @dev Sizes 0-8: the mainnet Shapes ladder, checked against `Shapes.denominationAt` in the constructor.
+    ///      Sizes 9-15: pack values (see AMOUNTS).
     function _amount(uint256 d) internal pure returns (uint256) {
-        if (d == 0) return 0.01 ether;
-        if (d == 1) return 0.05 ether;
-        if (d == 2) return 0.1 ether;
-        if (d == 3) return 0.5 ether;
-        if (d == 4) return 1 ether;
-        if (d == 5) return 5 ether;
-        if (d == 6) return 10 ether;
-        if (d == 7) return 50 ether;
-        return 100 ether;
+        return ((AMOUNTS >> (16 * d)) & 0xFFFF) * 0.01 ether;
+    }
+
+    /// @dev Shapes per denomination index inside a pack of size `d`: the ladder taken largest first, which gives the
+    ///      fewest Shapes for every pack value (0.02 = 2x0.01, 0.03 = 3x0.01, 0.2 = 2x0.1, 0.25 = 2x0.1+0.05,
+    ///      2 = 2x1, 2.5 = 2x1+0.5, 25 = 2x10+5); the count matches SHAPES_IN.
+    function _makeup(uint256 d) internal pure returns (uint32[] memory m) {
+        m = new uint32[](SHAPE_DENOMS);
+        uint256 rest = _amount(d);
+        for (uint256 i = SHAPE_DENOMS; i != 0;) {
+            uint256 a = _amount(--i);
+            m[i] = uint32(rest / a);
+            rest %= a;
+        }
+    }
+
+    /// @dev Shapes inside one prize of size `d`, each paying the Shapes mint fee.
+    function _shapesIn(uint256 d) internal pure returns (uint256) {
+        return (SHAPES_IN >> (4 * d)) & 0xF;
     }
 }

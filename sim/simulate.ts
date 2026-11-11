@@ -6,7 +6,7 @@
 // 'previous' (surplus kept as spares, full gas + 45k at basefee + 2 gwei, 10 gwei cap).
 // Time advances in minutes. Run: npm run sim [-- --runs 40]
 import { writeFileSync } from 'node:fs';
-import { economics, evaluate, BPS, DENOMS, GAS, KEEPER_INCENTIVE, listPrice, weightOf, type Counts } from '../shared/planner';
+import { economics, evaluate, BPS, DENOMS, GAS, KEEPER_INCENTIVE, SHAPES_IN, listPrice, prizeCost, weightOf, type Counts } from '../shared/planner';
 
 const GWEI = 10n ** 9n;
 const eth = (x: number) => BigInt(Math.round(x * 1e6)) * 10n ** 12n;
@@ -116,7 +116,7 @@ function worstBatch(plan: Counts, fee: bigint, spares: number[]) {
   let r = 0n;
   for (let d = 8; d >= 0 && left > 0; d--) {
     const n = Math.min(left, Math.max(0, plan[d] - spares[d]));
-    r += BigInt(n) * (DENOMS[d] + fee);
+    r += BigInt(n) * prizeCost(d, fee);
     left -= n;
   }
   return r;
@@ -131,7 +131,7 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
   let balance = eth(sc.depositEth);
   let pendingProceeds = 0n;
   const active: Item[] = [];
-  const spares = Array(9).fill(0) as number[];
+  const spares = Array(DENOMS.length).fill(0) as number[];
   let planIdx = 0;
   const mk = (kind: 'c' | 's', base: bigint, d = -1): Item => {
     const price = listPrice(base, m);
@@ -162,17 +162,17 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
   };
   const drawPrice = () => { const t = totals(); return t.w === 0n ? 0n : ((t.wp / t.w) * (BPS + edge)) / BPS; };
   const ownerBase = () => { const t = totals(); return t.w === 0n ? 0n : t.wp / t.w; };
-  const shapeCounts = () => { const c = Array(9).fill(0) as number[]; for (const it of active) if (it.kind === 's') c[it.d]++; return c; };
+  const shapeCounts = () => { const c = Array(DENOMS.length).fill(0) as number[]; for (const it of active) if (it.kind === 's') c[it.d]++; return c; };
   const limits = { maxDrawPrice: sc.maxDrawPrice ? eth(sc.maxDrawPrice) : 10n ** 30n, minCuratedOddsBps: sc.minOddsBps ?? 0, maxShapeCapital: 10n ** 30n };
   const feasible = (p: Counts) => evaluate(p, { curatedBases: active.filter((i) => i.kind === 'c').map((i) => i.base), markupBps: m, edgeBps: 500, mintFee: fee }, limits).feasible;
   const required = () => {
-    const plan = sc.plans[planIdx];
+    const plan = padded(sc.plans[planIdx]);
     const have = shapeCounts();
     let deficit = 0n;
-    const credit = Array(9).fill(0) as number[];
-    for (let d = 0; d < 9; d++) {
+    const credit = Array(DENOMS.length).fill(0) as number[];
+    for (let d = 0; d < DENOMS.length; d++) {
       const covered = have[d] + (M.keepSpares ? spares[d] : 0);
-      if (plan[d] > covered) deficit += BigInt(plan[d] - covered) * (DENOMS[d] + fee);
+      if ((plan[d] ?? 0) > covered) deficit += BigInt((plan[d] ?? 0) - covered) * prizeCost(d, fee);
       if (M.keepSpares) credit[d] = Math.min(spares[d], Math.max(0, covered - plan[d]));
     }
     return deficit + worstBatch(plan, fee, credit) + M.maxReward;
@@ -258,10 +258,10 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
       else {
         if (next !== planIdx) stats.planSwitches++;
         planIdx = next;
-        const plan = sc.plans[planIdx];
+        const plan = padded(sc.plans[planIdx]);
         const have = shapeCounts();
         // Surplus first (bounded by MAX_OPS), then deficits.
-        for (let d = 0; d < 9 && ops < MAX_OPS; d++) {
+        for (let d = 0; d < DENOMS.length && ops < MAX_OPS; d++) {
           while (have[d] > plan[d] && ops < MAX_OPS) {
             const i = active.findIndex((x) => x.kind === 's' && x.d === d);
             active.splice(i, 1); have[d]--; ops++;
@@ -271,7 +271,7 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
         }
         let denomsMinted = 0;
         let funded = true;
-        for (let d = 0; d < 9 && ops < MAX_OPS; d++) {
+        for (let d = 0; d < DENOMS.length && ops < MAX_OPS; d++) {
           let need = Math.min(plan[d] - have[d], MAX_OPS - ops);
           if (need <= 0) continue;
           if (M.keepSpares) {
@@ -281,9 +281,9 @@ export function run(sc: Scenario, seed: number, model: Model = 'current') {
             gas += use * GAS.perShape;
           }
           if (need <= 0) continue;
-          const c = BigInt(need) * (DENOMS[d] + fee);
+          const c = BigInt(need) * prizeCost(d, fee);
           if (balance < c) { funded = false; break; }
-          balance -= c; stats.mintFees += BigInt(need) * fee; ops += need; have[d] += need; denomsMinted++;
+          balance -= c; stats.mintFees += BigInt(need * SHAPES_IN[d]) * fee; ops += need; have[d] += need; denomsMinted++;
           for (let i = 0; i < need; i++) active.push(mk('s', DENOMS[d], d));
           gas += GAS.perShape * need + (denomsMinted > 1 ? GAS.perExtraDenom : 0);
         }
@@ -462,6 +462,9 @@ export const scenarios: Scenario[] = [
 ];
 /** Scenarios where spares vs immediate redemption can differ, plus the baseline. */
 const compared = ['baseline', 'gas 1 gwei', 'high volume 400/day', 'plan switching (restock after 12h)', 'plan switching, restock after 2h', 'plan switching, high volume 400/day', 'plan switching, mint fee 0.005'];
+
+/** A plan written with only the nine Shapes sizes, padded with zero pack counts. */
+const padded = (c: Counts): Counts => [...c, ...Array(Math.max(0, DENOMS.length - c.length)).fill(0)];
 
 const fmt = (x: number, d = 4) => (Number.isFinite(x) ? x.toFixed(d) : String(x));
 

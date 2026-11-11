@@ -21,11 +21,11 @@ export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP >
  *  + re-checkpoint reward. */
 export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, baseFee: bigint): bigint {
   let r = 0n;
-  let missing = 0;
+  let missing = 0; // Shape units: refill steps are budgeted in Shapes minted, a pack counting its Shapes
   target.forEach((n, d) => {
-    if (n > have[d]) {
-      r += BigInt(n - have[d]) * (DENOMS[d] + mintFee);
-      missing += n - have[d];
+    if (n > (have[d] ?? 0)) {
+      r += BigInt(n - (have[d] ?? 0)) * prizeCost(d, mintFee);
+      missing += (n - (have[d] ?? 0)) * SHAPES_IN[d];
     }
   });
   const steps = BigInt(Math.ceil(missing / 6) + 1);
@@ -33,11 +33,27 @@ export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint,
 }
 
 const E = 10n ** 18n;
-/** Mainnet Shapes ladder (wei), denomination index 0..8. */
+/**
+ * Prize sizes (wei), PoolBalancer's size table: 0-8 the mainnet Shapes ladder (each prize one Shape), 9-15 Draw Packs
+ * holding the fewest Shapes that sum to the value. Not in value order; use BY_VALUE for that.
+ */
 export const DENOMS: readonly bigint[] = [
   E / 100n, E / 20n, E / 10n, E / 2n, E, 5n * E, 10n * E, 50n * E, 100n * E,
+  E / 50n, (3n * E) / 100n, E / 5n, E / 4n, 2n * E, (5n * E) / 2n, 25n * E,
 ];
-export const DENOM_LABELS = ['0.01', '0.05', '0.1', '0.5', '1', '5', '10', '50', '100'];
+export const DENOM_LABELS = ['0.01', '0.05', '0.1', '0.5', '1', '5', '10', '50', '100', '0.02', '0.03', '0.2', '0.25', '2', '2.5', '25'];
+/** Sizes that are single Shapes (the rest are packs). */
+export const SHAPE_SIZES = 9;
+export const isPack = (d: number) => d >= SHAPE_SIZES;
+/** Shapes inside one prize of each size; each pays the Shapes mint fee (PoolBalancer.SHAPES_IN). */
+export const SHAPES_IN: readonly number[] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 2, 3, 2, 3, 3];
+/** The most Shapes any prize holds; the worst-batch reserve charges each prize this many mint fees. */
+export const MAX_SHAPES_IN = 3;
+/** Size indices smallest value first. */
+export const BY_VALUE: readonly number[] = DENOMS.map((_, i) => i).sort((a, b) => (DENOMS[a] < DENOMS[b] ? -1 : 1));
+/** ETH to create one prize of size d: its backing plus a mint fee per Shape inside. */
+export const prizeCost = (d: number, mintFee: bigint) => DENOMS[d] + BigInt(SHAPES_IN[d]) * mintFee;
+export const prizeLabel = (d: number) => `${DENOM_LABELS[d]} ETH ${isPack(d) ? 'Pack' : 'Shape'}`;
 
 /** Billed gas from isolated mainnet-fork transactions (docs/GAS.md). Cost estimates only, never limits.
  *  The pool pays the keeper at most this (4/5 of measured gas is 80-99% of billed gas). */
@@ -49,7 +65,7 @@ export const GAS = {
   redeemPerShape: 120_000, // plan switch: withdraw + redeem each surplus Shape (~1.0M for 6)
 };
 
-export type Counts = number[]; // length 9
+export type Counts = number[]; // length 16, indexed like DENOMS
 
 export interface PoolInputs {
   curatedBases: bigint[]; // creator-assigned values (wei), before markup
@@ -74,6 +90,7 @@ export function packPlan(counts: Counts): bigint {
 }
 
 export function unpackPlan(p: bigint): Counts {
+  // Plans saved before pack sizes existed decode the same: their high counts are zero.
   return DENOMS.map((_, d) => Number((p >> BigInt(16 * d)) & 0xffffn));
 }
 
@@ -108,13 +125,15 @@ export function shapeTotals(counts: Counts, markupBps: number) {
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
 export const shapeCount = (counts: Counts) => counts.reduce((s, n) => s + n, 0);
 
-/** Cash for the worst MAX_BATCH Shape draws from a full plan (PoolBalancer._batchReserve). */
+/** Cash for the worst MAX_BATCH prize draws from a full plan (PoolBalancer._batchReserve): largest values first, each
+ *  charged MAX_SHAPES_IN mint fees. */
 export function batchReserve(counts: Counts, mintFee: bigint): bigint {
   let left = MAX_BATCH;
   let r = 0n;
-  for (let d = 8; d >= 0 && left > 0; d--) {
-    const n = Math.min(left, counts[d]);
-    r += BigInt(n) * (DENOMS[d] + mintFee);
+  for (let k = BY_VALUE.length - 1; k >= 0 && left > 0; k--) {
+    const d = BY_VALUE[k];
+    const n = Math.min(left, counts[d] ?? 0);
+    r += BigInt(n) * (DENOMS[d] + BigInt(MAX_SHAPES_IN) * mintFee);
     left -= n;
   }
   return r;
@@ -122,7 +141,8 @@ export function batchReserve(counts: Counts, mintFee: bigint): bigint {
 
 export interface Tier {
   label: string;
-  kind: 'curated' | 'shape';
+  kind: 'curated' | 'shape'; // 'shape': a Shape or Pack prize of size `size`
+  size?: number;
   count: number;
   listPrice: bigint;
   oddsPpm: number; // combined probability of this tier per draw, parts per million
@@ -172,7 +192,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
   counts.forEach((n, d) => {
     if (!n) return;
     const p = listPrice(DENOMS[d], inputs.markupBps);
-    tiers.push({ label: `${DENOM_LABELS[d]} ETH Shape`, kind: 'shape', count: n, listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
+    tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
   });
 
   const br = batchReserve(counts, inputs.mintFee);
@@ -187,7 +207,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
     shapes,
     batchReserve: br,
     requiredReserve: br + MAX_KEEPER_REWARD,
-    initialMintFees: BigInt(shapes) * inputs.mintFee,
+    initialMintFees: counts.reduce((s, n, d) => s + BigInt(n * SHAPES_IN[d]) * inputs.mintFee, 0n),
     ownerProceedsPerDraw: ev,
   };
 }
@@ -203,21 +223,23 @@ const toEth = (x: bigint) => Number(x) / 1e18;
 /**
  * Expected per-draw economics. With FWA's inverse weights, the expected listed value of the drawn
  * item equals the owner proceeds H, so the creator's expected gain before costs is H*m/(1+m).
- * Costs: Shapes mint fee and keeper gas for each Shape drawn, plus per-upkeep overhead.
+ * Costs: for each prize drawn, a mint fee and keeper gas per Shape it holds (a pack replaces all its Shapes), plus
+ * per-upkeep overhead.
  */
 export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions) {
   const ev = evaluate(counts, inputs);
   const m = inputs.markupBps / 10_000;
   const H = toEth(ev.ownerProceedsPerDraw);
-  const pShape = 1 - ev.curatedOddsPpm / 1e6;
   const gp = a.gasPriceGwei * 1e-9;
   const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
   const perShapeCost = toEth(inputs.mintFee) + GAS.perShape * gp;
+  // Expected Shapes replaced per draw: each prize tier's chance times the Shapes it holds.
+  const shapesPerDraw = ev.tiers.reduce((s, t) => s + (t.kind === 'shape' ? (t.oddsPpm / 1e6) * SHAPES_IN[t.size!] : 0), 0);
   // Incentive: the withheld 1/5 of gas + 0.0005 ETH, capped by FWA's edge on the draw.
   const edgePerDraw = toEth((ev.drawPrice * BigInt(inputs.edgeBps)) / (BPS + BigInt(inputs.edgeBps)));
   const incentive = Math.min((GAS.upkeepBase / 5) * gp + toEth(KEEPER_INCENTIVE), edgePerDraw);
   const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + incentive;
-  const overhead = pShape * perShapeCost + perUpkeep / k;
+  const overhead = shapesPerDraw * perShapeCost + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);
   const H0 = H / (1 + m); // harmonic mean of unmarked values
   const net = grossMargin - overhead;
@@ -246,7 +268,7 @@ export function enumeratePlans(
   maxVisits = 300_000,
 ) {
   const out: { counts: Counts; ev: Evaluation; net: number }[] = [];
-  const counts: Counts = Array(9).fill(0);
+  const counts: Counts = Array(DENOMS.length).fill(0);
   let visits = 0;
   const c = curatedTotals(inputs.curatedBases, inputs.markupBps);
   const rec = (i: number, left: number, capital: bigint) => {

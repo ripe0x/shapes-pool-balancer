@@ -46,7 +46,7 @@ contract ForkScenarioTest is ForkBase {
         uint256 keeperBefore = keeper.balance;
         fillUp();
         assertGt(keeper.balance, keeperBefore, "keeper paid for real work");
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[0], 5);
         assertEq(active[1], 3);
         assertEq(active[2], 2);
@@ -88,7 +88,7 @@ contract ForkScenarioTest is ForkBase {
 
         uint256 balBefore = address(balancer).balance;
         upkeep();
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[2], 2, "0.1 Shape replaced");
         assertEq(pool.activeListingCount(), 12);
         assertTrue(balancer.canPurchase(buyer), "reopened");
@@ -171,7 +171,7 @@ contract ForkScenarioTest is ForkBase {
         pool.acquire{value: total}(stranger, 0, 0, 10_000, v, block.timestamp + 1);
 
         upkeep();
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[0], 5);
         assertEq(active[1], 3);
         assertEq(active[2], 2);
@@ -236,7 +236,7 @@ contract ForkScenarioTest is ForkBase {
         uint256 before = address(balancer).balance;
         balancer.unwind(20);
         assertEq(address(balancer).balance, before + 0.4 ether, "Shapes redeemed for exact backing");
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[0] + active[1] + active[2], 0);
         balancer.withdrawCurated(curatedA, creator);
         balancer.withdrawCurated(curatedB, creator);

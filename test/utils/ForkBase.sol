@@ -31,6 +31,7 @@ abstract contract ForkBase is Test {
     IFWAPool internal pool;
     IShapes internal shapes = IShapes(SHAPES);
     MockNFT internal nft;
+    address internal packs;
 
     address internal creator = makeAddr("creator");
     address internal keeper = makeAddr("keeper");
@@ -41,7 +42,9 @@ abstract contract ForkBase is Test {
         vm.createSelectFork("mainnet", FORK_BLOCK);
         vm.txGasPrice(1 gwei);
         vm.fee(0.5 gwei);
-        PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, ENS);
+        address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
+        packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
+        PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
         factory = new BalancerFactory(address(impl));
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
@@ -59,6 +62,14 @@ abstract contract ForkBase is Test {
     /// @dev Pack nine Shape counts, denomination index 0 first.
     function plan(uint256[9] memory counts) internal pure returns (uint256 p) {
         for (uint256 d; d < 9; ++d) {
+            p |= counts[d] << (16 * d);
+        }
+    }
+
+    /// @dev Pack sixteen prize counts: the nine Shapes denominations, then the pack sizes
+    ///      0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH.
+    function plan16(uint256[16] memory counts) internal pure returns (uint256 p) {
+        for (uint256 d; d < 16; ++d) {
             p |= counts[d] << (16 * d);
         }
     }

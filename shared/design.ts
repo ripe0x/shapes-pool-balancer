@@ -1,5 +1,5 @@
 import {
-  BPS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
+  BPS, BY_VALUE, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
@@ -81,7 +81,7 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   while (shapeTotal(bonus) < room) {
     const v = view(bonus);
     if (v.win2x >= BIG_WIN_SHARE) break;
-    const i = DENOMS.findIndex((x) => x >= 2n * v.cost);
+    const i = BY_VALUE.find((j) => DENOMS[j] >= 2n * v.cost) ?? -1; // the smallest size worth 2x the draw
     if (i < 0) break;
     bonus = bonus.map((n, j) => (j === i ? n + 1 : n));
   }
@@ -93,7 +93,7 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
  * the same mix with fewer of its smallest Shapes, which raises the chance of an NFT.
  */
 export function fallbacksFor(best: Counts): Counts[] {
-  const low = best.findIndex((n) => n > 0);
+  const low = BY_VALUE.find((i) => best[i] > 0) ?? -1; // the smallest size in the mix
   const seen = new Set([best.join()]);
   const out: Counts[] = [];
   for (const keep of [0.75, 0.5, 0.25, 0]) {

@@ -269,7 +269,7 @@ contract HardeningTest is ForkBase {
 
     function test_reserveWithDeficitAndNoSpares() public {
         uint256 fee = shapes.mintFee();
-        uint256 batch = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee);
+        uint256 batch = 2 * (0.1 ether + 3 * fee) + 3 * (0.05 ether + 3 * fee); // three mint fees each (see _batchReserve)
         // one maximum reward held for the restoring upkeep, one re-checkpoint reward at the current price (0.55 gwei)
         uint256 recheckpoint = 3_200_000 * 0.55 gwei + 0.0005 ether;
         assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint);
@@ -591,7 +591,7 @@ contract HardeningTest is ForkBase {
         vm.txGasPrice(5 gwei);
         uint256 kBefore = keeper.balance;
         upkeep();
-        uint16[9] memory have = balancer.getActiveShapes();
+        uint16[16] memory have = balancer.getActiveShapes();
         assertEq(have[0], 5);
         assertEq(have[1], 3);
         assertEq(have[2], 2, "worst batch fully restored at the cap");
@@ -646,7 +646,7 @@ contract HardeningTest is ForkBase {
             vm.txGasPrice(5 gwei);
             uint256 kBefore = keeper.balance;
             upkeep();
-            uint16[9] memory have = balancer.getActiveShapes();
+            uint16[16] memory have = balancer.getActiveShapes();
             assertEq(have[0], 5);
             assertEq(have[1], 3);
             assertEq(have[2], 2, "worst batch restored at the cap");

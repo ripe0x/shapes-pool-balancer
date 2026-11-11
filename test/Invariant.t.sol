@@ -148,7 +148,7 @@ contract InvariantTest is ForkBase {
         assertEq(balancer.getActiveIds().length, pool.activeListingCount());
         // shapes inventory equals the active plan
         uint256 p = balancer.getPlans()[balancer.activePlan()];
-        uint16[9] memory active = balancer.getActiveShapes();
+        uint16[16] memory active = balancer.getActiveShapes();
         for (uint256 d; d < 9; ++d) {
             assertEq(active[d], (p >> (16 * d)) & 0xFFFF);
         }

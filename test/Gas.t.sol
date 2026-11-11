@@ -92,6 +92,27 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
+    /// @dev Worst pack fill: every op mints a three-Shape pack (0.25 = 2x0.1 + 0.05) and lists it.
+    function test_gas_packFillStep() public {
+        uint256[16] memory c;
+        c[12] = 12;
+        _configure(plan16(c));
+        // 6 Shape units per upkeep: at most two three-Shape packs per call, so 12 packs take about 7 calls.
+        for (uint256 i; i < 8 && !balancer.canPurchase(buyer); ++i) {
+            _upkeep("upkeep: pack fill step (<= 2 three-Shape packs mint+list)");
+        }
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    function test_gas_replaceFivePacks() public {
+        uint256[16] memory c;
+        c[12] = 10;
+        _configure(plan16(c));
+        fillUp();
+        _drawShapes(5);
+        _upkeep("upkeep: reconcile + replace 5 three-Shape packs");
+    }
+
     function test_gas_replaceOne() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();

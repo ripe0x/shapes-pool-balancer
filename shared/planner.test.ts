@@ -22,8 +22,10 @@ describe('planner', () => {
   const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n };
 
   it('packs and unpacks plans', () => {
-    const c = [5, 3, 2, 0, 0, 0, 0, 0, 1];
+    const c = [5, 3, 2, 0, 0, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 4];
     expect(unpackPlan(packPlan(c))).toEqual(c);
+    // a plan saved with the nine Shapes sizes only decodes with zero pack counts
+    expect(unpackPlan(packPlan([5, 3, 2, 0, 0, 0, 0, 0, 1]))).toEqual([5, 3, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   it('flags every violated constraint', () => {
@@ -44,9 +46,12 @@ describe('planner', () => {
 
   it('batch reserve takes the five most expensive replacements', () => {
     const fee = E / 1000n;
-    expect(batchReserve([5, 3, 2, 0, 0, 0, 0, 0, 0], fee)).toBe(2n * (E / 10n + fee) + 3n * (E / 20n + fee));
-    expect(batchReserve([1, 0, 0, 0, 0, 0, 0, 0, 0], fee)).toBe(E / 100n + fee);
-    expect(batchReserve([0, 0, 0, 0, 0, 0, 0, 0, 7], fee)).toBe(5n * (100n * E + fee));
+    // Every prize is charged three mint fees (the most Shapes a pack holds), largest values first.
+    expect(batchReserve([5, 3, 2, 0, 0, 0, 0, 0, 0], fee)).toBe(2n * (E / 10n + 3n * fee) + 3n * (E / 20n + 3n * fee));
+    expect(batchReserve([1, 0, 0, 0, 0, 0, 0, 0, 0], fee)).toBe(E / 100n + 3n * fee);
+    expect(batchReserve([0, 0, 0, 0, 0, 0, 0, 0, 7], fee)).toBe(5n * (100n * E + 3n * fee));
+    // packs sit between Shapes by value: 0.25 and 0.2 packs outrank the 0.1 Shape
+    expect(batchReserve([0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0], fee)).toBe(E / 4n + E / 5n + 3n * (E / 10n) + 15n * fee);
   });
 
   it('enumerates only feasible plans and respects limits', () => {
@@ -81,7 +86,7 @@ describe('planner', () => {
   it('required reserve matches the contract for the small pool at 0.08 gwei (fork test_reserveSizes)', () => {
     const ten = [10, 0, 0, 0, 0, 0, 0, 0, 0];
     const fee = E / 1000n;
-    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(184_248_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(72_416_000_000_000_000n);
+    expect(requiredReserveAt(ten, Array(9).fill(0), fee, 8n * 10n ** 7n)).toBe(194_248_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 8n * 10n ** 7n)).toBe(82_416_000_000_000_000n);
   });
 });
