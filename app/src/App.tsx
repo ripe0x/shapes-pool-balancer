@@ -404,6 +404,7 @@ const DEFAULT_MARKUP = 25;
 const DEFAULT_SMALL = 10;
 const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'steady', label: 'Low draw price', hint: 'Cheap draws. Most draws win a small Shape; your NFT is the big prize.' },
+  { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps: 0.01, 0.02, 0.05, 0.1 and 0.5 ETH, in ape-Ball\'s proportions.' },
   { key: 'balanced', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price or more.` },
   { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the draw price.` },
   { key: 'ladder', label: 'Prize ladder', hint: 'Small, mid-size and one top prize. The most variety.' },

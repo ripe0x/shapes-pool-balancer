@@ -53,7 +53,12 @@ export const shapeTotal = (c: Counts) => c.reduce((a, b) => a + b, 0);
  */
 export const mixOf = (small: number, bonus: Counts = NONE): Counts => bonus.map((n, i) => n + (i === 0 ? small : 0));
 
-export type Style = 'steady' | 'balanced' | 'jackpot' | 'ladder';
+export type Style = 'steady' | 'board' | 'balanced' | 'jackpot' | 'ladder';
+/**
+ * "Balanced": ape-Ball's opening board (24 x 0.01 Shape, 8 x 0.02 Pack, 12 x 0.05, 2 x 0.1, 1 x 0.5 ETH Shape;
+ * apeball LaunchConfig D93), as prizes per 24 small Shapes: size index -> count.
+ */
+export const BOARD: readonly [number, number][] = [[9, 8], [1, 12], [2, 2], [3, 1]];
 /** "More big wins" adds bonus Shapes until about this share of draws wins 2x the draw price or more. */
 export const BIG_WIN_SHARE = 0.1;
 /** "Jackpot" adds one Shape worth about this many times the draw price. */
@@ -65,11 +70,23 @@ export const JACKPOT_MULTIPLE = 50;
  * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
  * current price) until about 1 in 10 draws wins 2x or more;
  * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
- * ladder: the jackpot Shape, then big wins on top of it (small, mid-size and one top prize).
+ * ladder: the jackpot Shape, then big wins on top of it (small, mid-size and one top prize);
+ * board: ape-Ball's proportions scaled to `small` (at least one 0.1 and one 0.5 ETH prize), trimmed from the most
+ * numerous sizes to fit the 40-Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
   const room = MAX_SHAPES_PER_PLAN - small;
   if (style === 'steady' || !d.curatedBases.length || room <= 0) return NONE;
+  if (style === 'board') {
+    const b = [...NONE];
+    for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 || i === 3 ? 1 : 0, Math.round((small * per24) / 24));
+    while (shapeTotal(b) > room) {
+      const i = BOARD.map(([j]) => j).reduce((m, j) => (b[j] > b[m] ? j : m));
+      if (b[i] === 0) break;
+      b[i]--;
+    }
+    return b;
+  }
   const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.markupBps, d.vrfFee ?? 0n);
   let bonus = NONE;
   if (style === 'jackpot' || style === 'ladder') {

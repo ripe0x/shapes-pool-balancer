@@ -88,3 +88,22 @@ suite('pool size and styles', () => {
     expect(available(parseEther('0.1'), mix({ 3: 2 }), mix({ 3: 1 }))).toBe(parseEther('0.6'));
   });
 });
+
+suite('balanced style (ape-Ball board)', () => {
+  const one = { ...base, curatedBases: [parseEther('0.05')] };
+  const counts = (small: number) => mixOf(small, styleBonus('board', one, small));
+
+  it('at 20 small Shapes is ape-Ball\'s 47-row board scaled to 40', () => {
+    const c = counts(20);
+    expect([c[0], c[9], c[1], c[2], c[3]]).toEqual([20, 7, 10, 2, 1]); // 0.01, 0.02 pack, 0.05, 0.1, 0.5
+    expect(shapeCount(c)).toBe(40);
+  });
+
+  it('keeps a 0.1 and a 0.5 ETH prize in a small pool and never exceeds 40 Shapes', () => {
+    const small = counts(4);
+    expect(small[2]).toBeGreaterThanOrEqual(1);
+    expect(small[3]).toBeGreaterThanOrEqual(1);
+    for (const n of [1, 10, 24, 30, 38]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(40);
+  });
+});
+
