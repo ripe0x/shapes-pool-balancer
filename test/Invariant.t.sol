@@ -123,8 +123,9 @@ contract InvariantTest is ForkBase {
         listCurated(2, 0.5 ether);
         listCurated(3, 0.8 ether);
         uint256[] memory plans = new uint256[](2);
-        plans[0] = plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]);
-        plans[1] = plan([uint256(2), 1, 1, 0, 0, 0, 0, 0, 0]);
+        // Shapes and packs: 2x0.02, 1x0.03 and 1x0.25 ETH packs in the preferred plan, one 0.02 pack in the fallback.
+        plans[0] = plan16([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0]);
+        plans[1] = plan16([uint256(2), 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
         configure(0.05 ether, 50, plans);
         vm.prank(creator);
         balancer.open();
@@ -146,10 +147,10 @@ contract InvariantTest is ForkBase {
         assertLe(pool.acquisitionFee(), maxDrawPrice);
         // tracked active set equals FWA's active set
         assertEq(balancer.getActiveIds().length, pool.activeListingCount());
-        // shapes inventory equals the active plan
+        // prize inventory (Shapes and packs) equals the active plan
         uint256 p = balancer.getPlans()[balancer.activePlan()];
         uint16[16] memory active = balancer.getActiveShapes();
-        for (uint256 d; d < 9; ++d) {
+        for (uint256 d; d < 16; ++d) {
             assertEq(active[d], (p >> (16 * d)) & 0xFFFF);
         }
     }
@@ -167,11 +168,14 @@ contract InvariantTest is ForkBase {
         assertFalse(pool.tokenOfferEnabled());
     }
 
-    /// @dev Shapes are only held inside a transaction (mint-then-list, withdraw-then-redeem).
+    /// @dev Shapes and packs are only held inside a transaction (mint-then-list, withdraw-then-redeem).
     function invariant_noShapesHeldBetweenCalls() public view {
         (bool ok, bytes memory r) = SHAPES.staticcall(abi.encodeWithSignature("balanceOf(address)", address(balancer)));
         assertTrue(ok);
         assertEq(abi.decode(r, (uint256)), 0);
+        (ok, r) = packs.staticcall(abi.encodeWithSignature("balanceOf(address)", address(balancer)));
+        assertTrue(ok);
+        assertEq(abi.decode(r, (uint256)), 0, "no pack held between calls");
     }
 
     /// @dev Whenever reconciled, the tracked active set matches FWA exactly.
