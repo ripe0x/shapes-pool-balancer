@@ -790,7 +790,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           {listed.map((l) => (
             <div className="mixrow" key={l.id.toString()}>
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} small />
-              <div><div className="t">{nftName(l)}</div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`} · <a href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer">OpenSea ↗</a></div></div>
+              <div><div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftName(l)}</a></div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`}</div></div>
               <span className="end mono">{eth(l.base)} ETH</span>
             </div>
           ))}
@@ -799,9 +799,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               <div className="mixrow">
                 {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} small />}
                 <div style={{ minWidth: 0 }}>
-                  <div className="t">{rowName(n, listed.length + k)}</div>
-                  {oddsLine(`d${i}`) && <div className="s">{oddsLine(`d${i}`)}</div>}
-                  {n.collection && <div className="s">{n.floor ? `Collection floor ${floorText(n.floor)} · ` : ''}<a href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>}
+                  <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{rowName(n, listed.length + k)}</a> : rowName(n, listed.length + k)}</div>
+                  {(oddsLine(`d${i}`) || n.floor) && <div className="s">{[oddsLine(`d${i}`), n.floor && `collection floor ${floorText(n.floor)}`].filter(Boolean).join(' · ')}</div>}
                   {mode !== 'preview' && <button className="link" style={{ fontSize: 13 }} onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : n.collection ? 'Change' : 'Choose from your wallet'}</button>}
                 </div>
                 <div className="field end" style={{ width: 150 }}><input aria-label={`Value of ${rowName(n, listed.length + k)}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
@@ -994,7 +993,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
             <div className="nft" key={l.id.toString()}>
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
               <div>
-                <div className="t">{name(l)} <a className="note" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>
+                <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
                 <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
                 <div className="s">Won about {oneIn(odds(l))} draws</div>
                 {edit?.id === l.id && (
@@ -1091,8 +1090,8 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
         <div className="mixrow" style={{ marginTop: 12 }}>
           <Thumb key={key} n={{ collection: pick.collection, tokenId: BigInt(pick.tokenId!), image: pick.image }} />
           <div style={{ minWidth: 0 }}>
-            <div className="t">{nftLabel(pick)}</div>
-            <div className="s">{pick.floor ? `Collection floor ${floorText(pick.floor)} · ` : ''}<a href={openSeaAsset(pick.collection, pick.tokenId!)} target="_blank" rel="noreferrer">OpenSea ↗</a></div>
+            <div className="t"><a className="tlink" href={openSeaAsset(pick.collection, pick.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(pick)}</a></div>
+            {pick.floor && <div className="s">Collection floor {floorText(pick.floor)}</div>}
           </div>
           <button className="link end" onClick={() => setChoosing(true)}>Change</button>
         </div>
@@ -1446,9 +1445,8 @@ function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; 
       <div style={{ marginTop: 14 }}>
         <div className="section-head" style={{ marginBottom: 10 }}>
           <button className="link quiet" onClick={() => { setCol(undefined); setTokens(undefined); }}>← All collections</button>
-          <a className="note" href={col.slug ? `https://opensea.io/collection/${col.slug}` : `https://opensea.io/assets/ethereum/${col.address}`} target="_blank" rel="noreferrer">OpenSea ↗</a>
         </div>
-        <div className="t" style={{ fontWeight: 700 }}>{col.name}</div>
+        <div className="t" style={{ fontWeight: 700 }}><a className="tlink" href={col.slug ? `https://opensea.io/collection/${col.slug}` : `https://opensea.io/assets/ethereum/${col.address}`} target="_blank" rel="noreferrer" title="View on OpenSea">{col.name}</a></div>
         <p className="note" style={{ margin: '2px 0 12px' }}>{col.floor ? `Floor ${floorText(col.floor)} on OpenSea` : 'No recent price on OpenSea'}</p>
         {!tokens && <p className="note">Loading your tokens…</p>}
         {tokens && !shown.length && <p className="note">No tokens left to choose in this collection.</p>}
