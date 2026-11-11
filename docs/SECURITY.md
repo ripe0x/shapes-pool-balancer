@@ -20,7 +20,7 @@ Six rounds:
 | 3 (keeper liveness and griefing bound, owner review) | `1f352fa` | `6a2dabe` |
 | 4 (reimbursement re-evaluated against FWA V2; launch rehearsal) | `5161e8f`, then `0a48e84` | `0a48e84`, `31edef6` |
 | 5 (independent adversarial audit, `audit/report.md`) | `0f01784` | dashboard only; contracts unchanged |
-| 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | this round's repair commit |
+| 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | `83cd752` |
 
 ## Method
 
