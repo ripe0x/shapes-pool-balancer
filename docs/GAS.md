@@ -158,7 +158,7 @@ the brief excludes; neither is added.
 | --- | --- | --- |
 | deficit: missing Shapes × (backing + mint fee) | restoring the active plan | exact |
 | worst batch: largest 5 prize values × (backing + 3 mint fees) | replacing what an admitted batch can draw | upper bound: exact for packs of 3 Shapes, +2 mint fees for each single Shape counted (+0.01 ETH at a 0.001 ETH fee) |
-| one maximum keeper reward | paying the upkeep that restores an admitted batch, at any price up to the cap | 0.0165 ETH (the hard guarantee) |
+| one maximum keeper reward per restoring call | paying the upkeep calls that restore an admitted batch, at any price up to the cap: 1 for single Shapes, up to 3 when five three-Shape packs are drawn (`test_worstPackBatchRebuildsWithinTheReserve`) | 0.0165 ETH each (the hard guarantee) |
 | one reward for the call that writes the next checkpoint | admission still holds after that call pays its keeper | 3.2M gas × **current** reimbursable price + 0.0005 ETH |
 | one reward per remaining 6-Shape refill step | creator-started refills | same, per step |
 

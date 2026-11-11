@@ -151,10 +151,66 @@ contract PacksTest is ForkBase {
     }
 
     function test_reserveTakesTheFiveLargestValues() public view {
-        // largest five: 0.25, 0.03, 0.03, 0.02, 0.02; each charged three mint fees
+        // largest five: 0.25, 0.03, 0.03, 0.02, 0.02; each charged three mint fees. Rebuilding the five prizes holding
+        // the most Shapes (0.25 and 2x0.03 at 3 Shapes, 2x0.02 at 2) takes 13 Shape units: three upkeep calls, each
+        // with one maximum keeper reward held.
         uint256 fee = shapes.mintFee();
-        uint256 expected = 0.25 ether + 2 * 0.03 ether + 2 * 0.02 ether + 5 * 3 * fee + balancer.MAX_KEEPER_REWARD();
+        uint256 expected = 0.25 ether + 2 * 0.03 ether + 2 * 0.02 ether + 5 * 3 * fee + 3 * balancer.MAX_KEEPER_REWARD();
         (,,,, uint256 reserve) = balancer.checkpoint();
         assertEq(reserve, expected);
+    }
+
+    function test_everyPackSizeMintsAtExactValueWithItsShapes() public {
+        uint256[16] memory c;
+        for (uint256 d = 9; d < 16; ++d) c[d] = 1;
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan16(c);
+        vm.prank(creator);
+        balancer.depositETH{value: 60 ether}();
+        configure(100 ether, 1, plans);
+        fillUp();
+        for (uint256 i; i < 8 && !balancer.canPurchase(buyer); ++i) upkeep();
+        assertTrue(balancer.canPurchase(buyer), "open with every pack size");
+        uint256[7] memory values = [uint256(0.02 ether), 0.03 ether, 0.2 ether, 0.25 ether, 2 ether, 2.5 ether, 25 ether];
+        uint256[7] memory counts = [uint256(2), 3, 2, 3, 2, 3, 3];
+        for (uint256 k; k < 7; ++k) {
+            (,,, uint256 tokenId,,,,) = pool.listings(_listingOfSize(uint8(9 + k)));
+            assertEq(IPacksView(packs).valueOf(tokenId), values[k], "pack value");
+            assertEq(IPacksView(packs).contentsOf(tokenId).length, counts[k], "Shapes inside");
+        }
+    }
+
+    /// @dev A worst batch of five drawn three-Shape packs (15 Shape units) is rebuilt within the held rewards.
+    function test_worstPackBatchRebuildsWithinTheReserve() public {
+        uint256[16] memory c;
+        c[0] = 2;
+        c[10] = 6; // 0.03 packs, three Shapes each
+        uint256[] memory plans = new uint256[](1);
+        plans[0] = plan16(c);
+        configure(1 ether, 1, plans);
+        fillUp();
+        for (uint256 i; i < 8 && !balancer.canPurchase(buyer); ++i) upkeep();
+        (,,,, uint256 reserve) = balancer.checkpoint();
+        uint256 fee = shapes.mintFee();
+        assertEq(reserve, 5 * (0.03 ether + 3 * fee) + 3 * balancer.MAX_KEEPER_REWARD(), "three rewards held");
+
+        // draw five packs in one batch
+        uint256[] memory ids = buy(buyer, 5);
+        uint256[] memory lids = balancer.getActiveIds();
+        uint256 drawn;
+        for (uint256 i; i < lids.length && drawn < 5; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(lids[i]);
+            if (kind != 2 || d != 10) continue;
+            (,,,,,, uint256 slot,) = pool.listings(lids[i]);
+            fulfill(ids[drawn++], wordForSlot(slot));
+        }
+        settle();
+        uint256 calls;
+        while (!balancer.canPurchase(buyer) && calls < 6) {
+            upkeep();
+            ++calls;
+        }
+        assertTrue(balancer.canPurchase(buyer), "reopened");
+        assertLe(calls, 3, "rebuilt in at most the three calls the reserve pays for");
     }
 }

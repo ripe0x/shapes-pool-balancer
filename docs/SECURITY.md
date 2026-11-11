@@ -11,7 +11,7 @@ and automated tooling. It is bounded evidence, not a statement that the contract
 - Out of scope: TypeScript keeper and dashboard (tested functionally; round 5 reviewed them as secondary scope), FWA
   and Shapes themselves, and FWA's off-chain pool-page server.
 
-Five rounds:
+Six rounds:
 
 | Round | Target | Repairs |
 | --- | --- | --- |
@@ -20,6 +20,7 @@ Five rounds:
 | 3 (keeper liveness and griefing bound, owner review) | `1f352fa` | `6a2dabe` |
 | 4 (reimbursement re-evaluated against FWA V2; launch rehearsal) | `5161e8f`, then `0a48e84` | `0a48e84`, `31edef6` |
 | 5 (independent adversarial audit, `audit/report.md`) | `0f01784` | dashboard only; contracts unchanged |
+| 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | this round's repair commit |
 
 ## Method
 
@@ -52,6 +53,23 @@ Five rounds:
 | I-4 | Info | A markup change and change back (A→B→A) before any upkeep leaves `repricing` set with nothing to reprice; that call scans 100 listings (~0.4M gas) and may also reconcile and mint, possibly exceeding 3.2M. | Accepted: the keeper is under-reimbursed for that one call; no funds or authority affected. |
 | I-6 | Info (repair review) | A batch bought before a creator action that closes admission (configure, close) is reconciled with the full incentive. The buyer cannot cause or time the creator action. Confirmed: no remaining path sets or keeps the creator-work flag while purchases can be admitted (only setters close admission; it clears in the call that writes the checkpoint; the keeper payout's 100k stipend cannot fund an FWA purchase). | Accepted. |
 | I-5 | Info | The 4/5 rule and the absent intrinsic credit mean single-call keepers absorb ~20% of gas plus 21k; gas-only paths (refund-only batches, `recoverRefundedShape`) always lose money for keepers. | Accepted by design: the incentive covers paid work at normal gas; the bundled keeper's `MAX_LOSS_WEI` covers the rest. |
+
+## Round 6 (pack prizes)
+
+One independent AI reviewer, target `57510f3`, scope: the pack-prize change in `PoolBalancer`, `PoolPage`, the deploy
+script, the vendored Draw Packs at `3a463f7` as a dependency, and TypeScript parity.
+
+| # | Severity | Finding | Resolution |
+| --- | --- | --- | --- |
+| 1 | Medium | The checkpoint and `requiredReserve` held one keeper reward for restoring a batch, but five drawn three-Shape packs (15 Shape units) take three upkeep calls. Failed safe (no overdraw or wrong admission; the pool stayed closed), but surplus claims could leave a pack pool stuck until topped up. | Fixed: `_batchSteps` holds one maximum reward per restoring call; mirrored in `shared/planner.ts`; `test_worstPackBatchRebuildsWithinTheReserve` rebuilds five drawn packs in at most the three calls held. |
+| 2 | Low | `createPackTo` needs exact payment; `_cost` equals it only because each pack value is an exact greedy sum of Shapes, with no runtime guard. | Covered by test instead of bytecode (164 B margin): `test_everyPackSizeMintsAtExactValueWithItsShapes` mints all 7 sizes and checks value and Shape count. |
+| 3 | Info | `PoolPage` is a linked external library; a missed library deployment or verification could look like success. | Confirmed on the 8545 fork (library deployed through the CREATE2 deployer, address present in the implementation's code); readiness lists Etherscan verification of the library and the Draw Packs pair. |
+
+Checked sound by the reviewer: the packed size tables decode correctly; the three-fee reserve bound holds for any mint
+fee; every listed price maps back to one size for markups 0-100%; every prize is redeemed for exactly its backing on
+unwind, plan switch and refund recovery; no new reentrancy path (`onERC721Received` is pure, all mutating entry points
+are `nonReentrant`); the gate refuses the Balancer, Shapes, Draw Packs and the FWA pool; Draw Packs is not upgradeable
+or pausable, charges no fee and its admin reaches presentation only; deploy wiring and TypeScript parity.
 
 ## Round 5 (independent adversarial audit)
 

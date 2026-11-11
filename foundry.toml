@@ -5,7 +5,8 @@ libs = ["lib"]
 solc = "0.8.28"
 evm_version = "cancun"
 optimizer = true
-optimizer_runs = 200
+# 50 keeps PoolBalancer under EIP-170 (24,576 B) with headroom after pack prizes; at 200 it had 8 bytes spare.
+optimizer_runs = 50
 via_ir = true
 remappings = [
     "forge-std/=lib/forge-std/src/",

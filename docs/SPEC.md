@@ -91,8 +91,9 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 - cost to restore the active plan from the prizes currently listed (backing + current mint fee per Shape inside), plus
 - the worst 5 prize replacements from a full plan: the 5 largest values, each charged backing + 3 mint fees (the most
   Shapes any prize holds), an upper bound on any 5 prizes' true cost whatever the mint fee, plus
-- one maximum keeper reward (`3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH`) held for the upkeep that restores
-  an admitted batch, at any price up to the cap, plus
+- one maximum keeper reward (`3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH`) held for each upkeep call that restores
+  an admitted batch, at any price up to the cap: the Shape units of the 5 prizes holding the most Shapes over 6,
+  rounded up (1 for single Shapes, up to 3 when five three-Shape packs are drawn), plus
 - one reward for the call that writes the next checkpoint and one per refill step still needed (6 Shape units per
   step, a pack counting its Shapes), each
   `3.2M × current reimbursable price + 0.0005 ETH`. `_checkpoint` re-checks this at its own transaction's price,
@@ -204,6 +205,6 @@ verified: whether FWA's server checks ERC-1271 (its client allows long contract 
 | Redeem surplus Shapes instead of keeping spares | Removes spare storage and spare credit from reserve math; managed Shapes never sit in the Balancer. Costs one mint fee per Shape re-minted when plans switch back (simulation: 0.02–0.11 ETH per 30 days at 10–42 switches; no change in closed time). |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
 | 4/5 gas + (1/5 gas + 0.0005 ETH) incentive, 0.05 gwei priority cap | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive returns the other fifth only for useful work and within the edge credit, plus 0.0005 ETH that keeps upkeep economical to the 5 gwei cap for keepers pricing with `eth_estimateGas`. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep (1 gwei: +91% keeper spend, no faster inclusion). |
-| Clone factory, `via_ir` | Cheap deployment per creator; runtime 24,315 B under EIP-170 (24,576 B), with the pool-page message builder in the `PoolPage` library. |
+| Clone factory, `via_ir`, 50 optimizer runs | Cheap deployment per creator; runtime 24,412 B under EIP-170 (24,576 B), with the pool-page message builder in the `PoolPage` library. |
 | Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |
 | A fixed menu of 16 prize sizes instead of arbitrary values | Keeps plans, per-size counts, reserve and weight checks structurally unchanged; a 1–2–2.5–5 ladder lands within about 25% of any target value. |

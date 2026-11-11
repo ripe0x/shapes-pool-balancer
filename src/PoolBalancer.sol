@@ -683,10 +683,10 @@ contract PoolBalancer is ReentrancyGuard {
         if (p.activeListingCount() != activeIds.length) return INVENTORY_MISMATCH;
         if (p.totalWeight() != cW + sW || p.weightedBackingTotal() != cWP + sWP) return INVENTORY_MISMATCH;
         if (p.acquisitionFee() > config.maxDrawPrice) return PRICE_ABOVE_MAX;
-        // Held: the worst batch's replacements and one maximum reward for the upkeep that restores them, at any price
-        // up to the cap. Also cover this call's own reward (paid after the checkpoint, at this transaction's price) so
-        // admission still holds afterwards.
-        uint256 reserve = _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
+        // Held: the worst batch's replacements and one maximum reward for each upkeep call that restores them (more than
+        // one when drawn packs exceed one call's Shape units), at any price up to the cap. Also cover this call's own
+        // reward (paid after the checkpoint, at this transaction's price) so admission still holds afterwards.
+        uint256 reserve = _batchReserve(plan, fee) + _batchSteps(plan) * MAX_KEEPER_REWARD;
         if (address(this).balance < reserve + _rewardBound(_rewardPrice(tx.gasprice))) return INSUFFICIENT_RESERVE;
         uint64 seq = reconciledSequence;
         uint256 version = p.inventoryVersion();
@@ -926,7 +926,7 @@ contract PoolBalancer is ReentrancyGuard {
         // Keeper rewards: the maximum held in the checkpoint reserve (any price up to the cap), plus one per refill
         // step still needed and one for the re-checkpointing call, at the price an honest keeper is paid now.
         r += ((missing + MAX_OPS - 1) / MAX_OPS + 1) * _rewardBound(_rewardPrice(type(uint256).max));
-        r += _batchReserve(plan, fee) + MAX_KEEPER_REWARD;
+        r += _batchReserve(plan, fee) + _batchSteps(plan) * MAX_KEEPER_REWARD;
     }
 
     /// @dev Reimbursed price: min(bid, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE).
@@ -1081,6 +1081,21 @@ contract PoolBalancer is ReentrancyGuard {
             r += n * (_amount(d) + MAX_SHAPES_IN * fee);
             left -= n;
         }
+    }
+
+    /// @dev Upkeep calls that rebuild the worst MAX_BATCH draws: the Shape units of the 5 prizes holding the most Shapes
+    ///      (three-Shape packs first, then two-Shape packs, the rest counted as single Shapes), over MAX_OPS, rounded up.
+    ///      1 for a plan of single Shapes; up to 3 when 5 three-Shape packs are drawn.
+    function _batchSteps(uint256 plan) internal pure returns (uint256) {
+        uint256 three;
+        uint256 two;
+        for (uint256 d = SHAPE_DENOMS; d < DENOMS; ++d) {
+            if (_shapesIn(d) == 3) three += _count(plan, d);
+            else two += _count(plan, d);
+        }
+        if (three > MAX_BATCH) three = MAX_BATCH;
+        if (two > MAX_BATCH - three) two = MAX_BATCH - three;
+        return (MAX_BATCH + 2 * three + two + MAX_OPS - 1) / MAX_OPS;
     }
 
     /// @dev ETH to create one prize of size `d`: its backing plus the Shapes mint fee for each Shape inside.

@@ -147,7 +147,11 @@ Review the **Money and authority** section first.
     six pack mints billed 5.8M gas against the 3.2M reimbursement cap, so keepers would lose money after pack draws.
     Consequence: refilling several drawn packs takes more upkeep calls, so a pool with packs reopens a little later.
 39. **Worst-batch reserve charges every prize three mint fees**, an upper bound on any five prizes' cost whatever the
-    mint fee. Simpler than an exact search; costs +0.01 ETH of reserve at the current 0.001 ETH fee.
+    mint fee. Simpler than an exact search; costs +0.01 ETH of reserve at the current 0.001 ETH fee. It also holds one
+    maximum keeper reward per upkeep call the worst batch needs (round 6 review): up to 3 when five three-Shape packs
+    can be drawn, so +0.033 ETH for such plans.
+41. **50 optimizer runs** (was 200) to keep PoolBalancer under the 24 KB limit with headroom after pack prizes; at 200
+    the margin was 8 bytes. Worst Shape fill step bills 3.04M gas (was 3.03M), under the 3.2M reimbursement cap.
 40. **Withdrawal redeems prizes one at a time** through `redeem(uint256)`, which Shapes and Draw Packs share, instead of
     one Shapes batch: smaller code; a little more gas on unwind and plan switches (unwind of 20 Shapes: 2.62M, creator-paid).
 

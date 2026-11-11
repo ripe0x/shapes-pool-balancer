@@ -13,7 +13,7 @@ margin; round-5 fixes S1–S3), re-checked with the app tests, typecheck, build 
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Build and sizes | `forge build --sizes` | pass at `57510f3`; PoolBalancer runtime 24,315 B (limit 24,576, margin 261), PoolPage 1,201 B, ShapePacks 17,768 B, BalancerFactory 1,212 B |
+| Build and sizes | `forge build --sizes` | pass after the round 6 repair; 50 optimizer runs; PoolBalancer runtime 24,412 B (limit 24,576, margin 164), PoolPage 1,194 B, ShapePacks 17,768 B (its own 20-run via-IR build), BalancerFactory 1,207 B. Mainnet deploy: Etherscan verification must cover the `PoolPage` library (deployed by forge through the CREATE2 deployer and linked into PoolBalancer; confirmed on the 8545 fork) and the Draw Packs pair |
 | Foundry suites (fork) | `forge test --no-match-path test/Gas.t.sol` | 78 passed, 0 failed (7 suites incl. `KeeperAdversarial` 9, hardening 22, behavior 32, scenario 11, parity 1, invariants at 64 runs × 64 calls) |
 | Gas benchmarks and break-even, refund-checked | `forge test --match-path test/Gas.t.sol --isolate -vv` | 32 passed; every keeper path reimbursed ≤ billed gas; PnL table in GAS.md |
 | Planner parity and keeper policy | `npx vitest run` | 25 passed |

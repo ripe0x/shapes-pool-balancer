@@ -29,7 +29,21 @@ export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint,
     }
   });
   const steps = BigInt(Math.ceil(missing / 6) + 1);
-  return r + steps * rewardBound(rewardPrice(baseFee)) + batchReserve(target, mintFee) + MAX_KEEPER_REWARD;
+  return r + steps * rewardBound(rewardPrice(baseFee)) + batchReserve(target, mintFee) + BigInt(batchSteps(target)) * MAX_KEEPER_REWARD;
+}
+
+/** Upkeep calls that rebuild the worst MAX_BATCH draws (PoolBalancer._batchSteps): Shape units of the 5 prizes holding
+ *  the most Shapes (unfilled slots counted as single Shapes), over the 6-unit step, rounded up. */
+export function batchSteps(counts: Counts): number {
+  let three = 0;
+  let two = 0;
+  for (let d = SHAPE_SIZES; d < DENOMS.length; d++) {
+    if (SHAPES_IN[d] === 3) three += counts[d] ?? 0;
+    else two += counts[d] ?? 0;
+  }
+  three = Math.min(three, MAX_BATCH);
+  two = Math.min(two, MAX_BATCH - three);
+  return Math.ceil((MAX_BATCH + 2 * three + two) / 6);
 }
 
 const E = 10n ** 18n;
@@ -206,7 +220,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs, limits?: Limits): E
     capital,
     shapes,
     batchReserve: br,
-    requiredReserve: br + MAX_KEEPER_REWARD,
+    requiredReserve: br + BigInt(batchSteps(counts)) * MAX_KEEPER_REWARD,
     initialMintFees: counts.reduce((s, n, d) => s + BigInt(n * SHAPES_IN[d]) * inputs.mintFee, 0n),
     ownerProceedsPerDraw: ev,
   };
