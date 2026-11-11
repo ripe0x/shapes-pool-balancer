@@ -197,6 +197,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 }
 
 /* Wallet NFT picker */
+.chooser { padding: 8px 0 24px; }
 .picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-height: 440px; overflow-y: auto; padding: 4px; }
 .picker button { display: flex; flex-direction: column; gap: 6px; align-items: stretch; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; min-width: 0; }
 .picker button[aria-selected="true"] .thumb { outline: 2px solid var(--ink); outline-offset: 3px; }
