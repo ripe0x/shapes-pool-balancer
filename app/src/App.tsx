@@ -403,7 +403,6 @@ const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps: 0.01, 0.02, 0.05, 0.1 and 0.5 ETH, in ape-Ball\'s proportions.' },
   { key: 'balanced', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price or more.` },
   { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the draw price.` },
-  { key: 'ladder', label: 'Prize ladder', hint: 'Small, mid-size and one top prize. The most variety.' },
 ];
 /** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
  *  picked. */
@@ -524,7 +523,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
-  const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : draft?.style ?? 'steady'));
+  const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : draft?.style ? 'board' : 'steady'));
   const initial = useRef({ style, custom, small });
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.baseFee]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -647,6 +646,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                   : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {prizeLabel(g.i)} · each {oneIn(g.p / g.n)}</span></div>))}
               </div>
               <p className="note" style={{ marginTop: 14 }}>Each square is one item in the pool. Hover or tap a square for its chance and value. Cheaper items come up more often.</p>
+              <p className="note" style={{ marginTop: 6 }}>Won prizes are restocked automatically, so the pool stays at this mix. Purchases pause until a restock finishes.</p>
             </>
           ) : (
             <>
@@ -775,7 +775,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <li>Players pay a draw price on FWA. Every draw wins one prize: one of your NFTs or a Shape.</li>
             <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
             <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
-            <li>Your ETH buys the Shapes. When one is won, the pool buys a replacement from your ETH and the draw payments.</li>
+            <li>Your ETH buys the Shapes. When one is won, the pool replaces it with the same prize, paid from your ETH and the draw payments, so the mix stays as you set it.</li>
             <li>Your markup is part of every draw price, and it is yours. You can withdraw ETH the pool does not need.</li>
           </ol>
         )}
@@ -856,6 +856,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <input id="small" type="range" min={shapeTotal(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
               onChange={(e) => change(setSmall)(Number(e.target.value))} />
             <p className="note">More small prizes make your NFTs rarer and the draw cheaper. A pool holds up to {MAX_SHAPES_PER_PLAN} Shapes.</p>
+            <p className="note" style={{ marginTop: 6 }}>The pool keeps this mix: each prize that is won is replaced with the same prize, paid from the pool's ETH. Your NFTs are not replaced.</p>
           </div>
           {ready && view && (
             <div className="summary">

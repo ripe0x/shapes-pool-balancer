@@ -53,7 +53,7 @@ export const shapeTotal = (c: Counts) => c.reduce((a, b) => a + b, 0);
  */
 export const mixOf = (small: number, bonus: Counts = NONE): Counts => bonus.map((n, i) => n + (i === 0 ? small : 0));
 
-export type Style = 'steady' | 'board' | 'balanced' | 'jackpot' | 'ladder';
+export type Style = 'steady' | 'board' | 'balanced' | 'jackpot';
 /**
  * "Balanced": ape-Ball's opening board (24 x 0.01 Shape, 8 x 0.02 Pack, 12 x 0.05, 2 x 0.1, 1 x 0.5 ETH Shape;
  * apeball LaunchConfig D93), as prizes per 24 small Shapes: size index -> count.
@@ -70,7 +70,6 @@ export const JACKPOT_MULTIPLE = 50;
  * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
  * current price) until about 1 in 10 draws wins 2x or more;
  * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
- * ladder: the jackpot Shape, then big wins on top of it (small, mid-size and one top prize);
  * board: ape-Ball's proportions scaled to `small` (at least one 0.1 and one 0.5 ETH prize), trimmed from the most
  * numerous sizes to fit the 40-Shape limit.
  */
@@ -89,11 +88,10 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   }
   const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.markupBps, d.vrfFee ?? 0n);
   let bonus = NONE;
-  if (style === 'jackpot' || style === 'ladder') {
+  if (style === 'jackpot') {
     const target = Number(view(NONE).cost) * JACKPOT_MULTIPLE;
     const i = DENOMS.reduce((b, v, j) => (Math.abs(Math.log(Number(v) / target)) < Math.abs(Math.log(Number(DENOMS[b]) / target)) ? j : b), 0);
-    bonus = NONE.map((_, j) => (j === i ? 1 : 0));
-    if (style === 'jackpot') return bonus;
+    return NONE.map((_, j) => (j === i ? 1 : 0));
   }
   while (shapeTotal(bonus) < room) {
     const v = view(bonus);

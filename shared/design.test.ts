@@ -65,16 +65,8 @@ suite('pool size and styles', () => {
     expect(ratio).toBeLessThan(JACKPOT_MULTIPLE * 3);
   });
 
-  it('ladder: big wins, a top prize near 50x and at least three Shape sizes', () => {
-    const c = mixOf(10, styleBonus('ladder', one, 10));
-    const v = at(c).v;
-    expect(v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
-    expect(c.filter((n) => n > 0).length).toBeGreaterThanOrEqual(3);
-    expect(Number(v.top.value) / Number(v.cost)).toBeGreaterThan(JACKPOT_MULTIPLE / 3);
-  });
-
   it('a style never pushes the pool past 40 Shapes', () => {
-    for (const st of ['balanced', 'jackpot', 'ladder'] as const) expect(shapeCount(mixOf(38, styleBonus(st, one, 38)))).toBeLessThanOrEqual(40);
+    for (const st of ['board', 'balanced', 'jackpot'] as const) expect(shapeCount(mixOf(38, styleBonus(st, one, 38)))).toBeLessThanOrEqual(40);
   });
 
   it('fallbacks raise the chance of an NFT and need no more ETH', () => {
