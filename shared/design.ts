@@ -1,5 +1,5 @@
 import {
-  BPS, DENOMS, MAX_PLANS, enumeratePlans, evaluate, requiredReserveAt,
+  BPS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, enumeratePlans, evaluate, requiredReserveAt,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
@@ -64,7 +64,7 @@ export function recommend(style: Style, d: DesignInputs) {
   const small = affordable.slice(0, 3);
   const allowed = style === 'jackpot' ? [...new Set([...small.slice(0, 2), affordable[affordable.length - 1]])] : style === 'steady' ? small : affordable.slice(0, 4);
   const limits = { maxDrawPrice: d.maxDrawPrice ?? 2n ** 255n, minCuratedOddsBps: d.minCuratedOddsBps, maxShapeCapital: d.budget };
-  const { plans } = enumeratePlans(d, limits, allowed, 24, { gasPriceGwei: 1, drawsPerUpkeep: 1, safety: 0.25 }, 100_000, 150_000);
+  const { plans } = enumeratePlans(d, limits, allowed, MAX_SHAPES_PER_PLAN, { gasPriceGwei: 1, drawsPerUpkeep: 1, safety: 0.25 }, 100_000, 150_000);
   const fits = (c: Counts) => ethNeeded(c, d) <= available(d.budget, d.have, c);
   const fit = plans.filter((p) => fits(p.counts));
   if (!fit.length) return none;

@@ -421,8 +421,8 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
     curatedBases: bases, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, budget: ethOr(budget, 0n),
     have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: floorBps, vrfFee: d.vrfFee,
   };
-  const pick = (st: Style) => {
-    const r = recommend(st, inputs);
+  const pick = (st: Style, over: Partial<DesignInputs> = {}) => {
+    const r = recommend(st, { ...inputs, ...over });
     setStyle(st);
     if (!r.best) { setNote('No mix fits this budget and NFT chance. Raise the budget or lower the minimum chance.'); return; }
     setNote(undefined);
@@ -441,6 +441,23 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
   useEffect(() => {
     if (!has) saveDraft({ budget: preview ? budget : draft?.budget ?? budget, markup, floor, counts, fallbacks, style, values: preview?.values ?? draft?.values });
   }, [has, budget, markup, floor, counts, fallbacks, style, preview?.values]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reset = () => {
+    const m = has ? d.config.markupBps / 100 : 15;
+    const f = has ? d.config.minCuratedOddsBps / 100 : 5;
+    const b = preview ? '1.000' : eth(available(d.balance, d.activeShapes, ZERO));
+    setMarkup(m); setFloor(f); setBudget(b); setNote(undefined); setGas('1');
+    setOpen({ mix: false, fallbacks: false, advanced: false, numbers: false });
+    if (has) {
+      setStyle(undefined);
+      setCounts(unpackPlan(d.plans[d.activePlan]));
+      setFallbacks(d.plans.filter((_, i) => i !== d.activePlan).map(unpackPlan));
+      setCeiling(String(Math.ceil(Number(formatEther(d.config.maxDrawPrice)) * 1e6) / 1e6));
+      return;
+    }
+    setCeiling('');
+    if (preview) preview.setValues(['0.050']);
+    pick('steady', { markupBps: m * 100, minCuratedOddsBps: f * 100, budget: ethOr(b, 0n), curatedBases: preview ? [parseEther('0.05')] : bases });
+  };
   const total = counts.reduce((a, b) => a + b, 0);
   const setCount = (i: number, n: number) => { setStyle(undefined); setCounts(counts.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const ready = bases.length > 0 && total > 0;
@@ -485,18 +502,27 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
 
   // Inventory: one square per item in the pool, each with its own chance per draw.
   const nftGroup = groups.find((g) => g.nft);
-  const items: InvItem[] = view ? [
-    ...view.tiers.filter((t) => t.kind === 'curated').map((t, k) => ({
-      key: `n${k}`, label: curated[k] ? nftName(curated[k]) : `Your NFT ${k + 1}`, nft: true, value: t.value, price: t.listPrice, p: t.odds, mult: t.multiple, style: nftGroup ? sw(nftGroup) : {},
-    })),
-    ...counts.flatMap((n, i) => {
-      const t = tierOf(i);
-      const g = shapeGroups.find((x) => x.i === i);
-      return n && t && g ? Array.from({ length: n }, (_, j) => ({
-        key: `s${i}-${j}`, label: `${DENOM_LABELS[i]} ETH Shape`, nft: false, value: t.value, price: t.listPrice, p: t.odds / n, mult: t.multiple, style: sw(g),
-      })) : [];
-    }),
-  ] : [];
+  // Same group order as the 100-draw view (most frequent first), so the two views line up.
+  const curatedTiers = view?.tiers.filter((t) => t.kind === 'curated') ?? [];
+  const items: InvItem[] = view ? ordered.flatMap(({ g }): InvItem[] => {
+    if (g.nft) return curatedTiers.map((t, k) => ({
+      key: `n${k}`, label: curated[k] ? nftName(curated[k]) : `Your NFT ${k + 1}`, nft: true, value: t.value, price: t.listPrice, p: t.odds, mult: t.multiple, style: sw(g),
+    }));
+    const t = tierOf(g.i);
+    return t ? Array.from({ length: g.n }, (_, j) => ({
+      key: `s${g.i}-${j}`, label: `${DENOM_LABELS[g.i]} ETH Shape`, nft: false, value: t.value, price: t.listPrice, p: t.odds / g.n, mult: t.multiple, style: sw(g),
+    })) : [];
+  }) : [];
+  // What stops one more of the smallest Shape in the mix (or 0.01 ETH): the 40-Shape limit, the NFT odds floor or the budget.
+  const limitNote = (() => {
+    if (!ready) return undefined;
+    if (total >= MAX_SHAPES_PER_PLAN) return `The contract allows ${MAX_SHAPES_PER_PLAN} Shapes per mix.`;
+    const i = Math.max(0, counts.findIndex((n) => n > 0));
+    const more = counts.map((n, j) => (j === i ? n + 1 : n));
+    if (describe(more, inputs).curatedOddsBps < floorBps) return `Shapes are limited by your ${floor}% minimum chance of an NFT: each Shape makes your NFTs rarer, cheap ones most. Lower it, or add NFTs, to fit more.`;
+    if (ethNeeded(more, inputs) > available(balance, d.activeShapes, more)) return 'Shapes are limited by your budget: each one needs its backing plus reserve.';
+    return undefined;
+  })();
 
   if (!bases.length && !preview) {
     return (
@@ -526,14 +552,12 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
             <>
               <InventoryGrid items={items} />
               <div className="legend">
-                {curated.length > 0 && nftGroup && (
-                  <div><span className="sw" style={sw(nftGroup)} /><span><b>{curated.length}</b> {curated.length === 1 ? 'of your NFTs' : 'of your NFTs'} · {oneIn(view.curated)} draws for any of them</span></div>
-                )}
-                {shapeGroups.map((g) => (
-                  <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {DENOM_LABELS[g.i]} ETH Shape · each {oneIn(g.p / g.n)}</span></div>
-                ))}
+                {ordered.map(({ g }) => (g.nft
+                  ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{curated.length}</b> of your NFTs · {oneIn(view.curated)} draws for any of them</span></div>
+                  : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {DENOM_LABELS[g.i]} ETH Shape · each {oneIn(g.p / g.n)}</span></div>))}
               </div>
               <p className="note" style={{ marginTop: 14 }}>Each square is one item in the pool. Hover or tap a square for its chance and value. Cheaper items come up more often.</p>
+              {limitNote && <p className="note" style={{ marginTop: 8 }}>{limitNote}</p>}
             </>
           ) : (
             <>
@@ -569,6 +593,7 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
       <section>
         <h1 className="title">Design your pool</h1>
         <p className="lead">Choose a style and set two limits. The right side shows what players get.</p>
+        <button className="link quiet" style={{ marginTop: 14, fontSize: 14 }} onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
 
         {preview && (
           <div className="step">
@@ -603,7 +628,7 @@ function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => 
           <div className="step-head"><span className="n">2</span><h2 className="h3">Set your limits</h2></div>
           <div className="limit">
             <div className="top"><label htmlFor="markup">Your markup</label><b>{markup}%</b></div>
-            <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => { setMarkup(Number(e.target.value)); if (style) pick(style); }} />
+            <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} onPointerUp={() => style && pick(style)} onKeyUp={() => style && pick(style)} />
             <p className="note">Higher markup raises the draw price and what you keep.</p>
           </div>
           <div className="limit">
