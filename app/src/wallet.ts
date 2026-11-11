@@ -147,7 +147,8 @@ export async function walletCollections(pub: Scan, owner: Address, chainId: numb
   } catch { /* no prices */ }
   return addresses
     .filter((a) => !meta.get(a)?.isSpam)
-    .map((a) => { const t = groups.get(a)!; return toCollection(meta.get(a) ?? { address: t[0].collection, name: t[0].name }, t.length, t); })
+    // The name read on chain stands in when Alchemy does not know the contract (e.g. one deployed on a fork).
+    .map((a) => { const t = groups.get(a)!; const m = meta.get(a); return toCollection({ ...m, address: t[0].collection, name: m?.name || t[0].name }, t.length, t); })
     .sort(byValue);
 }
 

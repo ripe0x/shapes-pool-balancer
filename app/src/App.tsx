@@ -807,8 +807,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 <button className="link quiet" aria-label={`Remove ${rowName(n, listed.length + k)}`} disabled={!listed.length && pending.length === 1} onClick={() => { setPicking(undefined); setNfts(nfts.filter((_, j) => j !== i)); }}>×</button>
               </div>
               {picking === i && me && (
-                <NftChooser me={me} current={n} exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
-                  onPick={(x) => { setNft(i, x); setPicking(undefined); }} />
+                <NftChooser me={me} limit={20 - listed.length - pending.length + 1} exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
+                  onPick={(xs) => {
+                    setEdited(true); setPicking(undefined);
+                    setNfts([...nfts.slice(0, i), { ...nfts[i], ...xs[0] }, ...nfts.slice(i + 1), ...xs.slice(1).map((x) => ({ value: nfts[i].value, ...x }))]);
+                  }} />
               )}
             </Fragment>
           ))}
@@ -1054,68 +1057,74 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
 /** Lists one more NFT on a live pool, showing what it does to the draw price and NFT odds under the saved mix first. */
 function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: Tab) => void }) {
   const pub = usePublicClient();
-  const [pick, setPick] = useState<DraftNft>({ value: '' });
+  const [picks, setPicks] = useState<DraftNft[]>([]);
   const [choosing, setChoosing] = useState(true);
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const listed = d.listings.filter((l) => l.kind === 1 && l.state === 1);
   const bases = listed.map((l) => l.base);
-  const key = pick.collection ? nftKey(pick.collection, pick.tokenId!) : '';
-  const newBase = ethOr(pick.value, 0n);
+  const keyOf = (n: DraftNft) => nftKey(n.collection!, n.tokenId!);
+  const key = picks.map(keyOf).join();
+  const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
+  const room = 20 - listed.length;
   const plan = d.plans.length ? unpackPlan(d.plans[d.activePlan]) : undefined;
   const inputs: DesignInputs = {
     curatedBases: bases, markupBps: d.config.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee,
     have: d.activeShapes, baseFee: d.baseFee, minCuratedOddsBps: d.config.minCuratedOddsBps, vrfFee: d.vrfFee,
   };
   const before = plan && bases.length ? describe(plan, inputs, d.config.maxDrawPrice) : undefined;
-  const after = plan && newBase > 0n ? describe(plan, { ...inputs, curatedBases: [...bases, newBase] }, d.config.maxDrawPrice) : undefined;
+  const after = plan && newBases.length ? describe(plan, { ...inputs, curatedBases: [...bases, ...newBases] }, d.config.maxDrawPrice) : undefined;
   const cost = (ev: ReturnType<typeof describe>) => playerView(ev, d.config.markupBps, d.vrfFee).cost;
+  const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
-    if (!pub || !pick.collection) return;
-    if (restricted !== key && await refusesContracts(pub, me, [pick])) { setRestricted(key); return; }
-    const r = await refusedApprovals(pub, me, d.balancer, [pick]);
-    setRefused(r.length ? `This pool cannot list ${r[0]}: the collection does not let this pool take the NFT.` : undefined);
+    if (!pub || !ready) return;
+    if (restricted !== key && await refusesContracts(pub, me, picks)) { setRestricted(key); return; }
+    const r = await refusedApprovals(pub, me, d.balancer, picks);
+    setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
     if (r.length) return;
-    const ok = await tx.send('List NFT', [
-      ...approveSteps(pub, tx, me, d.balancer, [pick]),
-      [`List ${nftLabel(pick)}`, () => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCurated', args: [pick.collection!, BigInt(pick.tokenId!), newBase] })],
+    const ok = await tx.send('List NFTs', [
+      ...approveSteps(pub, tx, me, d.balancer, picks),
+      [`List ${what}`, () => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [picks.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })],
       upkeepStep(pub, tx, me, d.balancer),
     ]);
-    if (ok) { setPick({ value: '' }); setChoosing(true); setRestricted(undefined); }
+    if (ok) { setPicks([]); setChoosing(true); setRestricted(undefined); }
   };
   return (
     <>
-      <h2 className="h3" style={{ fontSize: 22 }}>Add an NFT</h2>
-      {pick.collection && !choosing ? (
-        <div className="mixrow" style={{ marginTop: 12 }}>
-          <Thumb key={key} n={{ collection: pick.collection, tokenId: BigInt(pick.tokenId!), image: pick.image }} />
+      <h2 className="h3" style={{ fontSize: 22 }}>Add NFTs</h2>
+      {picks.map((n, i) => (
+        <div className="mixrow" key={keyOf(n)} style={i === 0 ? { marginTop: 12 } : undefined}>
+          <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
           <div style={{ minWidth: 0 }}>
-            <div className="t"><a className="tlink" href={openSeaAsset(pick.collection, pick.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(pick)}</a></div>
-            {pick.floor && <div className="s">Collection floor {floorText(pick.floor)}</div>}
+            <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
+            {n.floor && <div className="s">Collection floor {floorText(n.floor)}</div>}
           </div>
-          <button className="link end" onClick={() => setChoosing(true)}>Change</button>
+          <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
+          <button className="link quiet" aria-label={`Remove ${nftLabel(n)}`} onClick={() => setPicks(picks.filter((_, j) => j !== i))}>×</button>
         </div>
-      ) : (
-        <NftChooser me={me} current={pick} exclude={listed.map((l) => nftKey(l.collection, l.tokenId))}
-          onPick={(x) => { setPick({ ...pick, ...x }); setChoosing(false); setRefused(undefined); }} />
-      )}
-      <label className="form-label" htmlFor="value">Your value</label>
-      <div className="field"><input id="value" placeholder="0.000" value={pick.value} onChange={(e) => setPick({ ...pick, value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
+      ))}
+      {choosing || !picks.length ? (
+        <NftChooser me={me} limit={room - picks.length} exclude={[...listed.map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
+          onPick={(xs) => { setPicks([...picks, ...xs.map((x) => ({ value: '', ...x }))]); setChoosing(false); setRefused(undefined); }} />
+      ) : picks.length < room && <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
       {after && (
         <div className="section">
-          <span className="label">With this NFT</span>
+          <span className="label">With {picks.length === 1 ? 'this NFT' : 'these NFTs'}</span>
           <div className="kv"><span className="k">Players pay</span><span>{before ? `${eth(cost(before), 5)} → ` : ''}{eth(cost(after), 5)} ETH</span></div>
           <div className="kv"><span className="k">Chance of one of your NFTs</span><span>{before ? `${pctOf(before.curatedOddsPpm / 1e6)} → ` : ''}{pctOf(after.curatedOddsPpm / 1e6)}</span></div>
-          {!after.feasible && <p className="note error" style={{ marginTop: 10 }}>With this NFT the saved mix breaks your limits: {after.reasons.join('; ').toLowerCase()}. Purchases stay closed until you change it on <button className="link" style={{ fontSize: 13 }} onClick={() => setTab('mix')}>Prices & mix</button>.</p>}
+          {!after.feasible && <p className="note error" style={{ marginTop: 10 }}>With {picks.length === 1 ? 'this NFT' : 'these NFTs'} the saved mix breaks your limits: {after.reasons.join('; ').toLowerCase()}. Purchases stay closed until you change it on <button className="link" style={{ fontSize: 13 }} onClick={() => setTab('mix')}>Prices & mix</button>.</p>}
         </div>
       )}
       {restricted === key && key && (
-        <p className="note error" style={{ marginTop: 16 }}>This collection refuses transfers to contracts. A buyer using a contract that never claims its refund can lock this NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
+        <p className="note error" style={{ marginTop: 16 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
       {refused && <p className="note error" style={{ marginTop: 16 }}>{refused}</p>}
-      <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !pick.collection || newBase === 0n} onClick={list}>
-        {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : pick.collection && newBase ? `List ${nftLabel(pick)} at ${pick.value} ETH` : 'List NFT'}
-      </button>
+      {picks.length > 0 && (
+        <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !ready} onClick={list}>
+          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
+        </button>
+      )}
       <p className="note" style={{ marginTop: 8 }}>Listing closes purchases until upkeep runs; upkeep runs right after.</p>
     </>
   );
@@ -1363,7 +1372,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
 const SHOWN = 120;
 
 /** Picks one NFT for a Design row: from the wallet scan, or by contract and token ID. */
-function NftChooser({ me, current, exclude, onPick }: { me: Address; current: DraftNft; exclude: string[]; onPick: (x: Omit<DraftNft, 'value'>) => void }) {
+function NftChooser({ me, exclude, limit = 20, onPick }: { me: Address; exclude: string[]; limit?: number; onPick: (xs: Omit<DraftNft, 'value'>[]) => void }) {
   const pub = usePublicClient();
   const [manual, setManual] = useState(false);
   const [m, setM] = useState({ collection: '', tokenId: '' });
@@ -1375,12 +1384,12 @@ function NftChooser({ me, current, exclude, onPick }: { me: Address; current: Dr
     if (owner?.toLowerCase() !== me.toLowerCase()) { setErr('This wallet does not own that token.'); return; }
     if (exclude.includes(nftKey(collection, m.tokenId))) { setErr('That NFT is already in this design.'); return; }
     const name = await (pub!.readContract({ address: collection, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(collection));
-    onPick({ collection, tokenId: m.tokenId, name });
+    onPick([{ collection, tokenId: m.tokenId, name }]);
   };
   return (
     <div className="chooser">
-      <WalletPicker me={me} selected={{ collection: current.collection ?? '', tokenId: current.tokenId ?? '' }} listed={exclude}
-        onPick={(n, c) => onPick({ collection: n.collection, tokenId: n.tokenId.toString(), name: c.name, image: n.image, floor: c.floor, slug: c.slug })} onEmpty={() => setManual(true)} />
+      <WalletPicker me={me} listed={exclude} limit={limit}
+        onPick={(ns, c) => onPick(ns.map((n) => ({ collection: n.collection, tokenId: n.tokenId.toString(), name: c.name, image: n.image, floor: c.floor, slug: c.slug })))} onEmpty={() => setManual(true)} />
       <button className="disclose quiet" style={{ marginTop: 14 }} onClick={() => setManual(!manual)}>Enter a contract and token ID instead {manual ? '▴' : '▾'}</button>
       {manual && (
         <>
@@ -1403,7 +1412,7 @@ const floorText = (f?: number) => (f === undefined ? undefined : f >= 1 ? `${f.t
  * Finding an NFT in a large wallet: collections first, most valuable (OpenSea floor) at the top, with collections that
  * have no recent price folded away; then the chosen collection's tokens with images.
  */
-function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; selected: { collection: string; tokenId: string }; listed: string[]; onPick: (n: WalletNft, c: Collection) => void; onEmpty: () => void }) {
+function WalletPicker({ me, listed, limit, onPick, onEmpty }: { me: Address; listed: string[]; limit: number; onPick: (ns: WalletNft[], c: Collection) => void; onEmpty: () => void }) {
   const pub = usePublicClient();
   const [cols, setCols] = useState<Collection[]>();
   const [error, setError] = useState<string>();
@@ -1411,6 +1420,7 @@ function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; 
   const [rest, setRest] = useState(false);
   const [col, setCol] = useState<Collection>();
   const [tokens, setTokens] = useState<WalletNft[]>();
+  const [chosen, setChosen] = useState<string[]>([]);
   useEffect(() => {
     if (!pub) return;
     let live = true;
@@ -1423,7 +1433,7 @@ function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; 
   useEffect(() => {
     if (!col) return;
     let live = true;
-    setTokens(undefined);
+    setTokens(undefined); setChosen([]);
     collectionTokens(me, col).then((t) => live && setTokens(t), () => live && setTokens([]));
     return () => { live = false; };
   }, [col, me]);
@@ -1450,15 +1460,21 @@ function WalletPicker({ me, selected, listed, onPick, onEmpty }: { me: Address; 
         <p className="note" style={{ margin: '2px 0 12px' }}>{col.floor ? `Floor ${floorText(col.floor)} on OpenSea` : 'No recent price on OpenSea'}</p>
         {!tokens && <p className="note">Loading your tokens…</p>}
         {tokens && !shown.length && <p className="note">No tokens left to choose in this collection.</p>}
-        <div className="picker" role="listbox" aria-label={`Your ${col.name} tokens`}>
+        {tokens && shown.length > 0 && <p className="note" style={{ marginBottom: 8 }}>Select one or more.{limit < shown.length ? ` Up to ${limit} more.` : ''}</p>}
+        <div className="picker" role="listbox" aria-multiselectable="true" aria-label={`Your ${col.name} tokens`}>
           {shown.slice(0, SHOWN).map((n) => (
-            <button key={keyOf(n)} role="option" aria-selected={keyOf(n) === keyOf(selected)} onClick={() => onPick(n, col)} title={`${n.name} #${n.tokenId}`}>
+            <button key={keyOf(n)} role="option" aria-selected={chosen.includes(keyOf(n))} title={`${n.name} #${n.tokenId}`}
+              disabled={!chosen.includes(keyOf(n)) && chosen.length >= limit}
+              onClick={() => setChosen((c) => (c.includes(keyOf(n)) ? c.filter((k) => k !== keyOf(n)) : c.length < limit ? [...c, keyOf(n)] : c))}>
               <Thumb n={n} />
               <span className="pid">#{n.tokenId.toString()}</span>
             </button>
           ))}
         </div>
         {shown.length > SHOWN && <p className="note" style={{ marginTop: 8 }}>Showing {SHOWN} of {shown.length}.</p>}
+        <button className="btn" style={{ marginTop: 14 }} disabled={!chosen.length} onClick={() => onPick(shown.filter((n) => chosen.includes(keyOf(n))), col)}>
+          {chosen.length ? `Add ${chosen.length} NFT${chosen.length === 1 ? '' : 's'}` : 'Select NFTs to add'}
+        </button>
       </div>
     );
   }
