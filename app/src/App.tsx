@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAccount, useConnect, useDisconnect, usePublicClient, useWriteContract } from 'wagmi';
+import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
@@ -149,7 +150,6 @@ function useTx(onDone: () => void) {
 export function App() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
   const pub = usePublicClient();
   const [mine, setMine] = useState<Address[]>([]);
   const [selected, setSelected] = useState<Address>();
@@ -179,20 +179,12 @@ export function App() {
           <h1>Shapes Pool Balancer</h1>
           <p className="muted">Creator console. Players buy on FWA directly.</p>
         </div>
-        {isConnected ? (
-          <div className="row">
-            <span className="mono">{short(address!)}</span>
-            <button className="ghost" onClick={() => disconnect()}>Disconnect</button>
-          </div>
-        ) : (
-          <div className="row">
-            {connectors.map((c) => (
-              <button key={c.uid} className={c.type === 'mock' ? 'ghost' : ''} onClick={() => connect({ connector: c, chainId: chain.id })}>
-                {c.type === 'mock' ? 'Local dev account' : 'Connect wallet'}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="row">
+          <ConnectButton showBalance={false} />
+          {!isConnected && connectors.filter((c) => c.type === 'mock').map((c) => (
+            <button key={c.uid} className="ghost" onClick={() => connect({ connector: c, chainId: chain.id })}>Local dev account</button>
+          ))}
+        </div>
       </header>
       {!FACTORY && <div className="card warn">VITE_FACTORY is not set. See app/.env.example.</div>}
       {isConnected && (
