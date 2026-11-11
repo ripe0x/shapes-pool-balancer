@@ -47,14 +47,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* Top bar, tabs, status */
-.topbar { height: 76px; padding: 0 var(--gutter); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 40px; }
+.topbar { height: 64px; padding: 0 var(--gutter); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 40px; }
 .wordmark { font-weight: 800; font-size: 22px; letter-spacing: -.03em; white-space: nowrap; }
-.tabs { display: flex; gap: 28px; align-self: stretch; }
+.poolhead { padding: 32px var(--gutter) 0; border-bottom: 1px solid var(--line); }
+.ph-row { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.ph-id { min-width: 0; }
+.ph-name { font-weight: 800; font-size: 40px; line-height: 1.05; letter-spacing: -.035em; margin: 8px 0 10px; overflow-wrap: anywhere; }
+.ph-meta { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--ink-3); }
+.ph-meta .link { font-size: 13px; }
+.switch { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+.tabs { display: flex; gap: 28px; height: 48px; margin-top: 24px; overflow-x: auto; }
 .tabs button { background: none; border: 0; padding: 0; font-size: 15px; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button[aria-current="page"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
 .topbar .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
 .select { height: 40px; padding: 0 36px 0 14px; border: 1px solid var(--line-control); background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23fff'/%3E%3C/svg%3E") no-repeat right 14px center; appearance: none; font-weight: 700; font-size: 14px; cursor: pointer; max-width: 240px; }
-.account { height: 40px; padding: 0 14px; border: 1px solid var(--line-control); background: transparent; font: 500 13px var(--font-mono); cursor: pointer; }
+.account { white-space: nowrap; height: 40px; padding: 0 14px; border: 1px solid var(--line-control); background: transparent; font: 500 13px var(--font-mono); cursor: pointer; }
 .status { padding: 14px var(--gutter); border-bottom: 1px solid var(--line); display: flex; gap: 24px; align-items: center; font-size: 15px; color: var(--ink-2); }
 .status b { color: var(--ink); }
 .status .actions { margin-left: auto; display: flex; gap: 24px; align-items: center; }
@@ -62,13 +69,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .txline.bad { color: var(--error); }
 .mobile-only { display: none; }
 @media (max-width: 760px) {
-  .topbar { flex-wrap: wrap; height: auto; padding-top: 14px; gap: 14px; }
-  .topbar .tabs { order: 3; width: 100%; gap: 22px; height: 44px; }
-  .topbar .right .select { display: none; }
+  .poolhead { padding-top: 22px; }
+  .ph-name { font-size: 30px; }
+  .switch { margin-left: 0; width: 100%; }
+  .switch .select { flex: 1; max-width: none; }
+  .tabs { gap: 22px; margin-top: 18px; }
+  .tabs button { white-space: nowrap; }
   .mobile-only { display: block; }
   .desktop-only { display: none; }
-  .switcher-row { padding: 10px var(--gutter); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
-  .switcher-row .select { flex: 1; max-width: none; }
   .status { flex-wrap: wrap; gap: 8px 16px; }
   .status .actions { margin-left: 0; }
 }
@@ -220,3 +228,5 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 @media (max-width: 640px) { .grid100 .cell { width: auto; height: auto; aspect-ratio: 1; } }
 .tip { position: absolute; z-index: 5; transform: translateX(-50%); width: 240px; background: #000; border: 1px solid var(--ink); padding: 12px 14px; font-size: 13px; display: grid; gap: 6px; pointer-events: none; }
 .tip .tt { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+
+.title.t2 { font-size: 32px; }
