@@ -58,7 +58,7 @@ Five rounds:
 An AI auditor with no access to earlier findings audited `0f01784` (contracts unchanged since `31edef6`) for 12
 auditor-hours: two discovery lanes, then informed challenge reviews, fork PoCs at block 26,382,349, guided stateful
 campaigns (128 single-draw and 64 mixed-batch admissions), Slither, and a secondary pass over the dashboard and
-keeper. Report, PoCs and outputs: `audit/report.md`. Its limits: discovery isolation was prompt-level only; no human
+keeper. Report: `audit/report.md` (PoC sources and raw outputs are kept off the public repository). Its limits: discovery isolation was prompt-level only; no human
 review; schema-2 path gate not passed (4/55 entrypoints mapped in its manifest); 14 Slither alerts on dependency
 boundaries left open; no live refunded-Shape state reached. No outsider path to take ETH or tracked assets was found.
 
