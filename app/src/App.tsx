@@ -5,7 +5,7 @@ import { BaseError, ContractFunctionRevertedError, decodeFunctionResult, encodeF
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, economics, packPlan, unpackPlan, type Counts,
+  DENOM_LABELS, DENOMS, MAX_PLANS, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { available, describe, ethNeeded, playerView, recommend, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -431,6 +431,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const [refused, setRefused] = useState<string>();
   const [open, setOpen] = useState({ mix: false, fallbacks: false, advanced: false, numbers: false });
   const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
+  const [how, setHow] = useState(fresh);
   const salt = useMemo(() => `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as `0x${string}`, []);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
   const markupBps = Math.round(markup * 100);
@@ -682,12 +683,24 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     <main className="page cols">
       <section>
         <h1 className="title">Design your pool</h1>
-        <p className="lead">Add your NFTs and the ETH to put in, then choose a style. The right side shows what players get.</p>
-        <button className="link quiet" style={{ marginTop: 14, fontSize: 14 }} onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
+        <p className="lead">Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: your NFTs, and Shapes you fund with ETH.</p>
+        <div className="row" style={{ marginTop: 14, gap: 24 }}>
+          <button className="disclose quiet" onClick={() => setHow(!how)}>How a pool works {how ? '▴' : '▾'}</button>
+          <button className="link quiet" style={{ fontSize: 14 }} onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
+        </div>
+        {how && (
+          <ol className="how">
+            <li>Players pay a draw price on FWA. Every draw wins one prize: one of your NFTs or a Shape.</li>
+            <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
+            <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
+            <li>Your ETH buys the Shapes. When one is won, the pool buys a replacement from your ETH and the draw payments.</li>
+            <li>Your markup is part of every draw price, and it is yours. You can withdraw ETH the pool does not need.</li>
+          </ol>
+        )}
 
         <div className="step">
           <div className="step-head"><span className="n">1</span><h2 className="h3">Your NFTs</h2></div>
-          <p className="note" style={{ marginBottom: 10 }}>Players can win these. A lower value is won more often.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
+          <p className="note" style={{ marginBottom: 10 }}>The prizes you give away. A lower value is won more often.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
           {listed.map((l) => (
             <div className="mixrow" key={l.id.toString()}>
               <div><div className="t">{nftName(l)}</div><div className="s">Listed</div></div>
@@ -714,16 +727,15 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         </div>
 
         <div className="step">
-          <div className="step-head"><span className="n">2</span><h2 className="h3">How much ETH</h2></div>
-          <div className="budget" style={{ marginTop: 0 }}>
-            <p className="note">{fresh ? 'The ETH you deposit when creating the pool. It sets how many Shapes fit.' : `You have ${eth(available(d.balance, d.activeShapes, ZERO))} ETH available. It sets how many Shapes fit.`}</p>
-            <div className="field"><input id="budget" aria-label="Budget" className="big" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={() => style && pick(style)} inputMode="decimal" /><span className="u">ETH</span></div>
+          <div className="step-head"><span className="n">2</span><h2 className="h3">Shapes</h2></div>
+          <p className="note" style={{ marginBottom: 6 }}>ETH prizes that fill the rest of the pool. Each Shape holds 0.01 to 100 ETH, redeemable by the winner.</p>
+          <div className="budget">
+            <div><label htmlFor="budget" style={{ fontSize: 15 }}>ETH for Shapes</label><p className="note">{fresh ? 'Deposited when you create the pool.' : `${eth(available(d.balance, d.activeShapes, ZERO))} ETH available in this pool.`}</p></div>
+            <div className="field"><input id="budget" className="big" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={() => style && pick(style)} inputMode="decimal" /><span className="u">ETH</span></div>
           </div>
-        </div>
 
-        <div className="step">
-          <div className="step-head"><span className="n">3</span><h2 className="h3">Choose a style</h2></div>
-          <div className="options" role="group" aria-label="Style">
+          <span className="form-label" style={{ marginTop: 24 }}>How to spend it</span>
+          <div className="options" role="group" aria-label="Shape mix">
             {STYLES.map((s) => (
               <button key={s.key} aria-pressed={style === s.key} onClick={() => pick(s.key)}>
                 <span><span className="t">{s.label}</span><span className="s">{s.hint}</span></span>
@@ -732,45 +744,22 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             ))}
           </div>
           {note && <p className="note error" style={{ marginTop: 10 }}>{note}</p>}
-        </div>
-        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{gridBlock}</div>}
 
-        <div className="step">
-          <div className="step-head"><span className="n">4</span><h2 className="h3">Set your limits</h2></div>
           <div className="limit">
-            <div className="top"><label htmlFor="markup">Your markup</label><b>{markup}%</b></div>
-            <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} onPointerUp={() => style && pick(style)} onKeyUp={() => style && pick(style)} />
-            <p className="note">Higher markup raises the draw price and what you keep.</p>
-          </div>
-          <div className="limit">
-            <div className="top"><label htmlFor="floor">Minimum chance of one of your NFTs</label><b>{floor}%</b></div>
+            <div className="top"><label htmlFor="floor">Minimum chance of winning one of your NFTs</label><b>{floor}%</b></div>
             <input id="floor" type="range" min={0} max={50} step={0.5} value={floor} onChange={(e) => setFloor(Number(e.target.value))} onPointerUp={() => style && pick(style)} onKeyUp={() => style && pick(style)} />
-            <p className="note">Raising it leaves room for fewer small Shapes, so the draw price goes up.</p>
+            <p className="note">Each Shape makes your NFTs rarer. Shapes stop at this chance.</p>
           </div>
-        </div>
 
-        <div className="step">
-          <div className="step-head">
-            <span className="n">5</span><h2 className="h3">Fine-tune the mix <span className="muted">· optional</span></h2>
-            {open.mix && <button className="disclose end" onClick={() => toggle('mix')}>Close ▴</button>}
-          </div>
           {!open.mix ? (
             <div className="summary">
-              <span>{rows.length} of your NFTs and {total} Shape{total === 1 ? '' : 's'}</span>
-              <button className="disclose" onClick={() => toggle('mix')}>Adjust ▾</button>
+              <span>{ready ? <>{mixText(counts)}{fresh && <span className="muted"> · {eth(capitalOf(counts))} ETH in Shapes, {eth(needed > capitalOf(counts) ? needed - capitalOf(counts) : 0n)} ETH for mint fees and reserve</span>}</> : 'No Shapes yet'}</span>
+              <button className="disclose" onClick={() => toggle('mix')}>Adjust by hand ▾</button>
             </div>
           ) : (
             <>
-              <p className="note" style={{ marginBottom: 12 }}>Cheaper prizes come up more often. Adding small Shapes lowers the draw price and makes your NFT rarer.</p>
-              {rows.map((r, k) => {
-                const t = view?.tiers.filter((x) => x.kind === 'curated')[k];
-                return (
-                  <div className="mixrow" key={r.key}>
-                    <div><div className="t">{r.name}</div><div className="s">Your NFT · {t ? oneIn(t.odds) : '–'} draws</div></div>
-                    <span className="end note">Fixed</span>
-                  </div>
-                );
-              })}
+              <div className="section-head" style={{ marginTop: 24 }}><span className="form-label" style={{ margin: 0 }}>Adjust by hand</span><button className="disclose" onClick={() => toggle('mix')}>Close ▴</button></div>
+              <p className="note" style={{ margin: '6px 0 12px' }}>Cheaper Shapes come up more often. Small Shapes lower the draw price and make your NFTs rarer.</p>
               {DENOMS.map((_, i) => i).filter((i) => counts[i] > 0).map((i) => {
                 const t = tierOf(i);
                 return (
@@ -791,10 +780,20 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 </div>
               )}
               <p className="note" style={{ marginTop: 10 }}>
-                {tooBig.length > 0 && `${DENOM_LABELS[tooBig[0]]} to 100 ETH sizes need a larger budget. `}{total} of {MAX_SHAPES_PER_PLAN} Shapes used.
+                {tooBig.length > 0 && `${DENOM_LABELS[tooBig[0]]} to 100 ETH sizes need more ETH. `}{total} of {MAX_SHAPES_PER_PLAN} Shapes used.
               </p>
             </>
           )}
+        </div>
+        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{gridBlock}</div>}
+
+        <div className="step">
+          <div className="step-head"><span className="n">3</span><h2 className="h3">Your markup</h2></div>
+          <div className="limit" style={{ marginTop: 0 }}>
+            <div className="top"><label htmlFor="markup">Added to every draw price, and yours to keep</label><b>{markup}%</b></div>
+            <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} onPointerUp={() => style && pick(style)} onKeyUp={() => style && pick(style)} />
+            <p className="note">Higher markup raises the draw price.</p>
+          </div>
         </div>
 
         {open.fallbacks && (

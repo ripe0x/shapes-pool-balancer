@@ -129,7 +129,10 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .budget .field { width: 160px; flex: none; }
 
 /* Boxed summary and mix rows */
-.summary { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line-control); padding: 16px; font-size: 15px; }
+.how { margin: 16px 0 0; padding: 16px 16px 16px 36px; border: 1px solid var(--line); font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+.how li + li { margin-top: 6px; }
+.summary .disclose { white-space: nowrap; }
+.summary { margin-top: 22px; gap: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--line-control); padding: 16px; font-size: 15px; }
 .mixrow { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
 .mixrow:last-of-type { border-bottom: 1px solid var(--line); }
 .mixrow .t { font-weight: 700; font-size: 15px; }
