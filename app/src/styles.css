@@ -55,7 +55,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ph-name { font-weight: 800; font-size: 40px; line-height: 1.05; letter-spacing: -.035em; margin: 8px 0 10px; overflow-wrap: anywhere; }
 .ph-meta { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--ink-3); }
 .ph-meta .link { font-size: 13px; }
-.switch { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+.crumb { font-size: 13px; color: var(--ink-3); }
+.crumb .link { font-size: 13px; }
+.topnav { display: flex; gap: 24px; align-self: stretch; }
+.topnav button { background: none; border: 0; padding: 0; font-size: 15px; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.topnav button[aria-current="page"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+.poollist { margin-top: 28px; border-top: 1px solid var(--line); }
+.poollist button { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 16px; gap: 24px; align-items: center; width: 100%; padding: 18px 0; background: none; border: 0; border-bottom: 1px solid var(--line); text-align: left; cursor: pointer; }
+.poollist button:hover .t { text-decoration: underline; }
+.pl-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pl-id .t { font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+.pl-id .mono { font-size: 13px; }
+.pl-state { font-size: 14px; color: var(--ink-2); }
+.pl-eth { font-size: 14px; }
 .tabs { display: flex; gap: 28px; height: 48px; margin-top: 24px; overflow-x: auto; }
 .tabs button { background: none; border: 0; padding: 0; font-size: 15px; color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button[aria-current="page"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
@@ -71,8 +83,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 760px) {
   .poolhead { padding-top: 22px; }
   .ph-name { font-size: 30px; }
-  .switch { margin-left: 0; width: 100%; }
-  .switch .select { flex: 1; max-width: none; }
+  .poollist button { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; }
+  .pl-id { grid-row: span 2; }
+  .pl-eth { grid-column: 2; }
+  .poollist button > :last-child { display: none; }
   .tabs { gap: 22px; margin-top: 18px; }
   .tabs button { white-space: nowrap; }
   .mobile-only { display: block; }

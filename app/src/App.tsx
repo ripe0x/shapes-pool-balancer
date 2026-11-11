@@ -221,7 +221,8 @@ export function App() {
   const [mine, setMine] = useState<Address[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Address>();
-  const [creating, setCreating] = useState(false);
+  // Which page a connected wallet sees; undefined until its pools are loaded.
+  const [page, setPage] = useState<'list' | 'pool' | 'new'>();
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
@@ -232,15 +233,17 @@ export function App() {
     const logs = await pub.getLogs({ address: FACTORY, event: CREATED, args: { creator: address }, fromBlock: FROM_BLOCK });
     const list = logs.map((l) => l.args.balancer!);
     setMine(list);
-    // Connecting from the preview continues the design being worked on, even for a wallet that already has pools.
-    if (takeConnectIntent()) setCreating(true);
-    setLoaded(true);
     // Keep the selection only if it belongs to the connected account (it changes when the wallet switches accounts).
-    setSelected((s) => (s && list.includes(s) ? s : list[list.length - 1]));
+    setSelected((s) => (s && list.includes(s) ? s : list.length === 1 ? list[0] : undefined));
+    // Connecting from the preview continues the design being worked on, even for a wallet that already has pools.
+    // Otherwise: no pools opens a new one, one pool opens it, several open the list.
+    const intent = takeConnectIntent();
+    setPage((p) => (intent || !list.length ? 'new' : p ?? (list.length === 1 ? 'pool' : 'list')));
+    setLoaded(true);
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
-    setNames(Object.fromEntries(list.map((b, i) => [b, ens[i] ?? `Pool ${short(b)}`])));
+    setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
-  useEffect(() => { setLoaded(false); loadMine().catch(() => undefined); }, [loadMine]);
+  useEffect(() => { setLoaded(false); setPage(undefined); loadMine().catch(() => undefined); }, [loadMine]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -250,23 +253,17 @@ export function App() {
   }, [pub]);
 
   const dev = connectors.filter((c) => c.type === 'mock');
-  const fresh = !isConnected || (loaded && (!selected || creating));
-  const showPool = isConnected && selected && !creating;
-  const switcher = (
-    <div className="switch">
-      {mine.length > 1 && (
-        <select className="select" aria-label="Switch pool" value={selected}
-          onChange={(e) => { setNotice(undefined); setTab('overview'); setSelected(e.target.value as Address); }}>
-          {mine.map((b) => <option key={b} value={b}>{names[b] ?? `Pool ${short(b)}`}</option>)}
-        </select>
-      )}
-      <button className="btn sec" onClick={() => { setNotice(undefined); setCreating(true); }}>New pool</button>
-    </div>
-  );
+  const fresh = !isConnected || (loaded && page === 'new');
+  const open = (b: Address) => { setNotice(undefined); setTab('overview'); setSelected(b); setPage('pool'); };
   return (
     <>
       <header className="topbar">
         <span className="wordmark">FWA Pool Balancer</span>
+        {isConnected && loaded && (
+          <nav className="topnav" aria-label="Main">
+            <button aria-current={page === 'list' ? 'page' : undefined} onClick={() => setPage('list')}>Your pools</button>
+          </nav>
+        )}
         {!isConnected && (
           <div className="right">
             {dev.map((c) => <button key={c.uid} className="btn sec" onClick={() => { markConnectIntent(); connect({ connector: c, chainId: chain.id }); }}>Local dev account</button>)}
@@ -285,20 +282,57 @@ export function App() {
       {fresh && (
         <div className="status">
           <span>{isConnected ? <><b>New pool.</b> Nothing is sent until you create it and confirm in your wallet.</> : <><b>Preview.</b> Design a pool. Nothing is sent until you connect a wallet and create it.</>}</span>
-          {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setCreating(false)}>Back to your pools</button></span>}
+          {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setPage('list')}>Back to your pools</button></span>}
         </div>
       )}
       {isConnected && !loaded && <p className="txline">Loading your pools…</p>}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b, failure) => { setCreating(false); setTab('overview'); setSelected(b); setNotice(failure); loadMine(); }} />
+          onCreated={(b, failure) => { open(b); setNotice(failure); loadMine(); }} />
       )}
-      {showPool && <PoolView key={selected} balancer={selected!} me={address!} tab={tab} setTab={setTab} switcher={switcher} notice={notice} />}
+      {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setNotice(undefined); setPage('new'); }} />}
+      {isConnected && loaded && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} notice={notice} />}
     </>
   );
 }
 
-function PoolView({ balancer, me, tab, setTab, switcher, notice }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; switcher: React.ReactNode; notice?: string }) {
+/** The short state of a pool for the list: from its admission status, or "Not set up" before a design is saved. */
+const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Needs upkeep', 3: 'Settling', 4: 'Closed: no NFTs', 5: 'Closed: no mix fits', 6: 'Needs ETH', 7: 'Needs upkeep', 8: 'Closed: price above ceiling', 9: 'Closed', 10: 'Repricing', 11: 'Withdraw only', 12: 'Needs upkeep' };
+
+/** Every pool this wallet created, with its state and ETH, and the way to start another. */
+function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
+  const pub = usePublicClient();
+  const [info, setInfo] = useState<Record<string, { head: string; eth: bigint }>>({});
+  useEffect(() => {
+    if (!pub) return;
+    let live = true;
+    Promise.all(pools.map(async (b) => {
+      const r = <T,>(functionName: string) => pub.readContract({ address: b, abi: poolBalancerAbi, functionName: functionName as never }) as Promise<T>;
+      const [admission, plans, shapes, balance] = await Promise.all([r<number>('admissionStatus'), r<bigint[]>('getPlans'), r<number[]>('getActiveShapes'), pub.getBalance({ address: b })]);
+      const backing = shapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
+      return [b, { head: plans.length ? HEADS[admission] ?? 'Check the pool' : 'Not set up', eth: balance + backing }] as const;
+    })).then((rows) => live && setInfo(Object.fromEntries(rows))).catch(() => undefined);
+    return () => { live = false; };
+  }, [pub, pools]);
+  return (
+    <main className="page narrow-page">
+      <div className="section-head"><h1 className="title t2">Your pools</h1><button className="btn" onClick={onNew}>New pool</button></div>
+      {!pools.length && <p className="note" style={{ marginTop: 16 }}>You have no pools yet.</p>}
+      <div className="poollist">
+        {[...pools].reverse().map((b) => (
+          <button key={b} onClick={() => onOpen(b)}>
+            <span className="pl-id"><span className="t">{names[b] ?? `Pool ${short(b)}`}</span>{names[b] && <span className="mono muted">{short(b)}</span>}</span>
+            <span className="pl-state">{info[b]?.head ?? '…'}</span>
+            <span className="pl-eth mono">{info[b] ? `${eth(info[b].eth)} ETH` : ''}</span>
+            <span aria-hidden="true" className="muted">→</span>
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; notice?: string }) {
   const { data: d, error, refresh } = useBalancer(balancer);
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
@@ -319,7 +353,7 @@ function PoolView({ balancer, me, tab, setTab, switcher, notice }: { balancer: A
       <div className="poolhead">
         <div className="ph-row">
           <div className="ph-id">
-            <span className="label">Pool</span>
+            <span className="crumb"><button className="link quiet" onClick={onBack}>Your pools</button> /</span>
             <h1 className="ph-name">{poolName(d)}</h1>
             <div className="ph-meta">
               <span className="mono">{d.balancer}</span>
@@ -327,7 +361,6 @@ function PoolView({ balancer, me, tab, setTab, switcher, notice }: { balancer: A
               <a href={FWA_POOL_URL(d.pool)} target="_blank" rel="noreferrer">Pool on FWA ↗</a>
             </div>
           </div>
-          {switcher}
         </div>
         <nav className="tabs" aria-label="Sections">
           {tabs.map((t) => <button key={t} aria-current={tab === t ? 'page' : undefined} onClick={() => setTab(t)}>{setup && t === 'overview' ? 'Finish setup' : TAB_LABELS[t]}</button>)}
