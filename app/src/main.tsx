@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={qc}>
-        <RainbowKitProvider theme={darkTheme()}>
+        <RainbowKitProvider theme={darkTheme({ accentColor: '#fff', accentColorForeground: '#000', borderRadius: 'none', overlayBlur: 'none' })}>
           <App />
         </RainbowKitProvider>
       </QueryClientProvider>
