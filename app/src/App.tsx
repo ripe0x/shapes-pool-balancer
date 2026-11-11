@@ -252,6 +252,12 @@ export function App() {
             ))}
           </nav>
         )}
+        {!isConnected && (
+          <div className="right">
+            {dev.map((c) => <button key={c.uid} className="btn sec" onClick={() => connect({ connector: c, chainId: chain.id })}>Local dev account</button>)}
+            <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={openConnectModal}>Connect wallet</button>}</ConnectButton.Custom>
+          </div>
+        )}
         {isConnected && (
           <div className="right">
             {switcher}
@@ -263,19 +269,14 @@ export function App() {
       </header>
       {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
       {!isConnected && (
-        <main className="connect">
-          <h1 className="hero">Connect a wallet to manage your pools.</h1>
-          <p className="lead">Your pools and their funds are listed here. Players buy draws on FWA, not on this site.</p>
-          <div className="row" style={{ marginTop: 36 }}>
-            <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" style={{ width: 'auto', minWidth: 200 }} onClick={openConnectModal}>Connect wallet</button>}</ConnectButton.Custom>
-            {dev.map((c) => <button key={c.uid} className="btn sec lg" style={{ width: 'auto' }} onClick={() => connect({ connector: c, chainId: chain.id })}>Local dev account</button>)}
-          </div>
-          {dev.length > 0 && <p className="note" style={{ marginTop: 16 }}>Local dev account appears on local test networks only.</p>}
-        </main>
+        <>
+          <div className="status"><span><b>Preview.</b> Try a pool design. Nothing is sent until you connect a wallet and create the pool.</span></div>
+          <PreviewDesign />
+        </>
       )}
       {isConnected && loaded && (!selected || creating) && (
         <Create prereq={prereq} first={!mine.length} me={address!} onCancel={mine.length ? () => setCreating(false) : undefined}
-          onCreated={() => { setCreating(false); setTab('nfts'); loadMine(); }} />
+          onCreated={() => { setCreating(false); setTab('nfts'); setSelected(undefined); loadMine(); }} />
       )}
       {showPool && <PoolView key={selected} balancer={selected!} me={address!} tab={tab} setTab={setTab} switcher={switcher} />}
     </>
@@ -284,7 +285,8 @@ export function App() {
 
 function Create({ prereq, first, me, onCreated, onCancel }: { prereq?: { creation: boolean; impl: boolean }; first: boolean; me: Address; onCreated: () => void; onCancel?: () => void }) {
   const pub = usePublicClient();
-  const [deposit, setDeposit] = useState('0.600');
+  const [draft] = useState(loadDraft);
+  const [deposit, setDeposit] = useState(draft?.budget ?? '0.600');
   const [wallet, setWallet] = useState<bigint>();
   const { send, busy, msg, write } = useTx(() => undefined);
   const salt = useMemo(() => `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as `0x${string}`, []);
@@ -297,6 +299,7 @@ function Create({ prereq, first, me, onCreated, onCancel }: { prereq?: { creatio
     <main className="page narrow-page">
       <h1 className="title">{first ? 'Create your first pool' : 'Create a pool'}</h1>
       <p className="lead">A pool holds your NFTs and the ETH-backed Shapes that players can win. You can add more ETH later.</p>
+      {draft && <p className="note" style={{ marginTop: 10 }}>Your design is saved in this browser. After the pool is created, list your NFTs and it is ready on the Design tab.</p>}
       <div className="section">
         <span className="label">After this</span>
         <div className="mixrow"><span className="mono muted">1</span><span>List one of your NFTs</span></div>
@@ -354,6 +357,38 @@ function PoolView({ balancer, me, tab, setTab, switcher }: { balancer: Address; 
   );
 }
 
+type Preview = { values: string[]; setValues: (v: string[]) => void };
+type Draft = { budget: string; markup: number; floor: number; counts: Counts; fallbacks: Counts[]; style?: Style; values?: string[] };
+const DRAFT_KEY = 'pool-design-draft';
+const loadDraft = (): Draft | undefined => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') ?? undefined; } catch { return undefined; } };
+const saveDraft = (x: Draft) => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(x)); } catch { /* storage unavailable */ } };
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* storage unavailable */ } };
+/** FWA's VRF fee is this much gas at the buyer's gas price, per purchase (measured on a mainnet-fork pool). */
+const VRF_GAS = 2_340_000n;
+const PREVIEW_NFT = '0x0000000000000000000000000000000000000001' as Address;
+
+/** The Design page before any wallet or pool: live fees and gas from chain, NFT values and budget typed in. */
+function PreviewDesign() {
+  const pub = usePublicClient();
+  const [values, setValues] = useState<string[]>(() => loadDraft()?.values ?? ['0.050']);
+  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; baseFee: bigint; vrfFee: bigint }>();
+  useEffect(() => {
+    if (!pub) return;
+    Promise.all([
+      pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
+      pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
+      pub.getBlock(), pub.getGasPrice(),
+    ]).then(([edgeBps, mintFee, block, gasPrice]) => setLive({ edgeBps, mintFee, baseFee: block.baseFeePerGas ?? 0n, vrfFee: VRF_GAS * gasPrice }))
+      .catch(() => undefined);
+  }, [pub]);
+  if (!live) return <main className="page"><p className="lead">Loading current fees…</p></main>;
+  const listings = values.map((v, i) => ({ id: BigInt(i + 1), kind: 1, state: 1, base: ethOr(v, 0n), collection: PREVIEW_NFT, tokenId: BigInt(i + 1) })).filter((l) => l.base > 0n);
+  // Only the fields Design reads; a preview has no pool, plans or balance.
+  const d = { plans: [], activePlan: 0, listings, balance: 0n, activeShapes: ZERO, names: { [PREVIEW_NFT]: 'Your NFT' }, balancer: ZERO_ADDR, ...live } as unknown as D;
+  const tx = { busy: undefined, msg: undefined, send: async () => false, write: async () => '0x' } as unknown as Tx;
+  return <Design d={d} tx={tx} setTab={() => undefined} preview={{ values, setValues }} />;
+}
+
 const STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'steady', label: 'Low draw price', hint: 'Cheapest draw your NFT odds allow' },
   { key: 'balanced', label: 'More big wins', hint: 'Most chances to win 2× the draw or more' },
@@ -362,16 +397,17 @@ const STYLES: { key: Style; label: string; hint: string }[] = [
 // Grid shades by prize rank, smallest first; the top Shape prize is white, NFTs are outlined.
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
-function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
+function Design({ d, tx, setTab, preview }: { d: D; tx: Tx; setTab: (t: Tab) => void; preview?: Preview }) {
   const has = d.plans.length > 0;
+  const [draft] = useState(() => (has ? undefined : loadDraft()));
   const curated = d.listings.filter((l) => l.kind === 1 && l.state === 1);
   const bases = curated.map((l) => l.base);
-  const [budget, setBudget] = useState(eth(available(d.balance, d.activeShapes, ZERO)));
-  const [markup, setMarkup] = useState(has ? d.config.markupBps / 100 : 15);
-  const [floor, setFloor] = useState(has ? d.config.minCuratedOddsBps / 100 : 5);
-  const [style, setStyle] = useState<Style>();
-  const [counts, setCounts] = useState<Counts>(has ? unpackPlan(d.plans[d.activePlan]) : ZERO);
-  const [fallbacks, setFallbacks] = useState<Counts[]>(has ? d.plans.filter((_, i) => i !== d.activePlan).map(unpackPlan) : []);
+  const [budget, setBudget] = useState(preview ? draft?.budget ?? '1.000' : eth(available(d.balance, d.activeShapes, ZERO)));
+  const [markup, setMarkup] = useState(has ? d.config.markupBps / 100 : draft?.markup ?? 15);
+  const [floor, setFloor] = useState(has ? d.config.minCuratedOddsBps / 100 : draft?.floor ?? 5);
+  const [style, setStyle] = useState<Style | undefined>(draft?.style);
+  const [counts, setCounts] = useState<Counts>(has ? unpackPlan(d.plans[d.activePlan]) : draft?.counts ?? ZERO);
+  const [fallbacks, setFallbacks] = useState<Counts[]>(has ? d.plans.filter((_, i) => i !== d.activePlan).map(unpackPlan) : draft?.fallbacks ?? []);
   // Shown rounded up to 6 decimals, so re-saving never lowers the saved ceiling.
   const [ceiling, setCeiling] = useState(has ? String(Math.ceil(Number(formatEther(d.config.maxDrawPrice)) * 1e6) / 1e6) : '');
   const [gas, setGas] = useState('1');
@@ -393,7 +429,17 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
     setFallbacks(r.fallbacks);
   };
   // Pick the first style once for a pool that has never been designed.
-  useEffect(() => { if (!has && bases.length && !style) pick('steady'); }, [bases.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // An unsaved pool starts from the draft: a chosen style is re-run against the NFTs actually listed (a hand-tuned
+  // mix is kept as is); with no draft, the first style is picked.
+  useEffect(() => {
+    if (has || !bases.length) return;
+    if (style) pick(style);
+    else if (!counts.some(Boolean)) pick('steady');
+  }, [bases.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Until a design is saved on chain, keep it in this browser so it survives connecting, creating and listing.
+  useEffect(() => {
+    if (!has) saveDraft({ budget: preview ? budget : draft?.budget ?? budget, markup, floor, counts, fallbacks, style, values: preview?.values ?? draft?.values });
+  }, [has, budget, markup, floor, counts, fallbacks, style, preview?.values]); // eslint-disable-line react-hooks/exhaustive-deps
   const total = counts.reduce((a, b) => a + b, 0);
   const setCount = (i: number, n: number) => { setStyle(undefined); setCounts(counts.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const ready = bases.length > 0 && total > 0;
@@ -405,7 +451,8 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
   const ceilingWei = ceiling ? ethOr(ceiling, autoCeiling) : autoCeiling;
   const checked = ready ? describe(counts, inputs, ceilingWei) : undefined;
   const needed = ready ? ethNeeded(counts, inputs) : 0n;
-  const have = available(d.balance, d.activeShapes, counts);
+  const balance = preview ? inputs.budget : d.balance;
+  const have = available(balance, d.activeShapes, counts);
   const econ = ready ? economics(counts, inputs, { gasPriceGwei: Number(gas) || 1, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
   const affordable = (i: number) => 2n * (DENOMS[i] + d.mintFee) <= inputs.budget;
   const addable = DENOMS.map((_, i) => i).filter((i) => !counts[i] && affordable(i));
@@ -428,14 +475,14 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
   const cells = ordered.flatMap(({ g, n }) => Array(n).fill(g) as (typeof groups)[number][]);
   const sw = (g: (typeof groups)[number]) => (shade(g) === 'nft' ? { border: '1.5px solid #fff' } : { background: shade(g) });
   const legend = (g: (typeof groups)[number], n: number) => {
-    const verb = n === 1 ? 'wins' : 'win';
+    const verb = n <= 1 ? 'wins' : 'win';
     if (g.nft) return `${verb} ${curated.length === 1 ? `your NFT, ${nftName(curated[0])}` : 'one of your NFTs'}`;
     const v = Number(formatEther(g.value)) / Number(formatEther(view!.cost));
     const what = g.n === 1 && shapeGroups.length > 1 && g === shapeGroups[shapeGroups.length - 1] ? `the ${DENOM_LABELS[g.i]} ETH Shape` : `a ${DENOM_LABELS[g.i]} ETH Shape`;
     return `${verb} ${what}${v < 1 ? ', less than they paid' : `, ${v.toFixed(1)}× what they paid`}`;
   };
 
-  if (!bases.length) {
+  if (!bases.length && !preview) {
     return (
       <main className="page">
         <h1 className="title">Design your pool</h1>
@@ -450,7 +497,7 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
     <div className="result-block">
       <span className="soft" style={{ fontSize: 14 }}>Players pay</span>
       <div style={{ marginTop: 8 }}><span className="figure">{eth(view.cost, 5)}</span><span className="unit">ETH per draw</span></div>
-      <p className="note" style={{ marginTop: 10 }}>{eth(ev.drawPrice, 5)} draw price plus a {eth(d.vrfFee, 5)} randomness (VRF) fee</p>
+      <p className="note" style={{ marginTop: 10 }}>{eth(ev.drawPrice, 5)} draw price plus {preview ? 'about ' : 'a '}{eth(d.vrfFee, 5)} randomness (VRF) fee</p>
     </div>
   ) : null;
   const gridBlock = view ? (
@@ -466,13 +513,18 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
         </div>
   ) : null;
 
-  const save = (
+  const save = preview ? (
+    <div className="pin">
+      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" disabled={!ready} onClick={openConnectModal}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
+      <p className="note" style={{ marginTop: 10 }}>Next: create the pool with {budget || '0'} ETH, list your NFTs, then save this design. It is kept in this browser until then.</p>
+    </div>
+  ) : (
     <div className="pin">
       <button className="btn lg" disabled={!!tx.busy || !ready || !checked?.feasible}
         onClick={() => tx.send('Save configuration', [() => tx.write({
           address: d.balancer, abi: poolBalancerAbi, functionName: 'configure',
           args: [{ maxDrawPrice: ceilingWei, minCuratedOddsBps: floorBps, markupBps }, plans.slice(0, MAX_PLANS).map(packPlan)],
-        })])}>Save configuration</button>
+        })]).then((ok) => ok && clearDraft())}>Save configuration</button>
     </div>
   );
 
@@ -481,6 +533,21 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
       <section>
         <h1 className="title">Design your pool</h1>
         <p className="lead">Choose a style and set two limits. The right side shows what players get.</p>
+
+        {preview && (
+          <div className="step">
+            <div className="step-head"><h2 className="h3">Your NFTs</h2></div>
+            <p className="note" style={{ marginBottom: 10 }}>The values you plan to list them at. A lower value is won more often.</p>
+            {preview.values.map((v, i) => (
+              <div className="mixrow" key={i}>
+                <div className="t">NFT {i + 1}</div>
+                <div className="field end" style={{ width: 160 }}><input aria-label={`Value of NFT ${i + 1}`} value={v} onChange={(e) => preview.setValues(preview.values.map((x, j) => (j === i ? e.target.value : x)))} onBlur={() => style && pick(style)} inputMode="decimal" /><span className="u">ETH</span></div>
+                <button className="link quiet" aria-label={`Remove NFT ${i + 1}`} disabled={preview.values.length === 1} onClick={() => preview.setValues(preview.values.filter((_, j) => j !== i))}>×</button>
+              </div>
+            ))}
+            {preview.values.length < 20 && <button className="disclose" style={{ marginTop: 12 }} onClick={() => preview.setValues([...preview.values, preview.values[preview.values.length - 1] || '0.050'])}>+ Add an NFT</button>}
+          </div>
+        )}
 
         <div className="step">
           <div className="step-head"><span className="n">1</span><h2 className="h3">Choose a style</h2></div>
@@ -509,7 +576,7 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
             <p className="note">Raising it leaves room for fewer small Shapes, so the draw price goes up.</p>
           </div>
           <div className="budget">
-            <div><label htmlFor="budget" style={{ fontSize: 15 }}>Budget</label><p className="note">You have {eth(available(d.balance, d.activeShapes, ZERO))} ETH available.</p></div>
+            <div><label htmlFor="budget" style={{ fontSize: 15 }}>Budget</label><p className="note">{preview ? 'The ETH you would deposit.' : `You have ${eth(available(d.balance, d.activeShapes, ZERO))} ETH available.`}</p></div>
             <div className="field"><input id="budget" className="big" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={() => style && pick(style)} inputMode="decimal" /><span className="u">ETH</span></div>
           </div>
         </div>
@@ -613,14 +680,14 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
               <>
                 <div className="desktop-only">{gridBlock}</div>
                 <div className="result-block kvline">
-                  <div><div>To open, you need</div><p className="note">You have {eth(have)} ETH. {fits ? 'This fits.' : `Deposit ${eth(needed - have)} more.`}</p></div>
+                  <div><div>To open, you need</div><p className="note">{preview ? 'You would deposit' : 'You have'} {eth(have)} ETH. {fits ? 'This fits.' : `${preview ? 'Raise the budget by' : 'Deposit'} ${eth(needed - have)} ${preview ? 'ETH' : 'more'}.`}</p></div>
                   <div><span className="figure-s">{eth(needed)}</span><span className="unit">ETH</span></div>
                 </div>
                 <div className="result-block kvline">
                   <div><div>You keep, per draw</div><p className="note">On average, after costs</p></div>
                   <div><span className={`figure-s${econ.expectedNetPerDraw < 0 ? ' error' : ''}`}>{signed(econ.expectedNetPerDraw)}</span><span className="unit">ETH</span></div>
                 </div>
-                {econ.belowModeledMarkup && <p className="note error">Markup is below the {pct(econ.minMarkupBps)} that covers costs.</p>}
+                {econ.belowModeledMarkup && <p className="note error">Markup is below {pct(econ.minMarkupBps)}, the level that covers costs with a 25% margin.</p>}
                 <div className="result-block"><button className="disclose" onClick={() => toggle('numbers')}>All numbers ▾</button></div>
               </>
             ) : (
@@ -642,7 +709,7 @@ function Design({ d, tx, setTab }: { d: D; tx: Tx; setTab: (t: Tab) => void }) {
                   <div className="kv"><span className="k">Needed to open</span><span>{eth(needed)} ETH</span></div>
                   <div className="kv"><span className="k">Available</span><span>{eth(have)} ETH · {fits ? 'fits' : 'short'}</span></div>
                   <div className="kv"><span className="k">You keep per draw</span><span>{signed(econ.expectedNetPerDraw)} ETH</span></div>
-                  <div className="kv"><span className="k">Lowest markup that covers costs</span><span>{Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'}</span></div>
+                  <div className="kv"><span className="k">Markup that covers costs with a 25% margin</span><span>{Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'}</span></div>
                 </div>
               </div>
             )}
@@ -839,7 +906,7 @@ function Funds({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; me:
                   <div className="kv"><span className="k">Average prize value on FWA</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Your markup share</span><span>{econ.grossMarginPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Mint fees and upkeep gas</span><span>−{econ.overheadPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Lowest markup that covers costs</span><span>{Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'}</span></div>
+                  <div className="kv"><span className="k">Markup that covers costs with a 25% margin</span><span>{Number.isFinite(econ.minMarkupBps) ? pct(econ.minMarkupBps) : '–'}</span></div>
                   <p className="note" style={{ marginTop: 10 }}>An estimate from the current mix. Single draws vary; short runs can lose money either way.</p>
                 </div>
               )}

@@ -189,10 +189,6 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .disclose { background: none; border: 0; padding: 0; font-weight: 700; font-size: 14px; cursor: pointer; color: var(--ink); }
 .disclose.quiet { color: var(--ink-3); font-weight: 400; }
 
-/* Connect */
-.connect { padding: 72px var(--gutter); max-width: 900px; }
-.connect .hero { font-size: 96px; }
-@media (max-width: 640px) { .connect .hero { font-size: 44px; } }
 
 /* Mobile pinned save */
 @media (max-width: 760px) {
