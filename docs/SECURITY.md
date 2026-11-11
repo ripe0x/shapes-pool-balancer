@@ -8,10 +8,10 @@ and automated tooling. It is bounded evidence, not a statement that the contract
 - `src/PoolBalancer.sol`, `src/BalancerFactory.sol`, `src/interfaces/External.sol`.
 - Deployed dependencies read from verified sources: FWA PoolFactory `0x8919…477C`, StandardPoolBuyback/StandardPool
   `0x85Fa…fEe7` (runtime code hash `0x0af01f…ce02`), FWA VRF service `0x7D93…d65d`, Shapes `0x6fE9…FAf0`.
-- Out of scope: TypeScript keeper and dashboard (tested functionally, not adversarially), FWA and Shapes themselves, and
-  FWA's off-chain pool-page server.
+- Out of scope: TypeScript keeper and dashboard (tested functionally; round 5 reviewed them as secondary scope), FWA
+  and Shapes themselves, and FWA's off-chain pool-page server.
 
-Four rounds:
+Five rounds:
 
 | Round | Target | Repairs |
 | --- | --- | --- |
@@ -19,6 +19,7 @@ Four rounds:
 | 2 (simplification and hardening pass) | `924bf99` | `d0b720a`, `c3203a4`, `cbc75d3`, `7fcdbe4` |
 | 3 (keeper liveness and griefing bound, owner review) | `1f352fa` | `6a2dabe` |
 | 4 (reimbursement re-evaluated against FWA V2; launch rehearsal) | `5161e8f`, then `0a48e84` | `0a48e84`, `31edef6` |
+| 5 (independent adversarial audit, `audit/report.md`) | `0f01784` | dashboard only; contracts unchanged |
 
 ## Method
 
@@ -51,6 +52,32 @@ Four rounds:
 | I-4 | Info | A markup change and change back (A→B→A) before any upkeep leaves `repricing` set with nothing to reprice; that call scans 100 listings (~0.4M gas) and may also reconcile and mint, possibly exceeding 3.2M. | Accepted: the keeper is under-reimbursed for that one call; no funds or authority affected. |
 | I-6 | Info (repair review) | A batch bought before a creator action that closes admission (configure, close) is reconciled with the full incentive. The buyer cannot cause or time the creator action. Confirmed: no remaining path sets or keeps the creator-work flag while purchases can be admitted (only setters close admission; it clears in the call that writes the checkpoint; the keeper payout's 100k stipend cannot fund an FWA purchase). | Accepted. |
 | I-5 | Info | The 4/5 rule and the absent intrinsic credit mean single-call keepers absorb ~20% of gas plus 21k; gas-only paths (refund-only batches, `recoverRefundedShape`) always lose money for keepers. | Accepted by design: the incentive covers paid work at normal gas; the bundled keeper's `MAX_LOSS_WEI` covers the rest. |
+
+## Round 5 (independent adversarial audit)
+
+An AI auditor with no access to earlier findings audited `0f01784` (contracts unchanged since `31edef6`) for 12
+auditor-hours: two discovery lanes, then informed challenge reviews, fork PoCs at block 26,382,349, guided stateful
+campaigns (128 single-draw and 64 mixed-batch admissions), Slither, and a secondary pass over the dashboard and
+keeper. Report, PoCs and outputs: `audit/report.md`. Its limits: discovery isolation was prompt-level only; no human
+review; schema-2 path gate not passed (4/55 entrypoints mapped in its manifest); 14 Slither alerts on dependency
+boundaries left open; no live refunded-Shape state reached. No outsider path to take ETH or tracked assets was found.
+
+| ID | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| F1 | Medium (conditional) | A curated collection with a backdoor can move a listed NFT out of FWA while the listing stays drawable; a buyer who draws it gets the acquisition fee back after 7 days and loses the VRF fee (0.00234 ETH at 1 gwei). Requires the creator to list such a collection. | Accepted, documented: the contract cannot check custody within FWA's 100k-gas hook. Dashboard: list only trusted collections. |
+| F2 | Medium (conditional) | A collection that can freeze transfers blocks withdrawal and recovery of its listed NFT. Other exits keep working. | Accepted, documented (same warning). |
+| F3 | Low | The creator's own collection can call `configure` during `listCurated`; that listing keeps the old markup while purchases are admitted. Buyers get a discount; no third party loses. | Accepted, documented in SPEC (Curated NFTs). Fix if wanted: `nonReentrant` on `configure`. |
+| F4 | Low | Status 0 can coexist with FWA's VRF service refusing a purchase for lack of capacity (after local expiry without a callback). Costs the buyer gas only; a late callback restored service. | Accepted, documented: status 0 is labelled "the Balancer admits purchases". |
+| F5 | Low | A creator `configure` that changes nothing, while a batch is outstanding, makes that batch's refill creator work, paid the full incentive (+0.00021 ETH over the edge credit). Extends V-5. | Accepted, documented in SPEC (keeper reward). Creator-only; gating it would stall upkeep after creator edits. |
+| S1 | Low | Dashboard: the prepared write did not name the simulated account, so a wallet that switched accounts before sending sent from the new one (e.g. pool creation with a deposit). | Fixed: `prepareWrite` returns the simulated account and chain; wagmi refuses a mismatch (`app/src/tx.test.ts`). |
+| S2 | Low | Dashboard: after an account switch the previous account's Balancer stayed selected. | Fixed: the selection is kept only if it belongs to the connected account. |
+| S3 | Low | Dashboard: "Approve and publish" posted the pool page to FWA even when the approval failed. | Fixed: `send` reports success and publishing stops on failure. |
+| S4 | Low | Keeper: `MAX_LOSS_WEI` is checked against the estimate at the current basefee; a receipt can exceed it if basefee rises. | Accepted, documented in OPERATIONS (already estimate-based). |
+
+Requirement clarifications from the audit, now in SPEC: unsolicited ETH and NFTs belong to the creator; the odds floor
+applies to the first draw after a checkpoint; FWA may refund a draw in a batch when earlier draws moved the price (VRF
+fee not refunded); status 0 is the Balancer's admission, not FWA's; the reserve guarantee holds for the plan and mint
+fee in force; the edge credit limits a payment from the Balancer's ETH; ERC-1271 approval wording narrowed.
 
 ## Round 4 (keeper reimbursement vs FWA V2, launch rehearsal)
 
@@ -128,6 +155,9 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
 - **Restricted collections (G-1).** A hostile purchaser contract can lock curated NFTs from collections that refuse
   transfers to contracts; cheap in thin pools. Do not list such collections.
+- **Hostile collections (F1, F2).** A collection whose contract can move, burn or freeze tokens can take a listed NFT
+  out of FWA or block its withdrawal. List only collections you trust.
+- **FWA VRF capacity (F4).** FWA's VRF service can refuse purchases while the Balancer shows status 0.
 - **Shapes admin** can raise the mint fee up to 0.01 ETH; admission closes until re-funded, and small denominations
   become uneconomic.
 - **Economics.** The reserve funds the next restoration, not profitability (`docs/simulation-results.md`).

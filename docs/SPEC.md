@@ -31,14 +31,16 @@ for its Shapes. Nothing can ever change the operator, enable token offers or exe
 | FWA pool | calls `canPurchase` (view) |
 
 The keeper's only payout is a bounded reward to `msg.sender`. Curated and untracked NFTs go only to a creator-chosen
-address; Shapes go only to the FWA pool or are redeemed into the Balancer.
+address; Shapes go only to the FWA pool or are redeemed into the Balancer. ETH deposited or sent to the Balancer by
+anyone, and NFTs sent to it directly, belong to the creator; there is no contributor refund.
 
 ## Configuration
 
 `configure(Config, plans[])`:
 
 - `maxDrawPrice`: ceiling on FWA `acquisitionFee()` (includes FWA's 5% edge, excludes the VRF fee).
-- `minCuratedOddsBps`: floor on the combined probability that a draw selects a curated NFT.
+- `minCuratedOddsBps`: floor on the combined probability that the first draw after a checkpoint selects a curated NFT.
+  Later draws in the same batch see the inventory the earlier ones left.
 - `markupBps`: fixed operating markup (0–100%). Every FWA listing price is `base × (1 + markup)`: the creator's value for
   curated NFTs, the backing for Shapes. A change sets `repricing`; upkeep reprices every listing before reopening.
 - `plans`: 1–4 approved Shape inventories, each nine 16-bit counts (denomination 0 = 0.01 ETH … 8 = 100 ETH), 1–40
@@ -71,6 +73,10 @@ A checkpoint is written only when the Shapes inventory equals the active plan, F
 and `weightedBackingTotal` equal curated + plan exactly, the plan satisfies price and odds, and liquid ETH covers the
 reserve. Measured cost: ~47–49k gas under the real 100k stipend.
 
+Status 0 means the Balancer admits a purchase. FWA can still refuse one on its own state (pause, cooldown, VRF service
+capacity). Within a batch, FWA can refund a draw's acquisition fee instead of delivering when earlier draws moved the
+price; the VRF fee is not refunded.
+
 Outstanding FWA draws, refunds, deliveries and claims never depend on the Balancer or the keeper.
 
 ## Reserve
@@ -89,7 +95,8 @@ Outstanding FWA draws, refunds, deliveries and claims never depend on the Balanc
 ETH inside Shapes and unsettled draw payments are never counted as liquid. The Balancer keeps no managed Shapes
 between transactions, so there is no spare credit (a Shape delivered to it because a buyer named it as purchaser is
 untracked and creator-recoverable). `claimSurplus` releases only `balance − requiredReserve` and, while open, only
-when every FWA draw has been reconciled. `unwind` (closed only) withdraws up to 20 listed Shapes per call and redeems them
+when every FWA draw has been reconciled. This holds for the plan and mint fee in force: configuring a costlier plan, or a
+mint-fee rise, raises `requiredReserve` and closes admission until funded. `unwind` (closed only) withdraws up to 20 listed Shapes per call and redeems them
 for their exact backing.
 
 ## Upkeep
@@ -123,9 +130,12 @@ Keeper reward:
   measured span (intrinsic, calldata) and the `eth_estimateGas` gap keepers cost work with, so paid work stays
   profitable up to the 5 gwei cap. No per-call intrinsic credit (it multiplied when one transaction made several
   calls). Work started by a creator action (configure, opening a closed pool, curated edits,
-  unwind) pays it in full until the next checkpoint; each of those closes admission first. Work caused by purchases
+  unwind) pays it in full until the next checkpoint; each of those closes admission first. This includes actions that
+  change nothing and the reconciliation and refill of a batch issued before the action (bounded by one creator's own
+  incentives). Work caused by purchases
   pays it from `incentiveCredit`, which each reconciled batch resets to FWA's edge on that batch's escrowed fees and
-  every following paid call spends, so buying one's own draws earns at most the edge paid to FWA. Only delivered
+  every following paid call spends, so buying one's own draws earns at most the edge paid to FWA. The credit limits a
+  payment from the Balancer's ETH; FWA's edge itself goes to FWA. Only delivered
   draws count: a failed delivery's fee can be refunded in full, edge included. A batch with only refunds earns the 4/5
   gas part only; `recoverRefundedShape` the same (paying the withheld fifth there would rest on fixed overhead, which
   a transaction making several such calls pays once). Pure re-checkpoints (after creator
@@ -137,6 +147,10 @@ Keeper reward:
 listed as curated. All curated edits require FWA idle and reconciled (`PoolBusy` otherwise) and invalidate the checkpoint
 before any external call. If FWA cannot deliver a drawn NFT, the purchaser may refund after FWA's 7-day window; the creator
 then recovers it with `recoverCuratedNFT`. Upkeep never calls a curated collection.
+
+Custody depends on the collection: one whose contract can move, burn or freeze listed tokens can take or strand a
+curated NFT, and FWA keeps such a listing drawable until its delivery fails and is refunded. A listing's price uses the
+markup at the start of the listing call; a creator's own collection that reconfigures during that call is not repriced.
 
 `recoverUntrackedNFT(collection, tokenId, to)` returns an NFT the Balancer holds outside FWA (sent to it directly).
 Tracked inventory is never held by the Balancer between transactions (listings and pending deliveries are owned by the
@@ -161,7 +175,8 @@ FWA stores pool-page metadata off-chain and asks the pool owner to `personal_sig
 (creator only) rebuilds that exact message for its own pool and stores its EIP-191 digest; `isValidSignature` returns the
 ERC-1271 magic value only for digests approved in the current epoch and ignores the signature bytes. `revokePoolPages`
 (creator) and every accepted creator transfer start a new epoch. Approved digests are always pool-page
-messages naming this pool, so no other protocol can accept them. Verified on a fork with viem `verifyMessage`. Not
+messages naming this pool. The magic value is returned for any caller and any signature bytes, so another protocol
+accepts one only if it treats that exact message as its own authorization. Verified on a fork with viem `verifyMessage`. Not
 verified: whether FWA's server checks ERC-1271 (its client allows long contract signatures; server code is not public).
 
 ## Off-chain

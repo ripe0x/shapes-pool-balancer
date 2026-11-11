@@ -17,7 +17,7 @@ const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kin
 const L_DELIVERY_REFUNDED = 7;
 
 export const STATUS: Record<number, string> = {
-  0: 'Open: purchases admitted',
+  0: 'Open: the Balancer admits purchases',
   1: 'Closed by creator',
   2: 'Needs upkeep (run maintenance)',
   3: 'Waiting for an FWA purchase batch to settle',
@@ -134,8 +134,10 @@ function useTx(onDone: () => void) {
         if (rc.status !== 'success') throw new Error(`${label} reverted`);
       }
       setMsg({ ok: true, text: `${label}: confirmed` });
+      return true;
     } catch (e) {
       setMsg({ ok: false, text: `${label}: ${explain(e)}` });
+      return false;
     } finally {
       setBusy(undefined);
       onDone();
@@ -158,8 +160,9 @@ export function App() {
     const logs = await pub.getLogs({ address: FACTORY, event: CREATED, args: { creator: address }, fromBlock: FROM_BLOCK });
     const list = logs.map((l) => l.args.balancer!);
     setMine(list);
-    if (!selected && list.length) setSelected(list[list.length - 1]);
-  }, [pub, address, selected]);
+    // Keep the selection only if it belongs to the connected account (it changes when the wallet switches accounts).
+    setSelected((s) => (s && list.includes(s) ? s : list[list.length - 1]));
+  }, [pub, address]);
   useEffect(() => { loadMine().catch(() => undefined); }, [loadMine]);
   useEffect(() => {
     if (!pub) return;
@@ -483,6 +486,7 @@ function Curated({ d, tx, isCreator, me }: { d: D; tx: Tx; isCreator: boolean; m
       {restricted && restricted === `${form.collection}:${form.tokenId}` && (
         <p className="badText">This collection refuses transfers to contracts. A buyer using a contract that never claims its refund can lock this NFT in FWA escrow permanently. In a pool with few listings, doing so can cost the buyer much less than the NFT is worth. Neither this warning nor the pool prevents it.</p>
       )}
+      <p className="muted small">List only collections you trust: a collection whose contract can move or freeze tokens can take or strand an NFT listed here.</p>
       <p className="muted small">The FWA price is your value × (1 + markup). Odds are inversely proportional to price. Listing, repricing and withdrawing need FWA's purchase queue to be idle and reconciled; run upkeep afterwards to reopen.</p>
       {isCreator && (
         <>
@@ -651,7 +655,7 @@ function PoolPage({ d, tx }: { d: D; tx: Tx }) {
     const metadata = { name, profile: Object.fromEntries(PROFILE_KEYS.map((k) => [k, profile[k] ?? ''])) };
     const issuedAt = new Date().toISOString();
     const hash = keccak256(toBytes(JSON.stringify(metadata)));
-    await tx.send('Approve pool page', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'approvePoolPage', args: [issuedAt, hash] })]);
+    if (!(await tx.send('Approve pool page', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'approvePoolPage', args: [issuedAt, hash] })]))) return;
     // The Balancer ignores signature bytes. 66 zero bytes: viem-style verifiers reject very short signatures
     // before calling ERC-1271, and a non-65-byte value cannot be read as an ECDSA signature.
     const body = { pool: d.pool, issuedAt, metadata, signature: `0x${'00'.repeat(66)}` };

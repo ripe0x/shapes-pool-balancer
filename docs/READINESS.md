@@ -7,7 +7,8 @@ below; it does not establish that the contracts are safe.
 
 Commit `3f1735f`. Contracts, keeper service, planner and dashboard are identical to `13a61ed`, where the suites
 ran; later commits change only the e2e and rehearsal harnesses, which were re-run at `b6ffee9` (e2e) and `3f1735f`
-(rehearsals). Later commits change documentation only. Run with `CANDIDATE_RUN=1` on
+(rehearsals). Later commits change documentation, the audit record (`audit/`) and the dashboard only (30% gas-limit
+margin; round-5 fixes S1–S3), re-checked with the app tests, typecheck, build and a fork browser check. Run with `CANDIDATE_RUN=1` on
 2026-11-10, mainnet fork pinned at block 26,382,349 via `https://mainnet.gateway.tenderly.co`.
 
 | Check | Command | Result |
@@ -91,7 +92,8 @@ Failures found during this verification, and what changed:
 
 ## Remaining risks
 
-See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; restricted-collection griefing (G-1); keepers wait
+See `docs/SECURITY.md`. In short: FWA and Shapes admin powers; restricted-collection griefing (G-1); collections that
+can move or freeze listed NFTs (F1, F2); FWA's VRF service refusing purchases while status shows 0 (F4); keepers wait
 above a 5 gwei basefee (~0.9% of blocks) and pools whose draws all cost ~0.01 ETH pause from ~4.2 gwei; unpaid
 re-checkpoints above ~0.85 gwei and refund-only batches above ~1.3 gwei need the creator or a larger keeper allowance; economics (losses at low
 markup, small denominations, high mint fee); the FWA page template could change; no professional audit.
@@ -99,7 +101,8 @@ markup, small denominations, high mint fee); the FWA page template could change;
 ## Your actions to deploy
 
 1. Review and merge [PR #1](https://github.com/ripe0x/shapes-pool-balancer/pull/1).
-2. Decide whether to commission an external audit first.
+2. Decide whether to commission an external professional audit first. An independent AI audit (round 5,
+   `audit/report.md`) found no outsider path to take funds; it is not a professional audit.
 3. Optional: ask FWA to confirm ERC-1271 support for pool pages, or to allow a creator editor address.
 4. Create or choose a deployer keystore (no keys on the command line) and fund it for about 5.3M gas.
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):

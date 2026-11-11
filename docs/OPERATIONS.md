@@ -4,7 +4,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 
 | Code | Meaning | Action |
 | --- | --- | --- |
-| 0 | Open | none |
+| 0 | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | Closed by creator | `open()` |
 | 2 | Needs upkeep | call `performUpkeep()` (keeper, creator or anyone); repeat while a fill or repricing is in progress |
 | 3 | FWA batch unresolved | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
@@ -34,7 +34,8 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` and `PoolBusy` mean nothing to do;
   any other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price,
   and never when the estimate exceeds the 3.2M reimbursable maximum.
-- `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate.
+- `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
+  at the current basefee. A receipt can cost more if basefee rises before inclusion.
   Paid work is profitable up to the 5 gwei cap by design (except pools whose draws all cost ~0.01 ETH, credit-limited
   from ~4.2 gwei). Gas-only calls (paid 4/5 of measured gas) lose ~0.00033 ETH of billed gas at the cap; unpaid re-checkpoints (after creator
   edits, deposits or a mint-fee change) cost ~155k gas. With an estimate ~78k gas above billed, the default covers
@@ -66,7 +67,9 @@ deliveries from `ItemDrawn` events. A refunded Shape is recovered and redeemed b
 the collection blocks the transfer, retry later. If the purchaser never refunds, the NFT stays in FWA's delivery escrow
 (FWA behavior). The gate refuses the Balancer, the Shapes contract and the pool as purchasers, so Shape deliveries cannot
 fail with mainnet Shapes. Do not list collections that refuse transfers to contracts: a purchaser contract that never
-refunds can lock such an NFT in FWA escrow (the dashboard warns before listing).
+refunds can lock such an NFT in FWA escrow (the dashboard warns before listing). List only collections you trust: one
+whose contract can move, burn or freeze tokens can take a listed NFT out of FWA or block its withdrawal; the dashboard
+says so beside the listing form.
 
 ## NFT sent to the Balancer directly
 
