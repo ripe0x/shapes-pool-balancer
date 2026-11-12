@@ -257,15 +257,15 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// A 0.01 Shape at the 10% floor costs exactly its listed price (backing + mint fee), so drawing it earns no
-    /// markup and its restock pays the keeper nothing.
-    function test_drawWithNoMarkupPaysNothing() public {
+    /// At zero markup a Shape is listed at what it cost plus its restocking fee: the creator earns nothing on it, and
+    /// drawing it still earns keepers exactly the fee.
+    function test_zeroMarkupStillFundsKeepers() public {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
         vm.startPrank(c);
-        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(0, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         nft.mint(c, 9200);
         nft.approve(address(b), 9200);
         b.listCurated(address(nft), 9200, 0.3 ether);
@@ -278,28 +278,32 @@ contract HardeningTest is ForkBase {
 
         uint256 lid = _lastShape();
         (,,, uint112 base, uint112 price) = b.items(lid);
-        assertEq(price, base, "listed at exactly what it cost");
+        assertEq(base, 0.01 ether + shapes.mintFee(), "backing plus mint fee, no markup");
+        assertEq(price - base, b.restockFee(), "one restocking fee");
         _drawListing(lid);
         vm.recordLogs();
         upkeep();
         (uint256 reward,) = _fromLogs();
-        assertEq(reward, 0, "no markup earned, nothing paid");
-        assertEq(b.keeperCredit(), 0);
-        assertEq(b.getActiveShapes()[0], 10, "restocked all the same");
+        assertLe(reward, price - base, "paid from the fee only");
+        assertEq(b.keeperCredit(), price - base - reward);
+        assertEq(b.getActiveShapes()[0], 10, "restocked");
     }
 
-    /// At the 5 gwei cap one restock costs more than a 0.01 Shape's markup: every reward is cut to the markup earned,
-    /// so lifetime keeper pay equals the markup and never exceeds it.
-    function test_highGasKeeperPayNeverExceedsMarkupEarned() public {
+    /// At the 5 gwei cap one restock costs more than the fee of a prize listed at a lower basefee: every reward is cut
+    /// to the fees earned, so lifetime keeper pay never exceeds them. Restocks listed at 5 gwei carry the capped fee.
+    function test_highGasKeeperPayNeverExceedsRestockFees() public {
         assertEq(balancer.keeperCredit(), 0, "setup work earns no credit");
-        vm.fee(5 gwei);
+        uint256 listedFee = balancer.restockFee();
+        vm.fee(80 gwei);
         vm.txGasPrice(5 gwei);
+        assertEq(balancer.restockFee(), 750_000 * 5 gwei + 0.0002 ether, "fee capped at 5 gwei");
         uint256 earned;
         uint256 paid;
         for (uint256 i; i < 4; ++i) {
             assertTrue(balancer.canPurchase(buyer));
             uint256 lid = _activeOfSize(0);
             (,,, uint112 base, uint112 price) = balancer.items(lid);
+            if (i == 0) assertEq(price - base, listedFee, "an original listing carries the setup fee");
             _drawListing(lid);
             earned += price - base;
             vm.recordLogs();
@@ -307,22 +311,23 @@ contract HardeningTest is ForkBase {
             (uint256 reward, uint256 gasUsed) = _fromLogs();
             assertLt(reward, gasUsed * 5 gwei, "the keeper is not covered");
             paid += reward;
-            assertLe(paid, earned, "never more than the markup earned");
+            assertLe(paid, earned, "never more than the fees earned");
             assertEq(balancer.keeperCredit(), earned - paid);
         }
-        assertEq(earned, 4 * (0.0015 ether - 0.001 ether), "0.01 Shape at 15%: 0.0015 markup less the 0.001 mint fee");
+        (,,, uint112 nb, uint112 np) = balancer.items(_lastShape());
+        assertEq(np - nb, 750_000 * 5 gwei + 0.0002 ether, "restocked at the capped fee");
     }
 
-    /// A curated draw earns base x markup; what its reconcile does not use carries over to later restocks.
-    function test_curatedDrawEarnsItsMarkup() public {
+    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and drawing it earns keepers nothing.
+    function test_curatedDrawEarnsKeepersNothing() public {
         (,,, uint112 base, uint112 price) = balancer.items(curatedA);
+        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%, all markup");
         _drawListing(curatedA);
         vm.recordLogs();
         upkeep();
         (uint256 reward,) = _fromLogs();
-        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%");
-        assertGt(reward, 0, "the reconcile is paid from that markup");
-        assertEq(balancer.keeperCredit(), 0.045 ether - reward, "the rest carries over");
+        assertEq(reward, 0, "no credit, no pay");
+        assertEq(balancer.keeperCredit(), 0);
     }
 
     function _activeOfSize(uint8 size) internal view returns (uint256) {

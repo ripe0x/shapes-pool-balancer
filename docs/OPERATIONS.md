@@ -32,10 +32,11 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   the estimate exceeds the 3.2M reimbursable maximum.
 - `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
   at the current basefee. A receipt can cost more if basefee rises before inclusion.
-  Outside creator-started work a pool pays only from the markup it has earned (`keeperCredit`), so a call is worth
-  sending only once enough draws have built credit; at higher gas the keeper waits for more. Calls that reconcile only
-  refunded draws earn nothing; the default allowance covers them at low gas, and the next paid call reconciles them
-  anyway. Set 0 for a strictly profitable keeper.
+  Outside creator-started work a pool pays only from the restocking fees of drawn prizes (`keeperCredit`), set from
+  the basefee when each prize was listed. At steady gas one draw covers its restock up to 5 gwei; if gas has risen since
+  listing, the keeper waits for more draws. Calls that reconcile only refunded or curated draws earn nothing; the
+  default allowance covers them at low gas, and the next paid call reconciles them anyway. Set 0 for a strictly
+  profitable keeper.
 - Refunded NFTs and prizes are recovered by the creator with `recoverRefunded(listingId, to)`, not by the keeper.
 
 - Health: `GET http://localhost:8787/health` (503 if no tick for 2 minutes). Per-pool errors are listed and do not stop
@@ -46,8 +47,8 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   `MAX_GAS_PRICE_GWEI` (default 5, the contract's reimbursement cap) and the simulated reward still covers the cost.
   Otherwise it waits. During a basefee spike above 5 gwei (~0.9% of blocks over the last 90 days; longest measured
   episode ~42 min) pools pause new purchases until gas falls; existing draws are unaffected. Below the cap a pool whose
-  markup earned does not cover the call also waits; with only 0.01 Shapes at 15% one draw covers a restock to about
-  0.5 gwei. A creator can always run upkeep from the dashboard and pay the gas themself.
+  restocking fees earned do not cover the call also waits, which happens when gas rose after its prizes were listed.
+  A creator can always run upkeep from the dashboard and pay the gas themself.
 - Reorgs: the last 64 blocks are rescanned every tick; Balancers whose creation was reorged out are dropped.
 - Fund the keeper address with ETH for gas; rewards come back from each pool to the address that sent the call. Use
   a plain account: an account with code that forwards incoming ETH (for example an EIP-7702 delegation to a sweeper,

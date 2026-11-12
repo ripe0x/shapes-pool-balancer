@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { economics, evaluate, markupFloorBps, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
+import { economics, evaluate, MAX_KEEPER_REWARD, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
@@ -8,7 +8,7 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
   for (const [k, c] of Object.entries(fixture as Record<string, any>)) {
     it(`case ${k}`, () => {
       const counts = unpackPlan(BigInt(c.target ?? c.plan));
-      const inputs = { curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee) };
+      const inputs = { curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee), restockFee: BigInt(c.restockFee) };
       const ev = evaluate(counts, inputs);
       expect(ev.drawPrice).toBe(BigInt(c.drawPrice));
       expect(ev.curatedOddsBps).toBe(Number(c.curatedOddsBps));
@@ -19,7 +19,7 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
 
 describe('planner', () => {
   const E = 10n ** 18n;
-  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n };
+  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n) };
 
   it('packs and unpacks plans', () => {
     const c = [5, 3, 2, 0, 0, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 4];
@@ -38,17 +38,29 @@ describe('planner', () => {
     expect(Math.abs(sum - 1_000_000)).toBeLessThan(10);
   });
 
-  it('min markup grows with gas price and shrinks with draw value', () => {
-    const lo = economics([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs, { gasPriceGwei: 0.5, drawsPerUpkeep: 1, safety: 0.25 });
-    const hi = economics([5, 3, 2, 0, 0, 0, 0, 0, 0], inputs, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
-    const thin = economics([5, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, markupBps: 100 }, { gasPriceGwei: 2, drawsPerUpkeep: 1, safety: 0.25 });
-    expect(thin.outlook).toBe('loss');
-    expect(thin.belowModeledMarkup).toBe(true);
-    expect(hi.minMarkupBps).toBeGreaterThan(lo.minMarkupBps);
-    const big = economics([0, 0, 0, 0, 3, 1, 0, 0, 0], { ...inputs, curatedBases: [20n * E] }, { gasPriceGwei: 10, drawsPerUpkeep: 1, safety: 0.25 });
-    expect(big.minMarkupBps).toBeLessThan(hi.minMarkupBps);
+  it('prices a Shape prize at cost, markup on its backing and a basefee-indexed restocking fee per Shape', () => {
+    const GWEI = 10n ** 9n;
+    expect(restockFeeAt(GWEI)).toBe(750_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.0009875 ETH
+    expect(restockFeeAt(80n * GWEI)).toBe(750_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.00395 ETH
+    // 0.01 Shape: 0.01 + 0.001 mint fee + 0.0015 markup + one fee
+    expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
+    // 0.03 pack: three Shapes, three mint fees and three restocking fees
+    expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
     expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // 3.2M * 5 gwei + 0.0005
-    expect(lo.outlook).toBe('sustainable');
+  });
+
+  it('the creator keeps the markup; players pay mint and restocking fees on top', () => {
+    const mix = [5, 3, 2, 0, 0, 0, 0, 0, 0];
+    const e = economics(mix, inputs);
+    const none = economics(mix, { ...inputs, markupBps: 0 });
+    expect(none.markupPerDraw).toBe(0);
+    expect(none.restockFeesPerDraw).toBeGreaterThan(0);
+    expect(e.markupPerDraw).toBeGreaterThan(0);
+    expect(economics(mix, { ...inputs, restockFee: restockFeeAt(4n * 10n ** 9n) }).restockFeesPerDraw).toBeGreaterThan(e.restockFeesPerDraw);
+    // every tier's odds times its parts add up to the expected listed price (owner proceeds)
+    const ev = evaluate(mix, inputs);
+    const priced = ev.tiers.reduce((a, t) => a + (t.oddsPpm / 1e6) * (Number(t.value) / 1e18), 0) + e.markupPerDraw + e.mintFeesPerDraw + e.restockFeesPerDraw;
+    expect(priced).toBeCloseTo(e.ownerProceeds, 5);
   });
 
   it('required reserve: restock the target, one largest prize per unreconciled draw plus a spare, and keeper rewards', () => {
@@ -61,17 +73,5 @@ describe('planner', () => {
     expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
     // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
     expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
-  });
-});
-
-describe('markup floor (PoolBalancer.configure, MarkupBelowMintFee)', () => {
-  const fee = 10n ** 15n; // 0.001 ETH
-  const only = (d: number) => Array.from({ length: 16 }, (_, i) => (i === d ? 1 : 0));
-  it('covers the mint fees of the most fee-heavy prize in the mix', () => {
-    expect(markupFloorBps(only(0), fee)).toBe(1000); // 0.01 Shape: 0.001 / 0.01
-    expect(markupFloorBps(only(3), fee)).toBe(20); // 0.5 Shape
-    expect(markupFloorBps(only(10), fee)).toBe(1000); // 0.03 pack of three Shapes
-    expect(markupFloorBps(only(3), 3n * 10n ** 15n)).toBe(60);
-    expect(markupFloorBps([2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 5n * 10n ** 15n)).toBe(5000);
   });
 });

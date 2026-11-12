@@ -72,8 +72,8 @@ contract PacksTest is ForkBase {
             assertEq(IPacksView(packs).valueOf(tokenId), values[k], "pack value");
             assertEq(IPacksView(packs).contentsOf(tokenId).length, shapeCounts[k], "fewest Shapes");
             (,,, uint112 base, uint112 price) = balancer.items(lid);
-            assertEq(base, values[k] + shapeCounts[k] * shapes.mintFee(), "base is what the prize cost");
-            assertEq(price, values[k] * (10_000 + MARKUP) / 10_000, "priced at the current markup");
+            assertEq(base, values[k] + shapeCounts[k] * shapes.mintFee() + values[k] * MARKUP / 10_000, "cost plus markup");
+            assertEq(price, base + shapeCounts[k] * balancer.restockFee(), "plus a restocking fee per Shape");
         }
     }
 

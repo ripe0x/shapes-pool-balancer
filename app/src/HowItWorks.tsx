@@ -1,11 +1,11 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
-import { BY_VALUE, DENOMS, capitalOf, economics, prizeLabel, type Counts } from '../../shared/planner';
+import { BY_VALUE, DENOMS, capitalOf, economics, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
 import { describe, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 
-// One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee.
+// One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee, 1 gwei gas.
 const EXAMPLE: DesignInputs = {
-  curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.001'),
+  curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n),
   have: Array(16).fill(0),
 };
 const SMALL = 20;
@@ -21,7 +21,7 @@ const oneIn = (p: number) => `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.roun
 /** Groups of a mix, smallest value first, with shade, chance per draw and worth against the draw price. */
 function groups(counts: Counts) {
   const ev = describe(counts, EXAMPLE);
-  const view = playerView(ev, EXAMPLE.markupBps, 0n);
+  const view = playerView(ev, 0n);
   const sizes = BY_VALUE.filter((i) => counts[i] > 0);
   const shade = (k: number): CSSProperties => ({ background: sizes.length > 1 && k === sizes.length - 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, k)] });
   const out = sizes.map((i, k) => {
@@ -58,12 +58,13 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const counts = mixOf(SMALL, styleBonus('board', EXAMPLE, SMALL));
   const { ev, view, list } = groups(counts);
-  const econ = economics(counts, EXAMPLE, { gasPriceGwei: 0, drawsPerUpkeep: 1, safety: 0.25 });
-  const m = EXAMPLE.markupBps / 10_000;
+  const econ = economics(counts, EXAMPLE);
   const edge = EXAMPLE.edgeBps / 10_000;
-  const valueShare = 1 / ((1 + edge) * (1 + m));
-  const markupShare = m / ((1 + edge) * (1 + m));
+  const draw = econ.ownerProceeds * (1 + edge);
+  const markupShare = econ.markupPerDraw / draw;
+  const feeShare = (econ.mintFeesPerDraw + econ.restockFeesPerDraw) / draw;
   const edgeShare = edge / (1 + edge);
+  const valueShare = 1 - markupShare - feeShare - edgeShare;
   const inPrizes = capitalOf(counts);
   const needed = ethNeeded(counts, EXAMPLE);
   // A deposit covering what the pool needs, rounded up to the next 0.5 ETH, plus 0.5 ETH left unused.
@@ -107,7 +108,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
           <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">Keepers are paid only from markup the pool has earned. When gas costs more than that, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid only from the restocking fees in prize prices. When gas costs more than those fees, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -116,9 +117,10 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <Bar parts={[
           { label: 'goes back to players as prizes', share: valueShare, style: { background: '#7a7a7a' } },
           { label: 'is your markup', share: markupShare, style: { background: '#fff' } },
+          { label: 'pays mint fees and keepers', share: feeShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Your markup pays the pool's running costs: the Shapes mint fee for each replacement (0.001 ETH a Shape today) and keeper rewards. In this example that is about {econ.overheadPerDraw.toFixed(4)} ETH a draw against {econ.grossMarginPerDraw.toFixed(4)} ETH of markup, so you keep about {econ.expectedNetPerDraw.toFixed(4)} ETH a draw on average. Cheap prizes cost the same to replace as expensive ones, so pools of 0.01 ETH prizes need a higher markup, and the markup must at least cover the mint fee (10% with 0.01 ETH Shapes today).</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes the Shapes mint fee for its replacement (0.001 ETH a Shape today) and a restocking fee that pays keepers, set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). Keepers are paid only from restocking fees, so your markup is yours: about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
       </section>
 
       <section className="hiw-sec">
@@ -166,7 +168,7 @@ const FAQ: [string, string][] = [
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Keeper rewards never exceed the markup the pool has earned, and the markup always covers mint fees. Stocking the pool when you open it costs gas. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['Can I lose money?', 'Mint fees and keepers are paid from fees in prize prices, never from your markup. Stocking the pool when you open it costs gas, and prizes still listed when you close keep their mint fees. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],

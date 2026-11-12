@@ -17,7 +17,9 @@ import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReve
 ///        give NFTs away), while MAX_BATCH draws are unsettled, while the
 ///        Shapes mint fee is above what the creator accepted, or while the prizes' weight, after assuming every
 ///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight.
-///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced.
+///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
+///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
+///        from the basefee then; the restocking fees are all keepers can be paid from.
 ///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
 ///        unsettled; FWA stages those listings and activates them in order.
 ///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
@@ -72,15 +74,23 @@ contract PoolBalancer is ReentrancyGuard {
     // - reward = measured gas (capped) x price + KEEPER_INCENTIVE, which covers the keeper's gas outside the
     //   measured span.
     // - Work a creator action started (`creatorWork`: open, configure, unlisting) is paid in full from the creator's
-    //   ETH; purchases are refused until it is done. All other rewards come out of `keeperCredit`, the markup earned
-    //   on delivered draws, so lifetime keeper pay never exceeds the markup the pool has earned: when gas costs more
-    //   than the markup covers, keepers wait, inventory runs down and purchases pause at LOW_INVENTORY.
-    // - Buying one's own draws to earn credit pays the markup, FWA's edge and the VRF fee for at most the markup back.
+    //   ETH; purchases are refused until it is done. All other rewards come out of `keeperCredit`, the restocking fees
+    //   of delivered Shape prizes, so lifetime keeper pay never exceeds the fees players paid and never touches the
+    //   creator's markup: when gas costs more than the fees cover, keepers wait, inventory runs down and purchases
+    //   pause at LOW_INVENTORY.
+    // - Restocking fee per Shape = RESTOCK_FEE_GAS x min(basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE) +
+    //   RESTOCK_FEE_FLAT, fixed at listing. It is basefee-indexed so restocking keeps up as gas rises; basefee is not
+    //   the caller's to choose. Fees keepers never claim stay in the pool's ETH, which is the creator's.
+    // - Buying one's own draws to earn credit pays the price, FWA's edge and the VRF fee for at most the fee back.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
     uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
     uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+    /// @dev With RESTOCK_FEE_FLAT, covers an upkeep that reconciles one draw and restocks its Shape (~763k gas billed)
+    ///      at any basefee up to the cap when gas is steady (test/Gas.t.sol, docs/keeper-funding-results.md).
+    uint256 internal constant RESTOCK_FEE_GAS = 750_000;
+    uint256 internal constant RESTOCK_FEE_FLAT = 0.0002 ether;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
     bytes4 internal constant ERC1271_MAGIC = 0x1626ba7e;
@@ -124,7 +134,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint112 base; // creator value (curated) or what the prize cost: backing plus mint fees (Shape)
+        uint112 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
         uint112 price; // price listed on FWA
     }
 
@@ -139,11 +149,12 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
     bool public creatorWork;
     uint64 public reconciledSequence;
-    /// @dev Markup earned on reconciled delivered draws (listed price less `base`), not yet paid to keepers.
+    /// @dev Restocking fees of reconciled delivered Shape prizes (price less `base`), not yet paid to keepers.
     uint128 public keeperCredit;
     /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
     uint256 public mintFeeCap;
-    /// @dev FWA weight of the listed prizes (staged or active, not yet reconciled as drawn) and of the target.
+    /// @dev Weight (1e36 / `base`) of the listed prizes (staged or active, not yet reconciled as drawn) and of the
+    ///      target. `base` leaves out the basefee-indexed restocking fee, so fill does not move with gas.
     uint256 public prizeWeight;
     uint256 public targetWeight;
 
@@ -194,7 +205,6 @@ contract PoolBalancer is ReentrancyGuard {
     error UnsupportedFWAConfig();
     error InvalidConfig();
     error InvalidPlan();
-    error MarkupBelowMintFee();
     error InvalidItem();
     error InvalidRecipient();
     error ValueTooHigh();
@@ -288,10 +298,7 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 n = _count(newTarget, d);
             if (n == 0) continue;
             prizes += n;
-            uint256 price = _amount(d) * (BPS + newMarkupBps) / BPS;
-            // Every prize's markup must cover its mint fees, so the margin keepers are paid from is never negative.
-            if (price < _cost(d, fee)) revert MarkupBelowMintFee();
-            w += n * (INVERSE_WEIGHT_NUMERATOR / price);
+            w += n * (INVERSE_WEIGHT_NUMERATOR / _prizeBase(d, fee, newMarkupBps));
         }
         if (prizes == 0 || prizes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
         markupBps = newMarkupBps;
@@ -577,7 +584,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (ops != 0 || reconciled) reward = _payKeeper(gasStart, wasSetup);
     }
 
-    /// @dev Returns the markup a delivered draw earned.
+    /// @dev Returns the restocking fees a delivered draw earned for keepers.
     function _onDrawn(uint256 lid, bool delivered) internal returns (uint256 earned) {
         Item storage it = items[lid];
         // Every pool listing is ours and tracked until drawn. Never revert here: reconciliation must not be bricked.
@@ -587,12 +594,10 @@ contract PoolBalancer is ReentrancyGuard {
         _removeActive(lid);
         if (kind == SHAPE) {
             --activeShapes[d];
-            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.price;
+            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
         }
         if (delivered) {
-            uint256 price = it.price;
-            uint256 base = it.base;
-            if (price > base) earned = price - base; // price >= base (curated: _priced; prizes: configure's check); never revert
+            if (kind == SHAPE) earned = it.price - it.base; // price = base + fees (_fillDeficit); curated earn nothing
             delete items[lid];
         } else {
             it.state = PENDING;
@@ -612,7 +617,7 @@ contract PoolBalancer is ReentrancyGuard {
             uint8 d = it.denom;
             sizes[i] = d;
             --activeShapes[d];
-            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.price;
+            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
             _removeActive(lid);
             delete items[lid];
         }
@@ -631,12 +636,13 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
-    ///      left after this call's keeper reward, and list them at the current markup in one FWA batch. FWA stages the batch while draws are
-    ///      unsettled. Returns Shape units used.
+    ///      left after this call's keeper reward, and list them at `_prizeBase` plus the restocking fees in one FWA
+    ///      batch. FWA stages the batch while draws are unsettled. Returns Shape units used.
     function _fillDeficit(IFWAPool p, uint256 fee) internal returns (uint256 used) {
         uint256 plan = target;
         uint256 markup = markupBps;
         uint256 keep = _rewardBound(_rewardPrice(tx.gasprice));
+        uint256 restock = restockFee();
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](MAX_OPS);
         uint8[] memory sizes = new uint8[](MAX_OPS);
         uint256 n;
@@ -654,7 +660,7 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 affordable = bal > keep ? (bal - keep) / each : 0;
             if (need > affordable) need = affordable;
             if (need == 0) break; // stop at the first size not fully restocked, so restocking stays in value order
-            uint256 price = _amount(d) * (BPS + markup) / BPS;
+            uint256 price = _prizeBase(d, fee, markup) + w * restock;
             if (d < SHAPE_DENOMS) {
                 uint256 first = SHAPES.mintBatch{value: need * each}(_amount(d), need);
                 emit ShapesMinted(uint8(d), first, need, need * each);
@@ -683,12 +689,12 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 added;
         for (uint256 i; i < n; ++i) {
             uint8 d = sizes[i];
-            uint256 price = batch[i].price;
-            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_cost(d, fee)), uint112(price));
+            uint256 base = _prizeBase(d, fee, markup);
+            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(base), uint112(batch[i].price));
             _addActive(lids[i]);
             ++activeShapes[d];
-            added += INVERSE_WEIGHT_NUMERATOR / price;
-            emit ShapeListed(lids[i], d, batch[i].tokenId, price);
+            added += INVERSE_WEIGHT_NUMERATOR / base;
+            emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
         }
         prizeWeight += added;
     }
@@ -840,6 +846,16 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Upper bound of one call's reward at `price`: measured gas (<= KEEPER_MAX_GAS) x price + KEEPER_INCENTIVE.
     function _rewardBound(uint256 price) internal pure returns (uint256) {
         return KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
+    }
+
+    /// @notice Restocking fee per Shape for a prize listed now; keepers are paid only from these fees.
+    function restockFee() public view returns (uint256) {
+        return RESTOCK_FEE_GAS * _rewardPrice(type(uint256).max) + RESTOCK_FEE_FLAT;
+    }
+
+    /// @dev A Shape prize's price before restocking fees: what it costs to create plus the markup on its backing.
+    function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
+        return _cost(d, fee) + _amount(d) * markup / BPS;
     }
 
     /// @dev ETH to create one prize of size `d`: its backing plus the Shapes mint fee for each Shape inside.

@@ -27,8 +27,9 @@ contract RefundingKeeper {
 }
 
 /// @notice Attacks on the keeper reward. Each self-dealing test measures the attacker's net result across the whole
-///         sequence: rewards - upkeep gas - FWA fee - VRF fee - purchase gas + value of the NFTs received, valued at
-///         their FWA listing price (generous to the attacker: the creator's base is lower).
+///         sequence: rewards - upkeep gas - FWA fee - VRF fee - purchase gas + value of the prizes received: a Shape or
+///         pack at the ETH it redeems for, a curated NFT at its FWA listing price (generous to the attacker: the
+///         creator's base is lower).
 contract KeeperAdversarialTest is ForkBase {
     uint256 constant BASEFEE = 0.05 gwei; // cheap gas favours the attacker
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
@@ -71,7 +72,9 @@ contract KeeperAdversarialTest is ForkBase {
         uint256[] memory active = balancer.getActiveIds();
         uint256[] memory prices = new uint256[](active.length);
         for (uint256 i; i < active.length; ++i) {
-            (,,,,, prices[i],,) = pool.listings(active[i]);
+            (uint8 kind, uint8 d,,,) = balancer.items(active[i]);
+            if (kind == 2) prices[i] = _backing(d);
+            else (,,,,, prices[i],,) = pool.listings(active[i]);
         }
         for (uint256 k; k < count; ++k) {
             fulfill(ids[k], words[k]);
@@ -91,6 +94,13 @@ contract KeeperAdversarialTest is ForkBase {
                 break;
             }
         }
+    }
+
+    /// @dev ETH a prize of size `d` redeems for (PoolBalancer's size table).
+    function _backing(uint8 d) internal pure returns (uint256) {
+        uint256[16] memory v = [uint256(0.01 ether), 0.05 ether, 0.1 ether, 0.5 ether, 1 ether, 5 ether, 10 ether,
+            50 ether, 100 ether, 0.02 ether, 0.03 ether, 0.2 ether, 0.25 ether, 2 ether, 2.5 ether, 25 ether];
+        return v[d];
     }
 
     function _words(uint256 n, uint256 salt) internal pure returns (uint256[] memory w) {
@@ -190,7 +200,9 @@ contract KeeperAdversarialTest is ForkBase {
         if (balancer.creatorWork()) assertFalse(balancer.canPurchase(atk));
     }
 
-    /// A creator deposit while open never enables full incentives for purchase-caused work.
+    /// A creator deposit while open never enables full incentives for purchase-caused work: the attacker's upkeep is
+    /// paid only from the restocking fees its own draws paid. (Its P&L here also carries prize luck, so the bound is
+    /// asserted on the rewards.)
     function test_depositDoesNotUnlockFullIncentive() public {
         _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
@@ -198,8 +210,31 @@ contract KeeperAdversarialTest is ForkBase {
         vm.prank(atk);
         balancer.depositETH{value: 1 wei}();
         assertFalse(balancer.creatorWork());
-        int256 pnl = _selfDeal(_words(1, 7));
-        assertLe(pnl, 0);
+        assertEq(balancer.keeperCredit(), 0);
+        uint256[] memory active = balancer.getActiveIds();
+        uint256[] memory fees = new uint256[](active.length);
+        for (uint256 i; i < active.length; ++i) {
+            (,,, uint112 base, uint112 price) = balancer.items(active[i]);
+            (uint8 kind,,,,) = balancer.items(active[i]);
+            if (kind == 2) fees[i] = price - base;
+        }
+        _selfDeal(_words(3, 7));
+        uint256 earned;
+        for (uint256 i; i < active.length; ++i) {
+            (,,,,,,, uint8 st) = pool.listings(active[i]);
+            if (st != 1) earned += fees[i];
+        }
+        uint256 paid;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == KEEPER_PAID) {
+                (uint256 r,) = abi.decode(logs[i].data, (uint256, uint256));
+                paid += r;
+            }
+        }
+        assertGt(earned, 0, "a Shape prize was drawn");
+        assertLe(paid, earned, "rewards never exceed the fees the attacker's draws paid");
+        assertEq(balancer.keeperCredit(), earned - paid);
     }
 
     /// Accepted (I-6): a batch bought before a creator action that sets creator work is reconciled with the full

@@ -1,28 +1,36 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, mixOf, playerView, styleBonus, type DesignInputs } from './design';
-import { DENOMS, MAX_SHAPES_PER_PLAN, shapeCount, type Counts } from './planner';
+import { DENOMS, MAX_SHAPES_PER_PLAN, restockFeeAt, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
   markupBps: 1500,
   edgeBps: 500,
   mintFee: parseEther('0.0005'),
+  restockFee: restockFeeAt(10n ** 9n),
   have: Array(9).fill(0),
 };
 const mix = (m: Record<number, number>): Counts => DENOMS.map((_, i) => m[i] ?? 0);
 
 suite('playerView', () => {
-  it('average return depends on fees and markup, not on the mix', () => {
+  it('without per-Shape fees the average return is the same for every mix', () => {
+    const noFees = { ...base, mintFee: 0n, restockFee: 0n };
     for (const counts of [mix({ 0: 10 }), mix({ 0: 2, 3: 1 }), mix({ 1: 5, 2: 2 })]) {
-      const v = playerView(describe(counts, base), base.markupBps, 0n);
-      expect(v.avgReturn).toBeCloseTo(1 / (1.05 * 1.15), 3);
+      expect(playerView(describe(counts, noFees), 0n).avgReturn).toBeCloseTo(1 / (1.05 * 1.15), 3);
     }
+  });
+
+  it('per-Shape mint and restocking fees cost players more on small prizes', () => {
+    const small = playerView(describe(mix({ 0: 10 }), base), 0n).avgReturn;
+    const large = playerView(describe(mix({ 1: 5, 2: 2 }), base), 0n).avgReturn;
+    expect(small).toBeLessThan(large);
+    expect(large).toBeLessThan(1 / (1.05 * 1.15));
   });
 
   it('counts only prizes worth more than the draw plus VRF fee as wins', () => {
     const ev = describe(mix({ 0: 10, 3: 1 }), base);
-    const v = playerView(ev, base.markupBps, parseEther('0.002'));
+    const v = playerView(ev, parseEther('0.002'));
     const wins = v.tiers.filter((t) => t.value > v.cost);
     expect(v.winMore).toBeCloseTo(wins.reduce((s, t) => s + t.odds, 0), 9);
     expect(wins.every((t) => t.value > ev.drawPrice)).toBe(true);
@@ -32,7 +40,7 @@ suite('playerView', () => {
 
 suite('pool size and styles', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const at = (c: Counts) => { const ev = describe(c, one); return { odds: ev.curatedOddsPpm, price: ev.drawPrice, v: playerView(ev, one.markupBps, 0n) }; };
+  const at = (c: Counts) => { const ev = describe(c, one); return { odds: ev.curatedOddsPpm, price: ev.drawPrice, v: playerView(ev, 0n) }; };
 
   it('more small Shapes make the NFT rarer and the draw cheaper', () => {
     const [few, many] = [at(mixOf(3)), at(mixOf(30))];

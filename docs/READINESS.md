@@ -6,7 +6,7 @@ are safe.
 ## Rewrite status (2026-11-11)
 
 The contract was rewritten: simplified gate, markup applied at listing, `unlistShapes`, creator-only `recoverRefunded`,
-keepers paid only from markup earned and a withdrawal-only reserve (SPEC.md, DECISIONS 43-53). **This rewrite is a verified
+keepers paid only from a restocking fee priced into prizes and a withdrawal-only reserve (SPEC.md, DECISIONS 43-56). **This rewrite is a verified
 slice, not a frozen release candidate:** every fork test file passes when run one at a time, the invariants pass at 64
 runs × 4,096 calls, and one independent AI review (round 7) is resolved. The verification under "Earlier verification" below ran
 against the previous design (commit `3f1735f`); its suite results, gas numbers and rehearsals do not carry over to the
@@ -14,13 +14,15 @@ rewrite and must be re-run against it before release.
 
 Open before release:
 
-1. **Review of the round 7 repairs and the keeper-pay change** (per-call limits, reserve fee, setup checks; keepers
-   paid from `keeperCredit`, the markup floor in `configure`), made after the independent review.
+1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
+   paid from `keeperCredit`, now funded by the basefee-indexed restocking fee in prize prices), made after the
+   independent review. The restocking fee had one independent AI review before commit (see SECURITY.md).
 2. **Re-run the fork suites, keeper e2e and both launch rehearsals** against the rewrite, then freeze a release
    candidate. The keeper e2e and rehearsals start their own anvil fork on port 18546 and need that port's approval.
-3. **Gas finding resolved (DECISIONS 51-53):** outside creator-started work keepers are paid only from markup earned,
-   so upkeep never costs a pool more than its markup; at high gas restocking waits and purchases pause instead. Opening
-   the pool (stocking it) is still paid from the creator's ETH.
+3. **Gas finding resolved (DECISIONS 51-56):** outside creator-started work keepers are paid only from restocking fees
+   players pay in prize prices, so keepers never touch the creator's markup; when gas rises after listing, restocking
+   waits and purchases pause instead. Opening the pool (stocking it) is still paid from the creator's ETH. Players pay
+   about 16% more per Balanced draw at 1 gwei; whether that changes demand is untested.
 4. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
 5. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
 6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
@@ -123,10 +125,10 @@ Failures found during this verification, and what changed:
 See `docs/SECURITY.md`. In short: the rewrite had one AI review (round 7); the gate is approximate and leans on FWA
 pricing and slippage refunds; FWA and Shapes admin powers; restricted-collection griefing (G-1); collections that can
 move or freeze listed NFTs (F1, F2); FWA's VRF service refusing purchases while status shows 0 (F4); keepers wait above a
-5 gwei basefee (~0.9% of blocks) and whenever the markup earned does not cover a call, so pools of cheap prizes pause
-earlier (0.01 Shapes at 15%: from about 0.5 gwei); refund-only reconciliation is unpaid once credit is spent and relies on
-the creator or the keeper allowance; when keepers take nearly all the markup, the creator can still end below zero by
-the opening stock-up gas and the mint fees of prizes listed at close (DECISIONS 53); the FWA page template could change;
+5 gwei basefee (~0.9% of blocks) and when gas has risen since prizes were listed; refund-only and curated-only
+reconciliation is unpaid once credit is spent and relies on the creator, the keeper allowance or later prize draws; the
+creator still pays the opening stock-up gas and the mint fees of prizes listed at close, and prize luck can put short
+runs below zero; the restocking fee raises the draw price, most on mixes of small prizes; the FWA page template could change;
 no professional audit.
 
 ## Your actions to deploy

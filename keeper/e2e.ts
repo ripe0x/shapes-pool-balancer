@@ -255,7 +255,7 @@ async function run() {
   console.log('✓ per-pool error isolation; health', JSON.stringify(k.health()));
 }
 
-/** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the markup earned. */
+/** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the restocking fees earned. */
 function checkAudit(k: Keeper) {
   const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
   console.table(rows);

@@ -10,12 +10,16 @@ export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
 export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
 export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
-/** Reward = 4/5 measured gas + (1/5 measured gas + 0.0005 ETH incentive), at min(bid, basefee + 0.05 gwei, 5 gwei). */
+/** Reward = measured gas x min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0005 ETH, capped by the restocking fees earned. */
 export const MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 /** Bound on one call's reward at a price (PoolBalancer._rewardBound). */
 export const rewardBound = (price: bigint) => KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
+/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; keepers are paid only from these fees. */
+export const RESTOCK_FEE_GAS = 750_000n;
+export const RESTOCK_FEE_FLAT = 2n * 10n ** 14n;
+export const restockFeeAt = (baseFee: bigint) => RESTOCK_FEE_GAS * rewardPrice(baseFee) + RESTOCK_FEE_FLAT;
 /** PoolBalancer.requiredReserve() while open: restoring `target` from `have`, one largest prize for each unreconciled
  *  draw and one spare, and a maximum keeper reward for each upkeep call that work takes plus one. */
 export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, unreconciled = 0): bigint {
@@ -78,6 +82,7 @@ export interface PoolInputs {
   markupBps: number;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
+  restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -95,6 +100,11 @@ export function unpackPlan(p: bigint): Counts {
 }
 
 export const listPrice = (base: bigint, markupBps: number) => (base * (BPS + BigInt(markupBps))) / BPS;
+/** A prize's listed price less its restocking fees (PoolBalancer._prizeBase): cost plus the markup on its backing. */
+export const prizeBase = (d: number, mintFee: bigint, markupBps: number) => prizeCost(d, mintFee) + (DENOMS[d] * BigInt(markupBps)) / BPS;
+/** A prize's FWA listing price (PoolBalancer._fillDeficit). */
+export const prizePrice = (d: number, i: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee'>) =>
+  prizeBase(d, i.mintFee, i.markupBps) + BigInt(SHAPES_IN[d]) * i.restockFee;
 export const weightOf = (price: bigint) => NUM / price;
 
 export function curatedTotals(bases: bigint[], markupBps: number) {
@@ -109,12 +119,12 @@ export function curatedTotals(bases: bigint[], markupBps: number) {
   return { w, wp };
 }
 
-export function shapeTotals(counts: Counts, markupBps: number) {
+export function shapeTotals(counts: Counts, inputs: PoolInputs) {
   let w = 0n;
   let wp = 0n;
   counts.forEach((n, d) => {
     if (!n) return;
-    const p = listPrice(DENOMS[d], markupBps);
+    const p = prizePrice(d, inputs);
     const wi = weightOf(p);
     w += BigInt(n) * wi;
     wp += BigInt(n) * wi * p;
@@ -130,6 +140,7 @@ export interface Tier {
   kind: 'curated' | 'shape'; // 'shape': a Shape or Pack prize of size `size`
   size?: number;
   count: number;
+  value: bigint; // what a winner receives: the creator's value, or the ETH a Shape or pack redeems for
   listPrice: bigint;
   oddsPpm: number; // combined probability of this tier per draw, parts per million
 }
@@ -150,7 +161,7 @@ export interface Evaluation {
 
 export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   const c = curatedTotals(inputs.curatedBases, inputs.markupBps);
-  const s = shapeTotals(counts, inputs.markupBps);
+  const s = shapeTotals(counts, inputs);
   const tW = c.w + s.w;
   const reasons: string[] = [];
   const capital = capitalOf(counts);
@@ -167,12 +178,12 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   const tiers: Tier[] = [];
   inputs.curatedBases.forEach((b, i) => {
     const p = listPrice(b, inputs.markupBps);
-    tiers.push({ label: `Curated #${i + 1}`, kind: 'curated', count: 1, listPrice: p, oddsPpm: Number((weightOf(p) * 1_000_000n) / (tW || 1n)) });
+    tiers.push({ label: `Curated #${i + 1}`, kind: 'curated', count: 1, value: b, listPrice: p, oddsPpm: Number((weightOf(p) * 1_000_000n) / (tW || 1n)) });
   });
   counts.forEach((n, d) => {
     if (!n) return;
-    const p = listPrice(DENOMS[d], inputs.markupBps);
-    tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
+    const p = prizePrice(d, inputs);
+    tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, value: DENOMS[d], listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
   });
 
   return {
@@ -190,59 +201,36 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   };
 }
 
-export interface CostAssumptions {
-  gasPriceGwei: number; // expected effective keeper gas price
-  drawsPerUpkeep: number; // average draws reconciled per upkeep (1..5)
-  safety: number; // operating safety allowance, e.g. 0.25
-}
-
 const toEth = (x: bigint) => Number(x) / 1e18;
 
-/** Lowest markup `configure` accepts: every prize's markup covers its Shapes mint fees (PoolBalancer.MarkupBelowMintFee). */
-export function markupFloorBps(counts: Counts, mintFee: bigint): number {
-  let floor = 0;
-  counts.forEach((n, d) => {
-    const need = n ? Number((BigInt(SHAPES_IN[d]) * mintFee * BPS + DENOMS[d] - 1n) / DENOMS[d]) : 0;
-    if (need > floor) floor = need;
-  });
-  return floor;
-}
-
 /**
- * Expected per-draw economics. With FWA's inverse weights, the expected listed value of the drawn
- * item equals the owner proceeds H, so the creator's expected gain before costs is H*m/(1+m).
- * Costs: for each prize drawn, a mint fee and keeper gas per Shape it holds (a pack replaces all its Shapes), plus
- * per-upkeep overhead. Keepers are paid only from markup earned after mint fees: when their full cost is higher,
- * they wait and purchases pause, so keeper pay never exceeds that margin.
+ * Expected ETH per draw, by where it goes. Players pay for mint fees and keepers on top of the markup: a drawn Shape
+ * prize's price is its cost, the creator's markup on its backing and its restocking fees; a curated NFT's is its value
+ * plus the markup. Keepers are paid only from restocking fees, so the creator keeps at least the markup; fees keepers
+ * never claim stay with the creator too.
  */
-export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions) {
+export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
-  const m = inputs.markupBps / 10_000;
-  const H = toEth(ev.ownerProceedsPerDraw);
-  const gp = a.gasPriceGwei * 1e-9;
-  const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
-  // Expected Shapes replaced per draw: each prize tier's chance times the Shapes it holds.
-  const shapesPerDraw = ev.tiers.reduce((s, t) => s + (t.kind === 'shape' ? (t.oddsPpm / 1e6) * SHAPES_IN[t.size!] : 0), 0);
-  const mintPerDraw = shapesPerDraw * toEth(inputs.mintFee);
-  const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + toEth(KEEPER_INCENTIVE);
-  const keeperPerDraw = shapesPerDraw * GAS.perShape * gp + perUpkeep / k;
-  const grossMargin = (H * m) / (1 + m);
-  const overhead = mintPerDraw + Math.min(keeperPerDraw, Math.max(0, grossMargin - mintPerDraw));
-  const full = mintPerDraw + keeperPerDraw;
-  const H0 = H / (1 + m); // harmonic mean of unmarked values
-  const net = grossMargin - overhead;
-  const minMarkupBps = H0 > 0 ? Math.ceil(((full * (1 + a.safety)) / H0) * 10_000) : Infinity;
-  // Where the markup exactly covers mint fees and full keeper pay, without the safety allowance.
-  const breakEvenBps = H0 > 0 ? Math.ceil((full / H0) * 10_000) : Infinity;
+  const m = BigInt(inputs.markupBps);
+  let markup = 0;
+  let mint = 0;
+  let restock = 0;
+  for (const t of ev.tiers) {
+    const p = t.oddsPpm / 1e6; // this tier, all its listings
+    if (t.kind === 'curated') markup += p * toEth(t.listPrice - t.value);
+    else {
+      const shapes = BigInt(SHAPES_IN[t.size!]);
+      markup += p * toEth((DENOMS[t.size!] * m) / BPS);
+      mint += p * toEth(shapes * inputs.mintFee);
+      restock += p * toEth(shapes * inputs.restockFee);
+    }
+  }
   return {
-    ownerProceeds: H,
-    grossMarginPerDraw: grossMargin,
-    overheadPerDraw: overhead,
-    expectedNetPerDraw: net,
-    minMarkupBps,
-    breakEvenBps,
-    /** Model outlook, not a guarantee: individual draws and short runs can lose money either way. */
-    outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
-    belowModeledMarkup: inputs.markupBps < minMarkupBps,
+    ownerProceeds: toEth(ev.ownerProceedsPerDraw),
+    /** The creator's markup: what the creator keeps per draw, at least. A model average: prize luck moves short runs
+     *  either way. */
+    markupPerDraw: markup,
+    mintFeesPerDraw: mint,
+    restockFeesPerDraw: restock,
   };
 }

@@ -37,19 +37,21 @@ statement that the rewrite is safe. Findings and outcome:
 | --- | --- | --- |
 | Medium | The reserve holds one spare top prize, but one gate check admits a batch of five draws | Kept by decision (DECISIONS 46): two top-prize wins in one batch is ~1 in 6,000 for Balanced; a shortfall delays that restock, purchases stay open |
 | Low | Reserve priced at the live mint fee while restocking runs at any fee up to the accepted one | Fixed: the reserve uses the higher of the two |
-| Low | Keeper credit backs out FWA's edge at today's `edgeBps`, not the edge a draw paid | Obsolete: the credit is now the markup each drawn listing earned, read from the Balancer's own records (DECISIONS 51) |
+| Low | Keeper credit backs out FWA's edge at today's `edgeBps`, not the edge a draw paid | Obsolete: the credit is now the restocking fee each drawn prize carried, read from the Balancer's own records (DECISIONS 54) |
 | Low | Unchecked integration assumptions: FWA staging cap, Shapes size count | Fixed: `initialize` requires no staging cap; the constructor requires nine Shapes sizes |
 | Info | A draw still awaiting delivery when reconciled leaves its record and earns no credit if a retry later delivers it | Accepted, documented |
 | Info | Worst upkeep may approach the 3.2M gas cap | Confirmed by measurement (3.29M); fixed with 5 reconciles, 5 Shape units and 4 sizes per call (heaviest measured 2.76M) |
-| Info | Markup can be 0 | Creator's choice; the designer shows the break-even markup |
+| Info | Markup can be 0 | Creator's choice; mint fees and keepers are priced on top of it (DECISIONS 54-55) |
 
 The repairs were made after the review and were not re-reviewed independently; they are covered by the fork tests.
 
-After round 7 (not yet reviewed): keepers are paid only from `keeperCredit`, the markup earned on delivered draws
-(listed price less what the prize cost), except creator-started work; `configure` rejects a markup below any target
-prize's mint fees. Tests: `invariant_keeperPayWithinMarkupEarned`, `test_highGasKeeperPayNeverExceedsMarkupEarned`,
-`test_drawWithNoMarkupPaysNothing`, `test_curatedDrawEarnsItsMarkup`, `test_refundOnlyBatchEarnsNothing`; the self-dealing
-tests in `KeeperAdversarial.t.sol` stay net negative at the 10% floor.
+After round 7: keepers are paid only from `keeperCredit`, except creator-started work. Since DECISIONS 54 the credit is
+the restocking fee priced into each delivered prize (`restockFee()` at the listing block's basefee); curated draws add
+nothing, and the creator's markup is never spent on keepers. The fill check weighs prizes at their price less that fee.
+Tests: `invariant_keeperPayWithinRestockFees`, `invariant_prizeWeightMatchesTrackedPrizes`,
+`test_highGasKeeperPayNeverExceedsRestockFees`, `test_zeroMarkupStillFundsKeepers`, `test_curatedDrawEarnsKeepersNothing`,
+`test_refundOnlyBatchEarnsNothing`, `test_depositDoesNotUnlockFullIncentive` (rewards never exceed the fees the
+attacker's own draws paid); the self-dealing tests value won Shapes at the ETH they redeem for.
 
 ## Method
 

@@ -222,3 +222,31 @@ Owner decision: "make this so it never loses money with keepers". Supersedes 49,
     they took 0.167 of 0.172 ETH markup and purchases were admitted 11% of the time instead of the pool paying more.
     The creator can still end below zero when keepers take nearly all the markup, because the opening stock-up gas and
     the mint fees of prizes still listed at close are fixed costs the markup must recover.
+
+## Restocking fee in prize prices (2026-11-12)
+
+Owner decisions: taking 50% of the markup for keepers "is a lot. The markup is where they make money"; after the
+simulated comparison (docs/keeper-funding-results.md), "Yes, build it" for the gas-indexed restocking fee. Supersedes
+52 and the funding source in 51.
+
+54. **Keepers are paid only from a restocking fee priced into each prize, never from the creator's markup.** A prize
+    lists at backing + one mint fee per Shape inside + backing × markup + one restocking fee per Shape inside;
+    `restockFee()` = 750k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, fixed at the listing block's basefee
+    (not the caller's bid, which a keeper chooses). Each delivered prize adds its restocking fees to `keeperCredit`;
+    curated NFTs carry no fee and add nothing. Fees keepers never claim stay in the pool's ETH, the creator's.
+    Why: keeper work is a fixed cost per Shape (about 763k gas for a one-draw restock) while the markup is a share of
+    value, and about 3 in 4 Balanced draws are 0.01 Shapes, so the markup could not fund keepers (they took 61% of it
+    at 1 gwei) and a share cap stopped the pool at normal gas. Indexing to basefee keeps restocking going as gas rises
+    (gas rising to 12 gwei: purchases open 38% of the time, against 11%).
+    Cost: players pay more, about 22.3 mETH per Balanced draw at 1 gwei against 19.2 (+16%), more on mixes of small
+    prizes; the creator keeps about 2.6 mETH a draw. The sim holds demand fixed, so it does not show lost purchases.
+55. **The mint fee is passed through to the price, so `configure` accepts any markup** (`MarkupBelowMintFee` removed;
+    the dashboard floor removed). A mint fee rise still stops restocking until the creator saves again; listings after
+    that carry the new fee.
+56. **The fill check weighs prizes at their price less the restocking fee** (`base`), so a full inventory listed at high
+    gas still reads as full. A mint fee below the configured one makes prizes slightly heavier; restocking stops above
+    it, so the configured fee bounds the other way.
+    Known and accepted: a curated-only or refund-only reconcile is unpaid when no credit is left; keepers reconcile it
+    with later prize draws. Prizes listed during a basefee spike keep the higher fee until drawn; unused fees return to
+    the creator, not to players. Lowering the markup raises `targetWeight` while listed prizes keep their old `base`,
+    so the gate can read LOW_INVENTORY until old listings are drawn and relisted (as before, when weight used price).

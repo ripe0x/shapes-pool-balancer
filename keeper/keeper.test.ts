@@ -4,7 +4,7 @@ import { decide, KEEPER_MAX_GAS } from './keeper';
 const GWEI = 10n ** 9n;
 /**
  * PoolBalancer._payKeeper: price = min(bid, basefee + 0.05 gwei, 5 gwei); measured gas x price + 0.0005 ETH, capped
- * outside creator work by `credit`, the markup earned on delivered draws.
+ * outside creator work by `credit`, the restocking fees of delivered Shape prizes.
  */
 const reward = (measured: bigint, baseFee: bigint, bid: bigint, credit = 10n ** 18n) => {
   let price = bid;
@@ -33,9 +33,9 @@ describe('keeper profitability policy across gas prices', () => {
     expect(d).toEqual({ send: false, reason: 'unprofitable at current gas' });
   });
 
-  it('waits when the markup earned cannot cover the call at high gas', () => {
+  it('waits when the restocking fees earned cannot cover the call (gas rose after listing)', () => {
     const baseFee = 4n * GWEI;
-    const credit = 5n * 10n ** 14n; // 0.0005 ETH: one 0.01 Shape drawn at 15% markup, less its mint fee
+    const credit = 6n * 10n ** 14n; // ~0.0006 ETH: one Shape's restocking fee, listed at 0.5 gwei
     const r = reward(measured, baseFee, baseFee + GWEI / 20n, credit);
     expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: GWEI / 20n, maxLossWei: 0n }).send).toBe(false);
   });
@@ -47,7 +47,7 @@ describe('keeper profitability policy across gas prices', () => {
     expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
   });
 
-  // Refund-only batch: ~164k measured, ~197k billed, estimate ~78k above billed. A refund earns no markup.
+  // Refund-only batch: ~164k measured, ~197k billed, estimate ~78k above billed. A refund earns no restocking fee.
   it('unpaid work is sent only within the loss allowance at low gas', () => {
     const prio = GWEI / 20n;
     const bf = GWEI / 10n;

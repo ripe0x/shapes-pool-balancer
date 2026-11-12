@@ -342,7 +342,8 @@ contract BalancerTest is ForkBase {
     }
 
     function test_basefeeSpikeCappedAtMaxGasPrice() public {
-        _drawOneShape();
+        // Creator work (one more 0.01 Shape in the target) is paid in full, so the price cap is what bounds it.
+        configure(planA + 1);
         vm.fee(80 gwei);
         vm.txGasPrice(80 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
@@ -453,14 +454,15 @@ contract BalancerTest is ForkBase {
         uint16[16] memory have = balancer.getActiveShapes();
         assertEq(have[2], 1, "the drawn 0.1 Shape was not replaced");
 
-        // 15% no longer covers the 0.005 fee on a 0.01 Shape; re-configuring at 50% accepts it and restocking resumes
+        // Re-configuring accepts the new fee; prices pass it through to players, so any markup works
         vm.prank(creator);
-        vm.expectRevert(PoolBalancer.MarkupBelowMintFee.selector);
         balancer.configure(MARKUP, planA);
-        vm.prank(creator);
-        balancer.configure(5000, planA);
         fillUp();
         assertTrue(balancer.canPurchase(buyer));
+        uint256[] memory ids = balancer.getActiveIds();
+        (,,, uint112 base, uint112 price) = balancer.items(ids[ids.length - 1]);
+        assertEq(base, 0.1 ether + 0.005 ether + 0.1 ether * uint256(MARKUP) / 10_000, "the new fee is in the price");
+        assertEq(price, base + balancer.restockFee(), "plus one restocking fee");
 
         // a fee drop keeps the gate open even after the creator claims all surplus (old liveness bug)
         uint256 s = balancer.withdrawableSurplus();
@@ -520,10 +522,12 @@ contract BalancerTest is ForkBase {
         // curatedA was listed at MARKUP (1500)
         (,,, uint112 baseA, uint112 priceA) = balancer.items(curatedA);
         assertEq(priceA, uint256(baseA) * (10_000 + uint256(MARKUP)) / 10_000);
-        // a listed 0.05 Shape is priced at MARKUP
+        // a listed 0.05 Shape is priced at its backing, mint fee and MARKUP, plus one restocking fee
+        uint256 fee = shapes.mintFee();
         uint256 shape = _shapeOfDenom(1);
-        (,,,, uint112 shapePrice) = balancer.items(shape);
-        assertEq(shapePrice, 0.05 ether * (10_000 + uint256(MARKUP)) / 10_000);
+        (,,, uint112 shapeBase, uint112 shapePrice) = balancer.items(shape);
+        assertEq(shapeBase, 0.05 ether + fee + 0.05 ether * uint256(MARKUP) / 10_000);
+        assertEq(shapePrice, shapeBase + balancer.restockFee());
 
         // change the markup; existing listings are untouched
         vm.prank(creator);
@@ -541,7 +545,7 @@ contract BalancerTest is ForkBase {
         fillUp();
         uint256 fresh = _freshShapeOfDenom(1); // the restocked one has the newest listing id
         (,,,, uint112 freshPrice) = balancer.items(fresh);
-        assertEq(freshPrice, 0.05 ether * 13_000 / 10_000, "restocked prize at the new markup");
+        assertEq(freshPrice, 0.05 ether + fee + 0.05 ether * 3000 / 10_000 + balancer.restockFee(), "restocked prize at the new markup");
     }
 
     function _shapeOfDenom(uint8 d) internal view returns (uint256) {

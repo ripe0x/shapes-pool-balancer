@@ -4,7 +4,7 @@
 // FWA model: weights 1e36/price, fee = EV x (1 + edge), owner proceeds = EV at request (StandardPool 1435, 1824),
 // staging FIFO activated 6 per request (drained at once only when no draw is unsettled), 10% slippage refunds.
 // Run: npm run sim
-import { BPS, BY_VALUE, DENOMS, GAS, KEEPER_INCENTIVE, KEEPER_MAX_GAS, SHAPES_IN, requiredReserveAt, type Counts } from '../shared/planner';
+import { BPS, BY_VALUE, DENOMS, GAS, KEEPER_INCENTIVE, KEEPER_MAX_GAS, SHAPES_IN, requiredReserveAt, restockFeeAt, type Counts } from '../shared/planner';
 import { mixOf, styleBonus } from '../shared/design';
 
 const E = 10n ** 18n;
@@ -29,20 +29,20 @@ interface Policy {
   maxMintFee: bigint; // gate closes above this
   maxPending: number; // gate: draws requested but not yet settled
   byWeight?: boolean; // fill measured as tracked prize weight, less the heaviest prize per unreconciled draw (contract)
-  funding?: Funding; // how keeper credit is earned (default: all markup above cost, the d99cf9f contract)
+  funding?: Funding; // how keeper credit is earned (default: all markup above cost, the rule before the restocking fee)
 }
 /**
  * Keeper funding. 'markup': price = backing x (1 + m); credit += share of (price - cost).
- * 'fee': price = backing + mint fees + restock fee per Shape + backing x m; credit += the restock fee (curated: one
- * fee). 'gasFee': as 'fee', with the restock fee set at listing from basefee. `markupBps` overrides the scenario markup.
+ * 'fee': price = backing + mint fees + restock fee per Shape + backing x m; credit += the restock fee (curated NFTs
+ * carry none). 'gasFee': as 'fee', with the fee set at listing from basefee (PoolBalancer.restockFee, the contract).
+ * `markupBps` overrides the scenario markup.
  */
 type Funding =
   | { kind: 'markup'; shareBps: number; markupBps?: number }
   | { kind: 'fee'; perShape: bigint; markupBps?: number }
   | { kind: 'gasFee'; markupBps?: number };
 const ALL_MARKUP: Funding = { kind: 'markup', shareBps: 10_000 };
-/** Gas-indexed restock fee per Shape: ~500k gas (a Shape plus its share of call overhead) at 1.5x the reward price. */
-const gasFeePerShape = (gwei: number) => eth(500_000 * Math.min(gwei + 0.05, 5) * 1.5 * 1e-9 + 0.0002);
+const gasFeePerShape = (gwei: number) => restockFeeAt(BigInt(Math.round(gwei * 1e9)));
 /** Listed price and keeper credit of a prize under `fu`; d = -1 for a curated NFT of creator value `base`. */
 function priced(fu: Funding, d: number, base: bigint, m: number, mintFee: bigint, gwei: number) {
   const mk = BigInt(fu.markupBps ?? m);
@@ -52,7 +52,7 @@ function priced(fu: Funding, d: number, base: bigint, m: number, mintFee: bigint
     return { price, cost, kfee: price > cost ? ((price - cost) * BigInt(fu.shareBps)) / BPS : 0n };
   }
   const per = fu.kind === 'fee' ? fu.perShape : gasFeePerShape(gwei);
-  const kfee = per * BigInt(d < 0 ? 1 : SHAPES_IN[d]);
+  const kfee = d < 0 ? 0n : per * BigInt(SHAPES_IN[d]);
   return { price: cost + kfee + (base * mk) / BPS, cost, kfee };
 }
 interface Scenario {
@@ -72,7 +72,7 @@ interface Scenario {
 }
 
 function targetOf(s: Scenario): Counts {
-  const inputs = { curatedBases: s.curated.map(eth), markupBps: s.markup(0), edgeBps: 500, mintFee: s.mintFee(0), have: DENOMS.map(() => 0), baseFee: 0n, minCuratedOddsBps: 0 };
+  const inputs = { curatedBases: s.curated.map(eth), markupBps: s.markup(0), edgeBps: 500, mintFee: s.mintFee(0), restockFee: gasFeePerShape(s.baseGwei(0)), have: DENOMS.map(() => 0) };
   return mixOf(20, styleBonus('board', inputs, 20));
 }
 
@@ -93,6 +93,8 @@ function run(s: Scenario, p: Policy, seed: number) {
   const target = targetOf(s);
   const fu = p.funding ?? ALL_MARKUP;
   const designPrice = (d: number, base: bigint) => priced(fu, d, base, s.markup(0), s.mintFee(0), s.baseGwei(0)).price;
+  // Fill gate weight: with a restocking fee, PoolBalancer weighs a prize at its price less the fee, so fill ignores gas.
+  const gatePrice = (i: { price: bigint; kfee: bigint }) => (fu.kind === 'markup' ? i.price : i.price - i.kfee);
   const designedCount = (c: Set<number>) => c.size + target.reduce((a, b) => a + b, 0);
   const have = DENOMS.map(() => 0); // tracked active prizes per size
   const cost = (d: number, fee: bigint) => DENOMS[d] + BigInt(SHAPES_IN[d]) * fee;
@@ -140,9 +142,9 @@ function run(s: Scenario, p: Policy, seed: number) {
     if (p.byWeight) {
       // PoolBalancer.admissionStatus: FWA asks before activating staged listings, so tracked weight counts them.
       const tracked = [...live, ...staged, ...pending.flatMap((r) => r.reserved), ...unreconciled.flatMap((u) => (u.item ? [u.item] : []))]
-        .filter((i) => !i.nft).reduce((a, i) => a + NUM / i.price, 0n);
+        .filter((i) => !i.nft).reduce((a, i) => a + NUM / gatePrice(i), 0n);
       const lost = BigInt(pending.length + unreconciled.length) * (NUM / eth(0.01)); // PoolBalancer.MAX_PRIZE_WEIGHT: 0.01 ETH at zero markup
-      const tsw = target.reduce((a, n, d) => a + BigInt(n) * (NUM / designPrice(d, DENOMS[d])), 0n);
+      const tsw = target.reduce((a, n, d) => a + BigInt(n) * (NUM / gatePrice(priced(fu, d, DENOMS[d], s.markup(0), s.mintFee(0), s.baseGwei(0)))), 0n);
       return tracked >= lost && (tracked - lost) * 10_000n >= BigInt(p.fillBps) * tsw;
     }
     return (live.length - pending.length) * 10_000 >= p.fillBps * designedCount(curated);
@@ -284,7 +286,7 @@ const scenarios: Scenario[] = [
   { ...base, name: 'gas rises 1 -> 12 gwei', baseGwei: (t) => 1 + (11 * t) / 400 },
   { ...base, name: 'gas spike: 8 gwei for steps 100-250', baseGwei: (t) => (t >= 100 && t < 250 ? 8 : 1) },
   { ...base, name: 'mint fee 0.001 -> 0.005 at step 150', mintFee: (t) => (t < 150 ? eth(0.001) : eth(0.005)) },
-  { ...base, name: 'markup 15% -> 10% (the floor) at step 150', markup: (t) => (t < 150 ? 1500 : 1000) },
+  { ...base, name: 'markup 15% -> 10% at step 150', markup: (t) => (t < 150 ? 1500 : 1000) },
   { ...base, name: 'only the dashboard deposit', deposit: 0 },
   { ...base, name: 'overlap: bursts of 20', burst: flat(20) },
   { ...base, name: 'keeper every 10 steps', keeperEvery: 10 },
@@ -293,7 +295,7 @@ const scenarios: Scenario[] = [
   { ...base, name: 'creator drains every step', creatorDrains: true },
   { ...base, name: 'drains + overlap 20 + slow keeper', creatorDrains: true, burst: flat(20), keeperEvery: 5 },
 ];
-const CONTRACT: Policy = { fillBps: 7000, buffer: true, float: true, maxPending: 5, byWeight: true, maxMintFee: eth(0.002) };
+const CONTRACT: Policy = { fillBps: 7000, buffer: true, float: true, maxPending: 5, byWeight: true, maxMintFee: eth(0.002), funding: { kind: 'gasFee' } };
 const policies: Record<string, Policy> = {
   contract: CONTRACT,
   'no reserve': { ...CONTRACT, buffer: false },
@@ -362,12 +364,12 @@ function compareKeeperFunding() {
   const fee: Funding = { kind: 'fee', perShape: eth(0.001) };
   const gasFee: Funding = { kind: 'gasFee' };
   const candidates = (s: Scenario): [string, Funding][] => [
-    ['A keepers take all markup (now)', ALL_MARKUP],
+    ['A keepers take all markup (d99cf9f)', ALL_MARKUP],
     ['B keepers take 50% of markup', { kind: 'markup', shareBps: 5000 }],
     ['C keepers take 25% of markup', { kind: 'markup', shareBps: 2500 }],
     ['D fee 0.001/Shape, 15% markup', fee],
     [`E fee 0.001/Shape, same player price`, { ...fee, markupBps: equalPriceMarkup(s, fee) }],
-    ['F gas-indexed fee, 15% markup', gasFee],
+    ['F gas-indexed fee, 15% markup (the contract)', gasFee],
     [`G gas-indexed fee, same player price`, { ...gasFee, markupBps: equalPriceMarkup(s, gasFee) }],
   ];
   console.log(`${RUNS} runs x ${base.steps} steps, Balanced mix + one 0.3 ETH NFT, 3 draws a step, 15% markup unless noted.`);

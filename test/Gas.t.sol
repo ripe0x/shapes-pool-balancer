@@ -353,32 +353,28 @@ contract GasBench is ForkBase {
         vm.txGasPrice(1 gwei);
     }
 
-    /// Cheapest pool shape: a 0.01 Shape at 15% earns 0.0005 of markup after its mint fee, which is all the keeper
-    /// can be paid for replacing it. That covers the call to ~0.5 gwei; above that the keeper is short (an honest
-    /// keeper waits for more draws), and the pool never pays more than the markup.
-    function test_profitAtCap_replaceOneCheapPool() public {
+    /// Keepers are paid only from restocking fees, fixed when each prize was listed. A prize listed at 0.5 gwei pays
+    /// for its restock at 0.5 gwei; if gas then rises to the cap, the keeper is short (an honest keeper waits) and
+    /// the pool pays no more than the fee.
+    function test_profitAtCap_gasRoseAfterListing() public {
+        vm.fee(0.5 gwei);
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         _drawShapes(1);
         uint256 snap = vm.snapshotState();
-        assertGe(_profitAt("replace 1 Shape, cheap pool, 0.5 gwei", 0.5 gwei), 0);
+        assertGe(_profitAt("replace 1 Shape listed at 0.5 gwei, at 0.5 gwei", 0.5 gwei), 0);
         vm.revertToState(snap);
-        assertLt(_profitAt("replace 1 Shape, cheap pool, 4.95 gwei", 4.95 gwei), 0);
-        assertEq(balancer.keeperCredit(), 0, "the whole markup went to the keeper, no more");
+        assertLt(_profitAt("replace 1 Shape listed at 0.5 gwei, at 4.95 gwei", 4.95 gwei), 0);
+        assertEq(balancer.keeperCredit(), 0, "the whole fee went to the keeper, no more");
     }
 
-    function test_profitAtCap_replaceOne() public {
-        _configure(plan([uint256(2), 2, 2, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        _drawShapes(1);
-        assertGe(_profitAtCap("replace 1 Shape, typical pool"), 0);
-    }
-
+    /// Prizes listed and restocked at the cap: five draws reconciled and restocked in one call are covered.
     function test_profitAtCap_replaceFiveMixed() public {
+        vm.fee(4.95 gwei);
         _configure(plan([uint256(4), 2, 2, 1, 1, 0, 0, 0, 0]));
         fillUp();
         _drawShapes(5);
-        assertGe(_profitAtCap("replace 5 Shapes, 4 denominations"), 0);
+        assertGe(_profitAtCap("replace 5 Shapes, 4 denominations, listed at the cap"), 0);
     }
 
     function test_profitAtCap_fillSteps() public {
@@ -390,17 +386,18 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
-    /// A curated draw needs no restock, so the upkeep only reconciles it, paid from that draw's markup
-    /// (0.3 ETH at 15% earns 0.045).
-    function test_profitAtCap_curatedReconcile() public {
+    /// A curated NFT carries no restocking fee, so reconciling a curated draw alone is unpaid; an honest keeper
+    /// reconciles it with later Shape draws, whose fees pay for the call.
+    function test_profitAtCap_curatedReconcileUnpaid() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        uint256 lid = listCurated(3, 0.3 ether); // listed after configure, at MARKUP
+        uint256 lid = listCurated(3, 0.3 ether);
         fillUp();
         (,,,,,, uint256 slot,) = pool.listings(lid);
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], wordForSlot(slot));
         settle();
-        assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
+        assertLt(_profitAtCap("reconcile 1 curated draw, no credit"), 0);
+        assertEq(balancer.keeperCredit(), 0);
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/
@@ -417,18 +414,30 @@ contract GasBench is ForkBase {
         emit log_named_decimal_uint("  => highest profitable basefee tested (gwei)", maxProfitable, 9);
     }
 
-    function test_breakEven_replaceOneTypical() public {
-        _configure(plan([uint256(2), 2, 2, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        _drawShapes(1);
-        assertEq(_sweep("replace 1 Shape, typical pool (purchase-caused, credit)"), 4.95 gwei);
+    /// Steady gas: prizes listed, drawn and restocked at the same basefee. Returns the highest basefee tested at which
+    /// the upkeep after `draws` draws pays its keeper.
+    function _sweepSteady(string memory label, uint256 target, uint256 draws) internal returns (uint256 maxProfitable) {
+        uint256[8] memory fees = [uint256(0.08 gwei), 0.5 gwei, 1 gwei, 2 gwei, 2.8 gwei, 3.5 gwei, 4.2 gwei, 4.95 gwei];
+        emit log(label);
+        for (uint256 i; i < fees.length; ++i) {
+            uint256 snap = vm.snapshotState();
+            vm.fee(fees[i]);
+            _configure(target);
+            fillUp();
+            _drawShapes(draws);
+            int256 pnl = _profitAt("", fees[i]);
+            vm.revertToState(snap);
+            if (pnl >= 0) maxProfitable = fees[i];
+        }
+        emit log_named_decimal_uint("  => highest profitable basefee tested (gwei)", maxProfitable, 9);
     }
 
-    function test_breakEven_replaceOneCheap() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        _drawShapes(1);
-        assertEq(_sweep("replace 1 Shape, 0.01-only pool (purchase-caused, credit-limited)"), 0.5 gwei);
+    function test_breakEven_steadyGas_oneDraw() public {
+        assertEq(_sweepSteady("1 draw per call, 0.01-only pool", plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]), 1), 4.95 gwei);
+    }
+
+    function test_breakEven_steadyGas_threeDraws() public {
+        assertEq(_sweepSteady("3 draws per call, 0.01-only pool", plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]), 3), 4.95 gwei);
     }
 
     function test_breakEven_fillStep() public {

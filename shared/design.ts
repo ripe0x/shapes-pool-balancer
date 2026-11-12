@@ -1,5 +1,5 @@
 import {
-  BPS, BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
+  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
@@ -8,15 +8,12 @@ export interface DesignInputs extends PoolInputs {
   vrfFee?: bigint; // FWA's per-draw VRF service fee, paid by the player on top of the draw price
 }
 
-/** Unmarked value of a listing: what a Shape redeems for, or the creator's value of a curated NFT. */
-const baseOf = (listPrice: bigint, markupBps: number) => (listPrice * BPS) / (BPS + BigInt(markupBps));
-
-/** One draw from a player's side, valued at unmarked prices (a Shape redeems for its backing). */
-export function playerView(ev: Evaluation, markupBps: number, vrfFee: bigint) {
+/** One draw from a player's side, at what each prize is worth (a Shape redeems for its backing). */
+export function playerView(ev: Evaluation, vrfFee: bigint) {
   const cost = ev.drawPrice + vrfFee;
   const tiers = ev.tiers.map((t) => {
-    const value = baseOf(t.listPrice, markupBps);
-    return { ...t, value, odds: t.oddsPpm / 1e6, multiple: cost ? Number(value) / Number(cost) : 0 };
+    const value = t.value;
+    return { ...t, odds: t.oddsPpm / 1e6, multiple: cost ? Number(value) / Number(cost) : 0 };
   });
   const top = tiers.reduce((a, b) => (b.value > a.value ? b : a), tiers[0]);
   return {
@@ -25,7 +22,7 @@ export function playerView(ev: Evaluation, markupBps: number, vrfFee: bigint) {
     top,
     winMore: tiers.filter((t) => t.value > cost).reduce((s, t) => s + t.odds, 0),
     win2x: tiers.filter((t) => t.value >= 2n * cost).reduce((s, t) => s + t.odds, 0),
-    // Inverse weights give every listing the same expected value, so this depends on fees and markup, not on the mix.
+    // Inverse weights give every listing the same expected price, so this depends on fees and markup more than the mix.
     avgReturn: tiers.reduce((s, t) => s + t.odds * t.multiple, 0),
     curated: ev.curatedOddsPpm / 1e6,
   };
@@ -82,7 +79,7 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
     }
     return b;
   }
-  const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.markupBps, d.vrfFee ?? 0n);
+  const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.vrfFee ?? 0n);
   let bonus = NONE;
   if (style === 'jackpot') {
     const target = Number(view(NONE).cost) * JACKPOT_MULTIPLE;

@@ -8,9 +8,9 @@ Rules compared:
 - **A** keepers are paid from all markup earned (the contract at d99cf9f).
 - **B, C** keepers are paid from 50% or 25% of the markup earned.
 - **D** listed price = backing + mint fees + 0.001 ETH restocking fee per Shape + creator markup. Keepers are paid only
-  from restocking fees (a curated NFT carries one fee).
-- **F** as D, with the fee set when the prize is listed: 500k gas at 1.5 × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH
-  per Shape.
+  from restocking fees; curated NFTs carry none.
+- **F, the contract** (DECISIONS 54): as D, with the fee set when the prize is listed, `PoolBalancer.restockFee()` =
+  750k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH per Shape.
 - **E, G** as D and F, with the markup lowered until players pay what A charges (0% means even no markup charges
   players more).
 
@@ -30,77 +30,77 @@ higher price.
    markup to come close to A's price and still charge players more.
 4. **Fees on top keep the creator's markup whole, and players pay for it**: 22.3 mETH a draw at 1 gwei (+16%), 24.6
    at 3 gwei with the gas-indexed fee. With the fee, keeper pay never comes from the creator's markup; the losing runs
-   left (3% of runs in three scenarios) come from prize luck and the opening stock-up.
+   left (3% with gas rising to 12 gwei, 5% with a keeper every 10 steps) come from prize luck and the opening stock-up.
 
 
 ## gas 0.1 gwei
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.22 mETH | 99% | 1188 | 0.956 | 0.80 mETH | 5% | -0.283 | 0.300 | 0.300 | 0.209 | 0.13% | x1.03 / x1.11 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.22 mETH | 99% | 1188 | 0.956 | 0.80 mETH | 5% | -0.283 | 0.300 | 0.300 | 0.209 | 0.13% | x1.03 / x1.11 |
 | B keepers take 50% of markup | 15.0% | 19.22 mETH | 99% | 1188 | 0.956 | 0.80 mETH | 5% | -0.283 | 0.300 | 0.300 | 0.209 | 0.13% | x1.03 / x1.11 |
 | C keepers take 25% of markup | 15.0% | 19.22 mETH | 99% | 1188 | 0.958 | 0.81 mETH | 5% | -0.279 | 0.298 | 0.298 | 0.207 | 0.13% | x1.03 / x1.11 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.737 | 3.15 mETH | 0% | 2.008 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
-| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.834 | 0.70 mETH | 15% | -1.144 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
-| F gas-indexed fee, 15% markup | 15.0% | 21.25 mETH | 99% | 1188 | 2.604 | 2.19 mETH | 0% | 1.028 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.11 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.717 | 3.13 mETH | 0% | 2.008 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.819 | 0.69 mETH | 15% | -1.144 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 21.25 mETH | 99% | 1188 | 2.604 | 2.19 mETH | 0% | 1.028 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.11 |
 | G gas-indexed fee, same player price | 2.9% | 19.22 mETH | 99% | 1188 | 0.386 | 0.32 mETH | 30% | -1.745 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.13 |
 
 ## gas 1 gwei
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.23 mETH | 99% | 1188 | 0.466 | 0.39 mETH | 18% | -0.632 | 0.909 | 0.909 | 0.189 | 0.13% | x1.04 / x1.27 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.23 mETH | 99% | 1188 | 0.466 | 0.39 mETH | 18% | -0.632 | 0.909 | 0.909 | 0.189 | 0.13% | x1.04 / x1.27 |
 | B keepers take 50% of markup | 15.0% | 19.54 mETH | 2% | 23 | -0.054 | -2.40 mETH | 93% | -0.531 | 0.010 | 0.010 | -0.019 | 0.13% | x1.14 / x1.45 |
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.060 | -5.44 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.16 / x1.45 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.108 | 2.62 mETH | 0% | 1.376 | 0.910 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
-| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.206 | 0.17 mETH | 35% | -1.771 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
-| F gas-indexed fee, 15% markup | 15.0% | 22.28 mETH | 99% | 1188 | 3.076 | 2.59 mETH | 0% | 1.354 | 0.910 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.087 | 2.60 mETH | 0% | 1.376 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.192 | 0.16 mETH | 38% | -1.771 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.28 mETH | 99% | 1188 | 3.091 | 2.60 mETH | 0% | 1.354 | 0.910 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
 | G gas-indexed fee, same player price | 0.0% | 19.77 mETH | 99% | 1188 | 0.248 | 0.21 mETH | 33% | -1.792 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
 
 ## gas 3 gwei
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.76 mETH | 1% | 14 | -0.106 | -7.83 mETH | 100% | -0.573 | 0.009 | 0.009 | -0.063 | 0.13% | x1.15 / x1.45 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.76 mETH | 1% | 14 | -0.106 | -7.83 mETH | 100% | -0.573 | 0.009 | 0.009 | -0.063 | 0.13% | x1.15 / x1.45 |
 | B keepers take 50% of markup | 15.0% | 19.81 mETH | 1% | 9 | -0.111 | -11.75 mETH | 100% | -0.573 | 0.001 | 0.001 | -0.063 | 0.13% | x1.16 / x1.45 |
 | C keepers take 25% of markup | 15.0% | 19.78 mETH | 1% | 9 | -0.109 | -12.13 mETH | 100% | -0.573 | 0.000 | 0.000 | -0.063 | 0.13% | x1.16 / x1.45 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.49 mETH | 1% | 11 | -0.082 | -7.47 mETH | 85% | -0.426 | 0.006 | 0.000 | -0.063 | 0.15% | x1.11 / x1.44 |
-| E fee 0.001/Shape, same player price | 0.0% | 20.11 mETH | 1% | 13 | -0.115 | -8.88 mETH | 93% | -0.569 | 0.006 | 0.000 | -0.063 | 0.15% | x1.15 / x1.44 |
-| F gas-indexed fee, 15% markup | 15.0% | 24.55 mETH | 99% | 1188 | 3.762 | 3.17 mETH | 0% | 1.628 | 2.272 | 0.000 | 0.148 | 0.16% | x1.03 / x1.11 |
-| G gas-indexed fee, same player price | 0.0% | 22.03 mETH | 99% | 1188 | 0.724 | 0.61 mETH | 18% | -1.440 | 2.270 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.68 mETH | 1% | 13 | -0.081 | -6.37 mETH | 85% | -0.546 | 0.006 | 0.000 | -0.063 | 0.15% | x1.15 / x1.44 |
+| E fee 0.001/Shape, same player price | 0.0% | 20.12 mETH | 1% | 13 | -0.114 | -8.92 mETH | 93% | -0.569 | 0.006 | 0.000 | -0.063 | 0.15% | x1.15 / x1.44 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 24.55 mETH | 99% | 1188 | 3.782 | 3.18 mETH | 0% | 1.627 | 2.271 | 0.000 | 0.148 | 0.17% | x1.03 / x1.11 |
+| G gas-indexed fee, same player price | 0.0% | 22.03 mETH | 99% | 1188 | 0.675 | 0.57 mETH | 20% | -1.441 | 2.271 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
 
 ## gas 8 gwei for steps 100-250
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.23 mETH | 62% | 744 | 0.181 | 0.24 mETH | 45% | -0.818 | 0.568 | 0.568 | 0.110 | 0.13% | x1.04 / x1.45 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.23 mETH | 62% | 744 | 0.181 | 0.24 mETH | 45% | -0.818 | 0.568 | 0.568 | 0.110 | 0.13% | x1.04 / x1.45 |
 | B keepers take 50% of markup | 15.0% | 19.54 mETH | 2% | 23 | -0.054 | -2.40 mETH | 93% | -0.531 | 0.010 | 0.010 | -0.019 | 0.13% | x1.14 / x1.45 |
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.060 | -5.44 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.16 / x1.45 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 62% | 741 | 1.870 | 2.52 mETH | 3% | -0.626 | 0.567 | 0.000 | 0.110 | 0.15% | x1.03 / x1.24 |
-| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 62% | 744 | 0.024 | 0.03 mETH | 40% | -1.049 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
-| F gas-indexed fee, 15% markup | 15.0% | 22.28 mETH | 62% | 741 | 1.856 | 2.50 mETH | 3% | -0.640 | 0.568 | 0.000 | 0.110 | 0.15% | x1.03 / x1.24 |
-| G gas-indexed fee, same player price | 0.0% | 19.77 mETH | 62% | 744 | 0.049 | 0.07 mETH | 38% | -1.063 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.31 mETH | 62% | 744 | 1.897 | 2.55 mETH | 0% | 1.012 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 62% | 744 | 0.023 | 0.03 mETH | 43% | -1.049 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.29 mETH | 62% | 744 | 1.871 | 2.52 mETH | 0% | 1.067 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| G gas-indexed fee, same player price | 0.0% | 19.77 mETH | 62% | 744 | 0.042 | 0.06 mETH | 38% | -1.063 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
 
 ## gas rises 1 -> 12 gwei
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.28 mETH | 11% | 133 | -0.093 | -0.70 mETH | 38% | -1.193 | 0.163 | 0.163 | -0.001 | 0.13% | x1.07 / x1.49 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.28 mETH | 11% | 133 | -0.093 | -0.70 mETH | 38% | -1.193 | 0.163 | 0.163 | -0.001 | 0.13% | x1.07 / x1.49 |
 | B keepers take 50% of markup | 15.0% | 19.66 mETH | 1% | 16 | -0.067 | -4.11 mETH | 93% | -0.536 | 0.007 | 0.007 | -0.021 | 0.13% | x1.14 / x1.45 |
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.069 | -6.43 mETH | 93% | -0.536 | 0.001 | 0.001 | -0.022 | 0.13% | x1.16 / x1.45 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.27 mETH | 12% | 145 | 0.245 | 1.69 mETH | 18% | -0.495 | 0.157 | 0.000 | 0.001 | 0.15% | x1.05 / x1.44 |
-| E fee 0.001/Shape, same player price | 0.0% | 19.77 mETH | 12% | 143 | -0.066 | -0.46 mETH | 58% | -0.693 | 0.153 | 0.000 | 0.000 | 0.15% | x1.05 / x1.44 |
-| F gas-indexed fee, 15% markup | 15.0% | 24.44 mETH | 38% | 455 | 1.295 | 2.84 mETH | 3% | -0.013 | 0.907 | 0.000 | 0.056 | 0.15% | x1.13 / x1.29 |
-| G gas-indexed fee, same player price | 0.0% | 21.92 mETH | 38% | 456 | 0.184 | 0.40 mETH | 33% | -0.970 | 0.906 | 0.000 | 0.056 | 0.15% | x1.14 / x1.34 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.28 mETH | 12% | 146 | 0.249 | 1.71 mETH | 13% | -0.517 | 0.157 | 0.000 | 0.001 | 0.15% | x1.05 / x1.47 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.78 mETH | 12% | 143 | -0.072 | -0.50 mETH | 60% | -0.744 | 0.153 | 0.000 | 0.000 | 0.15% | x1.05 / x1.48 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 24.47 mETH | 38% | 461 | 1.331 | 2.89 mETH | 3% | -0.002 | 0.908 | 0.000 | 0.056 | 0.15% | x1.14 / x1.67 |
+| G gas-indexed fee, same player price | 0.0% | 21.95 mETH | 38% | 461 | 0.204 | 0.44 mETH | 35% | -0.991 | 0.906 | 0.000 | 0.056 | 0.15% | x1.15 / x1.70 |
 
 ## gas 1 gwei, keeper every 10 steps
 
 | Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A keepers take all markup (now) | 15.0% | 19.75 mETH | 27% | 324 | 0.116 | 0.36 mETH | 35% | -0.993 | 0.218 | 0.218 | 0.024 | 0.13% | x1.16 / x1.52 |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.75 mETH | 27% | 324 | 0.116 | 0.36 mETH | 35% | -0.993 | 0.218 | 0.218 | 0.024 | 0.13% | x1.16 / x1.52 |
 | B keepers take 50% of markup | 15.0% | 19.75 mETH | 4% | 44 | -0.054 | -1.23 mETH | 78% | -0.531 | 0.024 | 0.024 | -0.017 | 0.13% | x1.17 / x1.49 |
 | C keepers take 25% of markup | 15.0% | 19.73 mETH | 1% | 11 | -0.064 | -5.69 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.17 / x1.49 |
-| D fee 0.001/Shape, 15% markup | 15.0% | 22.61 mETH | 19% | 222 | 0.543 | 2.45 mETH | 3% | -0.304 | 0.165 | 0.000 | 0.017 | 0.15% | x1.09 / x1.24 |
-| E fee 0.001/Shape, same player price | 0.0% | 20.30 mETH | 27% | 321 | -0.093 | -0.29 mETH | 55% | -1.288 | 0.218 | 0.000 | 0.024 | 0.15% | x1.15 / x1.48 |
-| F gas-indexed fee, 15% markup | 15.0% | 22.59 mETH | 19% | 222 | 0.540 | 2.43 mETH | 3% | -0.308 | 0.165 | 0.000 | 0.017 | 0.15% | x1.09 / x1.24 |
-| G gas-indexed fee, same player price | 0.0% | 20.28 mETH | 27% | 321 | -0.103 | -0.32 mETH | 55% | -1.294 | 0.218 | 0.000 | 0.024 | 0.15% | x1.15 / x1.48 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.89 mETH | 26% | 312 | 0.768 | 2.46 mETH | 5% | -0.462 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
+| E fee 0.001/Shape, same player price | 0.0% | 20.28 mETH | 27% | 328 | -0.022 | -0.07 mETH | 48% | -1.123 | 0.221 | 0.000 | 0.025 | 0.15% | x1.16 / x1.54 |
+| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.87 mETH | 26% | 312 | 0.741 | 2.37 mETH | 5% | -0.468 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
+| G gas-indexed fee, same player price | 0.0% | 20.26 mETH | 27% | 328 | -0.017 | -0.05 mETH | 43% | -1.129 | 0.221 | 0.000 | 0.025 | 0.15% | x1.16 / x1.54 |
