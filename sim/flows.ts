@@ -19,7 +19,7 @@ const MAX_RECONCILE = 5; // PoolBalancer.MAX_RECONCILE
 const PER_TX = 5;
 const ACTIVATIONS = 6;
 
-type Item = { id: number; nft: boolean; d: number; base: bigint; price: bigint; cost: bigint }; // cost: what it cost the pool (backing + mint fees) or the creator's value
+type Item = { id: number; nft: boolean; d: number; base: bigint; price: bigint; cost: bigint; kfee: bigint }; // cost: what it cost the pool (backing + mint fees) or the creator's value; kfee: keeper credit when drawn
 type Req = { seq: number; who: number; fee: bigint; ev: bigint; reserved: Item[] };
 
 interface Policy {
@@ -29,6 +29,31 @@ interface Policy {
   maxMintFee: bigint; // gate closes above this
   maxPending: number; // gate: draws requested but not yet settled
   byWeight?: boolean; // fill measured as tracked prize weight, less the heaviest prize per unreconciled draw (contract)
+  funding?: Funding; // how keeper credit is earned (default: all markup above cost, the d99cf9f contract)
+}
+/**
+ * Keeper funding. 'markup': price = backing x (1 + m); credit += share of (price - cost).
+ * 'fee': price = backing + mint fees + restock fee per Shape + backing x m; credit += the restock fee (curated: one
+ * fee). 'gasFee': as 'fee', with the restock fee set at listing from basefee. `markupBps` overrides the scenario markup.
+ */
+type Funding =
+  | { kind: 'markup'; shareBps: number; markupBps?: number }
+  | { kind: 'fee'; perShape: bigint; markupBps?: number }
+  | { kind: 'gasFee'; markupBps?: number };
+const ALL_MARKUP: Funding = { kind: 'markup', shareBps: 10_000 };
+/** Gas-indexed restock fee per Shape: ~500k gas (a Shape plus its share of call overhead) at 1.5x the reward price. */
+const gasFeePerShape = (gwei: number) => eth(500_000 * Math.min(gwei + 0.05, 5) * 1.5 * 1e-9 + 0.0002);
+/** Listed price and keeper credit of a prize under `fu`; d = -1 for a curated NFT of creator value `base`. */
+function priced(fu: Funding, d: number, base: bigint, m: number, mintFee: bigint, gwei: number) {
+  const mk = BigInt(fu.markupBps ?? m);
+  const cost = d < 0 ? base : DENOMS[d] + BigInt(SHAPES_IN[d]) * mintFee;
+  if (fu.kind === 'markup') {
+    const price = (base * (BPS + mk)) / BPS;
+    return { price, cost, kfee: price > cost ? ((price - cost) * BigInt(fu.shareBps)) / BPS : 0n };
+  }
+  const per = fu.kind === 'fee' ? fu.perShape : gasFeePerShape(gwei);
+  const kfee = per * BigInt(d < 0 ? 1 : SHAPES_IN[d]);
+  return { price: cost + kfee + (base * mk) / BPS, cost, kfee };
 }
 interface Scenario {
   name: string;
@@ -46,13 +71,18 @@ interface Scenario {
   relistNft?: boolean; // creator lists a fresh NFT of the same value when one is won
 }
 
+function targetOf(s: Scenario): Counts {
+  const inputs = { curatedBases: s.curated.map(eth), markupBps: s.markup(0), edgeBps: 500, mintFee: s.mintFee(0), have: DENOMS.map(() => 0), baseFee: 0n, minCuratedOddsBps: 0 };
+  return mixOf(20, styleBonus('board', inputs, 20));
+}
+
 function run(s: Scenario, p: Policy, seed: number) {
   let rnd = seed >>> 0;
   const rand = () => ((rnd = (Math.imul(rnd ^ (rnd >>> 15), 0x2c1b3c6d) + 0x9e3779b9) >>> 0) / 2 ** 32);
   // ledger (wei)
   const L = { deposits: 0n, nftIn: 0n, playerPaid: 0n, balance: 0n, ownerProceeds: 0n, escrow: 0n, refundOwed: 0n,
     listedBacking: 0n, wonBacking: 0n, nftWon: 0n, mintFees: 0n, edge: 0n, vrf: 0n, keeper: 0n, keeperCost: 0n,
-    withdrawn: 0n, nftBack: 0n, credit: 0n, markupEarned: 0n, setupKeeper: 0n };
+    withdrawn: 0n, nftBack: 0n, credit: 0n, markupEarned: 0n, setupKeeper: 0n, feesPaid: 0n, creatorGas: 0n };
   const live: Item[] = [];
   let staged: Item[] = [];
   const pending: Req[] = [];
@@ -60,24 +90,23 @@ function run(s: Scenario, p: Policy, seed: number) {
   let id = 0, seq = 0, enabled = true, retired = false;
   const curated = new Set<number>(); // tracked (reconciled) curated listing ids
   let markupAtList = 0;
-  const target: Counts = (() => {
-    const inputs = { curatedBases: s.curated.map(eth), markupBps: s.markup(0), edgeBps: 500, mintFee: s.mintFee(0), have: DENOMS.map(() => 0), baseFee: 0n, minCuratedOddsBps: 0 };
-    return mixOf(20, styleBonus('board', inputs, 20));
-  })();
+  const target = targetOf(s);
+  const fu = p.funding ?? ALL_MARKUP;
+  const designPrice = (d: number, base: bigint) => priced(fu, d, base, s.markup(0), s.mintFee(0), s.baseGwei(0)).price;
   const designedCount = (c: Set<number>) => c.size + target.reduce((a, b) => a + b, 0);
   const have = DENOMS.map(() => 0); // tracked active prizes per size
   const cost = (d: number, fee: bigint) => DENOMS[d] + BigInt(SHAPES_IN[d]) * fee;
-  const priceOf = (base: bigint, m: number) => (base * (BPS + BigInt(m))) / BPS;
   const tw = () => live.reduce((a, i) => a + NUM / i.price, 0n);
   const evNow = () => { const w = tw(); return w === 0n ? 0n : live.reduce((a, i) => a + (NUM / i.price) * i.price, 0n) / w; };
   const feeNow = () => (evNow() * (BPS + EDGE)) / BPS;
 
-  const metrics = { attempts: 0, admitted: 0, refunds: 0, oddsRatioSum: 0, oddsRatioMax: 0, oddsSamples: 0, bigMissing: 0, settled: 0, keeperWaits: 0, restockBlocked: 0 };
-  const designOdds = (() => { const w = [...s.curated.map(eth).map((b) => NUM / priceOf(b, s.markup(0)))]; const cw = w.reduce((a, b) => a + b, 0n); let sw = 0n; target.forEach((n, d) => (sw += BigInt(n) * (NUM / priceOf(DENOMS[d], s.markup(0))))); return Number(cw) / Number(cw + sw); })();
+  const metrics = { attempts: 0, admitted: 0, refunds: 0, oddsRatioSum: 0, oddsRatioMax: 0, oddsSamples: 0, bigMissing: 0, settled: 0, keeperWaits: 0, restockBlocked: 0, paid: 0n };
+  const designOdds = (() => { const w = [...s.curated.map(eth).map((b) => NUM / designPrice(-1, b))]; const cw = w.reduce((a, b) => a + b, 0n); let sw = 0n; target.forEach((n, d) => (sw += BigInt(n) * (NUM / designPrice(d, DENOMS[d])))); return Number(cw) / Number(cw + sw); })();
 
   // ---- creator opens: deposit, list curated, mint initial inventory (paid from the deposit)
   const list = (it: Item) => (pending.length ? staged.push(it) : live.push(it));
-  const addNft = (v: number) => { const it = { id: ++id, nft: true, d: -1, base: eth(v), price: priceOf(eth(v), s.markup(0)), cost: eth(v) }; L.nftIn += it.base; list(it); curated.add(it.id); };
+  let tNow = 0;
+  const addNft = (v: number) => { const it = { id: ++id, nft: true, d: -1, base: eth(v), ...priced(fu, -1, eth(v), s.markup(tNow), s.mintFee(tNow), s.baseGwei(tNow)) }; L.nftIn += it.base; list(it); curated.add(it.id); };
   s.curated.forEach(addNft);
   // The dashboard's deposit (ethNeeded): the whole stock, a spare top prize and keeper rewards, plus `deposit` extra.
   const opening = requiredReserveAt(target, DENOMS.map(() => 0), s.mintFee(0)) + eth(s.deposit);
@@ -112,8 +141,8 @@ function run(s: Scenario, p: Policy, seed: number) {
       // PoolBalancer.admissionStatus: FWA asks before activating staged listings, so tracked weight counts them.
       const tracked = [...live, ...staged, ...pending.flatMap((r) => r.reserved), ...unreconciled.flatMap((u) => (u.item ? [u.item] : []))]
         .filter((i) => !i.nft).reduce((a, i) => a + NUM / i.price, 0n);
-      const lost = BigInt(pending.length + unreconciled.length) * (NUM / eth(0.01));
-      const tsw = target.reduce((a, n, d) => a + BigInt(n) * (NUM / priceOf(DENOMS[d], s.markup(0))), 0n);
+      const lost = BigInt(pending.length + unreconciled.length) * (NUM / eth(0.01)); // PoolBalancer.MAX_PRIZE_WEIGHT: 0.01 ETH at zero markup
+      const tsw = target.reduce((a, n, d) => a + BigInt(n) * (NUM / designPrice(d, DENOMS[d])), 0n);
       return tracked >= lost && (tracked - lost) * 10_000n >= BigInt(p.fillBps) * tsw;
     }
     return (live.length - pending.length) * 10_000 >= p.fillBps * designedCount(curated);
@@ -148,7 +177,7 @@ function run(s: Scenario, p: Policy, seed: number) {
       const base = r.ev > r.fee ? r.fee : r.ev;
       L.ownerProceeds += base; L.edge += r.fee - base;
       if (it.nft) L.nftWon += it.base; else { L.listedBacking -= it.base; L.wonBacking += it.base; }
-      metrics.settled++;
+      metrics.settled++; metrics.paid += r.fee;
       unreconciled.push({ item: it, delivered: true });
     }
   };
@@ -165,7 +194,7 @@ function run(s: Scenario, p: Policy, seed: number) {
     for (let call = 0; call < 20; call++) {
       // plan the call: reconcile up to MAX_RECONCILE draws, then restock as PoolBalancer._fillDeficit does
       const recon = unreconciled.slice(0, MAX_RECONCILE);
-      const earned = recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.price - u.item.cost : 0n), 0n);
+      const earned = recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.kfee : 0n), 0n);
       const haveAfter = [...have];
       for (const u of recon) if (u.item && !u.item.nft) haveAfter[u.item.d]--;
       const bound = KEEPER_MAX_GAS * rewardPrice + KEEPER_INCENTIVE;
@@ -196,16 +225,17 @@ function run(s: Scenario, p: Policy, seed: number) {
       for (const u of recon) if (u.item) {
         if (u.item.nft) { curated.delete(u.item.id); if (s.relistNft && !retired && enabled) addNft(Number(u.item.base) / 1e18); } else have[u.item.d]--;
       }
-      L.markupEarned += earned; L.credit = setup ? credit : credit - reward;
+      L.markupEarned += earned; L.feesPaid += recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.price - u.item.cost : 0n), 0n); L.credit = setup ? credit : credit - reward;
       L.balance += L.ownerProceeds; L.ownerProceeds = 0n;
       for (const [d, k] of mints) for (let j = 0; j < k; j++) {
         L.balance -= cost(d, fee); L.mintFees += BigInt(SHAPES_IN[d]) * fee; L.listedBacking += DENOMS[d];
-        list({ id: ++id, nft: false, d, base: DENOMS[d], price: priceOf(DENOMS[d], m), cost: cost(d, fee) });
+        list({ id: ++id, nft: false, d, base: DENOMS[d], ...priced(fu, d, DENOMS[d], m, fee, gwei) });
         have[d]++;
       }
       markupAtList = m;
-      L.balance -= reward; L.keeperCost += keeperCost;
-      if (setup) L.setupKeeper += reward; else L.keeper += reward;
+      L.balance -= reward;
+      // The unwind is the creator's own call: it pays the gas and receives the reward.
+      if (creatorRuns) { L.withdrawn += reward; L.creatorGas += keeperCost; } else { L.keeperCost += keeperCost; if (setup) L.setupKeeper += reward; else L.keeper += reward; }
       if (setup && target.every((n, d) => have[d] >= n)) setup = false;
       if (L.keeper > L.markupEarned) throw new Error(`${s.name} step ${t}: keepers paid more than the markup earned`);
       if (units < MAX_OPS && denoms < MAX_RESTOCK_SIZES && !unreconciled.length) return;
@@ -213,6 +243,7 @@ function run(s: Scenario, p: Policy, seed: number) {
   };
 
   for (let t = 0; t < s.steps; t++) {
+    tNow = t;
     for (const [at, v] of s.addCurated ?? []) if (at === t) addNft(v);
     if (s.retireAt === t) { enabled = false; retired = true; }
     const fee = s.mintFee(t);
@@ -242,7 +273,7 @@ function run(s: Scenario, p: Policy, seed: number) {
   check(s.steps);
   const creatorIn = L.deposits + L.nftIn;
   const creatorOut = L.withdrawn + L.nftBack;
-  return { L, metrics, pnl: creatorOut - creatorIn, designOdds, target, markupAtList };
+  return { L, metrics, pnl: creatorOut - creatorIn - L.creatorGas, designOdds, target, markupAtList };
 }
 
 const flat = <T,>(v: T) => () => v;
@@ -278,7 +309,8 @@ const relevant = (pn: string, s: Scenario) =>
   || (pn === 'count-based fill' && (s.keeperEvery > 1 || s.burst(0) > 5));
 
 const RUNS = 40;
-for (const s of scenarios) {
+if (process.argv.includes('keepers')) compareKeeperFunding();
+else for (const s of scenarios) {
   console.log(`\n## ${s.name}`);
   for (const [pn, p] of Object.entries(policies)) {
     if (!relevant(pn, s)) continue;
@@ -298,5 +330,66 @@ for (const s of scenarios) {
     const n = RUNS;
     console.log(`${pn.padEnd(22)} admitted ${((100 * agg.admitted) / agg.attempts).toFixed(0)}% | draws ${(agg.draws / n).toFixed(0)} refunds ${(agg.refunds / n).toFixed(1)} | NFT odds x${(agg.odds / n).toFixed(2)} (max x${agg.oddsMax.toFixed(2)}) | big prize missing ${((100 * agg.big) / n).toFixed(0)}% of time | creator P&L ${(agg.pnl / n).toFixed(4)} ETH (${((agg.pnl / n / Math.max(1, agg.draws / n)) * 1000).toFixed(3)} mETH/draw) | keepers paid ${(agg.keeperPaid / n).toFixed(4)} of ${(agg.markup / n).toFixed(4)} markup (+${(agg.setup / n).toFixed(4)} setup), net ${(agg.keeperNet / n).toFixed(4)}, waited ${(agg.waits / n).toFixed(0)} | restock blocked ${(agg.blocked / n).toFixed(0)} | FWA edge ${(agg.edge / n).toFixed(3)} mint fees ${(agg.mint / n).toFixed(3)} | stranded ${f(agg.stranded)}`);
     void target; void dOdds;
+  }
+}
+
+/** Harmonic mean of the designed listed prices: FWA's owner proceeds per draw, so the player price is this x 1.05. */
+function designHarmonic(s: Scenario, fu: Funding) {
+  const target = targetOf(s);
+  let n = 0n, w = 0n;
+  const add = (d: number, base: bigint, k: number) => { const pr = priced(fu, d, base, s.markup(0), s.mintFee(0), s.baseGwei(0)).price; n += BigInt(k); w += BigInt(k) * (NUM / pr); };
+  s.curated.forEach((v) => add(-1, eth(v), 1));
+  target.forEach((k, d) => k && add(d, DENOMS[d], k));
+  return (n * NUM) / w;
+}
+/** The markup at which `fu` charges players what all-markup funding at the scenario markup does. */
+function equalPriceMarkup(s: Scenario, fu: Funding) {
+  const want = designHarmonic(s, ALL_MARKUP);
+  let lo = 0, hi = 5000;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (designHarmonic(s, { ...fu, markupBps: mid }) > want) hi = mid; else lo = mid; }
+  return lo;
+}
+
+function compareKeeperFunding() {
+  const ks: Scenario[] = [
+    { ...base, name: 'gas 0.1 gwei', baseGwei: flat(0.1) },
+    { ...base, name: 'gas 1 gwei' },
+    { ...base, name: 'gas 3 gwei', baseGwei: flat(3) },
+    { ...base, name: 'gas 8 gwei for steps 100-250', baseGwei: (t) => (t >= 100 && t < 250 ? 8 : 1) },
+    { ...base, name: 'gas rises 1 -> 12 gwei', baseGwei: (t) => 1 + (11 * t) / 400 },
+    { ...base, name: 'gas 1 gwei, keeper every 10 steps', keeperEvery: 10 },
+  ];
+  const fee: Funding = { kind: 'fee', perShape: eth(0.001) };
+  const gasFee: Funding = { kind: 'gasFee' };
+  const candidates = (s: Scenario): [string, Funding][] => [
+    ['A keepers take all markup (now)', ALL_MARKUP],
+    ['B keepers take 50% of markup', { kind: 'markup', shareBps: 5000 }],
+    ['C keepers take 25% of markup', { kind: 'markup', shareBps: 2500 }],
+    ['D fee 0.001/Shape, 15% markup', fee],
+    [`E fee 0.001/Shape, same player price`, { ...fee, markupBps: equalPriceMarkup(s, fee) }],
+    ['F gas-indexed fee, 15% markup', gasFee],
+    [`G gas-indexed fee, same player price`, { ...gasFee, markupBps: equalPriceMarkup(s, gasFee) }],
+  ];
+  console.log(`${RUNS} runs x ${base.steps} steps, Balanced mix + one 0.3 ETH NFT, 3 draws a step, 15% markup unless noted.`);
+  console.log('Creator P&L counts everything: deposits, NFTs, withdrawals, the opening stock-up, unwind gas and prize luck.');
+  for (const s of ks) {
+    console.log(`\n## ${s.name}\n`);
+    console.log('| Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |');
+    console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+    for (const [name, fu] of candidates(s)) {
+      const p: Policy = { ...CONTRACT, funding: fu };
+      let adm = 0, att = 0, dOdds = 0, draws = 0, pnl = 0, losses = 0, worst = Infinity, paid = 0, fromMarkup = 0, profit = 0, playerPaid = 0, odds = 0, oddsMax = 0;
+      for (let i = 0; i < RUNS; i++) {
+        const r = run(s, p, i + 1);
+        const x = Number(r.pnl) / 1e18;
+        adm += r.metrics.admitted; att += r.metrics.attempts; draws += r.metrics.settled; pnl += x;
+        if (x < 0) losses++; worst = Math.min(worst, x);
+        dOdds = r.designOdds; playerPaid += Number(r.metrics.paid) / 1e18; odds += r.metrics.oddsRatioSum / Math.max(1, r.metrics.oddsSamples); oddsMax = Math.max(oddsMax, r.metrics.oddsRatioMax);
+        const k = Number(r.L.keeper) / 1e18;
+        paid += k; fromMarkup += fu.kind === 'markup' ? k : 0; profit += k - Number(r.L.keeperCost) / 1e18;
+      }
+      const n = RUNS;
+      console.log(`| ${name} | ${((fu.markupBps ?? s.markup(0)) / 100).toFixed(1)}% | ${((playerPaid / Math.max(1, draws)) * 1000).toFixed(2)} mETH | ${((100 * adm) / att).toFixed(0)}% | ${(draws / n).toFixed(0)} | ${(pnl / n).toFixed(3)} | ${((pnl / draws) * 1000).toFixed(2)} mETH | ${((100 * losses) / n).toFixed(0)}% | ${worst.toFixed(3)} | ${(paid / n).toFixed(3)} | ${(fromMarkup / n).toFixed(3)} | ${(profit / n).toFixed(3)} | ${(dOdds * 100).toFixed(2)}% | x${(odds / n).toFixed(2)} / x${oddsMax.toFixed(2)} |`);
+    }
   }
 }

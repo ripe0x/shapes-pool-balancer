@@ -22,13 +22,13 @@ These are model estimates, not guarantees.
 | --- | --- | --- | --- | --- | --- | --- |
 | baseline | 99% | 1,188 | ×1.04 / ×1.27 | 1% of steps | +0.39 mETH | 0.909 / 1.493 |
 | gas 0.1 gwei | 99% | 1,188 | ×1.03 / ×1.11 | 1% | +0.81 mETH | 0.300 / 1.513 |
-| gas rises 1 → 12 gwei | 11% | 133 | ×1.07 / ×1.49 | 3% | −0.68 mETH | 0.167 / 0.172 |
+| gas rises 1 → 12 gwei | 11% | 133 | ×1.07 / ×1.49 | 3% | −0.70 mETH | 0.163 / 0.172 |
 | gas 8 gwei for steps 100-250 | 62% | 744 | ×1.04 / ×1.45 | 1% | +0.24 mETH | 0.568 / 0.950 |
 | mint fee 0.001 → 0.005 at step 150 | 37% | 438 | ×1.04 / ×1.27 | 1% | +0.21 mETH | 0.334 / 0.556 |
-| markup 15% → 10% (the floor) at step 150 | 95% | 1,137 | ×1.01 / ×1.45 | 2% | −0.03 mETH | 0.867 / 0.941 |
+| markup 15% → 10% (the floor) at step 150 | 95% | 1,137 | ×1.01 / ×1.45 | 2% | −0.04 mETH | 0.867 / 0.941 |
 | only the dashboard deposit | 99% | 1,188 | ×1.04 / ×1.27 | 4% | +0.36 mETH | 0.910 / 1.494 |
 | bursts of 20 draws before settling | 50% | 1,980 | ×1.09 / ×1.50 | 5% | +0.25 mETH | 1.360 / 2.527 |
-| keeper every 10 steps | 27% | 324 | ×1.16 / ×1.52 | 9% | +0.35 mETH | 0.220 / 0.430 |
+| keeper every 10 steps | 27% | 324 | ×1.16 / ×1.52 | 9% | +0.36 mETH | 0.218 / 0.430 |
 | 4 more NFTs listed over time | 99% | 1,188 | ×2.10 / ×3.84 (more NFTs) | 1% | +0.45 mETH | 0.909 / 1.640 |
 | retire at step 300 | 74% | 888 | ×1.04 / ×1.27 | 1% | +0.44 mETH | 0.679 / 1.107 |
 | creator withdraws everything allowed, every step | 99% | 1,188 | ×1.04 / ×1.27 | 9% | +0.35 mETH | 0.910 / 1.490 |
@@ -53,8 +53,13 @@ Keepers were paid at most the markup earned in every run; the opening stock-up c
    rising to 12 gwei: admitted 11% of the time, keepers took 0.167 of 0.172 ETH markup).
 2. **The creator can still end slightly below zero** when keepers take nearly all the markup, because the opening
    stock-up gas (about 0.027 ETH at 1 gwei) and the mint fees of prizes listed at close are fixed costs the markup must
-   recover (gas rising to 12 gwei: −0.09 ETH over 133 draws; markup at the 10% floor: −0.03 mETH per draw).
+   recover (gas rising to 12 gwei: −0.09 ETH over 133 draws; markup at the 10% floor: −0.04 mETH per draw).
 3. **The mint fee can rise to 0.01 ETH** (Shapes admin `setMintFee`, capped at one unit). Purchases then pause until
    the creator saves the design again at a markup that covers the new fee (0.005 ETH needs 50% with 0.01 Shapes).
 4. **A late keeper pauses purchases instead of drifting the odds.** With a keeper every 10 steps, purchases are admitted
    27% of the time and NFT odds stay within ×1.52 of the design.
+
+Creator net includes the creator's own gas for the unwind calls.
+
+Keeper funding alternatives (a share of markup, a restocking fee) are compared in
+[keeper-funding-results.md](keeper-funding-results.md).
