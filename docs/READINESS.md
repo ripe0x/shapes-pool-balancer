@@ -23,8 +23,13 @@ Open before release:
    players pay in prize prices, so keepers never touch the creator's markup; when gas rises after listing, restocking
    waits and purchases pause instead. Opening the pool (stocking it) is still paid from the creator's ETH. Players pay
    about 16% more per Balanced draw at 1 gwei; whether that changes demand is untested.
-4. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
-5. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
+4. **Gas jump after listing (rehearsal, `6fc2b9b`):** keeper e2e passes (12 txs, 0 reverted, 0 skipped; rewards
+   outside setup equal one restocking fee). The 50-round rehearsal stops at its first 3 gwei step: prizes stocked at
+   0.08 gwei carry 0.0003 ETH fees, a restock at 3 gwei costs ~0.0028 ETH, so keepers wait and the pool stays at
+   LOW_INVENTORY until gas falls to about 0.5 gwei. Owner decision pending: accept, or fund the restock from the new
+   listings' fees (creator fronts them, recovered when those prizes are drawn), or set a fee floor.
+5. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
+6. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
 6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
    presentation admin `PACKS_ADMIN` are your call; Draw Packs' own audit status as used in ape-Ball is not confirmed
    here.

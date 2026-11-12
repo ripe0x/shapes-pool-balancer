@@ -16,7 +16,8 @@ import { join } from 'node:path';
 import {
   createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, parseAbiItem, toHex, type Address,
 } from 'viem';
-import { erc721Abi, fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../shared/abi';
+import { SHAPES_IN, prizeBase, restockFeeAt } from '../shared/planner';
 
 const PORT = Number(process.env.REHEARSAL_PORT ?? 18547);
 const HEALTH = PORT + 300;
@@ -245,7 +246,18 @@ async function main() {
         await mustOpen(bB, 'pool B restocked after a markup change', 60_000, true);
         const ids = await read<bigint[]>(bB, poolBalancerAbi, 'getActiveIds');
         const last = await read<readonly unknown[]>(bB, poolBalancerAbi, 'items', [ids.reduce((a, x) => (x > a ? x : a))]);
-        if (Number(last[0]) === 2) assert.equal(last[4], ((last[3] as bigint) * BigInt(10_000 + markup)) / 10_000n, 'restocked prize priced at the new markup');
+        if (Number(last[0]) === 2) {
+          // Shape prize: base = backing + mint fees + markup on backing; price adds one restocking fee per Shape at the
+          // listing block's basefee, which lies between the fee at 0 gwei and the 5 gwei cap.
+          const d = Number(last[1]);
+          const shapes = BigInt(SHAPES_IN[d]);
+          const mintFee = await read<bigint>(await read<Address>(bB, poolBalancerAbi, 'SHAPES'), shapesAbi, 'mintFee');
+          const [base, price] = [last[3] as bigint, last[4] as bigint];
+          assert.equal(base, prizeBase(d, mintFee, markup), 'restocked prize priced at the new markup');
+          assert.equal((price - base) % shapes, 0n, 'one restocking fee per Shape');
+          const fee = (price - base) / shapes;
+          assert.ok(fee >= restockFeeAt(0n) && fee <= restockFeeAt(5n * 10n ** 9n), 'restocking fee within its basefee bounds');
+        }
         stats.markupChanges++;
         continue;
       }
