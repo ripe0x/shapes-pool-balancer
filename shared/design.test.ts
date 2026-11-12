@@ -90,10 +90,11 @@ suite('balanced style (ape-Ball board)', () => {
     expect(shapeCount(c)).toBe(40);
   });
 
-  it('keeps a 0.1 and a 0.5 ETH prize in a small pool and never exceeds the Shape limit', () => {
-    const small = counts(4);
-    expect(small[2]).toBeGreaterThanOrEqual(1);
-    expect(small[3]).toBeGreaterThanOrEqual(1);
+  it('keeps a 0.1 ETH prize in a small pool, adds the 0.5 from 12 small Shapes, never exceeds the Shape limit', () => {
+    expect(counts(4)[2]).toBe(1);
+    expect(counts(4)[3]).toBe(0);
+    expect(counts(11)[3]).toBe(0);
+    expect(counts(12)[3]).toBe(1);
     for (const n of [1, 10, 24, 30, 38, 60, 78, 80]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 });

@@ -334,3 +334,7 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     at their live FWA price in the planner (E4).
     Not changed, documented instead: dishonest or hostile curated collections (S1, S2, S5) are a creator trust
     assumption that no Balancer check can remove; FWA's router coverage (S3) can refuse a purchase the Balancer admits.
+65. **Balanced adds the 0.5 ETH prize only from 12 small Shapes** (ape-Ball's 1 per 24, rounded), instead of forcing one
+    into every pool. The largest prize sets the reserve, so a default 10-small-Shape pool needs about 0.64 ETH instead of
+    1.54 (0.51 in prizes + 0.134 reserve, against 1.01 + 0.534). The draw is about 5% cheaper, NFT odds and the share
+    of draws winning 2x the price are unchanged, and the creator's NFT is the top prize. A 0.1 ETH prize is still kept.

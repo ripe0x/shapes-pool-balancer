@@ -63,7 +63,8 @@ export const JACKPOT_MULTIPLE = 50;
  * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
  * current price) until about 1 in 10 draws wins 2x or more;
  * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
- * board: ape-Ball's proportions scaled to `small` (at least one 0.1 and one 0.5 ETH prize), trimmed from the most
+ * board: ape-Ball's proportions scaled to `small` (at least one 0.1 ETH prize; the 0.5 ETH prize from 12 small Shapes,
+ * since it sets the reserve: 0.534 ETH with it, 0.134 without), trimmed from the most
  * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
@@ -71,7 +72,7 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   if (style === 'steady' || !d.curatedBases.length || room <= 0) return NONE;
   if (style === 'board') {
     const b = [...NONE];
-    for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 || i === 3 ? 1 : 0, Math.round((small * per24) / 24));
+    for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 ? 1 : 0, Math.round((small * per24) / 24));
     while (shapeTotal(b) > room) {
       const i = BOARD.map(([j]) => j).reduce((m, j) => (b[j] > b[m] ? j : m));
       if (b[i] === 0) break;
