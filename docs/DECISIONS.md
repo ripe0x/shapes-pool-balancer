@@ -250,3 +250,26 @@ simulated comparison (docs/keeper-funding-results.md), "Yes, build it" for the g
     with later prize draws. Prizes listed during a basefee spike keep the higher fee until drawn; unused fees return to
     the creator, not to players. Lowering the markup raises `targetWeight` while listed prizes keep their old `base`,
     so the gate can read LOW_INVENTORY until old listings are drawn and relisted (as before, when weight used price).
+
+## Restocking fee pays the call that lists the prize (2026-11-12)
+
+Owner: "but the gas at listing time != gas at draw time"; after a first-principles review (with an independent design
+from a Fable model), "Yes, build it". Supersedes when the credit is earned in 54.
+
+57. **A prize's restocking fee is credited to keepers when the keeper lists it, not when a player wins it.** The cost
+    of restocking is incurred, and known, in the call that lists the replacement, and that same block prices the
+    replacement's fee; crediting then makes the fee pay for the work it was priced for. The pool's ETH fronts the fee
+    and the player who wins the prize repays it. Creator work (open, configure, unlisting) still earns no credit and is
+    paid in full; those listings' fees repay the creator's stock-up gas as they are won.
+    Evidence: the 50-round rehearsal at `6fc2b9b` stalled at its 3 gwei step (prizes stocked at 0.08 gwei, fees too
+    small to restock at 3 gwei); with this rule it passed (48/48 buyers found the pool open, 3 and 4.9 gwei batches
+    serviced). Simulation, fresh pool with gas jumping 0.08 → 3 gwei: 99% of purchases admitted, against 8%.
+    Creator exposure: the fees of prizes never won (unlisted, refunded after a failed delivery, or listed at close).
+    At any moment at most the listed Shapes × `restockFee()` (Balanced, 47 Shapes: about 0.016 ETH at 0.1 gwei,
+    0.054 ETH at 1 gwei, 0.22 ETH at the cap); over a pool's life, plus each prize unlisted or refunded earlier.
+    Credit is never reversed; once the pool is closed, unspent credit is ordinary pool ETH the creator withdraws.
+58. **`RESTOCK_FEE_GAS` is 900k (was 750k).** One-draw restock calls measured 763k-864k gas across pools and blocks
+    (Shapes mint gas varies with the block); 750k + 0.0002 ETH covered them only to about 1.75 gwei. 900k covers the
+    keeper's gas to the 5 gwei cap; at the cap the heaviest one-draw call gets slightly less than the full 0.0005 ETH
+    incentive (independent review). Players pay about 0.00015 ETH more per Shape at 1 gwei; batches over-collect, and unused credit pays
+    later reconcile-only calls or stays with the creator.

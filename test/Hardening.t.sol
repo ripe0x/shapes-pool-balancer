@@ -257,8 +257,8 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// At zero markup a Shape is listed at what it cost plus its restocking fee: the creator earns nothing on it, and
-    /// drawing it still earns keepers exactly the fee.
+    /// At zero markup a Shape is listed at what it cost plus its restocking fee: the creator earns nothing on it. The
+    /// keeper who restocks it is paid from the replacement's own fee, credited when the replacement is listed.
     function test_zeroMarkupStillFundsKeepers() public {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
@@ -284,38 +284,41 @@ contract HardeningTest is ForkBase {
         vm.recordLogs();
         upkeep();
         (uint256 reward,) = _fromLogs();
-        assertLe(reward, price - base, "paid from the fee only");
-        assertEq(b.keeperCredit(), price - base - reward);
+        (,,, uint112 nb, uint112 np) = b.items(_lastShape());
+        assertGt(_lastShape(), lid, "a replacement was listed");
+        assertEq(np - nb, b.restockFee(), "the replacement carries this block's fee");
+        assertLe(reward, np - nb, "paid from the replacement's fee only");
+        assertEq(b.keeperCredit(), np - nb - reward);
         assertEq(b.getActiveShapes()[0], 10, "restocked");
     }
 
-    /// At the 5 gwei cap one restock costs more than the fee of a prize listed at a lower basefee: every reward is cut
-    /// to the fees earned, so lifetime keeper pay never exceeds them. Restocks listed at 5 gwei carry the capped fee.
-    function test_highGasKeeperPayNeverExceedsRestockFees() public {
+    /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
+    /// fee pays the keeper in the same call. The keeper is covered, and lifetime pay never exceeds the fees credited.
+    function test_gasJumpRestockPaidByTheNewListingsFee() public {
         assertEq(balancer.keeperCredit(), 0, "setup work earns no credit");
-        uint256 listedFee = balancer.restockFee();
+        uint256 capFee = 900_000 * 5 gwei + 0.0002 ether;
         vm.fee(80 gwei);
         vm.txGasPrice(5 gwei);
-        assertEq(balancer.restockFee(), 750_000 * 5 gwei + 0.0002 ether, "fee capped at 5 gwei");
+        assertEq(balancer.restockFee(), capFee, "fee capped at 5 gwei");
         uint256 earned;
         uint256 paid;
         for (uint256 i; i < 4; ++i) {
             assertTrue(balancer.canPurchase(buyer));
-            uint256 lid = _activeOfSize(0);
-            (,,, uint112 base, uint112 price) = balancer.items(lid);
-            if (i == 0) assertEq(price - base, listedFee, "an original listing carries the setup fee");
-            _drawListing(lid);
-            earned += price - base;
+            uint256 before = _lastShape();
+            _drawListing(_activeOfSize(0));
             vm.recordLogs();
             upkeep();
             (uint256 reward, uint256 gasUsed) = _fromLogs();
-            assertLt(reward, gasUsed * 5 gwei, "the keeper is not covered");
+            uint256 fresh = _lastShape();
+            assertGt(fresh, before, "a replacement was listed");
+            (,,, uint112 base, uint112 price) = balancer.items(fresh);
+            assertEq(price - base, capFee, "listed at the capped fee");
+            earned += price - base;
+            assertGe(reward, gasUsed * 5 gwei, "the keeper is covered at the cap");
             paid += reward;
-            assertLe(paid, earned, "never more than the fees earned");
+            assertLe(paid, earned, "never more than the fees credited");
             assertEq(balancer.keeperCredit(), earned - paid);
         }
-        (,,, uint112 nb, uint112 np) = balancer.items(_lastShape());
-        assertEq(np - nb, 750_000 * 5 gwei + 0.0002 ether, "restocked at the capped fee");
     }
 
     /// A curated NFT carries no restocking fee: its whole markup is the creator's, and drawing it earns keepers nothing.

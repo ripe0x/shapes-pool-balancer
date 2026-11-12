@@ -353,19 +353,14 @@ contract GasBench is ForkBase {
         vm.txGasPrice(1 gwei);
     }
 
-    /// Keepers are paid only from restocking fees, fixed when each prize was listed. A prize listed at 0.5 gwei pays
-    /// for its restock at 0.5 gwei; if gas then rises to the cap, the keeper is short (an honest keeper waits) and
-    /// the pool pays no more than the fee.
-    function test_profitAtCap_gasRoseAfterListing() public {
-        vm.fee(0.5 gwei);
+    /// Gas jumps after the pool was stocked at 0.08 gwei: the restock lists its replacement at the new basefee and that
+    /// fee pays the call, so the keeper is covered at every basefee up to the cap.
+    function test_breakEven_gasJumpAfterListing() public {
+        vm.fee(0.08 gwei);
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         _drawShapes(1);
-        uint256 snap = vm.snapshotState();
-        assertGe(_profitAt("replace 1 Shape listed at 0.5 gwei, at 0.5 gwei", 0.5 gwei), 0);
-        vm.revertToState(snap);
-        assertLt(_profitAt("replace 1 Shape listed at 0.5 gwei, at 4.95 gwei", 4.95 gwei), 0);
-        assertEq(balancer.keeperCredit(), 0, "the whole fee went to the keeper, no more");
+        assertEq(_sweep("1 draw, prizes listed at 0.08 gwei, restocked at each basefee"), 4.95 gwei);
     }
 
     /// Prizes listed and restocked at the cap: five draws reconciled and restocked in one call are covered.

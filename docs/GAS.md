@@ -39,25 +39,28 @@ price     = min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)
 measured  = min(gasStart - gasleft(), 3.2M)
 reward    = measured × price + 0.0005 ETH        (any call that reconciles draws or restocks)
             creator-started work: in full, from the creator's ETH
-            otherwise: at most keeperCredit, the restocking fees of reconciled delivered prizes, which it spends
+            otherwise: at most keeperCredit, the restocking fees of the prizes keepers listed, which it spends
 MAX_KEEPER_REWARD = 3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH
 
-restockFee = 750k × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH   (per Shape in a prize, at the listing block)
+restockFee = 900k × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH   (per Shape in a prize, at the listing block)
+keeperCredit += Shape units listed × restockFee                       (each call, outside creator work)
 ```
 
-Players pay the restocking fee in each prize's price, on top of the creator's markup (DECISIONS 54). It is sized so a
-call that reconciles one draw and restocks its Shape (763k gas billed) pays its keeper at any basefee up to the cap when
-gas is steady; batched draws pay more.
+Players pay the restocking fee in each prize's price, on top of the creator's markup (DECISIONS 54, 57). The fee is
+credited in the call that lists the prize, at that call's basefee, so it pays for the gas it was priced at. It is sized
+so a call that reconciles one draw and restocks its Shape (measured 763k-864k gas) pays its keeper at any basefee up to
+the cap (DECISIONS 58); batches over-collect and the surplus carries over.
 
 The fixed 0.0005 ETH covers what a keeper cannot see in the measured span (21k intrinsic, calldata, the first touch of
 the Balancer) and the gap between `eth_estimateGas` and billed gas that rational keepers cost work with. The `KeeperPaid`
 event's `gasUsed` is the measured gas.
 
-Lifetime keeper pay outside creator work never exceeds the restocking fees earned (`invariant_keeperPayWithinRestockFees`).
+Lifetime keeper pay outside creator work never exceeds the restocking fees of the prizes keepers listed
+(`invariant_keeperPayWithinRestockFees`).
 Measured gas is taken before EIP-3529 refunds, so a call can be paid up to 1/5 more gas than billed (refund-heavy
 redeems on unlisting are creator work); that surplus also comes out of the credit. A keeper's profit per call is the
-0.0005 ETH plus any refund gap, and every call needs draws, each costing a buyer FWA's edge, the VRF fee and the prize's price, of which at most the restocking fee comes
-back, so buying one's own draws to earn credit loses money (`KeeperAdversarial.t.sol`).
+0.0005 ETH plus any refund gap, and every call needs draws, each costing a buyer FWA's edge and the VRF fee, so buying one's own draws to create restocking work loses
+money (`KeeperAdversarial.t.sol`).
 
 ### Why the fixed part is 0.0005 ETH, not a margin over the shortfall
 
@@ -76,16 +79,16 @@ basefee.
 
 | Upkeep | Paid from | PnL at 4.95 gwei | Profitable up to |
 | --- | --- | --- | --- |
-| replace 1 Shape after 1 draw, steady gas | restocking fee | +0.00013 ETH | 4.95 gwei (all tested) |
-| replace 3 Shapes after 3 draws, steady gas | restocking fees | +0.00074 ETH | 4.95 gwei (all tested) |
-| replace 5 Shapes in 4 sizes, listed at the cap | restocking fees | +0.00093 ETH | – |
-| replace 1 Shape listed at 0.5 gwei | restocking fee set at 0.5 gwei | −0.0032 ETH (+0.00019 at 0.5 gwei) | 0.5 gwei |
-| reconcile 1 curated draw (no restock) | nothing earned | −0.00064 ETH | unpaid unless credit remains |
+| replace 1 Shape after 1 draw, steady gas | the replacement's fee | +0.00060 ETH | 4.95 gwei (all tested) |
+| replace 1 Shape listed at 0.08 gwei, restocked at each basefee | the replacement's fee | +0.00060 ETH | 4.95 gwei (all tested) |
+| replace 3 Shapes after 3 draws, steady gas | the replacements' fees | +0.00074 ETH | 4.95 gwei (all tested) |
+| replace 5 Shapes in 4 sizes | the replacements' fees | +0.00093 ETH | – |
+| reconcile 1 curated draw (no restock) | credit left over only | −0.00064 ETH with none left | – |
 | fill step (5 Shape units) | creator, full | +0.00045 ETH | 4.95 gwei (all tested) |
 | reconcile a refund-only draw | nothing earned | unpaid unless credit remains | – |
 
-Where the fees earned do not cover a call (gas rose since the prizes were listed), the keeper waits for more draws or
-lower gas instead of the pool paying the difference; restocks it does make are listed at the new basefee.
+A restock is paid by the fee of the prize it lists, priced in the same block, so gas at the time the drawn prize was
+listed does not matter. Above the 5 gwei cap the keeper waits.
 
 ## Priority allowance
 
@@ -137,7 +140,8 @@ price cap already bound every reward at 0.0165 ETH, and FWA V2's 0.02 ETH cap pl
 
 The credit was first FWA's edge on delivered draws and paid only the incentive; the gas part came from the creator's ETH
 whatever the markup, so pools lost money above about 2 gwei. It then became the markup earned (DECISIONS 51), and is
-now the restocking fees priced into prizes (DECISIONS 54), so keepers never spend the creator's markup. A creator who prices a curated NFT below market gives a winner that difference either way; the credit
+now the restocking fees priced into the prizes keepers list (DECISIONS 54, 57), so keepers never spend the creator's
+markup. A creator who prices a curated NFT below market gives a winner that difference either way; the credit
 adds only the per-call keeper profit above, which each draw's edge and VRF fee outweigh.
 
 ## Work no rational keeper runs

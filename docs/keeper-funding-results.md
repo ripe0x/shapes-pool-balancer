@@ -8,29 +8,34 @@ Rules compared:
 - **A** keepers are paid from all markup earned (the contract at d99cf9f).
 - **B, C** keepers are paid from 50% or 25% of the markup earned.
 - **D** listed price = backing + mint fees + 0.001 ETH restocking fee per Shape + creator markup. Keepers are paid only
-  from restocking fees; curated NFTs carry none.
-- **F, the contract** (DECISIONS 54): as D, with the fee set when the prize is listed, `PoolBalancer.restockFee()` =
-  750k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH per Shape.
+  from restocking fees, credited when a prize is won; curated NFTs carry none.
+- **F** as D, with the fee set when the prize is listed: 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH per
+  Shape, credited when the prize is won (the contract at 6fc2b9b, with today's 900k).
+- **H** as F, priced at no less than 1 gwei.
+- **P, the contract** (DECISIONS 57): as F, credited when the keeper lists the prize, so the fee pays the call it was
+  priced for; the pool's ETH fronts it until the prize is won.
 - **E, G** as D and F, with the markup lowered until players pay what A charges (0% means even no markup charges
   players more).
 
-Creator P&L counts deposits, NFTs, withdrawals, the opening stock-up, the creator's unwind gas and prize luck.
+Creator P&L counts deposits, NFTs, withdrawals, the opening stock-up, the creator's unwind gas, fees of prizes still
+listed at close, and prize luck.
 
-**Limitation: demand is fixed at 3 draws a step whatever the price.** The model cannot say whether players accept a
-higher price.
+**Limitation: demand is fixed at the scenario's draws per step whatever the price.** The model cannot say whether
+players accept a higher price.
 
 ## Findings
 
 1. **A share cap stops the pool at normal gas.** At 1 gwei keepers need about 61% of a 15% Balanced markup (A: 0.909 of
    1.493 ETH). With 50% or 25% they wait, and purchases are admitted 2% or 1% of the time.
-2. **Paying keepers only what draws earned stops the pool once gas passes what a draw earns.** At 3 gwei A and D admit
-   1% of purchases. Only the gas-indexed fee keeps running: 99% at 3 gwei, and 38% (A: 11%) as gas rises to 12 gwei.
+2. **A fee credited when the prize is won is priced at the wrong moment.** On a fresh pool stocked at 0.08 gwei, a jump
+   to 3 gwei leaves F admitting 8% of purchases (2% at 4.9 gwei with one draw a step); a 1 gwei floor (H) reaches 70%
+   (7%) and charges players more at normal gas. Credited at listing (P), the fee pays the call that lists the prize at
+   that call's gas: 99% in both, and the same prices and P&L as F when gas is steady.
 3. **At the same player price no rule makes the creator more money.** At 1 gwei a 15% Balanced markup goes about 84%
    to mint fees and keeper gas; the creator keeps 0.39 mETH of the 19.2 mETH a draw costs players. E and G need 0%
    markup to come close to A's price and still charge players more.
-4. **Fees on top keep the creator's markup whole, and players pay for it**: 22.3 mETH a draw at 1 gwei (+16%), 24.6
-   at 3 gwei with the gas-indexed fee. With the fee, keeper pay never comes from the creator's markup; the losing runs
-   left (3% with gas rising to 12 gwei, 5% with a keeper every 10 steps) come from prize luck and the opening stock-up.
+4. **Fees on top keep the creator's markup whole, and players pay for it**: 22.5 mETH a draw at 1 gwei (+17%), 25.2
+   at 3 gwei. Keeper pay never comes from the creator's markup.
 
 
 ## gas 0.1 gwei
@@ -42,8 +47,10 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.22 mETH | 99% | 1188 | 0.958 | 0.81 mETH | 5% | -0.279 | 0.298 | 0.298 | 0.207 | 0.13% | x1.03 / x1.11 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.717 | 3.13 mETH | 0% | 2.008 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
 | E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.819 | 0.69 mETH | 15% | -1.144 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 21.25 mETH | 99% | 1188 | 2.604 | 2.19 mETH | 0% | 1.028 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.11 |
-| G gas-indexed fee, same player price | 2.9% | 19.22 mETH | 99% | 1188 | 0.386 | 0.32 mETH | 30% | -1.745 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.13 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 21.28 mETH | 99% | 1188 | 2.749 | 2.31 mETH | 0% | 1.272 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.11 |
+| G gas-indexed fee, same player price | 2.7% | 19.22 mETH | 99% | 1188 | 0.373 | 0.31 mETH | 33% | -1.339 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.13 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 22.52 mETH | 99% | 1188 | 4.067 | 3.42 mETH | 0% | 2.160 | 0.300 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 21.28 mETH | 99% | 1188 | 2.749 | 2.31 mETH | 0% | 1.272 | 0.300 | 0.000 | 0.209 | 0.14% | x1.03 / x1.11 |
 
 ## gas 1 gwei
 
@@ -54,8 +61,10 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.060 | -5.44 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.16 / x1.45 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.087 | 2.60 mETH | 0% | 1.376 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
 | E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.192 | 0.16 mETH | 38% | -1.771 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.28 mETH | 99% | 1188 | 3.091 | 2.60 mETH | 0% | 1.354 | 0.910 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
-| G gas-indexed fee, same player price | 0.0% | 19.77 mETH | 99% | 1188 | 0.248 | 0.21 mETH | 33% | -1.792 | 0.911 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 22.52 mETH | 99% | 1188 | 3.436 | 2.89 mETH | 0% | 1.521 | 0.912 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| G gas-indexed fee, same player price | 0.0% | 20.01 mETH | 99% | 1188 | 0.304 | 0.26 mETH | 33% | -1.760 | 0.912 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 22.52 mETH | 99% | 1188 | 3.436 | 2.89 mETH | 0% | 1.521 | 0.912 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 22.52 mETH | 99% | 1188 | 3.436 | 2.89 mETH | 0% | 1.521 | 0.912 | 0.000 | 0.190 | 0.15% | x1.03 / x1.11 |
 
 ## gas 3 gwei
 
@@ -66,8 +75,10 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.78 mETH | 1% | 9 | -0.109 | -12.13 mETH | 100% | -0.573 | 0.000 | 0.000 | -0.063 | 0.13% | x1.16 / x1.45 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.68 mETH | 1% | 13 | -0.081 | -6.37 mETH | 85% | -0.546 | 0.006 | 0.000 | -0.063 | 0.15% | x1.15 / x1.44 |
 | E fee 0.001/Shape, same player price | 0.0% | 20.12 mETH | 1% | 13 | -0.114 | -8.92 mETH | 93% | -0.569 | 0.006 | 0.000 | -0.063 | 0.15% | x1.15 / x1.44 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 24.55 mETH | 99% | 1188 | 3.782 | 3.18 mETH | 0% | 1.627 | 2.271 | 0.000 | 0.148 | 0.17% | x1.03 / x1.11 |
-| G gas-indexed fee, same player price | 0.0% | 22.03 mETH | 99% | 1188 | 0.675 | 0.57 mETH | 20% | -1.441 | 2.271 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 25.24 mETH | 99% | 1188 | 4.357 | 3.67 mETH | 0% | 2.473 | 2.275 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
+| G gas-indexed fee, same player price | 0.0% | 22.71 mETH | 99% | 1188 | 1.569 | 1.32 mETH | 0% | 0.069 | 2.272 | 0.000 | 0.148 | 0.18% | x1.03 / x1.10 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 25.24 mETH | 99% | 1188 | 4.357 | 3.67 mETH | 0% | 2.473 | 2.275 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 25.24 mETH | 99% | 1188 | 4.357 | 3.67 mETH | 0% | 2.473 | 2.275 | 0.000 | 0.148 | 0.17% | x1.03 / x1.10 |
 
 ## gas 8 gwei for steps 100-250
 
@@ -78,8 +89,10 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.060 | -5.44 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.16 / x1.45 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.31 mETH | 62% | 744 | 1.897 | 2.55 mETH | 0% | 1.012 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
 | E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 62% | 744 | 0.023 | 0.03 mETH | 43% | -1.049 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.29 mETH | 62% | 744 | 1.871 | 2.52 mETH | 0% | 1.067 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
-| G gas-indexed fee, same player price | 0.0% | 19.77 mETH | 62% | 744 | 0.042 | 0.06 mETH | 38% | -1.063 | 0.570 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 22.53 mETH | 62% | 744 | 2.156 | 2.90 mETH | 0% | 0.774 | 0.569 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| G gas-indexed fee, same player price | 0.0% | 20.01 mETH | 62% | 744 | 0.128 | 0.17 mETH | 40% | -1.159 | 0.571 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 22.53 mETH | 62% | 744 | 2.156 | 2.90 mETH | 0% | 0.774 | 0.569 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 22.53 mETH | 62% | 744 | 2.156 | 2.90 mETH | 0% | 0.774 | 0.569 | 0.000 | 0.111 | 0.15% | x1.03 / x1.44 |
 
 ## gas rises 1 -> 12 gwei
 
@@ -90,8 +103,10 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.80 mETH | 1% | 11 | -0.069 | -6.43 mETH | 93% | -0.536 | 0.001 | 0.001 | -0.022 | 0.13% | x1.16 / x1.45 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.28 mETH | 12% | 146 | 0.249 | 1.71 mETH | 13% | -0.517 | 0.157 | 0.000 | 0.001 | 0.15% | x1.05 / x1.47 |
 | E fee 0.001/Shape, same player price | 0.0% | 19.78 mETH | 12% | 143 | -0.072 | -0.50 mETH | 60% | -0.744 | 0.153 | 0.000 | 0.000 | 0.15% | x1.05 / x1.48 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 24.47 mETH | 38% | 461 | 1.331 | 2.89 mETH | 3% | -0.002 | 0.908 | 0.000 | 0.056 | 0.15% | x1.14 / x1.67 |
-| G gas-indexed fee, same player price | 0.0% | 21.95 mETH | 38% | 461 | 0.204 | 0.44 mETH | 35% | -0.991 | 0.906 | 0.000 | 0.056 | 0.15% | x1.15 / x1.70 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 25.14 mETH | 38% | 461 | 1.560 | 3.38 mETH | 0% | 0.349 | 0.909 | 0.000 | 0.056 | 0.15% | x1.15 / x1.72 |
+| G gas-indexed fee, same player price | 0.0% | 22.61 mETH | 38% | 462 | 0.375 | 0.81 mETH | 23% | -0.931 | 0.911 | 0.000 | 0.056 | 0.15% | x1.17 / x1.75 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 25.14 mETH | 38% | 461 | 1.560 | 3.38 mETH | 0% | 0.349 | 0.909 | 0.000 | 0.056 | 0.15% | x1.15 / x1.72 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 25.14 mETH | 38% | 461 | 1.560 | 3.38 mETH | 0% | 0.349 | 0.909 | 0.000 | 0.056 | 0.15% | x1.15 / x1.72 |
 
 ## gas 1 gwei, keeper every 10 steps
 
@@ -102,5 +117,63 @@ higher price.
 | C keepers take 25% of markup | 15.0% | 19.73 mETH | 1% | 11 | -0.064 | -5.69 mETH | 93% | -0.531 | 0.001 | 0.001 | -0.021 | 0.13% | x1.17 / x1.49 |
 | D fee 0.001/Shape, 15% markup | 15.0% | 22.89 mETH | 26% | 312 | 0.768 | 2.46 mETH | 5% | -0.462 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
 | E fee 0.001/Shape, same player price | 0.0% | 20.28 mETH | 27% | 328 | -0.022 | -0.07 mETH | 48% | -1.123 | 0.221 | 0.000 | 0.025 | 0.15% | x1.16 / x1.54 |
-| F gas-indexed fee, 15% markup (the contract) | 15.0% | 22.87 mETH | 26% | 312 | 0.741 | 2.37 mETH | 5% | -0.468 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
-| G gas-indexed fee, same player price | 0.0% | 20.26 mETH | 27% | 328 | -0.017 | -0.05 mETH | 43% | -1.129 | 0.221 | 0.000 | 0.025 | 0.15% | x1.16 / x1.54 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 23.12 mETH | 26% | 314 | 0.912 | 2.91 mETH | 0% | 0.093 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
+| G gas-indexed fee, same player price | 0.0% | 20.50 mETH | 27% | 328 | 0.023 | 0.07 mETH | 45% | -0.881 | 0.221 | 0.000 | 0.025 | 0.15% | x1.16 / x1.53 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 23.12 mETH | 26% | 314 | 0.912 | 2.91 mETH | 0% | 0.093 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 23.12 mETH | 26% | 314 | 0.912 | 2.91 mETH | 0% | 0.093 | 0.212 | 0.000 | 0.023 | 0.15% | x1.15 / x1.44 |
+
+## gas jumps 0.08 -> 3 gwei at step 100 and stays
+
+| Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.21 mETH | 64% | 769 | -0.162 | -0.21 mETH | 58% | -2.099 | 0.969 | 0.969 | 0.133 | 0.13% | x1.04 / x1.48 |
+| B keepers take 50% of markup | 15.0% | 19.24 mETH | 33% | 392 | 0.038 | 0.10 mETH | 38% | -1.238 | 0.252 | 0.252 | 0.066 | 0.13% | x1.04 / x1.45 |
+| C keepers take 25% of markup | 15.0% | 19.24 mETH | 26% | 313 | 0.134 | 0.43 mETH | 30% | -0.914 | 0.098 | 0.098 | 0.050 | 0.13% | x1.04 / x1.45 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.31 mETH | 52% | 630 | 1.379 | 2.19 mETH | 0% | 0.104 | 0.703 | 0.000 | 0.108 | 0.15% | x1.03 / x1.44 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 53% | 631 | -0.099 | -0.16 mETH | 48% | -1.348 | 0.705 | 0.000 | 0.108 | 0.15% | x1.03 / x1.44 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 24.16 mETH | 99% | 1188 | 3.887 | 3.27 mETH | 0% | 2.690 | 1.790 | 0.000 | 0.209 | 0.14% | x1.17 / x1.31 |
+| G gas-indexed fee, same player price | 2.9% | 22.12 mETH | 99% | 1188 | 1.562 | 1.32 mETH | 3% | -0.944 | 1.792 | 0.000 | 0.209 | 0.14% | x1.19 / x1.33 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 24.51 mETH | 99% | 1188 | 4.336 | 3.65 mETH | 0% | 2.648 | 1.788 | 0.000 | 0.209 | 0.15% | x1.12 / x1.24 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 24.16 mETH | 99% | 1188 | 3.887 | 3.27 mETH | 0% | 2.690 | 1.790 | 0.000 | 0.209 | 0.14% | x1.17 / x1.31 |
+
+## fresh pool, gas jumps 0.08 -> 3 gwei at step 1 and stays
+
+| Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.76 mETH | 1% | 14 | -0.076 | -5.60 mETH | 100% | -0.543 | 0.009 | 0.009 | -0.032 | 0.13% | x1.15 / x1.45 |
+| B keepers take 50% of markup | 15.0% | 19.81 mETH | 1% | 9 | -0.081 | -8.54 mETH | 100% | -0.543 | 0.001 | 0.001 | -0.033 | 0.13% | x1.16 / x1.45 |
+| C keepers take 25% of markup | 15.0% | 19.78 mETH | 1% | 9 | -0.079 | -8.77 mETH | 100% | -0.543 | 0.000 | 0.000 | -0.033 | 0.13% | x1.16 / x1.45 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.68 mETH | 1% | 13 | -0.051 | -4.00 mETH | 70% | -0.516 | 0.006 | 0.000 | -0.033 | 0.15% | x1.15 / x1.44 |
+| E fee 0.001/Shape, same player price | 0.0% | 20.12 mETH | 1% | 13 | -0.084 | -6.55 mETH | 85% | -0.538 | 0.006 | 0.000 | -0.033 | 0.15% | x1.15 / x1.44 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 24.88 mETH | 8% | 100 | 0.344 | 3.45 mETH | 73% | -0.520 | 0.175 | 0.000 | -0.017 | 0.14% | x1.18 / x1.53 |
+| G gas-indexed fee, same player price | 2.9% | 22.83 mETH | 8% | 100 | 0.111 | 1.12 mETH | 80% | -0.539 | 0.175 | 0.000 | -0.017 | 0.14% | x1.19 / x1.55 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 25.18 mETH | 70% | 834 | 3.241 | 3.88 mETH | 15% | -0.510 | 1.593 | 0.000 | 0.115 | 0.15% | x1.17 / x1.49 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 25.16 mETH | 99% | 1188 | 4.258 | 3.58 mETH | 0% | 1.863 | 2.275 | 0.000 | 0.179 | 0.14% | x1.22 / x1.31 |
+
+## fresh pool, 1 draw a step, gas jumps 0.08 -> 4.9 gwei at step 1
+
+| Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.85 mETH | 2% | 8 | -0.090 | -11.76 mETH | 100% | -0.208 | 0.002 | 0.002 | -0.053 | 0.13% | x1.12 / x1.30 |
+| B keepers take 50% of markup | 15.0% | 19.80 mETH | 2% | 7 | -0.086 | -12.14 mETH | 100% | -0.227 | 0.000 | 0.000 | -0.053 | 0.13% | x1.12 / x1.30 |
+| C keepers take 25% of markup | 15.0% | 19.78 mETH | 2% | 7 | -0.086 | -12.27 mETH | 100% | -0.227 | 0.000 | 0.000 | -0.053 | 0.13% | x1.11 / x1.30 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.90 mETH | 2% | 7 | -0.068 | -9.73 mETH | 100% | -0.206 | 0.000 | 0.000 | -0.053 | 0.15% | x1.11 / x1.30 |
+| E fee 0.001/Shape, same player price | 0.0% | 20.43 mETH | 2% | 8 | -0.095 | -11.86 mETH | 100% | -0.528 | 0.000 | 0.000 | -0.053 | 0.15% | x1.13 / x1.37 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 22.89 mETH | 2% | 8 | -0.065 | -7.67 mETH | 98% | -0.345 | 0.005 | 0.000 | -0.053 | 0.14% | x1.15 / x1.45 |
+| G gas-indexed fee, same player price | 2.9% | 20.78 mETH | 2% | 9 | -0.082 | -9.59 mETH | 98% | -0.369 | 0.005 | 0.000 | -0.053 | 0.14% | x1.16 / x1.47 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 26.44 mETH | 7% | 29 | 0.010 | 0.33 mETH | 95% | -0.360 | 0.102 | 0.000 | -0.043 | 0.15% | x1.14 / x1.44 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 27.39 mETH | 99% | 396 | 0.912 | 2.30 mETH | 3% | -0.034 | 1.911 | 0.000 | 0.152 | 0.14% | x1.29 / x1.31 |
+
+## gas 0.08 gwei, 3 gwei for steps 100-200
+
+| Funding | Markup | Player pays / draw | Purchases admitted | Draws | Creator P&L (ETH) | per draw | Runs with a loss | Worst run | Keepers paid | from creator markup | Keeper profit | NFT odds per draw | vs that design (mean / max) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A keepers take all markup (d99cf9f) | 15.0% | 19.22 mETH | 99% | 1185 | 0.460 | 0.39 mETH | 25% | -0.765 | 0.780 | 0.780 | 0.209 | 0.13% | x1.03 / x1.41 |
+| B keepers take 50% of markup | 15.0% | 19.23 mETH | 82% | 989 | 0.594 | 0.60 mETH | 25% | -0.858 | 0.397 | 0.397 | 0.174 | 0.13% | x1.04 / x1.45 |
+| C keepers take 25% of markup | 15.0% | 19.23 mETH | 76% | 910 | 0.723 | 0.79 mETH | 10% | -1.041 | 0.244 | 0.244 | 0.158 | 0.13% | x1.04 / x1.45 |
+| D fee 0.001/Shape, 15% markup | 15.0% | 22.30 mETH | 99% | 1188 | 3.231 | 2.72 mETH | 0% | 1.525 | 0.786 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
+| E fee 0.001/Shape, same player price | 0.0% | 19.79 mETH | 99% | 1188 | 0.352 | 0.30 mETH | 35% | -1.633 | 0.787 | 0.000 | 0.209 | 0.15% | x1.03 / x1.11 |
+| F gas-indexed fee, credited when won (6fc2b9b) | 15.0% | 22.26 mETH | 99% | 1188 | 3.149 | 2.65 mETH | 0% | 1.839 | 0.788 | 0.000 | 0.209 | 0.14% | x1.08 / x1.31 |
+| G gas-indexed fee, same player price | 2.9% | 20.23 mETH | 99% | 1188 | 0.772 | 0.65 mETH | 13% | -0.824 | 0.789 | 0.000 | 0.209 | 0.14% | x1.09 / x1.33 |
+| H gas-indexed fee, 1 gwei floor | 15.0% | 23.21 mETH | 99% | 1188 | 4.035 | 3.40 mETH | 0% | 2.467 | 0.788 | 0.000 | 0.209 | 0.15% | x1.06 / x1.24 |
+| P gas-indexed fee, credited at listing (the contract) | 15.0% | 22.26 mETH | 99% | 1188 | 3.149 | 2.65 mETH | 0% | 1.839 | 0.788 | 0.000 | 0.209 | 0.14% | x1.08 / x1.31 |

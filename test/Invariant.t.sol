@@ -23,7 +23,7 @@ contract Handler is Test {
     uint256[] public open;
     uint256 nextNft = 1000;
     uint256 public purchasesAdmitted;
-    /// Restocking fees of delivered Shape prizes (listed price less `base`), read before reconciliation.
+    /// Restocking fees of the prizes keepers listed outside creator work (listed price less `base`).
     uint256 public earned;
     /// Keeper rewards paid outside creator work.
     uint256 public paidFromFees;
@@ -81,20 +81,21 @@ contract Handler is Test {
     }
 
     function upkeep() external {
-        uint64 from = b.reconciledSequence();
-        uint256 end = pool.nextSequenceToProcess() - 1;
-        if (end > from + 5) end = from + 5;
-        uint256[] memory margin = new uint256[](end - from);
-        for (uint256 s = from + 1; s <= end; ++s) {
-            (,,, uint256 lid, uint8 status,) = pool.acquisitions(pool.requestIdAtSequence(uint64(s)));
-            (uint8 kind,, uint8 state, uint112 base, uint112 price) = b.items(lid);
-            if (lid != 0 && status == 2 && state == 1 && kind == 2) margin[s - from - 1] = price - base;
+        uint256[] memory before = b.getActiveIds();
+        uint256 last;
+        for (uint256 i; i < before.length; ++i) {
+            if (before[i] > last) last = before[i];
         }
         bool setup = b.creatorWork();
         try b.performUpkeep() returns (uint256 reward) {
-            if (!setup) paidFromFees += reward;
-            for (uint256 s = from + 1; s <= b.reconciledSequence(); ++s) {
-                earned += margin[s - from - 1];
+            if (setup) return;
+            paidFromFees += reward;
+            // Credit is the restocking fees of the prizes this call listed (listing ids only grow).
+            uint256[] memory ids = b.getActiveIds();
+            for (uint256 i; i < ids.length; ++i) {
+                if (ids[i] <= last) continue;
+                (uint8 kind,,, uint112 base, uint112 price) = b.items(ids[i]);
+                if (kind == 2) earned += price - base;
             }
         } catch {}
     }
@@ -204,8 +205,8 @@ contract InvariantTest is ForkBase {
         }
     }
 
-    /// Keepers are paid outside creator work only from the restocking fees of delivered Shape prizes, never from
-    /// the creator's markup.
+    /// Keepers are paid outside creator work only from the restocking fees of the prizes they listed, never from the
+    /// creator's markup.
     function invariant_keeperPayWithinRestockFees() public view {
         assertLe(handler.paidFromFees(), handler.earned());
         assertEq(balancer.keeperCredit(), handler.earned() - handler.paidFromFees());

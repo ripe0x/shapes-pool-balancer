@@ -17,7 +17,7 @@ export const rewardBound = (price: bigint) => KEEPER_MAX_GAS * price + KEEPER_IN
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
 /** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; keepers are paid only from these fees. */
-export const RESTOCK_FEE_GAS = 750_000n;
+export const RESTOCK_FEE_GAS = 900_000n;
 export const RESTOCK_FEE_FLAT = 2n * 10n ** 14n;
 export const restockFeeAt = (baseFee: bigint) => RESTOCK_FEE_GAS * rewardPrice(baseFee) + RESTOCK_FEE_FLAT;
 /** PoolBalancer.requiredReserve() while open: restoring `target` from `have`, one largest prize for each unreconciled

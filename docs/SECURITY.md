@@ -45,13 +45,16 @@ statement that the rewrite is safe. Findings and outcome:
 
 The repairs were made after the review and were not re-reviewed independently; they are covered by the fork tests.
 
-After round 7: keepers are paid only from `keeperCredit`, except creator-started work. Since DECISIONS 54 the credit is
-the restocking fee priced into each delivered prize (`restockFee()` at the listing block's basefee); curated draws add
-nothing, and the creator's markup is never spent on keepers. The fill check weighs prizes at their price less that fee.
+After round 7: keepers are paid only from `keeperCredit`, except creator-started work. Since DECISIONS 54 and 57 the
+credit is the restocking fees of the prizes each call lists (`restockFee()` at that block's basefee), credited before the
+keeper is paid; the pool's ETH fronts them until the prizes are won. Curated and refunded draws add nothing, and the
+creator's markup is never spent on keepers. The fill check weighs prizes at their price less that fee.
 Tests: `invariant_keeperPayWithinRestockFees`, `invariant_prizeWeightMatchesTrackedPrizes`,
-`test_highGasKeeperPayNeverExceedsRestockFees`, `test_zeroMarkupStillFundsKeepers`, `test_curatedDrawEarnsKeepersNothing`,
-`test_refundOnlyBatchEarnsNothing`, `test_depositDoesNotUnlockFullIncentive` (rewards never exceed the fees the
-attacker's own draws paid); the self-dealing tests value won Shapes at the ETH they redeem for.
+`test_gasJumpRestockPaidByTheNewListingsFee`, `test_zeroMarkupStillFundsKeepers`, `test_curatedDrawEarnsKeepersNothing`,
+`test_refundOnlyBatchEarnsNothing`, `test_depositDoesNotUnlockFullIncentive` (rewards never exceed the fees of the
+replacements listed), `test_breakEven_gasJumpAfterListing`; the self-dealing tests value won Shapes at the ETH they
+redeem for. Not tested: a deliberately failed delivery leaves the failed prize's fronted fee unrepaid, since its
+draw is refunded (the attacker loses FWA's VRF fee, more than that fee).
 
 ## Method
 

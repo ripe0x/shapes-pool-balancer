@@ -201,8 +201,8 @@ contract KeeperAdversarialTest is ForkBase {
     }
 
     /// A creator deposit while open never enables full incentives for purchase-caused work: the attacker's upkeep is
-    /// paid only from the restocking fees its own draws paid. (Its P&L here also carries prize luck, so the bound is
-    /// asserted on the rewards.)
+    /// paid only from the restocking fees of the replacements it lists. (Its P&L here also carries prize luck, so the
+    /// bound is asserted on the rewards.)
     function test_depositDoesNotUnlockFullIncentive() public {
         _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
@@ -211,18 +211,24 @@ contract KeeperAdversarialTest is ForkBase {
         balancer.depositETH{value: 1 wei}();
         assertFalse(balancer.creatorWork());
         assertEq(balancer.keeperCredit(), 0);
-        uint256[] memory active = balancer.getActiveIds();
-        uint256[] memory fees = new uint256[](active.length);
-        for (uint256 i; i < active.length; ++i) {
-            (,,, uint112 base, uint112 price) = balancer.items(active[i]);
-            (uint8 kind,,,,) = balancer.items(active[i]);
-            if (kind == 2) fees[i] = price - base;
+        uint256 lastBefore = lastListingId();
+        // Draw a Shape prize, so a replacement is listed and credited.
+        uint256[] memory word = new uint256[](1);
+        uint256[] memory listed = balancer.getActiveIds();
+        for (uint256 i; i < listed.length; ++i) {
+            (uint8 kind,,,,) = balancer.items(listed[i]);
+            if (kind != 2) continue;
+            (,,,,,, uint256 slot,) = pool.listings(listed[i]);
+            word[0] = wordForSlot(slot);
+            break;
         }
-        _selfDeal(_words(3, 7));
-        uint256 earned;
+        _selfDeal(word);
+        uint256 credited;
+        uint256[] memory active = balancer.getActiveIds();
         for (uint256 i; i < active.length; ++i) {
-            (,,,,,,, uint8 st) = pool.listings(active[i]);
-            if (st != 1) earned += fees[i];
+            if (active[i] <= lastBefore) continue;
+            (uint8 kind,,, uint112 base, uint112 price) = balancer.items(active[i]);
+            if (kind == 2) credited += price - base;
         }
         uint256 paid;
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -232,9 +238,9 @@ contract KeeperAdversarialTest is ForkBase {
                 paid += r;
             }
         }
-        assertGt(earned, 0, "a Shape prize was drawn");
-        assertLe(paid, earned, "rewards never exceed the fees the attacker's draws paid");
-        assertEq(balancer.keeperCredit(), earned - paid);
+        assertGt(credited, 0, "a Shape prize was drawn and replaced");
+        assertLe(paid, credited, "rewards never exceed the fees of the replacements listed");
+        assertEq(balancer.keeperCredit(), credited - paid);
     }
 
     /// Accepted (I-6): a batch bought before a creator action that sets creator work is reconciled with the full

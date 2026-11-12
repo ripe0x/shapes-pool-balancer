@@ -7,14 +7,14 @@ deposit plus 0.2 ETH. Upkeep as on chain: 5 reconciles, 5 Shape units and 4 size
 
 Prices as on chain: a Shape prize lists at its backing, its mint fees, the markup on its backing and a restocking fee
 per Shape set from the basefee at listing (`PoolBalancer.restockFee`); a curated NFT at its value plus the markup. The
-opening stock-up is creator work, paid in full; after it, rewards are capped by the restocking fees earned, and an
-honest keeper sends a call only when the reward covers its gas. FWA is modelled from its code: weights 1e36/price,
+opening stock-up is creator work, paid in full; after it, each call's reward is capped by the restocking fees of the
+prizes it lists (plus credit left over), and an honest keeper sends a call only when the reward covers its gas. FWA is modelled from its code: weights 1e36/price,
 fee = EV × 1.05, owner proceeds = EV at request, staged listings activated 6 per request, 10% slippage refunds.
 
 **Money flows.** After every step the ledger reconciles to the wei: creator deposits + NFTs listed + player payments =
 pool ETH + FWA owner proceeds + FWA escrow + refunds owed + listed prize backing + prizes won + NFTs won + mint fees +
 FWA edge + VRF fees + keeper rewards + creator withdrawals. After every keeper call, lifetime keeper pay outside the
-opening stock-up is checked against the restocking fees earned on delivered draws. After closing and unlisting, **0 ETH
+opening stock-up is checked against the restocking fees of the prizes keepers listed. After closing and unlisting, **0 ETH
 is stranded** in every scenario.
 
 **Demand is fixed at the scenario's draws per step whatever the draw price.** These are model estimates, not
@@ -22,45 +22,47 @@ guarantees.
 
 ## The on-chain rule
 
-| Scenario | Purchases admitted | Draws | NFT odds vs design (mean / max) | Largest prize missing | Creator net per draw | Keepers paid / fees earned (ETH) |
+| Scenario | Purchases admitted | Draws | NFT odds vs design (mean / max) | Largest prize missing | Creator net per draw | Keepers paid / fees credited (ETH) |
 | --- | --- | --- | --- | --- | --- | --- |
-| baseline | 99% | 1,188 | ×1.03 / ×1.11 | 1% of steps | +2.60 mETH | 0.910 / 1.328 |
-| gas 0.1 gwei | 99% | 1,188 | ×1.03 / ×1.11 | 1% | +2.19 mETH | 0.300 / 0.421 |
-| gas rises 1 → 12 gwei | 38% | 461 | ×1.14 / ×1.67 | 1% | +2.89 mETH | 0.908 / 1.255 |
-| gas 8 gwei for steps 100-250 | 62% | 744 | ×1.03 / ×1.44 | 1% | +2.52 mETH | 0.570 / 0.833 |
-| mint fee 0.001 → 0.005 at step 150 | 37% | 438 | ×1.03 / ×1.11 | 1% | +2.40 mETH | 0.335 / 0.489 |
-| markup 15% → 10% at step 150 | 99% | 1,188 | ×1.02 / ×1.11 | 1% | +2.15 mETH | 0.911 / 1.331 |
-| only the dashboard deposit | 99% | 1,188 | ×1.03 / ×1.11 | 1% | +2.60 mETH | 0.910 / 1.328 |
-| bursts of 20 draws before settling | 50% | 1,980 | ×1.09 / ×1.47 | 5% | +2.55 mETH | 1.367 / 2.202 |
-| keeper every 10 steps | 26% | 312 | ×1.15 / ×1.44 | 8% | +2.37 mETH | 0.212 / 0.351 |
-| 4 more NFTs listed over time | 99% | 1,188 | ×2.09 / ×3.83 (more NFTs) | 1% | +2.86 mETH | 0.910 / 1.327 |
-| retire at step 300 | 74% | 888 | ×1.03 / ×1.11 | 1% | +2.64 mETH | 0.680 / 0.992 |
-| creator withdraws everything allowed, every step | 99% | 1,188 | ×1.03 / ×1.11 | 2% | +2.61 mETH | 0.911 / 1.329 |
-| withdraws + bursts of 20 + keeper every 5 | 26% | 692 | ×1.20 / ×1.68 | 13% | +2.48 mETH | 0.463 / 0.772 |
+| baseline | 99% | 1,188 | ×1.03 / ×1.11 | 1% of steps | +2.89 mETH | 0.912 / 1.546 |
+| gas 0.1 gwei | 99% | 1,188 | ×1.03 / ×1.11 | 1% | +2.31 mETH | 0.300 / 0.452 |
+| gas rises 1 → 12 gwei | 38% | 461 | ×1.15 / ×1.72 | 1% | +3.38 mETH | 0.909 / 1.589 |
+| gas 8 gwei for steps 100-250 | 62% | 744 | ×1.03 / ×1.44 | 1% | +2.90 mETH | 0.570 / 0.965 |
+| mint fee 0.001 → 0.005 at step 150 | 37% | 438 | ×1.03 / ×1.11 | 1% | +2.77 mETH | 0.336 / 0.567 |
+| markup 15% → 10% at step 150 | 99% | 1,188 | ×1.02 / ×1.11 | 1% | +2.35 mETH | 0.910 / 1.539 |
+| only the dashboard deposit | 99% | 1,188 | ×1.03 / ×1.11 | 1% | +2.89 mETH | 0.912 / 1.546 |
+| bursts of 20 draws before settling | 50% | 1,980 | ×1.09 / ×1.46 | 4% | +2.78 mETH | 1.368 / 2.556 |
+| keeper every 10 steps | 26% | 314 | ×1.15 / ×1.44 | 8% | +2.91 mETH | 0.212 / 0.397 |
+| 4 more NFTs listed over time | 99% | 1,188 | ×2.09 / ×3.91 (more NFTs) | 1% | +2.75 mETH | 0.909 / 1.537 |
+| retire at step 300 | 74% | 888 | ×1.03 / ×1.11 | 1% | +2.92 mETH | 0.682 / 1.154 |
+| creator withdraws everything allowed, every step | 99% | 1,188 | ×1.03 / ×1.11 | 2% | +2.91 mETH | 0.912 / 1.545 |
+| withdraws + bursts of 20 + keeper every 5 | 26% | 699 | ×1.20 / ×1.67 | 14% | +2.60 mETH | 0.468 / 0.889 |
 
-Keepers were paid at most the restocking fees earned in every run; the opening stock-up cost a further 0.027 ETH
-(0.008 ETH at 0.1 gwei). Creator net includes that, the mint fees of prizes still listed at close, the creator's own
-gas for the unwind calls, unclaimed restocking fees, and prize luck. Players pay about 22.3 mETH a draw at 1 gwei
-(19.2 mETH before the restocking fee, when mint fees and keepers came out of the markup).
+Keepers were paid at most the restocking fees credited in every run; the opening stock-up cost a further 0.027 ETH
+(0.008 ETH at 0.1 gwei), repaid by the fees of the opening prizes as they are won. Creator net includes that, the mint
+and restocking fees of prizes still listed at close, the creator's own gas for the unwind calls, unclaimed restocking
+fees, and prize luck. Players pay about 22.5 mETH a draw at 1 gwei (19.2 mETH before the restocking fee, when mint fees
+and keepers came out of the markup).
 
 ## Why each part of the rule exists
 
 | Alternative | Scenario | What goes wrong |
 | --- | --- | --- |
-| No limit on unsettled draws | bursts of 20 | 598 of ~3,260 draws refunded for slippage per run: each refunded player loses the VRF fee and gas |
+| No limit on unsettled draws | bursts of 20 | 588 of ~3,250 draws refunded for slippage per run: each refunded player loses the VRF fee and gas |
 | Fill measured by prize count | keeper every 10 steps | NFT odds reach ×2.16 design (weight-based: ×1.44): draws take mostly the heaviest, smallest prizes |
 | No withdrawal reserve | creator withdraws everything | the pool never finishes stocking up, so purchases never open |
 | Reserve without the spare top prize | creator withdraws everything | the largest prize is missing 24% of the time (with the spare: 2%) |
+| Restocking fee credited when the prize is won (6fc2b9b) | fresh pool, gas jumps 0.08 → 3 gwei | admitted 8% of the time: fees priced at 0.08 gwei cannot pay restocks at 3 gwei |
 | Keepers paid from all markup earned (d99cf9f) | gas rises 1 → 12 gwei | admitted 11% of the time and −0.70 mETH per draw for the creator: keepers took nearly all the markup |
 | Keeper gas paid from the creator's ETH (before DECISIONS 51) | gas rises 1 → 12 gwei | −1.44 mETH per draw for the creator: the pool kept paying keeper gas beyond what its markup earned |
 
 ## Findings for the owner
 
-1. **Keepers never touch the markup.** They are paid only from restocking fees in prize prices. When gas rises after
-   prizes were listed, keepers wait for later listings, whose fees follow the new basefee (gas rising to 12 gwei:
-   admitted 38% of the time, against 11% when keepers were paid from the markup).
-2. **Players pay for mint fees and keepers.** At 1 gwei the Balanced draw costs about 22.3 mETH (+16%); the creator
-   keeps about 2.6 mETH a draw. Above 5 gwei the fee stops growing, so restocking waits for gas to fall.
+1. **Keepers never touch the markup.** They are paid only from the restocking fees of the prizes they list, priced at
+   that block's gas, so gas jumps up to 5 gwei do not stall restocking (fresh pool, 0.08 → 3 gwei: admitted 99%).
+2. **Players pay for mint fees and keepers.** At 1 gwei the Balanced draw costs about 22.5 mETH (+17%); the creator
+   keeps about 2.9 mETH a draw. Above 5 gwei the fee stops growing, so restocking waits for gas to fall (gas rising to
+   12 gwei: admitted 38% of the time, against 11% when keepers were paid from the markup).
 3. **The mint fee can rise to 0.01 ETH** (Shapes admin `setMintFee`, capped at one unit). Purchases pause until the
    creator saves the design again; new listings then carry the new fee in their price.
 4. **A late keeper pauses purchases instead of drifting the odds.** With a keeper every 10 steps, purchases are

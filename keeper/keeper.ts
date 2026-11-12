@@ -236,7 +236,7 @@ export class Keeper {
       this.state.stats.spentWei = (BigInt(this.state.stats.spentWei) + cost).toString();
       this.state.stats.earnedWei = (BigInt(this.state.stats.earnedWei) + reward).toString();
       this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, measuredGas, reward, cost });
-      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
+      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), gasLimit: p.gas, measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
       delete this.state.pending[b];
       return false;
     }

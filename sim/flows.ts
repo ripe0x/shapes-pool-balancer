@@ -35,12 +35,14 @@ interface Policy {
  * Keeper funding. 'markup': price = backing x (1 + m); credit += share of (price - cost).
  * 'fee': price = backing + mint fees + restock fee per Shape + backing x m; credit += the restock fee (curated NFTs
  * carry none). 'gasFee': as 'fee', with the fee set at listing from basefee (PoolBalancer.restockFee, the contract).
+ * `floorGwei`: price the gas-indexed fee at no less than this basefee. `prepaid`: credit each new listing's fee to
+ * keepers when the keeper lists it (from the pool's ETH, outside creator work) instead of when it is drawn.
  * `markupBps` overrides the scenario markup.
  */
 type Funding =
   | { kind: 'markup'; shareBps: number; markupBps?: number }
   | { kind: 'fee'; perShape: bigint; markupBps?: number }
-  | { kind: 'gasFee'; markupBps?: number };
+  | { kind: 'gasFee'; markupBps?: number; floorGwei?: number; prepaid?: boolean };
 const ALL_MARKUP: Funding = { kind: 'markup', shareBps: 10_000 };
 const gasFeePerShape = (gwei: number) => restockFeeAt(BigInt(Math.round(gwei * 1e9)));
 /** Listed price and keeper credit of a prize under `fu`; d = -1 for a curated NFT of creator value `base`. */
@@ -51,7 +53,7 @@ function priced(fu: Funding, d: number, base: bigint, m: number, mintFee: bigint
     const price = (base * (BPS + mk)) / BPS;
     return { price, cost, kfee: price > cost ? ((price - cost) * BigInt(fu.shareBps)) / BPS : 0n };
   }
-  const per = fu.kind === 'fee' ? fu.perShape : gasFeePerShape(gwei);
+  const per = fu.kind === 'fee' ? fu.perShape : gasFeePerShape(Math.max(gwei, fu.floorGwei ?? 0));
   const kfee = d < 0 ? 0n : per * BigInt(SHAPES_IN[d]);
   return { price: cost + kfee + (base * mk) / BPS, cost, kfee };
 }
@@ -196,7 +198,8 @@ function run(s: Scenario, p: Policy, seed: number) {
     for (let call = 0; call < 20; call++) {
       // plan the call: reconcile up to MAX_RECONCILE draws, then restock as PoolBalancer._fillDeficit does
       const recon = unreconciled.slice(0, MAX_RECONCILE);
-      const earned = recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.kfee : 0n), 0n);
+      const prepaid = fu.kind === 'gasFee' && !!fu.prepaid;
+      const earned = prepaid ? 0n : recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.kfee : 0n), 0n);
       const haveAfter = [...have];
       for (const u of recon) if (u.item && !u.item.nft) haveAfter[u.item.d]--;
       const bound = KEEPER_MAX_GAS * rewardPrice + KEEPER_INCENTIVE;
@@ -215,7 +218,9 @@ function run(s: Scenario, p: Policy, seed: number) {
       }
       if (!recon.length && !units) return;
       const gas = BigInt(units ? GAS.upkeepBase + GAS.perShape * (units - 1) + GAS.perExtraDenom * Math.max(0, denoms - 1) : GAS.reconcileOnly);
-      const credit = L.credit + earned;
+      // Prepaid: this call's new listings credit their fees now (not during creator work, which is paid in full).
+      const pre = prepaid && !setup ? mints.reduce((a, [d, k]) => a + BigInt(k) * priced(fu, d, DENOMS[d], m, fee, gwei).kfee, 0n) : 0n;
+      const credit = L.credit + earned + pre;
       let reward = (gas > KEEPER_MAX_GAS ? KEEPER_MAX_GAS : gas) * rewardPrice + KEEPER_INCENTIVE;
       if (!setup && reward > credit) reward = credit;
       if (reward > bal) reward = bal;
@@ -227,7 +232,7 @@ function run(s: Scenario, p: Policy, seed: number) {
       for (const u of recon) if (u.item) {
         if (u.item.nft) { curated.delete(u.item.id); if (s.relistNft && !retired && enabled) addNft(Number(u.item.base) / 1e18); } else have[u.item.d]--;
       }
-      L.markupEarned += earned; L.feesPaid += recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.price - u.item.cost : 0n), 0n); L.credit = setup ? credit : credit - reward;
+      L.markupEarned += earned + pre; L.feesPaid += recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.price - u.item.cost : 0n), 0n); L.credit = setup ? credit : credit - reward;
       L.balance += L.ownerProceeds; L.ownerProceeds = 0n;
       for (const [d, k] of mints) for (let j = 0; j < k; j++) {
         L.balance -= cost(d, fee); L.mintFees += BigInt(SHAPES_IN[d]) * fee; L.listedBacking += DENOMS[d];
@@ -295,7 +300,7 @@ const scenarios: Scenario[] = [
   { ...base, name: 'creator drains every step', creatorDrains: true },
   { ...base, name: 'drains + overlap 20 + slow keeper', creatorDrains: true, burst: flat(20), keeperEvery: 5 },
 ];
-const CONTRACT: Policy = { fillBps: 7000, buffer: true, float: true, maxPending: 5, byWeight: true, maxMintFee: eth(0.002), funding: { kind: 'gasFee' } };
+const CONTRACT: Policy = { fillBps: 7000, buffer: true, float: true, maxPending: 5, byWeight: true, maxMintFee: eth(0.002), funding: { kind: 'gasFee', prepaid: true } };
 const policies: Record<string, Policy> = {
   contract: CONTRACT,
   'no reserve': { ...CONTRACT, buffer: false },
@@ -360,6 +365,10 @@ function compareKeeperFunding() {
     { ...base, name: 'gas 8 gwei for steps 100-250', baseGwei: (t) => (t >= 100 && t < 250 ? 8 : 1) },
     { ...base, name: 'gas rises 1 -> 12 gwei', baseGwei: (t) => 1 + (11 * t) / 400 },
     { ...base, name: 'gas 1 gwei, keeper every 10 steps', keeperEvery: 10 },
+    { ...base, name: 'gas jumps 0.08 -> 3 gwei at step 100 and stays', baseGwei: (t) => (t < 100 ? 0.08 : 3) },
+    { ...base, name: 'fresh pool, gas jumps 0.08 -> 3 gwei at step 1 and stays', baseGwei: (t) => (t < 1 ? 0.08 : 3) },
+    { ...base, name: 'fresh pool, 1 draw a step, gas jumps 0.08 -> 4.9 gwei at step 1', burst: flat(1), baseGwei: (t) => (t < 1 ? 0.08 : 4.9) },
+    { ...base, name: 'gas 0.08 gwei, 3 gwei for steps 100-200', baseGwei: (t) => (t >= 100 && t < 200 ? 3 : 0.08) },
   ];
   const fee: Funding = { kind: 'fee', perShape: eth(0.001) };
   const gasFee: Funding = { kind: 'gasFee' };
@@ -369,8 +378,10 @@ function compareKeeperFunding() {
     ['C keepers take 25% of markup', { kind: 'markup', shareBps: 2500 }],
     ['D fee 0.001/Shape, 15% markup', fee],
     [`E fee 0.001/Shape, same player price`, { ...fee, markupBps: equalPriceMarkup(s, fee) }],
-    ['F gas-indexed fee, 15% markup (the contract)', gasFee],
+    ['F gas-indexed fee, credited when won (6fc2b9b)', gasFee],
     [`G gas-indexed fee, same player price`, { ...gasFee, markupBps: equalPriceMarkup(s, gasFee) }],
+    ['H gas-indexed fee, 1 gwei floor', { ...gasFee, floorGwei: 1 }],
+    ['P gas-indexed fee, credited at listing (the contract)', { ...gasFee, prepaid: true }],
   ];
   console.log(`${RUNS} runs x ${base.steps} steps, Balanced mix + one 0.3 ETH NFT, 3 draws a step, 15% markup unless noted.`);
   console.log('Creator P&L counts everything: deposits, NFTs, withdrawals, the opening stock-up, unwind gas and prize luck.');

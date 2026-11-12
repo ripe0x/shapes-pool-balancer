@@ -363,6 +363,7 @@ async function main() {
     console.log(JSON.stringify(summary, null, 2));
     assert.equal(health.ok, true, 'keeper health');
     assert.deepEqual(health.errors, {}, 'no pool errors');
+    if (health.stats.reverted) console.error(keeperLog.filter((l) => l.includes('"reverted"') || l.includes('revert')).join('\n'));
     assert.equal(health.stats.reverted, 0, 'no reverted keeper transactions since the last restart');
     assert.equal(stats.aboveCapSent, 0, 'keeper never serviced above the cap');
     if (ROUNDS >= 50) assert.ok(stats.byPeriod.above > 0 && stats.byPeriod.near > 0 && stats.byPeriod.below > 0, 'all gas periods exercised');

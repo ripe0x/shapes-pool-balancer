@@ -15,19 +15,24 @@ rewrite and must be re-run against it before release.
 Open before release:
 
 1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
-   paid from `keeperCredit`, now funded by the basefee-indexed restocking fee in prize prices), made after the
-   independent review. The restocking fee had one independent AI review before commit (see SECURITY.md).
+   paid from `keeperCredit`, funded by the basefee-indexed restocking fees of the prizes each call lists), made after
+   the independent review. The fee-at-draw version had one independent AI review; crediting at listing (DECISIONS 57)
+   has not been independently reviewed.
 2. **Re-run the fork suites, keeper e2e and both launch rehearsals** against the rewrite, then freeze a release
    candidate. The keeper e2e and rehearsals start their own anvil fork on port 18546 and need that port's approval.
 3. **Gas finding resolved (DECISIONS 51-56):** outside creator-started work keepers are paid only from restocking fees
    players pay in prize prices, so keepers never touch the creator's markup; when gas rises after listing, restocking
    waits and purchases pause instead. Opening the pool (stocking it) is still paid from the creator's ETH. Players pay
    about 16% more per Balanced draw at 1 gwei; whether that changes demand is untested.
-4. **Gas jump after listing (rehearsal, `6fc2b9b`):** keeper e2e passes (12 txs, 0 reverted, 0 skipped; rewards
-   outside setup equal one restocking fee). The 50-round rehearsal stops at its first 3 gwei step: prizes stocked at
-   0.08 gwei carry 0.0003 ETH fees, a restock at 3 gwei costs ~0.0028 ETH, so keepers wait and the pool stays at
-   LOW_INVENTORY until gas falls to about 0.5 gwei. Owner decision pending: accept, or fund the restock from the new
-   listings' fees (creator fronts them, recovered when those prizes are drawn), or set a fee floor.
+4. **Gas jump after listing: resolved (DECISIONS 57-58).** At `6fc2b9b` the 50-round rehearsal stalled at its 3 gwei
+   step. With fees credited when the keeper lists a prize: keeper e2e passes (12 txs, 0 reverted, 0 skipped); the
+   50-round rehearsal passed on its second run (48/48 buyers found the pool open; 3 and 4.9 gwei batches serviced;
+   above 8 gwei the keeper waited 4/4 and resumed; 59 keeper txs, 0 reverted). Its first run had one reverted keeper
+   transaction whose cause was not captured; the harness now prints reverted transactions. 300 rounds: 288/288 buyers
+   found the pool open, 24 batches each at 3 and 4.9 gwei serviced, above 8 gwei the keeper waited 24/24 and resumed,
+   keeper balance reconciled to the wei; **3 of 340 keeper transactions reverted** after ~1.9M gas each, and one mined
+   call billed 291k gas more than its estimate. Suspected: the bundled keeper's 30% gas-limit headroom is exceeded
+   when work grows between estimate and inclusion (open; being confirmed with the gas limit now logged).
 5. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
 6. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
 6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the

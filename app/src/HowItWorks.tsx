@@ -108,7 +108,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
           <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">Keepers are paid only from the restocking fees in prize prices. When gas costs more than those fees, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid only from the restocking fees of the prizes they list, priced at the gas of the moment. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -120,7 +120,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'pays mint fees and keepers', share: feeShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes the Shapes mint fee for its replacement (0.001 ETH a Shape today) and a restocking fee that pays keepers, set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). Keepers are paid only from restocking fees, so your markup is yours: about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape today) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). That fee pays the keeper who lists the prize; the pool fronts it and the player who wins the prize pays it back. Your markup is yours: about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
       </section>
 
       <section className="hiw-sec">
@@ -168,7 +168,7 @@ const FAQ: [string, string][] = [
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Mint fees and keepers are paid from fees in prize prices, never from your markup. Stocking the pool when you open it costs gas, and prizes still listed when you close keep their mint fees. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['Can I lose money?', 'Mint fees and keepers are paid from fees in prize prices, never from your markup. The pool fronts those fees until each prize is won, so prizes still listed when you close keep their mint and restocking fees; stocking the pool when you open it costs gas, repaid as those first prizes are won. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],

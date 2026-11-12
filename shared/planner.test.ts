@@ -40,8 +40,8 @@ describe('planner', () => {
 
   it('prices a Shape prize at cost, markup on its backing and a basefee-indexed restocking fee per Shape', () => {
     const GWEI = 10n ** 9n;
-    expect(restockFeeAt(GWEI)).toBe(750_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.0009875 ETH
-    expect(restockFeeAt(80n * GWEI)).toBe(750_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.00395 ETH
+    expect(restockFeeAt(GWEI)).toBe(900_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.001145 ETH
+    expect(restockFeeAt(80n * GWEI)).toBe(900_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.0047 ETH
     // 0.01 Shape: 0.01 + 0.001 mint fee + 0.0015 markup + one fee
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
