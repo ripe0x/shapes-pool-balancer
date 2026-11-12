@@ -77,8 +77,10 @@ not "in the right place".
 
 ## 3. Process
 
-- **Budget:** [owner sets before intake; round 7 used a 12 auditor-hour cap]. Allocate per lane, stop each lane at
-  its ceiling, and report what was used. If the cap is hit, write a partial report with exact blockers; that is not a
+- **Budget:** 12 auditor-hours in total (owner-approved, as in round 7), including PoCs, fork and fuzz campaigns,
+  challenge and reporting. Suggested ceilings: discovery lane A 3 h, lane B 3 h, integration assessor 2 h,
+  controller (§5, reconciliation, economic tables, report) 4 h. Stop each lane at its ceiling and report what was
+  used. If the cap is hit, write a partial report with exact blockers; that is not a
   clean result.
 - **Blind discovery lanes:** at least two, plus an integration assessor. Each packet contains only §1, §2, §4, the
   budget and the permitted methods.
