@@ -315,7 +315,11 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     Residual: FWA asks once per transaction before issuing its draws, so one batch of up to five is admitted on one
     spare. If it wins more than the spare covers, those prizes wait for proceeds or a deposit and purchases stay refused
     meanwhile (`test_batchAtMinimumReservePausesUntilFunded`); the pool never keeps selling with a prize it cannot
-    restock. Fully backing a batch would need five largest prizes in ETH to admit any purchase. `canPurchase` measures
+    restock. A shortfall never leaves a winner unpaid: each Shape prize holds its own backing in the Shapes contract
+    before it is listed, FWA settles refunds, and keeper pay is capped at the balance. Worst batch at 0.534 ETH held:
+    the 0.5, both 0.1 and two 0.01 Shapes, all delivered and redeemed for 0.72 ETH; 0.604 ETH reopens purchases
+    (`test_worstBatchAtMinimumReservePaysEveryWinner`). Fully backing a batch would need five largest prizes in ETH to
+    admit any purchase. `canPurchase` measures
     58,787 gas cold against FWA's 100k stipend. Rejected: always reserving five spare prizes (2.5 ETH more for
     Balanced, locked even when demand is low).
 62. **`close()` sets `keeperCredit` to zero.** Closing frees the whole balance, so credit left from earlier listings

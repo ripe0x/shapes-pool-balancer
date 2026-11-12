@@ -117,6 +117,61 @@ contract ReserveTest is ForkBase {
         assertLt(address(balancer).balance + pool.ownerProceeds(), balancer.requiredReserve(), "still short after settling");
     }
 
+    /// The worst batch at the minimum reserve (the 0.5, both 0.1 and two 0.01 Shapes) costs more to restock than the
+    /// pool holds. Every winner is still paid in full: each prize carries its own backing in the Shapes contract,
+    /// so a shortfall only leaves the board short and purchases paused until it is funded.
+    function test_worstBatchAtMinimumReservePaysEveryWinner() public {
+        uint256 big = lastListingId();
+        uint256[5] memory want = [big, big - 1, big - 2, big - 3, big - 4];
+        uint256 owedValue;
+        for (uint256 i; i < 5; ++i) {
+            (,,,,, uint256 price,,) = pool.listings(want[i]);
+            owedValue += price;
+        }
+        _claimAll();
+        uint256 held = address(balancer).balance + pool.ownerProceeds();
+
+        uint256[] memory ids = buy(buyer, 5);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0 && ids[i] == ids[i - 1]) continue;
+            _drawListing(ids[i], want[i]);
+        }
+        fillUp();
+        assertGt(owedValue, held, "the batch won more than the pool held");
+
+        uint256 paid;
+        for (uint256 i; i < 5; ++i) {
+            (,, address winner, uint256 tokenId,,,,) = pool.listings(want[i]);
+            assertEq(winner, buyer, "drawn as forced");
+            assertEq(shapes.ownerOf(tokenId), buyer, "prize delivered");
+            uint256[] memory one = new uint256[](1);
+            one[0] = tokenId;
+            uint256 backing = shapes.denominationAt(shapes.denomIndexOf(tokenId));
+            uint256 before = buyer.balance;
+            vm.prank(buyer);
+            shapes.redeemBatch(one);
+            paid += buyer.balance - before;
+            assertEq(buyer.balance - before, backing, "full backing");
+        }
+        assertEq(paid, 0.72 ether, "winner redeemed 0.5 + 0.1 + 0.1 + 0.01 + 0.01");
+
+        // The pool restocked what its ETH covered and refuses purchases until the rest is funded.
+        assertEq(balancer.admissionStatus(), LOW_FUNDS);
+        _strangerCannotBuy();
+        emit log_named_decimal_uint("held at minimum reserve", held, 18);
+        emit log_named_decimal_uint("listed price of the five prizes won", owedValue, 18);
+        emit log_named_decimal_uint("deposit to reopen", balancer.requiredReserve() - address(balancer).balance - pool.ownerProceeds(), 18);
+        _fundGap();
+        fillUp();
+        uint16[16] memory active = balancer.getActiveShapes();
+        assertEq(active[0], 4);
+        assertEq(active[2], 2);
+        assertEq(active[3], 1);
+        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
+        if (balancer.admissionStatus() == LOW_FUNDS) _fundGap();
+        assertEq(balancer.admissionStatus(), 0, "funded and restocked: open again");
+    }
+
     /// E5: credit left from keeper listings returns to the creator at close, so a later deposit never pays it.
     function test_closeReturnsKeeperCredit() public {
         // A 0.01 Shape (listed right after the curated NFT) drawn and restocked by a keeper bidding below the fee's
