@@ -31,8 +31,10 @@ Open before release:
    transaction whose cause was not captured; the harness now prints reverted transactions. 300 rounds: 288/288 buyers
    found the pool open, 24 batches each at 3 and 4.9 gwei serviced, above 8 gwei the keeper waited 24/24 and resumed,
    keeper balance reconciled to the wei; **3 of 340 keeper transactions reverted** after ~1.9M gas each, and one mined
-   call billed 291k gas more than its estimate. Suspected: the bundled keeper's 30% gas-limit headroom is exceeded
-   when work grows between estimate and inclusion (open; being confirmed with the gas limit now logged).
+   call billed 291k gas more than its estimate. A second 300-round run at `8c8d0e9` passed with 0 reverted (288/288
+   open; billed exceeded the estimate by up to 218k gas). Suspected, not confirmed: the bundled keeper's 30% gas-limit
+   headroom is exceeded when work grows between estimate and inclusion; the keeper now logs the gas limit on every
+   receipt.
 5. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
 6. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
 6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
