@@ -83,6 +83,9 @@ export interface PoolInputs {
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
   restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
+  /** FWA prices of curated NFTs already listed, matching the first entries of `curatedBases`. A listing keeps the
+   *  markup in force when it was made; entries without a price are new and priced at `markupBps`. */
+  curatedPrices?: bigint[];
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -107,11 +110,15 @@ export const prizePrice = (d: number, i: Pick<PoolInputs, 'mintFee' | 'markupBps
   prizeBase(d, i.mintFee, i.markupBps) + BigInt(SHAPES_IN[d]) * i.restockFee;
 export const weightOf = (price: bigint) => NUM / price;
 
-export function curatedTotals(bases: bigint[], markupBps: number) {
+/** A curated NFT's FWA price: its live listing price if listed, else its value at the current markup. */
+export const curatedPrice = (i: number, inputs: Pick<PoolInputs, 'curatedBases' | 'markupBps' | 'curatedPrices'>) =>
+  inputs.curatedPrices?.[i] ?? listPrice(inputs.curatedBases[i], inputs.markupBps);
+
+export function curatedTotals(inputs: Pick<PoolInputs, 'curatedBases' | 'markupBps' | 'curatedPrices'>) {
   let w = 0n;
   let wp = 0n;
-  for (const b of bases) {
-    const p = listPrice(b, markupBps);
+  for (let i = 0; i < inputs.curatedBases.length; i++) {
+    const p = curatedPrice(i, inputs);
     const wi = weightOf(p);
     w += wi;
     wp += wi * p;
@@ -160,7 +167,7 @@ export interface Evaluation {
 }
 
 export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
-  const c = curatedTotals(inputs.curatedBases, inputs.markupBps);
+  const c = curatedTotals(inputs);
   const s = shapeTotals(counts, inputs);
   const tW = c.w + s.w;
   const reasons: string[] = [];
@@ -177,7 +184,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
 
   const tiers: Tier[] = [];
   inputs.curatedBases.forEach((b, i) => {
-    const p = listPrice(b, inputs.markupBps);
+    const p = curatedPrice(i, inputs);
     tiers.push({ label: `Curated #${i + 1}`, kind: 'curated', count: 1, value: b, listPrice: p, oddsPpm: Number((weightOf(p) * 1_000_000n) / (tW || 1n)) });
   });
   counts.forEach((n, d) => {

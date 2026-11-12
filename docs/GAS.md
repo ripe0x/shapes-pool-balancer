@@ -152,17 +152,17 @@ call reconciles them anyway, and the creator can run upkeep from the dashboard.
 
 ## Keeper reserve audit
 
-`requiredReserve()` is a withdrawal bound only; it is not spent while the pool is open. Components, while open:
+`requiredReserve()` bounds withdrawals and, since DECISIONS 61, admits purchases only while ETH plus settled proceeds covers it. Components, while open:
 
 | Component of `requiredReserve()` while open | Protects | Sized at |
 | --- | --- | --- |
 | deficit: missing prizes × (backing + mint fee per Shape inside) | restoring the target from the prizes currently listed | exact |
 | (unreconciled draws + 1) × the most expensive prize in the target (its backing + the mint fee for each Shape inside it) | one largest prize per unreconciled draw and one spare, so a big win is restocked | upper bound: a draw can remove at most the most expensive prize |
-| one maximum keeper reward per 6-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.0165 ETH each (the hard guarantee) |
+| one maximum keeper reward per 5-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.0165 ETH each (the hard guarantee) |
 
 Each reward uses the fixed maximum (0.0165 ETH), so the bound does not move with the current gas price. A restore paid at
-the cap spends held ETH; if the balance then falls below `requiredReserve()`, the gate can read LOW_INVENTORY (status 6)
-until the creator deposits `requiredReserve() − balance`. Reserve sizes for representative inventories are **to be
+the cap spends held ETH; purchases need ETH plus settled proceeds at or above `requiredReserve()` (LOW_FUNDS, status 7)
+until the creator deposits the difference. It is also checked on every purchase (DECISIONS 61). Reserve sizes for representative inventories are **to be
 measured on the rewrite** (the previous design's `test_reserveSizes` numbers do not carry over).
 
 ## Keeper bounds (constants in `PoolBalancer`)

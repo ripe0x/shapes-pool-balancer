@@ -23,9 +23,9 @@ const ACCTS = [
 const VRF_SERVICE = '0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d' as const;
 const serviceAbi = parseAbi(['function coordinator() view returns (address)', 'function rawFulfillRandomWords(uint256 requestId, uint256[] randomWords)']);
 
-const pub = createPublicClient({ transport: http(RPC) });
-const test = createTestClient({ mode: 'anvil', transport: http(RPC) });
-const wallet = createWalletClient({ transport: http(RPC) });
+const pub = createPublicClient({ transport: http(RPC, { timeout: 60_000 }) });
+const test = createTestClient({ mode: 'anvil', transport: http(RPC, { timeout: 60_000 }) });
+const wallet = createWalletClient({ transport: http(RPC, { timeout: 60_000 }) });
 const logs: string[] = [];
 
 async function main() {

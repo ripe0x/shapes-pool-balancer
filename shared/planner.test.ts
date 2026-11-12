@@ -21,6 +21,18 @@ describe('planner', () => {
   const E = 10n ** 18n;
   const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n) };
 
+  it('prices listed curated NFTs at their live FWA price after a markup change', () => {
+    // Round 8 E4: listed at 0.02 ETH, then the markup changed to 10%; FWA keeps the listing at 0.02.
+    const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
+    const at = { ...inputs, curatedBases: [E / 50n], markupBps: 1000 };
+    const live = evaluate(counts, { ...at, curatedPrices: [E / 50n] });
+    expect(live.tiers[0].listPrice).toBe(E / 50n);
+    expect(live.drawPrice).toBeLessThan(evaluate(counts, at).drawPrice);
+    // A new NFT added after the listed one is priced at the current markup.
+    const added = evaluate(counts, { ...at, curatedBases: [E / 50n, E / 10n], curatedPrices: [E / 50n] });
+    expect(added.tiers[1].listPrice).toBe((E / 10n) * 11n / 10n);
+  });
+
   it('packs and unpacks plans', () => {
     const c = [5, 3, 2, 0, 0, 0, 0, 0, 1, 2, 0, 0, 1, 0, 0, 4];
     expect(unpackPlan(packPlan(c))).toEqual(c);

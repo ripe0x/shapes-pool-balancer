@@ -21,8 +21,11 @@ interface IKeeperList {
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
 ///        no new draw while upkeep is finishing creator-started work, while no curated NFT is listed (the pool exists to
 ///        give NFTs away), while MAX_BATCH draws are unsettled, while the
-///        Shapes mint fee is above what the creator accepted, or while the prizes' weight, after assuming every
-///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight.
+///        Shapes mint fee is above what the creator accepted, while the prizes' weight, after assuming every
+///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight, or while this
+///        contract's ETH plus settled FWA proceeds is below `requiredReserve` (no purchase while draws in flight lack one
+///        largest prize each in ETH, and a closed-and-drained pool cannot reopen empty; FWA asks once per transaction,
+///        before issuing its draws, so one batch of up to five can still be admitted on one spare).
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. That fee pays the keeper who lists the prize, in the same call, so it matches the gas
@@ -30,7 +33,7 @@ interface IKeeperList {
 ///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
 ///        unsettled; FWA stages those listings and activates them in order.
 ///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
-///        unreconciled draw and one spare, plus keeper rewards for that work.
+///        unreconciled draw and one spare, plus keeper rewards for that work; purchases stop while ETH is below it.
 ///      - Only this contract can list into the pool (FWA `OwnerOnlyInventory`).
 ///      - Prize tokens are held only inside a transaction: minted then listed, or withdrawn then redeemed. Any NFT this
 ///        contract owns between transactions is untracked and creator-recoverable.
@@ -88,7 +91,8 @@ contract PoolBalancer is ReentrancyGuard {
     //   RESTOCK_FEE_FLAT, at the listing block. Fee and work share a block, so the fee tracks the gas the listing call
     //   pays at any basefee up to the cap (above it keepers wait); basefee is not the caller's to choose. The pool's
     //   ETH fronts the fee until a player wins that prize; fees of prizes unlisted or never drawn are the creator's
-    //   cost, at most the target's Shapes x restockFee(). Unspent credit pays reconcile-only calls.
+    //   cost, at most the target's Shapes x restockFee(). Unspent credit pays reconcile-only calls until `close`
+    //   returns it to the creator.
     // - A deficit to restock needs a paid draw (or a creator action, which earns no credit), so buying one's own draws
     //   pays the price, FWA's edge and the VRF fee for at most KEEPER_INCENTIVE of profit per call.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
@@ -123,6 +127,7 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant BUSY = 4;
     uint8 internal constant MINT_FEE_ROSE = 5;
     uint8 internal constant LOW_INVENTORY = 6;
+    uint8 internal constant LOW_FUNDS = 7;
 
     /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
@@ -331,10 +336,13 @@ contract PoolBalancer is ReentrancyGuard {
         emit PurchasesOpened();
     }
 
-    /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected.
+    /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected. Unspent keeper
+    ///         credit returns to the creator: closing frees the whole balance, so credit left standing would later be
+    ///         paid from fresh deposits. Upkeep after closing earns keepers nothing.
     function close() external onlyCreator {
         enabled = false;
         creatorWork = false;
+        keeperCredit = 0;
         if (!pool.retired()) pool.setBool(ACQUISITIONS_ENABLED_KEY, false);
         emit PurchasesClosed();
     }
@@ -549,6 +557,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 lost = (p.lastIssuedSequence() - reconciledSequence) * MAX_PRIZE_WEIGHT;
         uint256 w = prizeWeight;
         if (w < lost || (w - lost) * BPS < FILL_BPS * targetWeight) return LOW_INVENTORY;
+        if (address(this).balance + p.ownerProceeds() < requiredReserve()) return LOW_FUNDS;
         return OK;
     }
 
@@ -801,10 +810,11 @@ contract PoolBalancer is ReentrancyGuard {
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
         if (collection == address(SHAPES) || collection == address(PACKS)) revert ShapesNotCurated();
-        price = _priced(base);
         IERC721Min(collection).transferFrom(msg.sender, address(this), tokenId);
         if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert InvalidItem();
         IERC721Min(collection).approve(address(pool), tokenId);
+        // Priced after the collection's calls: a creator-controlled collection may reconfigure the markup inside them.
+        price = _priced(base);
     }
 
     function _recordCurated(uint256 lid, address collection, uint256 tokenId, uint256 base, uint256 price) internal {

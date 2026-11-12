@@ -191,6 +191,7 @@ contract InvariantTest is ForkBase {
         uint256 w = balancer.prizeWeight();
         assertGe(w, lost, "weight above the unreconciled allowance");
         assertGe((w - lost) * 10_000, FILL_BPS * balancer.targetWeight(), "inventory at or above the fill floor");
+        assertGe(address(balancer).balance + pool.ownerProceeds(), balancer.requiredReserve(), "reserve held in ETH");
     }
 
     function _listedShapes() internal view returns (uint256 n) {
@@ -200,7 +201,7 @@ contract InvariantTest is ForkBase {
 
     function afterInvariant() public {
         emit log_named_uint("purchases admitted this run", handler.purchasesAdmitted());
-        for (uint8 r; r < 7; ++r) {
+        for (uint8 r; r < 8; ++r) {
             if (handler.closedReasons(r) != 0) emit log_named_uint(string.concat("closed reason ", vm.toString(r)), handler.closedReasons(r));
         }
     }

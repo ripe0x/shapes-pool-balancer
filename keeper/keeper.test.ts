@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decide, KEEPER_MAX_GAS } from './keeper';
+import { decide, gasLimitFor, KEEPER_MAX_GAS, UPKEEP_GAS_FLOOR } from './keeper';
 
 const GWEI = 10n ** 9n;
 /**
@@ -63,8 +63,17 @@ describe('keeper profitability policy across gas prices', () => {
     expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: GWEI / 20n, maxLossWei: 2n * 10n ** 14n }).send).toBe(false);
   });
 
-  it('never sends a call estimated above the reimbursable maximum', () => {
-    const d = decide({ gasEstimate: KEEPER_MAX_GAS + 1n, expectedReward: 10n ** 18n, baseFee: 0n, priorityFee: 0n, maxLossWei: 0n });
-    expect(d.send).toBe(false);
+  it('sends an opening stockup estimated above KEEPER_MAX_GAS when the capped reward covers it', () => {
+    // Round 8 E7: five-Shape opening upkeeps estimated 3,281,364-3,281,532 gas; creator work is paid in full.
+    const bf = 80_000_000n;
+    const prio = GWEI / 20n;
+    const r = reward(KEEPER_MAX_GAS, bf, bf + prio);
+    expect(decide({ gasEstimate: 3_281_532n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(true);
+  });
+
+  it('gas limit covers a draw that settles before inclusion', () => {
+    // Round 8 E8: estimated 674,278 with one draw pending; billed 1,210,546 once it settled in the same block.
+    expect(gasLimitFor(674_278n)).toBeGreaterThan(1_210_546n);
+    expect(gasLimitFor(UPKEEP_GAS_FLOOR)).toBe((UPKEEP_GAS_FLOOR * 13n) / 10n);
   });
 });

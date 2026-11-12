@@ -30,6 +30,7 @@ export const STATUS: Record<number, string> = {
   4: 'Busy: draws settling',
   5: 'Shapes mint fee rose',
   6: 'Prizes running low',
+  7: 'Reserve not funded',
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -59,8 +60,10 @@ function useBalancer(b?: Address) {
         r<bigint>('requiredReserve'), r<bigint>('withdrawableSurplus'), r<bigint[]>('getActiveIds'),
         r<number[]>('getActiveShapes'), pub.getBalance({ address: b }), r<bigint>('mintFeeCap'), r<bigint>('reconciledSequence'),
       ]);
-    // Upkeep is needed exactly when simulating it succeeds.
-    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: b })
+    // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
+    // current fees (the reward bound it must leave unspent grows with the gas price).
+    const fees = await pub.estimateFeesPerGas();
+    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: creator, ...fees })
       .then(() => ({ needed: true }), () => ({ needed: false }));
     // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
     const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
@@ -191,7 +194,8 @@ const poolName = (d: D) => d.ensName ?? `Pool ${short(d.balancer)}`;
 function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open' | Tab; label?: string } {
   if (d.retired) return { head: 'Retired.', body: 'The pool no longer sells draws. Withdrawals still work.' };
   if (d.target === 0n) return { head: 'Not set up.', body: 'Finish the design and save it to open purchases.' };
-  const owed = d.required > d.balance ? d.required - d.balance : 0n;
+  const held = d.balance + d.proceeds;
+  const owed = d.required > held ? d.required - held : 0n;
   switch (d.admission) {
     case 0: return d.upkeep.needed
       ? { head: 'Open.', body: 'Drawn prizes are waiting to be restocked.', act: 'upkeep' }
@@ -206,6 +210,7 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open'
     case 6: return owed > 0n
       ? { head: 'Paused.', body: `Prizes are running low. Deposit ${eth(owed)} ETH to restock.`, act: 'overview', label: 'Deposit' }
       : { head: 'Paused.', body: 'Prizes are running low. Run upkeep to restock.', act: 'upkeep' };
+    case 7: return { head: 'Paused.', body: `Deposit ${eth(owed)} ETH to reopen purchases.`, act: 'overview', label: 'Deposit' };
     default: return { head: 'Check the pool.', body: STATUS[d.admission] ?? `Status ${d.admission}.`, act: 'upkeep' };
   }
 }
@@ -299,7 +304,7 @@ export function App() {
 }
 
 /** The short state of a pool for the list: from its admission status, or "Not set up" before a design is saved. */
-const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes' };
+const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes', 7: 'Paused: needs ETH' };
 
 /** Every pool this wallet created, with its state and ETH, and the way to start another. */
 function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
@@ -507,6 +512,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     ...pending.map(({ n, i }, k) => ({ key: `d${i}`, name: rowName(n, listed.length + k), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
   ];
   const bases = rows.map((r) => r.base);
+  const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : draft?.markup ?? DEFAULT_MARKUP);
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
   // Pool size: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
@@ -522,7 +528,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
   const markupBps = Math.round(markup * 100);
   const base: DesignInputs = {
-    curatedBases: bases, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
+    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
     have: d.activeShapes,
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
@@ -1034,7 +1040,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const room = 20 - listed.length;
   const plan = d.target ? unpackPlan(d.target) : undefined;
   const inputs: DesignInputs = {
-    curatedBases: bases, markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
+    curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
     have: d.activeShapes,
   };
   const before = plan && bases.length ? describe(plan, inputs) : undefined;
@@ -1103,9 +1109,10 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const [how, setHow] = useState(false);
   const plan = d.target ? unpackPlan(d.target) : ZERO;
   const backing = d.activeShapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
-  const bases = d.listings.filter((l) => l.kind === 1 && l.state === 1).map((l) => l.base);
+  const curated = d.listings.filter((l) => l.kind === 1 && l.state === 1);
+  const bases = curated.map((l) => l.base);
   const econ = bases.length && plan.some(Boolean)
-    ? economics(plan, { curatedBases: bases, markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee })
+    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee })
     : undefined;
   const month = econ ? econ.markupPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);

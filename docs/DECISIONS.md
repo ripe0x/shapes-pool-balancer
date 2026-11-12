@@ -300,3 +300,33 @@ the factory". Supersedes 59 and, for the keeper list only, the ownerless factory
     Risk accepted: while restricted, every pool depends on the approved keepers for timely restocking (creators can
     still run their own), and a compromised keeper admin could restrict upkeep to itself. It would earn only the
     normal, fee-capped rewards; pools would pause at LOW_INVENTORY rather than lose money if it then stopped.
+
+## Round 8 audit repairs (2026-11-12)
+
+Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit/round8/report.md`).
+
+61. **Purchases need the reserve in ETH (`LOW_FUNDS`, status 7).** `admissionStatus` refuses purchases while the
+    Balancer's ETH plus settled FWA owner proceeds is below `requiredReserve()`. The reserve already held one largest
+    prize per unreconciled draw plus one spare; it bounded only withdrawals, so a creator could claim down to the
+    quiet-state reserve and then admit five draws (E1), or close, claim everything and reopen (E2). Supersedes the
+    round 7 decision 46 to keep that risk. Cost: concurrency needs capital. At exactly the reserve a pool admits one
+    purchase transaction at a time until upkeep reconciles its draws; each further draw in flight needs one more largest
+    prize of ETH (0.5 ETH for Balanced), and after a big win uses the spare, purchases wait for proceeds or a deposit.
+    Residual: FWA asks once per transaction before issuing its draws, so one batch of up to five is admitted on one
+    spare. If it wins more than the spare covers, those prizes wait for proceeds or a deposit and purchases stay refused
+    meanwhile (`test_batchAtMinimumReservePausesUntilFunded`); the pool never keeps selling with a prize it cannot
+    restock. Fully backing a batch would need five largest prizes in ETH to admit any purchase. `canPurchase` measures
+    58,787 gas cold against FWA's 100k stipend. Rejected: always reserving five spare prizes (2.5 ETH more for
+    Balanced, locked even when demand is low).
+62. **`close()` sets `keeperCredit` to zero.** Closing frees the whole balance, so credit left from earlier listings
+    was later paid out of fresh deposits, including a new creator's (E5). Unspent restocking fees are the creator's;
+    upkeep after closing earns keepers nothing, and the creator reconciles any remaining draws. Chosen over cancelling
+    credit per unlisted prize: one line, and it also covers a pool closed without unlisting.
+63. **A curated NFT is priced after its collection's calls** (`_pullCurated`), so a creator-controlled collection that
+    reconfigures the markup inside its transfer gets the markup in force once the token is held (S4).
+64. **Off-chain:** the bundled keeper no longer skips calls estimated above 3.2M gas (the reward cap is not a gas
+    ceiling, E7) and sets the gas limit to 30% over the estimate, never below 4M (E8). The dashboard simulates and
+    sends at current EIP-1559 fees, probes upkeep as the creator (always allowed, E6), and prices listed curated NFTs
+    at their live FWA price in the planner (E4).
+    Not changed, documented instead: dishonest or hostile curated collections (S1, S2, S5) are a creator trust
+    assumption that no Balancer check can remove; FWA's router coverage (S3) can refuse a purchase the Balancer admits.

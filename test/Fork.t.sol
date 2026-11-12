@@ -60,13 +60,18 @@ contract ForkScenarioTest is ForkBase {
 
     function test_canPurchaseFitsStipend() public {
         fillUp();
+        // Cold, as in FWA's purchase transaction: every account and slot the hook reads starts unaccessed.
+        vm.cool(address(balancer));
+        vm.cool(address(pool));
+        vm.cool(FWA_IMPL);
+        vm.cool(SHAPES);
         uint256 g = gasleft();
         vm.prank(address(pool));
         bool ok = balancer.canPurchase(buyer);
         uint256 used = g - gasleft();
         assertTrue(ok);
         assertLt(used, 100_000, "operator check under FWA stipend");
-        emit log_named_uint("canPurchase gas (warm-ish)", used);
+        emit log_named_uint("canPurchase gas (cold)", used);
     }
 
     function test_singleShapeDrawReplenishes() public {

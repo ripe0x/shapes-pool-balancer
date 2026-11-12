@@ -18,8 +18,19 @@ const GWEI = 10n ** 9n;
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
  *  upkeep to keepers that do not include this one. */
 export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
-/** Contract constants (src/PoolBalancer.sol). */
+/** Contract constants (src/PoolBalancer.sol). KEEPER_MAX_GAS caps the gas the reward pays for, not the call's gas. */
 export const KEEPER_MAX_GAS = 3_200_000n;
+/** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
+ *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
+ *  upkeep (5 reconciles + 5 Shape units in 4 sizes) measures under KEEPER_MAX_GAS on a fork (test/Gas.t.sol); this
+ *  floor adds 25% for Shapes mint gas varying by block. Only gas used is billed. */
+export const UPKEEP_GAS_FLOOR = 4_000_000n;
+
+/** Gas limit for an upkeep estimated at `estimate`: 30% headroom, never below UPKEEP_GAS_FLOOR. */
+export const gasLimitFor = (estimate: bigint) => {
+  const g = (estimate * 13n) / 10n;
+  return g > UPKEEP_GAS_FLOOR ? g : UPKEEP_GAS_FLOOR;
+};
 type Fn = 'performUpkeep';
 
 export interface Policy {
@@ -33,9 +44,9 @@ export interface Policy {
   maxLossWei: bigint;
 }
 
-/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). */
+/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). The reward pays for at most
+ *  KEEPER_MAX_GAS, so a larger estimate simply costs more than it earns unless the reward still covers it. */
 export function decide(p: Policy): { send: boolean; reason: string } {
-  if (p.gasEstimate > KEEPER_MAX_GAS) return { send: false, reason: 'estimate above reimbursable maximum' };
   const cost = p.gasEstimate * (p.baseFee + p.priorityFee);
   if (p.expectedReward + p.maxLossWei < cost) return { send: false, reason: 'unprofitable at current gas' };
   return { send: true, reason: 'ok' };
@@ -57,7 +68,7 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { fn: Fn; args: string[]; hashes: Hash[]; nonce: number; gas: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { fn: Fn; args: string[]; hashes: Hash[]; nonce: number; gas: string; estimate?: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State {
   lastScanned: string;
   balancers: Address[];
@@ -79,7 +90,8 @@ export class Keeper {
 
   constructor(cfg: KeeperConfig) {
     this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
-    const transport = http(cfg.rpcUrl);
+    // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
+    const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
     this.wallet = createWalletClient({ transport, account: cfg.account });
     this.state = this.load();
@@ -200,12 +212,11 @@ export class Keeper {
       this.log(`skip: ${verdict.reason}`, { balancer: b, fn, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });
       return false;
     }
-    // Shapes mint gas varies with the block seed: the limit has 30% headroom. Only gas actually used is
-    // billed, and the contract reimburses measured gas, never the limit.
-    const gas = (gasEstimate * 13n) / 10n;
+    // The contract reimburses measured gas, never the limit; only gas used is billed.
+    const gas = gasLimitFor(gasEstimate);
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
     const hash = await this.send(b, fn, callArgs, nonce, maxFeePerGas, priority, gas);
-    this.state.pending[b] = { fn, args, hashes: [hash], nonce, gas: gas.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.state.pending[b] = { fn, args, hashes: [hash], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.state.stats.sent++;
     this.log(`sent ${fn}`, { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
     return true;
@@ -261,7 +272,7 @@ export class Keeper {
     try {
       const call = { address: b, abi: poolBalancerAbi, functionName: p.fn, args: p.args.map(BigInt), account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
       const reward = (await this.pub.simulateContract(call as never)).result as bigint;
-      const verdict = decide({ gasEstimate: BigInt(p.gas) * 10n / 13n, expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
+      const verdict = decide({ gasEstimate: p.estimate ? BigInt(p.estimate) : BigInt(p.gas) * 10n / 13n, expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
       if (!verdict.send) {
         this.log(`waiting: replacement ${verdict.reason}`, { balancer: b });
         return true;

@@ -6,7 +6,7 @@ are safe.
 ## Rewrite status (2026-11-11)
 
 The contract was rewritten: simplified gate, markup applied at listing, `unlistShapes`, creator-only `recoverRefunded`,
-keepers paid only from a restocking fee priced into prizes and a withdrawal-only reserve (SPEC.md, DECISIONS 43-56). **This rewrite is a verified
+keepers paid only from a restocking fee priced into prizes and a reserve that bounds withdrawals and, since DECISIONS 61, admits purchases (SPEC.md, DECISIONS 43-56). **This rewrite is a verified
 slice, not a frozen release candidate:** every fork test file passes when run one at a time, the invariants pass at 64
 runs × 4,096 calls, and one independent AI review (round 7) is resolved. The verification under "Earlier verification" below ran
 against the previous design (commit `3f1735f`); its suite results, gas numbers and rehearsals do not carry over to the
@@ -14,6 +14,11 @@ rewrite and must be re-run against it before release.
 
 Open before release:
 
+0. **Round 8 audit (partial, `audit/round8/report.md`) and its repairs (DECISIONS 61-64).** E1, E2, E4-E8 and S4 are
+   fixed with focused fork tests; S1, S2, S5 (dishonest curated collections) and S3 are documented trust limits; E3
+   (simulation VRF fee and destination checks) is open. The repairs have not been re-audited, and the audit's
+   structural gate failed with open paths. The funding check changes pool behavior: concurrent draws need one largest
+   prize of ETH each.
 1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
    paid from `keeperCredit`, funded by the basefee-indexed restocking fees of the prizes each call lists), made after
    the independent review. The fee-at-draw version had one independent AI review; crediting at listing (DECISIONS 57)

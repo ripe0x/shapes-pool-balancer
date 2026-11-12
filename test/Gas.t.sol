@@ -149,8 +149,10 @@ contract GasBench is ForkBase {
     /// Heaviest restock: 10 settled draws (one of each Shapes size plus a second 0.01), MAX_RECONCILE of them reconciled,
     /// then MAX_OPS single Shapes across several sizes, each size a separate mint call.
     function test_gas_worstCaseUpkeepShapes() public {
+        // Purchases need one 100 ETH prize in ETH per draw in flight (requiredReserve), up to ten here.
+        vm.deal(creator, 3_000 ether);
         vm.prank(creator);
-        balancer.depositETH{value: 200 ether}();
+        balancer.depositETH{value: 1_500 ether}();
         _configure(plan([uint256(44), 1, 1, 1, 1, 1, 1, 1, 1]));
         fillUp();
         uint8[10] memory sizes = [uint8(0), 0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -191,8 +193,10 @@ contract GasBench is ForkBase {
     /// Draws `first` (restock held back by a temporary mint-fee rise), reconciles them, then draws five large prizes and
     /// measures the one upkeep that reconciles those five and restocks the held prizes.
     function _worstAfterHeldRestock(uint8[6] memory first, string memory label) internal returns (uint256 used) {
+        // Purchases need one 100 ETH prize in ETH per draw in flight (requiredReserve), up to ten here.
+        vm.deal(creator, 3_000 ether);
         vm.prank(creator);
-        balancer.depositETH{value: 600 ether}();
+        balancer.depositETH{value: 2_000 ether}();
         _configure(plan([uint256(44), 1, 1, 1, 1, 1, 1, 3, 3]));
         fillUp();
         for (uint256 k; k < 6; ++k) _drawSize(first[k]);

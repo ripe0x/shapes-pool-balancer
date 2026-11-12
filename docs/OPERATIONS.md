@@ -11,6 +11,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep()` to restock; if it stays at 6, `depositETH()` and upkeep again |
+| 7 | LOW_FUNDS | ETH plus settled proceeds is below `requiredReserve()`: a draw in flight, a big win that used the spare, or a pool reopened after its ETH was claimed | `depositETH()` the difference, or wait for settled draws to be reconciled; each draw in flight needs one largest prize of ETH |
 
 ## Keeper down
 
@@ -29,8 +30,12 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 - Each tick the keeper simulates `performUpkeep` for every Balancer at the price it would bid (basefee + 0.05 gwei,
   `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` means nothing to do, and
   `KeeperNotApproved` that the factory's keeper admin has restricted upkeep to other keepers; both are skipped quietly. Any
-  other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price, and never when
-  the estimate exceeds the 3.2M reimbursable maximum.
+  other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price. An estimate above the
+  3.2M gas the reward pays for is sent when the capped reward still covers it (a five-Shape opening stockup estimates
+  about 3.28M).
+- Gas limit: 30% over the estimate and never below 4M, because draws that settle between estimate and inclusion add
+  their work to the call (one such draw added 536k gas on a fork; a 30% limit ran out of gas). Only gas used is billed,
+  but the keeper address must hold the limit × max fee (0.02 ETH at 5 gwei) to send.
 - `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
   at the current basefee. A receipt can cost more if basefee rises before inclusion.
   Outside creator-started work a pool pays only from `keeperCredit`: the restocking fees of the prizes each call lists,

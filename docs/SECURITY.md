@@ -27,6 +27,30 @@ superseded**: they describe code that no longer exists and are kept below only a
 | 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | `83cd752` |
 | 7 (independent review of the simplified gate/markup rewrite) | this rewrite | per-call limits, reserve fee, setup checks (same commit) |
 
+## Round 8 (adversarial audit, 2026-11-12)
+
+Three AI lanes, 12 auditor-hours, on frozen `2ac7a7e` with fork PoCs through the real coordinator, VRF service and
+FWA. Partial: the structural gate failed with open paths and no human review occurred (`audit/round8/report.md`).
+Outcome per finding:
+
+| ID | Severity | Finding | Outcome |
+| --- | --- | --- | --- |
+| E1 | High | The reserve held one spare largest prize while five draws could be admitted; two big wins left a prize unrestockable with purchases open | Fixed: purchases need ETH ≥ `requiredReserve()` (LOW_FUNDS, DECISIONS 61). `test_drawsInFlightNeedOneLargestPrizeEach`. Residual: one batch of up to five is admitted on one spare; excess wins wait for funding with purchases refused (`test_batchAtMinimumReservePausesUntilFunded`) |
+| E2 | High | Close, claim everything, reopen admitted purchases with no ETH | Fixed by the same check. `test_drainedReopenRefusesPurchases` |
+| E5 | Medium | Keeper credit outlived a full closeout and was paid from later deposits | Fixed: `close()` zeroes the credit (DECISIONS 62). `test_closeReturnsKeeperCredit` |
+| E6 | Medium | Dashboard simulated at gas price 0 and probed upkeep as the Balancer | Fixed: fee fields, creator as caller (DECISIONS 64) |
+| E7 | Medium | Bundled keeper skipped opening stockups estimated above 3.2M | Fixed (DECISIONS 64) |
+| E8 | Medium | A draw settling before inclusion pushed upkeep past the 30% gas limit | Fixed: 4M gas-limit floor (DECISIONS 64). Probable cause of the 3/340 rehearsal reverts, not confirmed |
+| E3 | Medium | `sim/flows.ts` fixes the VRF fee at 0.0003 ETH (fork: 0.002457 at 1.05 gwei) and checks conservation only | Open: decision-support model, not used on chain |
+| E4 | Low | Planner priced listed curated NFTs at the current markup | Fixed: live FWA prices (DECISIONS 64) |
+| S5 | High (conditional) | A creator's dishonest collection can fake delivery and sell the same NFT twice; FWA pays proceeds and refuses refunds | Documented: creator trust assumption. A collection that lies on `ownerOf` cannot be checked by any caller; the same holds for any FWA pool |
+| S1 | Medium (conditional) | A collection with public seizure can move a listed NFT out of FWA, leaving a ghost prize | Documented: creator's choice of collection |
+| S2 | Medium (conditional) | A collection freeze blocks withdrawing that NFT | Documented |
+| S3 | Low (conditional) | FWA's VRF router coverage can refuse a purchase the Balancer admits | Documented (OPERATIONS status 0 note) |
+| S4 | Low (conditional) | A creator-controlled collection could change markup during its pull | Fixed: priced after the pull (DECISIONS 63). `test_curatedPricedAfterCollectionCallback` |
+
+The repairs have not been independently re-audited.
+
 ## Round 7 (rewrite, 2026-11-11)
 
 One independent AI reviewer, reasoning only (no probe tests), on a frozen copy of the rewrite with the adversarial-audit
@@ -35,7 +59,7 @@ statement that the rewrite is safe. Findings and outcome:
 
 | Severity | Finding | Outcome |
 | --- | --- | --- |
-| Medium | The reserve holds one spare top prize, but one gate check admits a batch of five draws | Kept by decision (DECISIONS 46): two top-prize wins in one batch is ~1 in 6,000 for Balanced; a shortfall delays that restock, purchases stay open |
+| Medium | The reserve holds one spare top prize, but one gate check admits a batch of five draws | Kept by decision (DECISIONS 46); superseded after round 8 E1 by the funding check (DECISIONS 61) |
 | Low | Reserve priced at the live mint fee while restocking runs at any fee up to the accepted one | Fixed: the reserve uses the higher of the two |
 | Low | Keeper credit backs out FWA's edge at today's `edgeBps`, not the edge a draw paid | Obsolete: the credit is now the restocking fee each drawn prize carried, read from the Balancer's own records (DECISIONS 54) |
 | Low | Unchecked integration assumptions: FWA staging cap, Shapes size count | Fixed: `initialize` requires no staging cap; the constructor requires nine Shapes sizes |
