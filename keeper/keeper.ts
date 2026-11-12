@@ -15,8 +15,9 @@ import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const GWEI = 10n ** 9n;
-/** Reverts that only mean "no work right now". */
-export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded']);
+/** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
+ *  upkeep to keepers that do not include this one. */
+export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
 /** Contract constants (src/PoolBalancer.sol). */
 export const KEEPER_MAX_GAS = 3_200_000n;
 type Fn = 'performUpkeep';

@@ -53,7 +53,8 @@ Tests: `invariant_keeperPayWithinRestockFees`, `invariant_prizeWeightMatchesTrac
 `test_gasJumpRestockPaidByTheNewListingsFee`, `test_zeroMarkupStillFundsKeepers`, `test_curatedDrawEarnsKeepersNothing`,
 `test_refundOnlyBatchEarnsNothing`, `test_depositDoesNotUnlockFullIncentive` (rewards never exceed the fees of the
 replacements listed), `test_breakEven_gasJumpAfterListing`; the self-dealing tests value won Shapes at the ETH they
-redeem for. Not tested: a deliberately failed delivery leaves the failed prize's fronted fee unrepaid, since its
+redeem for. Keeper list (DECISIONS 59): creator-only, open by default; `test_keeperListIsCreatorControlledAndOpenByDefault`
+and the keeper e2e step. Not tested: a deliberately failed delivery leaves the failed prize's fronted fee unrepaid, since its
 draw is refunded (the attacker loses FWA's VRF fee, more than that fee).
 
 ## Method

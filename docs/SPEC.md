@@ -28,9 +28,9 @@ for its Shapes and Draw Packs. Nothing can ever change the operator, enable toke
 
 | Actor | Can |
 | --- | --- |
-| Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer |
+| Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer, restrict upkeep to approved keepers or open it to anyone, approve or remove keepers |
 | Pending creator | accept the creator role |
-| Anyone (keeper) | `performUpkeep`, `collectProceeds`, `depositETH` |
+| Anyone (keeper) | `performUpkeep` (while upkeep is open, the default; when restricted, only the creator and approved keepers), `collectProceeds`, `depositETH` |
 | FWA pool | calls `canPurchase` (view) |
 
 The keeper's only payout is a bounded reward to `msg.sender` of `performUpkeep`. Curated and untracked NFTs go only to a
@@ -154,8 +154,10 @@ unlisted below the target while open are restocked by upkeep.
 
 ## Upkeep
 
-`performUpkeep` (permissionless; returns the reward; reverts `NoUpkeepNeeded` when it would change nothing, which keepers
-learn by simulating it):
+`performUpkeep` (open to anyone by default; returns the reward; reverts `NoUpkeepNeeded` when it would change nothing,
+which keepers learn by simulating it). The creator can restrict it to themself and the keepers they approve
+(`setKeepersRestricted`, `setKeeperApproved`; others get `KeeperNotApproved`). The reward rules are the same either way;
+a restricted pool whose approved keepers stop is restocked only when the creator runs upkeep.
 
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).

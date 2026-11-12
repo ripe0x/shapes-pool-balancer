@@ -273,3 +273,15 @@ from a Fable model), "Yes, build it". Supersedes when the credit is earned in 54
     keeper's gas to the 5 gwei cap; at the cap the heaviest one-draw call gets slightly less than the full 0.0005 ETH
     incentive (independent review). Players pay about 0.00015 ETH more per Shape at 1 gwei; batches over-collect, and unused credit pays
     later reconcile-only calls or stays with the creator.
+
+## Creator-controlled keeper list (2026-11-12)
+
+Owner: after reviewing collection-games#23 (ApeBall's bot overbidding priority fees, already prevented here by pricing
+rewards at basefee + 0.05 gwei), "let's add the list but keep it open at default".
+
+59. **Each pool's creator can restrict `performUpkeep` to themself and approved keepers; it is open to anyone by
+    default.** `setKeepersRestricted(bool)` and `setKeeperApproved(address, bool)` are creator-only; the creator can
+    always run upkeep, and a new creator takes that role (the former creator is just another caller). Rewards follow
+    the same rules either way, so the list decides who may earn them, not how much the pool pays. Approvals carry
+    over to a new creator. Not added: an automatic reopening when approved keepers go quiet; a restricted pool whose
+    keepers stop is restocked only by its creator, and purchases pause at LOW_INVENTORY until then.

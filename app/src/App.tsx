@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { BaseError, ContractFunctionRevertedError, formatEther, getAddress, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
@@ -18,6 +18,7 @@ const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
 const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'function poolCreationEnabled() view returns (bool)', 'function implementation() view returns (address)']);
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
+const KEEPER_APPROVED = parseAbiItem('event KeeperApproved(address indexed keeper, bool approved)');
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
 
@@ -64,6 +65,12 @@ function useBalancer(b?: Address) {
       .then(() => ({ needed: true }), () => ({ needed: false }));
     // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
     const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
+    // The approved-keeper mapping is not enumerable: replay its events, last word per keeper.
+    const approvals = await pub.getLogs({ address: b, event: KEEPER_APPROVED, fromBlock: FROM_BLOCK });
+    const approvedMap = new Map<Address, boolean>();
+    for (const l of approvals) approvedMap.set(getAddress(l.args.keeper!), l.args.approved!);
+    const approvedKeepers = [...approvedMap].filter(([, ok]) => ok).map(([a]) => a);
+    const keepersRestricted = await r<boolean>('keepersRestricted');
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
     const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
@@ -86,6 +93,7 @@ function useBalancer(b?: Address) {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, listings, pending, names, ensName,
+      keepersRestricted, approvedKeepers,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -1228,6 +1236,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
   const [result, setResult] = useState<string>();
   const [ens, setEns] = useState<{ open: boolean; name: string; forward?: string | null }>({ open: false, name: '' });
   const [step, setStep] = useState<'transfer' | 'retire'>();
+  const [keeperAddr, setKeeperAddr] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const backing = d.activeShapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
@@ -1294,6 +1303,24 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
               )}
             </>
           )}
+        </div>
+        <div className="section">
+          <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
+          <div className="kv">
+            <div><div style={{ fontWeight: 700 }}>{d.keepersRestricted ? 'Only you and approved keepers' : 'Anyone'}</div><p className="note">Who can run upkeep and earn its reward. You can always run it yourself.</p></div>
+            <button className="link" disabled={!!tx.busy} onClick={() => tx.send(d.keepersRestricted ? 'Open upkeep to anyone' : 'Restrict upkeep', [() => tx.write({ ...B, functionName: 'setKeepersRestricted', args: [!d.keepersRestricted] })])}>{d.keepersRestricted ? 'Open to anyone' : 'Restrict'}</button>
+          </div>
+          {d.keepersRestricted && d.approvedKeepers.length === 0 && <p className="note error" style={{ marginTop: 8 }}>No keepers approved. Won prizes are restocked only when you run upkeep.</p>}
+          {d.approvedKeepers.map((a) => (
+            <div className="kv" key={a}>
+              <span className="mono">{short(a)}</span>
+              <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Remove keeper', [() => tx.write({ ...B, functionName: 'setKeeperApproved', args: [a, false] })])}>Remove</button>
+            </div>
+          ))}
+          <div className="row" style={{ marginTop: 12 }}>
+            <div className="field" style={{ flex: 1 }}><input aria-label="Keeper address" className="mono" placeholder="0x…" value={keeperAddr} onChange={(e) => setKeeperAddr(e.target.value)} /></div>
+            <button className="btn sec" disabled={!!tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(keeperAddr)} onClick={() => tx.send('Approve keeper', [() => tx.write({ ...B, functionName: 'setKeeperApproved', args: [keeperAddr as Address, true] })])}>Approve keeper</button>
+          </div>
         </div>
       </section>
       <section>

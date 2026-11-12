@@ -246,6 +246,21 @@ async function run() {
   assert.equal(await pub.verifyMessage({ address: b1, message: 'hello', signature: PLACEHOLDER_SIG }), false, 'arbitrary message rejected');
   console.log('✓ pool page approval verifies through viem ERC-1271; other messages rejected');
 
+  // 9b. keeper list: a pool restricted to other keepers is skipped quietly; once approved, it is serviced
+  const restrict = async (fn: 'setKeepersRestricted' | 'setKeeperApproved', args: readonly unknown[]) => {
+    const h = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: fn, args: args as never, account: creator1, chain: null });
+    assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success');
+  };
+  await restrict('setKeepersRestricted', [true]);
+  await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b08', 41n);
+  const sentBeforeList = k.state.stats.sent;
+  await k.tick();
+  assert.equal(k.state.stats.sent, sentBeforeList, 'no send to a pool that has not approved this keeper');
+  assert.ok(!k.errors[b1], 'a restricted pool is not reported as an error');
+  await restrict('setKeeperApproved', [keeperAddr, true]);
+  await tickUntil(k, async () => (await stocked(b1)));
+  console.log('✓ keeper list: skipped while not approved, serviced once approved');
+
   // 10. one broken pool does not stop the others
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b04', 5n);
   await test.setCode({ address: b2, bytecode: '0xfe' });

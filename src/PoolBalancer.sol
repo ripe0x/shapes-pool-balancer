@@ -8,8 +8,8 @@ import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReve
 
 /// @title PoolBalancer
 /// @notice Permanently owns one FWA standard pool. The creator lists NFTs and sets a target mix of Shape and Draw Pack
-///         prizes; anyone may call `performUpkeep` to restock drawn prizes from this contract's ETH. Players buy on FWA
-///         directly; this contract is FWA's purchase operator.
+///         prizes; anyone (or, if the creator restricts it, approved keepers) may call `performUpkeep` to restock drawn
+///         prizes from this contract's ETH. Players buy on FWA directly; this contract is FWA's purchase operator.
 /// @dev Design (money flows in docs/SPEC.md):
 ///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
@@ -151,6 +151,8 @@ contract PoolBalancer is ReentrancyGuard {
     bool public enabled;
     /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
     bool public creatorWork;
+    /// @dev When true, only the creator and approved keepers may call `performUpkeep`. Off (anyone) by default.
+    bool public keepersRestricted;
     uint64 public reconciledSequence;
     /// @dev Restocking fees of prizes keepers listed (price less `base`, outside creator work), not yet paid out.
     uint128 public keeperCredit;
@@ -169,6 +171,8 @@ contract PoolBalancer is ReentrancyGuard {
     ///      change start a new epoch, so a former creator's approvals cannot be replayed.
     uint256 public pageEpoch;
     mapping(bytes32 digest => uint256) internal pageApprovedEpoch; // epoch + 1
+    /// @dev Keepers the creator approved; consulted only while `keepersRestricted`.
+    mapping(address keeper => bool) public approvedKeeper;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -180,6 +184,8 @@ contract PoolBalancer is ReentrancyGuard {
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event PurchasesOpened();
     event PurchasesClosed();
+    event KeepersRestricted(bool restricted);
+    event KeeperApproved(address indexed keeper, bool approved);
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
@@ -203,6 +209,7 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     error Unauthorized();
+    error KeeperNotApproved();
     error AlreadyInitialized();
     error UnreviewedImplementation();
     error UnsupportedFWAConfig();
@@ -500,6 +507,20 @@ contract PoolBalancer is ReentrancyGuard {
         emit PoolPageApproved(digest, issuedAt, metadataHash);
     }
 
+    /// @notice Restrict `performUpkeep` to the creator and approved keepers, or open it to anyone (the default).
+    /// @dev Restricting trades liveness for control: if every approved keeper stops, restocking waits for the creator.
+    ///      Rewards follow the same rules either way.
+    function setKeepersRestricted(bool restricted) external onlyCreator {
+        keepersRestricted = restricted;
+        emit KeepersRestricted(restricted);
+    }
+
+    /// @notice Approve or remove a keeper for when upkeep is restricted.
+    function setKeeperApproved(address keeper, bool approved) external onlyCreator {
+        approvedKeeper[keeper] = approved;
+        emit KeeperApproved(keeper, approved);
+    }
+
     /// @notice Invalidate every pool-page approval made so far.
     function revokePoolPages() external onlyCreator {
         emit PoolPagesRevoked(++pageEpoch);
@@ -550,6 +571,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///         Reverts `NoUpkeepNeeded` when it would change nothing; simulate it to learn whether work exists and
     ///         what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
     function performUpkeep() external nonReentrant returns (uint256 reward) {
+        if (keepersRestricted && msg.sender != creator && !approvedKeeper[msg.sender]) revert KeeperNotApproved();
         uint256 gasStart = gasleft();
         IFWAPool p = pool;
 
