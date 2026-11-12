@@ -23,6 +23,10 @@ contract Handler is Test {
     uint256[] public open;
     uint256 nextNft = 1000;
     uint256 public purchasesAdmitted;
+    /// Markup earned on delivered draws (listed price less what the prize cost), read before reconciliation.
+    uint256 public earned;
+    /// Keeper rewards paid outside creator work.
+    uint256 public paidFromMarkup;
     mapping(uint8 => uint256) public closedReasons;
 
     uint256 immutable targetA;
@@ -77,7 +81,22 @@ contract Handler is Test {
     }
 
     function upkeep() external {
-        try b.performUpkeep() {} catch {}
+        uint64 from = b.reconciledSequence();
+        uint256 end = pool.nextSequenceToProcess() - 1;
+        if (end > from + 5) end = from + 5;
+        uint256[] memory margin = new uint256[](end - from);
+        for (uint256 s = from + 1; s <= end; ++s) {
+            (,,, uint256 lid, uint8 status,) = pool.acquisitions(pool.requestIdAtSequence(uint64(s)));
+            (,, uint8 state, uint112 base, uint112 price) = b.items(lid);
+            if (lid != 0 && status == 2 && state == 1) margin[s - from - 1] = price - base;
+        }
+        bool setup = b.creatorWork();
+        try b.performUpkeep() returns (uint256 reward) {
+            if (!setup) paidFromMarkup += reward;
+            for (uint256 s = from + 1; s <= b.reconciledSequence(); ++s) {
+                earned += margin[s - from - 1];
+            }
+        } catch {}
     }
 
     function claim(uint256 amount) external {
@@ -118,7 +137,7 @@ contract Handler is Test {
     /// Occasionally change the markup and target.
     function reconfigure(uint256 pick) external {
         uint256 t = pick % 2 == 0 ? targetA : targetB;
-        uint16 m = uint16(bound(pick, 0, 3000));
+        uint16 m = uint16(bound(pick, 900, 3000)); // below 1000 the 0.01 Shape's markup misses its mint fee
         vm.prank(creator);
         try b.configure(m, t) {} catch {}
     }
@@ -183,6 +202,12 @@ contract InvariantTest is ForkBase {
         for (uint8 r; r < 7; ++r) {
             if (handler.closedReasons(r) != 0) emit log_named_uint(string.concat("closed reason ", vm.toString(r)), handler.closedReasons(r));
         }
+    }
+
+    /// Keepers are paid outside creator work only from markup earned on delivered draws.
+    function invariant_keeperPayWithinMarkupEarned() public view {
+        assertLe(handler.paidFromMarkup(), handler.earned());
+        assertEq(balancer.keeperCredit(), handler.earned() - handler.paidFromMarkup());
     }
 
     function invariant_permanentOwnershipAndOperator() public view {

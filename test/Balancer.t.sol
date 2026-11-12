@@ -388,15 +388,15 @@ contract BalancerTest is ForkBase {
         balancer.performUpkeep();
     }
 
-    function test_refundOnlyBatchReimbursesGasOnly() public {
+    /// A refunded draw earns no markup, so reconciling it pays nothing from an empty credit.
+    function test_refundOnlyBatchEarnsNothing() public {
+        assertEq(balancer.keeperCredit(), 0);
         buy(buyer, 1);
         vm.roll(block.number + 40); // word deadline passes
         pool.processAcquisitions(1);
         uint256 before = keeper.balance;
         upkeep();
-        uint256 paid = keeper.balance - before;
-        assertGt(paid, 0, "reconciliation gas reimbursed");
-        assertLt(paid, 0.0005 ether, "no fixed incentive without inventory work");
+        assertEq(keeper.balance - before, 0, "nothing earned, nothing paid");
         assertTrue(balancer.canPurchase(buyer));
     }
 
@@ -453,8 +453,12 @@ contract BalancerTest is ForkBase {
         uint16[16] memory have = balancer.getActiveShapes();
         assertEq(have[2], 1, "the drawn 0.1 Shape was not replaced");
 
-        // re-configuring accepts the current fee and restocking resumes
-        configure(planA);
+        // 15% no longer covers the 0.005 fee on a 0.01 Shape; re-configuring at 50% accepts it and restocking resumes
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.MarkupBelowMintFee.selector);
+        balancer.configure(MARKUP, planA);
+        vm.prank(creator);
+        balancer.configure(5000, planA);
         fillUp();
         assertTrue(balancer.canPurchase(buyer));
 

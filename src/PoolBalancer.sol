@@ -69,12 +69,13 @@ contract PoolBalancer is ReentrancyGuard {
     // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
     // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE). Upkeep is permissionless, so
     //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
-    // - gas = 4/5 of the measured span (capped): EIP-3529 refunds cut billed gas by at most 1/5 of the gas used,
-    //   so this part never exceeds the gas billed, however calls are combined.
-    // - incentive = the other 1/5 at that price + KEEPER_INCENTIVE, which covers the keeper's gas outside the
-    //   measured span. Work a creator action started (`creatorWork`: open, configure, unlisting) is paid in full;
-    //   purchases are refused until it is done. Otherwise it is paid from `incentiveCredit`, FWA's edge on reconciled
-    //   delivered draws, so buying one's own draws earns at most the edge they paid FWA.
+    // - reward = measured gas (capped) x price + KEEPER_INCENTIVE, which covers the keeper's gas outside the
+    //   measured span.
+    // - Work a creator action started (`creatorWork`: open, configure, unlisting) is paid in full from the creator's
+    //   ETH; purchases are refused until it is done. All other rewards come out of `keeperCredit`, the markup earned
+    //   on delivered draws, so lifetime keeper pay never exceeds the markup the pool has earned: when gas costs more
+    //   than the markup covers, keepers wait, inventory runs down and purchases pause at LOW_INVENTORY.
+    // - Buying one's own draws to earn credit pays the markup, FWA's edge and the VRF fee for at most the markup back.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
@@ -123,7 +124,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint112 base; // creator value (curated) or prize backing
+        uint112 base; // creator value (curated) or what the prize cost: backing plus mint fees (Shape)
         uint112 price; // price listed on FWA
     }
 
@@ -138,8 +139,8 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
     bool public creatorWork;
     uint64 public reconciledSequence;
-    /// @dev FWA edge paid by reconciled delivered draws, not yet spent on incentives.
-    uint128 public incentiveCredit;
+    /// @dev Markup earned on reconciled delivered draws (listed price less `base`), not yet paid to keepers.
+    uint128 public keeperCredit;
     /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
     uint256 public mintFeeCap;
     /// @dev FWA weight of the listed prizes (staged or active, not yet reconciled as drawn) and of the target.
@@ -193,6 +194,7 @@ contract PoolBalancer is ReentrancyGuard {
     error UnsupportedFWAConfig();
     error InvalidConfig();
     error InvalidPlan();
+    error MarkupBelowMintFee();
     error InvalidItem();
     error InvalidRecipient();
     error ValueTooHigh();
@@ -279,15 +281,19 @@ contract PoolBalancer is ReentrancyGuard {
     function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator {
         if (newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
         if (newTarget >> (16 * DENOMS) != 0) revert InvalidPlan();
+        uint256 fee = SHAPES.mintFee();
         uint256 prizes;
         uint256 w;
         for (uint256 d; d < DENOMS; ++d) {
             uint256 n = _count(newTarget, d);
+            if (n == 0) continue;
             prizes += n;
-            if (n != 0) w += n * (INVERSE_WEIGHT_NUMERATOR / (_amount(d) * (BPS + newMarkupBps) / BPS));
+            uint256 price = _amount(d) * (BPS + newMarkupBps) / BPS;
+            // Every prize's markup must cover its mint fees, so the margin keepers are paid from is never negative.
+            if (price < _cost(d, fee)) revert MarkupBelowMintFee();
+            w += n * (INVERSE_WEIGHT_NUMERATOR / price);
         }
         if (prizes == 0 || prizes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
-        uint256 fee = SHAPES.mintFee();
         markupBps = newMarkupBps;
         target = newTarget;
         targetWeight = w;
@@ -541,20 +547,16 @@ contract PoolBalancer is ReentrancyGuard {
         uint64 s = reconciledSequence;
         uint64 end = p.nextSequenceToProcess() - 1;
         if (end > s + MAX_RECONCILE) end = s + uint64(MAX_RECONCILE);
-        uint256 edgePaid;
+        uint256 earned;
         while (s < end) {
-            (,, uint256 escrowed, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(++s));
-            if (lid != 0) {
-                // Only delivered draws: a failed delivery's fee can be refunded in full, edge included.
-                if (aStatus == A_FULFILLED) edgePaid += escrowed;
-                _onDrawn(lid, aStatus == A_FULFILLED);
-            }
+            (,,, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(++s));
+            // Only delivered draws earn: a failed delivery's fee is refunded to the player in full.
+            if (lid != 0) earned += _onDrawn(lid, aStatus == A_FULFILLED);
         }
         bool reconciled = s != reconciledSequence;
         if (reconciled) {
             reconciledSequence = s;
-            uint256 edge = FWA_FACTORY.edgeBps();
-            incentiveCredit += uint128(edgePaid * edge / (BPS + edge));
+            keeperCredit += uint128(earned);
         }
 
         // 2. Settled proceeds fund restocking.
@@ -575,10 +577,11 @@ contract PoolBalancer is ReentrancyGuard {
         if (ops != 0 || reconciled) reward = _payKeeper(gasStart, wasSetup);
     }
 
-    function _onDrawn(uint256 lid, bool delivered) internal {
+    /// @dev Returns the markup a delivered draw earned.
+    function _onDrawn(uint256 lid, bool delivered) internal returns (uint256 earned) {
         Item storage it = items[lid];
         // Every pool listing is ours and tracked until drawn. Never revert here: reconciliation must not be bricked.
-        if (it.state != ACTIVE) return;
+        if (it.state != ACTIVE) return 0;
         uint8 kind = it.kind;
         uint8 d = it.denom;
         _removeActive(lid);
@@ -586,8 +589,14 @@ contract PoolBalancer is ReentrancyGuard {
             --activeShapes[d];
             prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.price;
         }
-        if (delivered) delete items[lid];
-        else it.state = PENDING;
+        if (delivered) {
+            uint256 price = it.price;
+            uint256 base = it.base;
+            if (price > base) earned = price - base; // price >= base (curated: _priced; prizes: configure's check); never revert
+            delete items[lid];
+        } else {
+            it.state = PENDING;
+        }
         emit ItemDrawn(lid, kind, d, delivered);
     }
 
@@ -675,7 +684,7 @@ contract PoolBalancer is ReentrancyGuard {
         for (uint256 i; i < n; ++i) {
             uint8 d = sizes[i];
             uint256 price = batch[i].price;
-            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_amount(d)), uint112(price));
+            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(_cost(d, fee)), uint112(price));
             _addActive(lids[i]);
             ++activeShapes[d];
             added += INVERSE_WEIGHT_NUMERATOR / price;
@@ -687,19 +696,14 @@ contract PoolBalancer is ReentrancyGuard {
     function _payKeeper(uint256 gasStart, bool setup) internal returns (uint256 reward) {
         uint256 measured = gasStart - gasleft();
         if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
-        uint256 gasUsed = measured * 4 / 5; // reimbursed gas: never above the billed gas (EIP-3529)
-        uint256 price = _rewardPrice(tx.gasprice);
-        uint256 inc = (measured - gasUsed) * price + KEEPER_INCENTIVE;
-        if (!setup) {
-            uint256 credit = incentiveCredit;
-            if (credit < inc) inc = credit;
-            incentiveCredit = uint128(credit - inc);
-        }
-        reward = gasUsed * price + inc;
+        reward = measured * _rewardPrice(tx.gasprice) + KEEPER_INCENTIVE;
+        uint256 credit = keeperCredit;
+        if (!setup && reward > credit) reward = credit;
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
+        if (!setup) keeperCredit = uint128(credit - reward);
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
-        emit KeeperPaid(msg.sender, reward, gasUsed);
+        emit KeeperPaid(msg.sender, reward, measured);
     }
 
     /*//////////////////////////////////////////////////////////////

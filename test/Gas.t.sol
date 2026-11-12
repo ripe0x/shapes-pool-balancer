@@ -8,8 +8,8 @@ import {PoolBalancer} from "../src/PoolBalancer.sol";
 /// @notice Mainnet-fork gas measurements used to set keeper reward bounds (docs/GAS.md).
 ///         Run isolated so each call is a real transaction (intrinsic gas, cold storage, final refunds):
 ///         forge test --match-path test/Gas.t.sol --isolate -vv
-///         Every keeper call asserts that the reimbursed gas never exceeds the gas the transaction is
-///         billed after EVM refunds (collection-games#23).
+///         Rewards outside creator work are capped by the markup earned (keeperCredit), so a reward above the
+///         billed gas can only come out of markup the pool has already earned (collection-games#23).
 contract GasBench is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     uint256 constant KEEPER_MAX_GAS = 3_200_000;
@@ -23,7 +23,7 @@ contract GasBench is ForkBase {
 
     function _configure(uint256 target) internal {
         vm.prank(creator);
-        balancer.configure(0, target);
+        balancer.configure(MARKUP, target);
         vm.prank(creator);
         balancer.open();
     }
@@ -37,10 +37,7 @@ contract GasBench is ForkBase {
         emit log(label);
         emit log_named_uint("  billed gas (after refund)", billed);
         emit log_named_uint("  refund", refund);
-        emit log_named_uint("  reimbursed gas", reimbursed);
-        if (reimbursed != 0 && billed > 21_000 + reimbursed / 2) {
-            assertLe(reimbursed, billed, "keeper reimbursed more gas than it was billed");
-        }
+        emit log_named_uint("  measured gas", reimbursed);
     }
 
     function _upkeep(string memory label) internal returns (uint256 reimbursed) {
@@ -356,15 +353,18 @@ contract GasBench is ForkBase {
         vm.txGasPrice(1 gwei);
     }
 
-    /// Cheapest pool shape: one draw's edge caps the keeper incentive; profitable to ~2.8 gwei, a loss at the 5 gwei cap.
+    /// Cheapest pool shape: a 0.01 Shape at 15% earns 0.0005 of markup after its mint fee, which is all the keeper
+    /// can be paid for replacing it. That covers the call to ~0.5 gwei; above that the keeper is short (an honest
+    /// keeper waits for more draws), and the pool never pays more than the markup.
     function test_profitAtCap_replaceOneCheapPool() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         _drawShapes(1);
         uint256 snap = vm.snapshotState();
-        assertGe(_profitAt("replace 1 Shape, cheap pool, 2.8 gwei", 2.8 gwei), 0);
+        assertGe(_profitAt("replace 1 Shape, cheap pool, 0.5 gwei", 0.5 gwei), 0);
         vm.revertToState(snap);
         assertLt(_profitAt("replace 1 Shape, cheap pool, 4.95 gwei", 4.95 gwei), 0);
+        assertEq(balancer.keeperCredit(), 0, "the whole markup went to the keeper, no more");
     }
 
     function test_profitAtCap_replaceOne() public {
@@ -390,16 +390,17 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
-    /// A curated draw needs no restock, so the upkeep only reconciles it: 4/5 of measured gas plus the incentive,
-    /// capped by the FWA edge that draw paid.
+    /// A curated draw needs no restock, so the upkeep only reconciles it, paid from that draw's markup
+    /// (0.3 ETH at 15% earns 0.045).
     function test_profitAtCap_curatedReconcile() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        uint256 lid = listCurated(3, 0.3 ether); // listed after configure, at MARKUP
         fillUp();
+        (,,,,,, uint256 slot,) = pool.listings(lid);
         uint256[] memory ids = buy(buyer, 1);
-        fulfill(ids[0], 1);
+        fulfill(ids[0], wordForSlot(slot));
         settle();
-        int256 pnl = _profitAtCap("reconcile 1 curated draw");
-        assertGe(pnl, -int256(0.0004 ether), "at worst the withheld 1/5 of gas");
+        assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/
@@ -427,7 +428,7 @@ contract GasBench is ForkBase {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         _drawShapes(1);
-        assertGe(_sweep("replace 1 Shape, 0.01-only pool (purchase-caused, credit-limited)"), 2.8 gwei);
+        assertEq(_sweep("replace 1 Shape, 0.01-only pool (purchase-caused, credit-limited)"), 0.5 gwei);
     }
 
     function test_breakEven_fillStep() public {

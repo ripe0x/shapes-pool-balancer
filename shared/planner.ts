@@ -198,11 +198,22 @@ export interface CostAssumptions {
 
 const toEth = (x: bigint) => Number(x) / 1e18;
 
+/** Lowest markup `configure` accepts: every prize's markup covers its Shapes mint fees (PoolBalancer.MarkupBelowMintFee). */
+export function markupFloorBps(counts: Counts, mintFee: bigint): number {
+  let floor = 0;
+  counts.forEach((n, d) => {
+    const need = n ? Number((BigInt(SHAPES_IN[d]) * mintFee * BPS + DENOMS[d] - 1n) / DENOMS[d]) : 0;
+    if (need > floor) floor = need;
+  });
+  return floor;
+}
+
 /**
  * Expected per-draw economics. With FWA's inverse weights, the expected listed value of the drawn
  * item equals the owner proceeds H, so the creator's expected gain before costs is H*m/(1+m).
  * Costs: for each prize drawn, a mint fee and keeper gas per Shape it holds (a pack replaces all its Shapes), plus
- * per-upkeep overhead.
+ * per-upkeep overhead. Keepers are paid only from markup earned after mint fees: when their full cost is higher,
+ * they wait and purchases pause, so keeper pay never exceeds that margin.
  */
 export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions) {
   const ev = evaluate(counts, inputs);
@@ -210,20 +221,19 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
   const H = toEth(ev.ownerProceedsPerDraw);
   const gp = a.gasPriceGwei * 1e-9;
   const k = Math.max(1, Math.min(MAX_BATCH, a.drawsPerUpkeep));
-  const perShapeCost = toEth(inputs.mintFee) + GAS.perShape * gp;
   // Expected Shapes replaced per draw: each prize tier's chance times the Shapes it holds.
   const shapesPerDraw = ev.tiers.reduce((s, t) => s + (t.kind === 'shape' ? (t.oddsPpm / 1e6) * SHAPES_IN[t.size!] : 0), 0);
-  // Incentive: the withheld 1/5 of gas + 0.0005 ETH, capped by FWA's edge on the draw.
-  const edgePerDraw = toEth((ev.drawPrice * BigInt(inputs.edgeBps)) / (BPS + BigInt(inputs.edgeBps)));
-  const incentive = Math.min((GAS.upkeepBase / 5) * gp + toEth(KEEPER_INCENTIVE), edgePerDraw);
-  const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + incentive;
-  const overhead = shapesPerDraw * perShapeCost + perUpkeep / k;
+  const mintPerDraw = shapesPerDraw * toEth(inputs.mintFee);
+  const perUpkeep = (GAS.upkeepBase - GAS.perShape) * gp + toEth(KEEPER_INCENTIVE);
+  const keeperPerDraw = shapesPerDraw * GAS.perShape * gp + perUpkeep / k;
   const grossMargin = (H * m) / (1 + m);
+  const overhead = mintPerDraw + Math.min(keeperPerDraw, Math.max(0, grossMargin - mintPerDraw));
+  const full = mintPerDraw + keeperPerDraw;
   const H0 = H / (1 + m); // harmonic mean of unmarked values
   const net = grossMargin - overhead;
-  const minMarkupBps = H0 > 0 ? Math.ceil(((overhead * (1 + a.safety)) / H0) * 10_000) : Infinity;
-  // Where the markup exactly covers the modelled costs, without the safety allowance.
-  const breakEvenBps = H0 > 0 ? Math.ceil((overhead / H0) * 10_000) : Infinity;
+  const minMarkupBps = H0 > 0 ? Math.ceil(((full * (1 + a.safety)) / H0) * 10_000) : Infinity;
+  // Where the markup exactly covers mint fees and full keeper pay, without the safety allowance.
+  const breakEvenBps = H0 > 0 ? Math.ceil((full / H0) * 10_000) : Infinity;
   return {
     ownerProceeds: H,
     grossMarginPerDraw: grossMargin,
@@ -231,7 +241,6 @@ export function economics(counts: Counts, inputs: PoolInputs, a: CostAssumptions
     expectedNetPerDraw: net,
     minMarkupBps,
     breakEvenBps,
-    keeperCostPerUpkeepEth: (GAS.upkeepBase + (k - 1) * GAS.perShape) * gp + incentive,
     /** Model outlook, not a guarantee: individual draws and short runs can lose money either way. */
     outlook: (net > 0 ? 'sustainable' : 'loss') as 'sustainable' | 'loss',
     belowModeledMarkup: inputs.markupBps < minMarkupBps,

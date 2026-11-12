@@ -4,7 +4,7 @@
 // FWA model: weights 1e36/price, fee = EV x (1 + edge), owner proceeds = EV at request (StandardPool 1435, 1824),
 // staging FIFO activated 6 per request (drained at once only when no draw is unsettled), 10% slippage refunds.
 // Run: npm run sim
-import { BPS, BY_VALUE, DENOMS, GAS, KEEPER_INCENTIVE, KEEPER_MAX_GAS, SHAPES_IN, type Counts } from '../shared/planner';
+import { BPS, BY_VALUE, DENOMS, GAS, KEEPER_INCENTIVE, KEEPER_MAX_GAS, SHAPES_IN, requiredReserveAt, type Counts } from '../shared/planner';
 import { mixOf, styleBonus } from '../shared/design';
 
 const E = 10n ** 18n;
@@ -19,7 +19,7 @@ const MAX_RECONCILE = 5; // PoolBalancer.MAX_RECONCILE
 const PER_TX = 5;
 const ACTIVATIONS = 6;
 
-type Item = { id: number; nft: boolean; d: number; base: bigint; price: bigint };
+type Item = { id: number; nft: boolean; d: number; base: bigint; price: bigint; cost: bigint }; // cost: what it cost the pool (backing + mint fees) or the creator's value
 type Req = { seq: number; who: number; fee: bigint; ev: bigint; reserved: Item[] };
 
 interface Policy {
@@ -41,7 +41,7 @@ interface Scenario {
   burst: (t: number) => number; // draws requested before anything settles
   keeperEvery: number; // steps between keeper visits
   creatorDrains: boolean; // creator claims all withdrawable ETH every step
-  deposit: number; // ETH deposited at open on top of the initial inventory cost
+  deposit: number; // ETH deposited at open on top of what the dashboard asks for
   retireAt?: number;
   relistNft?: boolean; // creator lists a fresh NFT of the same value when one is won
 }
@@ -52,7 +52,7 @@ function run(s: Scenario, p: Policy, seed: number) {
   // ledger (wei)
   const L = { deposits: 0n, nftIn: 0n, playerPaid: 0n, balance: 0n, ownerProceeds: 0n, escrow: 0n, refundOwed: 0n,
     listedBacking: 0n, wonBacking: 0n, nftWon: 0n, mintFees: 0n, edge: 0n, vrf: 0n, keeper: 0n, keeperCost: 0n,
-    withdrawn: 0n, nftBack: 0n, incentiveCredit: 0n };
+    withdrawn: 0n, nftBack: 0n, credit: 0n, markupEarned: 0n, setupKeeper: 0n };
   const live: Item[] = [];
   let staged: Item[] = [];
   const pending: Req[] = [];
@@ -72,15 +72,17 @@ function run(s: Scenario, p: Policy, seed: number) {
   const evNow = () => { const w = tw(); return w === 0n ? 0n : live.reduce((a, i) => a + (NUM / i.price) * i.price, 0n) / w; };
   const feeNow = () => (evNow() * (BPS + EDGE)) / BPS;
 
-  const metrics = { attempts: 0, admitted: 0, refunds: 0, oddsRatioSum: 0, oddsRatioMax: 0, oddsSamples: 0, bigMissing: 0, settled: 0, keeperShort: 0, restockBlocked: 0 };
+  const metrics = { attempts: 0, admitted: 0, refunds: 0, oddsRatioSum: 0, oddsRatioMax: 0, oddsSamples: 0, bigMissing: 0, settled: 0, keeperWaits: 0, restockBlocked: 0 };
   const designOdds = (() => { const w = [...s.curated.map(eth).map((b) => NUM / priceOf(b, s.markup(0)))]; const cw = w.reduce((a, b) => a + b, 0n); let sw = 0n; target.forEach((n, d) => (sw += BigInt(n) * (NUM / priceOf(DENOMS[d], s.markup(0))))); return Number(cw) / Number(cw + sw); })();
 
   // ---- creator opens: deposit, list curated, mint initial inventory (paid from the deposit)
   const list = (it: Item) => (pending.length ? staged.push(it) : live.push(it));
-  const addNft = (v: number) => { const it = { id: ++id, nft: true, d: -1, base: eth(v), price: priceOf(eth(v), s.markup(0)) }; L.nftIn += it.base; list(it); curated.add(it.id); };
+  const addNft = (v: number) => { const it = { id: ++id, nft: true, d: -1, base: eth(v), price: priceOf(eth(v), s.markup(0)), cost: eth(v) }; L.nftIn += it.base; list(it); curated.add(it.id); };
   s.curated.forEach(addNft);
-  const initCost = target.reduce((a, n, d) => a + BigInt(n) * cost(d, s.mintFee(0)), 0n);
-  L.deposits += initCost + eth(s.deposit); L.balance += initCost + eth(s.deposit);
+  // The dashboard's deposit (ethNeeded): the whole stock, a spare top prize and keeper rewards, plus `deposit` extra.
+  const opening = requiredReserveAt(target, DENOMS.map(() => 0), s.mintFee(0)) + eth(s.deposit);
+  L.deposits += opening; L.balance += opening;
+  let setup = true; // PoolBalancer.creatorWork: the opening stock-up is paid in full from the deposit; purchases wait
 
   const reserve = (fee: bigint) => {
     if (!enabled || !p.buffer) return 0n;
@@ -96,7 +98,7 @@ function run(s: Scenario, p: Policy, seed: number) {
 
   const check = (t: number) => {
     const inFlows = L.deposits + L.nftIn + L.playerPaid;
-    const where = L.balance + L.ownerProceeds + L.escrow + L.refundOwed + L.listedBacking + L.wonBacking + L.nftWon + L.mintFees + L.edge + L.vrf + L.keeper + L.withdrawn + L.nftBack
+    const where = L.balance + L.ownerProceeds + L.escrow + L.refundOwed + L.listedBacking + L.wonBacking + L.nftWon + L.mintFees + L.edge + L.vrf + L.keeper + L.setupKeeper + L.withdrawn + L.nftBack
       + [...live, ...staged, ...pending.flatMap((r) => r.reserved)].filter((i) => i.nft).reduce((a, i) => a + i.base, 0n);
     if (inFlows !== where) throw new Error(`${s.name} step ${t}: ledger off by ${f(inFlows - where)} ETH`);
     const inv = [...live, ...staged, ...pending.flatMap((r) => r.reserved)].filter((i) => !i.nft).reduce((a, i) => a + i.base, 0n);
@@ -104,7 +106,7 @@ function run(s: Scenario, p: Policy, seed: number) {
   };
 
   const gate = (fee: bigint) => {
-    if (!enabled || retired || curated.size === 0) return false;
+    if (!enabled || retired || setup || curated.size === 0) return false;
     if (fee > p.maxMintFee || pending.length >= p.maxPending) return false;
     if (p.byWeight) {
       // PoolBalancer.admissionStatus: FWA asks before activating staged listings, so tracked weight counts them.
@@ -151,53 +153,61 @@ function run(s: Scenario, p: Policy, seed: number) {
     }
   };
 
-  const upkeep = (t: number) => {
+  // PoolBalancer.performUpkeep. An honest keeper simulates the call and sends it only when the reward covers its
+  // gas; outside creator work the reward is capped by the markup earned on delivered draws (keeperCredit).
+  // `creatorRuns`: the creator sends it whatever it pays (the unwind).
+  const upkeep = (t: number, creatorRuns = false) => {
     const fee = s.mintFee(t);
     const gwei = s.baseGwei(t);
     const rewardPrice = BigInt(Math.round(Math.min(gwei + 0.05, 5) * 1e9));
     const actualPrice = BigInt(Math.round((gwei + 0.03) * 1e9));
+    const m = s.markup(t);
     for (let call = 0; call < 20; call++) {
-      // reconcile settled draws (all settled here), collect proceeds
-      let ops = 0, edgePaid = 0n;
-      const recon = unreconciled.splice(0, MAX_RECONCILE);
+      // plan the call: reconcile up to MAX_RECONCILE draws, then restock as PoolBalancer._fillDeficit does
+      const recon = unreconciled.slice(0, MAX_RECONCILE);
+      const earned = recon.reduce((a, u) => a + (u.item && u.delivered ? u.item.price - u.item.cost : 0n), 0n);
+      const haveAfter = [...have];
+      for (const u of recon) if (u.item && !u.item.nft) haveAfter[u.item.d]--;
+      const bound = KEEPER_MAX_GAS * rewardPrice + KEEPER_INCENTIVE;
+      let bal = L.balance + L.ownerProceeds;
+      const mints: [number, number][] = [];
+      let units = 0, denoms = 0;
+      if (enabled && !retired && fee <= p.maxMintFee) for (const d of BY_VALUE) {
+        const missing = target[d] - haveAfter[d];
+        if (missing <= 0) continue;
+        const need = Math.min(missing, Math.floor((MAX_OPS - units) / SHAPES_IN[d]));
+        let k = 0;
+        while (k < need && bal >= cost(d, fee) + bound) { bal -= cost(d, fee); k++; }
+        if (k < need) metrics.restockBlocked++;
+        if (k) { mints.push([d, k]); units += k * SHAPES_IN[d]; denoms++; }
+        if (k < missing || denoms === MAX_RESTOCK_SIZES) break;
+      }
+      if (!recon.length && !units) return;
+      const gas = BigInt(units ? GAS.upkeepBase + GAS.perShape * (units - 1) + GAS.perExtraDenom * Math.max(0, denoms - 1) : GAS.reconcileOnly);
+      const credit = L.credit + earned;
+      let reward = (gas > KEEPER_MAX_GAS ? KEEPER_MAX_GAS : gas) * rewardPrice + KEEPER_INCENTIVE;
+      if (!setup && reward > credit) reward = credit;
+      if (reward > bal) reward = bal;
+      const keeperCost = gas * actualPrice;
+      if (!creatorRuns && !setup && reward < keeperCost) { metrics.keeperWaits++; return; }
+
+      // apply
+      unreconciled.splice(0, recon.length);
       for (const u of recon) if (u.item) {
         if (u.item.nft) { curated.delete(u.item.id); if (s.relistNft && !retired && enabled) addNft(Number(u.item.base) / 1e18); } else have[u.item.d]--;
-        ops++; if (u.delivered) edgePaid += (u.item.price * EDGE) / BPS; // approx edge on that draw
       }
-      L.incentiveCredit += edgePaid;
+      L.markupEarned += earned; L.credit = setup ? credit : credit - reward;
       L.balance += L.ownerProceeds; L.ownerProceeds = 0n;
-      // restock within MAX_OPS units, keeping this call's reward
-      let units = 0, denoms = 0;
-      const m = s.markup(t);
-      if (enabled && !retired && fee <= p.maxMintFee) for (const d of BY_VALUE) {
-        const missing = target[d] - have[d];
-        if (missing <= 0) continue;
-        let need = missing;
-        need = Math.min(need, Math.floor((MAX_OPS - units) / SHAPES_IN[d]));
-        const bound = KEEPER_MAX_GAS * rewardPrice + KEEPER_INCENTIVE;
-        let made = 0;
-        while (made < need && L.balance >= cost(d, fee) + bound) {
-          L.balance -= cost(d, fee); L.mintFees += BigInt(SHAPES_IN[d]) * fee; L.listedBacking += DENOMS[d];
-          list({ id: ++id, nft: false, d, base: DENOMS[d], price: priceOf(DENOMS[d], m) });
-          have[d]++; made++; units += SHAPES_IN[d];
-        }
-        if (made < need) { metrics.restockBlocked++; break; } // the contract stops at the first size not fully restocked
-        if (made) denoms++;
-        if (made < missing || denoms === MAX_RESTOCK_SIZES) break; // PoolBalancer._fillDeficit keeps value order
+      for (const [d, k] of mints) for (let j = 0; j < k; j++) {
+        L.balance -= cost(d, fee); L.mintFees += BigInt(SHAPES_IN[d]) * fee; L.listedBacking += DENOMS[d];
+        list({ id: ++id, nft: false, d, base: DENOMS[d], price: priceOf(DENOMS[d], m), cost: cost(d, fee) });
+        have[d]++;
       }
       markupAtList = m;
-      ops += units;
-      if (ops === 0) return;
-      const gas = BigInt(units ? GAS.upkeepBase + GAS.perShape * (units - 1) + GAS.perExtraDenom * Math.max(0, denoms - 1) : GAS.reconcileOnly);
-      const g = gas > KEEPER_MAX_GAS ? KEEPER_MAX_GAS : gas;
-      let reward = (g * 4n / 5n) * rewardPrice;
-      let inc = (g - g * 4n / 5n) * rewardPrice + KEEPER_INCENTIVE;
-      if (inc > L.incentiveCredit) inc = L.incentiveCredit;
-      L.incentiveCredit -= inc; reward += inc;
-      if (reward > L.balance) reward = L.balance;
-      const keeperCost = gas * actualPrice;
-      if (reward < keeperCost) metrics.keeperShort++;
-      L.balance -= reward; L.keeper += reward; L.keeperCost += keeperCost;
+      L.balance -= reward; L.keeperCost += keeperCost;
+      if (setup) L.setupKeeper += reward; else L.keeper += reward;
+      if (setup && target.every((n, d) => have[d] >= n)) setup = false;
+      if (L.keeper > L.markupEarned) throw new Error(`${s.name} step ${t}: keepers paid more than the markup earned`);
       if (units < MAX_OPS && denoms < MAX_RESTOCK_SIZES && !unreconciled.length) return;
     }
   };
@@ -225,7 +235,7 @@ function run(s: Scenario, p: Policy, seed: number) {
     check(t);
   }
   // unwind: close, settle, reconcile, withdraw everything
-  enabled = false; settleAll(); upkeep(s.steps);
+  enabled = false; settleAll(); while (unreconciled.length) upkeep(s.steps, true);
   for (const it of [...live, ...staged]) { if (it.nft) L.nftBack += it.base; else { L.listedBacking -= it.base; L.balance += it.base; } }
   live.length = 0; staged = [];
   L.withdrawn += L.balance; L.balance = 0n;
@@ -241,9 +251,10 @@ const scenarios: Scenario[] = [
   base,
   { ...base, name: 'low fees (0.1 gwei)', baseGwei: flat(0.1) },
   { ...base, name: 'gas rises 1 -> 12 gwei', baseGwei: (t) => 1 + (11 * t) / 400 },
+  { ...base, name: 'gas spike: 8 gwei for steps 100-250', baseGwei: (t) => (t >= 100 && t < 250 ? 8 : 1) },
   { ...base, name: 'mint fee 0.001 -> 0.005 at step 150', mintFee: (t) => (t < 150 ? eth(0.001) : eth(0.005)) },
-  { ...base, name: 'markup 15% -> 5% at step 150', markup: (t) => (t < 150 ? 1500 : 500) },
-  { ...base, name: 'no spare ETH (deposit 0)', deposit: 0 },
+  { ...base, name: 'markup 15% -> 10% (the floor) at step 150', markup: (t) => (t < 150 ? 1500 : 1000) },
+  { ...base, name: 'only the dashboard deposit', deposit: 0 },
   { ...base, name: 'overlap: bursts of 20', burst: flat(20) },
   { ...base, name: 'keeper every 10 steps', keeperEvery: 10 },
   { ...base, name: 'board grows: +NFT every 80', addCurated: [[80, 0.5], [160, 1], [240, 2], [320, 0.2]] },
@@ -271,7 +282,7 @@ for (const s of scenarios) {
   console.log(`\n## ${s.name}`);
   for (const [pn, p] of Object.entries(policies)) {
     if (!relevant(pn, s)) continue;
-    const agg = { admitted: 0, attempts: 0, draws: 0, refunds: 0, odds: 0, oddsMax: 0, big: 0, pnl: 0, keeperNet: 0, short: 0, blocked: 0, edge: 0, mint: 0, won: 0, nftWon: 0, stranded: 0n };
+    const agg = { admitted: 0, attempts: 0, draws: 0, refunds: 0, odds: 0, oddsMax: 0, big: 0, pnl: 0, keeperNet: 0, waits: 0, setup: 0, keeperPaid: 0, markup: 0, blocked: 0, edge: 0, mint: 0, won: 0, nftWon: 0, stranded: 0n };
     let target: Counts = [];
     let dOdds = 0;
     for (let i = 0; i < RUNS; i++) {
@@ -280,12 +291,12 @@ for (const s of scenarios) {
       agg.admitted += r.metrics.admitted; agg.attempts += r.metrics.attempts; agg.draws += r.metrics.settled; agg.refunds += r.metrics.refunds;
       agg.odds += r.metrics.oddsRatioSum / Math.max(1, r.metrics.oddsSamples); agg.oddsMax = Math.max(agg.oddsMax, r.metrics.oddsRatioMax);
       agg.big += r.metrics.bigMissing / s.steps; agg.pnl += Number(r.pnl) / 1e18; agg.keeperNet += Number(r.L.keeper - r.L.keeperCost) / 1e18;
-      agg.short += r.metrics.keeperShort; agg.blocked += r.metrics.restockBlocked; agg.edge += Number(r.L.edge) / 1e18; agg.mint += Number(r.L.mintFees) / 1e18;
+      agg.waits += r.metrics.keeperWaits; agg.keeperPaid += Number(r.L.keeper) / 1e18; agg.setup += Number(r.L.setupKeeper) / 1e18; agg.markup += Number(r.L.markupEarned) / 1e18; agg.blocked += r.metrics.restockBlocked; agg.edge += Number(r.L.edge) / 1e18; agg.mint += Number(r.L.mintFees) / 1e18;
       agg.won += Number(r.L.wonBacking) / 1e18; agg.nftWon += Number(r.L.nftWon) / 1e18;
       agg.stranded += r.L.balance + r.L.listedBacking + r.L.ownerProceeds + r.L.escrow;
     }
     const n = RUNS;
-    console.log(`${pn.padEnd(22)} admitted ${((100 * agg.admitted) / agg.attempts).toFixed(0)}% | draws ${(agg.draws / n).toFixed(0)} refunds ${(agg.refunds / n).toFixed(1)} | NFT odds x${(agg.odds / n).toFixed(2)} (max x${agg.oddsMax.toFixed(2)}) | big prize missing ${((100 * agg.big) / n).toFixed(0)}% of time | creator P&L ${(agg.pnl / n).toFixed(4)} ETH (${((agg.pnl / n / Math.max(1, agg.draws / n)) * 1000).toFixed(3)} mETH/draw) | keepers net ${(agg.keeperNet / n).toFixed(4)}, underpaid calls ${(agg.short / n).toFixed(1)} | restock blocked ${(agg.blocked / n).toFixed(0)} | FWA edge ${(agg.edge / n).toFixed(3)} mint fees ${(agg.mint / n).toFixed(3)} | stranded ${f(agg.stranded)}`);
+    console.log(`${pn.padEnd(22)} admitted ${((100 * agg.admitted) / agg.attempts).toFixed(0)}% | draws ${(agg.draws / n).toFixed(0)} refunds ${(agg.refunds / n).toFixed(1)} | NFT odds x${(agg.odds / n).toFixed(2)} (max x${agg.oddsMax.toFixed(2)}) | big prize missing ${((100 * agg.big) / n).toFixed(0)}% of time | creator P&L ${(agg.pnl / n).toFixed(4)} ETH (${((agg.pnl / n / Math.max(1, agg.draws / n)) * 1000).toFixed(3)} mETH/draw) | keepers paid ${(agg.keeperPaid / n).toFixed(4)} of ${(agg.markup / n).toFixed(4)} markup (+${(agg.setup / n).toFixed(4)} setup), net ${(agg.keeperNet / n).toFixed(4)}, waited ${(agg.waits / n).toFixed(0)} | restock blocked ${(agg.blocked / n).toFixed(0)} | FWA edge ${(agg.edge / n).toFixed(3)} mint fees ${(agg.mint / n).toFixed(3)} | stranded ${f(agg.stranded)}`);
     void target; void dOdds;
   }
 }

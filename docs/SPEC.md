@@ -106,7 +106,8 @@ Who is owed value:
 - a player whose draw FWA refunds is owed that acquisition fee by FWA until the refund is taken;
 - FWA is owed its 5% edge on delivered draws, and the VRF service its fee;
 - the Shapes contract (and Draw Packs, which pays Shapes) receives the mint fee for each Shape minted;
-- keepers are owed the bounded reward for reconciling draws and restocking.
+- keepers are owed the bounded reward for reconciling draws and restocking, out of the markup earned on delivered
+  draws (`keeperCredit`), except for work a creator action started.
 
 Who can take value out:
 
@@ -148,7 +149,8 @@ unlisted below the target while open are restocked by upkeep.
 learn by simulating it):
 
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
-   marks the item `PENDING` (never scanned again by upkeep). Each delivered draw adds its FWA edge to `incentiveCredit`.
+   marks the item `PENDING` (never scanned again by upkeep). Each delivered draw adds its markup to `keeperCredit`:
+   the listed price less `base` (a curated NFT's creator value, or what a prize cost: backing plus mint fees).
 2. collect FWA owner proceeds into the Balancer.
 3. while open, not retired, not globally withdraw-only, and the mint fee is at or below `mintFeeCap`: mint the missing
    prizes, smallest value first, within 5 Shape units, 4 prize sizes and the ETH left after this call's keeper reward, and list them in
@@ -158,21 +160,21 @@ learn by simulating it):
 Upkeep restocks while draws are still unsettled; it does not wait for the pool to be idle. No upkeep loop depends on
 history: refunded or stuck deliveries are `PENDING` and cost nothing per upkeep.
 
-Keeper reward:
+Keeper reward, paid for any call that reconciles draws or restocks (a call that only collects proceeds pays nothing):
 
 - price = `min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)`: a keeper that bids more priority pays the excess itself;
-- gas = `min(measured, 3.2M) × 4/5`: EIP-3529 refunds cut billed gas by at most 1/5 of the gas used, so 4/5 of any
-  measured span is always billed, even when one transaction makes several paid calls;
-- incentive, paid only when the call did inventory work (a prize minted and listed) =
-  `min(measured, 3.2M) × 1/5 × price + 0.0005 ETH`: the withheld fifth plus a fixed part that covers gas outside the
-  measured span (intrinsic, calldata) and the `eth_estimateGas` gap keepers cost work with. Work a creator action started
-  (open, configure, unlist) is paid in full; purchases are refused until it is done. Work that purchases caused is paid
-  from `incentiveCredit`, which holds FWA's edge on reconciled delivered draws and accumulates, so buying one's own draws
-  earns at most the edge paid to FWA. Only delivered draws add to the credit: a failed delivery's fee can be refunded in
-  full, edge included.
-- the incentive applies to any call that reconciles draws or restocks, so reconciling a delivered draw with nothing to
-  restock (a curated win) is paid the same way. A call that reconciles only refunded draws earns no credit and so gets
-  the 4/5 gas part only. A call that only collects proceeds pays nothing.
+- reward = `min(measured, 3.2M) × price + 0.0005 ETH`; the fixed part covers gas outside the measured span (intrinsic,
+  calldata) and the `eth_estimateGas` gap keepers cost work with;
+- work a creator action started (open, configure, unlist) is paid in full from the creator's ETH; purchases are
+  refused until it is done;
+- all other rewards are capped by `keeperCredit`, the markup earned on reconciled delivered draws, and spend it.
+  Lifetime keeper pay outside creator work therefore never exceeds the markup the pool has earned. When gas costs more
+  than the credit covers, keepers wait; inventory runs down and purchases pause at LOW_INVENTORY until gas falls or
+  credit builds. A refunded draw earns nothing. Buying one's own draws to earn credit pays the markup, FWA's edge and
+  the VRF fee for at most the markup back;
+- `configure` rejects a markup that does not cover every target prize's mint fees (`MarkupBelowMintFee`): the listed
+  price is at least what the prize cost, so the credit never counts a loss as markup. Restocking stops above the
+  accepted fee, so this holds for every listing. At a 0.001 ETH fee the floor is 10% for a mix with 0.01 Shapes.
 
 The reward is force-sent, so a reverting keeper cannot block upkeep.
 
@@ -237,7 +239,7 @@ FWA's server checks ERC-1271 (its client allows long contract signatures; server
 | Reconcile up to 5 settled sequences per call; restock while draws are unsettled | Upkeep keeps up with bursts, and FWA stages the restock until the draws settle. |
 | Redeem prizes for backing instead of keeping spares | Prizes never sit in the Balancer between transactions; one mint fee per Shape re-minted when the target grows again. |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
-| 4/5 gas + (1/5 gas + 0.0005 ETH) incentive, 0.05 gwei priority cap | 4/5 is the only in-transaction rule that provably never reimburses more gas than billed; the incentive returns the other fifth only for useful work and within the edge credit. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
+| Measured gas + 0.0005 ETH, paid from the markup earned (creator-started work in full), 0.05 gwei priority cap | Keepers can never cost the pool more than its markup; at high gas restocking waits instead of losing money. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
 | Withdrawal reserve = restore target + (unreconciled draws + 1) × largest prize + keeper rewards | Limits withdrawals so upkeep can always restock an admitted draw; it never closes purchases (simulation: without the spare, the top prize was missing half the time). |
 | Clone factory, `via_ir`, 50 optimizer runs | Cheap deployment per creator; runtime under EIP-170's 24,576 B limit, with the pool-page message builder in the `PoolPage` library. |
 | Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |

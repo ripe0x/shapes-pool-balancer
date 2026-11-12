@@ -32,32 +32,26 @@ FWA listing dominates: each listing writes the listing struct and updates a 32-l
 with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin
 over the estimate. The margin is a limit only: the contract reimburses measured gas, never the limit.
 
-## Why 4/5
-
-In-transaction measurement (`gasStart - gasleft()`) runs before EIP-3529 refunds, which can cut the billed gas by up to
-1/5 of the gas used. Measured refunds on these paths ranged from about 1% (fill steps) to the full 20% (redeems on
-unlisting, which clear many slots in FWA and Shapes). Paying 4/5 of the measured span, a lower bound on the
-transaction's pre-refund gas, can never exceed billed gas, whatever refunds FWA or Shapes produce. The `KeeperPaid`
-event's `gasUsed` is this reimbursed gas.
-
 ## Keeper reward
 
 ```
 price     = min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)
 measured  = min(gasStart - gasleft(), 3.2M)
-reward    = measured × 4/5 × price                                   (gas, never above billed)
-          + incentive                                                (inventory work)
-incentive = measured × 1/5 × price + 0.0005 ETH
-            creator-caused work: in full
-            purchase-caused work: up to the remaining edge credit (FWA's edge on reconciled delivered draws, accumulated)
-reconcile-only calls (sequences reconciled, no restocking): the 4/5 part only
+reward    = measured × price + 0.0005 ETH        (any call that reconciles draws or restocks)
+            creator-started work: in full, from the creator's ETH
+            otherwise: at most keeperCredit, the markup earned on reconciled delivered draws, which it spends
 MAX_KEEPER_REWARD = 3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH
 ```
 
-The 4/5 part alone can never exceed billed gas (EIP-3529). The incentive returns the other fifth and adds 0.0005 ETH,
-which covers what a keeper cannot see in the measured span (21k intrinsic, calldata, the first touch of the Balancer)
-and the gap between `eth_estimateGas` and billed gas that rational keepers cost work with. Purchase-caused incentives
-are paid from the batch's edge credit, so a buyer who is also the keeper never receives more than the edge it paid FWA.
+The fixed 0.0005 ETH covers what a keeper cannot see in the measured span (21k intrinsic, calldata, the first touch of
+the Balancer) and the gap between `eth_estimateGas` and billed gas that rational keepers cost work with. The `KeeperPaid`
+event's `gasUsed` is the measured gas.
+
+Lifetime keeper pay outside creator work never exceeds the markup earned (`invariant_keeperPayWithinMarkupEarned`).
+Measured gas is taken before EIP-3529 refunds, so a call can be paid up to 1/5 more gas than billed (refund-heavy
+redeems on unlisting are creator work); that surplus also comes out of the credit. A keeper's profit per call is the
+0.0005 ETH plus any refund gap, and every call needs draws, each costing a buyer FWA's edge and the VRF fee on top of the
+markup, so buying one's own draws to earn credit loses money (`KeeperAdversarial.t.sol`).
 
 ### Why the fixed part is 0.0005 ETH, not a margin over the shortfall
 
@@ -71,19 +65,19 @@ transactions), i.e. ~0.0004 ETH at 5 gwei, so it skipped profitable fill steps a
 Reward − billed gas × price, keeper bidding 0.05 gwei priority, from real receipts on the fork
 (`forge test --match-path test/Gas.t.sol --match-test "breakEven|profitAtCap" -vv`), measured on the rewrite.
 
-| Upkeep | Incentive source | PnL at 4.95 gwei | Profitable up to |
-| --- | --- | --- | --- |
-| replace 1 Shape, typical pool | edge credit | +0.00060 ETH | 4.95 gwei (all tested) |
-| replace 5 Shapes in 4 sizes | edge credit | +0.00093 ETH | – |
-| replace 1 Shape, 0.01-ETH-only pool | edge credit, binds | see sweep | 4.2 gwei |
-| reconcile 1 curated draw (no restock) | edge credit | +0.00040 ETH | – |
-| fill step (5 Shape units) | creator, full | +0.00045 ETH | 4.95 gwei (all tested) |
-| reconcile a refund-only draw | none (no edge was paid) | 4/5 of gas only: a small loss by design | – |
+Pools at 15% markup; curated NFTs at 0.3 and 0.5 ETH.
 
-Paid restocking work is designed to stay profitable to the 5 gwei cap, except pools whose draws all cost ~0.01 ETH, where
-the edge credit binds earlier. A keeper that costs work with `eth_estimateGas` sees the estimate gap (previously ~78k gas,
-median) less than billed; the fixed 0.0005 ETH covers that gap up to the cap. Reconcile-only calls get the 4/5 gas part
-only and are not profitable.
+| Upkeep | Paid from | PnL at 4.95 gwei | Profitable up to |
+| --- | --- | --- | --- |
+| replace 1 Shape, typical pool | markup earned | +0.00060 ETH | 4.95 gwei (all tested) |
+| replace 5 Shapes in 4 sizes | markup earned | +0.00093 ETH | – |
+| replace 1 Shape, 0.01-ETH-only pool | markup earned, binds (0.0005 ETH per draw) | −0.0033 ETH | 0.5 gwei |
+| reconcile 1 curated draw (no restock) | markup earned (0.045 ETH) | +0.00043 ETH | – |
+| fill step (5 Shape units) | creator, full | +0.00045 ETH | 4.95 gwei (all tested) |
+| reconcile a refund-only draw | nothing earned | unpaid unless credit remains | – |
+
+Where the markup earned does not cover a call, the keeper waits for more draws (or lower gas) instead of the pool paying
+the difference; with only 0.01 Shapes at 15%, one draw's 0.0005 ETH covers a restock to about 0.5 gwei.
 
 ## Priority allowance
 
@@ -110,6 +104,10 @@ the latency, which is already one block.
 
 ## Reimbursement model comparison
 
+History, superseded by DECISIONS 51: the 4/5 split bounded the part of a reward paid whatever the markup earned. No such
+part remains (every reward outside creator work comes from the credit), so the reward is measured gas × price + 0.0005
+ETH. The comparison is kept for the record.
+
 Question: does the universal 4/5 haircut plus the price-linked incentive cost creators more than an operation-aware
 model (full reimbursement for mint/list work, which produces ~1% refunds; 4/5 only for refund-heavy redeem and
 reconcile work)?
@@ -129,18 +127,16 @@ the withheld fifth, the 4/5 split decides only who carries refund risk, not how 
 the total is measured gas × price + 0.0005 ETH either way. A separate ETH payout cap was not added: the gas cap × the
 price cap already bound every reward at 0.0165 ETH, and FWA V2's 0.02 ETH cap plays the same role for its 2.1M gas.
 
-The FWA edge credit was also compared with a budget based on the Balancer's own markup. A self-dealer always loses the
-FWA edge (paid to FWA whatever the NFT is worth), but recovers the markup if the NFT drawn is worth more than its
-creator-set base, so a markup-based budget is only safe when creators price curated NFTs at or above market. The edge
-credit binds only for pools with draws under ~0.012 ETH and only above ~4.2 gwei (below), so it is kept.
+The credit was first FWA's edge on delivered draws and paid only the incentive; the gas part came from the creator's ETH
+whatever the markup, so pools lost money above about 2 gwei. It is now the markup earned and pays the whole reward
+(DECISIONS 51). A creator who prices a curated NFT below market gives a winner that difference either way; the credit
+adds only the per-call keeper profit above, which each draw's edge and VRF fee outweigh.
 
 ## Work no rational keeper runs
 
-Reconciling a delivered draw earns the incentive, capped by the FWA edge that draw paid, whether or not anything needs
-restocking (a curated draw: +0.00040 ETH at 4.95 gwei). A call that only reconciles draws FWA refunded (no edge was paid)
-gets the 4/5 gas part only and loses the rest; the bundled keeper's `MAX_LOSS_WEI` allowance (default 0.0002 ETH, judged
-against the gas estimate) covers these at normal gas, and the next restocking call reconciles them anyway. Paying them in
-full would create work an outsider can trigger, so it is not added.
+A call that only reconciles refunded draws earns nothing and is unpaid once the credit is spent; the bundled keeper's
+`MAX_LOSS_WEI` allowance (default 0.0002 ETH, judged against the gas estimate) covers these at low gas, the next paid
+call reconciles them anyway, and the creator can run upkeep from the dashboard.
 
 ## Keeper reserve audit
 
@@ -166,14 +162,13 @@ measured on the rewrite** (the previous design's `test_reserveSizes` numbers do 
 | `MAX_RESTOCK_SIZES` | 4 prize sizes restocked per call | each size is its own mint call (~0.5M gas with its listing); 6 sizes measured 3.19M |
 | `MAX_OPS` | 5 Shape units restocked per call; a pack counts the Shapes it holds (2 or 3) | ~425k gas per Shape with its listing, ~870k per three-Shape pack; 6 units with 5 reconciles measured 3.13M |
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
-| refund factor | 4/5 of the measured span | EIP-3529 refund bound (above) |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
 | `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
-| `KEEPER_INCENTIVE` | 0.0005 ETH | fixed part of the incentive (with the withheld 1/5 of gas); covers gas outside the measured span and the `eth_estimateGas` gap; creator-started work in full, purchase-caused work from the edge credit |
+| `KEEPER_INCENTIVE` | 0.0005 ETH | fixed part of every reward; covers gas outside the measured span and the `eth_estimateGas` gap |
 | `MAX_KEEPER_REWARD` | 0.0165 ETH | `3.2M × 5 gwei + 0.0005`; `requiredReserve` holds one per restocking call plus one |
 
 The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
 
 Creating work is not profitable for a keeper: work comes from purchases, which cost the buyer FWA's 5% edge plus the
-markup plus the VRF fee on top of the expected value received, and the incentives that batch can fund never exceed
-FWA's edge on it.
+markup plus the VRF fee on top of the expected value received, while a call's profit is at most the 0.0005 ETH plus any
+refund gap, out of markup already earned.

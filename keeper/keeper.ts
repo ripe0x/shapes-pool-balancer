@@ -64,7 +64,7 @@ interface State {
   pending: Record<string, Pending>;
   stats: { sent: number; mined: number; reverted: number; replaced: number; skippedUnprofitable: number; spentWei: string; earnedWei: string };
 }
-export interface AuditEntry { balancer: Address; fn: Fn; hash: Hash; gasUsed: bigint; reimbursedGas: bigint; reward: bigint; cost: bigint }
+export interface AuditEntry { balancer: Address; fn: Fn; hash: Hash; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint }
 
 export class Keeper {
   readonly pub: PublicClient;
@@ -226,17 +226,17 @@ export class Keeper {
       else this.state.stats.reverted++;
       const cost = r.gasUsed * r.effectiveGasPrice;
       let reward = 0n;
-      let reimbursedGas = 0n;
+      let measuredGas = 0n;
       for (const l of r.logs) {
         try {
           const ev = decodeEventLog({ abi: poolBalancerAbi, data: l.data, topics: l.topics });
-          if (ev.eventName === 'KeeperPaid') ({ amount: reward, gasUsed: reimbursedGas } = ev.args as { amount: bigint; gasUsed: bigint });
+          if (ev.eventName === 'KeeperPaid') ({ amount: reward, gasUsed: measuredGas } = ev.args as { amount: bigint; gasUsed: bigint });
         } catch {} // other contracts' events
       }
       this.state.stats.spentWei = (BigInt(this.state.stats.spentWei) + cost).toString();
       this.state.stats.earnedWei = (BigInt(this.state.stats.earnedWei) + reward).toString();
-      this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, reimbursedGas, reward, cost });
-      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), reimbursedGas: reimbursedGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
+      this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, measuredGas, reward, cost });
+      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
       delete this.state.pending[b];
       return false;
     }

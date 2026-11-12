@@ -107,7 +107,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
           <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">The keeper is paid a capped reward from the pool. When Ethereum gas is above 5 gwei, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid only from markup the pool has earned. When gas costs more than that, keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -118,7 +118,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'is your markup', share: markupShare, style: { background: '#fff' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Your markup pays the pool's running costs: the Shapes mint fee for each replacement (0.001 ETH a Shape today) and keeper rewards. In this example that is about {econ.overheadPerDraw.toFixed(4)} ETH a draw against {econ.grossMarginPerDraw.toFixed(4)} ETH of markup, so you keep about {econ.expectedNetPerDraw.toFixed(4)} ETH a draw on average. Cheap prizes cost the same to replace as expensive ones, so pools of 0.01 ETH prizes need a higher markup.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Your markup pays the pool's running costs: the Shapes mint fee for each replacement (0.001 ETH a Shape today) and keeper rewards. In this example that is about {econ.overheadPerDraw.toFixed(4)} ETH a draw against {econ.grossMarginPerDraw.toFixed(4)} ETH of markup, so you keep about {econ.expectedNetPerDraw.toFixed(4)} ETH a draw on average. Cheap prizes cost the same to replace as expensive ones, so pools of 0.01 ETH prizes need a higher markup, and the markup must at least cover the mint fee (10% with 0.01 ETH Shapes today).</p>
       </section>
 
       <section className="hiw-sec">
@@ -166,7 +166,7 @@ const FAQ: [string, string][] = [
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Over many draws your markup pays for mint fees and keeper rewards, and the page warns you when it does not. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['Can I lose money?', 'Keeper rewards never exceed the markup the pool has earned, and the markup always covers mint fees. Stocking the pool when you open it costs gas. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],

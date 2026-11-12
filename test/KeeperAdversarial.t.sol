@@ -45,7 +45,7 @@ contract KeeperAdversarialTest is ForkBase {
         vm.deal(creator, 100 ether);
         createBalancer(10 ether);
         vm.prank(creator);
-        balancer.configure(0, target);
+        balancer.configure(1000, target);
         for (uint256 i; i < curatedCount; ++i) {
             listCurated(500 + i, curatedBase);
         }
@@ -182,7 +182,7 @@ contract KeeperAdversarialTest is ForkBase {
     function test_noPurchasesDuringCreatorWork() public {
         _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
-        balancer.configure(0, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0])); // grow the target
+        balancer.configure(1000, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0])); // grow the target
         assertTrue(balancer.creatorWork());
         assertFalse(balancer.canPurchase(atk));
         upkeep();
@@ -214,7 +214,7 @@ contract KeeperAdversarialTest is ForkBase {
         settle();
         // creator action that sets creator work: grow the target so restocking runs under the full incentive
         vm.prank(creator);
-        balancer.configure(0, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
         assertTrue(balancer.creatorWork());
         vm.recordLogs();
         vm.prank(atk, atk);

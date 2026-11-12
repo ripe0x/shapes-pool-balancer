@@ -5,7 +5,7 @@ import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parse
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, prizeLabel, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, capitalOf, economics, markupFloorBps, packPlan, prizeLabel, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -559,6 +559,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const shortBy = needed > have ? ((needed - have + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
   // Costs counted: Shapes mint fees and keeper rewards. Gas is set at draw time and is not estimated.
   const econ = ready ? economics(counts, inputs, { gasPriceGwei: 0, drawsPerUpkeep: 1, safety: 0.25 }) : undefined;
+  const floorBps = markupFloorBps(counts, d.mintFee);
   const tierOf = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.size === i);
 
   // Out of 100 draws: whole draws per prize group by largest remainder, NFTs grouped.
@@ -675,6 +676,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const blocked = !ready ? undefined
     : unchosen ? 'Choose which NFT each row is, or remove the row.'
       : !ev?.feasible ? undefined
+        : markupBps < floorBps ? `The markup must be at least ${pct(floorBps)} to cover the Shapes mint fee.`
         : mode === 'new' && create?.prereq && !(create.prereq.creation && create.prereq.impl) ? 'Pool creation is not available right now.'
             : (mode === 'new' ? deposit : shortBy) > (wallet ?? 2n ** 255n) ? `Your wallet has ${eth(wallet)} ETH.`
               : !actions.length ? 'Saved. Nothing has changed.' : undefined;
@@ -865,8 +867,10 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           <div className="limit" style={{ marginTop: 0 }}>
             <div className="top"><label htmlFor="markup">Added to every draw price, and yours to keep</label><b>{markup}%</b></div>
             <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
-            {econ && markupBps < econ.breakEvenBps && Number.isFinite(econ.breakEvenBps)
-              ? <p className="note error">Below {pct(econ.breakEvenBps)}, mint fees and keeper rewards cost more than you keep. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.breakEvenBps / 100))}>Use {Math.ceil(econ.breakEvenBps / 100)}%</button></p>
+            {ready && markupBps < floorBps
+              ? <p className="note error">Below {pct(floorBps)}, the markup does not cover the Shapes mint fee. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(floorBps / 25) / 4)}>Use {Math.ceil(floorBps / 25) / 4}%</button></p>
+              : econ && markupBps < econ.breakEvenBps && Number.isFinite(econ.breakEvenBps)
+              ? <p className="note error">Below {pct(econ.breakEvenBps)}, keepers earn less than they spend restocking, so purchases pause more often. <button className="link" style={{ fontSize: 13 }} onClick={() => change(setMarkup)(Math.ceil(econ.breakEvenBps / 100))}>Use {Math.ceil(econ.breakEvenBps / 100)}%</button></p>
               : econ?.belowModeledMarkup && Number.isFinite(econ.minMarkupBps)
                 ? <p className="note">Covers mint fees and keeper rewards. {pct(econ.minMarkupBps)} adds a 25% safety margin.</p>
                 : <p className="note">Higher markup raises the draw price.</p>}

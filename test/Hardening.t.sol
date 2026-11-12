@@ -229,7 +229,7 @@ contract HardeningTest is ForkBase {
         vm.prank(c);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 5 ether}(bytes32(0))));
         vm.startPrank(c);
-        b.configure(0, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
         nft.mint(c, 9101);
         nft.approve(address(b), 9101);
         b.listCurated(address(nft), 9101, 0.3 ether);
@@ -243,9 +243,9 @@ contract HardeningTest is ForkBase {
         vm.prank(keeper, keeper);
         b.performUpkeep();
         (uint256 reward, uint256 gasPaid) = _fromLogs();
-        // full incentive: gasPaid/4 of gas at the reimbursed price, plus the fixed 0.0005 (no draws, credit 0)
-        assertApproxEqAbs(reward - gasPaid * 0.55 gwei, gasPaid / 4 * 0.55 gwei + 0.0005 ether, 3 * 0.55 gwei, "full incentive");
-        assertEq(b.incentiveCredit(), 0, "no credit spent or earned");
+        // paid in full from the creator's ETH: measured gas at the reimbursed price plus the fixed 0.0005 (credit 0)
+        assertEq(reward, gasPaid * 0.55 gwei + 0.0005 ether, "full reward");
+        assertEq(b.keeperCredit(), 0, "no credit spent or earned");
     }
 
     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
@@ -257,19 +257,18 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// A purchase-caused draw earns at most FWA's edge on that draw (the incentive credit binds in a cheap pool).
-    function test_drawCausedWorkEarnsAtMostEdge() public {
+    /// A 0.01 Shape at the 10% floor costs exactly its listed price (backing + mint fee), so drawing it earns no
+    /// markup and its restock pays the keeper nothing.
+    function test_drawWithNoMarkupPaysNothing() public {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
         vm.startPrank(c);
-        b.configure(0, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        for (uint256 i; i < 3; ++i) {
-            nft.mint(c, 9200 + i);
-            nft.approve(address(b), 9200 + i);
-            b.listCurated(address(nft), 9200 + i, 0.001 ether);
-        }
+        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        nft.mint(c, 9200);
+        nft.approve(address(b), 9200);
+        b.listCurated(address(nft), 9200, 0.3 ether);
         b.open();
         vm.stopPrank();
         balancer = b;
@@ -277,28 +276,62 @@ contract HardeningTest is ForkBase {
         fillUp();
         assertTrue(b.canPurchase(buyer));
 
-        uint256 lid = lastListingId();
-        (,,,,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        (,, uint256 escrowed,, uint8 aStatus,) = pool.acquisitions(ids[0]);
-        assertEq(aStatus, 2, "fulfilled");
-        uint256 edge = FWA_FACTORY_edge();
-        uint256 edgePaid = escrowed * edge / (10_000 + edge);
-        assertLt(edgePaid, 0.0005 ether, "cheap pool: the cap binds");
-
+        uint256 lid = _lastShape();
+        (,,, uint112 base, uint112 price) = b.items(lid);
+        assertEq(price, base, "listed at exactly what it cost");
+        _drawListing(lid);
         vm.recordLogs();
         upkeep();
-        (uint256 reward, uint256 gasPaid) = _fromLogs();
-        // reward minus the gas part is the incentive, capped by the edge credit just earned
-        assertLe(reward - gasPaid * 0.55 gwei, edgePaid, "draw-caused incentive never exceeds the edge paid");
+        (uint256 reward,) = _fromLogs();
+        assertEq(reward, 0, "no markup earned, nothing paid");
+        assertEq(b.keeperCredit(), 0);
+        assertEq(b.getActiveShapes()[0], 10, "restocked all the same");
     }
 
-    function FWA_FACTORY_edge() internal view returns (uint256) {
-        (bool ok, bytes memory r) = FWA_FACTORY.staticcall(abi.encodeWithSignature("edgeBps()"));
-        require(ok);
-        return abi.decode(r, (uint16));
+    /// At the 5 gwei cap one restock costs more than a 0.01 Shape's markup: every reward is cut to the markup earned,
+    /// so lifetime keeper pay equals the markup and never exceeds it.
+    function test_highGasKeeperPayNeverExceedsMarkupEarned() public {
+        assertEq(balancer.keeperCredit(), 0, "setup work earns no credit");
+        vm.fee(5 gwei);
+        vm.txGasPrice(5 gwei);
+        uint256 earned;
+        uint256 paid;
+        for (uint256 i; i < 4; ++i) {
+            assertTrue(balancer.canPurchase(buyer));
+            uint256 lid = _activeOfSize(0);
+            (,,, uint112 base, uint112 price) = balancer.items(lid);
+            _drawListing(lid);
+            earned += price - base;
+            vm.recordLogs();
+            upkeep();
+            (uint256 reward, uint256 gasUsed) = _fromLogs();
+            assertLt(reward, gasUsed * 5 gwei, "the keeper is not covered");
+            paid += reward;
+            assertLe(paid, earned, "never more than the markup earned");
+            assertEq(balancer.keeperCredit(), earned - paid);
+        }
+        assertEq(earned, 4 * (0.0015 ether - 0.001 ether), "0.01 Shape at 15%: 0.0015 markup less the 0.001 mint fee");
+    }
+
+    /// A curated draw earns base x markup; what its reconcile does not use carries over to later restocks.
+    function test_curatedDrawEarnsItsMarkup() public {
+        (,,, uint112 base, uint112 price) = balancer.items(curatedA);
+        _drawListing(curatedA);
+        vm.recordLogs();
+        upkeep();
+        (uint256 reward,) = _fromLogs();
+        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%");
+        assertGt(reward, 0, "the reconcile is paid from that markup");
+        assertEq(balancer.keeperCredit(), 0.045 ether - reward, "the rest carries over");
+    }
+
+    function _activeOfSize(uint8 size) internal view returns (uint256) {
+        uint256[] memory active = balancer.getActiveIds();
+        for (uint256 i; i < active.length; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(active[i]);
+            if (kind == 2 && d == size) return active[i];
+        }
+        revert("none listed");
     }
 
     /// A creator deposit while open keeps the pool admitting and does not set creator work.

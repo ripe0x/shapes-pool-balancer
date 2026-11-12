@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toBytes, toHex, type Address } from 'viem';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { MAX_KEEPER_REWARD } from '../shared/planner';
 import { Keeper } from './keeper';
 
 const PORT = Number(process.env.E2E_PORT ?? 18546);
@@ -254,12 +255,12 @@ async function run() {
   console.log('✓ per-pool error isolation; health', JSON.stringify(k.health()));
 }
 
-/** Reimbursed gas must never exceed the gas the receipt billed (after EVM refunds). */
+/** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the markup earned. */
 function checkAudit(k: Keeper) {
-  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), reimbursedGas: Number(a.reimbursedGas), ratio: a.reimbursedGas ? Number(a.reimbursedGas) / Number(a.gasUsed) : 0, rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
+  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
   console.table(rows);
-  for (const a of k.audit) assert.ok(a.reimbursedGas <= a.gasUsed, `reimbursed ${a.reimbursedGas} > billed ${a.gasUsed} (${a.hash})`);
-  console.log('✓ reimbursed gas <= billed gas for', k.audit.length, 'keeper txs');
+  for (const a of k.audit) assert.ok(a.reward <= MAX_KEEPER_REWARD, `reward ${a.reward} above the maximum (${a.hash})`);
+  console.log('✓ rewards within MAX_KEEPER_REWARD for', k.audit.length, 'keeper txs');
 }
 
 main().catch((e) => {

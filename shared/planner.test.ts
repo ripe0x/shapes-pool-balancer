@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { economics, evaluate, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
+import { economics, evaluate, markupFloorBps, MAX_KEEPER_REWARD, packPlan, requiredReserveAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
@@ -61,5 +61,17 @@ describe('planner', () => {
     expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
     // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
     expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
+  });
+});
+
+describe('markup floor (PoolBalancer.configure, MarkupBelowMintFee)', () => {
+  const fee = 10n ** 15n; // 0.001 ETH
+  const only = (d: number) => Array.from({ length: 16 }, (_, i) => (i === d ? 1 : 0));
+  it('covers the mint fees of the most fee-heavy prize in the mix', () => {
+    expect(markupFloorBps(only(0), fee)).toBe(1000); // 0.01 Shape: 0.001 / 0.01
+    expect(markupFloorBps(only(3), fee)).toBe(20); // 0.5 Shape
+    expect(markupFloorBps(only(10), fee)).toBe(1000); // 0.03 pack of three Shapes
+    expect(markupFloorBps(only(3), 3n * 10n ** 15n)).toBe(60);
+    expect(markupFloorBps([2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 5n * 10n ** 15n)).toBe(5000);
   });
 });

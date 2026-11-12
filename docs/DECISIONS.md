@@ -202,3 +202,23 @@ odds floor, the worst-batch reserve and `unwind`.
 50. **Open for the owner:** the creator pays keeper gas up to 5 gwei, and a Balanced pool at 15% loses money above about
     2 gwei with 3 draws per upkeep. Options: a creator-set gas ceiling that pauses restocking, or keepers restocking after
     several draws. Not changed here.
+
+## Keepers paid from markup (2026-11-12)
+
+Owner decision: "make this so it never loses money with keepers". Supersedes 49, 50 and the `edgeBps` note in 47.
+
+51. **Keepers are paid only from markup the pool has earned.** Each reconciled delivered draw adds its listed price less
+    `base` (a curated NFT's creator value, or what a prize cost: backing plus mint fees) to `keeperCredit`. Outside
+    creator-started work, a call's reward (measured gas × capped price + 0.0005 ETH) is capped by that credit and spends
+    it, so lifetime keeper pay never exceeds the markup earned. At high gas keepers wait, inventory runs down and
+    purchases pause at LOW_INVENTORY; they resume when gas falls or credit builds. The 4/5 gas split is gone: it bounded
+    the part paid regardless of credit, and no such part remains.
+52. **`configure` requires every target prize's markup to cover its mint fees** (`MarkupBelowMintFee`), so no listing
+    has a negative margin and the credit never counts a loss as markup. At a 0.001 ETH fee the floor is 10% when the mix
+    has 0.01 Shapes; a fee rise to 0.005 needs 50%. The dashboard shows the floor and blocks saving below it.
+53. **Kept:** creator-started work (open, configure, unlisting) is paid in full from the creator's ETH, so a pool can
+    stock up before it has earned anything. Opening a Balanced pool costs about 0.027 ETH of keeper gas at 1 gwei.
+    Evidence (`npm run sim`): keepers were paid at most the markup earned in every scenario; with gas rising to 12 gwei
+    they took 0.167 of 0.172 ETH markup and purchases were admitted 11% of the time instead of the pool paying more.
+    The creator can still end below zero when keepers take nearly all the markup, because the opening stock-up gas and
+    the mint fees of prizes still listed at close are fixed costs the markup must recover.
