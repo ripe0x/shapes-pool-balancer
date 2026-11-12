@@ -12,10 +12,11 @@ import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/Exte
 ///
 ///         Also deploys this system's own Draw Packs instance (lib/shape-packs, ripe0x/shape-packs `draw-packs` at
 ///         3a463f7), from its own build artifacts, for prizes between the Shapes denominations. PACKS_ADMIN (env) is
-///         its presentation admin: renderer and description text only, no path into custody.
+///         its presentation admin: renderer and description text only, no path into custody. KEEPER_ADMIN (env) holds
+///         the factory's keeper list (open to anyone at deploy); it has no path into custody or pool settings.
 ///
-///   Rehearsal: PACKS_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender <addr> --broadcast
-///   Mainnet:   PACKS_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify
+///   Rehearsal: PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender <addr> --broadcast
+///   Mainnet:   PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify
 contract Deploy is Script {
     address constant FWA_FACTORY = 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C;
     address constant FWA_IMPL = 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7;
@@ -29,6 +30,8 @@ contract Deploy is Script {
     function run() external returns (BalancerFactory factory, PoolBalancer impl, address packs) {
         address packsAdmin = vm.envAddress("PACKS_ADMIN");
         require(packsAdmin != address(0), "PACKS_ADMIN");
+        address keeperAdmin = vm.envAddress("KEEPER_ADMIN");
+        require(keeperAdmin != address(0), "KEEPER_ADMIN");
         // Preflight: the chain must still serve the reviewed FWA implementation.
         require(block.chainid == 1 || block.chainid == 31337, "mainnet or local fork only");
         require(IFWAPoolFactory(FWA_FACTORY).implementation() == FWA_IMPL, "FWA implementation changed: re-review");
@@ -42,11 +45,12 @@ contract Deploy is Script {
             abi.encode(SHAPES, renderer, packsAdmin, PACKS_NAME, PACKS_SYMBOL, PACK_MIN_UNITS)
         );
         impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl));
+        factory = new BalancerFactory(address(impl), keeperAdmin);
         vm.stopBroadcast();
 
         // Postflight readbacks.
         require(factory.implementation() == address(impl), "factory wiring");
+        require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
         require(impl.creator() == address(1), "implementation not locked");
         require(address(impl.FWA_FACTORY()) == FWA_FACTORY && impl.FWA_IMPLEMENTATION() == FWA_IMPL, "impl wiring");
         require(address(impl.SHAPES()) == SHAPES && address(impl.ENS()) == ENS, "impl wiring");

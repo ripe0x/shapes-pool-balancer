@@ -285,3 +285,18 @@ rewards at basefee + 0.05 gwei), "let's add the list but keep it open at default
     the same rules either way, so the list decides who may earn them, not how much the pool pays. Approvals carry
     over to a new creator. Not added: an automatic reopening when approved keepers go quiet; a restricted pool whose
     keepers stop is restocked only by its creator, and purchases pause at LOW_INVENTORY until then.
+
+## Keeper list on the factory (2026-11-12)
+
+Owner: "I don't want to have people update their contracts individually. I was thinking that it would be more like on
+the factory". Supersedes 59 and, for the keeper list only, the ownerless factory in 10.
+
+60. **The keeper list lives on `BalancerFactory` and covers every Balancer it deployed; it is open by default.** A
+    `keeperAdmin` (set at deploy, `KEEPER_ADMIN`; moved in two steps, `transferKeeperAdmin` then
+    `acceptKeeperAdmin`) can restrict upkeep to approved keepers or open it to anyone. Each Balancer stores the factory
+    that initialized it and asks `canKeep(msg.sender)` in `performUpkeep`; its own creator always passes. The keeper
+    admin has no other power: not over pool settings, prizes, ETH, rewards or FWA. Per-pool keeper controls are
+    removed.
+    Risk accepted: while restricted, every pool depends on the approved keepers for timely restocking (creators can
+    still run their own), and a compromised keeper admin could restrict upkeep to itself. It would earn only the
+    normal, fee-capped rewards; pools would pause at LOW_INVENTORY rather than lose money if it then stopped.

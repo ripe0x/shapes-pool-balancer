@@ -6,10 +6,16 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PoolPage} from "./PoolPage.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
+/// @dev The keeper list on the BalancerFactory that deployed a Balancer.
+interface IKeeperList {
+    function canKeep(address keeper) external view returns (bool);
+}
+
 /// @title PoolBalancer
 /// @notice Permanently owns one FWA standard pool. The creator lists NFTs and sets a target mix of Shape and Draw Pack
-///         prizes; anyone (or, if the creator restricts it, approved keepers) may call `performUpkeep` to restock drawn
-///         prizes from this contract's ETH. Players buy on FWA directly; this contract is FWA's purchase operator.
+///         prizes; anyone (or, while its factory restricts upkeep, approved keepers and the creator) may call
+///         `performUpkeep` to restock drawn prizes from this contract's ETH. Players buy on FWA directly; this contract is
+///         FWA's purchase operator.
 /// @dev Design (money flows in docs/SPEC.md):
 ///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
@@ -151,8 +157,6 @@ contract PoolBalancer is ReentrancyGuard {
     bool public enabled;
     /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
     bool public creatorWork;
-    /// @dev When true, only the creator and approved keepers may call `performUpkeep`. Off (anyone) by default.
-    bool public keepersRestricted;
     uint64 public reconciledSequence;
     /// @dev Restocking fees of prizes keepers listed (price less `base`, outside creator work), not yet paid out.
     uint128 public keeperCredit;
@@ -171,8 +175,8 @@ contract PoolBalancer is ReentrancyGuard {
     ///      change start a new epoch, so a former creator's approvals cannot be replayed.
     uint256 public pageEpoch;
     mapping(bytes32 digest => uint256) internal pageApprovedEpoch; // epoch + 1
-    /// @dev Keepers the creator approved; consulted only while `keepersRestricted`.
-    mapping(address keeper => bool) public approvedKeeper;
+    /// @dev The factory that deployed this Balancer: its keeper list decides who besides the creator may run upkeep.
+    IKeeperList public factory;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -184,8 +188,6 @@ contract PoolBalancer is ReentrancyGuard {
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event PurchasesOpened();
     event PurchasesClosed();
-    event KeepersRestricted(bool restricted);
-    event KeeperApproved(address indexed keeper, bool approved);
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
@@ -255,14 +257,15 @@ contract PoolBalancer is ReentrancyGuard {
         if (creator != address(0)) revert AlreadyInitialized();
         if (creator_ == address(0)) revert InvalidRecipient();
         creator = creator_;
+        factory = IKeeperList(msg.sender); // the BalancerFactory, in the same transaction as the clone
 
-        IFWAPoolFactory factory = FWA_FACTORY;
+        IFWAPoolFactory fwa = FWA_FACTORY;
         if (FWA_IMPLEMENTATION.codehash != FWA_IMPLEMENTATION_CODEHASH) revert UnreviewedImplementation();
         // A staging cap would make restocking while draws are unsettled revert (FWA StagingQueueFull), and with it upkeep.
-        if (factory.maxAcquisitionsPerTx() != MAX_BATCH || factory.maxStagedListings() != 0) revert UnsupportedFWAConfig();
+        if (fwa.maxAcquisitionsPerTx() != MAX_BATCH || fwa.maxStagedListings() != 0) revert UnsupportedFWAConfig();
         // Reverts inside FWA if the factory's implementation is not the reviewed one.
-        address p = factory.createPool(bytes32(0), FWA_IMPLEMENTATION);
-        if (factory.poolImplementation(p) != FWA_IMPLEMENTATION || IFWAPool(p).owner() != address(this)) {
+        address p = fwa.createPool(bytes32(0), FWA_IMPLEMENTATION);
+        if (fwa.poolImplementation(p) != FWA_IMPLEMENTATION || IFWAPool(p).owner() != address(this)) {
             revert UnreviewedImplementation();
         }
         pool = IFWAPool(p);
@@ -507,20 +510,6 @@ contract PoolBalancer is ReentrancyGuard {
         emit PoolPageApproved(digest, issuedAt, metadataHash);
     }
 
-    /// @notice Restrict `performUpkeep` to the creator and approved keepers, or open it to anyone (the default).
-    /// @dev Restricting trades liveness for control: if every approved keeper stops, restocking waits for the creator.
-    ///      Rewards follow the same rules either way.
-    function setKeepersRestricted(bool restricted) external onlyCreator {
-        keepersRestricted = restricted;
-        emit KeepersRestricted(restricted);
-    }
-
-    /// @notice Approve or remove a keeper for when upkeep is restricted.
-    function setKeeperApproved(address keeper, bool approved) external onlyCreator {
-        approvedKeeper[keeper] = approved;
-        emit KeeperApproved(keeper, approved);
-    }
-
     /// @notice Invalidate every pool-page approval made so far.
     function revokePoolPages() external onlyCreator {
         emit PoolPagesRevoked(++pageEpoch);
@@ -571,7 +560,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///         Reverts `NoUpkeepNeeded` when it would change nothing; simulate it to learn whether work exists and
     ///         what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
     function performUpkeep() external nonReentrant returns (uint256 reward) {
-        if (keepersRestricted && msg.sender != creator && !approvedKeeper[msg.sender]) revert KeeperNotApproved();
+        if (msg.sender != creator && !factory.canKeep(msg.sender)) revert KeeperNotApproved();
         uint256 gasStart = gasleft();
         IFWAPool p = pool;
 

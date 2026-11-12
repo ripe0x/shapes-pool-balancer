@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toBytes, toHex, type Address } from 'viem';
-import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { balancerFactoryAbi, fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 import { MAX_KEEPER_REWARD } from '../shared/planner';
 import { Keeper } from './keeper';
 
@@ -116,7 +116,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
 }
 
 async function run() {
-  sh(`PACKS_ADMIN=${ACCTS[0]} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
+  sh(`PACKS_ADMIN=${ACCTS[0]} KEEPER_ADMIN=${ACCTS[0]} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
   factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory;
   const b1 = await setupPool(ACCTS[1]);
   const b2 = await setupPool(ACCTS[2]);
@@ -246,9 +246,10 @@ async function run() {
   assert.equal(await pub.verifyMessage({ address: b1, message: 'hello', signature: PLACEHOLDER_SIG }), false, 'arbitrary message rejected');
   console.log('✓ pool page approval verifies through viem ERC-1271; other messages rejected');
 
-  // 9b. keeper list: a pool restricted to other keepers is skipped quietly; once approved, it is serviced
+  // 9b. keeper list (on the factory, keeper admin = deployer): while restricted to other keepers the pool is skipped
+  //     quietly; once approved, it is serviced
   const restrict = async (fn: 'setKeepersRestricted' | 'setKeeperApproved', args: readonly unknown[]) => {
-    const h = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: fn, args: args as never, account: creator1, chain: null });
+    const h = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName: fn, args: args as never, account: ACCTS[0] as Address, chain: null });
     assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success');
   };
   await restrict('setKeepersRestricted', [true]);
@@ -259,6 +260,7 @@ async function run() {
   assert.ok(!k.errors[b1], 'a restricted pool is not reported as an error');
   await restrict('setKeeperApproved', [keeperAddr, true]);
   await tickUntil(k, async () => (await stocked(b1)));
+  await restrict('setKeepersRestricted', [false]);
   console.log('✓ keeper list: skipped while not approved, serviced once approved');
 
   // 10. one broken pool does not stop the others

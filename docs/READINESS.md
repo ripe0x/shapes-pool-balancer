@@ -37,10 +37,11 @@ Open before release:
    receipt.
 5. **Real wallet extension test** of the dashboard writes (carried over; see "Checks that could not be executed").
 6. **FWA pool-page server answer:** whether `pools.fwa.fun` accepts ERC-1271 from a contract owner (carried over).
-6. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
+7. **Draw Packs deploy values and audit status (DECISIONS 36):** the name "Pool Prize Packs", symbol "PRIZEPACK" and the
    presentation admin `PACKS_ADMIN` are your call; Draw Packs' own audit status as used in ape-Ball is not confirmed
    here.
-7. **Your explicit deployment authorization** and the release-candidate checks below, re-run on the frozen rewrite.
+8. **Keeper admin address (DECISIONS 60):** `KEEPER_ADMIN`, who controls the factory's keeper list, is your call.
+9. **Your explicit deployment authorization** and the release-candidate checks below, re-run on the frozen rewrite.
 
 ## Earlier verification (previous design, commit `3f1735f`)
 
@@ -155,7 +156,7 @@ These follow the rewrite being reviewed and re-verified (see "Rewrite status").
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):
 
    ```bash
-   PACKS_ADMIN=<address> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
+   PACKS_ADMIN=<address> KEEPER_ADMIN=<address> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
    ```
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.

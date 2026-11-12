@@ -61,6 +61,7 @@ contract BalancerTest is ForkBase {
         vm.prank(creator);
         PoolBalancer b3 = PoolBalancer(payable(factory.createBalancer(bytes32(uint256(1)))));
         assertEq(b3.pool().owner(), address(b3));
+        assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
         b2.initialize(stranger);
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
@@ -390,55 +391,6 @@ contract BalancerTest is ForkBase {
     }
 
     /// A refunded draw earns no markup, so reconciling it pays nothing from an empty credit.
-    /// The keeper list: open by default; when restricted only the creator and approved keepers may run upkeep, under
-    /// the same reward rules; the creator can always restock their own pool, and a new creator takes that role.
-    function test_keeperListIsCreatorControlledAndOpenByDefault() public {
-        assertFalse(balancer.keepersRestricted(), "open by default");
-        vm.startPrank(stranger);
-        vm.expectRevert(PoolBalancer.Unauthorized.selector);
-        balancer.setKeepersRestricted(true);
-        vm.expectRevert(PoolBalancer.Unauthorized.selector);
-        balancer.setKeeperApproved(stranger, true);
-        vm.stopPrank();
-
-        _drawOneShape();
-        vm.prank(creator);
-        balancer.setKeepersRestricted(true);
-        vm.prank(stranger, stranger);
-        vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        balancer.performUpkeep();
-        vm.prank(creator);
-        balancer.setKeeperApproved(keeper, true);
-        (uint256 reward,) = _paidUpkeep(keeper);
-        assertGt(reward, 0, "an approved keeper is paid as usual");
-
-        _drawOneShape();
-        vm.prank(creator);
-        balancer.setKeeperApproved(keeper, false);
-        vm.prank(keeper, keeper);
-        vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        balancer.performUpkeep();
-        vm.prank(creator, creator);
-        balancer.performUpkeep(); // the creator always can
-
-        _drawOneShape();
-        vm.prank(creator);
-        balancer.transferCreator(stranger);
-        vm.prank(stranger);
-        balancer.acceptCreator();
-        vm.prank(creator, creator);
-        vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        balancer.performUpkeep(); // the former creator is just another caller
-        vm.prank(stranger, stranger);
-        balancer.performUpkeep();
-
-        _drawOneShape();
-        vm.prank(stranger);
-        balancer.setKeepersRestricted(false);
-        vm.prank(keeper, keeper);
-        balancer.performUpkeep(); // open again: anyone
-    }
-
     function test_refundOnlyBatchEarnsNothing() public {
         assertEq(balancer.keeperCredit(), 0);
         buy(buyer, 1);

@@ -37,6 +37,7 @@ abstract contract ForkBase is Test {
     address internal keeper = makeAddr("keeper");
     address internal buyer = makeAddr("buyer");
     address internal stranger = makeAddr("stranger");
+    address internal keeperAdmin = makeAddr("keeperAdmin");
 
     function setUpFork() internal {
         vm.createSelectFork("mainnet", FORK_BLOCK);
@@ -45,7 +46,7 @@ abstract contract ForkBase is Test {
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl));
+        factory = new BalancerFactory(address(impl), keeperAdmin);
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);

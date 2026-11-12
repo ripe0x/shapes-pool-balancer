@@ -28,7 +28,7 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 
 - Each tick the keeper simulates `performUpkeep` for every Balancer at the price it would bid (basefee + 0.05 gwei,
   `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` means nothing to do, and
-  `KeeperNotApproved` that the pool's creator has restricted upkeep to other keepers; both are skipped quietly. Any
+  `KeeperNotApproved` that the factory's keeper admin has restricted upkeep to other keepers; both are skipped quietly. Any
   other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price, and never when
   the estimate exceeds the 3.2M reimbursable maximum.
 - `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate

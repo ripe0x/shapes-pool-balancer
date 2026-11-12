@@ -53,8 +53,8 @@ Tests: `invariant_keeperPayWithinRestockFees`, `invariant_prizeWeightMatchesTrac
 `test_gasJumpRestockPaidByTheNewListingsFee`, `test_zeroMarkupStillFundsKeepers`, `test_curatedDrawEarnsKeepersNothing`,
 `test_refundOnlyBatchEarnsNothing`, `test_depositDoesNotUnlockFullIncentive` (rewards never exceed the fees of the
 replacements listed), `test_breakEven_gasJumpAfterListing`; the self-dealing tests value won Shapes at the ETH they
-redeem for. Keeper list (DECISIONS 59): creator-only, open by default; `test_keeperListIsCreatorControlledAndOpenByDefault`
-and the keeper e2e step. Not tested: a deliberately failed delivery leaves the failed prize's fronted fee unrepaid, since its
+redeem for. Keeper list (DECISIONS 60): on the factory, keeper-admin-only, open by default; `test/KeeperList.t.sol` and the
+keeper e2e step. Not tested: a deliberately failed delivery leaves the failed prize's fronted fee unrepaid, since its
 draw is refunded (the attacker loses FWA's VRF fee, more than that fee).
 
 ## Method
@@ -206,6 +206,9 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
 
 - **FWA trust.** FWA's factory owner can pause purchases or VRF and set withdraw-only globally; the reviewed pool
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
+- **Keeper admin (DECISIONS 60).** The BalancerFactory's keeper admin can restrict upkeep on every pool to approved
+  keepers. It cannot touch settings, prizes, ETH or reward rules, and creators can always run their own upkeep; a
+  compromised or absent admin can at worst slow restocking, which pauses purchases at LOW_INVENTORY.
 - **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the
   target's (charging each unreconciled draw the heaviest possible prize) and admits more than one batch between upkeeps.
   Player protection against a draw that drifts the odds comes from FWA pricing each draw on live inventory and refunding

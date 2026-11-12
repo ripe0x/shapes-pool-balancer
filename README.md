@@ -104,7 +104,7 @@ anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 2638234
 ```
 
 ```bash
-PACKS_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
+PACKS_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 KEEPER_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
 ```
 
 ```bash
