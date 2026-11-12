@@ -8,8 +8,8 @@ import {PoolBalancer} from "../src/PoolBalancer.sol";
 /// @notice Mainnet-fork gas measurements used to set keeper reward bounds (docs/GAS.md).
 ///         Run isolated so each call is a real transaction (intrinsic gas, cold storage, final refunds):
 ///         forge test --match-path test/Gas.t.sol --isolate -vv
-///         Rewards outside creator work are capped by the markup earned (keeperCredit), so a reward above the
-///         billed gas can only come out of markup the pool has already earned (collection-games#23).
+///         Rewards outside creator work are capped by the restocking fees of the prizes each call lists
+///         (keeperCredit), so a reward above the billed gas comes out of those fees, never the creator's markup.
 contract GasBench is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     uint256 constant KEEPER_MAX_GAS = 3_200_000;
