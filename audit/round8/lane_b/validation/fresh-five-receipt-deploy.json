@@ -1,0 +1,75 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "creator": "0xc5c7b46843014B1591e9aF24de797156cde67f08",
+  "factory": "0xb8541c7fa9f70ba4d756056ba8706035c13b5d49",
+  "balancer": "0x5C4d943b9bC7ACe1ee3A8152f35CA6f7DAf777A0",
+  "pool": "0x1234cAdFCF8C6412257fCE560FB6a064EaDB82E2",
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "keeper": "0x00000000000000000000000000000000c0dec0df",
+  "quote": {
+    "fee": "22520339287470837",
+    "vrf": "2457000000000000",
+    "total": "124886696437354185"
+  },
+  "purchaseTx": "0x8307bb178d3fdbb913b639fb586e6a6de9787c792447d41e1a52d4789123f457",
+  "admissionStatusWhileFiveInFlight": "4",
+  "inFlightReserve": "3088500000000000000",
+  "acquisitions": [
+    {
+      "requestId": "94782623901646048224103269094433485951264266060021871943327168528472285848174",
+      "listingId": "34",
+      "status": "2"
+    },
+    {
+      "requestId": "10412546148382297689149577695111706927753226567136918663491445919880671230910",
+      "listingId": "10",
+      "status": "2"
+    },
+    {
+      "requestId": "36030075426630241987174162388021095287136497829864346917197886983247232644403",
+      "listingId": "14",
+      "status": "2"
+    },
+    {
+      "requestId": "92367533472835761172630044416897595817107170413701864800877801613411939654281",
+      "listingId": "21",
+      "status": "2"
+    },
+    {
+      "requestId": "35087158592926974600582876360127850688610045006173988963160525295399340477856",
+      "listingId": "7",
+      "status": "2"
+    }
+  ],
+  "callbackRoute": "coordinator -> VRF service -> FWA pool",
+  "creditBefore": "0",
+  "variants": [
+    {
+      "bidGwei": "1.05",
+      "txHash": "0x19c1bbaa99b3a1e01ebeef70477e0b1dfa96af168cd84aa8b3257c167abfd77a",
+      "gasLimit": "8000000",
+      "billedGas": "2539868",
+      "effectiveGasPrice": "1050000000",
+      "measuredGas": "2610188",
+      "reward": "3240697400000000",
+      "billedCost": "2666861400000000",
+      "walletGain": "573836000000000",
+      "creditAfter": "2484302600000000",
+      "reconciledSequence": "5"
+    },
+    {
+      "bidGwei": "5.05",
+      "txHash": "0x1e7958b3bb6925ec732f49ffcf0fcd6bb1141ce785d04da4564de0830ed2175c",
+      "gasLimit": "8000000",
+      "billedGas": "2539851",
+      "effectiveGasPrice": "5050000000",
+      "measuredGas": "2610171",
+      "reward": "3240679550000000",
+      "billedCost": "12826247550000000",
+      "walletGain": "-9585568000000000",
+      "creditAfter": "2484320450000000",
+      "reconciledSequence": "5"
+    }
+  ]
+}

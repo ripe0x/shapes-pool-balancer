@@ -1,0 +1,1 @@
+FOUNDRY_TEST=audit/round8/integration forge test --match-path audit/round8/integration/IntegrationFork.t.sol --match-test testRetireThenUnlistAndRedeem --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --out audit/round8/integration/out --cache-path audit/round8/integration/cache -vvv

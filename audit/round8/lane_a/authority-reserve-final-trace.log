@@ -1,0 +1,676 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.49s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/ReserveReopen.t.sol:ReserveReopenTest
+[PASS] testCloseDrainReopenAdmitsWithReserveDeficit() (gas: 12164627)
+Logs:
+  reserve wei 100034000000000000000
+  draw payment wei 2081548187824626386
+
+Traces:
+  [12338027] ReserveReopenTest::testCloseDrainReopenAdmitsWithReserveDeficit()
+    ├─ [0] VM::fee(57954497 [5.795e7])
+    │   └─ ← [Return]
+    ├─ [0] VM::txGasPrice(1000000000 [1e9])
+    │   └─ ← [Return]
+    ├─ [7184] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::ownerOf(1) [staticcall]
+    │   └─ ← [Return] 0x46EFbAedc92067E6d60E84ED6395099723252496
+    ├─ [0] VM::deal(0x46EFbAedc92067E6d60E84ED6395099723252496, 103000000000000000000 [1.03e20])
+    │   └─ ← [Return]
+    ├─ [2079868] → new ShapePackRenderer@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
+    │   └─ ← [Return] 9354 bytes of code
+    ├─ [4279090] → new ShapePacks@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0x01ffc9a7) [staticcall]
+    │   │   └─ ← [Return] true
+    │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xffffffff) [staticcall]
+    │   │   └─ ← [Return] false
+    │   ├─ [383] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xa1c892cd) [staticcall]
+    │   │   └─ ← [Return] true
+    │   ├─ [271] ShapePackRenderer::supportsInterface(0x01ffc9a7) [staticcall]
+    │   │   └─ ← [Return] true
+    │   ├─ [303] ShapePackRenderer::supportsInterface(0xffffffff) [staticcall]
+    │   │   └─ ← [Return] false
+    │   ├─ [303] ShapePackRenderer::supportsInterface(0x92372d21) [staticcall]
+    │   │   └─ ← [Return] true
+    │   ├─ [1481] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::unit() [staticcall]
+    │   │   └─ ← [Return] 10000000000000000 [1e16]
+    │   ├─ emit AdminTransferred(previousAdmin: 0x0000000000000000000000000000000000000000, newAdmin: ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
+    │   └─ ← [Return] 17768 bytes of code
+    ├─ [0] VM::deployCode("src/PoolBalancer.sol:PoolBalancer", 0x0000000000000000000000008919814d825a5af238cc04de06b1c18c9eaa477c00000000000000000000000085faf92967705dc45535ebca74d6333f6bcbfee70af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce020000000000000000000000006fe9193276bf7abcbee44ab7afd717d637d6faf00000000000000000000000002e234dae75c793f67a35089c9d99245e1c58470b00000000000000000000000000000000000c2e074ec69a0dfb2997ba6c7d2e1e)
+    │   ├─ [4025963] → new PoolBalancer.packs@0xF62849F9A0B5Bf2913b396098F7c7019b51A820a
+    │   │   ├─ [975] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationCount() [staticcall]
+    │   │   │   └─ ← [Return] 9
+    │   │   ├─ [1559] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(0) [staticcall]
+    │   │   │   └─ ← [Return] 10000000000000000 [1e16]
+    │   │   ├─ [1581] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(1) [staticcall]
+    │   │   │   └─ ← [Return] 50000000000000000 [5e16]
+    │   │   ├─ [1603] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(2) [staticcall]
+    │   │   │   └─ ← [Return] 100000000000000000 [1e17]
+    │   │   ├─ [1625] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(3) [staticcall]
+    │   │   │   └─ ← [Return] 500000000000000000 [5e17]
+    │   │   ├─ [1647] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(4) [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000000 [1e18]
+    │   │   ├─ [1669] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(5) [staticcall]
+    │   │   │   └─ ← [Return] 5000000000000000000 [5e18]
+    │   │   ├─ [1691] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(6) [staticcall]
+    │   │   │   └─ ← [Return] 10000000000000000000 [1e19]
+    │   │   ├─ [1713] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(7) [staticcall]
+    │   │   │   └─ ← [Return] 50000000000000000000 [5e19]
+    │   │   ├─ [1735] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(8) [staticcall]
+    │   │   │   └─ ← [Return] 100000000000000000000 [1e20]
+    │   │   ├─ [372] ShapePacks::shapes() [staticcall]
+    │   │   │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0
+    │   │   ├─ [1297] ShapePacks::MIN_PACK_VALUE() [staticcall]
+    │   │   │   └─ ← [Return] 20000000000000000 [2e16]
+    │   │   └─ ← [Return] 19870 bytes of code
+    │   └─ ← [Return] PoolBalancer.packs: [0xF62849F9A0B5Bf2913b396098F7c7019b51A820a]
+    ├─ [2376] PoolBalancer.packs::creator() [staticcall]
+    │   └─ ← [Return] ECRecover: [0x0000000000000000000000000000000000000001]
+    ├─ [0] VM::expectRevert(AlreadyInitialized())
+    │   └─ ← [Return]
+    ├─ [24691] PoolBalancer.packs::initialize(ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
+    │   └─ ← [Revert] AlreadyInitialized()
+    ├─ [0] VM::deployCode("src/BalancerFactory.sol:BalancerFactory", 0x000000000000000000000000f62849f9a0b5bf2913b396098f7c7019b51a820a0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496)
+    │   ├─ [447925] → new BalancerFactory.packs@0xc7183455a4C133Ae270771860664b6B7ec320bB1
+    │   │   ├─ emit KeeperAdminTransferred(oldKeeperAdmin: 0x0000000000000000000000000000000000000000, newKeeperAdmin: ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
+    │   │   └─ ← [Return] 2117 bytes of code
+    │   └─ ← [Return] BalancerFactory.packs: [0xc7183455a4C133Ae270771860664b6B7ec320bB1]
+    ├─ [0] VM::startPrank(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   └─ ← [Return]
+    ├─ [854062] BalancerFactory.packs::createBalancer{value: 101000000000000000000}(0x0000000000000000000000000000000000000000000000000000000000000001)
+    │   ├─ [8828] → new <unknown>@0x919935738DdBd2b7DECc2e3115998Ff00323BCc5
+    │   │   └─ ← [Return] 44 bytes of code
+    │   ├─ [717050] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::initialize{value: 101000000000000000000}(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   │   ├─ [714385] PoolBalancer.packs::initialize{value: 101000000000000000000}(0x46EFbAedc92067E6d60E84ED6395099723252496) [delegatecall]
+    │   │   │   ├─ [1327] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxAcquisitionsPerTx() [staticcall]
+    │   │   │   │   └─ ← [Return] 5
+    │   │   │   ├─ [1621] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxStagedListings() [staticcall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   ├─ [549054] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::createPool(0x0000000000000000000000000000000000000000000000000000000000000000, 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7)
+    │   │   │   │   ├─ [8828] → new <unknown>@0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   │   │   │   │   └─ ← [Return] 44 bytes of code
+    │   │   │   │   ├─ [281113] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::initialize(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5)
+    │   │   │   │   │   ├─ [280948] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::initialize(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5) [delegatecall]
+    │   │   │   │   │   │   ├─ [5772] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::getPoolInitializationConfig() [staticcall]
+    │   │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e1818077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000000000000000000000000000000006da89748ae55fc3722f3643d3590225386d85a29
+    │   │   │   │   │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5)
+    │   │   │   │   │   │   ├─ emit FWACloneInitialized(param0: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, param1: 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C, param2: 111178906740474539008897604835050235821098546145492638227880980872286050640257 [1.111e77])
+    │   │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   ├─ [41576] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::registerPool(0x8aD292FB852E981efb9de107860896Ad550dBa1A)
+    │   │   │   │   │   ├─ [1071] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::isPool(0x8aD292FB852E981efb9de107860896Ad550dBa1A) [staticcall]
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │   │   ├─ [1350] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfCoordinatorAndSubId() [staticcall]
+    │   │   │   │   │   │   ├─ [1182] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfCoordinatorAndSubId() [delegatecall]
+    │   │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   │   ├─ [2096] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfRequestConfig() [staticcall]
+    │   │   │   │   │   │   ├─ [1928] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfRequestConfig() [delegatecall]
+    │   │   │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   │   ├─ [1224] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfService() [staticcall]
+    │   │   │   │   │   │   ├─ [1062] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfService() [delegatecall]
+    │   │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   │   ├─ [3834] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unfulfilledVrfCount() [staticcall]
+    │   │   │   │   │   │   ├─ [3672] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unfulfilledVrfCount() [delegatecall]
+    │   │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   │   ├─ emit PoolRegistered(param0: 0x8aD292FB852E981efb9de107860896Ad550dBa1A)
+    │   │   │   │   │   └─ ← [Stop]
+    │   │   │   │   ├─  emit topic 0: 0x451303f8c2b76d53ca965213a1f812340d6111dac5c47a4382a40ba861790f68
+    │   │   │   │   │        topic 1: 0x000000000000000000000000919935738ddbd2b7decc2e3115998ff00323bcc5
+    │   │   │   │   │        topic 2: 0x0000000000000000000000008ad292fb852e981efb9de107860896ad550dba1a
+    │   │   │   │   │        topic 3: 0xf5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   ├─  emit topic 0: 0x112f9e4abff9ae5d7f186c798afdf242cb99350cca1292ee767264e8cf4caec6
+    │   │   │   │   │        topic 1: 0x000000000000000000000000919935738ddbd2b7decc2e3115998ff00323bcc5
+    │   │   │   │   │        topic 2: 0x0000000000000000000000008ad292fb852e981efb9de107860896ad550dba1a
+    │   │   │   │   │        topic 3: 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   ├─ emit PoolImplementationRegistered(param0: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, param1: 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7)
+    │   │   │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   │   │   ├─ [495] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::poolImplementation(0x8aD292FB852E981efb9de107860896Ad550dBa1A) [staticcall]
+    │   │   │   │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7
+    │   │   │   ├─ [1663] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::owner() [staticcall]
+    │   │   │   │   ├─ [1501] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::owner() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5
+    │   │   │   │   └─ ← [Return] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5
+    │   │   │   ├─ [24618] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::setPurchaseOperator(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5)
+    │   │   │   │   ├─ [24453] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::setPurchaseOperator(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5) [delegatecall]
+    │   │   │   │   │   ├─ emit PurchaseOperatorSet(param0: 0x0000000000000000000000000000000000000000, param1: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5)
+    │   │   │   │   │   └─ ← [Stop]
+    │   │   │   │   └─ ← [Return]
+    │   │   │   ├─ [25786] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::setApprovalForAll(0x8aD292FB852E981efb9de107860896Ad550dBa1A, true)
+    │   │   │   │   ├─ emit ApprovalForAll(owner: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, operator: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, approved: true)
+    │   │   │   │   └─ ← [Return]
+    │   │   │   ├─ [25202] ShapePacks::setApprovalForAll(0x8aD292FB852E981efb9de107860896Ad550dBa1A, true)
+    │   │   │   │   ├─ emit ApprovalForAll(owner: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, operator: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, approved: true)
+    │   │   │   │   └─ ← [Stop]
+    │   │   │   ├─ emit Initialized(creator: 0x46EFbAedc92067E6d60E84ED6395099723252496, pool: 0x8aD292FB852E981efb9de107860896Ad550dBa1A)
+    │   │   │   ├─ emit Deposited(from: BalancerFactory.packs: [0xc7183455a4C133Ae270771860664b6B7ec320bB1], amount: 101000000000000000000 [1.01e20])
+    │   │   │   └─ ← [Return]
+    │   │   └─ ← [Return]
+    │   ├─ [718] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::pool() [staticcall]
+    │   │   ├─ [556] PoolBalancer.packs::pool() [delegatecall]
+    │   │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   ├─ emit BalancerCreated(creator: 0x46EFbAedc92067E6d60E84ED6395099723252496, balancer: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, pool: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, salt: 0x0000000000000000000000000000000000000000000000000000000000000001)
+    │   └─ ← [Return] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5
+    ├─ [53799] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::approve(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 1)
+    │   ├─ emit Approval(owner: 0x46EFbAedc92067E6d60E84ED6395099723252496, approved: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, tokenId: 1)
+    │   └─ ← [Stop]
+    ├─ [1374672] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::listCurated(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 1, 1000000000000000000 [1e18])
+    │   ├─ [1429120] PoolBalancer.packs::listCurated(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 1, 1000000000000000000 [1e18]) [delegatecall]
+    │   │   ├─ [106103] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::transferFrom(0x46EFbAedc92067E6d60E84ED6395099723252496, 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 1)
+    │   │   │   ├─ emit Approval(owner: 0x46EFbAedc92067E6d60E84ED6395099723252496, approved: 0x0000000000000000000000000000000000000000, tokenId: 1)
+    │   │   │   ├─ emit Transfer(from: 0x46EFbAedc92067E6d60E84ED6395099723252496, to: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, tokenId: 1)
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ [1184] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::ownerOf(1) [staticcall]
+    │   │   │   └─ ← [Return] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5
+    │   │   ├─ [4327] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::approve(0x8aD292FB852E981efb9de107860896Ad550dBa1A, 1)
+    │   │   │   ├─ emit Approval(owner: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, approved: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, tokenId: 1)
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ [1188116] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::listNFT(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 1, 1000000000000000000 [1e18])
+    │   │   │   ├─ [1185436] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::listNFT(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 1, 1000000000000000000 [1e18]) [delegatecall]
+    │   │   │   │   ├─ [3558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   │   │   └─ ← [Return] false
+    │   │   │   │   ├─ [78103] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::transferFrom(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 0x8aD292FB852E981efb9de107860896Ad550dBa1A, 1)
+    │   │   │   │   │   ├─ emit Approval(owner: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, approved: 0x0000000000000000000000000000000000000000, tokenId: 1)
+    │   │   │   │   │   ├─ emit Transfer(from: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, to: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, tokenId: 1)
+    │   │   │   │   │   └─ ← [Stop]
+    │   │   │   │   ├─ [1184] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::ownerOf(1) [staticcall]
+    │   │   │   │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   │   │   │   ├─ emit NFTListed(listingId: 1, slot: 1, depositor: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, collection: 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, tokenId: 1, weight: 1000000000000000000 [1e18], price: 1000000000000000000 [1e18])
+    │   │   │   │   ├─ emit InventoryChanged(version: 1, changedAt: 1794287711 [1.794e9])
+    │   │   │   │   └─ ← [Return] 1
+    │   │   │   └─ ← [Return] 1
+    │   │   ├─ emit CuratedListed(listingId: 1, collection: 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, tokenId: 1, base: 1000000000000000000 [1e18], price: 1000000000000000000 [1e18])
+    │   │   └─ ← [Return] 1
+    │   └─ ← [Return] 1
+    ├─ [7184] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::ownerOf(2) [staticcall]
+    │   └─ ← [Return] 0xc5c7b46843014B1591e9aF24de797156cde67f08
+    ├─ [5218] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::pool() [staticcall]
+    │   ├─ [2556] PoolBalancer.packs::pool() [delegatecall]
+    │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::prank(0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Return]
+    ├─ [53799] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::approve(0x8aD292FB852E981efb9de107860896Ad550dBa1A, 2)
+    │   ├─ emit Approval(owner: 0xc5c7b46843014B1591e9aF24de797156cde67f08, approved: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, tokenId: 2)
+    │   └─ ← [Stop]
+    ├─ [0] VM::startPrank(0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Return]
+    ├─ [0] VM::expectRevert(custom error 0xf4844814)
+    │   └─ ← [Return]
+    ├─ [33328] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::listNFT(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 2, 1000000000000000000 [1e18])
+    │   ├─ [8877] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::listNFT(0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D, 2, 1000000000000000000 [1e18]) [delegatecall]
+    │   │   └─ ← [Revert] OwnerOnlyInventory()
+    │   └─ ← [Revert] OwnerOnlyInventory()
+    ├─ [7184] 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D::ownerOf(2) [staticcall]
+    │   └─ ← [Return] 0xc5c7b46843014B1591e9aF24de797156cde67f08
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [0] VM::startPrank(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   └─ ← [Return]
+    ├─ [107216] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::configure(0, 340282366920938463463374607431768211456 [3.402e38])
+    │   ├─ [83213] PoolBalancer.packs::configure(0, 340282366920938463463374607431768211456 [3.402e38]) [delegatecall]
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ emit Configured(markupBps: 0, target: 340282366920938463463374607431768211456 [3.402e38], mintFeeCap: 1000000000000000 [1e15])
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [78973] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::open()
+    │   ├─ [55250] PoolBalancer.packs::open() [delegatecall]
+    │   │   ├─ [12898] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::setBool(41, true)
+    │   │   │   ├─ [10227] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::setBool(41, true) [delegatecall]
+    │   │   │   │   ├─  emit topic 0: 0x150110afd46e9924086bf85c855aae25722518b293155bf0ae689dd99a2e88cc
+    │   │   │   │   │        topic 1: 0x0000000000000000000000000000000000000000000000000000000000000029
+    │   │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │   └─ ← [Return]
+    │   │   │   └─ ← [Return]
+    │   │   ├─ emit PurchasesOpened()
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [820479] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::performUpkeep()
+    │   ├─ [825053] PoolBalancer.packs::performUpkeep() [delegatecall]
+    │   │   ├─ [6584] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::nextSequenceToProcess() [staticcall]
+    │   │   │   ├─ [3922] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::nextSequenceToProcess() [delegatecall]
+    │   │   │   │   └─ ← [Return] 1
+    │   │   │   └─ ← [Return] 1
+    │   │   ├─ [3240] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::ownerProceeds() [staticcall]
+    │   │   │   ├─ [3078] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::ownerProceeds() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [862] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::retired() [staticcall]
+    │   │   │   ├─ [700] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::retired() [delegatecall]
+    │   │   │   │   └─ ← [Return] false
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [3558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [138273] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintBatch{value: 100001000000000000000}(100000000000000000000 [1e20], 1)
+    │   │   │   ├─ emit MintFeeAccrued(amountWei: 1000000000000000 [1e15])
+    │   │   │   ├─ [523] 0x34a7a97B92288B3F804F416B3B15214FB85e4200::geneAtMint{value: 100001000000000000000}(0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, 8) [delegatecall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000003
+    │   │   │   ├─ emit ShapeMinted(tokenId: 307, to: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, amountWei: 100000000000000000000 [1e20], seed: 0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, originCount: 1)
+    │   │   │   ├─ emit InkGene(tokenId: 307, gene: 3)
+    │   │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, tokenId: 307)
+    │   │   │   ├─ [935] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::onERC721Received(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 0x0000000000000000000000000000000000000000, 307, 0x)
+    │   │   │   │   ├─ [743] PoolBalancer.packs::onERC721Received(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 0x0000000000000000000000000000000000000000, 307, 0x) [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   └─ ← [Return] 307
+    │   │   ├─ emit ShapesMinted(denom: 8, firstTokenId: 307, quantity: 1, cost: 100001000000000000000 [1e20])
+    │   │   ├─ [479548] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 100001297159047300000 [1e20] })])
+    │   │   │   ├─ [479350] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 100001297159047300000 [1e20] })]) [delegatecall]
+    │   │   │   │   ├─ [1558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   │   │   └─ ← [Return] false
+    │   │   │   │   ├─ [30309] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::transferFrom(0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, 0x8aD292FB852E981efb9de107860896Ad550dBa1A, 307)
+    │   │   │   │   │   ├─ emit Transfer(from: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, to: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, tokenId: 307)
+    │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   ├─ [1283] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::ownerOf(307) [staticcall]
+    │   │   │   │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   │   │   │   ├─ emit NFTListed(listingId: 2, slot: 2, depositor: 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5, collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, weight: 9999870285777869 [9.999e15], price: 100001297159047300000 [1e20])
+    │   │   │   │   ├─ emit InventoryChanged(version: 2, changedAt: 1794287711 [1.794e9])
+    │   │   │   │   └─ ← [Return] [2]
+    │   │   │   └─ ← [Return] [2]
+    │   │   ├─ emit ShapeListed(listingId: 2, denom: 8, tokenId: 307, price: 100001297159047300000 [1e20])
+    │   │   ├─ [0] 0x46EFbAedc92067E6d60E84ED6395099723252496::receive{value: 587212983582396}()
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit KeeperPaid(keeper: 0x46EFbAedc92067E6d60E84ED6395099723252496, amount: 587212983582396 [5.872e14], gasUsed: 807868 [8.078e5])
+    │   │   └─ ← [Return] 587212983582396 [5.872e14]
+    │   └─ ← [Return] 587212983582396 [5.872e14]
+    ├─ [8277] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::getActiveShapes() [staticcall]
+    │   ├─ [5525] PoolBalancer.packs::getActiveShapes() [delegatecall]
+    │   │   └─ ← [Return] [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    │   └─ ← [Return] [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    ├─ [40052] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::admissionStatus() [staticcall]
+    │   ├─ [37390] PoolBalancer.packs::admissionStatus() [delegatecall]
+    │   │   ├─ [5608] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unsettledAcquisitionCount() [staticcall]
+    │   │   │   ├─ [2946] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unsettledAcquisitionCount() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [4056] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   ├─ [3894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   └─ ← [Return] 0
+    │   └─ ← [Return] 0
+    ├─ [46838] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::close()
+    │   ├─ [27915] PoolBalancer.packs::close() [delegatecall]
+    │   │   ├─ [5362] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::retired() [staticcall]
+    │   │   │   ├─ [2700] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::retired() [delegatecall]
+    │   │   │   │   └─ ← [Return] false
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [8410] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::setBool(41, false)
+    │   │   │   ├─ [8239] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::setBool(41, false) [delegatecall]
+    │   │   │   │   ├─  emit topic 0: 0x150110afd46e9924086bf85c855aae25722518b293155bf0ae689dd99a2e88cc
+    │   │   │   │   │        topic 1: 0x0000000000000000000000000000000000000000000000000000000000000029
+    │   │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   └─ ← [Return]
+    │   │   │   └─ ← [Return]
+    │   │   ├─ emit PurchasesClosed()
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [50902] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::claimSurplus(998412787016417604 [9.984e17], 0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   ├─ [29375] PoolBalancer.packs::claimSurplus(998412787016417604 [9.984e17], 0x46EFbAedc92067E6d60E84ED6395099723252496) [delegatecall]
+    │   │   ├─ [5740] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::ownerProceeds() [staticcall]
+    │   │   │   ├─ [3078] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::ownerProceeds() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [0] 0x46EFbAedc92067E6d60E84ED6395099723252496::receive{value: 998412787016417604}()
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit SurplusClaimed(to: 0x46EFbAedc92067E6d60E84ED6395099723252496, amount: 998412787016417604 [9.984e17])
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [78645] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::open()
+    │   ├─ [54922] PoolBalancer.packs::open() [delegatecall]
+    │   │   ├─ [12898] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::setBool(41, true)
+    │   │   │   ├─ [10227] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::setBool(41, true) [delegatecall]
+    │   │   │   │   ├─  emit topic 0: 0x150110afd46e9924086bf85c855aae25722518b293155bf0ae689dd99a2e88cc
+    │   │   │   │   │        topic 1: 0x0000000000000000000000000000000000000000000000000000000000000029
+    │   │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │   └─ ← [Return]
+    │   │   │   └─ ← [Return]
+    │   │   ├─ emit PurchasesOpened()
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [32778] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::requiredReserve() [staticcall]
+    │   ├─ [30116] PoolBalancer.packs::requiredReserve() [delegatecall]
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [6556] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   ├─ [3894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   └─ ← [Return] 100034000000000000000 [1e20]
+    │   └─ ← [Return] 100034000000000000000 [1e20]
+    ├─ [40052] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::admissionStatus() [staticcall]
+    │   ├─ [37390] PoolBalancer.packs::admissionStatus() [delegatecall]
+    │   │   ├─ [5608] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unsettledAcquisitionCount() [staticcall]
+    │   │   │   ├─ [2946] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unsettledAcquisitionCount() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [4056] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   ├─ [3894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   └─ ← [Return] 0
+    │   └─ ← [Return] 0
+    ├─ [40436] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::canPurchase(0x000000000000000000000000000000000000bEEF) [staticcall]
+    │   ├─ [37768] PoolBalancer.packs::canPurchase(0x000000000000000000000000000000000000bEEF) [delegatecall]
+    │   │   ├─ [5608] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unsettledAcquisitionCount() [staticcall]
+    │   │   │   ├─ [2946] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unsettledAcquisitionCount() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [4056] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   ├─ [3894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   └─ ← [Return] true
+    │   └─ ← [Return] true
+    ├─ [0] VM::stopPrank()
+    │   └─ ← [Return]
+    ├─ [5218] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::pool() [staticcall]
+    │   ├─ [2556] PoolBalancer.packs::pool() [delegatecall]
+    │   │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    │   └─ ← [Return] 0x8aD292FB852E981efb9de107860896Ad550dBa1A
+    ├─ [30967] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::quoteAcquisitionPrice(1) [staticcall]
+    │   ├─ [28290] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::quoteAcquisitionPrice(1) [delegatecall]
+    │   │   ├─ [645] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::edgeBps() [staticcall]
+    │   │   │   └─ ← [Return] 500
+    │   │   ├─ [8275] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::requestFee() [staticcall]
+    │   │   │   └─ ← [Return] 0x00000000000000000000000000000000000000000000000000085037b4c64000
+    │   │   └─ ← [Return] 2079208187824626386 [2.079e18], 2340000000000000 [2.34e15], 2081548187824626386 [2.081e18]
+    │   └─ ← [Return] 2079208187824626386 [2.079e18], 2340000000000000 [2.34e15], 2081548187824626386 [2.081e18]
+    ├─ [32778] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::requiredReserve() [staticcall]
+    │   ├─ [30116] PoolBalancer.packs::requiredReserve() [delegatecall]
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [6556] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   ├─ [3894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   └─ ← [Return] 100034000000000000000 [1e20]
+    │   └─ ← [Return] 100034000000000000000 [1e20]
+    ├─ [0] console::log("reserve wei", 100034000000000000000 [1e20]) [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] console::log("draw payment wei", 2081548187824626386 [2.081e18]) [staticcall]
+    │   └─ ← [Stop]
+    ├─ [0] VM::deal(0x000000000000000000000000000000000000bEEF, 3081548187824626386 [3.081e18])
+    │   └─ ← [Return]
+    ├─ [4967] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::inventoryVersion() [staticcall]
+    │   ├─ [2305] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::inventoryVersion() [delegatecall]
+    │   │   └─ ← [Return] 2
+    │   └─ ← [Return] 2
+    ├─ [0] VM::prank(0x000000000000000000000000000000000000bEEF)
+    │   └─ ← [Return]
+    ├─ [584434] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::acquire{value: 2081548187824626386}(0x000000000000000000000000000000000000bEEF, 2079208187824626386 [2.079e18], 0, 10000 [1e4], 2, 1794291311 [1.794e9])
+    │   ├─ [607900] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::acquire{value: 2081548187824626386}(0x000000000000000000000000000000000000bEEF, 2079208187824626386 [2.079e18], 0, 10000 [1e4], 2, 1794291311 [1.794e9]) [delegatecall]
+    │   │   ├─ [33436] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::canPurchase(0x000000000000000000000000000000000000bEEF) [staticcall]
+    │   │   │   ├─ [30768] PoolBalancer.packs::canPurchase(0x000000000000000000000000000000000000bEEF) [delegatecall]
+    │   │   │   │   ├─ [3108] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unsettledAcquisitionCount() [staticcall]
+    │   │   │   │   │   ├─ [2946] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unsettledAcquisitionCount() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0
+    │   │   │   │   │   └─ ← [Return] 0
+    │   │   │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   │   │   ├─ [2056] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::lastIssuedSequence() [staticcall]
+    │   │   │   │   │   ├─ [1894] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::lastIssuedSequence() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0
+    │   │   │   │   │   └─ ← [Return] 0
+    │   │   │   │   └─ ← [Return] true
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [3558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [1404] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalPurchasesEnabled() [staticcall]
+    │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   ├─ [3841] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::consumerReady(0x8aD292FB852E981efb9de107860896Ad550dBa1A) [staticcall]
+    │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   ├─ [1971] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::vrfRequestsPaused() [staticcall]
+    │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   ├─ [645] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::edgeBps() [staticcall]
+    │   │   │   └─ ← [Return] 500
+    │   │   ├─ [8275] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::requestFee() [staticcall]
+    │   │   │   └─ ← [Return] 0x00000000000000000000000000000000000000000000000000085037b4c64000
+    │   │   ├─ [108460] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::prepareRequests{value: 2340000000000000}(1)
+    │   │   │   ├─ [1841] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::consumerReady(0x8aD292FB852E981efb9de107860896Ad550dBa1A) [staticcall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   ├─ [5350] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfCoordinatorAndSubId() [staticcall]
+    │   │   │   │   ├─ [5182] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfCoordinatorAndSubId() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   ├─ [6096] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfRequestConfig() [staticcall]
+    │   │   │   │   ├─ [5928] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfRequestConfig() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   ├─ [1224] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfService() [staticcall]
+    │   │   │   │   ├─ [1062] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfService() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   ├─ emit RequestFeesReceived(param0: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, param1: 1, param2: 2340000000000000 [2.34e15])
+    │   │   │   ├─ emit RequestsPrepared(param0: 0x8aD292FB852E981efb9de107860896Ad550dBa1A, param1: 1, param2: 1, param3: 0, param4: 1, param5: 0)
+    │   │   │   ├─ [9881] 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a::getSubscription(111178906740474539008897604835050235821098546145492638227880980872286050640257 [1.111e77]) [staticcall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000241494b1a7948aa600000000000000000000000000000000000000000000000000000000000000940000000000000000000000008919814d825a5af238cc04de06b1c18c9eaa477c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000010000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit VrfServiceFeePaid(param0: 0x000000000000000000000000000000000000bEEF, param1: 2340000000000000 [2.34e15])
+    │   │   ├─ [143148] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::requestRandomWords((0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d9, 111178906740474539008897604835050235821098546145492638227880980872286050640257 [1.111e77], 3, 1200000 [1.2e6], 1, 0x92fd13380000000000000000000000000000000000000000000000000000000000000001))
+    │   │   │   ├─ [1841] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::consumerReady(0x8aD292FB852E981efb9de107860896Ad550dBa1A) [staticcall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   ├─ [1350] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfCoordinatorAndSubId() [staticcall]
+    │   │   │   │   ├─ [1182] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfCoordinatorAndSubId() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   ├─ [2096] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfRequestConfig() [staticcall]
+    │   │   │   │   ├─ [1928] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfRequestConfig() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   ├─ [1224] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::vrfService() [staticcall]
+    │   │   │   │   ├─ [1062] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfService() [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   ├─ [39937] 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a::requestRandomWords((0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d9, 111178906740474539008897604835050235821098546145492638227880980872286050640257 [1.111e77], 3, 1500000 [1.5e6], 1, 0x92fd13380000000000000000000000000000000000000000000000000000000000000001))
+    │   │   │   │   ├─  emit topic 0: 0xeb0e3652e0f44f417695e6e90f2f42c99b65cd7169074c5a654b16b9748c3a4e
+    │   │   │   │   │        topic 1: 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d9
+    │   │   │   │   │        topic 2: 0xf5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   │        topic 3: 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   │           data: 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e74e8a3f022218b7fbacf530de6ee9a511018dffa44c462bfb8566c9ec347e7110000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000016e360000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000002492fd1338000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000
+    │   │   │   │   └─ ← [Return] 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e
+    │   │   │   ├─ emit RandomnessRequested(param0: 94782623901646048224103269094433485951264266060021871943327168528472285848174 [9.478e76], param1: 0x8aD292FB852E981efb9de107860896Ad550dBa1A)
+    │   │   │   └─ ← [Return] 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e
+    │   │   ├─ emit AcquisitionRequested(requestId: 94782623901646048224103269094433485951264266060021871943327168528472285848174 [9.478e76], purchaser: 0x000000000000000000000000000000000000bEEF, acquisitionFee: 2079208187824626386 [2.079e18], totalWeight: 1009999870285777869 [1.009e18])
+    │   │   ├─ emit AcquisitionSequenced(requestId: 94782623901646048224103269094433485951264266060021871943327168528472285848174 [9.478e76], sequence: 1, wordDeadlineBlock: 26382379 [2.638e7], reservedCount: 0)
+    │   │   └─ ← [Return] 94782623901646048224103269094433485951264266060021871943327168528472285848174 [9.478e76]
+    │   └─ ← [Return] 94782623901646048224103269094433485951264266060021871943327168528472285848174 [9.478e76]
+    ├─ [5608] 0x8aD292FB852E981efb9de107860896Ad550dBa1A::unsettledAcquisitionCount() [staticcall]
+    │   ├─ [2946] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unsettledAcquisitionCount() [delegatecall]
+    │   │   └─ ← [Return] 1
+    │   └─ ← [Return] 1
+    ├─ [46760] BalancerFactory.packs::setKeepersRestricted(true)
+    │   ├─ emit KeepersRestricted(restricted: true)
+    │   └─ ← [Stop]
+    ├─ [4614] BalancerFactory.packs::canKeep(0xc5c7b46843014B1591e9aF24de797156cde67f08) [staticcall]
+    │   └─ ← [Return] false
+    ├─ [0] VM::prank(0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Return]
+    ├─ [0] VM::expectRevert(KeeperNotApproved())
+    │   └─ ← [Return]
+    ├─ [41475] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::performUpkeep()
+    │   ├─ [17750] PoolBalancer.packs::performUpkeep() [delegatecall]
+    │   │   ├─ [4614] BalancerFactory.packs::canKeep(0xc5c7b46843014B1591e9aF24de797156cde67f08) [staticcall]
+    │   │   │   └─ ← [Return] false
+    │   │   └─ ← [Revert] KeeperNotApproved()
+    │   └─ ← [Revert] KeeperNotApproved()
+    ├─ [0] VM::expectRevert(Unauthorized())
+    │   └─ ← [Return]
+    ├─ [27037] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::claimSurplus(0, ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
+    │   ├─ [2804] PoolBalancer.packs::claimSurplus(0, ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496]) [delegatecall]
+    │   │   └─ ← [Revert] Unauthorized()
+    │   └─ ← [Revert] Unauthorized()
+    ├─ [0] VM::prank(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   └─ ← [Return]
+    ├─ [76130] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::approvePoolPage("2026-11-10T12:34:56.789Z", 0xfc77a78c81db9794340a10dbcb0632f44d2d889f2cac2911b039a50f90ead7d0)
+    │   ├─ [51172] PoolBalancer.packs::approvePoolPage("2026-11-10T12:34:56.789Z", 0xfc77a78c81db9794340a10dbcb0632f44d2d889f2cac2911b039a50f90ead7d0) [delegatecall]
+    │   │   ├─ [16765] PoolPage.packs::digest(0x8919814D825a5Af238cC04DE06b1C18c9eaA477C, 0x8aD292FB852E981efb9de107860896Ad550dBa1A, "2026-11-10T12:34:56.789Z", 0xfc77a78c81db9794340a10dbcb0632f44d2d889f2cac2911b039a50f90ead7d0) [delegatecall]
+    │   │   │   └─ ← [Return] 0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109
+    │   │   ├─ emit PoolPageApproved(digest: 0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109, issuedAt: "2026-11-10T12:34:56.789Z", metadataHash: 0xfc77a78c81db9794340a10dbcb0632f44d2d889f2cac2911b039a50f90ead7d0)
+    │   │   └─ ← [Return] 0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109
+    │   └─ ← [Return] 0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109
+    ├─ [7644] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::isValidSignature(0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109, 0x) [staticcall]
+    │   ├─ [4964] PoolBalancer.packs::isValidSignature(0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109, 0x) [delegatecall]
+    │   │   └─ ← [Return] 0x1626ba7e
+    │   └─ ← [Return] 0x1626ba7e
+    ├─ [0] VM::prank(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   └─ ← [Return]
+    ├─ [51032] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::transferCreator(0x000000000000000000000000000000000000bEEF)
+    │   ├─ [27151] PoolBalancer.packs::transferCreator(0x000000000000000000000000000000000000bEEF) [delegatecall]
+    │   │   ├─ emit CreatorTransferStarted(creator: 0x46EFbAedc92067E6d60E84ED6395099723252496, pendingCreator: 0x000000000000000000000000000000000000bEEF)
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [0] VM::prank(0x000000000000000000000000000000000000bEEF)
+    │   └─ ← [Return]
+    ├─ [0] VM::expectRevert(Unauthorized())
+    │   └─ ← [Return]
+    ├─ [27405] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::configure(0, 1)
+    │   ├─ [3400] PoolBalancer.packs::configure(0, 1) [delegatecall]
+    │   │   └─ ← [Revert] Unauthorized()
+    │   └─ ← [Revert] Unauthorized()
+    ├─ [0] VM::prank(0x000000000000000000000000000000000000bEEF)
+    │   └─ ← [Return]
+    ├─ [53121] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::acceptCreator()
+    │   ├─ [34198] PoolBalancer.packs::acceptCreator() [delegatecall]
+    │   │   ├─ emit CreatorTransferred(oldCreator: 0x46EFbAedc92067E6d60E84ED6395099723252496, newCreator: 0x000000000000000000000000000000000000bEEF)
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [5038] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::creator() [staticcall]
+    │   ├─ [2376] PoolBalancer.packs::creator() [delegatecall]
+    │   │   └─ ← [Return] 0x000000000000000000000000000000000000bEEF
+    │   └─ ← [Return] 0x000000000000000000000000000000000000bEEF
+    ├─ [7665] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::isValidSignature(0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109, 0x) [staticcall]
+    │   ├─ [4985] PoolBalancer.packs::isValidSignature(0xb3e6cb90c19896e43c5f378abce6a64c48aad2b1923d168e349b9d89aecf7109, 0x) [delegatecall]
+    │   │   └─ ← [Return] 0xffffffff
+    │   └─ ← [Return] 0xffffffff
+    ├─ [0] VM::prank(0x46EFbAedc92067E6d60E84ED6395099723252496)
+    │   └─ ← [Return]
+    ├─ [0] VM::expectRevert(Unauthorized())
+    │   └─ ← [Return]
+    ├─ [26485] 0x919935738DdBd2b7DECc2e3115998Ff00323BCc5::close()
+    │   ├─ [2760] PoolBalancer.packs::close() [delegatecall]
+    │   │   └─ ← [Revert] Unauthorized()
+    │   └─ ← [Revert] Unauthorized()
+    ├─ [30354] BalancerFactory.packs::transferKeeperAdmin(0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   ├─ emit KeeperAdminTransferStarted(keeperAdmin: ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496], pendingKeeperAdmin: 0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Stop]
+    ├─ [2563] BalancerFactory.packs::keeperAdmin() [staticcall]
+    │   └─ ← [Return] ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496]
+    ├─ [0] VM::prank(0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Return]
+    ├─ [33029] BalancerFactory.packs::acceptKeeperAdmin()
+    │   ├─ emit KeeperAdminTransferred(oldKeeperAdmin: ReserveReopenTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496], newKeeperAdmin: 0xc5c7b46843014B1591e9aF24de797156cde67f08)
+    │   └─ ← [Return]
+    ├─ [2563] BalancerFactory.packs::keeperAdmin() [staticcall]
+    │   └─ ← [Return] 0xc5c7b46843014B1591e9aF24de797156cde67f08
+    ├─ [0] VM::expectRevert(Unauthorized())
+    │   └─ ← [Return]
+    ├─ [23578] BalancerFactory.packs::setKeepersRestricted(false)
+    │   └─ ← [Revert] Unauthorized()
+    ├─ [62680] → new <unknown>@0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF
+    │   └─ ← [Return] 44 bytes of code
+    ├─ [0] VM::prank(0x000000000000000000000000000000000000cafE)
+    │   └─ ← [Return]
+    ├─ [734038] 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF::initialize(0x000000000000000000000000000000000000cafE)
+    │   ├─ [712957] PoolBalancer.packs::initialize(0x000000000000000000000000000000000000cafE) [delegatecall]
+    │   │   ├─ [1327] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxAcquisitionsPerTx() [staticcall]
+    │   │   │   └─ ← [Return] 5
+    │   │   ├─ [1621] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxStagedListings() [staticcall]
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [549054] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::createPool(0x0000000000000000000000000000000000000000000000000000000000000000, 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7)
+    │   │   │   ├─ [8828] → new <unknown>@0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb
+    │   │   │   │   └─ ← [Return] 44 bytes of code
+    │   │   │   ├─ [281113] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::initialize(0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF)
+    │   │   │   │   ├─ [280948] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::initialize(0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF) [delegatecall]
+    │   │   │   │   │   ├─ [5772] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::getPoolInitializationConfig() [staticcall]
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e1818077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f800000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000000000000000000000000000000006da89748ae55fc3722f3643d3590225386d85a29
+    │   │   │   │   │   ├─ emit OwnershipTransferred(previousOwner: 0x0000000000000000000000000000000000000000, newOwner: 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF)
+    │   │   │   │   │   ├─ emit FWACloneInitialized(param0: 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF, param1: 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C, param2: 111178906740474539008897604835050235821098546145492638227880980872286050640257 [1.111e77])
+    │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   └─ ← [Return]
+    │   │   │   ├─ [41576] 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d::registerPool(0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb)
+    │   │   │   │   ├─ [1071] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::isPool(0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb) [staticcall]
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │   ├─ [1350] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::vrfCoordinatorAndSubId() [staticcall]
+    │   │   │   │   │   ├─ [1182] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfCoordinatorAndSubId() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65df5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │   ├─ [2096] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::vrfRequestConfig() [staticcall]
+    │   │   │   │   │   ├─ [1928] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfRequestConfig() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   │   └─ ← [Return] 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d90000000000000000000000000000000000000000000000000000000000124f80
+    │   │   │   │   ├─ [1224] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::vrfService() [staticcall]
+    │   │   │   │   │   ├─ [1062] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::vrfService() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000007d93bd9de5dc121992ea4a59e61b2519fa1ed65d
+    │   │   │   │   ├─ [3834] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::unfulfilledVrfCount() [staticcall]
+    │   │   │   │   │   ├─ [3672] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::unfulfilledVrfCount() [delegatecall]
+    │   │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   │   ├─ emit PoolRegistered(param0: 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb)
+    │   │   │   │   └─ ← [Stop]
+    │   │   │   ├─  emit topic 0: 0x451303f8c2b76d53ca965213a1f812340d6111dac5c47a4382a40ba861790f68
+    │   │   │   │        topic 1: 0x000000000000000000000000d6bbde9174b1cdaa358d2cf4d57d1a9f7178fbff
+    │   │   │   │        topic 2: 0x000000000000000000000000e3020bff04a381ec5bd0e8219a8feb86e95939cb
+    │   │   │   │        topic 3: 0xf5cd07ff15afcc673048e573c315f71b72d16889976e6bcb35f9d510e1b2e181
+    │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   ├─  emit topic 0: 0x112f9e4abff9ae5d7f186c798afdf242cb99350cca1292ee767264e8cf4caec6
+    │   │   │   │        topic 1: 0x000000000000000000000000d6bbde9174b1cdaa358d2cf4d57d1a9f7178fbff
+    │   │   │   │        topic 2: 0x000000000000000000000000e3020bff04a381ec5bd0e8219a8feb86e95939cb
+    │   │   │   │        topic 3: 0x0000000000000000000000000000000000000000000000000000000000000001
+    │   │   │   │           data: 0x0000000000000000000000000000000000000000000000000000000000000000
+    │   │   │   ├─ emit PoolImplementationRegistered(param0: 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb, param1: 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7)
+    │   │   │   └─ ← [Return] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb
+    │   │   ├─ [495] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::poolImplementation(0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb) [staticcall]
+    │   │   │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7
+    │   │   ├─ [1663] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::owner() [staticcall]
+    │   │   │   ├─ [1501] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::owner() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF
+    │   │   │   └─ ← [Return] 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF
+    │   │   ├─ [24618] 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb::setPurchaseOperator(0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF)
+    │   │   │   ├─ [24453] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::setPurchaseOperator(0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF) [delegatecall]
+    │   │   │   │   ├─ emit PurchaseOperatorSet(param0: 0x0000000000000000000000000000000000000000, param1: 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF)
+    │   │   │   │   └─ ← [Stop]
+    │   │   │   └─ ← [Return]
+    │   │   ├─ [25786] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::setApprovalForAll(0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb, true)
+    │   │   │   ├─ emit ApprovalForAll(owner: 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF, operator: 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb, approved: true)
+    │   │   │   └─ ← [Return]
+    │   │   ├─ [25202] ShapePacks::setApprovalForAll(0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb, true)
+    │   │   │   ├─ emit ApprovalForAll(owner: 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF, operator: 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb, approved: true)
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit Initialized(creator: 0x000000000000000000000000000000000000cafE, pool: 0xe3020BFf04A381eC5Bd0e8219a8FEb86E95939cb)
+    │   │   └─ ← [Return]
+    │   └─ ← [Return]
+    ├─ [5038] 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF::creator() [staticcall]
+    │   ├─ [2376] PoolBalancer.packs::creator() [delegatecall]
+    │   │   └─ ← [Return] 0x000000000000000000000000000000000000cafE
+    │   └─ ← [Return] 0x000000000000000000000000000000000000cafE
+    ├─ [5900] 0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF::factory() [staticcall]
+    │   ├─ [3238] PoolBalancer.packs::factory() [delegatecall]
+    │   │   └─ ← [Return] 0x000000000000000000000000000000000000cafE
+    │   └─ ← [Return] 0x000000000000000000000000000000000000cafE
+    ├─ [2620] BalancerFactory.packs::isBalancer(0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF) [staticcall]
+    │   └─ ← [Return] false
+    └─ ← [Return]
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.51s (1.51s CPU time)
+
+Ran 1 test suite in 2.61s (1.51s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

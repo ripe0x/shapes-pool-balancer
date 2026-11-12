@@ -1,0 +1,30 @@
+Compiling 61 files with Solc 0.8.28
+Compiling 56 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.34s
+Solc 0.8.28 finished in 6.44s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/validation/surface_edges/SurfaceEdges.t.sol:SurfaceEdgesForkTest
+[FAIL: assertion failed: 2 != 1] testDirectCollectProceedsAndDonorDepositRoundTrip() (block: 26382349) (gas: 14577137)
+[PASS] testFourForbiddenRecipientsUnder100kGasAndRevokePages() (gas: 2660729)
+Logs:
+  four forbidden hook recipients rejected under 100k gas
+  page epoch after revoke 1
+
+[PASS] testSetENSNameThroughLiveReverseRegistrar() (gas: 293272)
+Logs:
+  live ENS reverse registrar 0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb
+  live ENS reverse resolver 0xF29100983E058B709F3D539b0c765937B804AC15
+
+Suite result: FAILED. 2 passed; 1 failed; 0 skipped; finished in 1.04s (737.91ms CPU time)
+
+Ran 1 test suite in 1.31s (1.04s CPU time): 2 tests passed, 1 failed, 0 skipped (3 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/lane_a/validation/surface_edges/SurfaceEdges.t.sol:SurfaceEdgesForkTest
+[FAIL: assertion failed: 2 != 1] testDirectCollectProceedsAndDonorDepositRoundTrip() (block: 26382349) (gas: 14577137)
+
+Encountered a total of 1 failing tests, 2 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

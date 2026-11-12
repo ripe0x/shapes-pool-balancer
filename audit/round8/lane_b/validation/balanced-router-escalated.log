@@ -1,0 +1,16 @@
+No files changed, compilation skipped
+
+Ran 1 test for audit/round8/lane_b/validation/BalancedRouter.t.sol:BalancedRouterTest
+[PASS] testRealRouterTwoWinsThenNextPurchase() (gas: 728562181)
+Logs:
+  largeWordTrials: 1144
+  mediumWordTrials: 206
+  twoDrawTotal: 49954678574941674
+  ownerProceeds: 0
+  balancerBalance: 474750884357087310
+  requiredReserve: 1035000000000000000
+  thirdRequestId: 36030075426630241987174162388021095287136497829864346917197886983247232644403
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 14.69s (2.14s CPU time)
+
+Ran 1 test suite in 14.96s (14.69s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

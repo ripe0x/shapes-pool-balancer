@@ -1,0 +1,10 @@
+file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/credit-ratchet.mjs:19
+  if (receipt.status !== 'success') throw new Error(`local transaction failed: ${hash}`);
+                                          ^
+
+Error: local transaction failed: 0xe6d31580c0f8cd6a5baac8c0b304d5b2b742f71e5b90ec5c4bdb70020d1ffb71
+    at tx (file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/credit-ratchet.mjs:19:43)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/credit-ratchet.mjs:61:3
+
+Node.js v22.19.0

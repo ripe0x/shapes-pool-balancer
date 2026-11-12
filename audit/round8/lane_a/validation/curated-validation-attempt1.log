@@ -1,0 +1,22 @@
+Compiling 56 files with Solc 0.8.28
+Compiling 61 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.36s
+Solc 0.8.28 finished in 6.07s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/validation/CuratedValidation.t.sol:CuratedValidationInformedTest
+[PASS] testApproveRevertRollsBackAndCallbackLeavesOldPrice() (gas: 2517129)
+Logs:
+  approval callback current markup bps 10000
+  FWA old-price listing wei 100000000000000000
+
+[PASS] testChangingOwnerOfAfterPullRollsBackWholeListing() (gas: 274024)
+[PASS] testOwnerOfLieAloneFailsButFullyDishonestCollectionListsGhost() (gas: 2506526)
+Logs:
+  ghost listing id 1
+  actual creator token owner 0xc7183455a4C133Ae270771860664b6B7ec320bB1
+  reported FWA token owner 0xC7461628Aa2C63E89d42A61Be747210A72A90Fd3
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 717.72ms (212.58ms CPU time)
+
+Ran 1 test suite in 1.01s (717.72ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

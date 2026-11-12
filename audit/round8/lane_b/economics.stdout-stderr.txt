@@ -1,0 +1,74 @@
+{
+  "formula_cross_check": "Balanced exact integer totals equal the real fork output in corrected-all.stdout-stderr.txt",
+  "restock_fee_per_shape_at_1_gwei": 1145000000000000,
+  "mixes": [
+    {
+      "mix": "Balanced",
+      "backing": 1540000000000000000,
+      "shape_count": 47,
+      "total_weight": 1911605302676359387351,
+      "weighted_backing_total": 40999999999999999998546800000000000000,
+      "owner_proceeds_per_draw": 21447942178543655,
+      "fwa_acquisition_fee": 22520339287470837,
+      "vrf_fee_at_1_05_gwei": 2457000000000000,
+      "player_total": 24977339287470837,
+      "expected_player_value": 16537715562543518,
+      "player_return_bps": 6621,
+      "expected_mint_fee_per_draw": 1132666331756927,
+      "expected_restock_fee_per_draw": 1296902949861681,
+      "expected_markup_per_draw": 2480657334381529,
+      "full_target_reserve": 534000000000000000,
+      "odds_ppm": {
+        "curated": 1516,
+        "0": 766757,
+        "1": 87705,
+        "2": 8931,
+        "3": 906,
+        "9": 134182
+      }
+    },
+    {
+      "mix": "large",
+      "backing": 2550000000000000000,
+      "shape_count": 10,
+      "total_weight": 377996476320857211639,
+      "weighted_backing_total": 10999999999999999998094600000000000000,
+      "owner_proceeds_per_draw": 29100800375352701,
+      "fwa_acquisition_fee": 30555840394120336,
+      "vrf_fee_at_1_05_gwei": 2457000000000000,
+      "player_total": 33012840394120336,
+      "expected_player_value": 23454129264196284,
+      "player_return_bps": 7104,
+      "expected_mint_fee_per_draw": 992331804907680,
+      "expected_restock_fee_per_draw": 1136219916619294,
+      "expected_markup_per_draw": 3518119389629443,
+      "full_target_reserve": 534000000000000000,
+      "odds_ppm": {
+        "curated": 7668,
+        "0": 969412,
+        "3": 22919
+      }
+    },
+    {
+      "mix": "cheap",
+      "backing": 200000000000000000,
+      "shape_count": 20,
+      "total_weight": 1468636916426359923719,
+      "weighted_backing_total": 20999999999999999999586200000000000000,
+      "owner_proceeds_per_draw": 14298973262295070,
+      "fwa_acquisition_fee": 15013921925409823,
+      "vrf_fee_at_1_05_gwei": 2457000000000000,
+      "player_total": 17470921925409823,
+      "expected_player_value": 10572353657151907,
+      "player_return_bps": 6051,
+      "expected_mint_fee_per_draw": 998026366699476,
+      "expected_restock_fee_per_draw": 1142740189870900,
+      "expected_markup_per_draw": 1585853048572787,
+      "full_target_reserve": 44000000000000000,
+      "odds_ppm": {
+        "curated": 1973,
+        "0": 998026
+      }
+    }
+  ]
+}

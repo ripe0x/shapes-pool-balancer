@@ -1,0 +1,1 @@
+FOUNDRY_TEST=audit/round8/integration/informed forge test --match-path audit/round8/integration/informed/GasPriceFork.t.sol --match-test testRestrictedKeeperListStillLetsCreatorStock --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --out audit/round8/integration/informed/out --cache-path audit/round8/integration/informed/cache -vvv

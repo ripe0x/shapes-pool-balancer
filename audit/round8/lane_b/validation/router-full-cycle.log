@@ -1,0 +1,15 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 7.12s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/validation/RouterFullCycle.t.sol:RouterFullCycleTest
+[PASS] testRealRouterWinRestockCloseUnlistWithdrawRedeem() (gas: 7571934)
+Logs:
+  wordTrials: 1
+  playerPaid: 24977339287470837
+  winnerRedeemed: 10000000000000000
+  creatorReclaim: 3933103955478543655
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.12s (3.06s CPU time)
+
+Ran 1 test suite in 3.37s (3.12s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

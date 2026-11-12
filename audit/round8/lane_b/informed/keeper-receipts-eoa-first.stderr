@@ -1,0 +1,31 @@
+file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeAbiParameters.js:133
+        throw new InvalidAddressError({ address: value });
+              ^
+
+InvalidAddressError: Address "0x00000000000000000000000000000000C0DEC0DE" is invalid.
+
+- Address must be a hex value of 20 bytes (40 hex characters).
+- Address must match its checksum counterpart.
+
+Version: viem@2.57.17
+    at encodeAddress (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeAbiParameters.js:133:15)
+    at prepareParam (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeAbiParameters.js:79:16)
+    at prepareParams (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeAbiParameters.js:63:29)
+    at encodeAbiParameters (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeAbiParameters.js:54:28)
+    at encodeFunctionData (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/utils/abi/encodeFunctionData.js:15:11)
+    at AsyncFunction.internal (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/actions/wallet/writeContract.js:68:22)
+    at writeContract (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/actions/wallet/writeContract.js:58:26)
+    at Object.writeContract (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/clients/decorators/wallet.js:59:34)
+    at tx (file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/keeper-receipts-eoa.mjs:18:24)
+    at file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/keeper-receipts-eoa.mjs:37:9 {
+  details: undefined,
+  docsPath: undefined,
+  metaMessages: [
+    '- Address must be a hex value of 20 bytes (40 hex characters).',
+    '- Address must match its checksum counterpart.'
+  ],
+  shortMessage: 'Address "0x00000000000000000000000000000000C0DEC0DE" is invalid.',
+  version: '2.57.17'
+}
+
+Node.js v22.19.0

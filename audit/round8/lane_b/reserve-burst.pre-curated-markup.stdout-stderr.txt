@@ -1,0 +1,24 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.58s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testReserveAfterTwoLargeWinsAtMaxWithdrawal() (gas: 37086209)
+Logs:
+  pre-burst reserve 534000000000000000
+  pre-burst pool ETH 534000000000000000
+  creator max withdrawal 823490527000000000
+  two-draw player total 65955469104168786
+  first large-win trials 17
+  second large-win trials 35
+  settled FWA owner proceeds 58134732480160750
+  pool ETH before upkeep 534000000000000000
+  large prizes after one upkeep 4
+  pool ETH after one upkeep 89989732480160750
+  reserve after one upkeep 1035000000000000000
+  withdrawable after one upkeep 0
+  admission status with unfunded target 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 96.49ms (65.08ms CPU time)
+
+Ran 1 test suite in 435.19ms (96.49ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

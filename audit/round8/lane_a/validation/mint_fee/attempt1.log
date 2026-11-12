@@ -1,0 +1,6 @@
+Error: Compiler run failed:
+Error (6675): Member "log" not unique after argument-dependent lookup in type(library console).
+   --> audit/round8/lane_a/validation/mint_fee/MintFeeFork.t.sol:164:9:
+    |
+164 |         console2.log("three minted Shapes fee delta wei", 0.016 ether);
+    |         ^^^^^^^^^^^^

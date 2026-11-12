@@ -1,0 +1,6 @@
+Error: Compiler run failed:
+Error (2314): Expected ',' but got 'memory'
+  --> audit/round8/lane_a/informed/security_followup/SecurityEdges.t.sol:70:41:
+   |
+70 |             (ethReentrySucceeded, bytes memory reason) = address(balancer).call(
+   |                                         ^^^^^^

@@ -1,0 +1,184 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "route": "actual coordinator -> real VRF service -> real FWA pool",
+  "externalWallets": {
+    "deployer": "0x00000000000000000000000000000000c0dec0da",
+    "player": "0x00000000000000000000000000000000c0dec0de",
+    "keeper": "0x00000000000000000000000000000000c0dec0df",
+    "newCreator": "0x00000000000000000000000000000000c0dec0dd"
+  },
+  "hostileCollection": "0x82a9dfbbf8e6c0ceb4f585a8ba499a85e314ab06",
+  "balancer": "0xfee67d819BBd2D1FBCAD77f45a3749b0db1B9a17",
+  "pool": "0x8c9165aE35CDF5665dd15c59DE33b3A211C53243",
+  "setup": {
+    "deployTx": "0xffe28942259de9a40b513bd7a596176304112578fa5e38739b911c0d2442d9b6",
+    "makePool": {
+      "txHash": "0xfd5d78b2689bbf10a83ad1109fe24e219eb5b6022e528b865f7b73b37880ea5b",
+      "status": "success",
+      "billedGas": "976389",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "1025208450000000"
+    },
+    "opening": {
+      "txHash": "0x48f8bb663e90ded6980373eded475abc7e5bac50c70ae5ca0ebce878476bcf02",
+      "status": "success",
+      "billedGas": "830586",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "872115300000000"
+    }
+  },
+  "shapeFunding": {
+    "requestId": "10412546148382297689149577695111706927753226567136918663491445919880671230910",
+    "candidate": 1,
+    "listingId": "2",
+    "purchase": {
+      "txHash": "0xc2b38ee258aa72b5f00656b0a0cda60a70db1a86dcaacd933ac85617b75d93fd",
+      "status": "success",
+      "billedGas": "567346",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "595713300000000"
+    },
+    "callback": {
+      "txHash": "0xfb61e4e31a51330817bcf04964798f4664d5238146460b3c6f018fd29d698c85",
+      "status": "success",
+      "billedGas": "550550",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "578077500000000"
+    },
+    "process": {
+      "txHash": "0xc93a2e96498f3e682793c37d89edf99b6107d54056cf9eda62bd02799deda5fb",
+      "status": "success",
+      "billedGas": "30474",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "31997700000000"
+    },
+    "upkeep": {
+      "txHash": "0x424b2b3ca12959dd4c59607ef270f28cf3a73a118eae7793d89b06a55119f711",
+      "status": "success",
+      "billedGas": "793181",
+      "effectiveGasPrice": "4950000000",
+      "billedCost": "3926245950000000"
+    },
+    "reward": "4475349950000000",
+    "measuredGas": "803101",
+    "keeperWalletDelta": "549104000000000",
+    "creditAfter": "179650050000000"
+  },
+  "failedDraw": {
+    "requestId": "36030075426630241987174162388021095287136497829864346917197886983247232644403",
+    "candidate": 6,
+    "listingId": "1",
+    "acquisitionStatus": "7",
+    "listingStatusBeforeRefund": "6",
+    "fee": "28425489602697677",
+    "vrf": "2457000000000000",
+    "total": "30882489602697677",
+    "purchase": {
+      "txHash": "0x3ab2f94a0bf68b347f53a79f07ce7e86c3ec39a696bf62c0b54a750145b3d147",
+      "status": "success",
+      "billedGas": "567346",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "595713300000000"
+    },
+    "callback": {
+      "txHash": "0xa639ebe9f8b3b950880bb671982ce19af8664ecc05436b62a78078dfa7e54e90",
+      "status": "success",
+      "billedGas": "513010",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "538660500000000"
+    },
+    "process": {
+      "txHash": "0xb9e1a13abf6160f50a00a4570bd3b40e52c772e1cfefe0f8c1ce41a8f7acd475",
+      "status": "success",
+      "billedGas": "30474",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "31997700000000"
+    },
+    "ownerProceeds": "0"
+  },
+  "unwindAndNewCapital": {
+    "creatorClaim": {
+      "txHash": "0x3483e2f3d039fa63e454e7bc21541ecf01f311ef2335015d2033015a91cddc01",
+      "status": "success",
+      "billedGas": "56140",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "58947000000000"
+    },
+    "oldCreatorClaimed": "1003833199286457265",
+    "balancerAfterOldClaim": "0",
+    "creditAfterUnlist": "179650050000000",
+    "handoff": {
+      "txHash": "0xb486b382948b245b5713605fbb8ba78be53030b14f80db74f92d4ac23175cec7",
+      "status": "success",
+      "billedGas": "56701",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "59536050000000"
+    },
+    "accept": {
+      "txHash": "0xc79a18b90967c8254a32538833ae8648f57131f7a6852df178fa9f9eb406192b",
+      "status": "success",
+      "billedGas": "53121",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "55777050000000"
+    },
+    "creatorAfterAccept": "0x00000000000000000000000000000000c0dEc0dD",
+    "newCreatorDeposit": {
+      "txHash": "0x19bcb435b3769dbc393b32c0549f479da0c601eae29a7551f9b27e9b84c29d6e",
+      "status": "success",
+      "billedGas": "26430",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "27751500000000"
+    },
+    "depositedWei": "1000000000000000",
+    "balancerBeforeReconcile": "1000000000000000",
+    "balancerAfterReconcile": "820349950000000",
+    "newCreatorClaimRemainder": {
+      "txHash": "0xd7165c33fac8c5e4802df1fe0d5d0c590892d71c445eaf67715e59161488c4fb",
+      "status": "success",
+      "billedGas": "50698",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "53232900000000"
+    },
+    "recoveredWei": "820349950000000",
+    "newCreatorPrincipalLoss": "179650050000000",
+    "newCreatorRoundTripGas": "80984400000000",
+    "newCreatorRoundTripWalletLoss": "260634450000000",
+    "newCreatorRoleGas": "55777050000000",
+    "newCreatorAllInWalletLoss": "316411500000000",
+    "balancerAfterNewCreatorClaim": "0"
+  },
+  "outsiderReconciliation": {
+    "receipt": {
+      "txHash": "0xff062a8d816daa0f90860a2c04551ec622b32195bd4fb32f0f0124a7dd6b34f7",
+      "status": "success",
+      "billedGas": "93873",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "98566650000000"
+    },
+    "measuredGas": "62270",
+    "reward": "179650050000000",
+    "recipient": "0x00000000000000000000000000000000C0dEc0Df",
+    "keeperWalletDelta": "81083400000000",
+    "creditAfter": "0"
+  },
+  "refund": {
+    "refund": {
+      "txHash": "0xbae9d36492a7c1453b41d80ab531c779338a4f1663a0719a8686bef2a9debfe9",
+      "status": "success",
+      "billedGas": "92946",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "97593300000000"
+    },
+    "withdraw": {
+      "txHash": "0xd55d73dd8f444df8296b8b056cbeb06792b3ccfcefa2c0b2f4d1ca2e7c4be4da",
+      "status": "success",
+      "billedGas": "38892",
+      "effectiveGasPrice": "1050000000",
+      "billedCost": "40836600000000"
+    },
+    "listingStatusAfterRefund": "7",
+    "playerLossIncludingGas": "3223140900000000",
+    "expectedPlayerLoss": "3223140900000000"
+  }
+}

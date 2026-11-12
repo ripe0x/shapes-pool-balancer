@@ -1,0 +1,59 @@
+{
+  "scope": "hypothetical full relisting at each fee, 1 gwei basefee, 1.05 gwei tx price, 15% markup",
+  "rows": [
+    {
+      "mint_fee_wei": 1000000000000000,
+      "mint_fees_for_47_shapes_wei": 47000000000000000,
+      "price_by_d_wei": {
+        "0": 13645000000000000,
+        "1": 59645000000000000,
+        "2": 117145000000000000,
+        "3": 577145000000000000,
+        "9": 27290000000000000
+      },
+      "full_target_reserve_wei": 534000000000000000,
+      "opening_reserve_wei": 2269500000000000000,
+      "draw_fee_wei": 22520339287470837,
+      "player_total_at_1_05_gwei_wei": 24977339287470837,
+      "player_value_ev_wei": 16537715562543518,
+      "player_return_bps": 6621,
+      "curated_odds_ppm": 1516
+    },
+    {
+      "mint_fee_wei": 5000000000000000,
+      "mint_fees_for_47_shapes_wei": 235000000000000000,
+      "price_by_d_wei": {
+        "0": 17645000000000000,
+        "1": 63645000000000000,
+        "2": 121145000000000000,
+        "3": 581145000000000000,
+        "9": 35290000000000000
+      },
+      "full_target_reserve_wei": 538000000000000000,
+      "opening_reserve_wei": 2461500000000000000,
+      "draw_fee_wei": 28508574179700250,
+      "player_total_at_1_05_gwei_wei": 30965574179700250,
+      "player_value_ev_wei": 17574467668651401,
+      "player_return_bps": 5675,
+      "curated_odds_ppm": 1919
+    },
+    {
+      "mint_fee_wei": 10000000000000000,
+      "mint_fees_for_47_shapes_wei": 470000000000000000,
+      "price_by_d_wei": {
+        "0": 22645000000000000,
+        "1": 68645000000000000,
+        "2": 126145000000000000,
+        "3": 586145000000000000,
+        "9": 45290000000000000
+      },
+      "full_target_reserve_wei": 543000000000000000,
+      "opening_reserve_wei": 2701500000000000000,
+      "draw_fee_wei": 35758988997806204,
+      "player_total_at_1_05_gwei_wei": 38215988997806204,
+      "player_value_ev_wei": 18701898949671763,
+      "player_return_bps": 4893,
+      "curated_odds_ppm": 2407
+    }
+  ]
+}

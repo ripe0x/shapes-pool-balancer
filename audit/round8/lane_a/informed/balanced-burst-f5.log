@@ -1,0 +1,28 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.65s
+Compiler run successful!
+
+Ran 2 tests for audit/round8/lane_a/informed/BalancedBurst.t.sol:BalancedBurstInformedTest
+[PASS] testActualPayerTwoWinReserveAndGate() (gas: 503678047)
+Logs:
+  M8 fill bps with 2 in flight 9033
+  fork block 26382349
+  creator max withdrawal wei 1849801013300000000
+  actual player payment wei 49954678574941674
+  large word trials 824
+  medium word trials 129
+  FWA owner proceeds wei 42895884357087310
+  Balancer liquid wei 474750884357087310
+  restoration call shortfall wei 30109115642912690
+  reported reserve shortfall wei 560249115642912690
+  M8 fill bps after upkeep 9991
+
+[PASS] testNoOpConfigureDuringIssuedDrawKeepsKeeperCreditCap() (gas: 1970129)
+Logs:
+  F5 0.01 Shape word trials 1
+  F5 keeper reward wei 1145000000000000
+  F5 restock credit wei 1145000000000000
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 662.88ms (635.28ms CPU time)
+
+Ran 1 test suite in 1.01s (662.88ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

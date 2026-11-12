@@ -1,0 +1,13 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.36s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[PASS] testExpiredLocalBatchLeavesRouterCoverageRejection() (gas: 4519747)
+Logs:
+  0x64586738
+  F4 expired batch VRF fees wei 2457000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 12.98ms (8.54ms CPU time)
+
+Ran 1 test suite in 258.56ms (12.98ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

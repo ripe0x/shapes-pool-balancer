@@ -1,0 +1,15 @@
+Compiling 56 files with Solc 0.8.28
+Compiling 61 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.36s
+Solc 0.8.28 finished in 5.78s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/informed/fuzz/ShapeLifecycleFuzz.t.sol:ShapeLifecycleFuzzInformedTest
+[PASS] testFuzzRealShapeMintListCloseUnlistBacking(uint8,uint8,uint16,uint8,uint8) (runs: 32, μ: 11359584, ~: 11119896)
+Logs:
+  case denom/count/markup 1 4 3
+  case basefee/deposit 1000000000 3300000000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.63s (4.20s CPU time)
+
+Ran 1 test suite in 4.91s (4.63s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

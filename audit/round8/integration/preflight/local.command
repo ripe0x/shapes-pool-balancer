@@ -1,0 +1,1 @@
+FOUNDRY_TEST=audit/round8/preflight forge test --match-path audit/round8/preflight/Sentinel.t.sol --out audit/round8/integration/preflight/out --cache-path audit/round8/integration/preflight/cache -vv

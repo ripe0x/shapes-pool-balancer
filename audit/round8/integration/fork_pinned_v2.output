@@ -1,0 +1,10 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.56s
+Compiler run successful!
+
+Ran 2 tests for audit/round8/integration/IntegrationFork.t.sol:IntegrationForkTest
+[PASS] testMintListWithdrawRedeemRoundTrip() (gas: 3246545)
+[PASS] testRealCuratedListingAndPurchaseGate() (gas: 3998181)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.04s (543.13ms CPU time)
+
+Ran 1 test suite in 1.33s (1.04s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

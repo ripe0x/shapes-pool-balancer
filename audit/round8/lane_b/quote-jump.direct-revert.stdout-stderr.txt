@@ -1,0 +1,23 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.97s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[FAIL: custom error 0xcd1c8867] testQuoteToInclusionBasefeeJump() (block: 26382349) (gas: 223317)
+Logs:
+  old total 22866218342601808
+  new total 29652218342601808
+  VRF jump 6786000000000000
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 26.32ms (596.04µs CPU time)
+
+Ran 1 test suite in 349.94ms (26.32ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[FAIL: custom error 0xcd1c8867] testQuoteToInclusionBasefeeJump() (block: 26382349) (gas: 223317)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

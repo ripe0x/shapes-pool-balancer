@@ -1,0 +1,27 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.76s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[PASS] testCreatorCallbackChangesMarkupDuringListing() (gas: 2360294)
+Logs:
+  F3 markup bps 10000
+  F3 FWA price wei 100000000000000000
+
+[PASS] testOutsiderFreezeBlocksOnlyCuratedExit() (gas: 2648875)
+Logs:
+  F2 frozen token owner 0x5A07220De54CFd5F7E2e81813CDEd4fe7D16a0a0
+
+[FAIL: delivery should be pending: 7 != 3] testRejectedDeliveryRefundAndCreatorRecovery() (block: 26382349) (gas: 7798989)
+Suite result: FAILED. 2 passed; 1 failed; 0 skipped; finished in 15.61ms (17.86ms CPU time)
+
+Ran 1 test suite in 287.66ms (15.61ms CPU time): 2 tests passed, 1 failed, 0 skipped (3 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[FAIL: delivery should be pending: 7 != 3] testRejectedDeliveryRefundAndCreatorRecovery() (block: 26382349) (gas: 7798989)
+
+Encountered a total of 1 failing tests, 2 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

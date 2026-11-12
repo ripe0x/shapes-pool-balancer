@@ -1,0 +1,10 @@
+/Users/dd/CascadeProjects/fwa-pool-balancer
+3955f72393a09b7a84d1f275f3c6df8e35382035
+/Users/dd/.local/agent-guards/bin/forge
+forge Version: 1.8.1
+Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98
+Build Timestamp: 2026-08-28T17:50:40.383510000Z (1787939440)
+Build Profile: dist
+/Users/dd/.local/bin/solc
+solc, the solidity compiler commandline interface
+Version: 0.8.26+commit.8a97fa7a.Darwin.appleclang

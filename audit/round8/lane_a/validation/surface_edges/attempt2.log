@@ -1,0 +1,26 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.37s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/validation/surface_edges/SurfaceEdges.t.sol:SurfaceEdgesForkTest
+[PASS] testDirectCollectProceedsAndDonorDepositRoundTrip() (gas: 12277906)
+Logs:
+  direct collected owner proceeds wei 21659458736457265
+  donor deposit wei 123000000000000000
+  creator final claim wei 2142311427286457265
+  player VRF fee wei 2457000000000000
+  curated word trials 19
+
+[PASS] testFourForbiddenRecipientsUnder100kGasAndRevokePages() (gas: 2660729)
+Logs:
+  four forbidden hook recipients rejected under 100k gas
+  page epoch after revoke 1
+
+[PASS] testSetENSNameThroughLiveReverseRegistrar() (gas: 293272)
+Logs:
+  live ENS reverse registrar 0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb
+  live ENS reverse resolver 0xF29100983E058B709F3D539b0c765937B804AC15
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 23.83ms (24.98ms CPU time)
+
+Ran 1 test suite in 275.02ms (23.83ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

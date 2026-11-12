@@ -1,0 +1,149 @@
+Compiling 61 files with Solc 0.8.28
+Compiling 56 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.31s
+Solc 0.8.28 finished in 5.28s
+Compiler run successful!
+
+Ran 1 test for audit/round8/integration/informed/GasPriceFork.t.sol:GasPriceForkTest
+[FAIL: next call did not revert as expected] testGasPriceZeroSimulationDiffersFromBid() (block: 26382349) (gas: 3067819)
+Traces:
+  [3067819] GasPriceForkTest::testGasPriceZeroSimulationDiffersFromBid()
+    ├─ [0] VM::snapshotState()
+    │   └─ ← [Return] 0
+    ├─ [0] VM::txGasPrice(0)
+    │   └─ ← [Return]
+    ├─ [0] VM::prank(0x0000000000000000000000000000000000000B0b)
+    │   └─ ← [Return]
+    ├─ [1520283] 0xfF994A0d9E7758227854df9759631B6818977E53::performUpkeep()
+    │   ├─ [1519257] PoolBalancer.packs::performUpkeep() [delegatecall]
+    │   │   ├─ [2412] BalancerFactory.packs::canKeep(0x0000000000000000000000000000000000000B0b) [staticcall]
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [6584] 0x28dCE533581b085785a01980CfFB437a8B046381::nextSequenceToProcess() [staticcall]
+    │   │   │   ├─ [3922] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::nextSequenceToProcess() [delegatecall]
+    │   │   │   │   └─ ← [Return] 1
+    │   │   │   └─ ← [Return] 1
+    │   │   ├─ [3240] 0x28dCE533581b085785a01980CfFB437a8B046381::ownerProceeds() [staticcall]
+    │   │   │   ├─ [3078] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::ownerProceeds() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [862] 0x28dCE533581b085785a01980CfFB437a8B046381::retired() [staticcall]
+    │   │   │   ├─ [700] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::retired() [delegatecall]
+    │   │   │   │   └─ ← [Return] false
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [3558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [138129] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintBatch{value: 11000000000000000}(10000000000000000 [1e16], 1)
+    │   │   │   ├─ emit MintFeeAccrued(amountWei: 1000000000000000 [1e15])
+    │   │   │   ├─ [551] 0x34a7a97B92288B3F804F416B3B15214FB85e4200::geneAtMint{value: 11000000000000000}(0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, 0) [delegatecall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000002
+    │   │   │   ├─ emit ShapeMinted(tokenId: 307, to: 0xfF994A0d9E7758227854df9759631B6818977E53, amountWei: 10000000000000000 [1e16], seed: 0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, originCount: 1)
+    │   │   │   ├─ emit InkGene(tokenId: 307, gene: 2)
+    │   │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xfF994A0d9E7758227854df9759631B6818977E53, tokenId: 307)
+    │   │   │   ├─ [935] 0xfF994A0d9E7758227854df9759631B6818977E53::onERC721Received(0xfF994A0d9E7758227854df9759631B6818977E53, 0x0000000000000000000000000000000000000000, 307, 0x)
+    │   │   │   │   ├─ [743] PoolBalancer.packs::onERC721Received(0xfF994A0d9E7758227854df9759631B6818977E53, 0x0000000000000000000000000000000000000000, 307, 0x) [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   └─ ← [Return] 307
+    │   │   ├─ emit ShapesMinted(denom: 0, firstTokenId: 307, quantity: 1, cost: 11000000000000000 [1.1e16])
+    │   │   ├─ [1132148] 0x28dCE533581b085785a01980CfFB437a8B046381::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 11245000000000000 [1.124e16] })])
+    │   │   │   ├─ [1131950] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 11245000000000000 [1.124e16] })]) [delegatecall]
+    │   │   │   │   ├─ [1558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   │   │   └─ ← [Return] false
+    │   │   │   │   ├─ [30309] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::transferFrom(0xfF994A0d9E7758227854df9759631B6818977E53, 0x28dCE533581b085785a01980CfFB437a8B046381, 307)
+    │   │   │   │   │   ├─ emit Transfer(from: 0xfF994A0d9E7758227854df9759631B6818977E53, to: 0x28dCE533581b085785a01980CfFB437a8B046381, tokenId: 307)
+    │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   ├─ [1283] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::ownerOf(307) [staticcall]
+    │   │   │   │   │   └─ ← [Return] 0x28dCE533581b085785a01980CfFB437a8B046381
+    │   │   │   │   ├─ emit NFTListed(listingId: 1, slot: 1, depositor: 0xfF994A0d9E7758227854df9759631B6818977E53, collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, weight: 88928412627834593152 [8.892e19], price: 11245000000000000 [1.124e16])
+    │   │   │   │   ├─ emit InventoryChanged(version: 1, changedAt: 1794287711 [1.794e9])
+    │   │   │   │   └─ ← [Return] [1]
+    │   │   │   └─ ← [Return] [1]
+    │   │   ├─ emit ShapeListed(listingId: 1, denom: 0, tokenId: 307, price: 11245000000000000 [1.124e16])
+    │   │   ├─ [0] 0x0000000000000000000000000000000000000B0b::receive{value: 500000000000000}()
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit KeeperPaid(keeper: 0x0000000000000000000000000000000000000B0b, amount: 500000000000000 [5e14], gasUsed: 1477368 [1.477e6])
+    │   │   └─ ← [Return] 500000000000000 [5e14]
+    │   └─ ← [Return] 500000000000000 [5e14]
+    ├─ [7723] 0xfF994A0d9E7758227854df9759631B6818977E53::getActiveIds() [staticcall]
+    │   ├─ [5049] PoolBalancer.packs::getActiveIds() [delegatecall]
+    │   │   └─ ← [Return] [1]
+    │   └─ ← [Return] [1]
+    ├─ [0] VM::revertToState(0)
+    │   └─ ← [Return] true
+    ├─ [0] VM::txGasPrice(1000000000 [1e9])
+    │   └─ ← [Return]
+    ├─ [0] VM::prank(0x0000000000000000000000000000000000000B0b)
+    │   └─ ← [Return]
+    ├─ [0] VM::expectRevert(NoUpkeepNeeded())
+    │   └─ ← [Return]
+    ├─ [1520245] 0xfF994A0d9E7758227854df9759631B6818977E53::performUpkeep()
+    │   ├─ [1519219] PoolBalancer.packs::performUpkeep() [delegatecall]
+    │   │   ├─ [2412] BalancerFactory.packs::canKeep(0x0000000000000000000000000000000000000B0b) [staticcall]
+    │   │   │   └─ ← [Return] true
+    │   │   ├─ [6584] 0x28dCE533581b085785a01980CfFB437a8B046381::nextSequenceToProcess() [staticcall]
+    │   │   │   ├─ [3922] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::nextSequenceToProcess() [delegatecall]
+    │   │   │   │   └─ ← [Return] 1
+    │   │   │   └─ ← [Return] 1
+    │   │   ├─ [3240] 0x28dCE533581b085785a01980CfFB437a8B046381::ownerProceeds() [staticcall]
+    │   │   │   ├─ [3078] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::ownerProceeds() [delegatecall]
+    │   │   │   │   └─ ← [Return] 0
+    │   │   │   └─ ← [Return] 0
+    │   │   ├─ [862] 0x28dCE533581b085785a01980CfFB437a8B046381::retired() [staticcall]
+    │   │   │   ├─ [700] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::retired() [delegatecall]
+    │   │   │   │   └─ ← [Return] false
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [3558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   └─ ← [Return] false
+    │   │   ├─ [2462] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintFee() [staticcall]
+    │   │   │   └─ ← [Return] 1000000000000000 [1e15]
+    │   │   ├─ [138129] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::mintBatch{value: 11000000000000000}(10000000000000000 [1e16], 1)
+    │   │   │   ├─ emit MintFeeAccrued(amountWei: 1000000000000000 [1e15])
+    │   │   │   ├─ [551] 0x34a7a97B92288B3F804F416B3B15214FB85e4200::geneAtMint{value: 11000000000000000}(0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, 0) [delegatecall]
+    │   │   │   │   └─ ← [Return] 0x0000000000000000000000000000000000000000000000000000000000000002
+    │   │   │   ├─ emit ShapeMinted(tokenId: 307, to: 0xfF994A0d9E7758227854df9759631B6818977E53, amountWei: 10000000000000000 [1e16], seed: 0x7382070c5ba898f441326d339bf51fad85b0e7a55ad587174d1d923db4b96b37, originCount: 1)
+    │   │   │   ├─ emit InkGene(tokenId: 307, gene: 2)
+    │   │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: 0xfF994A0d9E7758227854df9759631B6818977E53, tokenId: 307)
+    │   │   │   ├─ [935] 0xfF994A0d9E7758227854df9759631B6818977E53::onERC721Received(0xfF994A0d9E7758227854df9759631B6818977E53, 0x0000000000000000000000000000000000000000, 307, 0x)
+    │   │   │   │   ├─ [743] PoolBalancer.packs::onERC721Received(0xfF994A0d9E7758227854df9759631B6818977E53, 0x0000000000000000000000000000000000000000, 307, 0x) [delegatecall]
+    │   │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   │   └─ ← [Return] 0x150b7a02
+    │   │   │   └─ ← [Return] 307
+    │   │   ├─ emit ShapesMinted(denom: 0, firstTokenId: 307, quantity: 1, cost: 11000000000000000 [1.1e16])
+    │   │   ├─ [1132148] 0x28dCE533581b085785a01980CfFB437a8B046381::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 11245000000000000 [1.124e16] })])
+    │   │   │   ├─ [1131950] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7::listNFTs([ListingInput({ collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, price: 11245000000000000 [1.124e16] })]) [delegatecall]
+    │   │   │   │   ├─ [1558] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::globalWithdrawOnly() [staticcall]
+    │   │   │   │   │   └─ ← [Return] false
+    │   │   │   │   ├─ [30309] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::transferFrom(0xfF994A0d9E7758227854df9759631B6818977E53, 0x28dCE533581b085785a01980CfFB437a8B046381, 307)
+    │   │   │   │   │   ├─ emit Transfer(from: 0xfF994A0d9E7758227854df9759631B6818977E53, to: 0x28dCE533581b085785a01980CfFB437a8B046381, tokenId: 307)
+    │   │   │   │   │   └─ ← [Return]
+    │   │   │   │   ├─ [1283] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::ownerOf(307) [staticcall]
+    │   │   │   │   │   └─ ← [Return] 0x28dCE533581b085785a01980CfFB437a8B046381
+    │   │   │   │   ├─ emit NFTListed(listingId: 1, slot: 1, depositor: 0xfF994A0d9E7758227854df9759631B6818977E53, collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0, tokenId: 307, weight: 88928412627834593152 [8.892e19], price: 11245000000000000 [1.124e16])
+    │   │   │   │   ├─ emit InventoryChanged(version: 1, changedAt: 1794287711 [1.794e9])
+    │   │   │   │   └─ ← [Return] [1]
+    │   │   │   └─ ← [Return] [1]
+    │   │   ├─ emit ShapeListed(listingId: 1, denom: 0, tokenId: 307, price: 11245000000000000 [1.124e16])
+    │   │   ├─ [0] 0x0000000000000000000000000000000000000B0b::receive{value: 573867450000000}()
+    │   │   │   └─ ← [Stop]
+    │   │   ├─ emit KeeperPaid(keeper: 0x0000000000000000000000000000000000000B0b, amount: 573867450000000 [5.738e14], gasUsed: 1477349 [1.477e6])
+    │   │   └─ ← [Return] 573867450000000 [5.738e14]
+    │   └─ ← [Return] 573867450000000 [5.738e14]
+    └─ ← [Revert] next call did not revert as expected
+
+Backtrace:
+  at GasPriceForkTest.testGasPriceZeroSimulationDiffersFromBid
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 850.07ms (200.49ms CPU time)
+
+Ran 1 test suite in 2.02s (850.07ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/integration/informed/GasPriceFork.t.sol:GasPriceForkTest
+[FAIL: next call did not revert as expected] testGasPriceZeroSimulationDiffersFromBid() (block: 26382349) (gas: 3067819)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

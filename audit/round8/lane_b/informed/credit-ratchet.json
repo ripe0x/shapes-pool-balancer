@@ -1,0 +1,48 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "creator": "0x46EFbAedc92067E6d60E84ED6395099723252496",
+  "player": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "outsiderKeeper": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+  "first": {
+    "purchase": "0x6b4ea76c2ad1ade6519fcb75384328465df53cb9bb7e07269a456d70995eedf5",
+    "payer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "paid": "24977339287470837",
+    "fee": "22520339287470837",
+    "vrf": "2457000000000000",
+    "listingId": "29",
+    "status": "2"
+  },
+  "funding": {
+    "txHash": "0xc095bfd2cbca4a47910d4048a6647d0ce42e314788d8e1c85fe0d8390d08f612",
+    "feeListing": "43",
+    "listingStillActiveBeforeUnlist": true,
+    "reward": "4438690250000000",
+    "measuredGas": "795695",
+    "creditAfterFunding": "216309750000000"
+  },
+  "second": {
+    "purchase": "0xcbf5f563935bcc055ac2eeb7590f1d01f6f5661fbb30503dba0a1707bfc59e48",
+    "payer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "paid": "24988322105393413",
+    "fee": "22531322105393413",
+    "vrf": "2457000000000000",
+    "listingId": "18",
+    "status": "2"
+  },
+  "closeAndUnlist": {
+    "creditAfterUnlist": "216309750000000",
+    "balanceBeforeReconcile": "2409085480057087310",
+    "feeListingUnlistedWithoutWinning": true
+  },
+  "spend": {
+    "txHash": "0x187aaf98929fd9fe9f9255ff3da5e439b3fc260e29ef31d0cd764fb9149e78e5",
+    "billedGas": "139706",
+    "effectiveGasPrice": "1050000000",
+    "reward": "216309750000000",
+    "measuredGas": "103739",
+    "billedCost": "146691300000000",
+    "keeperNet": "69618450000000",
+    "creditAfter": "0"
+  }
+}

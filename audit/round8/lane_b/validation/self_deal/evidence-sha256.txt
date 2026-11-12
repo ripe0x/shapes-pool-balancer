@@ -1,0 +1,5 @@
+e2284a0ab99d426584634916122c9faa06abaf64122f03ec14faa7bc7f7f377a  audit/round8/lane_b/validation/self_deal/continuation-seal.md
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  audit/round8/lane_b/validation/self_deal/strict-self-deal.err
+9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa  audit/round8/lane_b/validation/self_deal/strict-self-deal.exit
+3d8d7da8d61b45cfa21f1847a925cc4da15d4d92326007f5d6675cd3d853c712  audit/round8/lane_b/validation/self_deal/strict-self-deal.json
+2a09c99b4a7897617dc94988e1309b3ef225056760532fba8ca4473ac6326cdf  audit/round8/lane_b/validation/self_deal/strict-self-deal.mjs

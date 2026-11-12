@@ -1,0 +1,10 @@
+No files changed, compilation skipped
+
+Ran 4 tests for audit/round8/integration/IntegrationFork.t.sol:IntegrationForkTest
+[PASS] testMintListWithdrawRedeemRoundTrip() (gas: 3246924)
+[PASS] testPackWinAndExactRedemption() (gas: 5687454)
+[PASS] testRealCuratedListingAndPurchaseGate() (gas: 4640182)
+[PASS] testShapeWinAndExactRedemption() (gas: 5235025)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 414.88ms (1.07s CPU time)
+
+Ran 1 test suite in 707.85ms (414.88ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

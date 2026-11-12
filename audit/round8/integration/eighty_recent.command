@@ -1,0 +1,1 @@
+FOUNDRY_TEST=audit/round8/integration forge test --match-path audit/round8/integration/IntegrationFork.t.sol --match-test testEightyShapeOpenAndCloseout --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26399837 --out audit/round8/integration/out --cache-path audit/round8/integration/cache -vvv

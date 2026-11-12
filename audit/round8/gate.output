@@ -1,0 +1,38 @@
+FAIL: path reserve-reopen: identity family unresolved
+FAIL: path reserve-reopen: quantity family unresolved
+FAIL: path reserve-reopen: value_attribution family unresolved
+FAIL: path reserve-reopen: authorization family unresolved
+FAIL: path reserve-reopen: callback family unresolved
+FAIL: path reserve-reopen: timing family unresolved
+FAIL: path burst-restoration: identity family unresolved
+FAIL: path burst-restoration: quantity family unresolved
+FAIL: path burst-restoration: value_attribution family unresolved
+FAIL: path burst-restoration: authorization family unresolved
+FAIL: path burst-restoration: callback family unresolved
+FAIL: path burst-restoration: timing family unresolved
+FAIL: path lying-curated-double-sale: identity family unresolved
+FAIL: path lying-curated-double-sale: quantity family unresolved
+FAIL: path lying-curated-double-sale: value_attribution family unresolved
+FAIL: path lying-curated-double-sale: authorization family unresolved
+FAIL: path lying-curated-double-sale: callback family unresolved
+FAIL: path lying-curated-double-sale: timing family unresolved
+FAIL: path unresolved-other-surface: unresolved outcome
+FAIL: path unresolved-other-surface: no postconditions
+FAIL: path unresolved-other-surface: identity family unresolved
+FAIL: path unresolved-other-surface: quantity family unresolved
+FAIL: path unresolved-other-surface: value_attribution family unresolved
+FAIL: path unresolved-other-surface: authorization family unresolved
+FAIL: path unresolved-other-surface: callback family unresolved
+FAIL: path unresolved-other-surface: timing family unresolved
+FAIL: Slither 4a780579f209c43f51515b18420f6fbff83dbbaa7aa18a6af0bea31520524ef4: unresolved
+FAIL: Slither ee6e97ccc7f41d13dd877f8ad85b2eb7e5944f7a90cc01656acff559e48bcdb8: unresolved
+FAIL: Slither ca908850024205c43d924acb64025e24a1e9c166109af9e71a24ccee54a9e764: unresolved
+FAIL: Slither 29e64124e5f10c84472ace0cb9ab00abb9096f08a31b38d612689da9b51b97e0: unresolved
+FAIL: Slither 8385ee99145535ecc1acad777650347fd6fe19f3ec285952ac8e9f5c9c2c365d: unresolved
+FAIL: Slither ac0dfa237880ad04d641facfcbbdd91b3fcd1bec553b5086dd3df4c54ac27ffb: unresolved
+FAIL: Slither d024bf1977c33a30ef0b7e763099ce54009439b3085182be5e6595e5333e31ed: unresolved
+FAIL: Slither 7c4b497ff291ad0ce37b1fcb5989c0f9369b45d81cb046f267c143b323b9300b: unresolved
+FAIL: Slither 89942a5e4bf8b67ae221051d122bc9b509567008f0bd29bc75e12ffc57c3692f: unresolved
+FAIL: Slither c10811b4cf9b6b0a1cb60a090a6170cc27a5f94d70c29cce387ba6e45842e43e: unresolved
+FAIL: Slither eb583c928dc691a0c97ec50a39ba435b6adf629654298b53903bbee80a073755: unresolved
+FAIL: independent review burst-restoration/restoration: unresolved challenge
