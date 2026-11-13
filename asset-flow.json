@@ -2,7 +2,7 @@
   "source_paths": ["src", "script", "foundry.toml", ".gitmodules"],
   "evidence_paths": ["test/scenario/FlowBreakdown.t.sol", "test/utils/FlowBreakdown.sol", "test/utils/ForkBase.sol"],
   "scorecard_dir": "docs/receipts/flow",
-  "required_regimes": ["quiet", "limits_at_max", "max_then_idle", "zero_demand", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending"],
+  "required_regimes": ["quiet", "limits_at_max", "max_then_idle", "zero_demand", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending", "restock_in_flight"],
   "drift_groups": [["quiet", "limits_at_max", "max_then_idle"]],
   "drift_threshold_bps": 500,
   "test_command": "forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
