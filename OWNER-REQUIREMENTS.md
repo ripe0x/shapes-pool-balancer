@@ -4,7 +4,8 @@ The owner's requirements for the Shapes Pool Balancer, in the owner's words wher
 outcome in `asset-flow.json` that measures it. Later decisions are appended, never rewritten. Audit and review requests
 point here instead of restating requirements.
 
-**Status: DRAFT for the owner to confirm (2026-11-13).** Marked lines:
+**Status: confirmed by the owner, 2026-11-13 ("gtg"), after reading this file and the diff it came with.** The
+markers below record where a line came from:
 - *(relayed)*: the owner's decision reached us through another session, not in the owner's own words here.
 - *(agent wording)*: written by an agent from the owner's words; the owner has not approved the wording itself.
 
@@ -70,8 +71,7 @@ point here instead of restating requirements.
 - R22. "Go ahead with the D3 repair. No push until it has been independently re-attacked."
 - R23. Merges: PR #3, PR #2 and PR #1 were each merged on the owner's word ("merge", "Yes, merge PR #2", "Yes, merge PR #1").
 
-## To confirm
+## Open
 
-1. The whole file, in particular R8, R9 and R10 (agent wording or relayed).
-2. Whether the money goals M1 to M9 in `docs/AUDIT-PROMPT.md` should be restated here line by line, or stay there with
-   this file taking precedence where they differ.
+- Whether the money goals M1 to M9 in `docs/AUDIT-PROMPT.md` should be restated here line by line. Until then they stay
+  there, and this file takes precedence where they differ.
