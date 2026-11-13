@@ -49,7 +49,7 @@ average. The 0.5 ETH Shape takes about 1,094 draws.
 | Fee cap 1 gwei | 0.0354 (2.14×), −13% | pays 0.0034, most of a 25% markup's 0.004 | constant in the contract |
 | Pause purchases above about 2 gwei | no sales above it; at 2 gwei 0.0299 (1.87×) | no draws, no income | purchase gate on basefee; fewer sales in spikes |
 
-**Owner decision (relayed 2026-11-13):** stay open up to 5 gwei; judge attractiveness at normal gas with a signed
+**Owner decision (confirmed directly 2026-11-13: option a, keep the 5 gwei fee cap):** stay open up to 5 gwei; judge attractiveness at normal gas with a signed
 outcome that a player pays at most 1.5× the expected prize backing at 1 gwei or below; report the 5 gwei ratio as
 information; the app shows the all-in price (done).
 
@@ -102,7 +102,7 @@ Seizure is the same harm with a real-looking NFT.
 
 ### Owner decision: follow FWA's rules
 
-**Owner decision (relayed 2026-11-13):** "defer to whatever FWA already does, since we're a pass-through for them". No
+**Owner decision (confirmed directly 2026-11-13; plus an app label for collections not on a known list):** "defer to whatever FWA already does, since we're a pass-through for them". No
 allowlist and no new prevention in our contracts. FWA's rules, from its verified source, are now written into
 `docs/SPEC.md` (curated NFTs) and the closeout outcome O6 carries the exception: an NFT whose delivery failed stays at
 FWA until its winner takes the refund (or for good, if the collection also refuses recovery). The pool page's text for a

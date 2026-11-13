@@ -94,7 +94,8 @@ show when a fee makes the configuration uneconomic.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
-5. `claimSurplus(balance, to)`; while closed the full balance is claimable.
+5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except 0.01635 ETH per 5 draws not yet
+   reconciled, held to pay the keeper who reconciles them. Run upkeep (or wait for a keeper), then claim the rest.
 6. Optional and permanent: `retire()`.
 
 ## FWA pool page

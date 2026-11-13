@@ -340,12 +340,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertTrue(balancer.canPurchase(buyer), "open before the last batch");
         uint256[] memory ids = _buy(5);
         assertEq(pool.unsettledAcquisitionCount(), 5, "five draws pending at close");
-        Fact[] memory x = new Fact[](21);
+        Fact[] memory x = new Fact[](22);
         x[0] = Fact("draws_pending_at_close", 5);
         _collectNow();
         vm.prank(creator);
         balancer.close();
-        x[1] = Fact("unclaimable_after_close_wei", address(balancer).balance - balancer.withdrawableSurplus());
+        uint256 heldAtClose = balancer.requiredReserve();
+        // D3: while closed, keeper pay for the unreconciled draws is held; nothing else may be withheld
+        x[1] = Fact(
+            "unclaimable_after_close_beyond_held_pay_wei",
+            address(balancer).balance - balancer.withdrawableSurplus() - balancer.requiredReserve()
+        );
         // what the creator can take while the draws are still pending
         uint256[] memory first = _chunk(_ids(SHAPE_KIND), 0);
         x[2] = Fact("unlist_blocked_while_pending", _unlist(first) ? 0 : 1);
@@ -394,6 +399,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[18] = Fact("fwa_player_escrow_and_refund_credit_wei", m.deliveryEscrowTotal() + m.acquisitionEscrowTotal() + m.acquisitionRefundCreditTotal());
         x[19] = Fact("fwa_owner_proceeds_wei", pool.ownerProceeds());
         x[20] = Fact("fwa_held_not_named_wei", fwaHeld > named ? fwaHeld - named : 0);
+        x[21] = Fact("keeper_pay_held_at_close_wei", heldAtClose);
         assertEq(fwaHeld, named, "every wei FWA holds is in one of its named totals");
         _done("closeout_pending", a, x);
     }

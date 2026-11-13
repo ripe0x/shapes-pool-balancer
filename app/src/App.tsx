@@ -472,6 +472,20 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
+/** Collections shown as known (D7: the Balancer follows FWA's rules for any collection; this label is information only).
+ *  PROVISIONAL list for the owner to review; addresses checked by their on-chain name() on mainnet, 2026-11-13. */
+const KNOWN_COLLECTIONS = new Set([
+  '0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d', // BoredApeYachtClub
+  '0x60e4d786628fea6478f785a6d7e704777c86a7c6', // MutantApeYachtClub
+  '0xed5af388653567af2f388e6224dc7c4b3241c544', // Azuki
+  '0xbd3531da5cf5857e7cfaa92426877b022e612cf8', // PudgyPenguins
+  '0x8a90cab2b38dba80c64b7734e58ee1db38b8992e', // Doodles
+  '0x5af0d9827e0c53e4799bb226655a1de152a425a5', // Milady
+  '0x23581767a106ae21c074b2276d25e5c3e136a68b', // Moonbirds
+  '0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270', // Art Blocks
+  '0x99a9b7c1116f9ceeb1652de04d5969cce509b069', // Art Blocks
+]);
+const unverified = (collection?: string) => !!collection && !KNOWN_COLLECTIONS.has(collection.toLowerCase());
 const nftLabel = (n: DraftNft) => `${n.name ?? short(n.collection!)} #${n.tokenId}`;
 
 /**
@@ -1012,6 +1026,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
               <div>
                 <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
+                {unverified(l.collection) && <div className="s error">Unverified collection</div>}
                 <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
                 <div className="s">Won about {oneIn(odds(l))} draws</div>
                 {edit?.id === l.id && (
@@ -1115,6 +1130,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           <div style={{ minWidth: 0 }}>
             <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
             {n.floor && <div className="s">Collection floor {floorText(n.floor)}</div>}
+            {unverified(n.collection) && <div className="s error">Unverified collection</div>}
           </div>
           <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
           <button className="link quiet" aria-label={`Remove ${nftLabel(n)}`} onClick={() => setPicks(picks.filter((_, j) => j !== i))}>×</button>
@@ -1169,6 +1185,11 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const idle = d.balance > d.required ? d.balance - d.required : 0n;
   const fund = d.balance - d.profit;
   const short_ = d.required > fund ? d.required - fund : 0n;
+  // E9 / D1: prizes missing because the pool is short of ETH. The creator adds the ETH, or keeps the design without them.
+  const pub = usePublicClient();
+  const trimmed = plan.map((n, i) => Math.min(n, d.activeShapes[i])) as Counts;
+  const gone = plan.map((n, i) => (n > d.activeShapes[i] ? i : -1)).filter((i) => i >= 0);
+  const goneLabel = missing === 1 ? `the ${eth(DENOMS[gone[0]], 3).replace(/\.?0+$/, '')} ETH prize` : 'the missing prizes';
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
@@ -1222,6 +1243,15 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="kv"><span className="k">Kept for restocking</span><span>{eth(d.required)} ETH</span></div>
           <div className="kv"><span className="k">Ready to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
           {short_ > 0n && <div className="kv"><span className="k error">Short of the reserve</span><span className="error">{eth(short_)} ETH</span></div>}
+          {isCreator && d.enabled && short_ > 0n && missing > 0 && pub && (
+            <div style={{ marginTop: 12 }}>
+              <p className="note error">{missing === 1 ? `${goneLabel[0].toUpperCase()}${goneLabel.slice(1)} is` : `${missing} prizes are`} missing: the pool is {eth(short_)} ETH short of restocking {missing === 1 ? 'it' : 'them'}.</p>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button className="btn" disabled={!!tx.busy} onClick={() => tx.send(`Add ${eth(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub, tx, me, d.balancer)])}>Add {eth(short_)} ETH</button>
+                <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => tx.send('Continue without them', [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed)] }), upkeepStep(pub, tx, me, d.balancer)])}>Continue without {goneLabel}</button>
+              </div>
+            </div>
+          )}
           <div className="kv"><span className="k"><b>Total in the pool</b></span><span><b>{eth(backing + d.balance)} ETH</b></span></div>
           {d.proceeds > 0n && <div className="kv"><span className="k">Sales waiting to be collected</span><span>{eth(d.proceeds)} ETH</span></div>}
           {isCreator && idle > backing + d.required && <p className="note" style={{ marginTop: 10 }}>Most of this ETH is not used. Add Shapes on <button className="link" style={{ fontSize: 13 }} onClick={() => setTab('mix')}>Prices & mix</button>, or withdraw it.</p>}

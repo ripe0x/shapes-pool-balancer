@@ -163,35 +163,65 @@ contract KeeperPayTest is ForkBase {
         emit log_named_decimal_uint("paid for five split calls", split, 18);
     }
 
-    /// Audit rc-ec5259c finding 3 (characterization of the current rule, not the intended one): after `close`, the
-    /// creator may claim every wei, so a later useful reconcile of draws that all expired brings no proceeds and is
-    /// paid nothing. The log shows what the reward rule would have paid.
-    function test_postCloseReconcileAfterFullClaimIsUnpaid() public {
+    /// Audit rc-ec5259c finding 3, repaired (owner decision D3): while closed, `requiredReserve` holds one maximum keeper
+    /// reward per five unreconciled draws, so the creator cannot claim it and a later useful reconcile is paid.
+    function test_postCloseReconcileIsPaidFromHeldAmount() public {
         _open(0.5 gwei);
         fillUp();
         buy(buyer, 5);
-        vm.startPrank(creator);
+        vm.prank(creator);
         balancer.close();
-        balancer.claimSurplus(balancer.withdrawableSurplus(), creator);
-        vm.stopPrank();
-        assertEq(address(balancer).balance, 0, "closed: the creator claimed every wei");
+        uint256 held = balancer.MAX_KEEPER_REWARD();
+        assertEq(balancer.requiredReserve(), held, "five unreconciled draws: one call's maximum reward held");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else is claimable");
+        uint256 claimable = balancer.withdrawableSurplus();
+        vm.prank(creator);
+        balancer.claimSurplus(claimable, creator);
+        assertEq(address(balancer).balance, held, "only the held pay is left");
+
         vm.roll(vm.getBlockNumber() + 40); // past FWA's word deadline
         pool.processAcquisitions(5);
         assertEq(pool.ownerProceeds(), 0, "all five expired: no proceeds");
         assertEq(balancer.reconciledSequence(), 0, "reached: five processed draws await reconciliation");
-        uint256 before = keeper.balance;
-        vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep();
-        (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
-        require(ok, "lastCallGas");
-        (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
+        (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), 5, "the call did useful work");
-        assertEq(reward, 0, "and was paid nothing");
-        assertEq(keeper.balance, before, "the keeper's wallet only lost gas");
-        emit log_named_uint("gas used by the unpaid call", used);
-        emit log_named_decimal_uint("rule would pay at 0.55 gwei (approx.)", (uint256(used) + OVERHEAD) * gasPrice + FLAT, 18);
-        emit log_named_decimal_uint("rule would pay at 5 gwei (approx.)", (uint256(used) + OVERHEAD) * 5 gwei + FLAT, 18);
-        emit log_named_decimal_uint("MAX_KEEPER_REWARD", balancer.MAX_KEEPER_REWARD(), 18);
+        assertEq(reward, (measured + OVERHEAD) * gasPrice + FLAT, "and was paid by the rule");
+        assertEq(balancer.requiredReserve(), 0, "nothing owed once reconciled");
+        uint256 rest = address(balancer).balance;
+        assertEq(rest, held - reward, "the unspent hold stays in the pool");
+        assertEq(balancer.withdrawableSurplus(), rest, "and is claimable again");
+        vm.prank(creator);
+        balancer.claimSurplus(rest, creator);
+        assertEq(address(balancer).balance, 0, "closeout leaves nothing");
+        emit log_named_decimal_uint("held at close", held, 18);
+        emit log_named_decimal_uint("paid to the keeper", reward, 18);
+    }
+
+    /// The creator cannot claim the held keeper pay while draws are unreconciled.
+    function test_creatorCannotClaimHeldPayWhileClosed() public {
+        _open(0.5 gwei);
+        fillUp();
+        buy(buyer, 5);
+        vm.prank(creator);
+        balancer.close();
+        uint256 all = address(balancer).balance;
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(all, creator);
+        uint256 free = balancer.withdrawableSurplus();
+        assertEq(all - free, balancer.MAX_KEEPER_REWARD(), "exactly the held pay is refused");
+        vm.prank(creator);
+        balancer.claimSurplus(free, creator);
+    }
+
+    /// Nothing is held after closing when every draw is already reconciled.
+    function test_closedWithNothingOwedHoldsNothing() public {
+        _open(0.5 gwei);
+        fillUp();
+        vm.prank(creator);
+        balancer.close();
+        assertEq(balancer.requiredReserve(), 0, "nothing owed");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "everything claimable");
     }
 
     function test_keeperWalletNotLower_halfGwei() public {

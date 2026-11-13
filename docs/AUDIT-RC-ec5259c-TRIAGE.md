@@ -5,6 +5,18 @@ read-only, on the pinned mainnet fork. These are triage notes for the owner; no 
 numbers are from the mainnet fork at block 26,382,349, with basefee 0.5 gwei and bid 0.55 gwei asserted inside a
 transaction, unless stated otherwise. "Repro" is what I ran on branch `test/flow-restock-in-flight`.
 
+## Owner's decisions (confirmed directly, 2026-11-13) and what was done
+
+| # | Decision | Done |
+| --- | --- | --- |
+| D1 | Dashboard offers "Add ETH" and "Continue without the prize" | Pool page shows both when prizes are missing for lack of ETH; both exercised on the local fork |
+| D2 | Accept the gas refunds keepers keep; limit ≤ 0.002 ETH per 180 draws | O1 limit set |
+| D3 | Repair: hold keeper pay for unreconciled draws while closed | `requiredReserve()` while closed = ceil(unreconciled / 5) × `MAX_KEEPER_REWARD`; tests in `test/KeeperPay.t.sol` and `test/Reserve.t.sol`; **awaiting independent re-attack before any push** |
+| D4 | Accept and budget one paid call per processed draw | Contract comment corrected; test renamed |
+| D5 | "All buyers fund restocking fees" | O2 and SPEC reworded |
+| D6 | Option a: ≤ 1.5× at normal gas (≤ 0.1 gwei), 1 and 5 gwei shown as information; keep the 5 gwei fee cap | O10 recorded (1.46× measured); no contract change |
+| D7 | Follow FWA's rules, no allowlist; label collections not on a known list | SPEC, O6 and the pool page state FWA's rules; "Unverified collection" label on listed and picked NFTs (provisional list for the owner to review) |
+
 ## Findings
 
 | # | Finding | Known? | Codex basis | Repro | ETH at launch scale | Disposition |

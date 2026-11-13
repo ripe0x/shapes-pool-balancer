@@ -29,7 +29,7 @@ interface IKeeperList {
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. The fee is the creator's income for keeper pay: the pool's ETH pays the keeper who
-///        lists the prize and the player who later wins it repays the fee in the price.
+///        lists the prize; the fee is in the prize's price, which FWA's single draw price spreads over all buyers.
 ///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
 ///        unsettled; FWA stages those listings and activates them in order.
 ///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
@@ -89,12 +89,13 @@ contract PoolBalancer is ReentrancyGuard {
     //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
     //   outside the measured span (intrinsic gas, the keeper-list check, the reward transfer; measured 24k-46k), so
     //   the incentive is the keeper's margin at any gas price up to the cap.
-    // - What a call does is fixed by the state, not the caller: it reconciles every processed sequence up to
-    //   MAX_RECONCILE and restocks the whole deficit up to MAX_OPS, so work cannot be split into smaller paid calls,
-    //   and a draw FWA has not processed cannot be reconciled or paid for. Each paid call is at most
-    //   MAX_KEEPER_REWARD and needs a sequence FWA processed (a paid draw) or a deficit (a won prize or a creator
-    //   action). Buying one's own draws pays the price, FWA's edge and the VRF fee (2.34M gas at the same gas
-    //   price) for at most KEEPER_INCENTIVE of profit per call.
+    // - A call reconciles every sequence FWA has processed (up to MAX_RECONCILE) and restocks the whole deficit (up to
+    //   MAX_OPS), and a draw FWA has not processed cannot be reconciled or paid for. FWA processing is permissionless,
+    //   so anyone can process a ready batch one draw at a time and reconcile after each: the bound is one paid call
+    //   per processed draw, not per batch (audit rc-ec5259c finding 6, accepted and budgeted by the owner: about
+    //   0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most MAX_KEEPER_REWARD and needs a processed
+    //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
+    //   KEEPER_INCENTIVE per call.
     // - Restocking fee per Shape = RESTOCK_FEE_GAS x min(basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE) +
     //   RESTOCK_FEE_FLAT, at the listing block: the creator's income for keeper pay, sized to the gas a listing call
     //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
@@ -762,7 +763,7 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice ETH the creator may claim now: everything above `requiredReserve`, or the unclaimed `profit` while the
-    ///         fund is below it. Everything while closed.
+    ///         fund is below it. While closed, everything but the keeper pay held for unreconciled draws.
     function withdrawableSurplus() public view returns (uint256) {
         uint256 bal = address(this).balance;
         uint256 req = requiredReserve();
@@ -773,9 +774,14 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
     ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
-    ///         upkeep call that work takes plus one. Zero while closed.
+    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_RECONCILE draws FWA
+    ///         issued that are not yet reconciled, so useful reconciliation after closing is always paid (audit
+    ///         rc-ec5259c finding 3). Closing stops purchases, so this only falls as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {
-        if (!enabled) return 0;
+        if (!enabled) {
+            uint256 owed = pool.lastIssuedSequence() - reconciledSequence;
+            return (owed + MAX_RECONCILE - 1) / MAX_RECONCILE * MAX_KEEPER_REWARD;
+        }
         uint256 plan = target;
         // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.
         uint256 fee = SHAPES.mintFee();
@@ -924,7 +930,7 @@ contract PoolBalancer is ReentrancyGuard {
         return (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
     }
 
-    /// @notice Restocking fee per Shape for a prize listed now: what the winner repays toward keeper pay.
+    /// @notice Restocking fee per Shape for a prize listed now, built into its price: all buyers fund it.
     function restockFee() public view returns (uint256) {
         return RESTOCK_FEE_GAS * _rewardPrice(type(uint256).max) + RESTOCK_FEE_FLAT;
     }

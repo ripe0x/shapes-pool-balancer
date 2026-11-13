@@ -127,13 +127,14 @@ Who can take value out:
 
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
-- after closing and unlisting, the creator can withdraw everything: the reserve is zero while closed, so the full balance
-  is claimable once prizes are unlisted and NFTs withdrawn. Upkeep that reconciles draws settled after closing is still
-  paid from the balance.
+- after closing and unlisting, the creator can withdraw everything except the keeper pay held for draws not yet
+  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 5 such draws (owner decision
+  D3, 2026-11-13). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
+  everything is reconciled. Closing stops purchases, so the held amount only falls.
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
 Mint fees and a restocking fee are priced into Shape prizes. The pool's ETH pays a prize's mint fees and the keeper who
-lists it when the prize is made, and the player who wins it repays both in its price. The restocking fee is the
+lists it when the prize is made. Both are built into the prize's price, and FWA's single draw price spreads them over all buyers, whatever each wins (owner decision D5). The restocking fee is the
 creator's income toward keeper pay, not a limit on it: draws that win an NFT or time out bring no fee, so the keeper
 calls that reconcile them are the creator's cost, as are the fees of prizes never won (unlisted, refunded after a failed
 delivery, or still listed at close). At any moment the fronted restocking fees are at most the listed Shapes ×
@@ -146,7 +147,7 @@ It bounds withdrawals so upkeep can always restock what an admitted draw removes
 
 ## Reserve
 
-`requiredReserve` (0 while closed) holds, while open:
+`requiredReserve` (while closed: only the keeper pay for unreconciled draws, see above) holds, while open:
 
 - the cost to restore the target from the prizes currently listed: for each short size, the missing count × (backing +
   the current mint fee per Shape inside); plus
@@ -172,7 +173,7 @@ is the balance less unclaimed `profit`. While the fund is below `requiredReserve
 `profit` and the fund keeps the rest; at or above it, everything over the reserve is claimable. `withdrawableSurplus` is the larger of
 `profit` and `balance − requiredReserve`, and a claim spends `profit` first, so a claim never takes the fund below the
 reserve or below where it was. Game first: when the fund cannot pay a restock, upkeep spends unclaimed profit (`profit`
-is cut to the balance). Closing zeroes `profit`: the whole balance is claimable while closed.
+is cut to the balance). Closing zeroes `profit`: while closed, the whole balance is claimable except the keeper pay held for unreconciled draws.
 
 `unlistShapes(listingIds)` withdraws up to 20 listed prizes per call and redeems each for its exact backing: the extra
 prizes after a smaller target, or everything after closing. FWA allows it only while no draw is unsettled. Prizes
