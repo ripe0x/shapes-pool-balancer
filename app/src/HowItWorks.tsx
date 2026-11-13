@@ -120,7 +120,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'pays mint fees and keepers', share: feeShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape today) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). That fee pays the keeper who lists the prize; the pool fronts it and the player who wins the prize pays it back. Your markup is yours: about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape today) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your markup is yours (while the reserve is short, its first 10% refills the reserve): about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
       </section>
 
       <section className="hiw-sec">

@@ -71,6 +71,7 @@ contract Deploy is Script {
         vm.serializeAddress(o, "poolBalancerImplementation", address(impl));
         vm.serializeAddress(o, "packs", packs);
         string memory json = vm.serializeAddress(o, "balancerFactory", address(factory));
+        vm.createDir("./deployments", true); // not tracked in git: a fresh clone has no such folder
         vm.writeJson(json, string.concat("./deployments/", vm.toString(block.chainid), ".json"));
         console.log("PoolBalancer implementation", address(impl));
         console.log("BalancerFactory", address(factory));

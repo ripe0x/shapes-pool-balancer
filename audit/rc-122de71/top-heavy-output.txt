@@ -1,0 +1,27 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/fwa-rc-122de71-root/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/fwa-rc-122de71-root/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-rc-122de71-root/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/fwa-rc-122de71-root/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-rc-122de71-root/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/fwa-rc-122de71-root/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-rc-122de71-root/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/fwa-rc-122de71-root/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+No files changed, compilation skipped
+
+Ran 1 test for test/Challenge.t.sol:ChallengeTopHeavyGateTest
+[PASS] test_topHeavyBoardStopsAtOnePendingDraw() (gas: 5874005)
+Logs:
+  blocked second draw quote: 0.043580610473284035
+  active listing count: 3
+  target weight: 100040000000000000000
+  prize weight: 100040000000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 269.58ms (7.26ms CPU time)
+
+Ran 1 test suite in 278.25ms (269.58ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
