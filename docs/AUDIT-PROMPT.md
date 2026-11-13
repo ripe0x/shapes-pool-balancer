@@ -1,15 +1,16 @@
-# Audit prompt: Shapes Pool Balancer, round 8 (full security and economic audit)
+# Audit prompt: Shapes Pool Balancer, round 9 (full security and economic audit)
 
 Run a full adversarial audit of the Shapes Pool Balancer under `$adversarial-audit`. Follow the audit standard
 (`/Users/dd/.agents/guidance/adversarial-security-audit-standard.md`) and its workflow
 (`/Users/dd/.agents/skills/adversarial-audit/SKILL.md`: runbook, acceptance checkpoint, report contract). This prompt
-adds the target, the owner's requirements, the required methods and one informed pass for misses seen on ApeBall.
+adds the target, the owner's requirements, the required methods and one informed pass for round 8's findings and for
+misses seen on ApeBall.
 Where this prompt and the standard differ, the stricter rule applies.
 
 ## 1. Target and freeze
 
 - Repository `/Users/dd/CascadeProjects/fwa-pool-balancer`, branch `fork-tests`. Freeze at intake: record the commit
-  (expected `974912a` or later; use the owner's latest), a clean tracked tree, and SHA-256 of every in-scope file.
+  (the owner's latest; `9fd5f83` or later), a clean tracked tree, and SHA-256 of every in-scope file.
 - **Primary contracts:** `src/PoolBalancer.sol`, `src/BalancerFactory.sol`, `src/PoolPage.sol`,
   `src/interfaces/External.sol`, `script/Deploy.s.sol`.
 - **Draw Packs:** `lib/shape-packs` and `src/vendor/PacksBuild.sol`. They are in scope where the Balancer depends on
@@ -36,11 +37,16 @@ Where this prompt and the standard differ, the stricter rule applies.
 
 Owner's words: "we need to make this so it never loses money with keepers"; "The markup is where they make money";
 "obviously we need this thing to function"; "the gas at listing time != gas at draw time"; the keeper list should be
-"on the factory", "open at default", and no creator should have to update their pool individually.
+"on the factory", "open at default", and no creator should have to update their pool individually. Since round 8:
+"this needs to be like a self-sustaining system"; the revenue should restock the prizes "and then the creator gets
+the profit"; "protect the game first, profit after" but "not always have the game eating the profit for the creator";
+and the minimum markup is the game's share: "if the min for a setup is 10%, and they choose 30%, then shouldn't it be
+1/3 - 2/3?" (DECISIONS 66-68).
 
 **Participants and rights**
-- **Creator:** funds the pool, lists NFTs, sets the mix and markup, can always run their own upkeep, and withdraws
-  what the reserve does not need. After closing and unlisting, they withdraw everything.
+- **Creator:** funds the pool (`open()` needs the reserve in ETH), lists NFTs, sets the mix and a markup of 10% to
+  100%, can always run their own upkeep, and withdraws the larger of their unclaimed `profit` and the balance above the
+  reserve. They can never withdraw the reserve while open. After closing and unlisting, they withdraw everything.
 - **Players:** pay FWA a draw price, win one listed prize, and get exactly the ETH inside a Shape or pack when they
   redeem it. Refunds follow FWA's rules.
 - **Keepers:** permissionless by default. Paid measured gas × min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0005 ETH,
@@ -62,37 +68,46 @@ Owner's words: "we need to make this so it never loses money with keepers"; "The
   unlisted or a refunded prize is recovered.
 - **M5. Creator exposure.** The creator's possible loss is bounded: the fees fronted for prizes never won, the opening
   stock-up gas, and prize luck. It must not include keeper pay beyond the fees.
-- **M6. Reserve.** While open, the reserve always covers restocking admitted draws: the cost to restore the target,
-  one largest prize per unrecorded draw plus a spare, and keeper rewards at the 5 gwei cap.
+- **M6. Reserve.** `requiredReserve` is the cost to restore the target, one largest prize per unrecorded draw plus a
+  spare, and keeper rewards at the 5 gwei cap. A pool cannot open without it in ETH. Purchases do not wait for ETH:
+  after a big win uses the spare, sales refill it (owner-accepted: back-to-back big wins leave prizes off the board
+  until sales restock them, smallest first). No winner is ever unpaid: every listed prize holds its own backing.
 - **M7. Nothing stranded.** After close, unlist and withdraw, no ETH or prize is stranded or owed to anyone but the
   creator.
 - **M8. Fill gate.** Purchases pause before the odds drift far from the design (the gate is at 70% of target weight,
   and each unrecorded draw is charged the heaviest prize).
+- **M9. Game first, profit after.** The fund is the balance less unclaimed `profit`. While it is below the reserve,
+  the creator's share of each collected payment is each Shape's markup above 10% (at its listing markup, weighted by
+  1 / price as FWA weights draws); the fund keeps the rest, including the first 10% of markup and all NFT sale money.
+  A claim never takes the fund below the reserve or below where it was. Upkeep spends unclaimed profit only when the
+  fund cannot pay a restock. No creator action (markup changes, listing or withdrawing NFTs, unlisting, timing of
+  collection, creator transfer, open/close) may move fund money into profit.
 
-**Product goal:** the pool stays open through ordinary mainnet gas, up to 5 gwei, and is profitable for the creator
-in expectation, at a draw price players will accept.
+**Product goal:** the pool stays open through ordinary mainnet gas, up to 5 gwei, funds itself from sales, and is
+profitable for the creator in expectation, with profit withdrawable on every draw above the 10% minimum, at a draw
+price players will accept.
 
 Challenge these rules as well as the code. A passing check can enforce the wrong rule, and "fully accounted for" is
 not "in the right place".
 
 ## 3. Process
 
-- **Budget:** 12 auditor-hours in total (owner-approved, as in round 7), including PoCs, fork and fuzz campaigns,
-  challenge and reporting. Suggested ceilings: discovery lane A 3 h, lane B 3 h, integration assessor 2 h,
-  controller (§5, reconciliation, economic tables, report) 4 h. Stop each lane at its ceiling and report what was
+- **Budget:** [owner sets before intake; rounds 7 and 8 used a 12 auditor-hour cap], including PoCs, fork and fuzz
+  campaigns, challenge and reporting. Suggested split for 12 h: discovery lane A 3 h, lane B 3 h, integration
+  assessor 2 h, controller (§5, reconciliation, economic tables, report) 4 h. Stop each lane at its ceiling and report what was
   used. If the cap is hit, write a partial report with exact blockers; that is not a
   clean result.
 - **Blind discovery lanes:** at least two, plus an integration assessor. Each packet contains only §1, §2, §4, the
   budget and the permitted methods.
   - Discovery may read `src/`, `script/`, `lib/`, `foundry.toml`, `docs/SPEC.md`, `README.md`, and the on-chain state
     of the integrations.
-  - **Not during discovery:** `audit/` (round 7), `test/`, the other files in `docs/` (`DECISIONS`, `SECURITY`,
+  - **Not during discovery:** `audit/` (rounds 7 and 8), `test/`, the other files in `docs/` (`DECISIONS`, `SECURITY`,
     `READINESS`, `GAS`, the simulation results, `keeper-funding-results`), `sim/`, git history, PR text, this
     prompt's §5, memory, and other sessions.
   - Seal each lane's inventory before any informed work. Isolation is prompt-level unless a runtime boundary is
     available; record which.
 - **Informed phase, after sealing:** reconcile the lanes, then read the excluded material. Run §5. Compare with
-  round 7 findings (`audit/report.md`) and check each is fixed or still applies.
+  round 8 findings (`audit/round8/report.md`) and check each is fixed, accepted or still applies.
   - Write focused falsification tests and validate findings.
   - Run a separate evidence challenge that compares every claimed negative result with its actual assertion or trace.
 - **Human review:** none is planned. Disclose that.
@@ -105,7 +120,7 @@ not "in the right place".
   - The only accepted exception is delivering VRF words by acting as the coordinator. Record it as such.
   - A behaviour that cannot be reached for real is an untested gap.
 - **Run test files one at a time:** `forge test --match-path <file>`. Whole-suite runs are blocked except under
-  `CANDIDATE_RUN=1`. Put PoCs under `audit/round8/` with their own `FOUNDRY_TEST` path.
+  `CANDIDATE_RUN=1`. Put PoCs under `audit/round9/` with their own `FOUNDRY_TEST` path.
 - **Never run `forge clean`** or delete caches. Run Slither with `--ignore-compile` after a normal build; round 7's
   Slither run cleared the build cache.
 - **Network:** fork access may need sandbox-escape approval for DNS. Record the capability preflight.
@@ -174,7 +189,18 @@ not "in the right place".
 - **Dashboard transactions:** gas price set or not when estimating, batched wallet calls that carry no gas price,
   the deposit a pool needs, and replaying events that are not enumerable.
 
-## 5. Informed pass: misses found on ApeBall after its audits (only after discovery is sealed)
+## 5. Informed pass (only after discovery is sealed)
+
+**Round 8 findings and their repairs (DECISIONS 61-68).** Retest each and record fixed / accepted / still applies:
+E1 (owner-accepted: purchases continue while sales refill the reserve; check M6 and M9 hold instead), E2 (`open()`
+needs the reserve), E3 (simulation: `sim/flows.ts` VRF fee and destination checks, still open), E4 (planner live
+curated prices), E5 (`close()` zeroes keeper credit), E6 (dashboard simulates at real fees, as the creator), E7 and E8
+(keeper estimate and gas floor), S1-S5 (curated-collection trust and router coverage, documented limits; S4 pricing
+order fixed). Also break the round 8 follow-ups: the payment split (`profitShareSum`, `profit`, `withdrawableSurplus`,
+`claimSurplus`), the 10% minimum markup and the funded `open()`; the round 8 follow-up review found and fixed one
+curated-NFT padding attack on the split, so look for others.
+
+**Misses found on ApeBall after its audits:**
 
 ApeBall (repo `ripe0x/collection-games`) passed audits, then needed fixes on mainnet. Run each item below as a
 focused check against this target. Record each as applies / does not apply / untested, with the test or proof.
@@ -226,12 +252,15 @@ focused check against this target. Record each as applies / does not apply / unt
 10. **Fork-block drift** (ApeBall PR #34). Tests pinned to a fork failed later because live Shapes names had changed.
     Re-run the integration tests at a recent block and report anything that differs from block 26,382,349.
 
-Also check the misses this project found after round 7, each as a property:
+Also check the misses this project found after rounds 7 and 8, each as a property:
 - keepers paid from the markup lost money at high gas;
 - a fee priced when a prize was listed did not pay for a restock after gas jumped;
 - restocking-fee gas calibration was too low for a one-draw call (763k–864k gas measured);
 - NFT odds drift while keepers wait;
 - liveness when the keeper list is restricted.
+- a purchase-time funding check paused pools for good once the creator withdrew profit (fork: 7 of 10 runs);
+- profit withdrawals stopped for about a third of draws while the reserve refilled;
+- splitting proceeds against the listings at collection let listed NFTs inflate the creator's share.
 
 ## 6. Constraints
 
@@ -241,7 +270,7 @@ Also check the misses this project found after round 7, each as a property:
 - **RPC:** Ethereum mainnet only through `https://mainnet.gateway.tenderly.co`.
 - **Anvil:** the dev fork uses port 8545. Reuse a running one (`--chain-id 31337`) and never kill a fork you did not
   start. Keeper e2e and rehearsals start their own forks on 18546, 18547 and 18847.
-- **Do not change production code or existing tests.** Audit artifacts go under `audit/round8/`.
+- **Do not change production code or existing tests.** Audit artifacts go under `audit/round9/`.
 - **Report fixes as suggestions only;** repairs need separate owner approval.
 
 ## 7. Report
@@ -256,7 +285,7 @@ Follow the report contract:
 - A property map: each property M1–M8, each keeper and security property, and each §5 item. For each, give the attack
   attempts, the tests or proofs, the commands, the results and the assumptions.
 - What was not tested, and why.
-- Round 7 findings: fixed, still open, or changed.
+- Round 8 findings: fixed, accepted, still open, or changed.
 - The economic tables from §4, with the simulation and fork comparison.
 - The process record:
   - budget used;
