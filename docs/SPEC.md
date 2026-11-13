@@ -120,23 +120,24 @@ Who is owed value:
 - a player whose draw FWA refunds is owed that acquisition fee by FWA until the refund is taken;
 - FWA is owed its 5% edge on delivered draws, and the VRF service its fee;
 - the Shapes contract (and Draw Packs, which pays Shapes) receives the mint fee for each Shape minted;
-- keepers are owed the bounded reward for reconciling draws and restocking, out of the restocking fees of the prizes
-  they list (`keeperCredit`), except for work a creator action started.
+- keepers are owed the bounded reward for each call that reconciles draws or restocks, from the creator's ETH
+  (`docs/DECISIONS.md` 73).
 
 Who can take value out:
 
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything: the reserve is zero while closed, so the full balance
-  is claimable once prizes are unlisted and NFTs withdrawn. Closing also sets `keeperCredit` to zero, so credit left from
-  earlier listings is never paid later out of fresh deposits.
+  is claimable once prizes are unlisted and NFTs withdrawn. Upkeep that reconciles draws settled after closing is still
+  paid from the balance.
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
-Mint fees and keeper rewards are priced into prizes. The pool's ETH pays a prize's mint fees and the keeper who lists it
-when the prize is made, and the player who wins it repays both in its price. What the creator can lose is the fees of
-prizes that are never won: those unlisted, refunded after a failed delivery, or still listed at close. At any moment the
-fronted keeper fees are at most the listed Shapes × `restockFee()` (0.0047 ETH per Shape at the cap); over a pool's life
-they also include every prize unlisted or refunded earlier. Restocking fees keepers never claim stay in the pool's ETH and are the creator's.
+Mint fees and a restocking fee are priced into Shape prizes. The pool's ETH pays a prize's mint fees and the keeper who
+lists it when the prize is made, and the player who wins it repays both in its price. The restocking fee is the
+creator's income toward keeper pay, not a limit on it: draws that win an NFT or time out bring no fee, so the keeper
+calls that reconcile them are the creator's cost, as are the fees of prizes never won (unlisted, refunded after a failed
+delivery, or still listed at close). At any moment the fronted restocking fees are at most the listed Shapes ×
+`restockFee()` (0.0047 ETH per Shape at the cap).
 Backing is not one-way: a prize is redeemed for exactly its backing on unlisting, a target shrink, or refund recovery.
 
 The reserve is the creator's own ETH held inside the Balancer. The creator cannot withdraw it while the pool is open;
@@ -151,7 +152,7 @@ It bounds withdrawals so upkeep can always restock what an admitted draw removes
   the current mint fee per Shape inside); plus
 - one largest prize for each unreconciled draw and one spare, so a big win is restocked: (unreconciled draws + 1) × the
   most expensive prize in the target (its backing plus the mint fee for each Shape inside it); plus
-- keeper rewards: one maximum reward (`3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH`) per 5-Shape-unit restocking call needed,
+- keeper rewards: one maximum reward (`(3.2M + 50,000) × 5 gwei + 0.0001 ETH = 0.01635 ETH`) per 5-Shape-unit restocking call needed,
   rounded up, plus one (the missing Shape units, plus 3 units for each unreconciled draw and the spare).
 
 ETH inside prizes and unsettled draw payments are never counted as available. The Balancer holds no prize between
@@ -190,10 +191,8 @@ keepers stop is restocked only when its creator runs upkeep.
 2. collect FWA owner proceeds into the Balancer.
 3. while open, not retired, not globally withdraw-only, and the mint fee is at or below `mintFeeCap`: mint the missing
    prizes, smallest value first, within 5 Shape units, 4 prize sizes and the ETH left after this call's keeper reward, and list them in
-   one FWA batch. FWA stages the batch while draws are unsettled and activates staged listings in order. Outside creator
-   work, the restocking fees of the prizes listed (Shape units × `restockFee()`) are added to `keeperCredit` before the
-   keeper is paid. When a creator action's restocking work finishes (the target is restored), the SETTING_UP flag
-   clears.
+   one FWA batch. FWA stages the batch while draws are unsettled and activates staged listings in order. When a creator
+   action's restocking work finishes (the target is restored), the SETTING_UP flag clears.
 
 Upkeep restocks while draws are still unsettled; it does not wait for the pool to be idle. No upkeep loop depends on
 history: refunded or stuck deliveries are `PENDING` and cost nothing per upkeep.
@@ -201,22 +200,15 @@ history: refunded or stuck deliveries are `PENDING` and cost nothing per upkeep.
 Keeper reward, paid for any call that reconciles draws or restocks (a call that only collects proceeds pays nothing):
 
 - price = `min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)`: a keeper that bids more priority pays the excess itself;
-- SUPERSEDED by `docs/DECISIONS.md` 73 (provisional constants): every call that reconciles or lists is paid
-  `(min(measured, 3.2M) + 50,000) × price + 0.0001 ETH` from the creator's ETH; there is no `keeperCredit`. The
-  bullets below that cap pay by credit describe the previous rule.
-- reward = `min(measured, 3.2M) × price + 0.0005 ETH`; the fixed part covers gas outside the measured span (intrinsic,
-  calldata) and the `eth_estimateGas` gap keepers cost work with;
-- work a creator action started (open, configure, unlist) is paid in full from the creator's ETH; purchases are
-  refused until it is done;
-- all other rewards are capped by `keeperCredit` and spend it. The credit grows only by the restocking fees of the
-  prizes each call lists, priced at that call's basefee, so the fee pays for the work it was priced for: a call that
-  reconciles one draw and restocks its Shape is covered at any basefee up to 5 gwei, whatever gas was when the drawn
-  prize was listed (`test_breakEven_gasJumpAfterListing`). Lifetime keeper pay outside creator work never exceeds the
-  fees priced into prizes keepers listed, and never touches the creator's markup. Above 5 gwei keepers wait and
-  purchases pause at LOW_INVENTORY until gas falls. Calls that list nothing (curated or refund-only reconciles) are
-  paid only from credit left over, until `close` returns that credit to the creator (upkeep after closing earns keepers
-  nothing). A deficit needs a paid draw, so buying one's own draws earns at most the
-  0.0005 ETH incentive per call, against FWA's edge and the VRF fee.
+- reward = `(min(measured, 3.2M) + 50,000) × price + 0.0001 ETH`, from the creator's ETH (the fund first, unclaimed
+  profit only once the fund is empty), for every call that reconciles a draw or lists a prize, open or closed
+  (`docs/DECISIONS.md` 73; both constants provisional). The 50,000 is gas a transaction pays outside the measured span
+  (measured 24k-46k); the 0.0001 ETH is the keeper's margin;
+- what a call does is fixed by state (every processed sequence up to 5, the whole deficit up to 5 Shape units), so work
+  cannot be split into more paid calls, and each paid call needs a sequence FWA processed or a deficit. Buying one's own
+  draws to create work pays FWA's edge and the VRF fee (2.34M gas at the same gas price) for at most the 0.0001 ETH
+  margin per call (`test/KeeperPay.t.sol`). Above 5 gwei keepers wait and purchases pause at LOW_INVENTORY until gas
+  falls.
 
 The reward is force-sent, so a reverting keeper cannot block upkeep.
 
@@ -281,7 +273,7 @@ FWA's server checks ERC-1271 (its client allows long contract signatures; server
 | Reconcile up to 5 settled sequences per call; restock while draws are unsettled | Upkeep keeps up with bursts, and FWA stages the restock until the draws settle. |
 | Redeem prizes for backing instead of keeping spares | Prizes never sit in the Balancer between transactions; one mint fee per Shape re-minted when the target grows again. |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
-| Measured gas + 0.0005 ETH, paid from the basefee-indexed restocking fees of the prizes each call lists (creator-started work in full), 0.05 gwei priority cap | Keepers never touch the creator's markup, and fee and work share a block, so restocking keeps up through gas jumps up to 5 gwei (simulation, fresh pool with gas jumping 0.08 → 3 gwei: purchases open 99% of the time, against 8% when fees were credited at draw). Players pay for it: about 17% more per Balanced draw at 1 gwei. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
+| (Measured gas + 50,000) × price + 0.0001 ETH for every call that reconciles or lists, from the creator's ETH, 0.05 gwei priority cap (DECISIONS 73, constants provisional) | Draws that time out or win an NFT bring no restocking fee; paying their reconcile only from fees left them unreconciled until the fill gate closed (flow regime `randomness_not_delivered`: 55 draws refused before, 0 after). The restocking fee stays in each Shape prize's price as the creator's income toward keeper pay. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
 | Withdrawal reserve = restore target + (unreconciled draws + 1) × largest prize + keeper rewards | Limits withdrawals and admits purchases only while held in ETH, so upkeep can always restock an admitted draw (simulation: without the spare, the top prize was missing half the time; round 8 E1, E2). |
 | Clone factory, `via_ir`, 50 optimizer runs | Cheap deployment per creator; runtime under EIP-170's 24,576 B limit, with the pool-page message builder in the `PoolPage` library. |
 | Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |

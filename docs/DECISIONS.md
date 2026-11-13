@@ -67,7 +67,8 @@ Review the **Money and authority** section first.
     when curated changes break the current one. The creator pre-approves up to 4 plans in preference order; upkeep
     keeps the active plan while feasible, else activates the first feasible one. No solver runs on-chain or as a
     service. If none fits, purchases close (status 5).
-13. **Nothing is ever staged.** The Balancer never lists while FWA has an unresolved acquisition, so FWA staging is
+13. **Nothing is ever staged.** (Superseded by 47: upkeep restocks while draws are pending and FWA stages
+    those listings.) The Balancer never lists while FWA has an unresolved acquisition, so FWA staging is
     never used and the dashboard shows no staged Shapes. Curated edits and upkeep revert `PoolBusy` during that window
     and succeed once the draw settles.
 14. **Any curated edit closes purchases until the next upkeep** (checkpoint invalidated first). The bundled keeper

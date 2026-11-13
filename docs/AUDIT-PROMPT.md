@@ -49,8 +49,8 @@ and the minimum markup is the game's share: "if the min for a setup is 10%, and 
   reserve. They can never withdraw the reserve while open. After closing and unlisting, they withdraw everything.
 - **Players:** pay FWA a draw price, win one listed prize, and get exactly the ETH inside a Shape or pack when they
   redeem it. Refunds follow FWA's rules.
-- **Keepers:** permissionless by default. Paid measured gas × min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0005 ETH,
-  limited by `keeperCredit`. Creator-started work (opening, configuring, unlisting) is paid in full.
+- **Keepers:** permissionless by default. Every call that reconciles a draw or lists a prize is paid (measured gas + 50,000) ×
+  min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH from the creator's ETH, open or closed (DECISIONS 73).
 - **Keeper admin (on the factory):** only restricts upkeep to approved keepers or opens it to anyone, for all pools
   at once. No other power.
 - **FWA and Shapes:** trusted external systems with their own admin powers (pause, mint fee up to 0.01 ETH). Their
@@ -170,7 +170,7 @@ not "in the right place".
 - Test every one-way flow as a round trip: trigger it, remove the trigger, then check where the ETH ended up.
   One-way flows include mint fees, restocking fees, FWA's fee, the VRF fee and keeper rewards.
 - Test with draws in flight: 1, 5, and bursts of batches before settlement.
-- List every value that only goes up (`keeperCredit`, fees priced into listings, reserve terms, approvals) and
+- List every value that only goes up (fees priced into listings, reserve terms, `profit`, approvals) and
   whether each can strand or idle capital.
 - Use launch-scale numbers: a Balanced mix (20×0.01, 10×0.05, 2×0.1, 1×0.5 ETH Shapes, 7×0.02 ETH packs, one
   0.3 ETH NFT, 15% markup), a bigger-prize mix, and a mix with only 0.01 ETH Shapes.

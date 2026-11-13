@@ -231,8 +231,8 @@ const toEth = (x: bigint) => Number(x) / 1e18;
 /**
  * Expected ETH per draw, by where it goes. Players pay for mint fees and keepers on top of the markup: a drawn Shape
  * prize's price is its cost, the creator's markup on its backing and its restocking fees; a curated NFT's is its value
- * plus the markup. Keepers are paid only from restocking fees, so the creator keeps at least the markup; fees keepers
- * never claim stay with the creator too.
+ * plus the markup. The restocking fee is the creator's income toward keeper pay; the creator's ETH pays every keeper
+ * call, including reconciles of draws that time out or win an NFT, which bring no fee (DECISIONS 73).
  */
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);

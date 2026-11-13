@@ -106,7 +106,7 @@ statement that the rewrite is safe. Findings and outcome:
 
 The repairs were made after the review and were not re-reviewed independently; they are covered by the fork tests.
 
-After round 7: keepers are paid only from `keeperCredit`, except creator-started work. Since DECISIONS 54 and 57 the
+After round 7 (superseded by DECISIONS 73, which removes `keeperCredit`): keepers are paid only from `keeperCredit`, except creator-started work. Since DECISIONS 54 and 57 the
 credit is the restocking fees of the prizes each call lists (`restockFee()` at that block's basefee), credited before the
 keeper is paid; the pool's ETH fronts them until the prizes are won. Curated and refunded draws add nothing, and the
 creator's markup is never spent on keepers. The fill check weighs prizes at their price less that fee.

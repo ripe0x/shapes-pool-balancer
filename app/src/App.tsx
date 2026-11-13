@@ -1257,7 +1257,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                   <div className="kv"><span className="k">Average prize value on FWA</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Your markup</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Shapes mint fees, paid by players</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Restocking fees, paid by players to keepers</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Restocking fees, paid by players</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
                   <p className="note" style={{ marginTop: 10 }}>An estimate from the current mix. Single draws vary; short runs can lose money either way.</p>
                 </div>
               )}

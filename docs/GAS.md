@@ -36,32 +36,32 @@ over the estimate. The margin is a limit only: the contract reimburses measured 
 ```
 price     = min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)
 measured  = min(gasStart - gasleft(), 3.2M)
-reward    = measured × price + 0.0005 ETH        (any call that reconciles draws or restocks)
-            creator-started work: in full, from the creator's ETH
-            otherwise: at most keeperCredit, the restocking fees of the prizes keepers listed, which it spends
-MAX_KEEPER_REWARD = 3.2M × 5 gwei + 0.0005 ETH = 0.0165 ETH
+reward    = (measured + 50,000) × price + 0.0001 ETH   (every call that reconciles a draw or lists a prize)
+            from the creator's ETH: the fund first, unclaimed profit only once the fund is empty
+MAX_KEEPER_REWARD = (3.2M + 50,000) × 5 gwei + 0.0001 ETH = 0.01635 ETH
 
 restockFee = 900k × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH   (per Shape in a prize, at the listing block)
-keeperCredit += Shape units listed × restockFee                       (each call, outside creator work)
 ```
 
-Players pay the restocking fee in each prize's price, on top of the creator's markup (DECISIONS 54, 57). The fee is
-credited in the call that lists the prize, at that call's basefee, so it pays for the gas it was priced at. It is sized
-so a call that reconciles one draw and restocks its Shape (measured 763k-864k gas) pays its keeper at any basefee up to
-the cap (DECISIONS 58); batches over-collect and the surplus carries over.
+DECISIONS 73 (both constants provisional). The 50,000 gas is what a transaction pays outside the measured span (21k
+intrinsic, calldata, the keeper-list check, the reward transfer; measured 24k-46k), so the 0.0001 ETH is the keeper's
+margin at any price up to the cap. The `KeeperPaid` event's `gasUsed` is the measured gas.
 
-The fixed 0.0005 ETH covers what a keeper cannot see in the measured span (21k intrinsic, calldata, the first touch of
-the Balancer) and the gap between `eth_estimateGas` and billed gas that rational keepers cost work with. The `KeeperPaid`
-event's `gasUsed` is the measured gas.
+Players pay the restocking fee in each Shape prize's price, on top of the creator's markup (DECISIONS 54, 57). It is
+the creator's income toward keeper pay, not a limit on it: draws that time out or win an NFT bring no fee, and reconciling
+them is the creator's cost. It is sized so a call that reconciles one draw and restocks its Shape (measured 763k-864k
+gas) is covered at any basefee up to the cap (DECISIONS 58); at 0.5 gwei it is about 2.8 times that call's real gas.
 
-Lifetime keeper pay outside creator work never exceeds the restocking fees of the prizes keepers listed
-(`invariant_keeperPayWithinRestockFees`).
-Measured gas is taken before EIP-3529 refunds, so a call can be paid up to 1/5 more gas than billed (refund-heavy
-redeems on unlisting are creator work); that surplus also comes out of the credit. A keeper's profit per call is the
-0.0005 ETH plus any refund gap, and every call needs draws, each costing a buyer FWA's edge and the VRF fee, so buying one's own draws to create restocking work loses
-money (`KeeperAdversarial.t.sol`).
+What a call does is fixed by state, so work cannot be split into more paid calls; each paid call needs a sequence FWA
+processed or a deficit. Measured gas is taken before EIP-3529 refunds, so a call can be paid up to 1/5 more gas than
+billed. A keeper's profit per call is the 0.0001 ETH plus any overhead or refund gap, and every call needs draws, each
+costing a buyer FWA's edge and the VRF fee, so buying one's own draws to create work loses money
+(`test/KeeperPay.t.sol`, `test/KeeperAdversarial.t.sol`).
 
-### Why the fixed part is 0.0005 ETH, not a margin over the shortfall
+The bundled keeper prices work with `eth_estimateGas`, about 80k gas above the measured span. Above roughly 3.3 gwei
+the reward no longer covers the estimate, and the keeper sends within its `MAX_LOSS_WEI` allowance (default 0.0002 ETH).
+
+### Why the fixed part was 0.0005 ETH (history, superseded by DECISIONS 73)
 
 The launch rehearsal at 4.9 gwei found the previous rule (`max(0.0005, shortfall + 0.0001)`) stalled: the bundled
 keeper prices work with `eth_estimateGas`, which exceeded billed gas by 71k–295k gas (median 78k, 25 keeper
@@ -145,9 +145,9 @@ adds only the per-call keeper profit above, which each draw's edge and VRF fee o
 
 ## Work no rational keeper runs
 
-A call that only reconciles refunded or curated draws earns nothing and is unpaid once the credit is spent; the bundled keeper's
-`MAX_LOSS_WEI` allowance (default 0.0002 ETH, judged against the gas estimate) covers these at low gas, the next paid
-call reconciles them anyway, and the creator can run upkeep from the dashboard.
+None remains under DECISIONS 73: every call that reconciles a draw or lists a prize is paid, including reconcile-only
+calls for refunded, timed-out or curated draws and upkeep after closing. A call that does neither is refused
+(`NoUpkeepNeeded`) or paid nothing.
 
 ## Keeper reserve audit
 
@@ -157,9 +157,9 @@ call reconciles them anyway, and the creator can run upkeep from the dashboard.
 | --- | --- | --- |
 | deficit: missing prizes × (backing + mint fee per Shape inside) | restoring the target from the prizes currently listed | exact |
 | (unreconciled draws + 1) × the most expensive prize in the target (its backing + the mint fee for each Shape inside it) | one largest prize per unreconciled draw and one spare, so a big win is restocked | upper bound: a draw can remove at most the most expensive prize |
-| one maximum keeper reward per 5-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.0165 ETH each (the hard guarantee) |
+| one maximum keeper reward per 5-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.01635 ETH each (the hard guarantee) |
 
-Each reward uses the fixed maximum (0.0165 ETH), so the bound does not move with the current gas price. A restore paid at
+Each reward uses the fixed maximum (0.01635 ETH), so the bound does not move with the current gas price. A restore paid at
 the cap spends held ETH, which sales refill before the creator can withdraw; `open()` needs the reserve in ETH
 (DECISIONS 66). Reserve sizes for representative inventories are **to be
 measured on the rewrite** (the previous design's `test_reserveSizes` numbers do not carry over).
@@ -175,11 +175,12 @@ measured on the rewrite** (the previous design's `test_reserveSizes` numbers do 
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
 | `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
-| `KEEPER_INCENTIVE` | 0.0005 ETH | fixed part of every reward; covers gas outside the measured span and the `eth_estimateGas` gap |
-| `MAX_KEEPER_REWARD` | 0.0165 ETH | `3.2M × 5 gwei + 0.0005`; `requiredReserve` holds one per restocking call plus one |
+| `KEEPER_INCENTIVE` | 0.0001 ETH (provisional) | the keeper's margin per paid call |
+| `KEEPER_OVERHEAD_GAS` | 50,000 (provisional) | gas outside the measured span (measured 24k-46k) |
+| `MAX_KEEPER_REWARD` | 0.01635 ETH | `(3.2M + 50,000) × 5 gwei + 0.0001`; `requiredReserve` holds one per restocking call plus one |
 
 The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
 
 Creating work is not profitable for a keeper: work comes from purchases, which cost the buyer FWA's 5% edge plus the
-markup plus the VRF fee on top of the expected value received, while a call's profit is at most the 0.0005 ETH plus any
-refund gap, out of markup already earned.
+markup plus the VRF fee on top of the expected value received, while a call's profit is at most the 0.0001 ETH plus any
+overhead or refund gap.
