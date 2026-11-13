@@ -42,7 +42,8 @@ Balancer by anyone, and NFTs sent to it directly, belong to the creator; there i
 
 `configure(markupBps, target)`:
 
-- `markupBps`: a fixed operating markup (0 to 100%), the creator's to keep. A curated NFT lists at its value ×
+- `markupBps`: a fixed operating markup (10% to 100%), the creator's to keep. It is the only profit in a price, so it
+  is what refills the reserve after a big win. A curated NFT lists at its value ×
   (1 + markup). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
   markup + one restocking fee per Shape inside: players pay the mint fee and keepers on top of the markup. The
   restocking fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, at the basefee of the
@@ -80,7 +81,6 @@ the Draw Packs contract or the FWA pool (a draw delivered to them could never be
 | 4 | BUSY | 5 draws are unsettled on FWA |
 | 5 | MINT_FEE_ROSE | the Shapes mint fee is above the one the creator accepted |
 | 6 | LOW_INVENTORY | listed prize weight, less the unreconciled-draw allowance, is below 70% of the target's weight |
-| 7 | LOW_FUNDS | the Balancer's ETH plus settled FWA owner proceeds is below `requiredReserve()` |
 
 FWA prices every draw on live inventory and refunds a draw whose price moved past the player's tolerance, so the gate does
 not need an exact inventory. It is not one batch per admission: several batches may be admitted between upkeeps, and FWA
@@ -89,13 +89,13 @@ staged restocks, because FWA calls the hook before it activates staged listings.
 each issued-but-unreconciled draw the weight of the smallest prize (0.01 ETH at zero markup), the heaviest weight any
 prize can have, so the check assumes every such draw removed the heaviest possible prize.
 
-The funding check (code 7) makes the reserve a condition of every purchase, not only a withdrawal bound. Each issued
-draw raises `requiredReserve` by one largest prize, so a pool funded at exactly the reserve admits one purchase
-transaction at a time until upkeep reconciles its draws, and each further draw in flight needs one more largest prize of
-ETH. FWA asks once per transaction, before it issues that transaction's draws, so one batch of up to five is admitted on
-one spare: if it wins more than the spare covers, the extra prizes wait for proceeds or a deposit, and purchases stay
-refused until then. After a big win is restocked from the spare, purchases wait until proceeds or a deposit restore it.
-A closed pool drained to zero cannot reopen empty (round 8 E1, E2; DECISIONS 61).
+Purchases do not wait for ETH (DECISIONS 66). Each prize's price covers replacing it, and the markup (at least 10%)
+is profit on top, so sales keep the pool funded on average. The reserve's spare restocks a big win at once; sales then
+refill the reserve while `claimSurplus` releases nothing. If prizes are won faster than the spare and sales cover
+(back-to-back big wins, or a batch of up to five), the missing prizes are restocked smallest first as sales add ETH,
+and purchases continue on what is listed; the fill check still pauses a pool whose board falls below 70%. `open()`
+reverts `ReserveNotFunded` unless ETH plus settled proceeds covers `requiredReserve()`, so a pool never opens, or
+reopens after its ETH was claimed, without the ETH to stock its target and restock a big win (round 8 E2).
 
 Status 0 means the Balancer admits a purchase. FWA can still refuse one on its own state (pause, cooldown, VRF service
 capacity). Within a batch, FWA can refund a draw's acquisition fee instead of delivering when earlier draws moved the
@@ -157,7 +157,8 @@ ETH inside prizes and unsettled draw payments are never counted as available. Th
 transactions, so there is no spare credit (a prize delivered to it because a buyer named it as purchaser is untracked and
 creator-recoverable). The reserve is the creator's money; it is not withdrawable while the pool is open, and `claimSurplus`
 releases only `balance − requiredReserve`. A costlier target or a mint-fee rise raises `requiredReserve` and lowers the
-surplus; purchases pause at LOW_FUNDS while ETH plus settled proceeds is below it.
+surplus. Purchases continue while ETH is below it; sales refill it before anything is withdrawable, and `open()`
+needs it in ETH.
 
 `unlistShapes(listingIds)` withdraws up to 20 listed prizes per call and redeems each for its exact backing: the extra
 prizes after a smaller target, or everything after closing. FWA allows it only while no draw is unsettled. Prizes

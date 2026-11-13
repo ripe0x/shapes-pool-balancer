@@ -16,9 +16,9 @@
     "bases": [
       1000000000000000000
     ],
-    "curatedOddsBps": "236",
-    "drawPrice": "150307907362682636",
-    "markupBps": 100,
+    "curatedOddsBps": "235",
+    "drawPrice": "163494121284411837",
+    "markupBps": 1000,
     "mintFee": "1000000000000000",
     "reserve": "534000000000000000",
     "restockFee": "695000000000000",

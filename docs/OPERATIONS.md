@@ -11,7 +11,6 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep()` to restock; if it stays at 6, `depositETH()` and upkeep again |
-| 7 | LOW_FUNDS | ETH plus settled proceeds is below `requiredReserve()`: a draw in flight, a big win that used the spare, or a pool reopened after its ETH was claimed | `depositETH()` the difference, or wait for settled draws to be reconciled; each draw in flight needs one largest prize of ETH |
 
 ## Keeper down
 

@@ -17,8 +17,8 @@ Open before release:
 0. **Round 8 audit (partial, `audit/round8/report.md`) and its repairs (DECISIONS 61-64).** E1, E2, E4-E8 and S4 are
    fixed with focused fork tests; S1, S2, S5 (dishonest curated collections) and S3 are documented trust limits; E3
    (simulation VRF fee and destination checks) is open. The repairs have not been re-audited, and the audit's
-   structural gate failed with open paths. The funding check changes pool behavior: concurrent draws need one largest
-   prize of ETH each.
+   structural gate failed with open paths. DECISIONS 66 then replaced the purchase-time funding check with a funded
+   `open()` and a 10% minimum markup; E1 is accepted by the owner and needs re-audit with the rest.
 1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
    paid from `keeperCredit`, funded by the basefee-indexed restocking fees of the prizes each call lists), made after
    the independent review. The fee-at-draw version had one independent AI review; crediting at listing (DECISIONS 57)

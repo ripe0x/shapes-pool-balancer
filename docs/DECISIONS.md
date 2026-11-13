@@ -338,3 +338,16 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     into every pool. The largest prize sets the reserve, so a default 10-small-Shape pool needs about 0.64 ETH instead of
     1.54 (0.51 in prizes + 0.134 reserve, against 1.01 + 0.534). The draw is about 5% cheaper, NFT odds and the share
     of draws winning 2x the price are unchanged, and the creator's NFT is the top prize. A 0.1 ETH prize is still kept.
+66. **Purchases keep going while sales refill the reserve; `open()` needs it in ETH; markup is at least 10%.**
+    Supersedes the purchase check of 61 (`LOW_FUNDS` is removed). Each prize's price covers replacing it and the
+    markup is profit, so the pool funds itself on average; the reserve is the float between a big win, paid at once,
+    and the sales that pay for it. Checking it on every purchase stopped the sales that refill it: on a mainnet fork at
+    ape-ball's real volume (184 draws in 30 days, 43, 44, 54, 18, then 1 a day), with the creator withdrawing profit
+    daily, 7 of 10 runs paused for good after 1 to 90 draws, often from an ordinary 0.05 or 0.1 ETH win; without the
+    check all 10 sold all 184 draws and the creator made about 1.0 ETH (about 0.85 after the NFTs given away).
+    Now: the spare restocks a big win at once, purchases continue, and `claimSurplus` releases nothing until sales
+    refill the reserve (37 draws after a 0.5 ETH win in `test_bigWinKeepsSellingWhileReserveRefills`, at 15% markup and
+    0.01 wins). Back-to-back big wins, or a batch of up to five, leave prizes missing until sales restock them,
+    smallest first, with purchases continuing on what is listed (owner-accepted E1); the 70% fill check still pauses a
+    board that falls below it. `open()` reverts `ReserveNotFunded` without the reserve (E2). `configure` rejects a
+    markup below 10% (`MIN_MARKUP_BPS`): the markup is the only profit, so at 0% nothing refills the reserve.

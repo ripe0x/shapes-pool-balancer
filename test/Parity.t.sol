@@ -84,7 +84,7 @@ contract ParityFixture is ForkBase {
 
     function test_writeParityFixture() public {
         _case(1500, _bases(0.3 ether, 0.5 ether, 0), plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
-        _case(100, _bases(1 ether, 0, 0), plan([uint256(0), 0, 4, 1, 0, 0, 0, 0, 0]));
+        _case(1000, _bases(1 ether, 0, 0), plan([uint256(0), 0, 4, 1, 0, 0, 0, 0, 0]));
         _case(3000, _bases(2.5 ether, 0.77 ether, 13 ether), plan([uint256(0), 0, 0, 2, 3, 1, 0, 0, 0]));
         _case(1077, _bases(0.123456789 ether, 4.2 ether, 0), plan([uint256(3), 0, 7, 0, 1, 0, 0, 0, 0]));
         _case(10_000, _bases(50 ether, 0, 0), plan([uint256(0), 0, 0, 0, 0, 0, 1, 1, 0]));

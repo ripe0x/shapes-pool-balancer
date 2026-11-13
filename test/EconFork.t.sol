@@ -12,11 +12,11 @@ contract EconForkTest is ForkBase {
     uint256 constant NFT_VALUE = 0.2 ether;
 
     uint256 nextNft = 1;
-    uint256 bigLid;
+    uint256 deposited = 2 ether;
 
     function setUp() public {
         setUpFork();
-        createBalancer(1.75 ether);
+        createBalancer(deposited);
         listCurated(nextNft++, NFT_VALUE);
         uint256[16] memory c;
         c[0] = 12; // 0.01
@@ -29,7 +29,7 @@ contract EconForkTest is ForkBase {
         vm.prank(creator);
         balancer.open();
         fillUp();
-        _claim();
+        deposited -= _claim();
     }
 
     function _claim() internal returns (uint256 s) {
@@ -69,7 +69,6 @@ contract EconForkTest is ForkBase {
     /// @param forceBigAt draw index (1-based) whose word selects the 0.5 Shape; 0 for none.
     function _run(uint256 seed, uint256 forceBigAt) internal returns (R memory r) {
         uint256[30] memory perDay = [uint256(43), 44, 54, 18, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-        uint256 deposited = 1.75 ether;
         uint256 startWithdrawn = creator.balance;
         uint256 n;
         for (uint256 day; day < 30; ++day) {

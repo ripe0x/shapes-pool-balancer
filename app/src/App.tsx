@@ -30,7 +30,6 @@ export const STATUS: Record<number, string> = {
   4: 'Busy: draws settling',
   5: 'Shapes mint fee rose',
   6: 'Prizes running low',
-  7: 'Reserve not funded',
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -106,6 +105,8 @@ const ERRORS: Record<string, string> = {
   NoUpkeepNeeded: 'nothing to do right now',
   WithdrawLocked: 'draws are settling on FWA; try again in a minute',
   InsufficientSurplus: 'amount exceeds claimable surplus',
+  ReserveNotFunded: 'deposit the reserve first',
+  InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
   Unauthorized: 'only the creator can do this',
   NotClosed: 'close purchases first',
   InvalidPlan: `the mix needs 1 to ${MAX_SHAPES_PER_PLAN} prizes`,
@@ -199,7 +200,9 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open'
   switch (d.admission) {
     case 0: return d.upkeep.needed
       ? { head: 'Open.', body: 'Drawn prizes are waiting to be restocked.', act: 'upkeep' }
-      : { head: 'Open.', body: 'Players can buy draws. Nothing needs attention.' };
+      : owed > 0n
+        ? { head: 'Open.', body: `Sales are refilling the reserve. Withdrawals resume after ${eth(owed)} ETH more.` }
+        : { head: 'Open.', body: 'Players can buy draws. Nothing needs attention.' };
     case 1: return { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     case 2: return owed > 0n
       ? { head: 'Stocking.', body: `Deposit ${eth(owed)} ETH to stock the prizes.`, act: 'overview', label: 'Deposit' }
@@ -210,7 +213,6 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open'
     case 6: return owed > 0n
       ? { head: 'Paused.', body: `Prizes are running low. Deposit ${eth(owed)} ETH to restock.`, act: 'overview', label: 'Deposit' }
       : { head: 'Paused.', body: 'Prizes are running low. Run upkeep to restock.', act: 'upkeep' };
-    case 7: return { head: 'Paused.', body: `Deposit ${eth(owed)} ETH to reopen purchases.`, act: 'overview', label: 'Deposit' };
     default: return { head: 'Check the pool.', body: STATUS[d.admission] ?? `Status ${d.admission}.`, act: 'upkeep' };
   }
 }
@@ -304,7 +306,7 @@ export function App() {
 }
 
 /** The short state of a pool for the list: from its admission status, or "Not set up" before a design is saved. */
-const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes', 7: 'Paused: needs ETH' };
+const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes' };
 
 /** Every pool this wallet created, with its state and ETH, and the way to start another. */
 function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
@@ -409,6 +411,7 @@ const markConnectIntent = () => { try { sessionStorage.setItem(INTENT_KEY, '1');
 const takeConnectIntent = () => { try { const v = sessionStorage.getItem(INTENT_KEY); sessionStorage.removeItem(INTENT_KEY); return !!v; } catch { return false; } };
 const DEFAULT_NFT: DraftNft = { value: '0.050' };
 const DEFAULT_MARKUP = 25;
+const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
 const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'steady', label: 'Low draw price', hint: 'Cheap draws. Most draws win a small Shape; your NFT is the big prize.' },
@@ -513,7 +516,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
-  const [markup, setMarkup] = useState(has ? d.markupBps / 100 : draft?.markup ?? DEFAULT_MARKUP);
+  const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
   // Pool size: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
   const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
@@ -878,7 +881,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           <div className="step-head"><span className="n">{has ? 3 : 4}</span><h2 className="h3">Your markup</h2></div>
           <div className="limit" style={{ marginTop: 0 }}>
             <div className="top"><label htmlFor="markup">Added to every draw price, and yours to keep</label><b>{markup}%</b></div>
-            <input id="markup" type="range" min={0} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
+            <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
             <p className="note">Higher markup raises the draw price.</p>
             <p className="note">Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
             <p className="note">Gas and FWA's randomness fee are set at draw time and are not included.</p>

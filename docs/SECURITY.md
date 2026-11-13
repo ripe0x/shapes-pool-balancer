@@ -35,8 +35,8 @@ Outcome per finding:
 
 | ID | Severity | Finding | Outcome |
 | --- | --- | --- | --- |
-| E1 | High | The reserve held one spare largest prize while five draws could be admitted; two big wins left a prize unrestockable with purchases open | Fixed: purchases need ETH ≥ `requiredReserve()` (LOW_FUNDS, DECISIONS 61). `test_drawsInFlightNeedOneLargestPrizeEach`. Residual: one batch of up to five is admitted on one spare; excess wins wait for funding with purchases refused (`test_batchAtMinimumReservePausesUntilFunded`) |
-| E2 | High | Close, claim everything, reopen admitted purchases with no ETH | Fixed by the same check. `test_drainedReopenRefusesPurchases` |
+| E1 | High | The reserve held one spare largest prize while five draws could be admitted; two big wins left a prize unrestockable with purchases open | Accepted by the owner (DECISIONS 66, superseding 61's purchase check): purchases continue and sales restock missing prizes smallest first, then refill the reserve before withdrawals; every winner is paid from the prize's own backing. A purchase check on ETH paused 7 of 10 fork runs at ape-ball volume for good once the creator withdrew profit (`test/EconFork.t.sol`). `test_bigWinKeepsSellingWhileReserveRefills`, `test_worstBatchAtMinimumReservePaysEveryWinner` |
+| E2 | High | Close, claim everything, reopen admitted purchases with no ETH | Fixed: `open()` needs the reserve in ETH (DECISIONS 66). `test_openNeedsTheReserve` |
 | E5 | Medium | Keeper credit outlived a full closeout and was paid from later deposits | Fixed: `close()` zeroes the credit (DECISIONS 62). `test_closeReturnsKeeperCredit` |
 | E6 | Medium | Dashboard simulated at gas price 0 and probed upkeep as the Balancer | Fixed: fee fields, creator as caller (DECISIONS 64) |
 | E7 | Medium | Bundled keeper skipped opening stockups estimated above 3.2M | Fixed (DECISIONS 64) |

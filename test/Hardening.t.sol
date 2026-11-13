@@ -257,15 +257,15 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// At zero markup a Shape is listed at what it cost plus its restocking fee: the creator earns nothing on it. The
-    /// keeper who restocks it is paid from the replacement's own fee, credited when the replacement is listed.
-    function test_zeroMarkupStillFundsKeepers() public {
+    /// At the minimum markup a Shape is listed at what it cost, 10% of its backing and its restocking fee. The keeper who
+    /// restocks it is paid from the replacement's own fee, credited when the replacement is listed, never the markup.
+    function test_minimumMarkupStillFundsKeepers() public {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
         vm.startPrank(c);
-        b.configure(0, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         nft.mint(c, 9200);
         nft.approve(address(b), 9200);
         b.listCurated(address(nft), 9200, 0.3 ether);
@@ -278,7 +278,7 @@ contract HardeningTest is ForkBase {
 
         uint256 lid = _lastShape();
         (,,, uint112 base, uint112 price) = b.items(lid);
-        assertEq(base, 0.01 ether + shapes.mintFee(), "backing plus mint fee, no markup");
+        assertEq(base, 0.01 ether + shapes.mintFee() + 0.001 ether, "backing, mint fee and 10% markup");
         assertEq(price - base, b.restockFee(), "one restocking fee");
         _drawListing(lid);
         vm.recordLogs();

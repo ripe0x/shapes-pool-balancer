@@ -2,14 +2,13 @@
 pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
+import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ReconfiguringNFT} from "./utils/Mocks.sol";
 
-/// @notice Round 8 fixes on a mainnet fork with the real FWA pool, VRF service and Shapes: purchases need the reserve
-///         in ETH (E1, E2), closing returns unspent keeper credit (E5), and curated NFTs are priced after the
-///         collection's own calls (S4).
+/// @notice Reserve rules on a mainnet fork with the real FWA pool, VRF service and Shapes: a pool opens only with its
+///         reserve in ETH (E2), purchases continue while sales refill it after big wins (DECISIONS 66), closing
+///         returns unspent keeper credit (E5), and curated NFTs are priced after the collection's own calls (S4).
 contract ReserveTest is ForkBase {
-    bytes4 constant PURCHASE_NOT_ALLOWED = bytes4(keccak256("PurchaseNotAllowed()"));
-    uint8 constant LOW_FUNDS = 7;
 
     uint256 curated;
 
@@ -31,20 +30,32 @@ contract ReserveTest is ForkBase {
         balancer.claimSurplus(s, creator);
     }
 
-    function _fundGap() internal {
-        uint256 have = address(balancer).balance + pool.ownerProceeds();
-        uint256 need = balancer.requiredReserve();
-        vm.prank(creator);
-        balancer.depositETH{value: need - have}();
+    uint8 constant SHAPE_KIND = 2;
+
+    /// @dev A word that draws a listed Shape of size `denom`.
+    function _wordFor(uint8 denom) internal view returns (uint256) {
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(ids[i]);
+            if (kind == SHAPE_KIND && d == denom) {
+                (,,,,,, uint256 slot,) = pool.listings(ids[i]);
+                return wordForSlot(slot);
+            }
+        }
+        revert("size not listed");
     }
 
-    function _strangerCannotBuy() internal {
-        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
-        uint256 v = pool.inventoryVersion();
-        vm.deal(stranger, 1 ether);
-        vm.prank(stranger, stranger);
-        vm.expectRevert(PURCHASE_NOT_ALLOWED);
-        pool.acquire{value: total}(stranger, 0, 0, 10_000, v, block.timestamp + 1);
+    /// @dev Sell single draws that each win a 0.01 Shape until the creator can withdraw again; returns the draws sold.
+    ///      Every draw is admitted on the way: purchases never wait for ETH.
+    function _sellUntilRefilled() internal returns (uint256 n) {
+        while (balancer.withdrawableSurplus() == 0) {
+            assertEq(balancer.admissionStatus(), 0, "still selling while the reserve refills");
+            uint256[] memory r = buy(buyer, 1);
+            fulfill(r[0], _wordFor(0));
+            settle();
+            fillUp();
+            require(++n < 400, "reserve never refilled");
+        }
     }
 
     function _drawListing(uint256 requestId, uint256 lid) internal {
@@ -53,73 +64,58 @@ contract ReserveTest is ForkBase {
         settle();
     }
 
-    /// E2: close, claim everything, reopen. Purchases stay refused until the reserve is back in ETH.
-    function test_drainedReopenRefusesPurchases() public {
+    /// E2: a pool cannot open without its reserve in ETH, so a closed, drained pool cannot reopen empty.
+    function test_openNeedsTheReserve() public {
+        uint256 need = balancer.requiredReserve();
         vm.prank(creator);
         balancer.close();
         _claimAll();
         assertEq(address(balancer).balance, 0, "closed pool fully drained");
         vm.prank(creator);
+        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);
         balancer.open();
-        assertFalse(balancer.creatorWork(), "fully stocked: no setup work");
-        assertEq(balancer.admissionStatus(), LOW_FUNDS);
-        assertFalse(balancer.canPurchase(buyer));
-        _strangerCannotBuy();
 
-        _fundGap();
-        assertEq(balancer.admissionStatus(), 0, "funded reserve reopens purchases");
+        vm.prank(creator);
+        balancer.depositETH{value: need - 1}();
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);
+        balancer.open();
+
+        vm.prank(creator);
+        balancer.depositETH{value: 1}();
+        vm.prank(creator);
+        balancer.open();
+        assertEq(balancer.admissionStatus(), 0);
         buy(buyer, 1);
     }
 
-    /// E1: at the minimum reserve each draw in flight needs one more largest prize in ETH, so two big wins are always
-    ///     restocked. The spare they used must be funded again before purchases resume.
-    function test_drawsInFlightNeedOneLargestPrizeEach() public {
-        uint256 big = lastListingId(); // the 0.5 Shape
-        uint256 mid = big - 1; // a 0.1 Shape
+    /// The reserve's spare restocks a big win at once; purchases continue and their markup refills the reserve.
+    /// The creator cannot withdraw until it is whole again.
+    function test_bigWinKeepsSellingWhileReserveRefills() public {
         _claimAll();
-        assertEq(balancer.admissionStatus(), 0, "minimum reserve admits one draw");
-
-        uint256[] memory first = buy(buyer, 1);
-        assertEq(balancer.admissionStatus(), LOW_FUNDS, "second concurrent draw needs another largest prize");
-        _strangerCannotBuy();
-
-        _fundGap();
-        uint256[] memory second = buy(buyer, 1);
-
-        _drawListing(first[0], big);
-        _drawListing(second[0], mid);
-        fillUp();
-        uint16[16] memory active = balancer.getActiveShapes();
-        assertEq(active[3], 1, "0.5 Shape restocked");
-        assertEq(active[2], 2, "0.1 Shape restocked");
-        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "both draws reconciled");
-        assertEq(balancer.admissionStatus(), LOW_FUNDS, "spare used: purchases wait for funding");
-
-        _fundGap();
-        assertEq(balancer.admissionStatus(), 0);
-    }
-
-    /// FWA asks the hook once per transaction, before it issues that transaction's draws, so one batch of five is
-    /// admitted on one spare. Its draws then raise the reserve, so no further purchase is admitted until it is funded.
-    function test_batchAtMinimumReservePausesUntilFunded() public {
-        _claimAll();
-        uint256 before = pool.lastIssuedSequence();
-        uint256[] memory ids = buy(buyer, 5);
-        assertEq(pool.lastIssuedSequence() - before, 5, "one admitted batch issues five draws");
-        // BUSY (5 unsettled) reports first; the funding shortfall outlasts it.
-        assertGt(balancer.requiredReserve(), address(balancer).balance + pool.ownerProceeds() + 4 * 0.5 ether, "reserve now counts five more largest prizes");
-        assertFalse(balancer.canPurchase(buyer));
-        for (uint256 i; i < ids.length; ++i) if (i == 0 || ids[i] != ids[i - 1]) fulfill(ids[i], 0);
+        uint256 need = balancer.requiredReserve();
+        uint256[] memory r = buy(buyer, 1);
+        fulfill(r[0], _wordFor(3));
         settle();
-        assertEq(pool.unsettledAcquisitionCount(), 0);
-        // Settled but unreconciled: the draws still count against the reserve until upkeep reconciles them.
-        assertFalse(balancer.canPurchase(buyer));
-        assertLt(address(balancer).balance + pool.ownerProceeds(), balancer.requiredReserve(), "still short after settling");
+        fillUp();
+        assertEq(balancer.getActiveShapes()[3], 1, "0.5 Shape restocked from the spare");
+        assertLt(address(balancer).balance, need, "spare spent");
+        assertEq(balancer.withdrawableSurplus(), 0, "withdrawals wait");
+        assertEq(balancer.admissionStatus(), 0, "purchases continue");
+        // A second draw is admitted too.
+        uint256[] memory r2 = buy(buyer, 1);
+        fulfill(r2[0], _wordFor(0));
+        settle();
+        fillUp();
+
+        uint256 n = _sellUntilRefilled();
+        emit log_named_uint("draws to refill after the 0.5 win", n);
+        assertGe(address(balancer).balance, balancer.requiredReserve());
     }
 
     /// The worst batch at the minimum reserve (the 0.5, both 0.1 and two 0.01 Shapes) costs more to restock than the
-    /// pool holds. Every winner is still paid in full: each prize carries its own backing in the Shapes contract,
-    /// so a shortfall only leaves the board short and purchases paused until it is funded.
+    /// pool holds. Every winner is still paid in full: each prize carries its own backing in the Shapes contract.
+    /// Purchases continue; sales restock the rest and then refill the reserve.
     function test_worstBatchAtMinimumReservePaysEveryWinner() public {
         uint256 big = lastListingId();
         uint256[5] memory want = [big, big - 1, big - 2, big - 3, big - 4];
@@ -155,22 +151,27 @@ contract ReserveTest is ForkBase {
         }
         assertEq(paid, 0.72 ether, "winner redeemed 0.5 + 0.1 + 0.1 + 0.01 + 0.01");
 
-        // The pool restocked what its ETH covered and refuses purchases until the rest is funded.
-        assertEq(balancer.admissionStatus(), LOW_FUNDS);
-        _strangerCannotBuy();
+        assertEq(balancer.admissionStatus(), 0, "purchases continue");
+        uint256 n = _sellUntilRefilled();
         emit log_named_decimal_uint("held at minimum reserve", held, 18);
         emit log_named_decimal_uint("listed price of the five prizes won", owedValue, 18);
-        emit log_named_decimal_uint("deposit to reopen", balancer.requiredReserve() - address(balancer).balance - pool.ownerProceeds(), 18);
-        _fundGap();
-        fillUp();
+        emit log_named_uint("draws to restock and refill", n);
         uint16[16] memory active = balancer.getActiveShapes();
         assertEq(active[0], 4);
         assertEq(active[2], 2);
         assertEq(active[3], 1);
-        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
-        if (balancer.admissionStatus() == LOW_FUNDS) _fundGap();
-        assertEq(balancer.admissionStatus(), 0, "funded and restocked: open again");
     }
+
+    /// The minimum markup: the markup is the only profit that refills the reserve.
+    function test_markupBelowTenPercentRejected() public {
+        uint256 t = balancer.target();
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InvalidConfig.selector);
+        balancer.configure(999, t);
+        vm.prank(creator);
+        balancer.configure(1000, t);
+    }
+
 
     /// E5: credit left from keeper listings returns to the creator at close, so a later deposit never pays it.
     function test_closeReturnsKeeperCredit() public {

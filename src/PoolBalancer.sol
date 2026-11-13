@@ -22,10 +22,9 @@ interface IKeeperList {
 ///        no new draw while upkeep is finishing creator-started work, while no curated NFT is listed (the pool exists to
 ///        give NFTs away), while MAX_BATCH draws are unsettled, while the
 ///        Shapes mint fee is above what the creator accepted, while the prizes' weight, after assuming every
-///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight, or while this
-///        contract's ETH plus settled FWA proceeds is below `requiredReserve` (no purchase while draws in flight lack one
-///        largest prize each in ETH, and a closed-and-drained pool cannot reopen empty; FWA asks once per transaction,
-///        before issuing its draws, so one batch of up to five can still be admitted on one spare).
+///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight. Purchases do not
+///        wait for ETH: each prize's price covers replacing it, so after a big win uses the reserve's spare, sales
+///        refill it from the markup (at least MIN_MARKUP_BPS) while withdrawals wait. `open` needs the reserve in ETH.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. That fee pays the keeper who lists the prize, in the same call, so it matches the gas
@@ -33,7 +32,7 @@ interface IKeeperList {
 ///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
 ///        unsettled; FWA stages those listings and activates them in order.
 ///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
-///        unreconciled draw and one spare, plus keeper rewards for that work; purchases stop while ETH is below it.
+///        unreconciled draw and one spare, plus keeper rewards for that work. `open` needs it in ETH.
 ///      - Only this contract can list into the pool (FWA `OwnerOnlyInventory`).
 ///      - Prize tokens are held only inside a transaction: minted then listed, or withdrawn then redeemed. Any NFT this
 ///        contract owns between transactions is untracked and creator-recoverable.
@@ -72,6 +71,8 @@ contract PoolBalancer is ReentrancyGuard {
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
+    /// @dev Markup is the only profit in a prize's price, so it is what refills the reserve after a big win.
+    uint256 internal constant MIN_MARKUP_BPS = 1_000;
     /// @dev Purchases need the listed prizes' weight, less the unreconciled-draw allowance, at this share of the target's.
     uint256 internal constant FILL_BPS = 7_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
@@ -127,7 +128,6 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant BUSY = 4;
     uint8 internal constant MINT_FEE_ROSE = 5;
     uint8 internal constant LOW_INVENTORY = 6;
-    uint8 internal constant LOW_FUNDS = 7;
 
     /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
@@ -228,6 +228,7 @@ contract PoolBalancer is ReentrancyGuard {
     error ShapesNotCurated();
     error NotClosed();
     error InsufficientSurplus();
+    error ReserveNotFunded();
     error NoUpkeepNeeded();
     error InvalidBatch();
     error ProtectedAsset();
@@ -307,7 +308,7 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Set the markup for new listings and the target prize mix, and accept the current Shapes mint fee.
     /// @dev Existing listings keep their prices. A smaller target leaves extra prizes listed until `unlistShapes`.
     function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator {
-        if (newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
+        if (newMarkupBps < MIN_MARKUP_BPS || newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
         if (newTarget >> (16 * DENOMS) != 0) revert InvalidPlan();
         uint256 fee = SHAPES.mintFee();
         uint256 prizes;
@@ -327,11 +328,13 @@ contract PoolBalancer is ReentrancyGuard {
         emit Configured(newMarkupBps, newTarget, fee);
     }
 
-    /// @notice Allow purchases; they start once upkeep has restored the target.
+    /// @notice Allow purchases; they start once upkeep has restored the target. Needs `requiredReserve` in ETH, so a
+    ///         pool never opens without the ETH to stock its target and restock a big win.
     function open() external onlyCreator {
         if (target == 0) revert InvalidConfig();
         enabled = true;
         _creatorChanged();
+        if (address(this).balance + pool.ownerProceeds() < requiredReserve()) revert ReserveNotFunded();
         pool.setBool(ACQUISITIONS_ENABLED_KEY, true);
         emit PurchasesOpened();
     }
@@ -557,7 +560,6 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 lost = (p.lastIssuedSequence() - reconciledSequence) * MAX_PRIZE_WEIGHT;
         uint256 w = prizeWeight;
         if (w < lost || (w - lost) * BPS < FILL_BPS * targetWeight) return LOW_INVENTORY;
-        if (address(this).balance + p.ownerProceeds() < requiredReserve()) return LOW_FUNDS;
         return OK;
     }
 

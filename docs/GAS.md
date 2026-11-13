@@ -161,8 +161,8 @@ call reconciles them anyway, and the creator can run upkeep from the dashboard.
 | one maximum keeper reward per 5-Shape-unit restocking call needed (rounded up), plus one; each unreconciled draw and the spare counted as 3 Shape units | paying the upkeep calls that restock, at any price up to the cap | 0.0165 ETH each (the hard guarantee) |
 
 Each reward uses the fixed maximum (0.0165 ETH), so the bound does not move with the current gas price. A restore paid at
-the cap spends held ETH; purchases need ETH plus settled proceeds at or above `requiredReserve()` (LOW_FUNDS, status 7)
-until the creator deposits the difference. It is also checked on every purchase (DECISIONS 61). Reserve sizes for representative inventories are **to be
+the cap spends held ETH, which sales refill before the creator can withdraw; `open()` needs the reserve in ETH
+(DECISIONS 66). Reserve sizes for representative inventories are **to be
 measured on the rewrite** (the previous design's `test_reserveSizes` numbers do not carry over).
 
 ## Keeper bounds (constants in `PoolBalancer`)
