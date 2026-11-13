@@ -157,6 +157,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     bool internal actTopUp;
     uint256 internal toppedUp;
     uint256 internal claimedAtSetup;
+    uint256 internal daysPrizeMissing; // days ending with any prize of the design missing from the board (O5)
+    // top_heavy (D8): a second buyer arrives while the first buyer's draw is unsettled
+    uint256 internal secondArrivals;
+    uint256 internal secondRefusedWhilePending;
+    uint256 internal secondSold;
 
     function setUp() public {
         setUpFork();
@@ -229,6 +234,92 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertGe(topWon, 2, "two top prizes were won");
         assertEq((balancer.target() >> (16 * TOP)) & 0xFFFF, 0, "the design no longer has the top prize");
         _done("whatif_large_win_drop_top", a, _largeWinFacts());
+    }
+
+    /// @dev D8: Codex rc-122de71 E2's board, one 0.01 ETH Shape and one 25 ETH Pack plus the NFT, 100 ETH deposit. Each
+    ///      step one buyer draws and a second buyer arrives before that draw settles. The fill gate counts the pending
+    ///      draw as the loss of a 0.01 ETH prize, so this board refuses the second buyer until the draw settles; with
+    ///      every draw reconciled, no buyer is refused (O7).
+    function test_breakdown_topHeavy() public {
+        uint256[16] memory c;
+        (c[0], c[15]) = (1, 1);
+        Snap memory a = _launchWith(c, 100 ether, 4);
+        uint256 admitted = 3_000 * balancer.targetWeight() / (10_000 * (1e36 / 0.01 ether));
+        assertEq(admitted, 0, "reached: this board admits no purchase with a draw unsettled");
+        for (uint256 i; i < DRAWS; ++i) {
+            if (!balancer.canPurchase(buyer)) {
+                _refused(1);
+            } else {
+                uint256[] memory ids = _buy(1);
+                if (ids.length == 1) {
+                    ++secondArrivals;
+                    uint256[] memory more = _buy(1); // a real FWA purchase attempt while the first draw is unsettled
+                    if (more.length == 1) {
+                        ++secondSold;
+                        _deliver(more[0], _word(i + DRAWS));
+                    } else {
+                        ++secondRefusedWhilePending;
+                    }
+                    _deliver(ids[0], _word(i));
+                    _process();
+                    _account(ids);
+                    if (more.length == 1) _account(more);
+                }
+            }
+            _service();
+            if ((i + 1) % PER_DAY == 0) _endOfDay();
+        }
+        assertGt(secondRefusedWhilePending, 0, "reached: second buyers were refused while a draw was pending");
+        assertEq(firstBuyRevert, uint32(0x24e6a72a), "refused by FWA's PurchaseNotAllowed(): the Balancer's fill gate");
+        Fact[] memory x = new Fact[](4);
+        x[0] = Fact("pending_draws_admitted_by_board", admitted);
+        x[1] = Fact("second_buyer_arrivals_while_pending", secondArrivals);
+        x[2] = Fact("second_buyer_refused_while_pending", secondRefusedWhilePending);
+        x[3] = Fact("second_buyer_sold_while_pending", secondSold);
+        _done("top_heavy", a, x);
+    }
+
+    // Extremes of what `configure` allows (prizes 1 to 80, sizes 0.01 to 100 ETH), each with the NFT and quiet play: one
+    // buyer at a time, keepers after every draw. The pause with draws unsettled is covered by top_heavy.
+
+    /// @dev Most top-heavy: the single largest Shape, one 100 ETH prize.
+    function test_breakdown_extremeTopHeavy() public {
+        uint256[16] memory c;
+        c[8] = 1;
+        vm.deal(creator, 2_000 ether);
+        _quietBoard("extreme_top_heavy", c, 400 ether, 1);
+    }
+
+    /// @dev Most bottom-heavy and the most prizes: 80 x 0.01 ETH Shapes.
+    function test_breakdown_extremeBottomHeavy() public {
+        uint256[16] memory c;
+        c[0] = 80;
+        _quietBoard("extreme_bottom_heavy", c, 5 ether, 80);
+    }
+
+    /// @dev Smallest board: one 0.01 ETH Shape.
+    function test_breakdown_smallestBoard() public {
+        uint256[16] memory c;
+        c[0] = 1;
+        _quietBoard("smallest_board", c, 1 ether, 1);
+    }
+
+    /// @dev Largest board: 80 x 100 ETH Shapes (8,000 ETH of backing). Funding the creator's and buyer's wallets is setup.
+    function test_breakdown_largestBoard() public {
+        uint256[16] memory c;
+        c[8] = 80;
+        vm.deal(creator, 20_000 ether);
+        vm.deal(buyer, 1_000_000 ether);
+        _quietBoard("largest_board", c, 9_000 ether, 80);
+    }
+
+    function _quietBoard(string memory regime, uint256[16] memory c, uint256 deposit, uint256 units) internal {
+        Snap memory a = _launchWith(c, deposit, units);
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        Fact[] memory x = new Fact[](2);
+        x[0] = Fact("board_shape_units", units);
+        x[1] = Fact("pending_draws_admitted_by_board", 3_000 * balancer.targetWeight() / (10_000 * (1e36 / 0.01 ether)));
+        _done(regime, a, x);
     }
 
     function _largeWinFacts() internal view returns (Fact[] memory x) {
@@ -434,13 +525,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     /// @dev Sets and proves the gas context, then the creator's whole setup, inside the measured window.
     function _launch() internal returns (Snap memory a) {
+        uint256[16] memory c;
+        (c[0], c[9], c[1], c[2], c[TOP]) = (24, 8, 12, 2, 1);
+        a = _launchWith(c, DEPOSIT, BOARD_UNITS);
+    }
+
+    function _launchWith(uint256[16] memory c, uint256 deposit, uint256 boardUnits) internal returns (Snap memory a) {
         (gasNow, feeNow) = (BASEFEE + TIP, BASEFEE);
         a = flowBegin(gasNow, feeNow, FORK_BLOCK);
         probe = new GasProbe();
-        createBalancer(DEPOSIT);
-        deposited += DEPOSIT;
-        uint256[16] memory c;
-        (c[0], c[9], c[1], c[2], c[TOP]) = (24, 8, 12, 2, 1);
+        createBalancer(deposit);
+        deposited += deposit;
         vm.prank(creator);
         balancer.configure(uint16(MARKUP_BPS), plan16(c));
         _listNft();
@@ -448,7 +543,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         balancer.open();
         assertTrue(_keeperPass(), "keepers finished the setup");
         assertEq(balancer.admissionStatus(), 0, "purchases admitted after setup");
-        assertEq(unitsListed, BOARD_UNITS, "the whole board is listed");
+        assertEq(unitsListed, boardUnits, "the whole board is listed");
         claimedAtSetup = _claim();
     }
 
@@ -456,7 +551,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 51;
+        uint256 n = 52;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -510,6 +605,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         (f[48].value, f[49].value, f[50].value) = _whatIfUnpaidUpkeep();
         (f[48].key, f[49].key, f[50].key) =
             ("unpaid_upkeeps_needed_at_end", "max_unpaid_upkeep_cost_wei", "admission_status_after_unpaid_upkeep");
+        f[51] = Fact("days_ending_with_a_prize_missing", daysPrizeMissing);
         for (uint256 j; j < extra.length; ++j) f[n + j] = extra[j];
         flowReport(regime, a, f);
     }
@@ -801,6 +897,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     function _endOfDay() internal {
+        if (balancer.enabled() && _missingUnits() != 0) ++daysPrizeMissing;
         if (balancer.enabled() && ((balancer.target() >> (16 * TOP)) & 0xFFFF) > balancer.getActiveShapes()[TOP]) {
             ++daysTopMissing;
         }
