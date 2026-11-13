@@ -2,6 +2,7 @@
   "source_paths": ["src", "script", "foundry.toml", ".gitmodules"],
   "evidence_paths": ["test/scenario/FlowBreakdown.t.sol", "test/utils/FlowBreakdown.sol", "test/utils/ForkBase.sol"],
   "scorecard_dir": "docs/receipts/flow",
+  "review_dir": "audit",
   "required_regimes": ["quiet", "limits_at_max", "max_then_idle", "zero_demand", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending", "restock_in_flight", "top_heavy", "whatif_large_win_top_up", "whatif_large_win_drop_top"],
   "drift_groups": [["quiet", "limits_at_max", "max_then_idle"]],
   "drift_threshold_bps": 500,

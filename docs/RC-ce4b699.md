@@ -18,7 +18,7 @@ untracked `deployments/` folder.
 | Fork economics matrix | `test/EconFork.t.sol`, 8 scenarios (table below) | all passed; 13,328 draws sold, none refused; every run ends with the full closeout |
 | Asset gate | `asset_gate.py` | 9 regimes balance to the wei; INCOMPLETE (outcomes unsigned); O5 fails (`large_win`, D9 below) |
 | Keeper end to end | `npm run keeper:e2e` | passed (160 s) |
-| Launch rehearsal | `npm run rehearsal -- --rounds 300` | REHEARSAL_RESULT |
+| Launch rehearsal | `npm run rehearsal -- --rounds 300` | passed (1,003 s): buyers found pools open 288/288 times, 832 draws, 12 markup changes, 7 creator edits; the keeper sent 336 transactions, 335 mined, 0 reverted, waited all 24 above-cap periods and resumed without help, survived 2 restarts, net +0.0492 ETH (rewards 0.2915 less gas 0.2424) |
 | Dashboard, reserve after a mint-fee drop | candidate deployed on the 8545 fork; Shapes fee 0.001 → 0.0005 ETH | pass: "Kept in the pool while open" 0.134 ETH = `requiredReserve()` 0.1337; "Not used" 2.456 = `withdrawableSurplus()` |
 | Dashboard, prices after a markup change | 15% → 18.75%, saved | FWA's draw price unchanged (0.027054 ETH: listed prizes keep their price), the preview says new prices apply as prizes restock, purchases stay open; findings RC-2 and RC-3. Not exercised: a draw and restock after the change |
 
@@ -91,6 +91,19 @@ change:
   restock (checked in the browser).
 
 Gate after these changes: 12 required regimes, all nine outcomes pass; INCOMPLETE only for the missing signature.
+
+**Audit-process follow-ups (shared guidance, 2026-11-13):**
+- Regimes for the extremes `configure` allows, quiet play, 180 draws each: `extreme_top_heavy` (one 100 ETH Shape),
+  `extreme_bottom_heavy` (80 × 0.01), `smallest_board` (one 0.01), `largest_board` (80 × 100 ETH, 8,000 ETH backing).
+  All nine outcomes hold in all four. The largest board shows the E9 pattern at scale: 30 of 180 draws won a 100 ETH
+  prize (13.8% expected), the reserve was up to 585 ETH short and 23 days ended with a prize missing: the case the Add
+  ETH / Continue buttons answer. 16 required regimes now.
+- `review_dir: "audit"` in `asset-flow.json` and `--require-review` in `script/deploy.sh`: deploying needs a review
+  record (`audit/**/SOURCE_HASH`) for the exact source. Set before signing, because it changes the approval hash.
+- Codex's kept tests are permanent under `test/audit/` (OwnHoldChallenge, LowBalanceHoldProbe, NormalGasBoundary,
+  TopHeavyGateChallenge): all pass.
+- `OWNER-REQUIREMENTS.md` drafted at the repository root for the owner to confirm; the audit prompts point at it, and
+  their M1, M2 and M5 now match option B and D5.
 
 
 | # | Decision | Options and what each costs | Recommendation and why |

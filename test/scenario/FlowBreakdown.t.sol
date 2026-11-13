@@ -279,6 +279,49 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _done("top_heavy", a, x);
     }
 
+    // Extremes of what `configure` allows (prizes 1 to 80, sizes 0.01 to 100 ETH), each with the NFT and quiet play: one
+    // buyer at a time, keepers after every draw. The pause with draws unsettled is covered by top_heavy.
+
+    /// @dev Most top-heavy: the single largest Shape, one 100 ETH prize.
+    function test_breakdown_extremeTopHeavy() public {
+        uint256[16] memory c;
+        c[8] = 1;
+        vm.deal(creator, 2_000 ether);
+        _quietBoard("extreme_top_heavy", c, 400 ether, 1);
+    }
+
+    /// @dev Most bottom-heavy and the most prizes: 80 x 0.01 ETH Shapes.
+    function test_breakdown_extremeBottomHeavy() public {
+        uint256[16] memory c;
+        c[0] = 80;
+        _quietBoard("extreme_bottom_heavy", c, 5 ether, 80);
+    }
+
+    /// @dev Smallest board: one 0.01 ETH Shape.
+    function test_breakdown_smallestBoard() public {
+        uint256[16] memory c;
+        c[0] = 1;
+        _quietBoard("smallest_board", c, 1 ether, 1);
+    }
+
+    /// @dev Largest board: 80 x 100 ETH Shapes (8,000 ETH of backing). Funding the creator's and buyer's wallets is setup.
+    function test_breakdown_largestBoard() public {
+        uint256[16] memory c;
+        c[8] = 80;
+        vm.deal(creator, 20_000 ether);
+        vm.deal(buyer, 1_000_000 ether);
+        _quietBoard("largest_board", c, 9_000 ether, 80);
+    }
+
+    function _quietBoard(string memory regime, uint256[16] memory c, uint256 deposit, uint256 units) internal {
+        Snap memory a = _launchWith(c, deposit, units);
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        Fact[] memory x = new Fact[](2);
+        x[0] = Fact("board_shape_units", units);
+        x[1] = Fact("pending_draws_admitted_by_board", 3_000 * balancer.targetWeight() / (10_000 * (1e36 / 0.01 ether)));
+        _done(regime, a, x);
+    }
+
     function _largeWinFacts() internal view returns (Fact[] memory x) {
         x = new Fact[](12);
         x[0] = Fact("forced_top_prize_draw_a", forceTopA);

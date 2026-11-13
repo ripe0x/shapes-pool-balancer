@@ -60,6 +60,9 @@ cap, write a partial report with exact blockers; that is not a clean result.
 
 ## 2. Owner requirements (the rules to test, and to challenge)
 
+`OWNER-REQUIREMENTS.md` at the repository root is authoritative: it holds the owner's words, dated, each pointing at
+the outcome that measures it. Where this section differs from it, that file wins.
+
 Owner's words: "we need to make this so it never loses money with keepers"; "The markup is where they make money";
 "obviously we need this thing to function"; "the gas at listing time != gas at draw time"; the keeper list should be
 "on the factory", "open at default", and no creator should have to update their pool individually. Later:
@@ -82,17 +85,18 @@ and the minimum markup is the game's share: "if the min for a setup is 10%, and 
   effects on the Balancer are in scope.
 
 **Where each wei should end up (money goals: test each as an invariant at rest and over full cycles)**
-- **M1. Markup.** The creator's markup is never spent on keepers. Every keeper reward outside creator work comes from
-  restocking fees.
+- **M1. Keeper pay (option B, R10 to R13).** Every call that reconciles a draw or lists a prize is paid from the
+  creator's ETH; a call that does neither is paid nothing. The restocking fee is the creator's income toward it.
 - **M2. Restocking fees.** A Shape prize lists at: backing + one mint fee per Shape inside + backing × markup + one
   restocking fee per Shape inside. The fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) +
-  0.0002 ETH, at the listing block. It is credited to keepers in the call that lists the prize. The pool fronts it,
-  and the player who wins that prize repays it. Unused fees stay with the creator.
+  0.0002 ETH, at the listing block. The pool fronts it; FWA's single draw price spreads it
+  over all buyers (D5, R14). Unused fees stay with the creator.
 - **M3. Mint fees.** These go to Shapes when a prize is minted, and the winning player repays them in the price.
 - **M4. Prize backing.** It sits in prize tokens, and comes back to the pool at exactly its value when a prize is
   unlisted or a refunded prize is recovered.
-- **M5. Creator exposure.** The creator's possible loss is bounded: the fees fronted for prizes never won, the opening
-  stock-up gas, and prize luck. It must not include keeper pay beyond the fees.
+- **M5. Creator exposure.** The creator's possible loss is bounded: the fees fronted for prizes never won, keeper pay for
+  calls that bring no fee (NFT wins, timeouts, one paid call per processed draw, R10 to R12), the opening stock-up gas,
+  and prize luck.
 - **M6. Reserve.** `requiredReserve` is the cost to restore the target, one largest prize per unrecorded draw plus a
   spare, and keeper rewards at the 5 gwei cap. A pool cannot open without it in ETH. Purchases do not wait for ETH:
   after a big win uses the spare, sales refill it (owner-accepted: back-to-back big wins leave prizes off the board
