@@ -1,0 +1,45 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.36s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/addendum/RefundPath.t.sol:59:27:
+   |
+59 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/focused/CuratedRefundLedger.t.sol:CuratedRefundLedgerTest
+[PASS] testCuratedRefundLedgerBelowReserve() (gas: 5356142)
+Logs:
+  below-reserve at draw: fund / reserve: 1034000000000000000 2051500000000000000
+  below-reserve: proceeds / profit after collect: 0 0
+  below-reserve: player net loss over the draw: 630139131231725739
+
+[PASS] testCuratedRefundLedgerHealthy() (gas: 5430019)
+Logs:
+  player paid from own balance; auto-refund at failure (player loss so far): 630139131231725739
+  == player payment ==
+    acquisition fee / vrf fee / total paid: 630139131231725739 0 630139131231725739
+  == pool/balancer after reconcile (PENDING failed draw) ==
+    FWA ownerProceeds credited for draw: 0
+    balancer balance: 4998500000000000000
+    profit / keeperCredit: 0 0
+    requiredReserve: 1034000000000000000
+  == refund (FWA-internal) ==
+    ETH returned by refundFailedDelivery call: 0
+    player TOTAL recovered: 0
+    player net loss over the whole draw: 630139131231725739
+    FWA listing status after refund call: 7
+  == recover ==
+    recoverRefunded ethOut (0 for a curated NFT): 0
+    balancer balance delta on recover: 0
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 249.83ms (4.21ms CPU time)
+
+Ran 1 test suite in 252.59ms (249.83ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

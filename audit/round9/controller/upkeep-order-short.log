@@ -1,0 +1,24 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.41s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/controller/UpkeepOrder.t.sol:UpkeepOrderTest
+[PASS] testCuratedDrawAfterBigWinUpkeepOrder() (gas: 237636206)
+Logs:
+  after big win: fund / reserve 48563286767851836 534000000000000000
+  NFT drawn while genuinely short; listings before reconcile: 7
+    profit, collect first then upkeep: 2188128931267067
+    profit, upkeep only (reconcile then collect): 2552817086478245
+    claimable / fund, collect first then upkeep: 4282774057522775 64278089730692313
+    claimable / fund, upkeep only: 4647462212733953 63913401575481135
+    reserve after: 534000000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 402.82ms (133.87ms CPU time)
+
+Ran 1 test suite in 405.66ms (402.82ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

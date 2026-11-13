@@ -1,0 +1,10 @@
+No files changed, compilation skipped
+
+Ran 4 tests for audit/round9/lane_b/AddendumScale.t.sol:AddendumScaleTest
+[PASS] testBalancedMix() (gas: 149483415)
+[PASS] testBiggerPrizeMix() (gas: 97610328)
+[PASS] testDrawsInFlightBurst() (gas: 21851088)
+[PASS] testSmallOnlyMix() (gas: 118357507)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 500.59ms (1.67s CPU time)
+
+Ran 1 test suite in 503.03ms (500.59ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

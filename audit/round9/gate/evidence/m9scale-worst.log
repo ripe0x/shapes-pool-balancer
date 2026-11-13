@@ -1,0 +1,21 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.02s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_a/addendum/M9Scale.t.sol:M9Scale
+[PASS] testWorstCaseNetLeak() (gas: 17900324)
+Logs:
+  profit honest / acted (wei): 0 17384445750066398
+  fund   honest / acted (wei): 85036949995573405 67652504245507007
+  ETH withdrawn honest / acted (wei): 0 17384445750066398
+  extra profit extracted this cycle (wei): 17384445750066398
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 265.71ms (9.06ms CPU time)
+
+Ran 1 test suite in 269.71ms (265.71ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

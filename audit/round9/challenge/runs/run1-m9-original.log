@@ -1,0 +1,30 @@
+=== RUN 1: lane A M9 original PoC (FullCycle.t.sol) ===
+Compiling 59 files with Solc 0.8.28
+Compiling 31 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.95s
+Solc 0.8.28 finished in 4.79s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> audit/round9/lane_a/FullCycle.t.sol:218:9:
+    |
+218 |         uint256 creatorBalBefore = creator.balance;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_a/FullCycle.t.sol:FullCycle
+[PASS] testM9WithdrawCuratedInflatesProfit() (gas: 6790868)
+Logs:
+  fund: 44000000000000000 reserve: 71500000000000000
+  profit (collect first): 1985495699365404
+  profit (withdrawCurated then collect): 2382594839238485
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.03s (758.12ms CPU time)
+
+Ran 1 test suite in 1.04s (1.03s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+EXIT=0

@@ -1,0 +1,38 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.61s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/focused/M9LaunchScale.t.sol:M9LaunchScaleTest
+[PASS] testM9LaunchScaleSplitLeak() (gas: 30980496)
+Logs:
+  n / profitShareSum: 41 1614216580441701147
+  amount (EV draw proceeds, wei): 20138251003352429
+  fund / reserve (short): 534000000000000000 1051500000000000000
+  collect-first booked / predicted amount*S/(n*1e18): 792865821236785 792865821236785
+  variant(b) collect-first baseline / via performUpkeep: 792865821236785 0
+    (upkeep reconciles the drawn draw, dropping its reserve term; here the single draw's
+     reconcile clears the short, so upkeep books less -> fund-favourable at this depth)
+  variant(a) honest / withdraw-then-collect: 792865821236785 812687466767705
+    variant(a) leak measured / formula (wei): 19821645530920 19821645530919
+    variant(a) creator withdrawCurated gas: 293280
+  NFT (0.3) drawn
+    listed price / share: 345000000000000000 0
+    variant(b) per-event misbooking, holding short (wei) = + 19821645530919
+  0.01 Shape drawn
+    listed price / share: 12745000000000000 39231071008238524
+    variant(b) per-event misbooking, holding short (wei) = + 70516653563
+  0.5 Shape drawn
+    listed price / share: 576245000000000000 43384324375916493
+    variant(b) per-event misbooking, holding short (wei) = - 2020464816407
+  E[variant(b) per-event misbooking] over draw outcomes (wei) = - 59231277108
+    (+ = over-books fund money as profit on average; ~0 = unbiased)
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 532.63ms (268.45ms CPU time)
+
+Ran 1 test suite in 538.48ms (532.63ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

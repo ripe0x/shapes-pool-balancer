@@ -1,0 +1,7 @@
+Compiling 8 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.48s
+Compiler run successful!
+build exit 0
+slither exit 255
+True 236
+Counter({('Medium', 'write-after-write'): 11, ('High', 'incorrect-shift'): 7, ('Medium', 'uninitialized-local'): 5, ('Medium', 'divide-before-multiply'): 4, ('Medium', 'unused-return'): 4, ('Medium', 'incorrect-equality'): 3, ('High', 'incorrect-exp'): 2, ('High', 'reentrancy-eth'): 2, ('Medium', 'reentrancy-no-eth'): 2})

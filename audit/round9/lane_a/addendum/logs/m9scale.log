@@ -1,0 +1,29 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.12s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/lane_a/addendum/M9Scale.t.sol:M9Scale
+[PASS] testBalancedMixSingleCuratedLeak() (gas: 27322858)
+Logs:
+  Balanced-mix honest/acted profit (wei): 792865821236785 812687466767705
+  Balanced-mix single-curated extra (wei): 19821645530920
+
+[FAIL: vm.prank: cannot overwrite a prank until it is applied at least once] testWorstCaseNetLeak() (block: 26382349) (gas: 15451644)
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 4.38s (4.10s CPU time)
+
+Ran 1 test suite in 4.38s (4.38s CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_a/addendum/M9Scale.t.sol:M9Scale
+[FAIL: vm.prank: cannot overwrite a prank until it is applied at least once] testWorstCaseNetLeak() (block: 26382349) (gas: 15451644)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

@@ -1,0 +1,60 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.47s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/AddendumScale.t.sol:34:9:
+   |
+34 |         uint256 player0;
+   |         ^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> audit/round9/lane_b/Harness2.sol:133:5:
+    |
+133 |     function _findReqId() internal returns (uint256 clReqId) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 4 tests for audit/round9/lane_b/AddendumScale.t.sol:AddendumScaleTest
+[PASS] testBalancedMix() (gas: 149483415)
+Logs:
+  Balanced (15% markup, 40 draws)
+    draws / blocked 40 0
+    playerPaid(quoted) 973167925305685406
+    creator claimed / curatedBack 10114701595529224217 300000000000000000
+    creator NET vs 10 ETH deposit (claimed+curatedBack-deposit); sign: 1
+    |net| wei 414701595529224217
+    balancer residual 0
+
+[PASS] testBiggerPrizeMix() (gas: 97610328)
+Logs:
+  Bigger-prize (30% markup, 30 draws)
+    draws / blocked 30 0
+    playerPaid(quoted) 788112395288297082
+    creator claimed / curatedBack 10110533233607902000 1000000000000000000
+    creator NET vs 10 ETH deposit (claimed+curatedBack-deposit); sign: 1
+    |net| wei 1110533233607902000
+    balancer residual 0
+
+[FAIL: BUSY not signalled at MAX_BATCH unsettled: 0 != 4] testDrawsInFlightBurst() (block: 26382349) (gas: 17545075)
+[PASS] testSmallOnlyMix() (gas: 118357507)
+Logs:
+  0.01-only (15% markup, 40 draws)
+    draws / blocked 40 0
+    playerPaid(quoted) 702855267180097315
+    creator claimed / curatedBack 10067985968742949845 200000000000000000
+    creator NET vs 10 ETH deposit (claimed+curatedBack-deposit); sign: 1
+    |net| wei 267985968742949845
+    balancer residual 0
+
+Suite result: FAILED. 3 passed; 1 failed; 0 skipped; finished in 13.49s (32.80s CPU time)
+
+Ran 1 test suite in 13.49s (13.49s CPU time): 3 tests passed, 1 failed, 0 skipped (4 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_b/AddendumScale.t.sol:AddendumScaleTest
+[FAIL: BUSY not signalled at MAX_BATCH unsettled: 0 != 4] testDrawsInFlightBurst() (block: 26382349) (gas: 17545075)
+
+Encountered a total of 1 failing tests, 3 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

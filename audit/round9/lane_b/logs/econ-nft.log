@@ -1,0 +1,30 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.06s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Econ.t.sol:31:9:
+   |
+31 |         uint256 deposited = 5 ether;
+   |         ^^^^^^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_b/Econ.t.sol:EconTest
+[PASS] testNftSaleMoneyBookedAsProfit() (gas: 15240112)
+Logs:
+  draw i / wasNft / proceeds 0 0 20729856678309044
+     below / profitBooked / activeN 0 0 4
+  draw i / wasNft / proceeds 1 0 20729856678309044
+     below / profitBooked / activeN 0 0 4
+  draw i / wasNft / proceeds 2 0 20729856678309044
+     below / profitBooked / activeN 0 0 4
+  draw i / wasNft / proceeds 3 0 20729856678309044
+     below / profitBooked / activeN 0 0 4
+  draw i / wasNft / proceeds 4 0 20729856678309044
+     below / profitBooked / activeN 0 0 4
+  NFT draws below reserve 0
+  profit booked from NFT-sale collections 0
+  profit booked from Shape collections 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 287.08ms (23.89ms CPU time)
+
+Ran 1 test suite in 302.70ms (287.08ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

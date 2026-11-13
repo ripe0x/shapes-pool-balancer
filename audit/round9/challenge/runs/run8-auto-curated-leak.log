@@ -1,0 +1,33 @@
+=== RUN 8b: challenge automatic curated-draw NFT-money leak ===
+Compiling 59 files with Solc 0.8.28
+Compiling 31 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.88s
+Solc 0.8.28 finished in 5.11s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/challenge/AutoCuratedLeak.t.sol:AutoCuratedLeak
+[FAIL: LEAK: curated-draw NFT-sale money was booked as withdrawable profit while short: 1985495699365404 != 0] testCuratedDrawBooksNftMoneyAsProfit() (block: 26382349) (gas: 95881162)
+Logs:
+  curated-draw proceeds (NFT sale money, wei): 16970031742476116
+  fund / reserve (wei): 44000000000000000 71500000000000000
+  profit booked from the curated (NFT) proceeds (wei): 1985495699365404
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 369.83ms (53.73ms CPU time)
+
+Ran 1 test suite in 372.97ms (369.83ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/challenge/AutoCuratedLeak.t.sol:AutoCuratedLeak
+[FAIL: LEAK: curated-draw NFT-sale money was booked as withdrawable profit while short: 1985495699365404 != 0] testCuratedDrawBooksNftMoneyAsProfit() (block: 26382349) (gas: 95881162)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
+EXIT=1

@@ -1,0 +1,2136 @@
+{
+ "schema": 2,
+ "target": "src/PoolBalancer.sol (PoolBalancer) at fork-tests commit c686534669562e78fd33f7297c13f12e68fe3066; production source identical to 7b32497 (later commits docs only).",
+ "scope": "PoolBalancer and its linked PoolPage library plus the Solady utilities it uses; FWA pool/factory, Shapes, Draw Packs, Chainlink VRF and ENS are trusted external dependencies per the round-9 prompt scope.",
+ "chain_block_or_revision": "Undeployed target; Foundry fork of Ethereum mainnet pinned at block 26,382,349 (lane drift recorded separately) via https://mainnet.gateway.tenderly.co; compiler solc 0.8.28, Cancun, via-IR, optimizer 50 (packs 20).",
+ "runtime_source_match": "Not applicable - target is undeployed; source-to-runtime correspondence is out of scope. Structural coverage is against the frozen source inventory of commit c686534 (freeze.json).",
+ "inventory_artifact": {
+  "file": "source-inventory.json",
+  "sha256": "346b1be6b34467de1997e060ca541309b2d0192de42b890a2aaa815738597791"
+ },
+ "slither_artifact": {
+  "file": "evidence/slither-pool.json",
+  "sha256": "3dc13762c6443dd84db08d841f50d77000d9dbad2d7bb2c288ab06630eb49660"
+ },
+ "slither_run": {
+  "source": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol",
+  "source_sha256": "8b902672aff155923261e16332d69769f9db0f00fa70789c2d317eaf68ff43dc",
+  "compiler_inputs": {
+   "root": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+   "remappings": [
+    "@openzeppelin/contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+    "packs/=lib/shape-packs/src/",
+    "shapes/=lib/shape-packs/lib/shapes/src/",
+    "solady/=lib/solady/src/"
+   ],
+   "generator_cwd": "/Users/dd/CascadeProjects/fwa-pool-balancer"
+  },
+  "command": "FOUNDRY_OUT=audit/round9/slither-out FOUNDRY_CACHE_PATH=audit/round9/slither-cache forge build src/PoolBalancer.sol --build-info && slither src/PoolBalancer.sol --ignore-compile --foundry-out-directory audit/round9/slither-out --json audit/round9/slither-pool.json",
+  "log": {
+   "file": "evidence/slither-pool.log",
+   "sha256": "cee00474e832cb9d3907f5a172edffdaa81a64f44e95e753dd647e227c60c062"
+  }
+ },
+ "entrypoint_review": {
+  "PoolBalancer.ENS[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.FWA_FACTORY[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.FWA_IMPLEMENTATION[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.FWA_IMPLEMENTATION_CODEHASH[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.MAX_BATCH[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.MAX_KEEPER_REWARD[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.PACKS[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.SHAPES[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.acceptCreator()": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.admissionStatus()": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.approvePoolPage(string,bytes32)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.canPurchase(address)": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.claimSurplus(uint256,address)": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Reserve gate and surplus withdrawal surface; open-reserve gate and below-reserve protection exercised."
+  },
+  "PoolBalancer.close()": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Reserve gate and surplus withdrawal surface; open-reserve gate and below-reserve protection exercised."
+  },
+  "PoolBalancer.collectProceeds()": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.configure(uint16,uint256)": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.creatorWork[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.creator[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.denominationAmount(uint256)": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.depositETH()": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Keeper reconcile/restock, prize delivery, custody and ETH-in surface; pay-vs-fees, gas floor and reentrancy exercised."
+  },
+  "PoolBalancer.enabled[generated getter]": {
+   "path_ids": [
+    "P1_accessors",
+    "P5_reserve_protection"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.factory[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.getActiveIds()": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.getActiveShapes()": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.initialize(address)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.isValidSignature(bytes32,bytes)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.items(uint256)": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.keeperCredit[generated getter]": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Keeper reconcile/restock, prize delivery, custody and ETH-in surface; pay-vs-fees, gas floor and reentrancy exercised."
+  },
+  "PoolBalancer.listCurated(address,uint256,uint256)": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.markupBps[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.mintFeeCap[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.onERC721Received(address,address,uint256,bytes)": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Keeper reconcile/restock, prize delivery, custody and ETH-in surface; pay-vs-fees, gas floor and reentrancy exercised."
+  },
+  "PoolBalancer.open()": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Reserve gate and surplus withdrawal surface; open-reserve gate and below-reserve protection exercised."
+  },
+  "PoolBalancer.pageEpoch[generated getter]": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.pendingCreator[generated getter]": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.performUpkeep()": {
+   "path_ids": [
+    "P3_split_m9_violation",
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.pool[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.prizeWeight[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.profitShareSum[generated getter]": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.profit[generated getter]": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.receive()": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Keeper reconcile/restock, prize delivery, custody and ETH-in surface; pay-vs-fees, gas floor and reentrancy exercised."
+  },
+  "PoolBalancer.reconciledSequence[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.recoverRefunded(uint256,address)": {
+   "path_ids": [
+    "P8_refund_open_questions"
+   ],
+   "reason": "Failed-delivery recovery surface; recovery-to-creator ledger verified but player refund amount and the automatic case remain unresolved."
+  },
+  "PoolBalancer.recoverUntrackedNFT(address,uint256,address)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.requiredReserve()": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.restockFee()": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.retire()": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.revokePoolPages()": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.setENSName(string)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.targetWeight[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.target[generated getter]": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Read-only getter/view: no storage write, no value transfer; covered by the accessors path and its invariant reads."
+  },
+  "PoolBalancer.transferCreator(address)": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Creator/keeper-gated admin or pool-page/signature surface; authorization and epoch behaviour validated in the security matrix."
+  },
+  "PoolBalancer.unlistShapes(uint256[])": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.updateCuratedPrice(uint256,uint256)": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.withdrawCurated(uint256,address)": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Listing-set / proceeds-split surface; central to the M9 accounting violation where a pre-collection listing-set change over-books profit."
+  },
+  "PoolBalancer.withdrawableSurplus()": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Reserve gate and surplus withdrawal surface; open-reserve gate and below-reserve protection exercised."
+  }
+ },
+ "external_call_review": {
+  "283fb7e63f77915dcfb0": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call p(IFWAPool).ownerProceeds inside PoolBalancer._collect(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).ownerProceeds) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "ba85b755d6a9e7654fde": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call p(IFWAPool).withdrawOwnerProceeds inside PoolBalancer._collect(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).withdrawOwnerProceeds) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "932446258d181c810c16": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call SHAPES(IShapes).mintBatch inside PoolBalancer._fillDeficit(IFWAPool,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).mintBatch) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "da86b0dceb920933a045": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call PACKS(IShapePacks).createPackTo inside PoolBalancer._fillDeficit(IFWAPool,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (PACKS(IShapePacks).createPackTo) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "92c2b5b3b80e7e5a0230": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).listNFTs inside PoolBalancer._fillDeficit(IFWAPool,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).listNFTs) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "1960bf57ade7ad150e31": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call SafeTransferLib.SafeTransferLib inside PoolBalancer._payKeeper(uint256,bool); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "e6adf1736e39b41d7b1f": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call SafeTransferLib.SafeTransferLib inside PoolBalancer._payKeeper(uint256,bool); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "aababeb7ce952c78723f": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call TMP_2869(IERC721Min).transferFrom inside PoolBalancer._pullCurated(address,uint256,uint256); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "1c2a328f3b532c84f8d1": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call TMP_2872(IERC721Min).ownerOf inside PoolBalancer._pullCurated(address,uint256,uint256); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "5a735fc172d95ede0a46": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call TMP_2877(IERC721Min).approve inside PoolBalancer._pullCurated(address,uint256,uint256); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "3026af9d82454e626763": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call TMP_2705(IShapePacks).redeem inside PoolBalancer._redeem(uint8,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2705(IShapePacks).redeem) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "ab37943794b9e820ace0": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call TMP_2702(IShapePacks).redeem inside PoolBalancer._redeem(uint8,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2702(IShapePacks).redeem) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "67675e2963eff73cac61": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).listings inside PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).listings) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "ad572e7a80aa7a4f8633": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).withdrawListingsTo inside PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).withdrawListingsTo) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "0c23a835232dea8194dc": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Call p(IFWAPool).unsettledAcquisitionCount inside PoolBalancer.admissionStatus(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).unsettledAcquisitionCount) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "dd1456b69202c9d54885": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Call SHAPES(IShapes).mintFee inside PoolBalancer.admissionStatus(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).mintFee) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "9f2b485ca2b9b831eeca": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Call p(IFWAPool).lastIssuedSequence inside PoolBalancer.admissionStatus(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).lastIssuedSequence) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "59d0980c216f7645c0d5": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call PoolPage.PoolPage inside PoolBalancer.approvePoolPage(string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "f71dfeadfd38419d72eb": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call PoolPage.PoolPage inside PoolBalancer.approvePoolPage(string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "8f21e6239e7648b01304": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call SafeTransferLib.SafeTransferLib inside PoolBalancer.claimSurplus(uint256,address); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "f7e0012409b3b56653f9": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call SafeTransferLib.SafeTransferLib inside PoolBalancer.claimSurplus(uint256,address); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "23e5ab6eabf0d3398f2b": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call pool(IFWAPool).setBool inside PoolBalancer.close(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).setBool) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "f18143f09c2eea99d69e": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call pool(IFWAPool).retired inside PoolBalancer.close(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).retired) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "339d72e0427515d97ff4": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call SHAPES(IShapes).mintFee inside PoolBalancer.configure(uint16,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).mintFee) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "4bcdc2786074a80898f7": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2361(IShapes).denominationCount inside PoolBalancer.constructor(address,address,bytes32,address,address,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2361(IShapes).denominationCount) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "b27542dfb43469e8e406": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2366(IShapes).denominationAt inside PoolBalancer.constructor(address,address,bytes32,address,address,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2366(IShapes).denominationAt) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "2eec9d911931da4350f9": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2372(IShapePacks).shapes inside PoolBalancer.constructor(address,address,bytes32,address,address,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2372(IShapePacks).shapes) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "68bac9102dd29e66df86": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2375(IShapePacks).MIN_PACK_VALUE inside PoolBalancer.constructor(address,address,bytes32,address,address,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2375(IShapePacks).MIN_PACK_VALUE) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "1ecdcd9c6b3d0741668b": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call fwa(IFWAPoolFactory).maxAcquisitionsPerTx inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (fwa(IFWAPoolFactory).maxAcquisitionsPerTx) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "9b4f45e2be467ad162e5": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call fwa(IFWAPoolFactory).maxStagedListings inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (fwa(IFWAPoolFactory).maxStagedListings) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "a39e9c4a19509cf34025": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call fwa(IFWAPoolFactory).createPool inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (fwa(IFWAPoolFactory).createPool) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "1793e97207ef78df9bbe": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call fwa(IFWAPoolFactory).poolImplementation inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (fwa(IFWAPoolFactory).poolImplementation) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "d0f96f3505a7dabc2a5e": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2402(IFWAPool).owner inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2402(IFWAPool).owner) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "7a99a1ea427b923cd4de": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2409(IFWAPool).setPurchaseOperator inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2409(IFWAPool).setPurchaseOperator) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "6186d42c7f99d53b37ec": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call SHAPES(IShapes).setApprovalForAll inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).setApprovalForAll) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "5866e2a7a2f26a59b82e": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call PACKS(IShapePacks).setApprovalForAll inside PoolBalancer.initialize(address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (PACKS(IShapePacks).setApprovalForAll) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "fc282c1bdc92a6ce7a7f": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call pool(IFWAPool).listNFT inside PoolBalancer.listCurated(address,uint256,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).listNFT) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "51745a011f76b44c3b28": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call pool(IFWAPool).listNFTs inside PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[]); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).listNFTs) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "188b067b844c19a2be79": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call pool(IFWAPool).ownerProceeds inside PoolBalancer.open(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).ownerProceeds) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "c7fde210376f282e290d": {
+   "path_ids": [
+    "P5_reserve_protection"
+   ],
+   "reason": "Call pool(IFWAPool).setBool inside PoolBalancer.open(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).setBool) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "f688b9301389572cafe0": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call factory(IKeeperList).canKeep inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (factory(IKeeperList).canKeep) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "41d7f323f42080c97fe9": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).nextSequenceToProcess inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).nextSequenceToProcess) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "15e7872d39972c646477": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).acquisitions inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).acquisitions) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "90a15fc3db2bf68ffbda": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).requestIdAtSequence inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).requestIdAtSequence) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "16ed85de34b13fa75db4": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call p(IFWAPool).retired inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (p(IFWAPool).retired) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "7f64695014512a0c6348": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call FWA_FACTORY(IFWAPoolFactory).globalWithdrawOnly inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (FWA_FACTORY(IFWAPoolFactory).globalWithdrawOnly) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "cbedf1314f350df8fd1f": {
+   "path_ids": [
+    "P4_keeper_restock_delivery"
+   ],
+   "reason": "Call SHAPES(IShapes).mintFee inside PoolBalancer.performUpkeep(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).mintFee) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "87ad2c8ce55c6f98faf2": {
+   "path_ids": [
+    "P8_refund_open_questions"
+   ],
+   "reason": "Call pool(IFWAPool).listings inside PoolBalancer.recoverRefunded(uint256,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).listings) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "cacfa6c49836af22bab7": {
+   "path_ids": [
+    "P8_refund_open_questions"
+   ],
+   "reason": "Call pool(IFWAPool).recoverRefundedNFT inside PoolBalancer.recoverRefunded(uint256,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).recoverRefundedNFT) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "b6efd335001fa91a1000": {
+   "path_ids": [
+    "P8_refund_open_questions"
+   ],
+   "reason": "Call TMP_2518(IERC721Min).safeTransferFrom inside PoolBalancer.recoverRefunded(uint256,address); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "1728e5ca5018cef488f2": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2534(IERC721Min).ownerOf inside PoolBalancer.recoverUntrackedNFT(address,uint256,address); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "0ae28dcd3a5a5c74907e": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2539(IERC721Min).safeTransferFrom inside PoolBalancer.recoverUntrackedNFT(address,uint256,address); curated-collection custody call.",
+   "target_control": "Target is a creator-chosen curated ERC721 collection, trusted for custody per SPEC but attacker-shaped in the adversarial model (hostile/reverting collections exercised).",
+   "calldata_control": "Calldata (token id, from/to) is pool-derived from tracked listing state, not attacker-chosen beyond the id the creator listed.",
+   "value_control": "No ETH value is sent with this call; it is an NFT transfer/ownerOf/approve.",
+   "callback_reachability": "A hostile collection can revert or re-enter on transfer; reentrancy is blocked by nonReentrant and delivery uses plain transferFrom with no receiver hook, exercised in the refund/hostile-receiver tests."
+  },
+  "a299e99643e5847b6d78": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Call SHAPES(IShapes).mintFee inside PoolBalancer.requiredReserve(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (SHAPES(IShapes).mintFee) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "643804c829afafa5f9e2": {
+   "path_ids": [
+    "P1_accessors"
+   ],
+   "reason": "Call pool(IFWAPool).lastIssuedSequence inside PoolBalancer.requiredReserve(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).lastIssuedSequence) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "4efb32e5f5de1ea5c75f": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call pool(IFWAPool).retirePool inside PoolBalancer.retire(); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).retirePool) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "14ed4c038369c9e8e6eb": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call ENS(IENS).owner inside PoolBalancer.setENSName(string); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (ENS(IENS).owner) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "feef0be9d52c82cf38de": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call TMP_2581(IReverseRegistrar).setName inside PoolBalancer.setENSName(string); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (TMP_2581(IReverseRegistrar).setName) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "868d8e20ce0bd9513ec8": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call pool(IFWAPool).updatePrice inside PoolBalancer.updateCuratedPrice(uint256,uint256); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).updatePrice) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "347bf92da475985b4633": {
+   "path_ids": [
+    "P3_split_m9_violation"
+   ],
+   "reason": "Call pool(IFWAPool).withdrawListingTo inside PoolBalancer.withdrawCurated(uint256,address); trusted-protocol or library call.",
+   "target_control": "Target is the fixed trusted protocol contract (pool(IFWAPool).withdrawListingTo) resolved at construction/initialize (FWA pool/factory, Shapes, Draw Packs, ENS); not attacker-controlled.",
+   "calldata_control": "Calldata is pool-constructed from tracked state (sequences, ids, amounts); the attacker does not choose the selector or trusted target.",
+   "value_control": "No ETH value is forwarded on this call (fees are paid by players into FWA; keeper reward uses SafeTransferLib separately).",
+   "callback_reachability": "Callback reachability is limited to the trusted contract; the whole upkeep/claim path is nonReentrant and reward/surplus transfer is the final state change."
+  },
+  "0ba00e63cb26d2764e8b": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "26ef79f6dd4f3ae98cc8": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call SignatureCheckerLib.SignatureCheckerLib inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "278aea8d50413797522b": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "8ed23d1b74eaa59fdea8": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "9cfc9cb4911fc408dcb3": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call SignatureCheckerLib.SignatureCheckerLib inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "c09af800f280e451d9be": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "c2528318627ff76bc92d": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  },
+  "c6feece2928467be88f9": {
+   "path_ids": [
+    "P2_authorization_admin"
+   ],
+   "reason": "Call LibString.LibString inside PoolPage.digest(address,address,string,bytes32); trusted-protocol or library call.",
+   "target_control": "Target is an audited Solady library / internal PoolPage helper linked at compile time, not an external attacker address.",
+   "calldata_control": "Calldata is pool/digest-derived (page string, digest, signature bytes); no untrusted dispatch.",
+   "value_control": "No ETH value is sent; these are pure/view library computations.",
+   "callback_reachability": "No external callback: library code is internal; the signature path validates a fixed digest within the current pool-page epoch."
+  }
+ },
+ "critical_paths": [
+  {
+   "id": "P1_accessors",
+   "entrypoint_ids": [
+    "PoolBalancer.ENS[generated getter]",
+    "PoolBalancer.FWA_FACTORY[generated getter]",
+    "PoolBalancer.FWA_IMPLEMENTATION[generated getter]",
+    "PoolBalancer.FWA_IMPLEMENTATION_CODEHASH[generated getter]",
+    "PoolBalancer.MAX_BATCH[generated getter]",
+    "PoolBalancer.MAX_KEEPER_REWARD[generated getter]",
+    "PoolBalancer.PACKS[generated getter]",
+    "PoolBalancer.SHAPES[generated getter]",
+    "PoolBalancer.creator[generated getter]",
+    "PoolBalancer.creatorWork[generated getter]",
+    "PoolBalancer.enabled[generated getter]",
+    "PoolBalancer.factory[generated getter]",
+    "PoolBalancer.markupBps[generated getter]",
+    "PoolBalancer.mintFeeCap[generated getter]",
+    "PoolBalancer.prizeWeight[generated getter]",
+    "PoolBalancer.reconciledSequence[generated getter]",
+    "PoolBalancer.target[generated getter]",
+    "PoolBalancer.targetWeight[generated getter]",
+    "PoolBalancer.pool[generated getter]",
+    "PoolBalancer.admissionStatus()",
+    "PoolBalancer.canPurchase(address)",
+    "PoolBalancer.denominationAmount(uint256)",
+    "PoolBalancer.getActiveIds()",
+    "PoolBalancer.getActiveShapes()",
+    "PoolBalancer.items(uint256)",
+    "PoolBalancer.requiredReserve()",
+    "PoolBalancer.restockFee()"
+   ],
+   "callsite_ids": [
+    "0c23a835232dea8194dc",
+    "dd1456b69202c9d54885",
+    "9f2b485ca2b9b831eeca",
+    "a299e99643e5847b6d78",
+    "643804c829afafa5f9e2"
+   ],
+   "property": "Public getters and view functions (admissionStatus, canPurchase, denominationAmount, getActiveIds/Shapes, items, requiredReserve, restockFee, immutables) are pure reads: they mutate no storage and transfer no value, and their reads of trusted FWA/Shapes state feed the safety invariants.",
+   "attacker_control": "A caller chooses the arguments and the calling context but cannot, through any view path, write pool storage or move ETH/NFTs; the external reads here go to the fixed, trusted FWA pool and Shapes contracts resolved at construction.",
+   "asset_authority_ledger": "No wei or NFT changes custody on any view path; balance, profit, keeperCredit and curated custody are unchanged by a read. These getters only report the ledger that the money-moving paths (P3/P4/P5) maintain.",
+   "counterexample": "A view returning a stale or manipulable value that a money path trusts without re-check, letting an attacker nudge a reported count to flip a branch; no such write-through-view was found and the stateful cycle reads these at rest and asserts the invariants hold.",
+   "outcome": "held",
+   "postconditions": [
+    {
+     "id": "pc_nomutate",
+     "assertion": "The view/getter surface performs no storage write and no value transfer; the stateful cycle reads these getters at rest after every step and the asserted invariants (profit<=balance, item count == sum(activeShapes)) hold.",
+     "possible_false_positive": "The invariant read could pass while a getter silently returns a value inconsistent with storage, because the test reads the same getter it trusts rather than an independent oracle.",
+     "adversarial_variant": "An attacker nudges admissionStatus/requiredReserve inputs (unsettled count, mint fee) so a downstream gate mis-fires while the getter still looks consistent; requiredReserve/admissionStatus read trusted FWA state and the below-reserve and stateful runs exercised those gates.",
+     "evidence_ids": [
+      "EV_stateful",
+      "EV_security",
+      "EV_econprops"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "Getters expose immutables and creator/keeper identity; the authorization matrix confirms identity-gated writes are elsewhere, not on these reads.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "quantity": {
+     "status": "tested",
+     "reason": "admissionStatus/requiredReserve compute counts and reserve from trusted FWA state; the stateful and below-reserve runs exercised those quantities at rest.",
+     "evidence_ids": [
+      "EV_stateful",
+      "EV_belowreserve"
+     ]
+    },
+    "value_attribution": {
+     "status": "not_applicable",
+     "reason": "No value is attributed or moved on a view path."
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "Views are unauthenticated by design; the creator/keeper gates sit on the write paths validated in the security matrix.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "External reads target the fixed trusted FWA/Shapes contracts; no attacker-controlled callback is reachable from a view.",
+     "evidence_ids": [
+      "EV_stateful"
+     ]
+    },
+    "timing": {
+     "status": "tested",
+     "reason": "Getter values can be read at any time but feed gates re-evaluated inside the money paths; timing of reads moves nothing.",
+     "evidence_ids": [
+      "EV_belowreserve"
+     ]
+    }
+   }
+  },
+  {
+   "id": "P2_authorization_admin",
+   "entrypoint_ids": [
+    "PoolBalancer.acceptCreator()",
+    "PoolBalancer.approvePoolPage(string,bytes32)",
+    "PoolBalancer.isValidSignature(bytes32,bytes)",
+    "PoolBalancer.initialize(address)",
+    "PoolBalancer.recoverUntrackedNFT(address,uint256,address)",
+    "PoolBalancer.retire()",
+    "PoolBalancer.revokePoolPages()",
+    "PoolBalancer.setENSName(string)",
+    "PoolBalancer.transferCreator(address)",
+    "PoolBalancer.pageEpoch[generated getter]",
+    "PoolBalancer.pendingCreator[generated getter]"
+   ],
+   "callsite_ids": [
+    "59d0980c216f7645c0d5",
+    "f71dfeadfd38419d72eb",
+    "4bcdc2786074a80898f7",
+    "b27542dfb43469e8e406",
+    "2eec9d911931da4350f9",
+    "68bac9102dd29e66df86",
+    "1ecdcd9c6b3d0741668b",
+    "9b4f45e2be467ad162e5",
+    "a39e9c4a19509cf34025",
+    "1793e97207ef78df9bbe",
+    "d0f96f3505a7dabc2a5e",
+    "7a99a1ea427b923cd4de",
+    "6186d42c7f99d53b37ec",
+    "5866e2a7a2f26a59b82e",
+    "1728e5ca5018cef488f2",
+    "0ae28dcd3a5a5c74907e",
+    "4efb32e5f5de1ea5c75f",
+    "14ed4c038369c9e8e6eb",
+    "feef0be9d52c82cf38de",
+    "0ba00e63cb26d2764e8b",
+    "26ef79f6dd4f3ae98cc8",
+    "278aea8d50413797522b",
+    "8ed23d1b74eaa59fdea8",
+    "9cfc9cb4911fc408dcb3",
+    "c09af800f280e451d9be",
+    "c2528318627ff76bc92d",
+    "c6feece2928467be88f9"
+   ],
+   "property": "Creator- and keeper-gated administrative functions (initialize/clone lock, two-step creator transfer, pool-page approval + ERC-1271 epoch, ENS naming, retire, recoverUntrackedNFT) enforce the correct caller and the pool-page signature only validates an approved digest within its current epoch.",
+   "attacker_control": "A non-creator/non-keeper attacker calls each admin function and attempts a stale pool-page signature replay or an out-of-epoch digest; the attacker also controls the untracked-NFT contract passed to recoverUntrackedNFT and the ENS name string.",
+   "asset_authority_ledger": "Authority over configuration, pool-page signing and creator role must stay with the creator; recoverUntrackedNFT may only move NFTs that are not tracked pool inventory, so tracked custody and ETH balances are untouched by these paths.",
+   "counterexample": "A replayed or cross-epoch pool-page signature validating as ERC-1271, or recoverUntrackedNFT sweeping a tracked prize/curated NFT, or a clone initialized outside the factory escaping the implementation lock; the security matrix exercised each and all are gated.",
+   "outcome": "held",
+   "postconditions": [
+    {
+     "id": "pc_authz",
+     "assertion": "Every admin entrypoint reverts for a non-authorized caller and the two-step creator transfer requires acceptCreator; testOnlyCreatorMatrix and testCreatorTransferTwoStep pass.",
+     "possible_false_positive": "The matrix could assert a revert reason without reaching the state-changing body, so a gate that is present but mis-scoped would still look enforced.",
+     "adversarial_variant": "A keeper-only or creator-only function reachable by the other role, or by an arbitrary caller when the pool is in a particular lifecycle state; the matrix and keeper-scope tests exercised the lifecycle-gated cases.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    {
+     "id": "pc_page_epoch",
+     "assertion": "approvePoolPage records a digest valid under isValidSignature only within the current pageEpoch; a creator change or revokePoolPages bumps the epoch and invalidates prior digests (testPoolPageEpochReplay).",
+     "possible_false_positive": "The replay test could check a different digest than the one approved, so a replay that reuses the exact prior digest might pass unnoticed.",
+     "adversarial_variant": "Replaying an approved digest after a creator handover or revocation, or forging a digest for an unapproved page; the epoch-replay test approves, validates, rotates and re-checks the same digest.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "Clone/initialize lock, factory-only creation and the only-creator matrix fix identity; implementation locked with creator==address(1).",
+     "evidence_ids": [
+      "EV_security",
+      "EV_fullcycle"
+     ]
+    },
+    "quantity": {
+     "status": "not_applicable",
+     "reason": "These admin paths move configuration and role, not quantities of pooled value."
+    },
+    "value_attribution": {
+     "status": "tested",
+     "reason": "recoverUntrackedNFT is guarded to non-tracked NFTs only, so it cannot re-attribute tracked prize/curated custody.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "Creator/keeper gates and two-step transfers enforced across the matrix and keeper scope tests.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "Pool-page signing uses Solady SignatureCheckerLib over a fixed digest; ENS setName and recover use trusted/creator-supplied targets with epoch and guard checks.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "timing": {
+     "status": "tested",
+     "reason": "Epoch bump on creator change/revocation closes the replay window; two-step transfer separates proposal and acceptance in time.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    }
+   }
+  },
+  {
+   "id": "P3_split_m9_violation",
+   "entrypoint_ids": [
+    "PoolBalancer.withdrawCurated(uint256,address)",
+    "PoolBalancer.collectProceeds()",
+    "PoolBalancer.unlistShapes(uint256[])",
+    "PoolBalancer.listCurated(address,uint256,uint256)",
+    "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])",
+    "PoolBalancer.updateCuratedPrice(uint256,uint256)",
+    "PoolBalancer.configure(uint16,uint256)",
+    "PoolBalancer.performUpkeep()",
+    "PoolBalancer.profit[generated getter]",
+    "PoolBalancer.profitShareSum[generated getter]"
+   ],
+   "callsite_ids": [
+    "283fb7e63f77915dcfb0",
+    "ba85b755d6a9e7654fde",
+    "aababeb7ce952c78723f",
+    "1c2a328f3b532c84f8d1",
+    "5a735fc172d95ede0a46",
+    "339d72e0427515d97ff4",
+    "fc282c1bdc92a6ce7a7f",
+    "51745a011f76b44c3b28",
+    "868d8e20ce0bd9513ec8",
+    "347bf92da475985b4633"
+   ],
+   "property": "Proceeds must split by the markup-derived profit share of the listing set the draws were priced on; a creator must not book more profit than the honest split while the fund is below the reserve (the 'game first' invariant).",
+   "attacker_control": "The creator fully controls the listing set and its timing: it can withdrawCurated (or otherwise mutate activeIds) before collecting, choosing when to collect relative to keeper reconciliation, in the game-first regime (fund < reserve, reached via an unreconciled settled draw).",
+   "asset_authority_ledger": "Curated NFT sale proceeds are fund money (curated share == 0) and must back the reserve while short; the invariant is that balance - profit (the fund) never drops because of a creator listing-set change before collection.",
+   "counterexample": "Withdraw all curated NFTs, then collect: _collect splits all accrued proceeds by the current profitShareSum/activeIds.length, so removing zero-share curated listings raises the creator numerator and books fund money as withdrawable profit while the pool is underfunded; the fund ends strictly lower.",
+   "outcome": "violation",
+   "postconditions": [
+    {
+     "id": "pc_m9_extent",
+     "assertion": "withdrawCurated-then-collect books 0.001985->0.002383 ETH (factor n/(n-1)) on identical proceeds, while unlistShapes/listCurated/transfer/configure are neutral or fund-favourable; the lever scales as k/(n-k) for k curated of n listings.",
+     "possible_false_positive": "The extent test fixes one board and markup, so a passing per-action comparison could understate or overstate the lever on other boards where share(m) or k/(n-k) differ.",
+     "adversarial_variant": "An automatic (no creator action) curated draw booking NFT money as profit, or a larger multiplier via a different board; the worst-case test drives 10 curated of 20 at 100% markup to bound the net extraction.",
+     "evidence_ids": [
+      "EV_m9extent",
+      "EV_m9worst"
+     ]
+    },
+    {
+     "id": "pc_m9_net",
+     "assertion": "At launch worst case the honest collect books 0 profit (fund keeps 0.085 ETH) yet withdraw-all-then-collect books 0.01738 ETH withdrawable profit and the fund drops to 0.0677 ETH: a net extraction of fund money while below reserve.",
+     "possible_false_positive": "The 0.01738 ETH figure could reflect a withdrawable value never actually claimed, so a test asserting 'profit' without claiming could overstate real extraction.",
+     "adversarial_variant": "The creator fails to re-list and NO_CURATED/SETTING_UP pauses purchases, or a running keeper collects first; the worst-case test claims the profit and reads the fund strictly lower after the claim.",
+     "evidence_ids": [
+      "EV_m9worst"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "The actor is the creator using its own listing-set authority; no identity spoof is needed.",
+     "evidence_ids": [
+      "EV_m9extent"
+     ]
+    },
+    "quantity": {
+     "status": "proved",
+     "reason": "The over-booking equals proceeds*share(m)*k/(n-k); worst case extracts 0.01738 ETH net of fund money.",
+     "evidence_ids": [
+      "EV_m9worst"
+     ]
+    },
+    "value_attribution": {
+     "status": "proved",
+     "reason": "Fund money (zero-share curated proceeds) is re-attributed to creator profit by a pre-collection listing-set change; the fund ends strictly lower.",
+     "evidence_ids": [
+      "EV_m9worst",
+      "EV_m9extent"
+     ]
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "No unauthorized call: the creator is permitted to withdraw/list; the violation is in the accounting, not the gate.",
+     "evidence_ids": [
+      "EV_m9extent"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "_pullCurated/listNFT target the creator-chosen curated collection and the trusted FWA pool; the leak needs no hostile callback.",
+     "evidence_ids": [
+      "EV_m9extent"
+     ]
+    },
+    "timing": {
+     "status": "proved",
+     "reason": "The lever requires the game-first window (fund < reserve, draws in flight) and collecting before keeper reconciliation; timing is the trigger.",
+     "evidence_ids": [
+      "EV_m9extent",
+      "EV_belowreserve"
+     ]
+    }
+   }
+  },
+  {
+   "id": "P4_keeper_restock_delivery",
+   "entrypoint_ids": [
+    "PoolBalancer.depositETH()",
+    "PoolBalancer.receive()",
+    "PoolBalancer.onERC721Received(address,address,uint256,bytes)",
+    "PoolBalancer.performUpkeep()",
+    "PoolBalancer.keeperCredit[generated getter]"
+   ],
+   "callsite_ids": [
+    "932446258d181c810c16",
+    "da86b0dceb920933a045",
+    "92c2b5b3b80e7e5a0230",
+    "1960bf57ade7ad150e31",
+    "e6adf1736e39b41d7b1f",
+    "3026af9d82454e626763",
+    "ab37943794b9e820ace0",
+    "67675e2963eff73cac61",
+    "ad572e7a80aa7a4f8633",
+    "f688b9301389572cafe0",
+    "41d7f323f42080c97fe9",
+    "15e7872d39972c646477",
+    "90a15fc3db2bf68ffbda",
+    "16ed85de34b13fa75db4",
+    "7f64695014512a0c6348",
+    "cbedf1314f350df8fd1f"
+   ],
+   "property": "performUpkeep reconciles settled draws and restocks inventory paying the keeper no more than the restock fees it credits (M1/M2), keeps upkeep gas under the keeper floor, and delivers/redeems prizes so each listed prize keeps its own backing (M4) with no over-pay or reentrancy.",
+   "attacker_control": "A keeper (factory-gated) controls when and how often upkeep runs and can be a contract that re-enters on reward receipt; a winner can be a hostile receiver; ETH can be pushed via receive/depositETH.",
+   "asset_authority_ledger": "Keeper reward wei must be <= restock fees credited and bounded by MAX_KEEPER_REWARD; prize NFTs/packs leave custody only to their rightful winner or back to the pool on unlist; keeperCredit and profit net to zero over a cycle.",
+   "counterexample": "A reward-callback reentrancy draining the clamp, a hostile winner bricking reconciliation, or an upkeep paying more than the credited fees; reentrancy is guarded, delivery uses plain transferFrom (no hook), and measured reward never exceeds credited fees.",
+   "outcome": "held",
+   "postconditions": [
+    {
+     "id": "pc_keeper_pay",
+     "assertion": "Non-setup keeper reward <= restock fees credited at 1/3/4.9 gwei over 16 draws each, and the 5-draw burst upkeep uses 2,526,347 gas < the 4,000,000 keeper floor.",
+     "possible_false_positive": "The gas and pay figures are single realised runs at chosen basefees, so a pathological board or basefee between the sampled points could exceed the floor or invert the pay inequality untested.",
+     "adversarial_variant": "A same-block growth larger than the 5-draw burst, or a basefee spike mid-upkeep pushing gas past the floor; the worst-case 5-draw burst and the 1-4.9 gwei sweep bound the measured region only.",
+     "evidence_ids": [
+      "EV_gas",
+      "EV_worstgas"
+     ]
+    },
+    {
+     "id": "pc_delivery_reentrancy",
+     "assertion": "The full real-VRF draw cycle delivers the prize to the winner and nets keeperCredit and profit to zero with inventory restored; reward-callback and winner-callback reentrancy attempts are blocked by nonReentrant and plain transferFrom delivery.",
+     "possible_false_positive": "The keeper-reentrancy tests may attempt re-entry on a path the guard already covers while leaving an un-probed re-entry vector (e.g. via a trusted-contract callback) unexercised.",
+     "adversarial_variant": "A hostile winner or reward recipient re-entering performUpkeep/_fillDeficit before the profit clamp settles; the reentrancy suite and the hostile-receiver refund test drive these.",
+     "evidence_ids": [
+      "EV_draw",
+      "EV_keeperreent",
+      "EV_refund"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "Keeper access is factory-gated (canKeep) and validated in the keeper admin/scope tests; depositETH/receive are permissionless by design and add only backing.",
+     "evidence_ids": [
+      "EV_security",
+      "EV_draw"
+     ]
+    },
+    "quantity": {
+     "status": "tested",
+     "reason": "Keeper reward quantity measured <= credited fees across gas levels and bounded by MAX_KEEPER_REWARD; burst gas measured under the floor.",
+     "evidence_ids": [
+      "EV_gas",
+      "EV_worstgas"
+     ]
+    },
+    "value_attribution": {
+     "status": "tested",
+     "reason": "keeperCredit and profit net to zero over the real cycle; restock fees fund the keeper, not principal.",
+     "evidence_ids": [
+      "EV_draw",
+      "EV_lbsecurity"
+     ]
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "Only a gated keeper triggers reconcile/restock; the globalWithdrawOnly and retired checks fail closed.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "External calls go to trusted Shapes/Packs/FWA; reward and prize delivery use SafeTransferLib/plain transferFrom, and reentrancy probes are blocked.",
+     "evidence_ids": [
+      "EV_keeperreent",
+      "EV_refund"
+     ]
+    },
+    "timing": {
+     "status": "tested",
+     "reason": "The fill gate charges each unreconciled draw the heaviest prize weight and pauses before MAX_BATCH, keeping the in-flight window safe.",
+     "evidence_ids": [
+      "EV_stateful",
+      "EV_scale"
+     ]
+    }
+   }
+  },
+  {
+   "id": "P5_reserve_protection",
+   "entrypoint_ids": [
+    "PoolBalancer.open()",
+    "PoolBalancer.close()",
+    "PoolBalancer.claimSurplus(uint256,address)",
+    "PoolBalancer.withdrawableSurplus()",
+    "PoolBalancer.enabled[generated getter]"
+   ],
+   "callsite_ids": [
+    "188b067b844c19a2be79",
+    "c7fde210376f282e290d",
+    "23e5ab6eabf0d3398f2b",
+    "f18143f09c2eea99d69e",
+    "8f21e6239e7648b01304",
+    "f7e0012409b3b56653f9"
+   ],
+   "property": "open() may only enable the pool when balance plus owner proceeds covers requiredReserve, and while the fund is below the reserve claimSurplus/withdrawableSurplus release nothing but true profit, so a creator cannot drain the reserve.",
+   "attacker_control": "The creator chooses when to open/close and calls claimSurplus with an arbitrary amount and recipient, including repeatedly and while the pool is below reserve after a large prize win.",
+   "asset_authority_ledger": "The reserve (requiredReserve) must remain backed: withdrawableSurplus == max(0, balance - profit - reserve)-style accounting means while short the creator withdraws 0; close() zeroes keeperCredit and sweeps cleanly.",
+   "counterexample": "Close, drain, reopen with no reserve (E2), or claim surplus while below reserve to pull backing; open reverts ReserveNotFunded and below-reserve withdrawableSurplus is 0 with profit 0, so no claim reduces the fund below the reserve.",
+   "outcome": "held",
+   "postconditions": [
+    {
+     "id": "pc_open_reserve",
+     "assertion": "open() reverts unless balance + owner proceeds >= requiredReserve (testOpenRequiresReserve), closing the close-drain-reopen path; the gate runs at open.",
+     "possible_false_positive": "The test funds exactly to the threshold, so an off-by-one or a post-open drift (allowed by design) could pass while a boundary case is mis-handled.",
+     "adversarial_variant": "Opening with proceeds that are counted but not actually withdrawable, or a reserve computed from stale mint fee; requiredReserve reads the live Shapes mint fee and the test exercises the funded/under-funded boundary.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    {
+     "id": "pc_below_reserve",
+     "assertion": "After a targeted 0.5 ETH win tips the fund to 0.6975 < reserve 1.0515 with profit 0, withdrawableSurplus() is 0 and no claim can push balance below the live reserve.",
+     "possible_false_positive": "The single targeted-win scenario reaches one below-reserve state; a different short state (e.g. multiple concurrent shortfalls) could expose a claim path the test did not reach.",
+     "adversarial_variant": "Claiming surplus in a brief window where profit is briefly non-zero while the fund is short; the below-reserve run drove the markup-change timing attack and measured 0 wei moved fund->profit.",
+     "evidence_ids": [
+      "EV_belowreserve"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "open/close/claimSurplus are creator-gated per the authorization matrix.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "quantity": {
+     "status": "tested",
+     "reason": "withdrawableSurplus is 0 while short; claim amounts above profit revert, measured in the below-reserve run.",
+     "evidence_ids": [
+      "EV_belowreserve"
+     ]
+    },
+    "value_attribution": {
+     "status": "tested",
+     "reason": "Only profit, never reserve/fund backing, is claimable; close zeroes keeperCredit and sweeps to 0.",
+     "evidence_ids": [
+      "EV_belowreserve",
+      "EV_lbsecurity"
+     ]
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "Creator-only gates on open/close/claim confirmed in the matrix.",
+     "evidence_ids": [
+      "EV_security"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "claimSurplus sends ETH via SafeTransferLib to a creator-chosen recipient after profit is decremented (checks-effects-interactions), nonReentrant.",
+     "evidence_ids": [
+      "EV_belowreserve"
+     ]
+    },
+    "timing": {
+     "status": "tested",
+     "reason": "The reserve gate runs at open; post-open drift below reserve is owner-accepted (E1) and the below-reserve regime was driven.",
+     "evidence_ids": [
+      "EV_belowreserve"
+     ]
+    }
+   }
+  },
+  {
+   "id": "P8_refund_open_questions",
+   "entrypoint_ids": [
+    "PoolBalancer.recoverRefunded(uint256,address)"
+   ],
+   "callsite_ids": [
+    "87ad2c8ce55c6f98faf2",
+    "cacfa6c49836af22bab7",
+    "b6efd335001fa91a1000"
+   ],
+   "property": "On a failed curated delivery the purchaser's ETH refund amount and the no-creator-action automatic case (a curated draw booking NFT money as profit without any creator listing-set change) must be fully accounted; recoverRefunded returns the NFT to the creator and credits the pool no proceeds.",
+   "attacker_control": "A curated collection whose transfer to the winner reverts forces the failed-delivery branch; the purchaser controls when to call refundFailedDelivery after the 7-day window; the creator controls recoverRefunded timing.",
+   "asset_authority_ledger": "The NFT returns to the creator and the pool is credited no proceeds (no double-dip, verified); the purchaser's refunded ETH amount is settled inside FWA and was measured as 0 in the blind harness, so where that wei lands is not established here.",
+   "counterexample": "A failed-delivery refund that under- or over-pays the purchaser, or an automatic curated draw that books NFT money as profit with no creator action; the recovery-to-creator ledger is verified, but the player refund amount and the standalone automatic PoC were not driven to a figure in scope.",
+   "outcome": "unresolved",
+   "postconditions": [
+    {
+     "id": "pc_refund_player",
+     "assertion": "recoverRefunded returns the curated NFT to the creator and credits the pool no proceeds (verified); the purchaser's refund ETH amount is FWA-internal and measured 0 in this harness, so the player-side wei destination is NOT established.",
+     "possible_false_positive": "The recovery test asserts the NFT and pool-credit ledger and passes, which could be read as full refund correctness while the purchaser-side refund amount remains unmeasured.",
+     "adversarial_variant": "A failed delivery where FWA refunds the purchaser the wrong amount, or the automatic no-action curated-draw-books-NFT-money case; attributing the player refund needs FWA source (out of blind scope) and the automatic PoC was not built.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    }
+   ],
+   "attack_families": {
+    "identity": {
+     "status": "tested",
+     "reason": "refundFailedDelivery is NotPurchaser-gated to the winner and recoverRefunded is creator-gated; identities confirmed in the refund test.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    },
+    "quantity": {
+     "status": "tested",
+     "reason": "The pool is credited no proceeds for a failed delivery (no double-dip); the purchaser refund quantity is unmeasured here.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    },
+    "value_attribution": {
+     "status": "tested",
+     "reason": "NFT custody returns to the creator; the purchaser ETH refund attribution is FWA-internal and remains open.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    },
+    "authorization": {
+     "status": "tested",
+     "reason": "Purchaser-only refund and creator-only recover gates exercised.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    },
+    "callback": {
+     "status": "tested",
+     "reason": "The failed-delivery branch is reached via a transfer-reverting curated collection (a legitimate adversary); recoverRefunded uses safeTransferFrom back to the creator.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    },
+    "timing": {
+     "status": "tested",
+     "reason": "The 7-day window gates the purchaser refund before creator recovery; the window was advanced in the test.",
+     "evidence_ids": [
+      "EV_refund"
+     ]
+    }
+   }
+  }
+ ],
+ "evidence": {
+  "EV_m9extent": {
+   "kind": "test",
+   "claim": "Lane A M9 extent: per creator-action/timing, honest collect vs action-then-collect on identical real-route proceeds in the game-first regime.",
+   "observed_or_proved": "withdrawCurated-then-collect books profit 0.001985->0.002383 ETH (x n/(n-1)) on the same proceeds; unlistShapes/listCurated/transfer/configure neutral or fund-favourable. 6 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a/addendum FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/addendum/M9Extent.t.sol",
+   "exit_code": 0,
+   "file": "evidence/m9extent.log",
+   "sha256": "49469f98f7bc5de1329f5ec68017c805646f6afe79f9dea16d7cef518b135f63"
+  },
+  "EV_m9worst": {
+   "kind": "test",
+   "claim": "Lane A M9 worst-case net leak at launch scale: 100% markup, 10 shapes + 10 curated, short regime, one draw's proceeds.",
+   "observed_or_proved": "Honest collect books 0 profit (fund keeps 0.085 ETH); withdraw all 10 curated then collect books 0.01738 ETH withdrawable and the fund drops to 0.0677 ETH (net extraction). 1 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a/addendum FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/addendum/M9Scale.t.sol --match-test testWorstCaseNetLeak",
+   "exit_code": 0,
+   "file": "evidence/m9scale-worst.log",
+   "sha256": "92f828124cf5720900e0615c8280367d6ccbb55b33fec08299abf5197997dfec"
+  },
+  "EV_stateful": {
+   "kind": "test",
+   "claim": "Lane A stateful full cycle: 20-shape board, one draw in flight plus a burst of 5, invariants asserted at rest after every step.",
+   "observed_or_proved": "profit<=balance, keeperCredit<=balance, withdrawableSurplus<=balance, active-item count == sum(activeShapes), and every active shape held by the FWA pool at reconciled points. All held; M7 teardown clean. 1 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a/addendum FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/addendum/StatefulCycle.t.sol",
+   "exit_code": 0,
+   "file": "evidence/stateful.log",
+   "sha256": "024a97b69a88fa87981ceac037fae0260e67629124108b62de945283827fd600"
+  },
+  "EV_packs": {
+   "kind": "test",
+   "claim": "Lane A Draw Pack lifecycle: 0.02-ETH pack minted by upkeep, listed, won and redeemed; unlist-redeem to pool.",
+   "observed_or_proved": "Winning player redeems the pack for exactly 0.02 ETH; unlisting a pack redeems exactly 0.02 ETH to the pool. M4 holds for packs. 2 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a/addendum FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/addendum/PackLifecycle.t.sol",
+   "exit_code": 0,
+   "file": "evidence/packs.log",
+   "sha256": "2730e0bfc59cd955a9f45868e930be750250070cbf4e1222775d7dd6579b97d7"
+  },
+  "EV_refund": {
+   "kind": "test",
+   "claim": "Lane A failed-delivery/refund: hostile onERC721Received receiver, and a transfer-reverting curated collection through refund+recover.",
+   "observed_or_proved": "Hostile receiver cannot brick delivery (plain transferFrom, no hook); curated failed delivery credits the pool no proceeds, purchaser refunds after 7 days, creator recoverRefunded returns the NFT. Player refund amount is FWA-internal (measured 0 here). 2 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a/addendum FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/addendum/RefundPath.t.sol",
+   "exit_code": 0,
+   "file": "evidence/refund.log",
+   "sha256": "66c3246a2946fe4f1ec1685d72505e526769f7dfb799e2b2fd2d5e30db140c0c"
+  },
+  "EV_security": {
+   "kind": "test",
+   "claim": "Lane A security integration: creator/keeper authorization matrix, two-step transfers, pool-page epoch replay, ERC-1271, recover guards, clone/initialize lock, open-reserve gate.",
+   "observed_or_proved": "12 tests pass: onlyCreator matrix, keeper admin two-step/scope and gating, pool-page epoch bump + isValidSignature only validates an approved digest in its epoch, recoverUntracked guards, implementation locked, clone-outside-factory rejected, configure bounds, open requires reserve. 12 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/SecurityIntegration.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneA-security.log",
+   "sha256": "d38a9b65fd5e5cb72efe89954b9763cd515f777622372c7f612d0dba2cd077f5"
+  },
+  "EV_econprops": {
+   "kind": "test",
+   "claim": "Lane A economic property tests over the split/accounting surface.",
+   "observed_or_proved": "Accounting/economic property assertions over proceeds split and reserve accounting pass. 3 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/EconProps.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneA-econprops.log",
+   "sha256": "8241a3b8bc3ab2ee32708febf5e1fc63a3d65da30522b2a24218366c30c1073f"
+  },
+  "EV_keeperreent": {
+   "kind": "test",
+   "claim": "Lane A keeper reentrancy probes against performUpkeep / reward callback.",
+   "observed_or_proved": "Reentrancy attempts into the nonReentrant upkeep/reward path are blocked; no state corruption observed. 4 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_a FOUNDRY_OUT=audit/round9/lane_a/out FOUNDRY_CACHE_PATH=audit/round9/lane_a/cache forge test --match-path audit/round9/lane_a/KeeperReentrancy.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneA-keeper-reentrancy.log",
+   "sha256": "8bca3e524ab5ad8d6291c706f3af0c031906a2acc637753d814ed5445b0f1e9c"
+  },
+  "EV_belowreserve": {
+   "kind": "test",
+   "claim": "Lane B below-reserve regime driven on real-route draws: targeted 0.5 ETH win tips fund below reserve, then markup-change over-booking attack.",
+   "observed_or_proved": "Fund 0.6975 < reserve 1.0515 with profit 0; withdrawableSurplus 0 while short; markup-change-then-collect books 0 wei fund->profit because performUpkeep collects before restock. No creator action moved fund money into profit in this sequence. 2 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/AddendumBelowReserve.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-belowreserve.log",
+   "sha256": "338c6c7bf3e0540fac39f1b915c45269f3fc5b0183ee07a451adf611856b9532"
+  },
+  "EV_gas": {
+   "kind": "test",
+   "claim": "Lane B gas regimes 1/3/4.9/6 gwei, 16 real draws per level: keeper pay vs restock fees credited.",
+   "observed_or_proved": "Non-setup keeper reward <= restock fees credited at every level (M1/M2); keeper net positive 1-4.9 gwei; above 5 gwei reward caps and keepers rationally wait; pool never overpays. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/AddendumGas.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-gas.log",
+   "sha256": "511bbb700adf6f29ff57a07afbb9286407285ce4bd42cf0710969f9e03aac985"
+  },
+  "EV_scale": {
+   "kind": "test",
+   "claim": "Lane B launch-scale mixes (Balanced/0.01-only/bigger-prize), 30-40 real draws, close + full sweep; and in-flight burst.",
+   "observed_or_proved": "Creator net positive each mix (+0.4147/+0.2680/+1.1105 ETH), 100% liveness, nothing stranded after sweep; in-flight burst fill gate pauses at depth 3 before MAX_BATCH. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/AddendumScale.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-scale.log",
+   "sha256": "c70fa2d3651038db0941520e61afcc74eb396c5ebd19e5466048aec8cbe8bb2b"
+  },
+  "EV_lbsecurity": {
+   "kind": "test",
+   "claim": "Lane B security scenarios over keeper pay, overbid, closeout sweep, mint-fee round trip.",
+   "observed_or_proved": "M1/M2 keeper pay equals credited restocking fees over 5 cycles; overbid neutralised; M7 closeout sweeps to 0; mint-fee open/close round trip exact. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/Security.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-security.log",
+   "sha256": "115a7903c5f9c0190a7a3418822af08e82ed6184bfebb396b0c1d2376f989446"
+  },
+  "EV_lbecon": {
+   "kind": "test",
+   "claim": "Lane B economic scenarios including curated-NFT sale money attribution.",
+   "observed_or_proved": "No confirmed exploit in exercised paths; fund keeps NFT sale money while at/above reserve. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/Econ.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-econ.log",
+   "sha256": "1df8fef89a7b330037a44c89440435c4bd9a6ce081050c3f7e6a2d65e46d4f23"
+  },
+  "EV_route": {
+   "kind": "test",
+   "claim": "Lane B real VRF route verification: coordinator 0xD7f8..893a -> FWA service rawFulfillRandomWords -> pool processAcquisitions.",
+   "observed_or_proved": "Real Chainlink coordinator->service->pool settlement route confirmed; the coordinator requestId equals the pool acquire return; service bookkeeping intact, no coverage failure. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/lane_b FOUNDRY_OUT=audit/round9/lane_b/out FOUNDRY_CACHE_PATH=audit/round9/lane_b/cache forge test --match-path audit/round9/lane_b/ProbeRoute.t.sol",
+   "exit_code": 0,
+   "file": "evidence/laneB-route.log",
+   "sha256": "588e5456fef0c62ba65706c4739a7f38674f8e8b4b53de72c5cfe6a2719355a2"
+  },
+  "EV_fullcycle": {
+   "kind": "test",
+   "claim": "Integration full-stack real deploy: Deploy.s.sol postflight readbacks on a real fork.",
+   "observed_or_proved": "Every Deploy.s.sol readback holds: factory wiring, keeper admin set+open, implementation locked (creator==address(1)), impl FWA/SHAPES/ENS/PACKS wiring, packs.shapes()==SHAPES, MIN_PACK_VALUE==0.02 ETH, code present. 8 passed.",
+   "command": "FOUNDRY_TEST=audit/round9/integration FOUNDRY_OUT=audit/round9/integration/out FOUNDRY_CACHE_PATH=audit/round9/integration/cache forge test --match-path audit/round9/integration/FullCycle.t.sol",
+   "exit_code": 0,
+   "file": "evidence/integ-fullcycle-all.log",
+   "sha256": "9826291e908ff315c93889e16b3de9c4257611f008c4ce6a9f39ba933c3d5de2"
+  },
+  "EV_draw": {
+   "kind": "test",
+   "claim": "Integration full draw cycle to prize delivery and restock via real VRF 2.5 fulfilment.",
+   "observed_or_proved": "deploy->configure->list+restock->open->real acquire->real VRF fulfilment->settlement->prize Shape delivered to winner->keeper reconcile+restock->admission reopens; keeperCredit and profit net to 0; inventory restored. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/integration FOUNDRY_OUT=audit/round9/integration/out FOUNDRY_CACHE_PATH=audit/round9/integration/cache forge test --match-path audit/round9/integration/FullCycle.t.sol --match-test test_full_draw_cycle",
+   "exit_code": 0,
+   "file": "evidence/integ-fullcycle-draw.log",
+   "sha256": "a4b5c7f6a9192d498b0885f350b170b158316590db4f9cb149105066d1fad786"
+  },
+  "EV_timing": {
+   "kind": "test",
+   "claim": "Integration gas-price-0 quote/upkeep hazard and stale inventory-version revert.",
+   "observed_or_proved": "Gas-price-0 quote under-funds the real inclusion total and the acquire reverts; gas-price-0 upkeep under-reports reward; no repo caller simulates at 0. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/integration FOUNDRY_OUT=audit/round9/integration/out FOUNDRY_CACHE_PATH=audit/round9/integration/cache forge test --match-path audit/round9/integration/FwaVrfTiming.t.sol",
+   "exit_code": 0,
+   "file": "evidence/integ-fullcycle-timing.log",
+   "sha256": "5e1b0ce83f47b693249a4f4d4af9039273d79130ad0e8c751f2e6b0023c88393"
+  },
+  "EV_worstgas": {
+   "kind": "test",
+   "claim": "Integration worst-case upkeep gas vs keeper floor: true 5-draw burst reconciled+restocked in one upkeep.",
+   "observed_or_proved": "5-draw burst upkeep = 2,526,347 gas, under the keeper UPKEEP_GAS_FLOOR of 4,000,000 with ~1.5M margin; work between estimate and inclusion is absorbed. Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/integration FOUNDRY_OUT=audit/round9/integration/out FOUNDRY_CACHE_PATH=audit/round9/integration/cache forge test --match-path audit/round9/integration/FullCycle.t.sol --match-test test_worstcase_5draw_upkeep_gas",
+   "exit_code": 0,
+   "file": "evidence/integ-fullcycle-worstgas.log",
+   "sha256": "a96691dddaa65d6f6b1cf68c50143d36abfcaa70603482a514383afe42e89eec"
+  },
+  "EV_restock": {
+   "kind": "test",
+   "claim": "Integration restock vs pending draw: a keeper restock bumps inventoryVersion and invalidates an old-version acquire.",
+   "observed_or_proved": "A listing bumps inventoryVersion 2->3; an acquire pinning the old version reverts, the same acquire pinning the current version succeeds (FWA refunds, no principal loss). Passed.",
+   "command": "FOUNDRY_TEST=audit/round9/integration FOUNDRY_OUT=audit/round9/integration/out FOUNDRY_CACHE_PATH=audit/round9/integration/cache forge test --match-path audit/round9/integration/RestockInventoryVersion.t.sol",
+   "exit_code": 0,
+   "file": "evidence/integ-restock-invversion.log",
+   "sha256": "b5afed38207fa7923a9e9b630d156037c282c480e83555ebac56d12964b5dccb"
+  }
+ },
+ "detector_triage": {
+  "09f87709f411fb9331256897fbd37b14cc60a40735f127198efec9f41c819122": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-exp in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "463effadf8f945a0012311ccae819a5b6c93acfe0a5edf3855c362ec3bb996b2": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-exp in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "1b91f265160219fa556d6958cc4f1585f38b365829290d1b32bbe75469b1944a": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Reentrancy flagged on _fillDeficit/performUpkeep; the whole call is nonReentrant, external calls go to trusted Shapes/Packs/FWA, and the reward transfer is the last state change except the profit clamp. Reward-callback reentrancy probed and blocked.",
+   "evidence_ids": [
+    "EV_keeperreent",
+    "EV_draw"
+   ]
+  },
+  "27b8ddfd0c34fb8866fb5aaaf156369a45f76774d9d79f883678035b7af2150a": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Reentrancy flagged on _fillDeficit/performUpkeep; the whole call is nonReentrant, external calls go to trusted Shapes/Packs/FWA, and the reward transfer is the last state change except the profit clamp. Reward-callback reentrancy probed and blocked.",
+   "evidence_ids": [
+    "EV_keeperreent",
+    "EV_draw"
+   ]
+  },
+  "5a877ff0fb2420c1da87c36550ee3cd1ba221db28b8c9f8c3dea46441afbdcf4": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "78ae51650d5d44f0aa20eb49a41638c2729285635654c179f3facd7d7275f48d": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "9b60c22720c288114e71ad338ec78c3924dfe9c6a45997c9b0fc3919958637c5": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "abe866b8846d825beaced96acac5dd63706229e5a9ad541410e99c294549bc16": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "c7fdde091768e56fabe7b8b5ba07c1e21756b3212de7c75375049e992ca5776a": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "c9732fb0632604823a9cc54f673fe115ff9be011825b13f473911bfa42cd7b89": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "fc53a449b6d62523d64704d84554f4e5ad2cfbd7b4f24c28c171ec57a68c481e": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "incorrect-shift in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "1dec5a4cea5de73672765b80a093d409b18716ae5443c811db0e3bea75ded70c": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "divide-before-multiply in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "465adc5f75f9f6f08708549754f782b1c4e3c9c2dc0cdce86217a62bff1a988d": {
+   "outcome": "held",
+   "path_id": "P3_split_m9_violation",
+   "reason": "configure computes n*(1e36/price) to mirror FWA's per-listing inverse weight; dividing first intentionally matches FWA's per-listing rounding, exercised by the configure-bounds test.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "738f82ffcc328e555c4a76830e0d9dc05f4b72e1dcdcc45d3b6795312b82972e": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "divide-before-multiply in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "e656c916aea5fb1919b941bd2eb57087692e4f557bb30f99ccc436d92dc310fb": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "divide-before-multiply in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "4cb83f25c68e06516f292c319e33d49e8ca6cad014bf6c66c92ad5b6e4bca048": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Strict ==0 checks on counts/amounts in performUpkeep/_fillDeficit/_payKeeper, not on balances an attacker can nudge; exercised by the keeper/gas runs.",
+   "evidence_ids": [
+    "EV_gas"
+   ]
+  },
+  "d3517827cdd48d5fd4cfc0a24dbf0a23fe4e1abcf38c5c79f7eadca854bc5217": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Strict ==0 checks on counts/amounts in performUpkeep/_fillDeficit/_payKeeper, not on balances an attacker can nudge; exercised by the keeper/gas runs.",
+   "evidence_ids": [
+    "EV_gas"
+   ]
+  },
+  "e638e39b90e650e561f8a3cd2a6e1310028caf5c5ff0492a2db021315776f7fe": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Strict ==0 checks on counts/amounts in performUpkeep/_fillDeficit/_payKeeper, not on balances an attacker can nudge; exercised by the keeper/gas runs.",
+   "evidence_ids": [
+    "EV_gas"
+   ]
+  },
+  "38e70181ffda0bcc9a2614cef8c70ef72f8ddbbc327d024def33cf3a11683c4c": {
+   "outcome": "held",
+   "path_id": "P5_reserve_protection",
+   "reason": "claimSurplus updates profit before the ETH transfer to the recipient and is nonReentrant; _collect calls trusted FWA withdrawOwnerProceeds. No exploitable reentrancy reachable.",
+   "evidence_ids": [
+    "EV_belowreserve"
+   ]
+  },
+  "4043abb70e55b790a4b6b56f0f3fed5c744102c50fae3a17de5d07f940950386": {
+   "outcome": "held",
+   "path_id": "P3_split_m9_violation",
+   "reason": "updateCuratedPrice calls trusted FWA updatePrice; curated items carry zero profit share so no value attribution changes on reentry, and the call is nonReentrant.",
+   "evidence_ids": [
+    "EV_m9extent"
+   ]
+  },
+  "1ca0c07904b0363968743ada551aee98479306c52221169c29fdc6266dd3ccaa": {
+   "outcome": "held",
+   "path_id": "P1_accessors",
+   "reason": "Zero-initialized accumulators (largest/units) in requiredReserve before the loop; standard zero-init read-only computation, exercised at rest by the stateful cycle.",
+   "evidence_ids": [
+    "EV_stateful"
+   ]
+  },
+  "1cd5f43085774237fc823ba6b3eb40cc7073fbf1b620df4efb6eec2789a5ea36": {
+   "outcome": "held",
+   "path_id": "P3_split_m9_violation",
+   "reason": "Zero-initialized accumulators (prizes/w) in configure before the summation loop; standard Solidity zero-init, exercised by configure-bounds and the split tests.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "24233dd2420667cfbdac85f0d2eeb2b5af854ba3fc570dbcd9322d4817524846": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Zero-initialized ops accumulator in performUpkeep before the loop fills it; standard zero-init, exercised by the full draw cycle.",
+   "evidence_ids": [
+    "EV_draw"
+   ]
+  },
+  "b4947e3dbc486bf593661d5abd74b60e5d67e258c0d279474bab476f4aae2881": {
+   "outcome": "held",
+   "path_id": "P1_accessors",
+   "reason": "Zero-initialized accumulators (largest/units) in requiredReserve before the loop; standard zero-init read-only computation, exercised at rest by the stateful cycle.",
+   "evidence_ids": [
+    "EV_stateful"
+   ]
+  },
+  "e5c2b16bb2d357526e4a404240870db66e01fe35daa8f600075d923ff83797ff": {
+   "outcome": "held",
+   "path_id": "P3_split_m9_violation",
+   "reason": "Zero-initialized accumulators (prizes/w) in configure before the summation loop; standard Solidity zero-init, exercised by configure-bounds and the split tests.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "1550c3f5e942f2dba1e71e7449befaa12643b3f333b47c4af4d9efaee9e114e0": {
+   "outcome": "held",
+   "path_id": "P8_refund_open_questions",
+   "reason": "Partial tuple destructuring of an FWA getter in recoverRefunded; the unused field is not needed and does not affect the recovery ledger, exercised by the refund test.",
+   "evidence_ids": [
+    "EV_refund"
+   ]
+  },
+  "220de2d6b67a932f02e49fefdb1d7d1fbd43155105b98d0b0309ec0673600f10": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Partial tuple destructuring of FWA getters in _withdrawAndRedeem/performUpkeep; the dropped fields are not needed for reconcile/redeem, exercised by the draw cycle and pack lifecycle.",
+   "evidence_ids": [
+    "EV_draw",
+    "EV_packs"
+   ]
+  },
+  "43485931597ff42f2d74d23901b229f10b7c7bfa07a52e25e6b796d8242fe0bf": {
+   "outcome": "held",
+   "path_id": "P4_keeper_restock_delivery",
+   "reason": "Partial tuple destructuring of FWA getters in _withdrawAndRedeem/performUpkeep; the dropped fields are not needed for reconcile/redeem, exercised by the draw cycle and pack lifecycle.",
+   "evidence_ids": [
+    "EV_draw",
+    "EV_packs"
+   ]
+  },
+  "68cd2dbd6b3a6b591c7b0ceb0f770f012e0dd849ee1fee0b37093d931702516d": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "ENS reverse setName returns a node that is intentionally not used; no state depends on it, exercised by the only-creator matrix calling setENSName.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "12a6edcf19a4eb488cac65f2f0d97b2088f685cedac9b201dd5dbe97a8a86ae5": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "2034acc00c3f8a17ad97e0d932e7b4f98af0d390968d439b3b9cb5bdc87acd57": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "22f90abab8c875c61f2e2a674601237d63be68b67815434fd92666ffa184b2fd": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "32d33486337cb865e252595562a1fac092228aa2b62f61f807f188698134ee88": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "4013ced37a4e2a07961f60c6e75f9ce0960817630fd7bea4d6c0b8a823e7a65c": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "49e3b7c290b5a0a1326f726060bfea1efcbc7d44218c4a1252280cfe0ef19453": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "7e9f05581dcd8f57cd9e083e9f31f0b1c9baa6227c8436851d5b3abcc20a3fd6": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "82b4ae6bdcc956e9750c9f73a3d53df199be7de63808ca5ed2d532e0e812737d": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "a54acc6f73c89757bc6272aea1437cbda1e6fa2d74ad1b70d8dcb218b10fe64f": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "ad5a625428522cc514c2f43f820da517bafa32e98846377d9ad37b0c81acda66": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  },
+  "c3f1d727431942f026cf66feaa4897aeb55e0443cd416aa024a0f14a9e2b4ae5": {
+   "outcome": "held",
+   "path_id": "P2_authorization_admin",
+   "reason": "write-after-write in an audited Solady library (LibString/LibBytes/SignatureCheckerLib/SafeTransferLib); a known Slither false-positive assembly idiom, not re-audited line by line, exercised through the pool-page signature path.",
+   "evidence_ids": [
+    "EV_security"
+   ]
+  }
+ },
+ "independent_review": {
+  "file": "../challenge/evidence-challenge.md",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "status": "pending",
+  "inventory_challenge": "PENDING - a separate challenger is writing audit/round9/challenge/evidence-challenge.md; it does not exist at gate-run time, so the inventory challenge is not yet available and is withheld.",
+  "evidence_challenge": "PENDING - no independent evidence challenge has been delivered yet; every postcondition acceptance is therefore withheld and the gate is expected to report the review as incomplete.",
+  "postcondition_review": {}
+ }
+}

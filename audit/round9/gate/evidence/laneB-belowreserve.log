@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round9/lane_b/AddendumBelowReserve.t.sol:AddendumBelowReserveTest
+[PASS] testBelowReserveSafety() (gas: 24430566)
+[PASS] testMarkupChangeOverbooking() (gas: 14143897)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 298.62ms (595.04ms CPU time)
+
+Ran 1 test suite in 301.77ms (298.62ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

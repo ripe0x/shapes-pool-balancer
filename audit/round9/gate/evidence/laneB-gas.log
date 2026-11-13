@@ -1,0 +1,10 @@
+No files changed, compilation skipped
+
+Ran 4 tests for audit/round9/lane_b/AddendumGas.t.sol:AddendumGasTest
+[PASS] test1gwei() (gas: 47055682)
+[PASS] test3gwei() (gas: 45752948)
+[PASS] test4p9gwei() (gas: 45793909)
+[PASS] testAbove5gweiCapAndLiveness() (gas: 20053299)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 363.19ms (1.31s CPU time)
+
+Ran 1 test suite in 365.65ms (363.19ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

@@ -1,0 +1,28 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.54s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/AddendumScale.t.sol:34:9:
+   |
+34 |         uint256 player0;
+   |         ^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> audit/round9/lane_b/Harness2.sol:133:5:
+    |
+133 |     function _findReqId() internal returns (uint256 clReqId) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for audit/round9/lane_b/AddendumScale.t.sol:AddendumScaleTest
+[PASS] testDrawsInFlightBurst() (gas: 21851088)
+Logs:
+  reachable in-flight burst depth 3
+  unsettled at cap / admissionStatus 3 6
+  unsettled after settle 0
+  admissionStatus after reconcile+restock 0
+  profit (should be bounded, fund protected) 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 259.67ms (259.35ms CPU time)
+
+Ran 1 test suite in 262.30ms (259.67ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

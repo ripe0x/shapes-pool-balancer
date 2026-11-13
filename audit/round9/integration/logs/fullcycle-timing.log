@@ -1,0 +1,46 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.25s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+   --> audit/round9/integration/FullCycle.t.sol:111:73:
+    |
+111 |         (address purch, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tok) = pool.acquisitions(reqId);
+    |                                                                         ^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> audit/round9/integration/FullCycle.t.sol:168:10:
+    |
+168 |         (uint256 acqReqId, uint256 lid) = _acquireAndFulfil(player, uint256(keccak256("w0")));
+    |          ^^^^^^^^^^^^^^^^
+
+
+Ran 4 tests for audit/round9/integration/FullCycle.t.sol:FullCycleTest
+[PASS] test_gasZeroQuote_underfunds_purchase() (gas: 230240)
+Logs:
+  vrf @ gasprice0 quote: 0
+  vrf @ inclusion 1gwei: 2340000000000000
+  total quoted @0 (sent): 18854431194541526
+  total required @1gwei: 21194431194541526
+
+[PASS] test_gasZeroSim_underreports_upkeep_reward() (gas: 2559290)
+Logs:
+  chainlink requestId: 94782623901646048224103269094433485951264266060021871943327168528472285848174
+  vrf consumer (sender): 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  upkeep reward simulated @ gasprice0: 500000000000000
+  upkeep reward @ gasprice1: 1145000000000000
+
+[PASS] test_staleInventoryVersion_reverts_draw() (gas: 1317672)
+Logs:
+  ivOld: 2
+  ivNew: 3
+
+[PASS] test_upkeep_gas_vs_keeper_floor() (gas: 1892465)
+Logs:
+  draws reconciled in one upkeep: 1
+  upkeep gasUsed (test-frame): 796704
+  KEEPER UPKEEP_GAS_FLOOR: 4000000
+  KEEPER_MAX_GAS (reward cap): 3200000
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 323.07ms (14.14ms CPU time)
+
+Ran 1 test suite in 345.29ms (323.07ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

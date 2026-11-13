@@ -1,0 +1,23 @@
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round9/lane_a/addendum/RefundPath.t.sol:RefundPath
+[PASS] testCuratedFailedDeliveryRecovered() (gas: 95487313)
+Logs:
+  hostile curated PENDING; FWA status: 6
+  pool ownerProceeds (failed draw): 0
+  player balance before refund: 0
+  player refunded (wei): 0
+  pool ownerProceeds after refund: 0
+  FWA status after player refund: 7
+  curated recovered; eth: 0
+
+[PASS] testDeliveryFailureRefundLedger() (gas: 7237801)
+Logs:
+  drawn lid: 4
+  drawn item kind/denom/state: 0 0 0
+  FWA listing status: 4
+  delivery did NOT fail; FWA used plain transferFrom; reconciliation not bricked
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 349.50ms (65.68ms CPU time)
+
+Ran 1 test suite in 352.40ms (349.50ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

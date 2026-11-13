@@ -1,0 +1,30 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.07s
+Compiler run successful with warnings:
+Warning (2018): Function state mutability can be restricted to view
+   --> audit/round9/lane_b/Harness2.sol:133:5:
+    |
+133 |     function _findReqId() internal returns (uint256 clReqId) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 2 tests for audit/round9/lane_b/AddendumBelowReserve.t.sol:AddendumBelowReserveTest
+[PASS] testBelowReserveSafety() (gas: 24430566)
+Logs:
+  after big win(s): balance / reserve / fund 697500000000000000 1051500000000000000 697500000000000000
+  hit2 (second big win) 0
+  profit 0
+  below reserve? 1
+  after refill: admissionStatus 0
+  after refill: balance / reserve 1482898239746003090 534000000000000000
+
+[PASS] testMarkupChangeOverbooking() (gas: 14143897)
+Logs:
+  uncollected proceeds from 10%-markup big win 944685939222251505
+  below reserve at collect? 1
+  profit booked from the 10%-markup proceeds 0
+  OVER-BOOKED fund->profit (wei) 0
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 306.03ms (569.83ms CPU time)
+
+Ran 1 test suite in 308.68ms (306.03ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)
