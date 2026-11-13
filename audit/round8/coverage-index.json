@@ -1,0 +1,1418 @@
+{
+  "pool": {
+    "entrypoints": [
+      {
+        "id": "PoolBalancer.ENS[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:136",
+        "kind": "generated_getter",
+        "path_ids": [
+          "cb79cc7ac75fecfc00df"
+        ]
+      },
+      {
+        "id": "PoolBalancer.FWA_FACTORY[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:131",
+        "kind": "generated_getter",
+        "path_ids": [
+          "02c0b19ce1b2fa79e5ba"
+        ]
+      },
+      {
+        "id": "PoolBalancer.FWA_IMPLEMENTATION[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:132",
+        "kind": "generated_getter",
+        "path_ids": [
+          "8622a6aa56315ab73de1"
+        ]
+      },
+      {
+        "id": "PoolBalancer.FWA_IMPLEMENTATION_CODEHASH[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:133",
+        "kind": "generated_getter",
+        "path_ids": [
+          "3c7c070f1afb8c81db76"
+        ]
+      },
+      {
+        "id": "PoolBalancer.MAX_BATCH[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:46",
+        "kind": "generated_getter",
+        "path_ids": [
+          "4fc12006e46582237849"
+        ]
+      },
+      {
+        "id": "PoolBalancer.MAX_KEEPER_REWARD[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:98",
+        "kind": "generated_getter",
+        "path_ids": [
+          "4015680396d720988503"
+        ]
+      },
+      {
+        "id": "PoolBalancer.PACKS[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:135",
+        "kind": "generated_getter",
+        "path_ids": [
+          "656ce180f6585ab4c869"
+        ]
+      },
+      {
+        "id": "PoolBalancer.SHAPES[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:134",
+        "kind": "generated_getter",
+        "path_ids": [
+          "4ba061f587d122dc6e10"
+        ]
+      },
+      {
+        "id": "PoolBalancer.acceptCreator()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:294",
+        "kind": "function",
+        "path_ids": [
+          "21d73db3aca0ca6b965c"
+        ]
+      },
+      {
+        "id": "PoolBalancer.admissionStatus()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:542",
+        "kind": "function",
+        "path_ids": [
+          "16b3c7316c2043ae639d",
+          "656863b665c3fc6956a6",
+          "9e8ac22d6185ebf72216",
+          "e7d586a675d1ede966fb"
+        ]
+      },
+      {
+        "id": "PoolBalancer.approvePoolPage(string,bytes32)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:507",
+        "kind": "function",
+        "path_ids": [
+          "0c8511f989231608ecbe",
+          "13f166e0b88d6b7a1dba",
+          "255a5616481808a99c30",
+          "2de9589a33811c6c0108",
+          "6197a519a886e4dd7bb9",
+          "7ffbfd7170440aecfa34",
+          "d78ab5905f11c000bf20",
+          "d857b9a8af83f4595b80",
+          "daca36005eb555ab1641",
+          "df30fd6764f841bbca14",
+          "ef4960c7799481930986",
+          "fa4eacf724bf4941bf8a"
+        ]
+      },
+      {
+        "id": "PoolBalancer.canPurchase(address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:531",
+        "kind": "function",
+        "path_ids": [
+          "20804ebc9adf2705f89d",
+          "5c54bddbe0ea1de27a6f",
+          "999954e393e03a06aaf6",
+          "a882c4079a69d2b4b80b"
+        ]
+      },
+      {
+        "id": "PoolBalancer.claimSurplus(uint256,address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:456",
+        "kind": "function",
+        "path_ids": [
+          "3c8da24684988e752b19",
+          "54ced1cada32dcf7598e",
+          "92e6e1303bebc6fbb9c8",
+          "af8711499dcc1429cddc",
+          "c0e910903a9f269cfa3f",
+          "c845d7c9bfedd9499ed4",
+          "e81d6f03431a52c0af58"
+        ]
+      },
+      {
+        "id": "PoolBalancer.close()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:335",
+        "kind": "function",
+        "path_ids": [
+          "1919c40f47dcd530e68e",
+          "616483deddce54514983",
+          "db8b8134609784e70d8e"
+        ]
+      },
+      {
+        "id": "PoolBalancer.collectProceeds()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:451",
+        "kind": "function",
+        "path_ids": [
+          "2cd0c84e80ed3da19542",
+          "62dc6a8b6c0bdad9df58",
+          "79169083e3fa6938c380"
+        ]
+      },
+      {
+        "id": "PoolBalancer.configure(uint16,uint256)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:304",
+        "kind": "function",
+        "path_ids": [
+          "14e996ac5b7696b0de67",
+          "3667c65e8c0d34115df5"
+        ]
+      },
+      {
+        "id": "PoolBalancer.creatorWork[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:159",
+        "kind": "generated_getter",
+        "path_ids": [
+          "83782fea9a81f8d250ed"
+        ]
+      },
+      {
+        "id": "PoolBalancer.creator[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:150",
+        "kind": "generated_getter",
+        "path_ids": [
+          "24ac08d08ae908b3609f"
+        ]
+      },
+      {
+        "id": "PoolBalancer.denominationAmount(uint256)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:771",
+        "kind": "function",
+        "path_ids": [
+          "adc9ce4cfe7229d7138d"
+        ]
+      },
+      {
+        "id": "PoolBalancer.depositETH()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:446",
+        "kind": "function",
+        "path_ids": [
+          "15ee156cf9ee4a671aed"
+        ]
+      },
+      {
+        "id": "PoolBalancer.enabled[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:157",
+        "kind": "generated_getter",
+        "path_ids": [
+          "2f7f04ceb39a35210884"
+        ]
+      },
+      {
+        "id": "PoolBalancer.factory[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:179",
+        "kind": "generated_getter",
+        "path_ids": [
+          "8fda1cec828c1e3dac1a"
+        ]
+      },
+      {
+        "id": "PoolBalancer.getActiveIds()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:763",
+        "kind": "function",
+        "path_ids": [
+          "b153c2ac3b6c1da6e2a9"
+        ]
+      },
+      {
+        "id": "PoolBalancer.getActiveShapes()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:767",
+        "kind": "function",
+        "path_ids": [
+          "23b0dca6a3b2b118077c"
+        ]
+      },
+      {
+        "id": "PoolBalancer.initialize(address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:256",
+        "kind": "function",
+        "path_ids": [
+          "0248155e7607ed4da1f3",
+          "25a6f6c7e145bd46fa9f",
+          "571d85806d5daec52c14",
+          "63f9665646ad9b394d39",
+          "82fcfd0622d4a3d24a73",
+          "9d4bcbad1853d47e4ff4",
+          "afb686944ce30bc3a075",
+          "afeb3651fceea8444a80",
+          "d81ac1c9e969292fc19d"
+        ]
+      },
+      {
+        "id": "PoolBalancer.isValidSignature(bytes32,bytes)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:519",
+        "kind": "function",
+        "path_ids": [
+          "28b87bd924016f010935"
+        ]
+      },
+      {
+        "id": "PoolBalancer.items[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:170",
+        "kind": "generated_getter",
+        "path_ids": [
+          "0d8994dbf358f7c2bef4"
+        ]
+      },
+      {
+        "id": "PoolBalancer.keeperCredit[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:162",
+        "kind": "generated_getter",
+        "path_ids": [
+          "d621079d6d2a64edeea9"
+        ]
+      },
+      {
+        "id": "PoolBalancer.listCurated(address,uint256,uint256)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:353",
+        "kind": "function",
+        "path_ids": [
+          "12255e8905bd0aaa69cd",
+          "868b9b490d969c994129",
+          "c7def5213fbe89e732a7",
+          "ef59f6a0b9ec2792c523",
+          "f92c088670e86eb2fbd1"
+        ]
+      },
+      {
+        "id": "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:364",
+        "kind": "function",
+        "path_ids": [
+          "34597e177bb1d98ef9de",
+          "3698c075bf5729f7460a",
+          "5abc130f2746189cef08",
+          "c746902e71bf7d1c8bff",
+          "ccbada6828906aac799b"
+        ]
+      },
+      {
+        "id": "PoolBalancer.markupBps[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:156",
+        "kind": "generated_getter",
+        "path_ids": [
+          "1db85fe02186e2acffac"
+        ]
+      },
+      {
+        "id": "PoolBalancer.mintFeeCap[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:164",
+        "kind": "generated_getter",
+        "path_ids": [
+          "8c762d65a4237fe05491"
+        ]
+      },
+      {
+        "id": "PoolBalancer.onERC721Received(address,address,uint256,bytes)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:779",
+        "kind": "function",
+        "path_ids": [
+          "0250048fd492cc1365c9"
+        ]
+      },
+      {
+        "id": "PoolBalancer.open()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:326",
+        "kind": "function",
+        "path_ids": [
+          "02082c462fdd54a874c7",
+          "62413110ede08e4882cd"
+        ]
+      },
+      {
+        "id": "PoolBalancer.pageEpoch[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:176",
+        "kind": "generated_getter",
+        "path_ids": [
+          "07ff835c57adb24c2e1b"
+        ]
+      },
+      {
+        "id": "PoolBalancer.pendingCreator[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:151",
+        "kind": "generated_getter",
+        "path_ids": [
+          "a1d11f00a93bbd0f9d2e"
+        ]
+      },
+      {
+        "id": "PoolBalancer.performUpkeep()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:562",
+        "kind": "function",
+        "path_ids": [
+          "228837e05ce84e4d9019",
+          "242db05d7a8071c027e6",
+          "2ffbb5772705b1a6b8b4",
+          "3bf8537125f3bdcf8cd3",
+          "48208bff89da5b8c72d5",
+          "4b187fbb135f6acd7118",
+          "93cec2700f6f4a0b7d58",
+          "aef756bceb4cedf90097",
+          "bb9c43dbd3f4a7ffbcdd",
+          "bec9253fc47298d51d8b",
+          "c0382570f1fd8620a228",
+          "c16cbbd1a47fbe6fb3fa",
+          "cd2f399fdc068784dda2",
+          "d70f8f79b2a5b5c9c3ca",
+          "ee9dc6da36a363b1b1fa"
+        ]
+      },
+      {
+        "id": "PoolBalancer.pool[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:152",
+        "kind": "generated_getter",
+        "path_ids": [
+          "248694923689765332d9"
+        ]
+      },
+      {
+        "id": "PoolBalancer.prizeWeight[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:167",
+        "kind": "generated_getter",
+        "path_ids": [
+          "8a7177b643de7f8705db"
+        ]
+      },
+      {
+        "id": "PoolBalancer.receive()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:444",
+        "kind": "function",
+        "path_ids": [
+          "032762b42e1f42419659"
+        ]
+      },
+      {
+        "id": "PoolBalancer.reconciledSequence[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:160",
+        "kind": "generated_getter",
+        "path_ids": [
+          "9d706e854db8891a7686"
+        ]
+      },
+      {
+        "id": "PoolBalancer.recoverRefunded(uint256,address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:412",
+        "kind": "function",
+        "path_ids": [
+          "0c1819581c8552c3e4ea",
+          "279a01380efe3f7ae899",
+          "3dbbece3172302d02803",
+          "459c0e8cc22470d17b3b",
+          "c48384c817323b9475b4",
+          "c64325591372271f6b0e"
+        ]
+      },
+      {
+        "id": "PoolBalancer.recoverUntrackedNFT(address,uint256,address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:432",
+        "kind": "function",
+        "path_ids": [
+          "7159596cba3f4cd39ffc",
+          "9a2988ce82556c45a316",
+          "cd76903fce6957b169ba"
+        ]
+      },
+      {
+        "id": "PoolBalancer.requiredReserve()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:738",
+        "kind": "function",
+        "path_ids": [
+          "47f707f00a7f203a4f18",
+          "a43641dd2c082d643397",
+          "e0bca56c5c025ea6d2c1"
+        ]
+      },
+      {
+        "id": "PoolBalancer.restockFee()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:861",
+        "kind": "function",
+        "path_ids": [
+          "1279af006e95d548b181"
+        ]
+      },
+      {
+        "id": "PoolBalancer.retire()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:480",
+        "kind": "function",
+        "path_ids": [
+          "53cd52643408c8e2a521",
+          "5eab1decf31d7eadebb3"
+        ]
+      },
+      {
+        "id": "PoolBalancer.revokePoolPages()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:514",
+        "kind": "function",
+        "path_ids": [
+          "5e0d507ef1d89fab46ad"
+        ]
+      },
+      {
+        "id": "PoolBalancer.setENSName(string)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:491",
+        "kind": "function",
+        "path_ids": [
+          "0f809b617687f3592a06",
+          "8cc7fbf0b26d545a4a84",
+          "9487528b4af9848a81eb"
+        ]
+      },
+      {
+        "id": "PoolBalancer.targetWeight[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:168",
+        "kind": "generated_getter",
+        "path_ids": [
+          "e1f2874244c5f05ff994"
+        ]
+      },
+      {
+        "id": "PoolBalancer.target[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:155",
+        "kind": "generated_getter",
+        "path_ids": [
+          "f76a581148876e2bde57"
+        ]
+      },
+      {
+        "id": "PoolBalancer.transferCreator(address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:289",
+        "kind": "function",
+        "path_ids": [
+          "b89defdad1efe0cf4aec"
+        ]
+      },
+      {
+        "id": "PoolBalancer.unlistShapes(uint256[])",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:467",
+        "kind": "function",
+        "path_ids": [
+          "06ee57ddcc85f28209ed",
+          "1a26aef731695a246735",
+          "bdaf99dbf63525ff302d",
+          "d5cf9f79ff49ec13dac0",
+          "fa6523e9c6547f8bd3cb"
+        ]
+      },
+      {
+        "id": "PoolBalancer.updateCuratedPrice(uint256,uint256)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:385",
+        "kind": "function",
+        "path_ids": [
+          "ea7b029c91845183ebab",
+          "fbe068aeb666f479f74f"
+        ]
+      },
+      {
+        "id": "PoolBalancer.withdrawCurated(uint256,address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:399",
+        "kind": "function",
+        "path_ids": [
+          "0eba785d388ba6962f1e",
+          "cb80db9c0a94539ba829"
+        ]
+      },
+      {
+        "id": "PoolBalancer.withdrawableSurplus()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:729",
+        "kind": "function",
+        "path_ids": [
+          "06c9ea5bcdaccfb530a2",
+          "c98387d5651e976883c6",
+          "daa9573be22363705da1"
+        ]
+      }
+    ],
+    "external_calls": [
+      {
+        "id": "782d827ee5d0d4bbf389",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:791",
+        "function": "PoolBalancer._collect()",
+        "operation": "TMP_4508(uint256) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:ownerProceeds, arguments:[]  ",
+        "path_ids": [
+          "2cd0c84e80ed3da19542",
+          "3c8da24684988e752b19",
+          "aef756bceb4cedf90097"
+        ]
+      },
+      {
+        "id": "4911698ccc2fad7e7b96",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:792",
+        "function": "PoolBalancer._collect()",
+        "operation": "TMP_4510(uint256) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:withdrawOwnerProceeds, arguments:[]  ",
+        "path_ids": [
+          "242db05d7a8071c027e6",
+          "62dc6a8b6c0bdad9df58",
+          "c845d7c9bfedd9499ed4"
+        ]
+      },
+      {
+        "id": "e3a0f5dadfa09c723fb0",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:674",
+        "function": "PoolBalancer._fillDeficit(IFWAPool,uint256)",
+        "operation": "TMP_4412(uint256) = HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:mintBatch, arguments:['TMP_4410', 'need'] value:TMP_4411 ",
+        "path_ids": [
+          "cd2f399fdc068784dda2"
+        ]
+      },
+      {
+        "id": "91d31976e5bd16024754",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:684",
+        "function": "PoolBalancer._fillDeficit(IFWAPool,uint256)",
+        "operation": "TMP_4427(uint256) = HIGH_LEVEL_CALL, dest:PACKS(IShapePacks), function:createPackTo, arguments:['TMP_4425', 'makeup', 'TMP_4426'] value:each ",
+        "path_ids": [
+          "c16cbbd1a47fbe6fb3fa"
+        ]
+      },
+      {
+        "id": "015cc9176307e59092ef",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:697",
+        "function": "PoolBalancer._fillDeficit(IFWAPool,uint256)",
+        "operation": "TMP_4443(uint256[]) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:listNFTs, arguments:['batch']  ",
+        "path_ids": [
+          "3bf8537125f3bdcf8cd3"
+        ]
+      },
+      {
+        "id": "8395586efd89dca22f1b",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:720",
+        "function": "PoolBalancer._payKeeper(uint256,bool)",
+        "operation": "LIBRARY_CALL, dest:SafeTransferLib, function:SafeTransferLib.forceSafeTransferETH(address,uint256), arguments:['msg.sender', 'reward'] ",
+        "path_ids": [
+          "bb9c43dbd3f4a7ffbcdd"
+        ]
+      },
+      {
+        "id": "8e1d9460715ad6a13a33",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:720",
+        "function": "PoolBalancer._payKeeper(uint256,bool)",
+        "operation": "LIBRARY_CALL, dest:SafeTransferLib, function:SafeTransferLib.forceSafeTransferETH(address,uint256), arguments:['msg.sender', 'reward'] ",
+        "path_ids": [
+          "93cec2700f6f4a0b7d58"
+        ]
+      },
+      {
+        "id": "8b5b53b53a38ec2a30a5",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:805",
+        "function": "PoolBalancer._pullCurated(address,uint256,uint256)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4528(IERC721Min), function:transferFrom, arguments:['msg.sender', 'TMP_4529', 'tokenId']  ",
+        "path_ids": [
+          "12255e8905bd0aaa69cd",
+          "ccbada6828906aac799b"
+        ]
+      },
+      {
+        "id": "e8da39b7ce9725b9c3ba",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:806",
+        "function": "PoolBalancer._pullCurated(address,uint256,uint256)",
+        "operation": "TMP_4532(address) = HIGH_LEVEL_CALL, dest:TMP_4531(IERC721Min), function:ownerOf, arguments:['tokenId']  ",
+        "path_ids": [
+          "c746902e71bf7d1c8bff",
+          "c7def5213fbe89e732a7"
+        ]
+      },
+      {
+        "id": "8ceb249d263c3155a2f6",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:807",
+        "function": "PoolBalancer._pullCurated(address,uint256,uint256)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4536(IERC721Min), function:approve, arguments:['TMP_4537', 'tokenId']  ",
+        "path_ids": [
+          "5abc130f2746189cef08",
+          "ef59f6a0b9ec2792c523"
+        ]
+      },
+      {
+        "id": "065590b34580e11c0141",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:643",
+        "function": "PoolBalancer._redeem(uint8,uint256)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4376(IShapePacks), function:redeem, arguments:['tokenId']  ",
+        "path_ids": [
+          "1a26aef731695a246735",
+          "c48384c817323b9475b4"
+        ]
+      },
+      {
+        "id": "67cfbdfc895dd3a91c94",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:643",
+        "function": "PoolBalancer._redeem(uint8,uint256)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4379(IShapePacks), function:redeem, arguments:['tokenId']  ",
+        "path_ids": [
+          "0c1819581c8552c3e4ea",
+          "fa6523e9c6547f8bd3cb"
+        ]
+      },
+      {
+        "id": "1e4942d893be94881bbd",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:624",
+        "function": "PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])",
+        "operation": "TUPLE_11(address,address,address,uint256,uint256,uint256,uint256,uint8) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:listings, arguments:['lid']  ",
+        "path_ids": [
+          "06ee57ddcc85f28209ed"
+        ]
+      },
+      {
+        "id": "eb7f0361f1e6b735d9a2",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:633",
+        "function": "PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])",
+        "operation": "HIGH_LEVEL_CALL, dest:p(IFWAPool), function:withdrawListingsTo, arguments:['lids', 'TMP_4365']  ",
+        "path_ids": [
+          "bdaf99dbf63525ff302d"
+        ]
+      },
+      {
+        "id": "3bd5c05236ef05e494da",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:547",
+        "function": "PoolBalancer.admissionStatus()",
+        "operation": "TMP_4292(uint256) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:unsettledAcquisitionCount, arguments:[]  ",
+        "path_ids": [
+          "16b3c7316c2043ae639d",
+          "20804ebc9adf2705f89d"
+        ]
+      },
+      {
+        "id": "30dea6111986f5ff6930",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:548",
+        "function": "PoolBalancer.admissionStatus()",
+        "operation": "TMP_4294(uint256) = HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:mintFee, arguments:[]  ",
+        "path_ids": [
+          "5c54bddbe0ea1de27a6f",
+          "9e8ac22d6185ebf72216"
+        ]
+      },
+      {
+        "id": "6bf38a468cb03e8f50f2",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:549",
+        "function": "PoolBalancer.admissionStatus()",
+        "operation": "TMP_4296(uint64) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:lastIssuedSequence, arguments:[]  ",
+        "path_ids": [
+          "a882c4079a69d2b4b80b",
+          "e7d586a675d1ede966fb"
+        ]
+      },
+      {
+        "id": "0cad7c4e9a4efd4a0aa8",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:508",
+        "function": "PoolBalancer.approvePoolPage(string,bytes32)",
+        "operation": "TMP_4267(bytes32) = LIBRARY_CALL, dest:PoolPage, function:PoolPage.digest(address,address,string,bytes32), arguments:['TMP_4265', 'TMP_4266', 'issuedAt', 'metadataHash'] ",
+        "path_ids": [
+          "0c8511f989231608ecbe",
+          "13f166e0b88d6b7a1dba",
+          "255a5616481808a99c30",
+          "2de9589a33811c6c0108",
+          "6197a519a886e4dd7bb9",
+          "d857b9a8af83f4595b80",
+          "daca36005eb555ab1641",
+          "df30fd6764f841bbca14",
+          "ef4960c7799481930986",
+          "fa4eacf724bf4941bf8a"
+        ]
+      },
+      {
+        "id": "a58a30f377576fe7922e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:508",
+        "function": "PoolBalancer.approvePoolPage(string,bytes32)",
+        "operation": "TMP_4267(bytes32) = LIBRARY_CALL, dest:PoolPage, function:PoolPage.digest(address,address,string,bytes32), arguments:['TMP_4265', 'TMP_4266', 'issuedAt', 'metadataHash'] ",
+        "path_ids": [
+          "7ffbfd7170440aecfa34"
+        ]
+      },
+      {
+        "id": "185a0ec143319d111745",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:460",
+        "function": "PoolBalancer.claimSurplus(uint256,address)",
+        "operation": "LIBRARY_CALL, dest:SafeTransferLib, function:SafeTransferLib.safeTransferETH(address,uint256), arguments:['to', 'amount'] ",
+        "path_ids": [
+          "54ced1cada32dcf7598e"
+        ]
+      },
+      {
+        "id": "78b4fdcceaa3e7a25c8b",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:460",
+        "function": "PoolBalancer.claimSurplus(uint256,address)",
+        "operation": "LIBRARY_CALL, dest:SafeTransferLib, function:SafeTransferLib.safeTransferETH(address,uint256), arguments:['to', 'amount'] ",
+        "path_ids": [
+          "c0e910903a9f269cfa3f"
+        ]
+      },
+      {
+        "id": "a842be7343a61344c824",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:338",
+        "function": "PoolBalancer.close()",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:setBool, arguments:['ACQUISITIONS_ENABLED_KEY', 'False']  ",
+        "path_ids": [
+          "616483deddce54514983"
+        ]
+      },
+      {
+        "id": "cf4b893052a7239b4766",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:338",
+        "function": "PoolBalancer.close()",
+        "operation": "TMP_4144(bool) = HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:retired, arguments:[]  ",
+        "path_ids": [
+          "db8b8134609784e70d8e"
+        ]
+      },
+      {
+        "id": "14a244a023d93e77756b",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:307",
+        "function": "PoolBalancer.configure(uint16,uint256)",
+        "operation": "TMP_4124(uint256) = HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:mintFee, arguments:[]  ",
+        "path_ids": [
+          "3667c65e8c0d34115df5"
+        ]
+      },
+      {
+        "id": "ddefec059af2b974b429",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:244",
+        "function": "PoolBalancer.constructor(address,address,bytes32,address,address,address)",
+        "operation": "TMP_4054(uint8) = HIGH_LEVEL_CALL, dest:TMP_4053(IShapes), function:denominationCount, arguments:[]  ",
+        "path_ids": []
+      },
+      {
+        "id": "6192fcf5db71d78593fa",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:246",
+        "function": "PoolBalancer.constructor(address,address,bytes32,address,address,address)",
+        "operation": "TMP_4060(uint256) = HIGH_LEVEL_CALL, dest:TMP_4058(IShapes), function:denominationAt, arguments:['TMP_4059']  ",
+        "path_ids": []
+      },
+      {
+        "id": "0805c05190821c75a14f",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:248",
+        "function": "PoolBalancer.constructor(address,address,bytes32,address,address,address)",
+        "operation": "TMP_4065(address) = HIGH_LEVEL_CALL, dest:TMP_4064(IShapePacks), function:shapes, arguments:[]  ",
+        "path_ids": []
+      },
+      {
+        "id": "682ea0838bae1b4addab",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:248",
+        "function": "PoolBalancer.constructor(address,address,bytes32,address,address,address)",
+        "operation": "TMP_4068(uint256) = HIGH_LEVEL_CALL, dest:TMP_4067(IShapePacks), function:MIN_PACK_VALUE, arguments:[]  ",
+        "path_ids": []
+      },
+      {
+        "id": "1b39be8c309dc7e1d392",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:265",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "TMP_4084(uint16) = HIGH_LEVEL_CALL, dest:fwa(IFWAPoolFactory), function:maxAcquisitionsPerTx, arguments:[]  ",
+        "path_ids": [
+          "d81ac1c9e969292fc19d"
+        ]
+      },
+      {
+        "id": "655f317db5758d6ea2fe",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:265",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "TMP_4086(uint256) = HIGH_LEVEL_CALL, dest:fwa(IFWAPoolFactory), function:maxStagedListings, arguments:[]  ",
+        "path_ids": [
+          "571d85806d5daec52c14"
+        ]
+      },
+      {
+        "id": "fe118eb631f350000140",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:267",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "TMP_4091(address) = HIGH_LEVEL_CALL, dest:fwa(IFWAPoolFactory), function:createPool, arguments:['TMP_4090', 'FWA_IMPLEMENTATION']  ",
+        "path_ids": [
+          "0248155e7607ed4da1f3"
+        ]
+      },
+      {
+        "id": "5c80fa3eeaef1e4f7b4a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:268",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "TMP_4095(address) = HIGH_LEVEL_CALL, dest:TMP_4094(IFWAPool), function:owner, arguments:[]  ",
+        "path_ids": [
+          "82fcfd0622d4a3d24a73"
+        ]
+      },
+      {
+        "id": "b1fafdb9b1c085e6f808",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:268",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "TMP_4092(address) = HIGH_LEVEL_CALL, dest:fwa(IFWAPoolFactory), function:poolImplementation, arguments:['p']  ",
+        "path_ids": [
+          "63f9665646ad9b394d39"
+        ]
+      },
+      {
+        "id": "0560341b6cdda8be1db5",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:272",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4101(IFWAPool), function:setPurchaseOperator, arguments:['TMP_4102']  ",
+        "path_ids": [
+          "afeb3651fceea8444a80"
+        ]
+      },
+      {
+        "id": "7f9016adeae8e46d81bf",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:273",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:setApprovalForAll, arguments:['p', 'True']  ",
+        "path_ids": [
+          "25a6f6c7e145bd46fa9f"
+        ]
+      },
+      {
+        "id": "2e752dbed4d04d40f63f",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:274",
+        "function": "PoolBalancer.initialize(address)",
+        "operation": "HIGH_LEVEL_CALL, dest:PACKS(IShapePacks), function:setApprovalForAll, arguments:['p', 'True']  ",
+        "path_ids": [
+          "9d4bcbad1853d47e4ff4"
+        ]
+      },
+      {
+        "id": "6607eced789ee3a1ab72",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:360",
+        "function": "PoolBalancer.listCurated(address,uint256,uint256)",
+        "operation": "TMP_4150(uint256) = HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:listNFT, arguments:['collection', 'tokenId', 'price']  ",
+        "path_ids": [
+          "868b9b490d969c994129"
+        ]
+      },
+      {
+        "id": "d28fcc3cb9230193524e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:377",
+        "function": "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])",
+        "operation": "TMP_4163(uint256[]) = HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:listNFTs, arguments:['batch']  ",
+        "path_ids": [
+          "3698c075bf5729f7460a"
+        ]
+      },
+      {
+        "id": "6e256158313f76aaea8a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:330",
+        "function": "PoolBalancer.open()",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:setBool, arguments:['ACQUISITIONS_ENABLED_KEY', 'True']  ",
+        "path_ids": [
+          "02082c462fdd54a874c7"
+        ]
+      },
+      {
+        "id": "a4518e11263685d83d99",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:563",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4306(bool) = HIGH_LEVEL_CALL, dest:factory(IKeeperList), function:canKeep, arguments:['msg.sender']  ",
+        "path_ids": [
+          "4b187fbb135f6acd7118"
+        ]
+      },
+      {
+        "id": "9c7f83473ecc4bba8e05",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:569",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4311(uint64) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:nextSequenceToProcess, arguments:[]  ",
+        "path_ids": [
+          "d70f8f79b2a5b5c9c3ca"
+        ]
+      },
+      {
+        "id": "0a44b7b6a61d7c1de2f4",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:572",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4318(uint256) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:requestIdAtSequence, arguments:['s']  ",
+        "path_ids": [
+          "ee9dc6da36a363b1b1fa"
+        ]
+      },
+      {
+        "id": "5ebf33ce762cdce6a05e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:572",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TUPLE_10(address,uint256,uint256,uint256,uint8,bool) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:acquisitions, arguments:['TMP_4318']  ",
+        "path_ids": [
+          "48208bff89da5b8c72d5"
+        ]
+      },
+      {
+        "id": "135b9f22fd98a2aeb209",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:584",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4325(bool) = HIGH_LEVEL_CALL, dest:p(IFWAPool), function:retired, arguments:[]  ",
+        "path_ids": [
+          "c0382570f1fd8620a228"
+        ]
+      },
+      {
+        "id": "8600f06d858b93148725",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:584",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4328(bool) = HIGH_LEVEL_CALL, dest:FWA_FACTORY(IFWAPoolFactory), function:globalWithdrawOnly, arguments:[]  ",
+        "path_ids": [
+          "228837e05ce84e4d9019"
+        ]
+      },
+      {
+        "id": "c2b4e0838aa0519047a8",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:585",
+        "function": "PoolBalancer.performUpkeep()",
+        "operation": "TMP_4331(uint256) = HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:mintFee, arguments:[]  ",
+        "path_ids": [
+          "bec9253fc47298d51d8b"
+        ]
+      },
+      {
+        "id": "22d15abff230287e5d26",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:415",
+        "function": "PoolBalancer.recoverRefunded(uint256,address)",
+        "operation": "TUPLE_9(address,address,address,uint256,uint256,uint256,uint256,uint8) = HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:listings, arguments:['listingId']  ",
+        "path_ids": [
+          "279a01380efe3f7ae899"
+        ]
+      },
+      {
+        "id": "7962e4a15ce1cb58b92a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:420",
+        "function": "PoolBalancer.recoverRefunded(uint256,address)",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:recoverRefundedNFT, arguments:['listingId']  ",
+        "path_ids": [
+          "3dbbece3172302d02803"
+        ]
+      },
+      {
+        "id": "135888914d009f916073",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:421",
+        "function": "PoolBalancer.recoverRefunded(uint256,address)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4201(IERC721Min), function:safeTransferFrom, arguments:['TMP_4202', 'to', 'tokenId']  ",
+        "path_ids": [
+          "c64325591372271f6b0e"
+        ]
+      },
+      {
+        "id": "a983e0300d7ea8883eb1",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:435",
+        "function": "PoolBalancer.recoverUntrackedNFT(address,uint256,address)",
+        "operation": "TMP_4218(address) = HIGH_LEVEL_CALL, dest:TMP_4217(IERC721Min), function:ownerOf, arguments:['tokenId']  ",
+        "path_ids": [
+          "cd76903fce6957b169ba"
+        ]
+      },
+      {
+        "id": "5edb00ea329f41e8e886",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:436",
+        "function": "PoolBalancer.recoverUntrackedNFT(address,uint256,address)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4222(IERC721Min), function:safeTransferFrom, arguments:['TMP_4223', 'to', 'tokenId']  ",
+        "path_ids": [
+          "9a2988ce82556c45a316"
+        ]
+      },
+      {
+        "id": "3a5056607b0ee19a7ba9",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:742",
+        "function": "PoolBalancer.requiredReserve()",
+        "operation": "TMP_4481(uint256) = HIGH_LEVEL_CALL, dest:SHAPES(IShapes), function:mintFee, arguments:[]  ",
+        "path_ids": [
+          "a43641dd2c082d643397",
+          "af8711499dcc1429cddc",
+          "daa9573be22363705da1"
+        ]
+      },
+      {
+        "id": "1691b85e7b6b2550eced",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:757",
+        "function": "PoolBalancer.requiredReserve()",
+        "operation": "TMP_4494(uint64) = HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:lastIssuedSequence, arguments:[]  ",
+        "path_ids": [
+          "06c9ea5bcdaccfb530a2",
+          "e0bca56c5c025ea6d2c1",
+          "e81d6f03431a52c0af58"
+        ]
+      },
+      {
+        "id": "743146c05b7153c2886a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:482",
+        "function": "PoolBalancer.retire()",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:retirePool, arguments:[]  ",
+        "path_ids": [
+          "53cd52643408c8e2a521"
+        ]
+      },
+      {
+        "id": "248835f569456685ab07",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:492",
+        "function": "PoolBalancer.setENSName(string)",
+        "operation": "TMP_4260(address) = HIGH_LEVEL_CALL, dest:ENS(IENS), function:owner, arguments:['ADDR_REVERSE_NODE']  ",
+        "path_ids": [
+          "0f809b617687f3592a06"
+        ]
+      },
+      {
+        "id": "561e779679308d8670e8",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:492",
+        "function": "PoolBalancer.setENSName(string)",
+        "operation": "TMP_4262(bytes32) = HIGH_LEVEL_CALL, dest:TMP_4261(IReverseRegistrar), function:setName, arguments:['name']  ",
+        "path_ids": [
+          "8cc7fbf0b26d545a4a84"
+        ]
+      },
+      {
+        "id": "22238fecf4da37964ba6",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:391",
+        "function": "PoolBalancer.updateCuratedPrice(uint256,uint256)",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:updatePrice, arguments:['listingId', 'price']  ",
+        "path_ids": [
+          "ea7b029c91845183ebab"
+        ]
+      },
+      {
+        "id": "4660778e6391e38789da",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol:405",
+        "function": "PoolBalancer.withdrawCurated(uint256,address)",
+        "operation": "HIGH_LEVEL_CALL, dest:pool(IFWAPool), function:withdrawListingTo, arguments:['listingId', 'to']  ",
+        "path_ids": [
+          "0eba785d388ba6962f1e"
+        ]
+      },
+      {
+        "id": "05629cfc693afd6bf453",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+        "path_ids": [
+          "d857b9a8af83f4595b80"
+        ]
+      },
+      {
+        "id": "12e317aaa5018a2a40cc",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+        "path_ids": [
+          "255a5616481808a99c30"
+        ]
+      },
+      {
+        "id": "26ac8e0f99efb2cccc8e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+        "path_ids": [
+          "13f166e0b88d6b7a1dba"
+        ]
+      },
+      {
+        "id": "2bfb1027dfbdbec57b9a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+        "path_ids": [
+          "2de9589a33811c6c0108"
+        ]
+      },
+      {
+        "id": "8602d29fc5058a64ee34",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+        "path_ids": [
+          "daca36005eb555ab1641"
+        ]
+      },
+      {
+        "id": "8a351cf85a5b7b361728",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+        "path_ids": [
+          "ef4960c7799481930986"
+        ]
+      },
+      {
+        "id": "b215a84af8a5382251ef",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+        "path_ids": [
+          "6197a519a886e4dd7bb9"
+        ]
+      },
+      {
+        "id": "ba9df71d432d8cf1a70d",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+        "path_ids": [
+          "0c8511f989231608ecbe"
+        ]
+      }
+    ]
+  },
+  "factory": {
+    "entrypoints": [
+      {
+        "id": "BalancerFactory.acceptKeeperAdmin()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:68",
+        "kind": "function",
+        "path_ids": [
+          "ab5a9b1c3d3336779238"
+        ]
+      },
+      {
+        "id": "BalancerFactory.allBalancers[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:15",
+        "kind": "generated_getter",
+        "path_ids": [
+          "4da1f6053c0140da3179"
+        ]
+      },
+      {
+        "id": "BalancerFactory.approvedKeeper[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:22",
+        "kind": "generated_getter",
+        "path_ids": [
+          "cf432ed6dd3bb5f185e6"
+        ]
+      },
+      {
+        "id": "BalancerFactory.balancerCount()",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:89",
+        "kind": "function",
+        "path_ids": [
+          "0144f59f801075fa91e5"
+        ]
+      },
+      {
+        "id": "BalancerFactory.canKeep(address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:46",
+        "kind": "function",
+        "path_ids": [
+          "60788aaf3aa8cd867918"
+        ]
+      },
+      {
+        "id": "BalancerFactory.createBalancer(bytes32)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:77",
+        "kind": "function",
+        "path_ids": [
+          "324af06e8820bffd02fe",
+          "374e0c0ec1fc10460796",
+          "375a5e4297b9501d45c5",
+          "a1fe73f6477300474e96",
+          "bf8b9030a5c9b0b68bea"
+        ]
+      },
+      {
+        "id": "BalancerFactory.implementation[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:13",
+        "kind": "generated_getter",
+        "path_ids": [
+          "eae8e8f81e1f9aa1051c"
+        ]
+      },
+      {
+        "id": "BalancerFactory.isBalancer[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:16",
+        "kind": "generated_getter",
+        "path_ids": [
+          "4a6b46b55b118ce2c393"
+        ]
+      },
+      {
+        "id": "BalancerFactory.keeperAdmin[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:18",
+        "kind": "generated_getter",
+        "path_ids": [
+          "ac376716b1005c5f114f"
+        ]
+      },
+      {
+        "id": "BalancerFactory.keepersRestricted[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:21",
+        "kind": "generated_getter",
+        "path_ids": [
+          "3492b0291607fe998006"
+        ]
+      },
+      {
+        "id": "BalancerFactory.pendingKeeperAdmin[generated getter]",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:19",
+        "kind": "generated_getter",
+        "path_ids": [
+          "934fe25a82997f4c4b1b"
+        ]
+      },
+      {
+        "id": "BalancerFactory.predictBalancer(address,bytes32)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:85",
+        "kind": "function",
+        "path_ids": [
+          "1976d556a805ae823043",
+          "4c741dab912bd9bb8c40",
+          "5e1df8a147d8cabf0283"
+        ]
+      },
+      {
+        "id": "BalancerFactory.setKeeperApproved(address,bool)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:58",
+        "kind": "function",
+        "path_ids": [
+          "4547559512c806241d7a"
+        ]
+      },
+      {
+        "id": "BalancerFactory.setKeepersRestricted(bool)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:53",
+        "kind": "function",
+        "path_ids": [
+          "7b8555a0242c18a8af2b"
+        ]
+      },
+      {
+        "id": "BalancerFactory.transferKeeperAdmin(address)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:63",
+        "kind": "function",
+        "path_ids": [
+          "db8c5f1ce93ac48b4d4b"
+        ]
+      }
+    ],
+    "external_calls": [
+      {
+        "id": "5540fb413d2a5441b2a7",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:78",
+        "function": "BalancerFactory.createBalancer(bytes32)",
+        "operation": "TMP_4030(address) = LIBRARY_CALL, dest:LibClone, function:LibClone.cloneDeterministic(address,bytes32), arguments:['implementation', 'TMP_4029'] ",
+        "path_ids": [
+          "375a5e4297b9501d45c5"
+        ]
+      },
+      {
+        "id": "9658e355b86568333eca",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:78",
+        "function": "BalancerFactory.createBalancer(bytes32)",
+        "operation": "TMP_4030(address) = LIBRARY_CALL, dest:LibClone, function:LibClone.cloneDeterministic(address,bytes32), arguments:['implementation', 'TMP_4029'] ",
+        "path_ids": [
+          "374e0c0ec1fc10460796"
+        ]
+      },
+      {
+        "id": "0d6608e9002e71ce4f6e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:81",
+        "function": "BalancerFactory.createBalancer(bytes32)",
+        "operation": "HIGH_LEVEL_CALL, dest:TMP_4035(PoolBalancer), function:initialize, arguments:['msg.sender'] value:msg.value ",
+        "path_ids": [
+          "bf8b9030a5c9b0b68bea"
+        ]
+      },
+      {
+        "id": "12498229674bd674b676",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:82",
+        "function": "BalancerFactory.createBalancer(bytes32)",
+        "operation": "TMP_4039(IFWAPool) = HIGH_LEVEL_CALL, dest:TMP_4038(PoolBalancer), function:pool, arguments:[]  ",
+        "path_ids": [
+          "324af06e8820bffd02fe"
+        ]
+      },
+      {
+        "id": "57704b88235f2a5267dd",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:86",
+        "function": "BalancerFactory.predictBalancer(address,bytes32)",
+        "operation": "TMP_4044(address) = LIBRARY_CALL, dest:LibClone, function:LibClone.predictDeterministicAddress(address,bytes32,address), arguments:['implementation', 'TMP_4042', 'TMP_4043'] ",
+        "path_ids": [
+          "1976d556a805ae823043"
+        ]
+      },
+      {
+        "id": "690318ca7c60cca54734",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol:86",
+        "function": "BalancerFactory.predictBalancer(address,bytes32)",
+        "operation": "TMP_4044(address) = LIBRARY_CALL, dest:LibClone, function:LibClone.predictDeterministicAddress(address,bytes32,address), arguments:['implementation', 'TMP_4042', 'TMP_4043'] ",
+        "path_ids": [
+          "4c741dab912bd9bb8c40"
+        ]
+      }
+    ]
+  },
+  "page": {
+    "entrypoints": [
+      {
+        "id": "PoolPage.digest(address,address,string,bytes32)",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "kind": "function",
+        "path_ids": [
+          "1cba69ab71e0ed1fb9d5",
+          "3888689d8353a57a68f1",
+          "55f4765746acebaee40c",
+          "8065df44fc9ae0195a76",
+          "a589c8fb3962b7716dcb",
+          "bf997f5aebe9d06008db",
+          "cb82a44594d5b23bf6bf",
+          "f7e83619386c0782ee39",
+          "fb369bc1a8ef83fb34d2"
+        ]
+      }
+    ],
+    "external_calls": [
+      {
+        "id": "05629cfc693afd6bf453",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+        "path_ids": [
+          "1cba69ab71e0ed1fb9d5"
+        ]
+      },
+      {
+        "id": "12e317aaa5018a2a40cc",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+        "path_ids": [
+          "3888689d8353a57a68f1"
+        ]
+      },
+      {
+        "id": "26ac8e0f99efb2cccc8e",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+        "path_ids": [
+          "fb369bc1a8ef83fb34d2"
+        ]
+      },
+      {
+        "id": "2bfb1027dfbdbec57b9a",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+        "path_ids": [
+          "55f4765746acebaee40c"
+        ]
+      },
+      {
+        "id": "8602d29fc5058a64ee34",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+        "path_ids": [
+          "bf997f5aebe9d06008db"
+        ]
+      },
+      {
+        "id": "8a351cf85a5b7b361728",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+        "path_ids": [
+          "cb82a44594d5b23bf6bf"
+        ]
+      },
+      {
+        "id": "b215a84af8a5382251ef",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+        "path_ids": [
+          "a589c8fb3962b7716dcb"
+        ]
+      },
+      {
+        "id": "ba9df71d432d8cf1a70d",
+        "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+        "function": "PoolPage.digest(address,address,string,bytes32)",
+        "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+        "path_ids": [
+          "f7e83619386c0782ee39"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+No files changed, compilation skipped
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[FAIL: next call did not revert as expected] testQuoteToInclusionBasefeeJump() (block: 26382349) (gas: 103551)
+Logs:
+  old total 22866218342601808
+  new total 29652218342601808
+  VRF jump 6786000000000000
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 29.70ms (632.25µs CPU time)
+
+Ran 1 test suite in 353.32ms (29.70ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[FAIL: next call did not revert as expected] testQuoteToInclusionBasefeeJump() (block: 26382349) (gas: 103551)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

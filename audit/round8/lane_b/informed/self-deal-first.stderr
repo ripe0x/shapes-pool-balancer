@@ -1,0 +1,9 @@
+file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/self-deal.mjs:56
+  if (start - end !== expectedLoss) throw new Error(`wallet delta mismatch ${start - end} vs ${expectedLoss}`);
+                                          ^
+
+Error: wallet delta mismatch 26491336387470837 vs 15346336387470837
+    at file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/informed/self-deal.mjs:56:43
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+Node.js v22.19.0

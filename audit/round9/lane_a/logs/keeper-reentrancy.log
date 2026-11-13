@@ -1,0 +1,22 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.22s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 4 tests for audit/round9/lane_a/KeeperReentrancy.t.sol:KeeperReentrancy
+[PASS] testM1PriorityBidCapped() (gas: 6014626)
+Logs:
+  reward: 2045000000000000 gasUsed: 811415
+  creditBefore: 0 creditAfter: 0
+
+[PASS] testM1ReconcileOnlyBoundedByCredit() (gas: 5396455)
+[PASS] testReentrancyHostileCollectionOnList() (gas: 4268281)
+[PASS] testReentrancyRecoverUntracked() (gas: 1839246)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 415.27ms (245.40ms CPU time)
+
+Ran 1 test suite in 435.71ms (415.27ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

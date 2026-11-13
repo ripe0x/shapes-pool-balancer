@@ -1,0 +1,14 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.65s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/informed/security_followup/AuthorityEdges.t.sol:AuthorityEdgesInformedTest
+[PASS] testOverwrittenPendingRolesAndCreatorUpkeepBypass() (gas: 4026218)
+Logs:
+  creator setup reward wei 2051295200000000
+  approved keeper reward wei 1994557400000000
+  new creator liquid exit wei 983954147400000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.18s (339.93ms CPU time)
+
+Ran 1 test suite in 1.49s (1.18s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

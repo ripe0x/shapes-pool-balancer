@@ -1,0 +1,7 @@
+No files changed, compilation skipped
+
+Ran 1 test for audit/round8/integration/IntegrationFork.t.sol:IntegrationForkTest
+[PASS] testEightyShapeOpenAndCloseout() (gas: 49870175)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 18.68s (18.68s CPU time)
+
+Ran 1 test suite in 18.93s (18.68s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

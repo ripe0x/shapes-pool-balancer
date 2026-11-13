@@ -1,0 +1,50 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "creator": "0x46EFbAedc92067E6d60E84ED6395099723252496",
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "outsiderKeeper": "0x00000000000000000000000000000000c0dec0df",
+  "callbackRoute": "coordinator -> VRF service -> FWA pool",
+  "first": {
+    "purchase": "0xa022b447e5f8befbe41126ef8831d291939dc9ac9d57a1105061f362e0029e4d",
+    "payer": "0x00000000000000000000000000000000c0dec0de",
+    "paid": "24977339287470837",
+    "fee": "22520339287470837",
+    "vrf": "2457000000000000",
+    "listingId": "29",
+    "status": "2"
+  },
+  "funding": {
+    "txHash": "0xf8d43a5f83c1bbae849edb96a7f1c2025f831891cd95d43d21553de453be90ce",
+    "feeListing": "43",
+    "listingStillActiveBeforeUnlist": true,
+    "reward": "4438695200000000",
+    "measuredGas": "795696",
+    "creditAfterFunding": "216304800000000"
+  },
+  "second": {
+    "purchase": "0x1d3563e51b0f9246eb5841d0d4e3f07e5061bd84b19083ecaf8e0ac7ab93a2ae",
+    "payer": "0x00000000000000000000000000000000c0dec0de",
+    "paid": "24988322105393413",
+    "fee": "22531322105393413",
+    "vrf": "2457000000000000",
+    "listingId": "18",
+    "status": "2"
+  },
+  "closeAndUnlist": {
+    "creditAfterUnlist": "216304800000000",
+    "balanceBeforeReconcile": "2409085475107087310",
+    "feeListingUnlistedWithoutWinning": true
+  },
+  "spend": {
+    "txHash": "0x7800ba8ccff4a395d747765cef77d176722cac08ff01a72d6f0ba4d4497d0e06",
+    "billedGas": "127746",
+    "effectiveGasPrice": "1050000000",
+    "reward": "216304800000000",
+    "measuredGas": "103739",
+    "billedCost": "134133300000000",
+    "keeperNet": "82171500000000",
+    "observedKeeperWalletDelta": "82171500000000",
+    "creditAfter": "0"
+  }
+}

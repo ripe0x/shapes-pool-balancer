@@ -1,0 +1,171 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "route": "coordinator -> service -> FWA pool",
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "keeper": "0x00000000000000000000000000000000c0dec0df",
+  "balancer": "0xFE4bF8dfA7c64866a75F141d771eA2d73452ac17",
+  "pool": "0xc0CE6B85bB0bc02c1b072d291af3ad47c0c670a0",
+  "starting": {
+    "credit": "0",
+    "sequence": "1",
+    "active": "41"
+  },
+  "batch": {
+    "purchase": {
+      "purchaseTx": "0x3acfce6c08711c03b0e18926bac7a1d3e309f4985ad416b1300f3c952eee829d",
+      "total": "99909357149883348",
+      "fee": "22520339287470837",
+      "vrf": "2457000000000000",
+      "payerDeltaIncludingPurchaseGas": "101341401749883348",
+      "selected": [
+        {
+          "listingId": "19",
+          "kind": "2",
+          "denom": "0"
+        },
+        {
+          "listingId": "23",
+          "kind": "2",
+          "denom": "9"
+        },
+        {
+          "listingId": "36",
+          "kind": "2",
+          "denom": "1"
+        },
+        {
+          "listingId": "6",
+          "kind": "2",
+          "denom": "0"
+        }
+      ]
+    },
+    "upkeep": {
+      "txHash": "0x9a4e1f305a725ea8b6d7fbfd09b23d423c3eb3c6f03120edcc7c5d6355c714b7",
+      "billedGas": "2488739",
+      "measuredGas": "2572959",
+      "effectiveGasPrice": "1050000000",
+      "reward": "3201606950000000",
+      "billedCost": "2613175950000000",
+      "walletGain": "588431000000000",
+      "creditAfter": "2523393050000000"
+    },
+    "reconciled": "5"
+  },
+  "sequential": [
+    {
+      "purchase": {
+        "purchaseTx": "0x3297bb296c4fccdf7b4534f834a6607ebbff3accb293a31e73710cccf6057944",
+        "total": "24977339287470837",
+        "fee": "22520339287470837",
+        "vrf": "2457000000000000",
+        "payerDeltaIncludingPurchaseGas": "25555097587470837",
+        "selected": [
+          {
+            "listingId": "18",
+            "kind": "2",
+            "denom": "0"
+          }
+        ]
+      },
+      "upkeep": {
+        "txHash": "0x9a4e1f305a725ea8b6d7fbfd09b23d423c3eb3c6f03120edcc7c5d6355c714b7",
+        "billedGas": "785826",
+        "measuredGas": "795723",
+        "effectiveGasPrice": "1050000000",
+        "reward": "1145000000000000",
+        "billedCost": "825117300000000",
+        "walletGain": "319882700000000",
+        "creditAfter": "0"
+      }
+    },
+    {
+      "purchase": {
+        "purchaseTx": "0x5ffc0b02344cc62519e3da237300656e0dee56db4a6bb7eaf3bdd07a2f48de5d",
+        "total": "24977339287470837",
+        "fee": "22520339287470837",
+        "vrf": "2457000000000000",
+        "payerDeltaIncludingPurchaseGas": "25555097587470837",
+        "selected": [
+          {
+            "listingId": "16",
+            "kind": "2",
+            "denom": "0"
+          }
+        ]
+      },
+      "upkeep": {
+        "txHash": "0xe3b501f466de606bc092f7b0a8a99c7c522424195616029402b73decaaeb8b99",
+        "billedGas": "785826",
+        "measuredGas": "795723",
+        "effectiveGasPrice": "1050000000",
+        "reward": "1145000000000000",
+        "billedCost": "825117300000000",
+        "walletGain": "319882700000000",
+        "creditAfter": "0"
+      }
+    },
+    {
+      "purchase": {
+        "purchaseTx": "0xbb52de3b60b56790d9e0c7b6a8b4f099e8ac52e72c330785e11453b059201627",
+        "total": "24977339287470837",
+        "fee": "22520339287470837",
+        "vrf": "2457000000000000",
+        "payerDeltaIncludingPurchaseGas": "25555097587470837",
+        "selected": [
+          {
+            "listingId": "12",
+            "kind": "2",
+            "denom": "0"
+          }
+        ]
+      },
+      "upkeep": {
+        "txHash": "0xa80cd1a63560141820716a28af9787b6fa90c2fba76e62e02e6a1061ccedb375",
+        "billedGas": "785848",
+        "measuredGas": "795745",
+        "effectiveGasPrice": "1050000000",
+        "reward": "1145000000000000",
+        "billedCost": "825140400000000",
+        "walletGain": "319859600000000",
+        "creditAfter": "0"
+      }
+    },
+    {
+      "purchase": {
+        "purchaseTx": "0x866ff77e425a62c117f2aa8046225147af44cf246bb57b32d97cea21fc300c51",
+        "total": "24977339287470837",
+        "fee": "22520339287470837",
+        "vrf": "2457000000000000",
+        "payerDeltaIncludingPurchaseGas": "25555097587470837",
+        "selected": [
+          {
+            "listingId": "4",
+            "kind": "2",
+            "denom": "0"
+          }
+        ]
+      },
+      "upkeep": {
+        "txHash": "0xfd30d08160c170b6955c04640a84d68d1f393200e589a7aad2399377a9754af5",
+        "billedGas": "785826",
+        "measuredGas": "795723",
+        "effectiveGasPrice": "1050000000",
+        "reward": "1145000000000000",
+        "billedCost": "825117300000000",
+        "walletGain": "319882700000000",
+        "creditAfter": "0"
+      }
+    }
+  ],
+  "totals": {
+    "reward": "4580000000000000",
+    "billedCost": "3300492300000000",
+    "walletGain": "1279507700000000",
+    "billedGas": "3143326",
+    "measuredGas": "3182914",
+    "finalCredit": "0",
+    "reconciled": "5"
+  }
+}

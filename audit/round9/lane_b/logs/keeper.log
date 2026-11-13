@@ -1,0 +1,26 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.44s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Keeper.t.sol:30:14:
+   |
+30 |             (uint256 r,, bool setup) = _upkeep(creator);
+   |              ^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/lane_b/Keeper.t.sol:KeeperTest
+[PASS] testKeeperCannotOverbidPriority() (gas: 7957277)
+Logs:
+  reward honest / greedy 695000000000000 695000000000000
+
+[PASS] testKeeperCapHonest() (gas: 15762320)
+Logs:
+  cycles 5
+  sumReward (non-setup) 3475000000000000
+  sumCreditAdded (restock fees) 3475000000000000
+  maxMeasuredGas 828512
+  KEEPER_MAX_GAS 3200000
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 285.70ms (28.80ms CPU time)
+
+Ran 1 test suite in 302.78ms (285.70ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

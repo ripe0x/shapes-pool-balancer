@@ -8,6 +8,7 @@ interface IFWAPoolFactory {
     function createPool(bytes32 userSalt, address expectedImplementation) external returns (address pool);
     function edgeBps() external view returns (uint16);
     function maxAcquisitionsPerTx() external view returns (uint16);
+    function maxStagedListings() external view returns (uint256);
     function globalWithdrawOnly() external view returns (bool);
 }
 
@@ -116,6 +117,7 @@ interface IShapes {
     function mintBatch(uint256 amountWei, uint256 quantity) external payable returns (uint256 firstTokenId);
     function redeemBatch(uint256[] calldata tokenIds) external returns (uint256 totalWei);
     function denominationAt(uint8 index) external pure returns (uint256);
+    function denominationCount() external view returns (uint8);
     function denomIndexOf(uint256 tokenId) external view returns (uint8);
     function backingOf(uint256 tokenId) external view returns (uint256);
     function setApprovalForAll(address operator, bool approved) external;
@@ -135,4 +137,17 @@ interface IENS {
 
 interface IReverseRegistrar {
     function setName(string calldata name) external returns (bytes32);
+}
+
+/// @dev Draw Packs (ripe0x/shape-packs `draw-packs` at 3a463f7): an ERC-721 whose token holds Shapes in custody and
+///      redeems for exactly their backing. Only what the Balancer calls.
+interface IShapePacks {
+    function createPackTo(uint256[] calldata shapeIds, uint32[] calldata mintCounts, address to)
+        external
+        payable
+        returns (uint256 packId);
+    function redeem(uint256 packId) external;
+    function shapes() external view returns (address);
+    function MIN_PACK_VALUE() external view returns (uint256);
+    function setApprovalForAll(address operator, bool approved) external;
 }

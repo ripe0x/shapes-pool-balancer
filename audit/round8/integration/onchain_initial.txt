@@ -1,0 +1,256 @@
+
+BLOCK 26382349
+
+cast codehash 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C -B 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code -32603: distance to target block exceeds maximum proof window
+status=1
+
+cast codehash 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7 -B 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code -32603: distance to target block exceeds maximum proof window
+status=1
+
+cast codehash 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 -B 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code -32603: distance to target block exceeds maximum proof window
+status=1
+
+cast codehash 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e -B 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code -32603: distance to target block exceeds maximum proof window
+status=1
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "implementation()(address)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "edgeBps()(uint16)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxAcquisitionsPerTx()(uint16)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxStagedListings()(uint256)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "globalWithdrawOnly()(bool)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintFee()(uint256)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintStart()(uint64)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "admin()(address)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "feeRecipient()(address)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "redeemableBacking()(uint256)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "pendingFees()(uint256)" -B 26382349 -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+BLOCK latest
+
+cast codehash 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C -B latest -r https://mainnet.gateway.tenderly.co
+0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e
+status=0
+
+cast codehash 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7 -B latest -r https://mainnet.gateway.tenderly.co
+0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02
+status=0
+
+cast codehash 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 -B latest -r https://mainnet.gateway.tenderly.co
+0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7
+status=0
+
+cast codehash 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e -B latest -r https://mainnet.gateway.tenderly.co
+0xd6bfd5d6f1384a1f6ea57b8a8412de5552f138d42021cf7c4941e33206f529e4
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "implementation()(address)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "edgeBps()(uint16)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxAcquisitionsPerTx()(uint16)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxStagedListings()(uint256)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "globalWithdrawOnly()(bool)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintFee()(uint256)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintStart()(uint64)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "admin()(address)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "feeRecipient()(address)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "redeemableBacking()(uint256)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "pendingFees()(uint256)" -B latest -r https://mainnet.gateway.tenderly.co
+error: unexpected argument '-B' found
+
+  tip: to pass '-B' as a value, use '-- -B'
+
+Usage: cast call [OPTIONS] [TO] [SIG] [ARGS]... [COMMAND]
+
+For more information, try '--help'.
+status=2

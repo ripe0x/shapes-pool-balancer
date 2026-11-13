@@ -1,0 +1,25 @@
+# Round 8 Lane A informed real-fork fuzz campaign
+
+Target: frozen `2ac7a7e7b965d1798729068566c026128a4ba4b9`, Solidity 0.8.28 via IR, optimizer 50, Cancun. The Balancer is undeployed; each fuzz case deploys an official local Factory/Balancer/Packs against deployed mainnet FWA, Shapes and BAYC on the pinned Tenderly fork at block **26,382,349**. No protocol mocks, protocol contract pranks/deals/stores, live broadcast, production edits, cache deletion or whole suite. `vm.deal` funds only the real BAYC-owner EOA creator and an EOA keeper. Every iteration checks both have no runtime code at the fork. No VRF delivery is needed for this property.
+
+## Property, sampled domain and reached path
+
+The falsifiable property is: for a valid funded creator plan with **1–5 identical real Shape prizes**, FWA must own every correctly priced listed token; Shapes must hold exact backing plus one mint fee per token; after creator close and unlist, exact backing must return to Balancer while accrued mint fees remain with Shapes; curated BAYC must return to creator; creator claim must leave zero Balancer ETH. Keeper setup pay must come from creator capital and create no `keeperCredit`.
+
+Five raw fuzz inputs are transformed in each case: `denom = rawDenom % 4` (real 0.01/0.05/0.1/0.5 ETH Shapes); `count = 1 + rawCount % 5`; `markup = rawMarkup % 10001` (0–10000 bps); `deposit = 3 ETH + (rawCapital % 10) × 0.1 ETH` (3.0–3.9 ETH); `basefee = (1 + rawBasefee % 5) gwei` (1–5 gwei) with a matching `basefee + 0.05 gwei` transaction bid. This capitalization funds even the five 0.5 ETH case. The fuzz seed was **`0x0000000000000000000000000000000000000000000000000000000000000008`** and the requested run count was **32**. Forge reports 32 completed cases, one passing test, zero failures. It printed one representative tuple: denom 1, count 4, markup 3 bps, basefee 1 gwei, deposit 3.3 ETH. Forge did not print the entire 32-input corpus, so observed coverage of every member of each transformed domain is **not** claimed. The saved seed/command permits repetition of the same campaign.
+
+Every passing iteration reached real `createBalancer` → BAYC approval and `listCurated` → `configure`/`open` → keeper `performUpkeep` → live FWA Shape listing/ownership checks → `close` → `unlistShapes`/real Shapes redemption → BAYC withdrawal → creator `claimSurplus`. Assertions cover: official factory registration; positive keeper reward received exactly by keeper; `keeperCredit==0`; active Shape count and admission 0; each listing's kind/denomination/state/base/price, FWA collection/status/price, FWA ownership and exact token backing; aggregate Shapes `pendingFees`, `redeemableBacking` and ETH balance; exact `count × denomination` ETH returned to Balancer on unlist; fees remaining at Shapes; BAYC owner restored; no active IDs or Balancer ETH after claim. The expected listing base is `backing + mintFee + floor(backing × markup / 10000)` and price adds one live `restockFee()`.
+
+This bounded positive result does not prove arbitrary mixes, Packs, failed deliveries, repeated draws, bad luck, delayed keepers, admin fee changes, recent blocks, hostile NFTs or reserve sufficiency. It does not resolve F-A1 or E-B1. One 32-run fuzz campaign is a sampled property check, not an exhaustive state-space proof.
+
+## Exact command, status and evidence
+
+One focused Forge test command was run from `/Users/dd/CascadeProjects/fwa-pool-balancer` with read-only RPC network escalation:
+
+```sh
+set -o pipefail; FOUNDRY_TEST=audit/round8/lane_a/informed/fuzz FOUNDRY_OUT=audit/round8/lane_a/informed/fuzz/out FOUNDRY_CACHE_PATH=audit/round8/lane_a/informed/fuzz/cache forge test --match-path audit/round8/lane_a/informed/fuzz/ShapeLifecycleFuzz.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --fuzz-runs 32 --fuzz-seed 0x0000000000000000000000000000000000000000000000000000000000000008 -vv 2>&1 | tee audit/round8/lane_a/informed/fuzz/shape-lifecycle-fuzz.log
+```
+
+Exit **0**. Forge reported `[PASS] testFuzzRealShapeMintListCloseUnlistBacking(uint8,uint8,uint16,uint8,uint8) (runs: 32, μ: 11359584, ~: 11119896)`, one test passed, none failed. Source SHA-256 `e00e5a07fb23c5a3452dd90afd2358a1821af69bf7c0378a185c15d4256d1d05`; output SHA-256 `84399d9c4aed6e12bf78b1e53096037736c92a1a977d31179f4a6bea1fa07255`. This run compiled under the required settings. A preliminary `forge test --help` attempt was refused by the local guard as an apparent whole-suite command; it was not a test run, touched no code and supplied no evidence. The campaign itself used exactly the command above.
+
+The campaign ended about **16:49 UTC on 2026-11-12**. Prior cumulative substantive Lane A time was approximately 47 minutes plus preflight; this adds approximately 3 minutes of preparation/execution/reporting, for approximately **50 minutes substantive time plus preflight**, below the three auditor-hour ceiling. Existing discovery and informed seals remain unchanged. Human review and full audit completion remain outside this bounded campaign.

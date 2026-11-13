@@ -1,0 +1,18 @@
+Warning: lib/forge-std: missing from foundry.lock (found dc647cc030d9d65910d8f1172a0cde48d7106e32)
+Warning: lib/shape-packs: missing from foundry.lock (found 3a463f750eee56b0ca175999f184a32909173780)
+Warning: lib/solady: missing from foundry.lock (found acd959aa4bd04720d640bf4e6a5c71037510cc4b)
+Compiling 60 files with Solc 0.8.28
+Solc 0.8.28 finished in 34.69s
+Compiler run successful with warnings:
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Gas.t.sol:50:5:
+   |
+50 |     function _reimbursed() internal returns (uint256 gasPaid) {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/Hardening.t.sol:251:5:
+    |
+251 |     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+

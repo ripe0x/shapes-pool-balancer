@@ -1,0 +1,27 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.93s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testDrawRestockCreditAndRefundBound() (gas: 1974481)
+Logs:
+  draw fee 22520339287470837
+  vrf fee 2457000000000000
+  status at one in-flight draw 0
+  drawn listing 11
+  acquisition status 2
+  drawn kind 2
+  drawn denom 0
+  drawn base 12500000000000000
+  drawn price 13645000000000000
+  keeper reward 1145000000000000
+  upkeep frame gas total 783170
+  upkeep frame refund 58700
+  upkeep billed gas 724470
+  upkeep billed gas cost 760693500000000
+  keeper credit after 0
+  pool balance delta 9302942178543655
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 38.45ms (3.34ms CPU time)
+
+Ran 1 test suite in 318.40ms (38.45ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,21 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.38s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_a/addendum/StatefulCycle.t.sol:StatefulCycle
+[PASS] testStatefulCycleWithDrawsInFlight() (gas: 37659255)
+Logs:
+  burst draws acquired in flight: 5 unsettled: 5
+  final residual (wei): 0
+  final active listings: 0
+  final pool ownerProceeds: 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 390.70ms (142.41ms CPU time)
+
+Ran 1 test suite in 398.19ms (390.70ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

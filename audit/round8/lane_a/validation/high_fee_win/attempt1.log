@@ -1,0 +1,36 @@
+Compiling 62 files with Solc 0.8.28
+Compiling 56 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.37s
+Solc 0.8.28 finished in 8.38s
+Compiler run successful!
+
+Ran 2 tests for audit/round8/lane_a/validation/high_fee_win/HighFeeWinner.t.sol:HighFeeWinnerForkTest
+[PASS] testWinnerPaysAt005MintFeeAndRedeemsBacking() (gas: 4250641)
+Logs:
+  accepted Shapes mint fee wei 5000000000000000
+  Shape FWA listing price wei 16145000000000000
+  player acquisition fee wei 29191527831589822
+  player VRF fee wei 2457000000000000
+  player total paid wei 31648527831589822
+  FWA owner proceeds wei 27801455077704593
+  new Shapes fee owed before withdraw wei 5000000000000000
+  fee recipient total payout wei 309000000000000000
+  winner backing redeemed wei 10000000000000000
+  VRF word trials 2
+
+[PASS] testWinnerPaysAt010MintFeeAndRedeemsBacking() (gas: 3790462)
+Logs:
+  accepted Shapes mint fee wei 10000000000000000
+  Shape FWA listing price wei 21145000000000000
+  player acquisition fee wei 36654009657848032
+  player VRF fee wei 2457000000000000
+  player total paid wei 39111009657848032
+  FWA owner proceeds wei 34908580626521936
+  new Shapes fee owed before withdraw wei 10000000000000000
+  fee recipient total payout wei 314000000000000000
+  winner backing redeemed wei 10000000000000000
+  VRF word trials 1
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.13s (3.87s CPU time)
+
+Ran 1 test suite in 4.38s (4.13s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

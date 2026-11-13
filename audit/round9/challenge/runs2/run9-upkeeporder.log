@@ -1,0 +1,42 @@
+=== RUN9: controller UpkeepOrder.t.sol (full) ===
+No files changed, compilation skipped
+
+Ran 3 tests for audit/round9/controller/UpkeepOrder.t.sol:UpkeepOrderTest
+[PASS] testCuratedDrawAfterBigWinUpkeepOrder() (gas: 237636206)
+Logs:
+  after big win: fund / reserve 48563286767851836 534000000000000000
+  NFT drawn while genuinely short; listings before reconcile: 7
+    profit, collect first then upkeep: 2188128931267067
+    profit, upkeep only (reconcile then collect): 2552817086478245
+    claimable / fund, collect first then upkeep: 4282774057522775 64278089730692313
+    claimable / fund, upkeep only: 4647462212733953 63913401575481135
+    reserve after: 534000000000000000
+
+[PASS] testCuratedDrawUpkeepBooksMoreThanExpected() (gas: 82722396)
+Logs:
+  curated NFT drawn
+    listings in split set before reconcile: 6
+    profit booked, collect first (draw-time set): 1985495699365404
+    profit booked, upkeep (reconcile then collect): 0
+    claimable after collect first: 1985495699365404
+    claimable after collect first, then upkeep: 16970031742476116
+    fund / reserve after collect first + upkeep: 58984536043110712 44000000000000000
+    claimable after upkeep only: 16970031742476116
+    fund / reserve after upkeep only: 60970031742476116 44000000000000000
+
+[PASS] testShapeDrawUpkeepOrder() (gas: 8189576)
+Logs:
+  0.01 Shape drawn
+    listings in split set before reconcile: 6
+    profit booked, collect first (draw-time set): 1985495699365404
+    profit booked, upkeep (reconcile then collect): 0
+    claimable after collect first: 1985495699365404
+    claimable after collect first, then upkeep: 5725031742476116
+    fund / reserve after collect first + upkeep: 47739536043110712 44000000000000000
+    claimable after upkeep only: 5725031742476116
+    fund / reserve after upkeep only: 49725031742476116 44000000000000000
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 397.75ms (178.30ms CPU time)
+
+Ran 1 test suite in 400.55ms (397.75ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)
+EXIT=0

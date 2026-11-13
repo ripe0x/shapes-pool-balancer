@@ -1,0 +1,34 @@
+{
+  "name": "shapes-pool-balancer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "abi": "node scripts/export-abi.mjs",
+    "test:ts": "vitest run",
+    "sim": "tsx sim/fund.ts",
+    "keeper": "tsx keeper/keeper.ts",
+    "dev": "vite --config app/vite.config.ts",
+    "build:app": "vite build --config app/vite.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "keeper:e2e": "tsx keeper/e2e.ts",
+    "rehearsal": "tsx keeper/rehearsal.ts"
+  },
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "2.2.11",
+    "@tanstack/react-query": "5.107.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "2.57.17",
+    "wagmi": "2.19.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "6.4.6",
+    "vitest": "3.2.7"
+  }
+}

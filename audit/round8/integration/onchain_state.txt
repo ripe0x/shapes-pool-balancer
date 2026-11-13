@@ -1,0 +1,92 @@
+
+BLOCK 26382349
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "implementation()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "edgeBps()(uint16)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+500
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxAcquisitionsPerTx()(uint16)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+5
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxStagedListings()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "globalWithdrawOnly()(bool)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+false
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintFee()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+1000000000000000 [1e15]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintStart()(uint64)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+1788462000 [1.788e9]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "admin()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0xCB43078C32423F5348Cab5885911C3B5faE217F9
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "feeRecipient()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0xD4ba7cA95f3983514DDa317C4428CDb8F59c7e72
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "redeemableBacking()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+4750000000000000000 [4.75e18]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "pendingFees()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+304000000000000000 [3.04e17]
+status=0
+
+BLOCK latest
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "implementation()(address)" -b latest -r https://mainnet.gateway.tenderly.co
+0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "edgeBps()(uint16)" -b latest -r https://mainnet.gateway.tenderly.co
+500
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxAcquisitionsPerTx()(uint16)" -b latest -r https://mainnet.gateway.tenderly.co
+5
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "maxStagedListings()(uint256)" -b latest -r https://mainnet.gateway.tenderly.co
+0
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "globalWithdrawOnly()(bool)" -b latest -r https://mainnet.gateway.tenderly.co
+false
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintFee()(uint256)" -b latest -r https://mainnet.gateway.tenderly.co
+1000000000000000 [1e15]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "mintStart()(uint64)" -b latest -r https://mainnet.gateway.tenderly.co
+1788462000 [1.788e9]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "admin()(address)" -b latest -r https://mainnet.gateway.tenderly.co
+0xCB43078C32423F5348Cab5885911C3B5faE217F9
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "feeRecipient()(address)" -b latest -r https://mainnet.gateway.tenderly.co
+0xD4ba7cA95f3983514DDa317C4428CDb8F59c7e72
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "redeemableBacking()(uint256)" -b latest -r https://mainnet.gateway.tenderly.co
+4770000000000000000 [4.77e18]
+status=0
+
+cast call 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0 "pendingFees()(uint256)" -b latest -r https://mainnet.gateway.tenderly.co
+321000000000000000 [3.21e17]
+status=0

@@ -1,0 +1,20 @@
+Compiling 61 files with Solc 0.8.28
+Compiling 56 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.32s
+Solc 0.8.28 finished in 5.69s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/informed/receiver_grief/ReceiverGrief.t.sol:ReceiverGriefInformedTest
+[PASS] testRejectingBuyerStillReceivesShapeAndCannotRefund() (gas: 2244782)
+Logs:
+  actual payer total wei 27671043732676315
+  router fee wei 2457000000000000
+  owner proceeds wei 24013374983501253
+  keeper reward wei 1145000000000000
+  Balancer liquid before upkeep wei 987651968550000000
+  Balancer liquid after upkeep wei 999520343533501253
+  Shape word trials 1
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.24s (1.81s CPU time)
+
+Ran 1 test suite in 6.84s (6.24s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,27 @@
+No files changed, compilation skipped
+
+Ran 4 tests for audit/round8/lane_a/informed/security_followup/SecurityEdges.t.sol:SecurityEdgesInformedTest
+[PASS] testBatchCallbackMixedPricesAndAtomicRollback() (gas: 2951090)
+Logs:
+  first batch price wei 100000000000000000
+  second batch price wei 200000000000000000
+
+[PASS] testContractKeeperAndCreatorETHReentryBlocked() (gas: 2705402)
+Logs:
+  keeper reentry selector
+  0xab143c06
+  creator ETH reentry selector
+  0xab143c06
+
+[PASS] testCreatorNFTReceiverCannotReenterSecondWithdrawal() (gas: 2082401)
+Logs:
+  creator NFT reentry selector
+  0xab143c06
+
+[PASS] testRepricingDuringUnsettledDrawRollsBackThenSucceeds() (gas: 3746992)
+Logs:
+  shape-select word trials 1
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 6.31ms (9.53ms CPU time)
+
+Ran 1 test suite in 289.56ms (6.31ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

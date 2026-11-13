@@ -1,0 +1,52 @@
+{
+  "P1_accessors/pc_nomutate": {
+    "status": "accepted",
+    "reason": "View/getter surface is compiler-enforced view (no write/transfer); the stateful cycle (EV_stateful) asserts profit<=balance and item-count==sum(activeShapes) at rest after every step, corroborated by EV_security/EV_econprops. The acknowledged false-positive (reads the same getter it trusts) is immaterial: the invariants cross-check independent storage sums, and I reproduced the split getters' behaviour under RUN1/RUN2.",
+    "evidence_ids": ["EV_stateful", "EV_security", "EV_econprops"]
+  },
+  "P2_authorization_admin/pc_authz": {
+    "status": "accepted",
+    "reason": "Creator-only matrix and two-step transfer revert for the wrong caller; confirmed independently by lane A testOnlyCreatorMatrix/testCreatorTransferTwoStep and lane B H10 (EV_security). Real-fork paths, no mocks.",
+    "evidence_ids": ["EV_security"]
+  },
+  "P2_authorization_admin/pc_page_epoch": {
+    "status": "accepted",
+    "reason": "Epoch bump on acceptCreator/revokePoolPages invalidates prior digests; approved-then-rotated-then-rechecked on the SAME digest (lane A testPoolPageEpochReplay, lane B H13). The possible_false_positive (different digest) is closed because the test re-checks the exact approved digest.",
+    "evidence_ids": ["EV_security"]
+  },
+  "P3_split_m9_violation/pc_m9_extent": {
+    "status": "challenged",
+    "reason": "The ASSERTION (creator withdrawCurated-then-collect books 0.001985->0.002383 ETH; unlistShapes/listCurated/configure/transfer neutral-or-fund-favourable; lever ~k/(n-k)) is well-evidenced and I reproduced it (RUN1/RUN2), and I strengthened the unlistShapes-neutral basis to a proof (RUN3: with >=1 mandatory curated, no shape share is below the blended average). BUT the row's OWN adversarial_variant -- 'an automatic (no creator action) curated draw booking NFT money as profit' -- is NOT examined by the cited evidence (EV_m9extent/EV_m9worst are creator-action only). That variant is real and now demonstrated (controller UpkeepOrder.t.sol + my UpkeepOrderAsserted.t.sol RUN10): the keeper's normal performUpkeep reconciles the share-0 curated out before _collect, over-booking x n/(n-1); in a genuine shortfall (balance 0.064 < reserve 0.534) it makes 0.000365 ETH of fund money withdrawable with no creator action. Add that evidence and cite it; the automatic alternative is not closed by the current evidence_ids.",
+    "evidence_ids": ["EV_m9extent", "EV_m9worst"]
+  },
+  "P3_split_m9_violation/pc_m9_net": {
+    "status": "accepted",
+    "reason": "Worst-case net extraction reproduced (RUN7): honest collect books 0, withdraw-all-10-curated-then-collect books 0.017384 ETH, which the test CLAIMS and reads the fund strictly lower (0.085->0.0677). The false-positive (value never claimed) is closed because the extraction is realised by a claim, not just booked.",
+    "evidence_ids": ["EV_m9worst"]
+  },
+  "P4_keeper_restock_delivery/pc_keeper_pay": {
+    "status": "accepted",
+    "reason": "Non-setup keeper reward <= restock fees credited at 1/3/4.9 gwei (EV_gas) and the 5-draw burst upkeep 2,526,347 gas < 4,000,000 floor (EV_worstgas). Accepted within the stated bounds: these are single realised runs at chosen basefees; the row honestly flags the inter-sample/pathological-board region as unbounded, and M1/M2 is linear in a bounded pure price with a price-independent keeperCredit cap (code), so the inequality extends by construction. No claim beyond the measured region.",
+    "evidence_ids": ["EV_gas", "EV_worstgas"]
+  },
+  "P4_keeper_restock_delivery/pc_delivery_reentrancy": {
+    "status": "challenged",
+    "reason": "The full real-VRF draw cycle (EV_draw) and the hostile-receiver refund path (EV_refund) are solid, and plain transferFrom delivery means a hostile winner cannot fail delivery. BUT the assertion also claims 'reward-callback ... reentrancy attempts are blocked'. EV_keeperreent exercises a hostile CURATED COLLECTION re-entering during listCurated/recoverUntracked -- NOT the keeper REWARD RECIPIENT re-entering performUpkeep/_fillDeficit before the profit clamp. The reward-callback re-entry is guarded by nonReentrant in code but was NOT executed (slither-triage records it 'untested'). Narrow the assertion to: reward-callback reentrancy is guarded by nonReentrant (read), not exercised.",
+    "evidence_ids": ["EV_draw", "EV_keeperreent", "EV_refund"]
+  },
+  "P5_reserve_protection/pc_open_reserve": {
+    "status": "accepted",
+    "reason": "open() reverts unless balance + ownerProceeds >= requiredReserve(), computed from the live Shapes mint fee; funded/under-funded boundary exercised (EV_security, round 8 E2 fixed). The post-open drift is by design (E1 acceptance), so the at-open-only gate is the correct scope.",
+    "evidence_ids": ["EV_security"]
+  },
+  "P5_reserve_protection/pc_below_reserve": {
+    "status": "accepted",
+    "reason": "For its literal assertion -- after a targeted 0.5 win (fund 0.6975 < reserve 1.0515, profit 0) withdrawableSurplus()==0 and the markup-change timing attack moves 0 wei -- accepted; I independently reproduced the markup-change=0 result on a different harness (RUN5) and traced why (_share reads per-listing markupBps; performUpkeep collects before restock). Note (not a challenge to this row): the related automatic upkeep-ORDER over-booking on a CURATED draw (P3) is a separate confirmed path where profit DOES rise automatically while short; it is tracked under P3, not here.",
+    "evidence_ids": ["EV_belowreserve"]
+  },
+  "P8_refund_open_questions/pc_refund_player": {
+    "status": "challenged",
+    "reason": "The pool-side ledger (recoverRefunded returns the NFT, credits 0 proceeds) is verified (EV_refund) and the player-side refund WEI amount is honestly left unestablished -- that part is a genuine open question, accept it as unresolved. CHALLENGE the stale clause in the adversarial_variant 'the automatic no-action curated-draw-books-NFT-money case ... the automatic PoC was not built': it HAS now been built (controller UpkeepOrder.t.sol testCuratedDrawAfterBigWinUpkeepOrder; my UpkeepOrderAsserted.t.sol RUN10 asserts it). Update the text: the automatic upkeep-order over-booking is demonstrated (0.000365 ETH in a genuine shortfall); only the player-refund amount remains FWA-internal and open.",
+    "evidence_ids": ["EV_refund"]
+  }
+}

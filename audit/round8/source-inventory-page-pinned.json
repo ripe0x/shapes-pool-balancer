@@ -1,0 +1,2046 @@
+{
+  "schema": 3,
+  "contract": "PoolPage",
+  "source": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol",
+  "source_hashes": {
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/LibBytes.sol": "163fbab6b2c84609c55371ec54e1dc029b85e97bd6b3db6df141ce75795eefa9",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/LibClone.sol": "8e5e24af46150e0ca2849ded08395f3ccc962d13eef7c972899a4f763f17ce05",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/LibString.sol": "af977db918909a91c1613df076cd0b893bbf7193dec824a91a6e45c5b9696cd1",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/ReentrancyGuard.sol": "aeeda18221419e3409255c6505e0eb78fe13e3bd8329663cfa56a0316a970eaf",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/SafeTransferLib.sol": "9d3f890f184b26b67f56097085e8a3286089a1c77e390f1a5bd4498cbeb0956e",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/utils/SignatureCheckerLib.sol": "b67fa4ac16387785d2c4d271fecd8872db043cc0dcdfc2cbf70eeb0c2aa287e5",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/src/BalancerFactory.sol": "8c96d9eaf1e7bae2aaf8a3606ccd4e01400c183b032b426b6b0d9f6ba610b403",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol": "da9b18c5f0449cb7ada6434f9021d31ac0e8a8556fb4c9a2d51f4c699cb93140",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol": "6a3c1133374d5f902b40b98f3f80ac3b8b29b49c9c3fe74da57c84a7a0a0a767",
+    "/Users/dd/CascadeProjects/fwa-pool-balancer/src/interfaces/External.sol": "3e61c7dd6c127245a173ef39c83abe4daf158f5fd4da2652da26ca683cdfa9ba"
+  },
+  "compiler_inputs": {
+    "root": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+    "remappings": [
+      "@openzeppelin/contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+      "forge-std/=lib/forge-std/src/",
+      "ladder/=lib/shape-packs/lib/shapes/ladders/mainnet/",
+      "openzeppelin-contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+      "packs/=lib/shape-packs/src/",
+      "shape-packs/=lib/shape-packs/",
+      "shapes/=lib/shape-packs/lib/shapes/src/",
+      "solady/=lib/solady/src/"
+    ],
+    "generator_cwd": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+    "standard_json_input_path": "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/solc-input-pool.json",
+    "standard_json_input_sha256": "76cf37ea3aee09e666d33c644d523a951d2af8413d4581ae35a1bfdf6f6a5435",
+    "solc_path": "/Users/dd/.svm/0.8.28/solc-0.8.28",
+    "solc_binary_sha256": "81515b0e53deaa266d549545ccaac0a5a96e6d4e8201c77f673b2c710976d9ea"
+  },
+  "entrypoints": [
+    {
+      "id": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+      "visibility": "external",
+      "kind": "function"
+    }
+  ],
+  "external_calls": [
+    {
+      "id": "05629cfc693afd6bf453",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1879:27",
+      "kind": "library",
+      "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "12e317aaa5018a2a40cc",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1879:27",
+      "kind": "high",
+      "operation": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "26ac8e0f99efb2cccc8e",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1746:33",
+      "kind": "high",
+      "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "2bfb1027dfbdbec57b9a",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "2020:48",
+      "kind": "library",
+      "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "8602d29fc5058a64ee34",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1746:33",
+      "kind": "library",
+      "operation": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "8a351cf85a5b7b361728",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "2020:48",
+      "kind": "high",
+      "operation": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "b215a84af8a5382251ef",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1570:522",
+      "kind": "library",
+      "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "ba9df71d432d8cf1a70d",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "source_offset": "1570:522",
+      "kind": "high",
+      "operation": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] ",
+      "modifier_applies_to": [],
+      "target_origin": "unknown_until_data_dependency_review",
+      "dynamic_edge_status": "unknown",
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    }
+  ],
+  "internal_edges": [],
+  "storage_accesses": [
+    {
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "variable": "PoolPage.FWA_V1_FACTORY",
+      "action": "read",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+    },
+    {
+      "function": "PoolPage.slitherConstructorConstantVariables()",
+      "variable": "PoolPage.FWA_V1_FACTORY",
+      "action": "write",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:15"
+    }
+  ],
+  "candidate_checks": [
+    {
+      "id": "299ffc2daeeaa5e421de",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+      "source_offset": "1379:6",
+      "kind": "branch_candidate",
+      "predicate": "i < 24",
+      "semantic_status": "unknown",
+      "requires_worker_review": true
+    },
+    {
+      "id": "5baf5ecb3d55ecd1774b",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+      "source_offset": "1315:14",
+      "kind": "branch_candidate",
+      "predicate": "t.length != 24",
+      "semantic_status": "unknown",
+      "requires_worker_review": true
+    },
+    {
+      "id": "cde8539839da8d286cad",
+      "function": "PoolPage.digest(address,address,string,bytes32)",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+      "source_offset": "1439:80",
+      "kind": "branch_candidate",
+      "predicate": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z",
+      "semantic_status": "unknown",
+      "requires_worker_review": true
+    }
+  ],
+  "candidate_economic_values": [
+    {
+      "id": "54a257910332a390fc8a",
+      "name": "PoolPage.FWA_V1_FACTORY",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:15",
+      "source_kind": "state_write",
+      "semantic_status": "unknown",
+      "requires_worker_review": true
+    }
+  ],
+  "unresolved_check_inventory": [],
+  "unresolved_economic_inventory": [],
+  "unresolved_storage_inventory": [],
+  "unresolved_dynamic_inventory": [],
+  "paths": [
+    {
+      "id": "1cba69ab71e0ed1fb9d5",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "05629cfc693afd6bf453"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "8e6228d2abd4cafbdca1",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "c76248baf4055d1bff36",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        },
+        {
+          "slot_id": "fbeb9582c0618d898c33",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "3888689d8353a57a68f1",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "12e317aaa5018a2a40cc"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "8e6228d2abd4cafbdca1",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "c76248baf4055d1bff36",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        },
+        {
+          "slot_id": "fbeb9582c0618d898c33",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4632(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['pool'] "
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "55f4765746acebaee40c",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "2bfb1027dfbdbec57b9a"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "73dc50899538a9e1677e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "8e3f6efc104933e954f0",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        },
+        {
+          "slot_id": "e837651f629ce99a8151",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "8065df44fc9ae0195a76",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        }
+      ],
+      "conservative_all_assets_exposed": false
+    },
+    {
+      "id": "a589c8fb3962b7716dcb",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "b215a84af8a5382251ef"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "378bec1d8f679a998a19",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "6274d7b8f6e0b6b28e25",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "a8a80a0c899076ea951c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "bf997f5aebe9d06008db",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "8602d29fc5058a64ee34"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "078a68421a11d73bf89c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "22c3150a4de061a4d62d",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "6fdb5a92ea3eb39530f9",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "cb82a44594d5b23bf6bf",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "8a351cf85a5b7b361728"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "73dc50899538a9e1677e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "8e3f6efc104933e954f0",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        },
+        {
+          "slot_id": "e837651f629ce99a8151",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4634(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(uint256,uint256), arguments:['TMP_4633', '32'] "
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "f7e83619386c0782ee39",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "ba9df71d432d8cf1a70d"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "378bec1d8f679a998a19",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "6274d7b8f6e0b6b28e25",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "a8a80a0c899076ea951c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4636(bytes32) = LIBRARY_CALL, dest:SignatureCheckerLib, function:SignatureCheckerLib.toEthSignedMessageHash(bytes), arguments:['TMP_4635'] "
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    },
+    {
+      "id": "fb369bc1a8ef83fb34d2",
+      "entrypoint_id": "PoolPage.digest(address,address,string,bytes32)",
+      "callsite_ids": [
+        "26ac8e0f99efb2cccc8e"
+      ],
+      "function_chain": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "analysis_function_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "source_sites": [
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+        "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31"
+      ],
+      "post_check_ids": [
+        "299ffc2daeeaa5e421de",
+        "5baf5ecb3d55ecd1774b",
+        "cde8539839da8d286cad"
+      ],
+      "slots": [
+        {
+          "slot_id": "078a68421a11d73bf89c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_address",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callee",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "0f6d528dd16b5cdc7495",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "fwaFactory"
+        },
+        {
+          "slot_id": "104d9f78fd6e00c90e03",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:27",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "i < 24"
+        },
+        {
+          "slot_id": "139835bb07197a241463",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_or_receiver_callback",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "callback",
+          "detail": "any reachable entrypoint"
+        },
+        {
+          "slot_id": "22c3150a4de061a4d62d",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "callee_return_or_revert",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "return",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "3185d11c378807411687",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:26",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "t.length != 24"
+        },
+        {
+          "slot_id": "342d630dd63314528a1e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.sender",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "caller",
+          "detail": "entry caller"
+        },
+        {
+          "slot_id": "3e0e0b54d040599258a2",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "prior_transactions",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "prior_state",
+          "detail": "reachable pre-state"
+        },
+        {
+          "slot_id": "4507485ca28f492a6e6e",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "metadataHash"
+        },
+        {
+          "slot_id": "49c067aed88d332dea73",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "transaction_order",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "ordering",
+          "detail": "cross-transaction order"
+        },
+        {
+          "slot_id": "5fe5a31375697041163c",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:29",
+          "value_origin": "condition_inputs",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "branch_dependency",
+          "detail": "(c < 0 || c > 9) && c != - && c != : && c != . && c != T && c != Z"
+        },
+        {
+          "slot_id": "61b2425e74a7a75c184b",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "reentry_or_interleaving",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "same_transaction_order",
+          "detail": "before/after external call"
+        },
+        {
+          "slot_id": "6fdb5a92ea3eb39530f9",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "call_arguments_or_payload",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "calldata",
+          "detail": "TMP_4631(string) = LIBRARY_CALL, dest:LibString, function:LibString.toHexString(address), arguments:['fwaFactory'] "
+        },
+        {
+          "slot_id": "7146dd458c4402717c24",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "msg.value",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "transaction_value",
+          "detail": "entry value"
+        },
+        {
+          "slot_id": "8a28468e539358a09b9a",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "pool"
+        },
+        {
+          "slot_id": "b7344245b438c6e6e0dd",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+          "value_origin": "storage_or_external_effect",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "state_read",
+          "detail": "PoolPage.FWA_V1_FACTORY"
+        },
+        {
+          "slot_id": "d03b1ac74a70ac920422",
+          "source_site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:20",
+          "value_origin": "entrypoint_parameter",
+          "classification": "unknown",
+          "evidence": [],
+          "reviewer": null,
+          "kind": "abi_argument",
+          "detail": "issuedAt"
+        }
+      ],
+      "callback_entrypoint_ids": [
+        "PoolPage.digest(address,address,string,bytes32)"
+      ],
+      "conservative_all_assets_exposed": true
+    }
+  ],
+  "candidate_asset_authority_sites": [],
+  "asset_authority_candidates": [
+    {
+      "id": "2163e871357ed928d769",
+      "kind": "contract_as_sender_authority",
+      "origin": "2bfb1027dfbdbec57b9a",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "54fe30b778a22e671477",
+      "kind": "contract_as_sender_authority",
+      "origin": "8a351cf85a5b7b361728",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "6039287e0b0de00918d5",
+      "kind": "contract_as_sender_authority",
+      "origin": "05629cfc693afd6bf453",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "608d0de13632d4678719",
+      "kind": "contract_as_sender_authority",
+      "origin": "8602d29fc5058a64ee34",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "85f7b226668765fd2731",
+      "kind": "native_asset",
+      "origin": "evm_contract_balance",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:10",
+      "requires_worker_review": true
+    },
+    {
+      "id": "957e06fc57c1fc6acc5c",
+      "kind": "contract_as_sender_authority",
+      "origin": "26ac8e0f99efb2cccc8e",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "b3790bd9e614c4217e78",
+      "kind": "contract_as_sender_authority",
+      "origin": "12e317aaa5018a2a40cc",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "ce87385619161e9c854b",
+      "kind": "contract_as_sender_authority",
+      "origin": "b215a84af8a5382251ef",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    },
+    {
+      "id": "e83501eb40ff56363301",
+      "kind": "state_right_candidate",
+      "origin": "PoolPage.FWA_V1_FACTORY",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:15",
+      "requires_worker_review": true
+    },
+    {
+      "id": "eeb0f039ea5dfcda12e6",
+      "kind": "contract_as_sender_authority",
+      "origin": "ba9df71d432d8cf1a70d",
+      "site": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolPage.sol:31",
+      "requires_worker_review": true
+    }
+  ],
+  "linked_library_edges": [],
+  "mechanical_limits": [
+    "Native ETH, every state write and external-call capability are conservative candidates; token/authority name hints are not exhaustive. Asset/right semantics and invariant completeness require independent judgment.",
+    "Unknown dynamic targets, callbacks, proxy/delegate dispatch, and slot origins remain open.",
+    "Paths show static reachability, not feasibility or complete transaction sequences.",
+    "Compiler-generated getter paths are in entrypoints but have no Slither function body."
+  ],
+  "review_required": true,
+  "compiled_identity": {
+    "solc_version": "0.8.28",
+    "runtime_hex_sha256": "5d0be7c63dd265a2324335393874964e1309bbe7fca00b35b5bce8c0ff4c5a51",
+    "runtime_hex_length": 2388,
+    "runtime_hash_basis": "UTF-8 compiler runtime hex, including any unresolved link/immutable placeholders",
+    "runtime_template_sha256": "5d0be7c63dd265a2324335393874964e1309bbe7fca00b35b5bce8c0ff4c5a51",
+    "standard_json_input_sha256": "76cf37ea3aee09e666d33c644d523a951d2af8413d4581ae35a1bfdf6f6a5435",
+    "solc_binary_sha256": "81515b0e53deaa266d549545ccaac0a5a96e6d4e8201c77f673b2c710976d9ea",
+    "literal_implementation_template": null,
+    "linked_library_templates": []
+  }
+}

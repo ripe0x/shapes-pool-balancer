@@ -1,0 +1,17 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.81s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testOpeningAndRetirementLedger() (gas: 6222028)
+Logs:
+  opening pool ETH 2383801013300000000
+  opening keeper credit 0
+  opening FWA quote 22515218342601808
+  opening reserve 534000000000000000
+  retired creator reclaim 3923801013300000000
+  initial unrepaid fees and keeper pay 76198986700000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 44.71ms (16.00ms CPU time)
+
+Ran 1 test suite in 347.85ms (44.71ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,161 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.17s
+Compiler run successful!
+
+Ran 9 tests for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testBalancedLaunchMixReserveAfterLargeAndMediumWins() (gas: 708305298)
+Logs:
+  Balanced pre-burst reserve 534000000000000000
+  Balanced creator max withdrawal 1849801013300000000
+  Balanced large-win trials 1144
+  Balanced medium-win trials 206
+  Balanced two-draw player total 49954678574941674
+  Balanced FWA owner proceeds 42895884357087310
+  Balanced 0.1 prizes after upkeep 2
+  Balanced 0.5 prizes after upkeep 0
+  Balanced pool ETH after upkeep 474750884357087310
+  Balanced required reserve after upkeep 1035000000000000000
+
+[PASS] testCheapShapeMixFiveDrawsAfterMaxWithdrawal() (gas: 10200486)
+Logs:
+  cheap mix pre-burst reserve 44000000000000000
+  cheap mix creator max claim 3679801013300000000
+  cheap mix restocked 0.01 Shapes 20
+  cheap mix pool ETH after burst 57297312361475350
+  cheap mix required reserve after burst 44000000000000000
+
+[PASS] testDrawRestockCreditAndRefundBound() (gas: 1974469)
+Logs:
+  draw fee 22520339287470837
+  vrf fee 2457000000000000
+  status at one in-flight draw 0
+  drawn listing 11
+  acquisition status 2
+  drawn kind 2
+  drawn denom 0
+  drawn base 12500000000000000
+  drawn price 13645000000000000
+  keeper reward 1145000000000000
+  upkeep frame gas total 783170
+  upkeep frame refund 58700
+  upkeep in-process frame net gas 724470
+  upkeep in-process frame net cost 760693500000000
+  keeper credit after 0
+  pool balance delta 9302942178543655
+
+[PASS] testFiveInflightGateAndReconcile() (gas: 6272858)
+Logs:
+  five in-flight reserve 3088500000000000000
+  five in-flight status 4
+  status after five-draw upkeep 0
+  credit after five-draw upkeep 1772758350000000
+
+[PASS] testGasSweepOneDrawOneRestock() (gas: 14829714)
+Logs:
+  base fee wei 0
+  quote total wei 22520339287470837
+  restock fee wei 245000000000000
+  keeper reward wei 245000000000000
+  call gas pre-refund upper bound 791304
+  keeper spread versus upper-bound cost wei 245000000000000
+  base fee wei 50000000
+  quote total wei 22754339287470837
+  restock fee wei 290000000000000
+  keeper reward wei 290000000000000
+  call gas pre-refund upper bound 791267
+  keeper spread versus upper-bound cost wei 210873300000000
+  base fee wei 100000000
+  quote total wei 22871339287470837
+  restock fee wei 335000000000000
+  keeper reward wei 335000000000000
+  call gas pre-refund upper bound 791268
+  keeper spread versus upper-bound cost wei 216309800000000
+  base fee wei 1000000000
+  quote total wei 24977339287470837
+  restock fee wei 1145000000000000
+  keeper reward wei 1145000000000000
+  call gas pre-refund upper bound 791268
+  keeper spread versus upper-bound cost wei 314168600000000
+  base fee wei 3000000000
+  quote total wei 29657339287470837
+  restock fee wei 2945000000000000
+  keeper reward wei 2918854350000000
+  call gas pre-refund upper bound 791246
+  keeper spread versus upper-bound cost wei 505554050000000
+  base fee wei 4900000000
+  quote total wei 34103339287470837
+  restock fee wei 4655000000000000
+  keeper reward wei 4425681650000000
+  call gas pre-refund upper bound 791246
+  keeper spread versus upper-bound cost wei 509013950000000
+  base fee wei 5100000000
+  quote total wei 34571339287470837
+  restock fee wei 4700000000000000
+  keeper reward wei 4465550000000000
+  call gas pre-refund upper bound 791300
+  keeper spread versus upper-bound cost wei 390355000000000
+  base fee wei 10000000000
+  quote total wei 46037339287470837
+  restock fee wei 4700000000000000
+  keeper reward wei 4465550000000000
+  call gas pre-refund upper bound 791300
+  keeper spread versus upper-bound cost wei -3487015000000000
+
+[PASS] testKeeperOverbidAndGasLimitDoNotInflateReward() (gas: 2571120)
+Logs:
+  normal reward 2918854350000000
+  overbid reward 2918854350000000
+  normal call pre-refund gas 789099
+  overbid call pre-refund gas 789093
+  normal spread vs upper-bound cost 512102400000000
+  overbid spread vs upper-bound cost -4972075650000000
+
+[PASS] testOpeningAndRetirementLedger() (gas: 6272873)
+Logs:
+  first prize denomination 0
+  first prize price 13645000000000000
+  first prize denomination 9
+  first prize price 27290000000000000
+  first prize denomination 1
+  first prize price 59645000000000000
+  first prize denomination 2
+  first prize price 117145000000000000
+  first prize denomination 3
+  first prize price 577145000000000000
+  opening pool ETH 2383801013300000000
+  opening keeper credit 0
+  opening FWA quote 22520339287470837
+  FWA total weight 1911605302676359387351
+  FWA weighted backing total 40999999999999999998546800000000000000
+  opening reserve 534000000000000000
+  retired creator reclaim 3923801013300000000
+  initial unrepaid fees and keeper pay 76198986700000000
+
+[PASS] testQuoteToInclusionBasefeeJump() (gas: 831929)
+Logs:
+  old total 22871339287470837
+  new total 29657339287470837
+  VRF jump 6786000000000000
+  0xcd1c8867
+  pool balance delta 22520339287470837
+  acquisition escrowed 22520339287470837
+
+[PASS] testReserveAfterTwoLargeWinsAtMaxWithdrawal() (gas: 71148376)
+Logs:
+  pre-burst reserve 534000000000000000
+  pre-burst pool ETH 534000000000000000
+  creator max withdrawal 823490527000000000
+  two-draw player total 66025680788240672
+  first large-win trials 26
+  second large-win trials 101
+  settled FWA owner proceeds 58201600750705402
+  pool ETH before upkeep 534000000000000000
+  large prizes after one upkeep 4
+  pool ETH after one upkeep 90056600750705402
+  reserve after one upkeep 1035000000000000000
+  withdrawable after one upkeep 0
+  admission status with unfunded target 0
+
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 963.54ms (1.15s CPU time)
+
+Ran 1 test suite in 1.22s (963.54ms CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

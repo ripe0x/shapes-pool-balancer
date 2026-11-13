@@ -1,0 +1,13 @@
+Compiling 57 files with Solc 0.8.28
+Compiling 31 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.25s
+Solc 0.8.28 finished in 3.89s
+Compiler run successful!
+
+Ran 3 tests for audit/round9/preflight/Sentinel.t.sol:SentinelTest
+[PASS] testForkReadsBlock() (gas: 3276)
+[PASS] testFuzzNeutralArithmetic(uint64) (runs: 256, μ: 339, ~: 339)
+[PASS] testNeutralArithmetic() (gas: 261)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 10.97ms (886.17µs CPU time)
+
+Ran 1 test suite in 11.26ms (10.97ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

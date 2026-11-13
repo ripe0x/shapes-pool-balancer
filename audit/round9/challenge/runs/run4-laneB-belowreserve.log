@@ -1,0 +1,20 @@
+=== RUN 4: lane B AddendumBelowReserve (markup-change attack, counterpart to M9) ===
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round9/lane_b/AddendumBelowReserve.t.sol:AddendumBelowReserveTest
+[FAIL: vm.getCode: no matching artifact found] testBelowReserveSafety() (block: 26382349) (gas: 3992)
+[FAIL: vm.getCode: no matching artifact found] testMarkupChangeOverbooking() (block: 26382349) (gas: 4124)
+Suite result: FAILED. 0 passed; 2 failed; 0 skipped; finished in 288.89ms (569.74ms CPU time)
+
+Ran 1 test suite in 292.93ms (288.89ms CPU time): 0 tests passed, 2 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 2 failing tests in audit/round9/lane_b/AddendumBelowReserve.t.sol:AddendumBelowReserveTest
+[FAIL: vm.getCode: no matching artifact found] testBelowReserveSafety() (block: 26382349) (gas: 3992)
+[FAIL: vm.getCode: no matching artifact found] testMarkupChangeOverbooking() (block: 26382349) (gas: 4124)
+
+Encountered a total of 2 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
+EXIT=1

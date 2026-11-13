@@ -1,0 +1,26 @@
+# Integration lane — discovery seal
+
+Sealed at (UTC): 2026-11-13T11:44:04Z
+Frozen target commit: c686534669562e78fd33f7297c13f12e68fe3066
+Pinned block 26382349; recent block 26405755. RPC https://mainnet.gateway.tenderly.co.
+
+SHA-256 of every file in this lane dir except out/ and cache/:
+
+```
+e8bfaa58c64d88b2760773ba6aaf930490ad81ad0a1540eaa2753b4ba58e2e75  FwaVrfTiming.t.sol
+c5080b1762adc1574452326eef69749c193f80fd7ff7a3f7019f0b9dcc65447e  RestockInventoryVersion.t.sol
+4839077d3a6c6da7b39969b9c914ae9fac21adf26f98102cc9e9861a315de742  discovery-seal.md
+06ccfb4e5b9cb6235b504ecf35b42d23086ae4de7849d8cbf286420678615512  logs/build-poolbalancer.log
+51eb00575780f479dd0b95e502ecdbaa323122cd2461175982b50e0a4a533be6  logs/cast-version.log
+a8d65e35284104625d405209e47c2066fb3ec45dd5fe1fc5765dd6193a9b2705  logs/forge-version.log
+c2c2fa5216720772107a091a7bdc2b12a2ea492d41f94568aa56074f981625c5  logs/node-version.log
+9a5db41740741ce02a95b3b1d4734ff0828cc2c306eadcf2c6618c34d74f0251  logs/recent-block.log
+b5afed38207fa7923a9e9b630d156037c282c480e83555ebac56d12964b5dccb  logs/restock-invversion.log
+d3848c137460bc5a9da0e484f106263e75da6b05f17ebfca62b21e54f7ea5b4f  logs/sentinel-fork.log
+33721b07ec11b5e18e8d57c2444fb8d65aeebc90fad1ef0e19e6f8ac1bf05adc  logs/sentinel-local.log
+50ee912be8a261517010d3f20ffe1fbd19eb55c8b7c3b1f7928b13818bf3051e  logs/vrf-timing.log
+a6cb9475f7f54b861868bb769cddd6b964eee288d04a69ba203f2a96df58cdac  preflight/record.md
+5fb9aeff0ff2d4df047eb8016c74fed87bcbdd7df2960ee4bc731054dd3b94fb  sealed-inventory.md
+```
+
+Do not modify sealed files after this point.

@@ -1,0 +1,31 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "balancer": "0xFE4bF8dfA7c64866a75F141d771eA2d73452ac17",
+  "pool": "0xc0CE6B85bB0bc02c1b072d291af3ad47c0c670a0",
+  "playerQuote": {
+    "fee": "22520339287470837",
+    "vrf": "2457000000000000",
+    "total": "24977339287470837"
+  },
+  "drawn": {
+    "listingId": "11",
+    "status": "2",
+    "kind": "2",
+    "denom": "0"
+  },
+  "keeper": {
+    "txHash": "0x8e94fedb576379e7ea6700e7fe6d26e9c3bbc7e1fbc36d7849190213b5126dcf",
+    "blockNumber": "26382376",
+    "gasLimit": "5000000",
+    "gasUsedBilled": "797824",
+    "effectiveGasPrice": "1050000000",
+    "measuredGas": "795761",
+    "reward": "1145000000000000",
+    "billedCost": "837715200000000",
+    "net": "307284800000000",
+    "feeCreditBefore": "0",
+    "restockFee": "1145000000000000",
+    "feeCreditAfter": "0"
+  }
+}

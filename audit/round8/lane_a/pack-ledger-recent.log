@@ -1,0 +1,22 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.32s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/PackLedger.t.sol:PackLedgerTest
+[PASS] testPackListingFeeCustodyAndUnlistRedemption() (gas: 11438246)
+Logs:
+  fork block 26399895
+  basefee before upkeep 760813631
+  restock before upkeep 929732267900000
+  probe before basefee 760813631
+  probe during basefee 760813631
+  probe after basefee 760813631
+  probe before restock 929732267900000
+  probe during restock 929732267900000
+  probe after restock 929732267900000
+  basefee after upkeep 760813631
+  restock after upkeep 929732267900000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.95s (3.51s CPU time)
+
+Ran 1 test suite in 4.21s (3.95s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,22 @@
+private fork ready
+local production deploy script completed
+four Shapes and one curated NFT stocked
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+2n !== 2
+
+    at <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_a/validation/gas_race/gas_race.ts:137:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 2n,
+  expected: 2,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.19.0

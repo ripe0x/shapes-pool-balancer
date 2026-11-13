@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round8/integration/IntegrationFork.t.sol:IntegrationForkTest
+[PASS] testMintListWithdrawRedeemRoundTrip() (gas: 3246573)
+[PASS] testRealCuratedListingAndPurchaseGate() (gas: 3998209)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 2.65s (2.13s CPU time)
+
+Ran 1 test suite in 2.90s (2.65s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

@@ -1,0 +1,118 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "balancer": "0xFE4bF8dfA7c64866a75F141d771eA2d73452ac17",
+  "pool": "0xc0CE6B85bB0bc02c1b072d291af3ad47c0c670a0",
+  "setup": {
+    "payer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "purchaser": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "quote": {
+      "fee": "22520339287470837",
+      "vrf": "2457000000000000",
+      "total": "24977339287470837"
+    },
+    "sequence": "2",
+    "selectedDenom": "0",
+    "creditBefore": "0"
+  },
+  "results": [
+    {
+      "name": "base0.05_bid0.10_limit5m",
+      "txHash": "0x86cd56bae9593132a082a9a374eac2f0a7518869389bb7b94a8fd2ff200806a0",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788064",
+      "effectiveGasPrice": "100000000",
+      "measuredGas": "786001",
+      "reward": "290000000000000",
+      "billedCost": "78806400000000",
+      "net": "211193600000000",
+      "creditAfter": "0",
+      "restockFeeAtCall": "290000000000000"
+    },
+    {
+      "name": "base0.10_bid0.15_limit5m",
+      "txHash": "0x2c0199910a3d4a24a88ce4faa559bc3271f6c5914e40a739b190530586cc87bd",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788042",
+      "effectiveGasPrice": "150000000",
+      "measuredGas": "785979",
+      "reward": "335000000000000",
+      "billedCost": "118206300000000",
+      "net": "216793700000000",
+      "creditAfter": "0",
+      "restockFeeAtCall": "335000000000000"
+    },
+    {
+      "name": "base1_bid1.05_limit5m",
+      "txHash": "0xfe5096b1fc5723dcf83e2c3c7bcaebfcb20032126615a796866bc55d230c1b6d",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788042",
+      "effectiveGasPrice": "1050000000",
+      "measuredGas": "785979",
+      "reward": "1145000000000000",
+      "billedCost": "827444100000000",
+      "net": "317555900000000",
+      "creditAfter": "0",
+      "restockFeeAtCall": "1145000000000000"
+    },
+    {
+      "name": "base1_bid10_limit10m",
+      "txHash": "0x1d574cd0c6d5f1f82e8c6df8fba308dafd2aa5599093307dd14620982372db49",
+      "blockNumber": "26382380",
+      "gasLimit": "10000000",
+      "gasUsed": "788042",
+      "effectiveGasPrice": "10000000000",
+      "measuredGas": "785979",
+      "reward": "1145000000000000",
+      "billedCost": "7880420000000000",
+      "net": "-6735420000000000",
+      "creditAfter": "0",
+      "restockFeeAtCall": "1145000000000000"
+    },
+    {
+      "name": "base4.9_bid4.95_limit5m",
+      "txHash": "0xccf8aae9d01d47fc9898c7f3152b45145fb861319901aebf423b6b44844c41a5",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788019",
+      "effectiveGasPrice": "4950000000",
+      "measuredGas": "785979",
+      "reward": "4390596050000000",
+      "billedCost": "3900694050000000",
+      "net": "489902000000000",
+      "creditAfter": "264403950000000",
+      "restockFeeAtCall": "4655000000000000"
+    },
+    {
+      "name": "base5.1_bid5.15_limit5m",
+      "txHash": "0x047c1991a35f3e5997ae02ca3259628e91b31b6bc90033702e96db6b9eaa40d7",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788071",
+      "effectiveGasPrice": "5150000000",
+      "measuredGas": "786022",
+      "reward": "4430110000000000",
+      "billedCost": "4058565650000000",
+      "net": "371544350000000",
+      "creditAfter": "269890000000000",
+      "restockFeeAtCall": "4700000000000000"
+    },
+    {
+      "name": "base10_bid10.05_limit5m",
+      "txHash": "0x4dfdf558443d7e98fca67d1c81339007c03b038d2896a77f17cd9787ddd604e7",
+      "blockNumber": "26382380",
+      "gasLimit": "5000000",
+      "gasUsed": "788071",
+      "effectiveGasPrice": "10050000000",
+      "measuredGas": "786022",
+      "reward": "4430110000000000",
+      "billedCost": "7920113550000000",
+      "net": "-3490003550000000",
+      "creditAfter": "269890000000000",
+      "restockFeeAtCall": "4700000000000000"
+    }
+  ]
+}

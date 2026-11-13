@@ -1,0 +1,28 @@
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "vrfService()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "vrfCoordinator()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+status=0
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "coordinator()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+status=1
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "feeRouter()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+status=1
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "vrfFeeRouter()(address)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+status=1
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "vrfServiceFee()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+status=1
+
+cast call 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C "vrfFee()(uint256)" -b 26382349 -r https://mainnet.gateway.tenderly.co
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+status=1

@@ -1,0 +1,13 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.31s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/ReserveReopen.t.sol:ReserveReopenTest
+[PASS] testCloseDrainReopenAdmitsWithReserveDeficit() (gas: 10673590)
+Logs:
+  reserve wei 100034000000000000000
+  draw payment wei 2080845435892321970
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.28ms (4.73ms CPU time)
+
+Ran 1 test suite in 291.32ms (5.28ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,18 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.00s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/focused/RetireCloseout.t.sol:RetireCloseoutTest
+[PASS] testRetireClosesOutCleanly() (gas: 6847339)
+Logs:
+  balancer balance at closeout: 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 270.81ms (3.43ms CPU time)
+
+Ran 1 test suite in 273.08ms (270.81ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

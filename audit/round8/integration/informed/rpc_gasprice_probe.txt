@@ -1,0 +1,18 @@
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26382349 -r https://mainnet.gateway.tenderly.co
+0
+status=0
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26382349 -r https://mainnet.gateway.tenderly.co --gas-price 1000000000
+135613522980000 [1.356e14]
+status=0
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26382349 -r https://mainnet.gateway.tenderly.co --gas-price 1000000000 --priority-gas-price 50000000
+252613522980000 [2.526e14]
+status=0
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26399837 -r https://mainnet.gateway.tenderly.co
+0
+status=0
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26399837 -r https://mainnet.gateway.tenderly.co --gas-price 1000000000
+1731287932920000 [1.731e15]
+status=0
+cast call 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d 'requestFee()(uint256)' -b 26399837 -r https://mainnet.gateway.tenderly.co --gas-price 1000000000 --priority-gas-price 50000000
+1848287932920000 [1.848e15]
+status=0

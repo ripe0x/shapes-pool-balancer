@@ -1,0 +1,63 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.34s
+Compiler run successful!
+
+Ran 6 tests for audit/round8/lane_a/validation/CuratedValidation.t.sol:CuratedValidationInformedTest
+[PASS] testApproveRevertRollsBackAndCallbackLeavesOldPrice() (gas: 2518225)
+Logs:
+  approval callback current markup bps 10000
+  FWA old-price listing wei 100000000000000000
+
+[PASS] testChangingOwnerOfAfterPullRollsBackWholeListing() (gas: 274737)
+[PASS] testFakeDeliveryCanRelistSameActualTokenForSecondPlayer() (gas: 5863318)
+Logs:
+  first player total wei 25199431673280128
+  first router fee wei 2457000000000000
+  first owner proceeds wei 21659458736457265
+  second player total wei 25199431673280128
+  second router fee wei 2457000000000000
+  second owner proceeds wei 21659458736457265
+  creator final wallet wei 1040970886022914530
+  creator net over 1 ETH funded capital wei 40970886022914530
+  first/second word trials 1 1
+  both refund rejection selector
+  0x83ad9f5a
+
+[PASS] testFakeEscrowAndFakeDeliveryChargePlayerWithoutRealToken() (gas: 4131066)
+Logs:
+  post-draw acquisition status 2
+  post-draw listing status 4
+  actual token owner 0xc7183455a4C133Ae270771860664b6B7ec320bB1
+  reported token owner 0x0000000000000000000000000000000000000B0b
+  FWA owner proceeds wei 21659458736457265
+  word trials 1
+  player spent wei 25199431673280128
+  router fee wei 2457000000000000
+  acquisition fee wei 22742431673280128
+  Balancer before draw wei 987651968550000000
+  Balancer after upkeep wei 1009311427286457265
+  creator pre-draw wallet wei 0
+  creator final wallet wei 1019311427286457265
+  creator net over 1 ETH funded capital wei 19311427286457265
+  creator final liquid claim wei 1019311427286457265
+  refund rejection selector
+  0x83ad9f5a
+
+[PASS] testGhostEscrowWithStandardDeliveryRefundsAcquisitionFee() (gas: 3735600)
+Logs:
+  standard delivery acquisition/listing status 7 7
+  refund player loss wei 2457000000000000
+  refund VRF fee wei 2457000000000000
+  refund total acquisition wei 25199431673280128
+  refund owner proceeds wei 0
+  refund word trials 1
+
+[PASS] testOwnerOfLieAloneFailsButFullyDishonestCollectionListsGhost() (gas: 2507338)
+Logs:
+  ghost listing id 1
+  actual creator token owner 0xc7183455a4C133Ae270771860664b6B7ec320bB1
+  reported FWA token owner 0xC7461628Aa2C63E89d42A61Be747210A72A90Fd3
+
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 13.03ms (24.53ms CPU time)
+
+Ran 1 test suite in 429.27ms (13.03ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)

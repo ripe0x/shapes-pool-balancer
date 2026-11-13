@@ -1,0 +1,17 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.92s
+Compiler run successful!
+
+Ran 1 test for audit/round9/lane_b/Scenario.t.sol:ScenarioTest
+[PASS] testCreatorNetAndRoundTrip() (gas: 16386416)
+Logs:
+  draws / blocked 5 0
+  playerPaid total (quoted) 97286338870398475
+  keeperEarned total 3317927200000000
+  creator claimed at close 2036992871724189027
+  deposit 2000000000000000000
+  balancer residual 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 318.36ms (29.19ms CPU time)
+
+Ran 1 test suite in 336.03ms (318.36ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

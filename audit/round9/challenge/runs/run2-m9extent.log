@@ -1,0 +1,42 @@
+=== RUN 2: lane A addendum M9Extent (real coordinator route) ===
+Compiling 31 files with Solc 0.8.28
+Compiling 59 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.98s
+Solc 0.8.28 finished in 6.04s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 6 tests for audit/round9/lane_a/addendum/M9Extent.t.sol:M9Extent
+[PASS] testT1WithdrawCurated() (gas: 6787988)
+Logs:
+  T1 withdrawCurated honest/acted: 1985495699365404 2382594839238485
+
+[PASS] testT2CollectTimingLever() (gas: 7171065)
+Logs:
+  T2 collect-first / keeper-first profit: 1985495699365404 0
+
+[PASS] testT3UnlistShapes() (gas: 6860321)
+Logs:
+  T3 unlistShapes honest/acted: 1985495699365404 1906075871390788
+
+[PASS] testT4ListCurated() (gas: 7187033)
+Logs:
+  T4 listCurated honest/acted: 1985495699365404 1701853456598918
+
+[PASS] testT5CreatorTransfer() (gas: 6625223)
+Logs:
+  T5 transfer honest/acted: 1985495699365404 1985495699365404
+
+[PASS] testT6ConfigureBiggerTarget() (gas: 6589856)
+Logs:
+  T6 configure-bigger honest/acted: 1985495699365404 1985495699365404
+
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 282.03ms (50.20ms CPU time)
+
+Ran 1 test suite in 287.11ms (282.03ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)
+EXIT=0

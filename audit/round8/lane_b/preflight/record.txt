@@ -1,0 +1,29 @@
+Lane B Round 8 neutral execution-capability preflight
+Frozen target identity supplied by controller: 2ac7a7e7b965d1798729068566c026128a4ba4b9
+Current HEAD observed with `git rev-parse HEAD`: 3955f72393a09b7a84d1f275f3c6df8e35382035
+Controller confirmed current HEAD differs only by audit artifacts; no production/source/config change. No Git history consulted.
+
+Toolchain commands and observed output:
+`command -v forge` -> /Users/dd/.local/agent-guards/bin/forge
+`forge --version` -> forge Version: 1.8.1; Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98; Build Timestamp: 2026-08-28T17:50:40.383510000Z (1787939440); Build Profile: dist
+`command -v solc` -> /Users/dd/.local/bin/solc
+`solc --version` -> Version: 0.8.26+commit.8a97fa7a.Darwin.appleclang
+foundry.toml pins solc 0.8.28, evm_version cancun, optimizer=true, optimizer_runs=50, via_ir=true. The build output confirms Foundry used Solc 0.8.28.
+
+Build command:
+`forge build src/PoolBalancer.sol --no-cache --out audit/round8/lane_b/preflight/out --cache-path audit/round8/lane_b/preflight/cache`
+Exit status: 0
+Combined output: build.stdout-stderr.txt
+
+Local sentinel command:
+`FOUNDRY_TEST=audit/round8/preflight forge test --match-path audit/round8/preflight/Sentinel.t.sol --out audit/round8/lane_b/preflight/out --cache-path audit/round8/lane_b/preflight/cache`
+Exit status: 0
+Combined output: local.stdout-stderr.txt
+
+Fork sentinel command:
+`FOUNDRY_TEST=audit/round8/preflight forge test --match-path audit/round8/preflight/Sentinel.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --out audit/round8/lane_b/preflight/out --cache-path audit/round8/lane_b/preflight/cache`
+First sandbox attempt exit status: 1. It stopped before testing: failed to retrieve chain ID; DNS lookup for mainnet.gateway.tenderly.co failed. This first output was observed in the tool response but overwritten by the retry, so it is not retained as an independent output file.
+Escalated read-only RPC retry exit status: 0
+Combined output: fork.stdout-stderr.txt
+
+A first uncached build compiled successfully, but its logging wrapper failed because zsh reserves `status` as a read-only variable. A later build repeated compilation with --no-cache and captured the successful result above. No cache was cleared.

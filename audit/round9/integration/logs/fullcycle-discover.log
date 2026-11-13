@@ -1,0 +1,63 @@
+Compiling 1 files with Solc 0.8.28
+Compiling 30 files with Solc 0.8.28
+Solc 0.8.28 finished in 16.80ms
+Solc 0.8.28 finished in 7.67s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+   --> audit/round9/integration/FullCycle.t.sol:111:73:
+    |
+111 |         (address purch, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tok) = pool.acquisitions(reqId);
+    |                                                                         ^^^^^^^^
+
+
+Ran 2 tests for audit/round9/integration/FullCycle.t.sol:FullCycleTest
+[PASS] test_discover_vrf_route() (gas: 720577)
+Logs:
+  inventoryVersion: 2
+  acquisitionFee: 18854431194541526
+  vrfServiceFee: 2340000000000000
+  total: 21194431194541526
+  acquire requestId: 94782623901646048224103269094433485951264266060021871943327168528472285848174
+  log count: 8
+  emitter: 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+    topic0: 0x015dc3aa9002d7fa6b98cf88da11ecfd40c7bfd9eb1c52ee914fd1a62a4c9817
+    topic1: 0x000000000000000000000000c19007ede6b96be34dd5c73c51eb1c44ac776fa7
+    dataLen: 64
+  emitter: 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+    topic0: 0xf7797de23269c41b86bcb0a933f5bc13c15d4c4e79b4432a14f8e3ec1a8adbf4
+    topic1: 0x000000000000000000000000c19007ede6b96be34dd5c73c51eb1c44ac776fa7
+    dataLen: 160
+  emitter: 0xC19007eDe6B96bE34DD5c73C51Eb1c44Ac776Fa7
+    topic0: 0xdb28a60cee2e8c31915c78f9bcac218bee7a8039e7507da768916fe4d080bd3a
+    topic1: 0x000000000000000000000000000000000000000000000000000000000000beef
+    dataLen: 32
+  emitter: 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a
+    topic0: 0xeb0e3652e0f44f417695e6e90f2f42c99b65cd7169074c5a654b16b9748c3a4e
+    topic1: 0x8077df514608a09f83e4e8d300645594e5d7234665448ba83f51a50f842bd3d9
+    dataLen: 288
+  emitter: 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+    topic0: 0x28f521cf7abd0044cba5bb040c5217ff69a4e5865f5262905018698e68fe7d00
+    topic1: 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e
+    dataLen: 0
+  emitter: 0xC19007eDe6B96bE34DD5c73C51Eb1c44Ac776Fa7
+    topic0: 0xf23e34f4aa4a06ecddd309d9692e7b7ca45b76fd0d5f4ce4f7fbf29731d9abd6
+    topic1: 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e
+    dataLen: 64
+  emitter: 0xC19007eDe6B96bE34DD5c73C51Eb1c44Ac776Fa7
+    topic0: 0x3e5b01ceee4741bf17318a3f74c2fd1dbac13bba024b4f6b5bca0ca1851e3f70
+    topic1: 0xd18d10638af3b568f2af0e056612e818d53862e036c14d96f28145e35c3f226e
+    dataLen: 64
+  emitter: 0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496
+    topic0: 0xb2de2fbe801a0df6c0cbddfd448ba3c41d48a040ca35c56c8196ef0fcae721a8
+    dataLen: 128
+  acq.purchaser: 0x000000000000000000000000000000000000bEEF
+  acq.requestBlock: 26382349
+  acq.priceEscrowed: 18854431194541526
+  acq.listingId: 0
+  acq.status: 1
+  unsettled: 1
+
+[PASS] test_postflight_readbacks() (gas: 131785)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.76s (89.37ms CPU time)
+
+Ran 1 test suite in 1.79s (1.76s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

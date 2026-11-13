@@ -1,0 +1,33 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.77s
+Compiler run successful!
+
+Ran 1 test for audit/round9/lane_b/ProbeRoute.t.sol:ProbeRouteTest
+[FAIL: route should settle many draws at 3 gwei: 3 < 8] testRoute() (block: 26382349) (gas: 17792907)
+Logs:
+  service.coordinator() 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a
+  service.vrfCoordinator() 0x0000000000000000000000000000000000000000
+  d / fulfilled / unsettled 0 1 0
+  d / fulfilled / unsettled 1 1 0
+  d / fulfilled / unsettled 2 1 0
+  blocked at d 3 3
+  blocked at d 4 3
+  blocked at d 5 3
+  blocked at d 6 3
+  blocked at d 7 3
+  blocked at d 8 3
+  blocked at d 9 3
+  settled draws 3
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 706.66ms (706.43ms CPU time)
+
+Ran 1 test suite in 710.68ms (706.66ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_b/ProbeRoute.t.sol:ProbeRouteTest
+[FAIL: route should settle many draws at 3 gwei: 3 < 8] testRoute() (block: 26382349) (gas: 17792907)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

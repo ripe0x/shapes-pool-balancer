@@ -1,0 +1,18 @@
+No files changed, compilation skipped
+
+Ran 12 tests for audit/round9/lane_a/SecurityIntegration.t.sol:SecurityIntegration
+[PASS] testCloneOutsideFactory() (gas: 862764)
+[PASS] testConfigureBounds() (gas: 1083466)
+[PASS] testCreatorTransferTwoStep() (gas: 1057574)
+[PASS] testImplementationLocked() (gas: 41113)
+[PASS] testKeeperAdminTwoStepAndScope() (gas: 1083535)
+[PASS] testKeeperGating() (gas: 1236653)
+[PASS] testListCuratedRejectsProtocolTokens() (gas: 1086089)
+[PASS] testOnlyCreatorMatrix() (gas: 1191673)
+[PASS] testOpenRequiresReserve() (gas: 1142994)
+[PASS] testPoolPageEpochReplay() (gas: 1192721)
+[PASS] testRealInitialize() (gas: 940312)
+[PASS] testRecoverUntrackedGuards() (gas: 1765329)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 266.28ms (27.00ms CPU time)
+
+Ran 1 test suite in 288.67ms (266.28ms CPU time): 12 tests passed, 0 failed, 0 skipped (12 total tests)

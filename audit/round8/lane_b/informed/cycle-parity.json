@@ -1,0 +1,16 @@
+{
+  "scope": "one 0.01 ETH Shape win/restock, close/unlist/retire/withdraw, winner redemption; pinned Foundry fork",
+  "payer_note": "Foundry pre-read p.inventoryVersion() inside vm.prank expression consumed the prank; test contract funded purchase. Separate code-free Anvil EOA-payer receipt (`keeper-receipts-eoa.json`) proves same quote and draw.",
+  "draw_fee_wei": 22520339287470837,
+  "vrf_fee_wei": 2457000000000000,
+  "owner_proceeds_wei": 21447942178543655,
+  "new_shape_cost_wei": 11000000000000000,
+  "keeper_reward_wei": 1145000000000000,
+  "predicted_and_observed_balancer_delta_wei": 9302942178543655,
+  "no_win_creator_reclaim_wei": 3923801013300000000,
+  "one_win_creator_reclaim_wei": 3933103955478543655,
+  "creator_net_after_one_win_excluding_returned_nft_wei": -66896044521456345,
+  "winning_shape_backing_redeemed_wei": 10000000000000000,
+  "cumulative_shapes_mint_fees_wei": 48000000000000000,
+  "pool_liquid_after_final_claim_wei": 0
+}

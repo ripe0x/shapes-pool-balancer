@@ -1,0 +1,30 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.09s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[PASS] testCreatorCallbackChangesMarkupDuringListing() (gas: 2360294)
+Logs:
+  F3 markup bps 10000
+  F3 FWA price wei 100000000000000000
+
+[PASS] testOutsiderFreezeBlocksOnlyCuratedExit() (gas: 2648875)
+Logs:
+  F2 frozen token owner 0x5A07220De54CFd5F7E2e81813CDEd4fe7D16a0a0
+
+[FAIL: ERC721InvalidReceiver(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496)] testRejectedDeliveryRefundAndCreatorRecovery() (block: 26382349) (gas: 8304024)
+Logs:
+  pending listing status 6
+
+Suite result: FAILED. 2 passed; 1 failed; 0 skipped; finished in 18.65ms (16.34ms CPU time)
+
+Ran 1 test suite in 307.22ms (18.65ms CPU time): 2 tests passed, 1 failed, 0 skipped (3 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[FAIL: ERC721InvalidReceiver(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496)] testRejectedDeliveryRefundAndCreatorRecovery() (block: 26382349) (gas: 8304024)
+
+Encountered a total of 1 failing tests, 2 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

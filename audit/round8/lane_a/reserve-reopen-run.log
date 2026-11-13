@@ -1,0 +1,7 @@
+Error: Compiler run failed:
+Error (9429): This looks like an address but has an invalid checksum. Correct checksummed address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D". If this is not used as an address, please prepend '00'. For more information please see https://docs.soliditylang.org/en/develop/types.html#address-literals
+SyntaxError: This looks like an address but has an invalid checksum. Correct checksummed address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D". If this is not used as an address, please prepend '00'. For more information please see https://docs.soliditylang.org/en/develop/types.html#address-literals
+  --> audit/round8/lane_a/ReserveReopen.t.sol:17:29:
+   |
+17 |     address constant BAYC = 0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d;
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

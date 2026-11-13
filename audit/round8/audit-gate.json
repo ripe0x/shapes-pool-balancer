@@ -1,0 +1,1970 @@
+{
+  "schema": 2,
+  "target": "Frozen fork-tests commit 2ac7a7e7b965d1798729068566c026128a4ba4b9; production source unchanged during audit.",
+  "scope": "PoolBalancer, BalancerFactory, PoolPage, live FWA and Shapes/Draw Packs paths, keeper/planner/dashboard economic surfaces.",
+  "chain_block_or_revision": "Ethereum mainnet fork block 26382349 via https://mainnet.gateway.tenderly.co; recent block checks separately recorded.",
+  "runtime_source_match": "Not applicable for undeployed PoolBalancer; FWA implementation codehash checked at initialization, other dependencies remain bounded.",
+  "inventory_artifact": {
+    "file": "source-inventory-pool-pinned.json",
+    "sha256": "a6949c1c6476880a99fb66a68481f3848bd0cb07d4ff3e9bd559e74dcb0e72e6"
+  },
+  "slither_artifact": {
+    "file": "slither-pool.json",
+    "sha256": "8a72c2377d85b117548e14c5fd093630d6ee64cafe2d92ef6d1e3fc70d9f12b7"
+  },
+  "slither_run": {
+    "source": "/Users/dd/CascadeProjects/fwa-pool-balancer/src/PoolBalancer.sol",
+    "source_sha256": "da9b18c5f0449cb7ada6434f9021d31ac0e8a8556fb4c9a2d51f4c699cb93140",
+    "compiler_inputs": {
+      "root": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+      "remappings": [
+        "@openzeppelin/contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+        "forge-std/=lib/forge-std/src/",
+        "ladder/=lib/shape-packs/lib/shapes/ladders/mainnet/",
+        "openzeppelin-contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+        "packs/=lib/shape-packs/src/",
+        "shape-packs/=lib/shape-packs/",
+        "shapes/=lib/shape-packs/lib/shapes/src/",
+        "solady/=lib/solady/src/"
+      ],
+      "generator_cwd": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+      "standard_json_input_path": "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/solc-input-pool.json",
+      "standard_json_input_sha256": "76cf37ea3aee09e666d33c644d523a951d2af8413d4581ae35a1bfdf6f6a5435",
+      "solc_path": "/Users/dd/.svm/0.8.28/solc-0.8.28",
+      "solc_binary_sha256": "81515b0e53deaa266d549545ccaac0a5a96e6d4e8201c77f673b2c710976d9ea"
+    },
+    "command": "slither src/PoolBalancer.sol --ignore-compile --json audit/round8/slither-pool.json",
+    "log": {
+      "file": "slither-pool.log",
+      "sha256": "cbf18636bfb360025c242508a9f5003c00ef54a335d64e92432450d87e176d2a"
+    }
+  },
+  "evidence": {
+    "reserve-reopen": {
+      "kind": "test",
+      "claim": "Close, drain and reopen leaves admission open with no liquid ETH and a positive reserve requirement.",
+      "observed_or_proved": "Pinned real fork produced zero Balancer liquid ETH, 100.034 ETH required reserve and an accepted FWA purchase.",
+      "command": "FOUNDRY_TEST=audit/round8/lane_a FOUNDRY_OUT=audit/round8/lane_a/preflight/out FOUNDRY_CACHE_PATH=audit/round8/lane_a/preflight/cache forge test --match-path audit/round8/lane_a/ReserveReopen.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 -vvvv",
+      "exit_code": 0,
+      "file": "lane_a/authority-reserve-final-trace.log",
+      "sha256": "3d0f9f3ebbcf7f72758fd574cd01a437998d88538467ca5332f92b5c865b2a78"
+    },
+    "burst": {
+      "kind": "test",
+      "claim": "A two-win Balanced burst after maximum surplus claim prevents full target restoration while a third real FWA purchase is accepted.",
+      "observed_or_proved": "Pinned fork with coordinator\u2192VRF service delivery removed 0.5 and 0.1 ETH prizes; 0.5 remained missing, admission was 0, and a third code-free payer FWA purchase succeeded.",
+      "command": "FOUNDRY_TEST=audit/round8/lane_b/validation FOUNDRY_OUT=audit/round8/lane_b/validation/out FOUNDRY_CACHE_PATH=audit/round8/lane_b/validation/cache forge test --match-path audit/round8/lane_b/validation/BalancedRouter.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 -vv",
+      "exit_code": 0,
+      "file": "lane_b/validation/balanced-router-escalated.log",
+      "sha256": "5f27d09ad7af1b337256134805dcbd8a6d7b14b4053ab8f34c7ca6853ed6bf49"
+    },
+    "lying-curated-double-sale": {
+      "kind": "test",
+      "claim": "A creator-controlled dishonest ERC721 can retain one internal token while FWA marks two draws delivered and pays creator proceeds twice.",
+      "observed_or_proved": "Two code-free EOAs paid 0.025199431673280128 ETH each through actual coordinator\u2192VRF service callbacks; FWA status2/listing4, refund rejected, internal owner remained creator, creator net+0.040970886022914530 ETH after 1 ETH funding.",
+      "command": "FOUNDRY_TEST=audit/round8/lane_a/validation FOUNDRY_OUT=audit/round8/lane_a/validation/out FOUNDRY_CACHE_PATH=audit/round8/lane_a/validation/cache forge test --match-path audit/round8/lane_a/validation/CuratedValidation.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 -vv",
+      "exit_code": 0,
+      "file": "lane_a/validation/coordinator-attempt1.log",
+      "sha256": "211c255786d56be72cf13eac0ca7f23fdf9505f25e46ef12dd22a04b4ce2629d"
+    },
+    "lane-a-coverage-classification": {
+      "kind": "reachability_proof",
+      "claim": "One-for-one review of all 55 ABI entries and 66 generated external call records, with selected tested, source-bounded and unresolved statuses.",
+      "observed_or_proved": "Review explicitly bounds real-fork claims, records untested variants, and leaves material dynamic target and callback paths unresolved.",
+      "command": "sed -n '1,185p' audit/round8/lane_a/coverage-review.md",
+      "exit_code": 0,
+      "file": "lane_a/coverage-review.md",
+      "sha256": "17520b317b472350f59d4714e406d856af4ef21649c84e4ac18cb8be5c280697"
+    },
+    "lane-a-slither-id-triage": {
+      "kind": "reachability_proof",
+      "claim": "One-for-one static call-graph and evidence review of all 40 High/Medium Slither detector IDs.",
+      "observed_or_proved": "Twenty-four flagged imported functions are outside the frozen target call graph; reachable Balancer alert variants remain bounded or unresolved as stated per ID.",
+      "command": "cat audit/round8/lane_a/slither-id-triage.md",
+      "exit_code": 0,
+      "file": "lane_a/slither-id-triage.md",
+      "sha256": "650ba40a8925e697fa5f78a4210a89ac6963d450ca263b33f44e331edcea3c3d"
+    }
+  },
+  "critical_paths": [
+    {
+      "id": "reserve-reopen",
+      "entrypoint_ids": [
+        "PoolBalancer.close()",
+        "PoolBalancer.claimSurplus(uint256,address)",
+        "PoolBalancer.open()",
+        "PoolBalancer.admissionStatus()",
+        "PoolBalancer.requiredReserve()"
+      ],
+      "callsite_ids": [],
+      "property": "M6 requires the liquid reserve to cover admitted restoration work after any creator-authorized close and reopen sequence.",
+      "attacker_control": "Creator can close, claim the full closed-state surplus and reopen while all Shape prizes remain listed.",
+      "asset_authority_ledger": "Liquid ETH leaves Balancer for creator, Shape backing stays in live tokens at Shapes, player payment enters FWA escrow.",
+      "counterexample": "The pinned fork admitted a real player draw with Balancer liquid balance zero against a 100.034 ETH reserve requirement.",
+      "outcome": "violation",
+      "postconditions": [
+        {
+          "id": "liquidity",
+          "assertion": "After reopening, the pool has zero liquid ETH but admits a real FWA purchase.",
+          "possible_false_positive": "A direct admissionStatus read could pass without the real FWA nested purchase hook executing.",
+          "adversarial_variant": "Fund an external player and execute the real FWA acquire path after close, drain and reopen.",
+          "evidence_ids": [
+            "reserve-reopen"
+          ]
+        }
+      ],
+      "attack_families": {}
+    },
+    {
+      "id": "burst-restoration",
+      "entrypoint_ids": [
+        "PoolBalancer.claimSurplus(uint256,address)",
+        "PoolBalancer.performUpkeep()",
+        "PoolBalancer.admissionStatus()",
+        "PoolBalancer.requiredReserve()"
+      ],
+      "callsite_ids": [],
+      "property": "M6 requires the pre-burst liquid reserve plus proceeds to restore the target after all admitted outcomes.",
+      "attacker_control": "Creator claims all permitted surplus and a player issues two FWA draws; VRF outcomes are a reachability witness only.",
+      "asset_authority_ledger": "After the maximum permitted claim and two real coordinator-delivered wins, the Balancer holds 0.474750884357087310 ETH against 1.035 ETH required reserve; the cited strict-route test does not separately assert exact owner proceeds.",
+      "counterexample": "Two coordinator\u2192service-delivered prizes of 0.5 and 0.1 ETH leave the 0.5 ETH prize absent; another upkeep cannot mint it and a third FWA purchase succeeds.",
+      "outcome": "violation",
+      "postconditions": [
+        {
+          "id": "restoration",
+          "assertion": "After one upkeep, the 0.1 ETH target is restored, the 0.5 ETH target remains absent, admission is zero, and a third real FWA purchase succeeds after the two-win burst.",
+          "possible_false_positive": "A direct pool callback can bypass router reservations, an inline getter can consume a payer prank, and a second no-progress upkeep was not asserted in the cited strict-route test.",
+          "adversarial_variant": "Deliver words as the actual coordinator through the real VRF service, pre-read FWA inventory version, assert EOA payer balance deltas, then buy again.",
+          "evidence_ids": [
+            "burst"
+          ]
+        }
+      ],
+      "attack_families": {}
+    },
+    {
+      "id": "lying-curated-double-sale",
+      "entrypoint_ids": [
+        "PoolBalancer.listCurated(address,uint256,uint256)",
+        "PoolBalancer.admissionStatus()",
+        "PoolBalancer.performUpkeep()",
+        "PoolBalancer.close()",
+        "PoolBalancer.unlistShapes(uint256[])",
+        "PoolBalancer.claimSurplus(uint256,address)"
+      ],
+      "callsite_ids": [
+        "8b5b53b53a38ec2a30a5",
+        "e8da39b7ce9725b9c3ba",
+        "8ceb249d263c3155a2f6",
+        "6607eced789ee3a1ab72"
+      ],
+      "property": "A funded player who draws a curated NFT receives actual transferable ownership or the failed-delivery acquisition-fee refund; creator cannot repeatedly sell one token while retaining it.",
+      "attacker_control": "Creator chooses a deliberately dishonest ERC721 collection whose transferFrom and ownerOf fabricate escrow and delivery. Coordinator words are supplied only to show reachable selections, not creator control.",
+      "asset_authority_ledger": "Players each lose 0.025199431673280128 ETH; FWA sends owner proceeds of 0.021659458736457265 ETH per selected sale to Balancer; creator reclaims 1.040970886022914530 ETH after 1 ETH funding while internal ERC721 owner never changes.",
+      "counterexample": "FWA marks both sales fulfilled/delivered and rejects both refunds despite internal token ownership staying at creator; one ghost NFT is sold twice.",
+      "outcome": "violation",
+      "postconditions": [
+        {
+          "id": "two-deliveries-no-transfer",
+          "assertion": "Two funded EOA draws are FWA status2/listing4 after coordinator\u2192service words, both refunds reject after seven days, internal ERC721 owner remains creator, and final creator net is +0.040970886022914530 ETH excluding gas.",
+          "possible_false_positive": "A collection ownerOf return may lie, a test-contract payer may replace the named EOA, or direct pool callback may bypass router accounting.",
+          "adversarial_variant": "Use the hostile collection internal owner ledger, pre-read inventory versions, assert both EOA balance decreases and actual coordinator\u2192service callbacks, then attempt both refunds and closeout.",
+          "evidence_ids": [
+            "lying-curated-double-sale"
+          ]
+        }
+      ],
+      "attack_families": {}
+    },
+    {
+      "id": "unresolved-other-surface",
+      "entrypoint_ids": [
+        "PoolBalancer.ENS[generated getter]",
+        "PoolBalancer.FWA_FACTORY[generated getter]",
+        "PoolBalancer.FWA_IMPLEMENTATION[generated getter]",
+        "PoolBalancer.FWA_IMPLEMENTATION_CODEHASH[generated getter]",
+        "PoolBalancer.MAX_BATCH[generated getter]",
+        "PoolBalancer.MAX_KEEPER_REWARD[generated getter]",
+        "PoolBalancer.PACKS[generated getter]",
+        "PoolBalancer.SHAPES[generated getter]",
+        "PoolBalancer.acceptCreator()",
+        "PoolBalancer.admissionStatus()",
+        "PoolBalancer.approvePoolPage(string,bytes32)",
+        "PoolBalancer.canPurchase(address)",
+        "PoolBalancer.claimSurplus(uint256,address)",
+        "PoolBalancer.close()",
+        "PoolBalancer.collectProceeds()",
+        "PoolBalancer.configure(uint16,uint256)",
+        "PoolBalancer.creatorWork[generated getter]",
+        "PoolBalancer.creator[generated getter]",
+        "PoolBalancer.denominationAmount(uint256)",
+        "PoolBalancer.depositETH()",
+        "PoolBalancer.enabled[generated getter]",
+        "PoolBalancer.factory[generated getter]",
+        "PoolBalancer.getActiveIds()",
+        "PoolBalancer.getActiveShapes()",
+        "PoolBalancer.initialize(address)",
+        "PoolBalancer.isValidSignature(bytes32,bytes)",
+        "PoolBalancer.items[generated getter]",
+        "PoolBalancer.keeperCredit[generated getter]",
+        "PoolBalancer.listCurated(address,uint256,uint256)",
+        "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])",
+        "PoolBalancer.markupBps[generated getter]",
+        "PoolBalancer.mintFeeCap[generated getter]",
+        "PoolBalancer.onERC721Received(address,address,uint256,bytes)",
+        "PoolBalancer.open()",
+        "PoolBalancer.pageEpoch[generated getter]",
+        "PoolBalancer.pendingCreator[generated getter]",
+        "PoolBalancer.performUpkeep()",
+        "PoolBalancer.pool[generated getter]",
+        "PoolBalancer.prizeWeight[generated getter]",
+        "PoolBalancer.receive()",
+        "PoolBalancer.reconciledSequence[generated getter]",
+        "PoolBalancer.recoverRefunded(uint256,address)",
+        "PoolBalancer.recoverUntrackedNFT(address,uint256,address)",
+        "PoolBalancer.requiredReserve()",
+        "PoolBalancer.restockFee()",
+        "PoolBalancer.retire()",
+        "PoolBalancer.revokePoolPages()",
+        "PoolBalancer.setENSName(string)",
+        "PoolBalancer.targetWeight[generated getter]",
+        "PoolBalancer.target[generated getter]",
+        "PoolBalancer.transferCreator(address)",
+        "PoolBalancer.unlistShapes(uint256[])",
+        "PoolBalancer.updateCuratedPrice(uint256,uint256)",
+        "PoolBalancer.withdrawCurated(uint256,address)",
+        "PoolBalancer.withdrawableSurplus()"
+      ],
+      "callsite_ids": [
+        "782d827ee5d0d4bbf389",
+        "4911698ccc2fad7e7b96",
+        "e3a0f5dadfa09c723fb0",
+        "91d31976e5bd16024754",
+        "015cc9176307e59092ef",
+        "8395586efd89dca22f1b",
+        "8e1d9460715ad6a13a33",
+        "8b5b53b53a38ec2a30a5",
+        "e8da39b7ce9725b9c3ba",
+        "8ceb249d263c3155a2f6",
+        "065590b34580e11c0141",
+        "67cfbdfc895dd3a91c94",
+        "1e4942d893be94881bbd",
+        "eb7f0361f1e6b735d9a2",
+        "3bd5c05236ef05e494da",
+        "30dea6111986f5ff6930",
+        "6bf38a468cb03e8f50f2",
+        "0cad7c4e9a4efd4a0aa8",
+        "a58a30f377576fe7922e",
+        "185a0ec143319d111745",
+        "78b4fdcceaa3e7a25c8b",
+        "a842be7343a61344c824",
+        "cf4b893052a7239b4766",
+        "14a244a023d93e77756b",
+        "ddefec059af2b974b429",
+        "6192fcf5db71d78593fa",
+        "0805c05190821c75a14f",
+        "682ea0838bae1b4addab",
+        "1b39be8c309dc7e1d392",
+        "655f317db5758d6ea2fe",
+        "fe118eb631f350000140",
+        "5c80fa3eeaef1e4f7b4a",
+        "b1fafdb9b1c085e6f808",
+        "0560341b6cdda8be1db5",
+        "7f9016adeae8e46d81bf",
+        "2e752dbed4d04d40f63f",
+        "6607eced789ee3a1ab72",
+        "d28fcc3cb9230193524e",
+        "6e256158313f76aaea8a",
+        "a4518e11263685d83d99",
+        "9c7f83473ecc4bba8e05",
+        "0a44b7b6a61d7c1de2f4",
+        "5ebf33ce762cdce6a05e",
+        "135b9f22fd98a2aeb209",
+        "8600f06d858b93148725",
+        "c2b4e0838aa0519047a8",
+        "22d15abff230287e5d26",
+        "7962e4a15ce1cb58b92a",
+        "135888914d009f916073",
+        "a983e0300d7ea8883eb1",
+        "5edb00ea329f41e8e886",
+        "3a5056607b0ee19a7ba9",
+        "1691b85e7b6b2550eced",
+        "743146c05b7153c2886a",
+        "248835f569456685ab07",
+        "561e779679308d8670e8",
+        "22238fecf4da37964ba6",
+        "4660778e6391e38789da",
+        "05629cfc693afd6bf453",
+        "12e317aaa5018a2a40cc",
+        "26ac8e0f99efb2cccc8e",
+        "2bfb1027dfbdbec57b9a",
+        "8602d29fc5058a64ee34",
+        "8a351cf85a5b7b361728",
+        "b215a84af8a5382251ef",
+        "ba9df71d432d8cf1a70d"
+      ],
+      "property": "All other in-scope authority, asset, callback, timing and economic paths need a completed per-site review and challenge.",
+      "attacker_control": "Creator, keeper, player, factory admin, hostile collection, receiver and live external administrators have distinct powers.",
+      "asset_authority_ledger": "Outstanding paths include Shapes and Packs refunds, FWA administrative drift, router coverage and off-chain transaction preparation.",
+      "counterexample": "Several conditional paths are already observed, while other reachable alternatives lack exact real-path evidence and semantic challenge.",
+      "outcome": "unresolved",
+      "postconditions": [],
+      "attack_families": {}
+    }
+  ],
+  "entrypoint_review": {
+    "PoolBalancer.ENS[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; constructor stored the supplied registry. ENS registrar-change behavior is U at `setENSName`. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.FWA_FACTORY[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; actual factory identity used in initialization. No independently deployed Balancer runtime. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.FWA_IMPLEMENTATION[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; initializer checked pinned implementation/hash on fork. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.FWA_IMPLEMENTATION_CODEHASH[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; the hash check ran, but mismatch branch was not induced. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.MAX_BATCH[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Compiler constant getter, fixed 5; five-in-flight BUSY tested elsewhere (B). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.MAX_KEEPER_REWARD[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Compiler constant getter; bounded reward calculation exercised, not every possible call shape. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.PACKS[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; actual local Pack binding and one Pack round trip tested (A-D). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.SHAPES[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Immutable getter only; actual mainnet Shapes calls tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.acceptCreator()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Two-step acceptance, overwritten pending party and old-creator denial (A-D, A-S); contract recipient callback not tried. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.admissionStatus()": {
+      "path_ids": [
+        "reserve-reopen",
+        "burst-restoration",
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Normal, BUSY, 70%-weight, ghost and zero-liquid admission tested (A-D, A-I, B). F-A1, E-B1, F1 and F4 disprove stronger reserve/custody/router interpretations; exact 70% boundary and admin fee-rise branch open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.approvePoolPage(string,bytes32)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: One digest approved and ERC-1271 accepted; creator transfer invalidated it (A-D). Current FWA site format and malformed date variants open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.canPurchase(address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Actual FWA acquisition passed for ordinary code-free purchaser (A-D, A-I). Four forbidden self-custody recipients and worst-case 100k hook stipend not each tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.claimSurplus(uint256,address)": {
+      "path_ids": [
+        "reserve-reopen",
+        "burst-restoration",
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Maximum claim, close-drain/reopen and contract creator ETH callback tested (A-D, A-I, A-S, B). Reserve sufficiency fails F-A1/E-B1; arbitrary recipient revert and zero/forced-ETH donations open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.close()": {
+      "path_ids": [
+        "reserve-reopen",
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Creator closes in fork lifecycle, then unlists/claims (A-D, A-Z, B). Already-retired branch and outstanding-draw interactions not separately tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.collectProceeds()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Direct permissionless wrapper not called; same guarded `_collect` reached via upkeep with real FWA proceeds (A-I, B). Direct caller/revert path open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.configure(uint16,uint256)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Valid plans, no-op during issued draw, shrink with excess live stock and hostile callback tested (A-I, A-S). Real Shapes admin fee change and maximum plan/gas edges open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.creatorWork[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Read after open/stock, no-op configure and target shrink (A-I); getter alone gives no liquidity guarantee. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.creator[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Creator transfer and role checks asserted (A-D, A-S). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.denominationAmount(uint256)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Pure table extraction in source; constructor checks nine real Shape denominations, but this ABI getter was not called directly for all 16 values. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.depositETH()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Payable event-only path; actual funding used factory `createBalancer` and redemption/owner proceeds, not this selector. Direct donor's no-refund entitlement remains a product rule. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.enabled[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Generated read-only storage getter; open/close effects inferred through FWA gate and status, not independently asserted through this getter. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.factory[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Official clone and outside clone's stored factory checked (A-D); arbitrary outside-clone `canKeep` provider behavior remains U. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.getActiveIds()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: IDs checked through mint, draw, unlist and exit (A-D, A-I, A-Z, B); hostile collection can leave active metadata without custody (F1). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.getActiveShapes()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Counts checked in restock, burst deficit and 32-case fuzz (A-I, A-S, A-Z, B). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.initialize(address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Official factory clone and outside clone initialized on real fork; locked implementation rejected direct initialize (A-D). Alternate dependency mismatch and fake factory callback paths not tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.isValidSignature(bytes32,bytes)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Approved digest magic and former-creator invalidation asserted (A-D). Signature bytes ignored by design; unrelated downstream use of ERC-1271 signature remains unverified. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.items[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Kind/denom/state/base/price checked for curated/Shape/Pack, pending refund and rollback (A-D, A-I, A-S, A-Z); hostile FWA custody is not guaranteed by an item record. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.keeperCredit[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Zero setup credit and one-draw/restock credit asserted (A-I, A-S, A-Z, B). Lifetime credit after unused fees, split calls and mixed causes open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.listCurated(address,uint256,uint256)": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: BAYC and hostile ERC721 calls, creator callback and F1/F2 custody cases (A-D, A-I). Malicious `ownerOf` lie and `approve` callback not executed. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Two-token hostile callback gives 0.1/0.2 ETH mixed prices; second-pull revert rolls back tokens/config (A-S). Larger batches, approval callback and FWA failure after pulls open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.markupBps[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Callback and no-op/reconfiguration values asserted (A-I, A-S). Existing listing prices deliberately persist. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.mintFeeCap[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: `configure` writes the actual mint fee; direct cap getter and live admin rise to 0.005/0.01 ETH not tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.onERC721Received(address,address,uint256,bytes)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Actual Shapes/Pack mint/withdraw callbacks return selector (A-D, B); arbitrary attacker NFT send and malicious data are not state-changing in this pure function but were not separately exercised. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.open()": {
+      "path_ids": [
+        "reserve-reopen",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Ordinary stockup and zero-liquid close/reopen executed (A-D, A-I, B); FWA admin pause/retired pool alternatives open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.pageEpoch[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Generated getter; approval invalidation after creator transfer asserted through `isValidSignature`, but direct epoch/revoke call not tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.pendingCreator[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Zero/overwritten nomination checked before acceptance (A-S). This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.performUpkeep()": {
+      "path_ids": [
+        "burst-restoration",
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Real mint/list/reconcile/proceeds and reward with EOA and contract keeper, restricted/approved/creator calls (A-D, A-I, A-S, A-Z, B). Multi-batch delay, admin controls and lifetime credit remain open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.pool[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Actual FWA clone address used in all fork tests; no deployed Balancer pool binding exists. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.prizeWeight[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: M8 conservative gate arithmetic and FWA state compared (A-I, B); high-value prize odds can collapse while gate passes. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.receive()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Real redemption/owner proceeds pay Balancer (A-D, A-Z, B). Direct third-party or forced ETH donor path not separately exercised; no sender refund mapping exists. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.reconciledSequence[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Real FWA draw and expired batch reconciliation checked (A-I, A-F1, B); wraparound/very long history not tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.recoverRefunded(uint256,address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: One failed curated delivery recovered after refund; ghost NFT recovery failed without FWA custody (A-I, A-F1). Shape/Pack pending refund recovery and hostile recipient callback open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.recoverUntrackedNFT(address,uint256,address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Directly sent real Shape recovered to creator; outsider could not list it through FWA (A-D). Lying hostile `ownerOf`, arbitrary sent Pack and contract recipient callback open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.requiredReserve()": {
+      "path_ids": [
+        "reserve-reopen",
+        "burst-restoration",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: F-A1 close/reopen and E-B1 two-win shortfall demonstrate insufficiency; cheap control and fuzz views also executed (A-D, A-I, B). Fee-admin/recent-block and time-delayed states open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.restockFee()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Real Pack listing and 0\u201310 gwei source/gas sweep plus 1\u20135 gwei fuzz (A-D, A-Z, B). This is a pricing formula, not proof of keeper profit or reserve sufficiency. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.retire()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: B closed/unlisted then retired and withdrew liquid; pending refund and reopen-after-retire not executed. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.revokePoolPages()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage S at review cutoff: Source increments epoch and emits event; direct call/site invalidation after revoke not tested. Creator transfer invalidation is a related different path. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "source_bounded",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.setENSName(string)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage U at review cutoff: No real fork call; dynamically selected ENS reverse registrar can change, revert or callback. Creator-only check is source-visible but registrar authority and outcome unresolved. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "unresolved",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.targetWeight[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Compared with prizeWeight in M8 arithmetic (A-I); target shrink leaves extra live listings. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.target[generated getter]": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Read for no-op config and shrink (A-I). Getter does not describe all still-live extra prizes. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.transferCreator(address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Zero and overwritten pending nominee, exact later acceptance (A-D, A-S); transfer to hostile contract not executed. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.unlistShapes(uint256[])": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: One Pack, aggregate 40 prizes, individual Shape fuzz and post-ghost recovery/exit (A-D, A-F1, A-Z, B). Pending/staged listing rejection and every Pack identity open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.updateCuratedPrice(uint256,uint256)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: FWA unsettled draw rejection rolled back Balancer base/price, then repricing succeeded after Shape outcome (A-S). Exact FWA revert selector, malicious collection callbacks and alternate prices open. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.withdrawCurated(uint256,address)": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: BAYC exit, hostile freeze, and creator NFT receiver reentry guard (A-D, A-I, A-S, B). FWA unsettled-draw denial and arbitrary recipient revert not separately tested. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "PoolBalancer.withdrawableSurplus()": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A coverage T at review cutoff: Maximum creator claims and reserve deficits measured (A-D, A-I, B). Correct returned arithmetic does not imply correct reserve policy. This is bounded to the cited source or fork assertions; alternatives named here remain open.",
+      "review_status": "tested_selected_path",
+      "source_review": "lane_a/coverage-review.md"
+    }
+  },
+  "external_call_review": {
+    "782d827ee5d0d4bbf389": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._collect(), operation ownerProceeds: Real FWA ownerProceeds read during keeper upkeep after delivered draw (A-I/B); direct collectProceeds selector untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "4911698ccc2fad7e7b96": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._collect(), operation withdrawOwnerProceeds: Real FWA owner proceeds withdrawn during upkeep after delivered draw (A-I/B); no hostile FWA callback exercised. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "e3a0f5dadfa09c723fb0": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._fillDeficit(IFWAPool,uint256), operation mintBatch: Live Shapes mintBatch with funded ETH exercised across one Pack and 32-case Shape fuzz; admin mint-fee rise/pauses untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "Arguments to mintBatch derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "This call sends ETH from Balancer: the amount follows source-calculated backing, mint fee, or Pack value; fee/admin changes remain material.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "91d31976e5bd16024754": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._fillDeficit(IFWAPool,uint256), operation createPackTo: Real local Packs createPackTo minted a two-Shape Pack and B seven-Pack aggregate; other Pack sizes/refunds open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable locally deployed Draw Packs address fixed in constructor; contained assets and Pack behavior remain an external dependency.",
+      "calldata_control": "Arguments to createPackTo derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "This call sends ETH from Balancer: the amount follows source-calculated backing, mint fee, or Pack value; fee/admin changes remain material.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "015cc9176307e59092ef": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._fillDeficit(IFWAPool,uint256), operation listNFTs: Real FWA listNFTs accepted minted Shape/Pack batches and staged draws (A-D/A-I/A-Z/B); admin pause/staging-edge untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to listNFTs derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8395586efd89dca22f1b": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._payKeeper(uint256,bool), operation SafeTransferLib.forceSafeTransferETH(address,uint256): Keeper ETH payout reached EOA and reentrant contract; nested upkeep returned Reentrancy (A-S). Receiver revert/gas grief untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled ETH-transfer library is fixed; the ETH recipient is caller- or creator-selected and may be a hostile contract.",
+      "calldata_control": "Arguments to SafeTransferLib.forceSafeTransferETH(address,uint256) derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8e1d9460715ad6a13a33": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._payKeeper(uint256,bool), operation SafeTransferLib.forceSafeTransferETH(address,uint256): Keeper ETH payout reached EOA and reentrant contract; nested upkeep returned Reentrancy (A-S). Receiver revert/gas grief untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled ETH-transfer library is fixed; the ETH recipient is caller- or creator-selected and may be a hostile contract.",
+      "calldata_control": "Arguments to SafeTransferLib.forceSafeTransferETH(address,uint256) derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8b5b53b53a38ec2a30a5": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._pullCurated(address,uint256,uint256), operation transferFrom: ERC721 transferFrom pulled BAYC and hostile creator collection; F3 callback changed config, F2 freeze affected later exit. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "e8da39b7ce9725b9c3ba": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite U at review cutoff, PoolBalancer._pullCurated(address,uint256,uint256), operation ownerOf: ownerOf check passed for BAYC and honest OZ hostile collection; a malicious ownerOf lie or inconsistent ownership at listing remains untested. This is not a universal callback or dependency proof.",
+      "review_status": "unresolved",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8ceb249d263c3155a2f6": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite U at review cutoff, PoolBalancer._pullCurated(address,uint256,uint256), operation approve: approve called on BAYC/OZ collection, but hostile approve callback/revert and approval persistence during FWA pull remain untested. This is not a universal callback or dependency proof.",
+      "review_status": "unresolved",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "065590b34580e11c0141": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._redeem(uint8,uint256), operation redeem: Both real Shapes and Draw Packs redemption branches executed; exact backing returned in selected sizes (A-D/A-Z/B), not every Pack identity. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "Arguments to redeem derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "67cfbdfc895dd3a91c94": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._redeem(uint8,uint256), operation redeem: Both real Shapes and Draw Packs redemption branches executed; exact backing returned in selected sizes (A-D/A-Z/B), not every Pack identity. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "Arguments to redeem derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "1e4942d893be94881bbd": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]), operation listings: Real FWA listing token IDs read for Shape/Pack unlist (A-D/A-Z/B); malicious collection identity issues do not affect this path directly. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to listings derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "eb7f0361f1e6b735d9a2": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]), operation withdrawListingsTo: Real FWA batch withdrawal returned Shape/Pack tokens to Balancer for redemption (A-D/A-Z/B); pending staged rejection untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to withdrawListingsTo derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "3bd5c05236ef05e494da": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.admissionStatus(), operation unsettledAcquisitionCount: FWA unsettled count gave one-draw open and five-draw BUSY results (A-I/B); all recipient/gate boundaries not covered. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "30dea6111986f5ff6930": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.admissionStatus(), operation mintFee: Real Shapes fee read at baseline; MINT_FEE_ROSE branch after admin increase untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "6bf38a468cb03e8f50f2": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.admissionStatus(), operation lastIssuedSequence: Real FWA issued sequence used in admission calculations after draws (A-I/B); F-A1/E-B1 demonstrate stronger reserve interpretation fails. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "0cad7c4e9a4efd4a0aa8": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.approvePoolPage(string,bytes32), operation PoolPage.digest(address,address,string,bytes32): Linked PoolPage.digest called through one creator approval and accepted ERC-1271 hash (A-D); exact current site-message parity/malformed date unverified. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "a58a30f377576fe7922e": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.approvePoolPage(string,bytes32), operation PoolPage.digest(address,address,string,bytes32): Linked PoolPage.digest called through one creator approval and accepted ERC-1271 hash (A-D); exact current site-message parity/malformed date unverified. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "185a0ec143319d111745": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.claimSurplus(uint256,address), operation SafeTransferLib.safeTransferETH(address,uint256): Creator payout sent ETH to EOA and contract receiver; nested claim returned Reentrancy (A-D/A-S). Receiver revert and forced ETH open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled ETH-transfer library is fixed; the ETH recipient is caller- or creator-selected and may be a hostile contract.",
+      "calldata_control": "Arguments to SafeTransferLib.safeTransferETH(address,uint256) derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "This call transfers the source-calculated creator claim or keeper reward to a dynamic recipient; recipient revert/gas behavior is bounded by tests.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "78b4fdcceaa3e7a25c8b": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.claimSurplus(uint256,address), operation SafeTransferLib.safeTransferETH(address,uint256): Creator payout sent ETH to EOA and contract receiver; nested claim returned Reentrancy (A-D/A-S). Receiver revert and forced ETH open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Compiled ETH-transfer library is fixed; the ETH recipient is caller- or creator-selected and may be a hostile contract.",
+      "calldata_control": "Arguments to SafeTransferLib.safeTransferETH(address,uint256) derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "This call transfers the source-calculated creator claim or keeper reward to a dynamic recipient; recipient revert/gas behavior is bounded by tests.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "a842be7343a61344c824": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.close(), operation setBool: Close queried actual FWA retired flag and disabled acquisitions in nonretired forks; already-retired branch untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to setBool derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "cf4b893052a7239b4766": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.close(), operation retired: Close queried actual FWA retired flag and disabled acquisitions in nonretired forks; already-retired branch untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "14a244a023d93e77756b": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.configure(uint16,uint256), operation mintFee: Live Shapes mintFee read in configure/fuzz at baseline 0.001 ETH; admin increase to 0.005/0.01 ETH untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "ddefec059af2b974b429": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.constructor(address,address,bytes32,address,address,address), operation denominationCount: Constructor read live Shapes denomination count in every fork setup; mismatch branch was not induced. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "6192fcf5db71d78593fa": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.constructor(address,address,bytes32,address,address,address), operation denominationAt: Constructor read all nine live Shapes denomination values; a nonmatching deployment was not tested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "Arguments to denominationAt derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "0805c05190821c75a14f": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.constructor(address,address,bytes32,address,address,address), operation shapes: Constructor checked the locally deployed Packs binding/minimum; alternate malicious Packs behavior remains open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "682ea0838bae1b4addab": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.constructor(address,address,bytes32,address,address,address), operation MIN_PACK_VALUE: Constructor checked the locally deployed Packs binding/minimum; alternate malicious Packs behavior remains open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Target follows the stored pool or constructor-bound dependency shown in source; no arbitrary runtime address was established for this path.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "1b39be8c309dc7e1d392": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation maxAcquisitionsPerTx: Initializer checked real FWA batch/staging limits before pool creation; incompatible factory state was not induced. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA factory address is constructor-bound on the official target; FWA admin can change live factory modes.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "655f317db5758d6ea2fe": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation maxStagedListings: Initializer checked real FWA batch/staging limits before pool creation; incompatible factory state was not induced. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA factory address is constructor-bound on the official target; FWA admin can change live factory modes.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "fe118eb631f350000140": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation createPool: Real FWA factory created the Balancer-owned pool in official and outside clone tests; other implementation/config branch untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA factory address is constructor-bound on the official target; FWA admin can change live factory modes.",
+      "calldata_control": "Arguments to createPool derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "5c80fa3eeaef1e4f7b4a": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation owner: Initializer checked real FWA implementation and pool owner; pinned return values passed, counterfeit dependency untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "b1fafdb9b1c085e6f808": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation poolImplementation: Initializer checked real FWA implementation and pool owner; pinned return values passed, counterfeit dependency untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA factory address is constructor-bound on the official target; FWA admin can change live factory modes.",
+      "calldata_control": "Arguments to poolImplementation derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "0560341b6cdda8be1db5": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation setPurchaseOperator: Real FWA pool installed Balancer as purchase operator; later real purchases exercised the hook. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to setPurchaseOperator derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "7f9016adeae8e46d81bf": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation setApprovalForAll: Balancer approved real Shapes to FWA; outsider direct listing of a donated Shape still reverted OwnerOnlyInventory (A-D). Other FWA selectors remain open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "Arguments to setApprovalForAll derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "2e752dbed4d04d40f63f": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.initialize(address), operation setApprovalForAll: Balancer approved local real Packs to FWA; one Pack round trip completed (A-D). Untracked Pack/other selectors open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable locally deployed Draw Packs address fixed in constructor; contained assets and Pack behavior remain an external dependency.",
+      "calldata_control": "Arguments to setApprovalForAll derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "6607eced789ee3a1ab72": {
+      "path_ids": [
+        "lying-curated-double-sale",
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.listCurated(address,uint256,uint256), operation listNFT: Real FWA listNFT held BAYC/hostile ERC721; ghost custody and callback issues F1/F3 remain. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to listNFT derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "d28fcc3cb9230193524e": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[]), operation listNFTs: Real FWA listNFTs accepted two hostile curated items with mixed callback prices (A-S); larger batch and post-pull FWA failure open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to listNFTs derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "6e256158313f76aaea8a": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.open(), operation setBool: Open set actual FWA acquisition switch; real player purchase succeeded, including zero-liquid F-A1. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to setBool derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "a4518e11263685d83d99": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation canKeep: Real official factory canKeep exercised open, restricted, approved and creator-bypass paths (A-D/A-S); outside clone may bind arbitrary provider. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Factory address is fixed at initialization; an outside clone may choose its own factory/provider, and official factory admin controls keeper access.",
+      "calldata_control": "Arguments to canKeep derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "9c7f83473ecc4bba8e05": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation nextSequenceToProcess: Real FWA nextSequenceToProcess read after delivered and expired requests (A-I/A-F1/B); long delayed history not covered. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "0a44b7b6a61d7c1de2f4": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation requestIdAtSequence: Real FWA requestIdAtSequence/acquisitions read while reconciling one and five requests (A-I/A-F1/B); malformed external history untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to requestIdAtSequence derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "5ebf33ce762cdce6a05e": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation acquisitions: Real FWA requestIdAtSequence/acquisitions read while reconciling one and five requests (A-I/A-F1/B); malformed external history untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to acquisitions derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "135b9f22fd98a2aeb209": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation retired: Real FWA retired/globalWithdrawOnly reads returned false during upkeep; true admin state not exercised. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8600f06d858b93148725": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation globalWithdrawOnly: Real FWA retired/globalWithdrawOnly reads returned false during upkeep; true admin state not exercised. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA factory address is constructor-bound on the official target; FWA admin can change live factory modes.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "c2b4e0838aa0519047a8": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.performUpkeep(), operation mintFee: Real Shapes mintFee used before restock at baseline; live fee-admin transition not exercised. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "22d15abff230287e5d26": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.recoverRefunded(uint256,address), operation listings: Real FWA listing status checked before curated refund recovery (A-I/A-F1); pending Shape/Pack refund untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to listings derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "7962e4a15ce1cb58b92a": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.recoverRefunded(uint256,address), operation recoverRefundedNFT: Real FWA recovery succeeded after restored curated transfer rule and failed for seized ghost (A-I/A-F1). This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to recoverRefundedNFT derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "135888914d009f916073": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.recoverRefunded(uint256,address), operation safeTransferFrom: Curated safeTransferFrom completed to EOA after refund (A-I); hostile recipient callback on recovery untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "a983e0300d7ea8883eb1": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite U at review cutoff, PoolBalancer.recoverUntrackedNFT(address,uint256,address), operation ownerOf: Untracked ownerOf was checked for one honest donated Shape (A-D); a hostile collection can lie about ownership, so general preexisting-asset entitlement unresolved. This is not a universal callback or dependency proof.",
+      "review_status": "unresolved",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "5edb00ea329f41e8e886": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.recoverUntrackedNFT(address,uint256,address), operation safeTransferFrom: Real donated Shape transferred to creator under guard (A-D); hostile recipient/collection semantics untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Collection address is chosen by the creator for curated tokens or read from FWA listing for recovery; hostile collection code is possible.",
+      "calldata_control": "Creator selects collection/token/recipient in the exposed curated or recovery entrypoint; callback and dishonest return variants remain open.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "3a5056607b0ee19a7ba9": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.requiredReserve(), operation mintFee: Reserve read baseline real Shapes fee in F-A1/E-B1; fee-admin increase and reserve response untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "Immutable Shapes address fixed in constructor; its privileged admin can change mint fee/pause behavior, not this stored target.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "1691b85e7b6b2550eced": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.requiredReserve(), operation lastIssuedSequence: Reserve read real FWA issued sequence, including two in-flight draws (A-I/B); reserve still failed M6 after allowed claim. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "743146c05b7153c2886a": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.retire(), operation retirePool: Real FWA retirePool called after close/unlist in B; pending refund and attempted reopen after retirement untested. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "248835f569456685ab07": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite U at review cutoff, PoolBalancer.setENSName(string), operation owner: Dynamic ENS registry owner/registrar call was not executed; changed registrar, callback and record result unresolved. This is not a universal callback or dependency proof.",
+      "review_status": "unresolved",
+      "target_control": "Immutable ENS registry address, but the reverse node owner and selected registrar can change through ENS authority.",
+      "calldata_control": "This call has no caller-supplied calldata parameters beyond its fixed function selector; returned dependency state can change.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "The external read can execute target contract code and return dishonest or state-dependent data; selected live calls do not exclude hostile variants.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "561e779679308d8670e8": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite U at review cutoff, PoolBalancer.setENSName(string), operation setName: Dynamic ENS registry owner/registrar call was not executed; changed registrar, callback and record result unresolved. This is not a universal callback or dependency proof.",
+      "review_status": "unresolved",
+      "target_control": "Registrar address returned by ENS reverse-node owner lookup; ENS authority can change this target over time.",
+      "calldata_control": "Arguments to setName derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "22238fecf4da37964ba6": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.updateCuratedPrice(uint256,uint256), operation updatePrice: Real FWA updatePrice rejected unsettled draw and later accepted repricing (A-S); exact error selector/admin variants open. This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to updatePrice derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "4660778e6391e38789da": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite T at review cutoff, PoolBalancer.withdrawCurated(uint256,address), operation withdrawListingTo: Real FWA withdrawal returned BAYC and first creator-receiver NFT; hostile collection freeze blocked one token (A-I/A-S). This is not a universal callback or dependency proof.",
+      "review_status": "tested_selected_path",
+      "target_control": "FWA pool address is created through the bound factory at initialization and then stored; pool runtime is a live dependency.",
+      "calldata_control": "Arguments to withdrawListingTo derive from the calling Balancer path and its creator, keeper, or FWA state; exact untested variants are in the row assessment.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "External contract code or ETH recipient can invoke a callback; guarded reentry and selected real fork outcomes are bounded in the source review.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "05629cfc693afd6bf453": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(address): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "12e317aaa5018a2a40cc": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(address): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "26ac8e0f99efb2cccc8e": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(address): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "2bfb1027dfbdbec57b9a": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(uint256,uint256): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8602d29fc5058a64ee34": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(address): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "8a351cf85a5b7b361728": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation LibString.toHexString(uint256,uint256): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "b215a84af8a5382251ef": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation SignatureCheckerLib.toEthSignedMessageHash(bytes): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    },
+    "ba9df71d432d8cf1a70d": {
+      "path_ids": [
+        "unresolved-other-surface"
+      ],
+      "reason": "Lane A callsite S at review cutoff, PoolPage.digest(address,address,string,bytes32), operation SignatureCheckerLib.toEthSignedMessageHash(bytes): Pure LibString/SignatureCheckerLib subcall inside linked PoolPage; one digest was used in A-D, but exact current FWA-site text parity and library deployment identity are not independently proved. This is not a universal callback or dependency proof.",
+      "review_status": "source_bounded",
+      "target_control": "Compiled or linked pure library target is fixed for this build; no runtime actor selects library code at this callsite.",
+      "calldata_control": "Page digest inputs derive from creator-supplied metadata and fixed pool/factory addresses; pure library encoding is source-bounded.",
+      "value_control": "No ETH call value is attached at this site; returned assets, permissions, or state can still change economic balances.",
+      "callback_reachability": "Pure/static library computation at this expression has no external contract callback; caller flow remains separately reviewed.",
+      "source_review": "lane_a/coverage-review.md"
+    }
+  },
+  "detector_triage": {
+    "09f87709f411fb9331256897fbd37b14cc60a40735f127198efec9f41c819122": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-exp: LibBytes.eqs(bytes,bytes32). **Uninvoked imported function.** LibBytes.eqs(bytes,bytes32) is not called by any target path. The flagged ^ is inside its own comparison logic; no target test reaches it. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "463effadf8f945a0012311ccae819a5b6c93acfe0a5edf3855c362ec3bb996b2": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-exp: LibString.eqs(string,bytes32). **Uninvoked imported function.** LibString.eqs(string,bytes32) is not called. PoolPage calls only the toHexString overloads, not eqs. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "4a780579f209c43f51515b18420f6fbff83dbbaa7aa18a6af0bea31520524ef4": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "reentrancy-eth: Reentrancy in PoolBalancer._fillDeficit(IFWAPool,uint256). **Reachable; unresolved callback envelope.** performUpkeep enters _fillDeficit under nonReentrant and calls real Shapes, Packs and FWA before activeShapes/prizeWeight bookkeeping. Fork mint/list and keeper reentry tests reached these calls; the nested guarded upkeep reverted Reentrancy(). No arbitrary callback from all three dependencies, transient-view effect, or admin-changed dependency was excluded. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "ee6e97ccc7f41d13dd877f8ad85b2eb7e5944f7a90cc01656acff559e48bcdb8": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "reentrancy-eth: Reentrancy in PoolBalancer.performUpkeep(). **Reachable; unresolved callback envelope.** performUpkeep is nonReentrant; real FWA proceeds, Shapes/Packs mint/list and contract-keeper reward callback were exercised. A nested upkeep reverted Reentrancy(), but creatorWork is written after dependency calls and unguarded creator methods/views remain separate paths. No general reentrancy negative is supported. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "5a877ff0fb2420c1da87c36550ee3cd1ba221db28b8c9f8c3dea46441afbdcf4": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.escapeHTML(string). **Uninvoked imported function.** LibString.escapeHTML is not called by PoolPage.toHexString or any target entrypoint; shift expression is outside the target call graph. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "78ae51650d5d44f0aa20eb49a41638c2729285635654c179f3facd7d7275f48d": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibBytes.indexOfByte(bytes,bytes1,uint256). **Uninvoked imported function.** LibBytes.indexOfByte is transitively imported by LibString but none of PoolPage's toHexString overloads calls it. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "9b60c22720c288114e71ad338ec78c3924dfe9c6a45997c9b0fc3919958637c5": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.to7BitASCIIAllowedLookup(string). **Uninvoked imported function.** LibString.to7BitASCIIAllowedLookup is not called by target code or the invoked toHexString overloads. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "abe866b8846d825beaced96acac5dd63706229e5a9ad541410e99c294549bc16": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.encodeURIComponent(string). **Uninvoked imported function.** LibString.encodeURIComponent is not called by target code or the invoked toHexString overloads. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "c7fdde091768e56fabe7b8b5ba07c1e21756b3212de7c75375049e992ca5776a": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.toCase(string,bool). **Uninvoked imported function.** LibString.toCase is not called by target code or the invoked toHexString overloads. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "c9732fb0632604823a9cc54f673fe115ff9be011825b13f473911bfa42cd7b89": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.escapeJSON(string,bool). **Uninvoked imported function.** LibString.escapeJSON is not called by target code or the invoked toHexString overloads. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "fc53a449b6d62523d64704d84554f4e5ad2cfbd7b4f24c28c171ec57a68c481e": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-shift: LibString.escapeJSON(string,bool). **Uninvoked imported function.** Second escapeJSON shift alert on the same uninvoked function; no target execution path reaches it. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "1dec5a4cea5de73672765b80a093d409b18716ae5443c811db0e3bea75ded70c": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "divide-before-multiply: SignatureCheckerLib.isValidERC6492SignatureNow(address,bytes32,bytes). **Uninvoked imported function.** SignatureCheckerLib.isValidERC6492SignatureNow is not called. PoolPage only calls toEthSignedMessageHash(bytes memory). Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "738f82ffcc328e555c4a76830e0d9dc05f4b72e1dcdcc45d3b6795312b82972e": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "divide-before-multiply: LibBytes.indexOfByte(bytes,bytes1,uint256). **Uninvoked imported function.** LibBytes.indexOfByte is transitively imported but not called; its divide-before-multiply alert is outside the target call graph. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "e656c916aea5fb1919b941bd2eb57087692e4f557bb30f99ccc436d92dc310fb": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "divide-before-multiply: SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects(address,bytes32,bytes). **Uninvoked imported function.** SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects is not called; PoolPage only hashes a page message. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "ca908850024205c43d924acb64025e24a1e9c166109af9e71a24ccee54a9e764": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "divide-before-multiply: PoolBalancer.configure(uint16,uint256). **Reachable; bounded arithmetic, rule concern remains.** configure intentionally sums n * floor(1e36 / prizeBase) per denomination, matching _onDrawn and _withdrawAndRedeem weight units. At most 80 prizes makes truncation versus divide-after-multiply under 80 integer units, but the separate 70% gate product concern and target-shrink stale live listings remain. This detector does not explain those failures. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "29e64124e5f10c84472ace0cb9ab00abb9096f08a31b38d612689da9b51b97e0": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-equality: PoolBalancer.performUpkeep(). **Reachable; intentional no-work predicate, liveness variants open.** performUpkeep equality compares creatorWork before/after to decide NoUpkeepNeeded when no reconcile/list/proceeds work occurred. A no-op configure during a funded unsettled draw was attempted, but its direct FWA-service-sender VRF continuation is diagnostic under the strict coordinator rule. Mixed creator/purchase work and split/lifetime credit remain open. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "8385ee99145535ecc1acad777650347fd6fe19f3ec285952ac8e9f5c9c2c365d": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-equality: PoolBalancer._payKeeper(uint256,bool). **Reachable; intentional zero-return branch.** _payKeeper returns before transferring 0 ETH; it is not a price-oracle equality. Positive real keeper rewards and a guarded keeper callback were exercised. Whether drained keeperCredit leaves profitable/lively upkeep over long sequences remains open. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "ac0dfa237880ad04d641facfcbbdd91b3fcd1bec553b5086dd3df4c54ac27ffb": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "incorrect-equality: PoolBalancer._fillDeficit(IFWAPool,uint256). **Reachable; intentional batch-stop branch.** _fillDeficit breaks when affordable/capacity-limited need is zero for the next ascending-value denomination. Real stockup and 32-case Shape fuzz reached related loops. Mixed Pack/Shape capacity starvation and delayed batches are not fully tested. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "d024bf1977c33a30ef0b7e763099ce54009439b3085182be5e6595e5333e31ed": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "reentrancy-no-eth: Reentrancy in PoolBalancer.updateCuratedPrice(uint256,uint256). **Reachable; bounded rollback, callback alternatives open.** updateCuratedPrice is nonReentrant. One funded unsettled FWA draw made updatePrice revert and rolled back both local base/price. Later post-settlement success used a direct FWA-service-sender callback and is diagnostic, not strict-route proof. The FWA call precedes it.price assignment, so a callback could observe transient old local price; arbitrary callback behavior was not excluded. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "1ca0c07904b0363968743ada551aee98479306c52221169c29fdc6266dd3ccaa": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "uninitialized-local: PoolBalancer.requiredReserve().largest. **Reachable; zero initialization, reserve defect separate.** Solidity uint256 largest starts at zero and is updated for nonzero target counts. This is not an uninitialized read. E-B1's independently demonstrated two-win reserve shortfall remains a separate economic finding. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "local_zero_initialization"
+    },
+    "1cd5f43085774237fc823ba6b3eb40cc7073fbf1b620df4efb6eec2789a5ea36": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "uninitialized-local: PoolBalancer.configure(uint16,uint256).prizes. **Reachable; zero initialization.** Solidity uint256 prizes starts at zero and increments for each plan count; configure rejects zero and more than 80 prizes. Valid plans and 32 varied fork cycles were exercised. This local alert does not close other plan-edge arithmetic. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "local_zero_initialization"
+    },
+    "24233dd2420667cfbdac85f0d2eeb2b5af854ba3fc570dbcd9322d4817524846": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "uninitialized-local: PoolBalancer.performUpkeep().ops. **Reachable; zero initialization.** Solidity uint256 ops starts at zero and changes only on _fillDeficit. NoUpkeepNeeded and reward branches use that defined zero. Tested stock/reconcile examples do not exhaust mixed work. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "local_zero_initialization"
+    },
+    "b4947e3dbc486bf593661d5abd74b60e5d67e258c0d279474bab476f4aae2881": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "uninitialized-local: PoolBalancer.requiredReserve().units. **Reachable; zero initialization, reserve defect separate.** Solidity uint256 units starts at zero and accumulates deficit/draw units. This is not an uninitialized read. E-B1 reserve/liveness shortfall and fee-admin variants remain open/confirmed separately. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "local_zero_initialization"
+    },
+    "e5c2b16bb2d357526e4a404240870db66e01fe35daa8f600075d923ff83797ff": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "uninitialized-local: PoolBalancer.configure(uint16,uint256).w. **Reachable; zero initialization, gate rule concern remains.** Solidity uint256 w starts at zero and sums prize weights; targetWeight is assigned after validation. Fuzz covered 32 Shape target/deposit/markup cycles, not every 16-size plan. M8 high-prize odds collapse can satisfy the arithmetic rule. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "local_zero_initialization"
+    },
+    "7c4b497ff291ad0ce37b1fcb5989c0f9369b45d81cb046f267c143b323b9300b": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "unused-return: PoolBalancer.recoverRefunded(uint256,address). **Reachable; dependency-ledger assumption open.** recoverRefunded uses returned collection/tokenId/status while ignoring other FWA listing tuple fields. Status 7 and failed creator recovery were reached on the coordinator-route seized-NFT ghost path; normal Shape/Pack refund recovery with the strict route and malicious FWA metadata changes were not established. Ignored fields are not themselves proof of a safe recovery. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "89942a5e4bf8b67ae221051d122bc9b509567008f0bd29bc75e12ffc57c3692f": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "unused-return: PoolBalancer.setENSName(string). **Reachable; live success, dynamic registrar risk.** setENSName ignores the reverse registrar's returned node. Pinned live ENS set and clear read back through registry resolver; noncreator call reverted. ENS may later point to a registrar that returns a node without storing the name or reenters, so event/name integrity under registrar change is unresolved; no ETH is sent here. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "c10811b4cf9b6b0a1cb60a090a6170cc27a5f94d70c29cce387ba6e45842e43e": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "unused-return: PoolBalancer.performUpkeep(). **Reachable; bounded sequence evidence.** performUpkeep consumes requestId, listing ID and acquisition status, ignoring other acquisition tuple fields. Coordinator-route fulfilled and failed-delivery draws reconciled, including ghost cases. Invariant that all pool listings are locally tracked and all sequence/status variants are final remains a dependency assumption; F4 callback absence/coverage rejection shows a distinct liveness gap. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "eb583c928dc691a0c97ec50a39ba435b6adf629654298b53903bbee80a073755": {
+      "outcome": "unresolved",
+      "path_id": "unresolved-other-surface",
+      "reason": "unused-return: PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]). **Reachable; bounded backing evidence.** _withdrawAndRedeem reads FWA tokenId and local denomination, ignoring other listing fields. Real Shape/Pack unlists returned exact backing in tested cycles. An inconsistent FWA listing/collection/token ledger or failed withdrawal/redeem remains an unresolved dependency path; this tuple pattern alone is not a validated loss. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "reachable_or_unresolved"
+    },
+    "12a6edcf19a4eb488cac65f2f0d97b2088f685cedac9b201dd5dbe97a8a86ae5": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.sliceCalldata(bytes,uint256).result. **Uninvoked imported function.** LibBytes.sliceCalldata(bytes,uint256) is not called by target paths or PoolPage's toHexString/hash calls. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "2034acc00c3f8a17ad97e0d932e7b4f98af0d390968d439b3b9cb5bdc87acd57": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.sliceCalldata(bytes,uint256,uint256).result. **Uninvoked imported function.** LibBytes.sliceCalldata(bytes,uint256,uint256) is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "22f90abab8c875c61f2e2a674601237d63be68b67815434fd92666ffa184b2fd": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.dynamicStructInCalldata(bytes,uint256).result. **Uninvoked imported function.** LibBytes.dynamicStructInCalldata is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "32d33486337cb865e252595562a1fac092228aa2b62f61f807f188698134ee88": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: SignatureCheckerLib.isValidSignatureNowCalldata(address,bytes32,bytes).isValid. **Uninvoked imported function.** SignatureCheckerLib.isValidSignatureNowCalldata is not called; PoolPage only uses toEthSignedMessageHash. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "4013ced37a4e2a07961f60c6e75f9ce0960817630fd7bea4d6c0b8a823e7a65c": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: SignatureCheckerLib.isValidSignatureNow(address,bytes32,uint8,bytes32,bytes32).isValid. **Uninvoked imported function.** SignatureCheckerLib.isValidSignatureNow with v/r/s bytes is not called by PoolPage or Balancer. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "49e3b7c290b5a0a1326f726060bfea1efcbc7d44218c4a1252280cfe0ef19453": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes).isValid. **Uninvoked imported function.** SignatureCheckerLib.isValidSignatureNow(address,hash,bytes) is not called; Balancer implements its own ERC-1271 digest-epoch lookup. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "7e9f05581dcd8f57cd9e083e9f31f0b1c9baa6227c8436851d5b3abcc20a3fd6": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.bytesInCalldata(bytes,uint256).result. **Uninvoked imported function.** LibBytes.bytesInCalldata is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "82b4ae6bdcc956e9750c9f73a3d53df199be7de63808ca5ed2d532e0e812737d": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.staticStructInCalldata(bytes,uint256).result. **Uninvoked imported function.** LibBytes.staticStructInCalldata is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "a54acc6f73c89757bc6272aea1437cbda1e6fa2d74ad1b70d8dcb218b10fe64f": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes32,bytes32).isValid. **Uninvoked imported function.** SignatureCheckerLib.isValidSignatureNow with compact signature fields is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "ad5a625428522cc514c2f43f820da517bafa32e98846377d9ad37b0c81acda66": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibBytes.truncatedCalldata(bytes,uint256).result. **Uninvoked imported function.** LibBytes.truncatedCalldata is not called by target paths. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "82e1a575497bcb73fa830290fe20d7d3d67494d0e562b3517bb37cc7e0fbb39f": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: LibClone.implementationOf(address).result. **Uninvoked imported function.** LibClone.implementationOf is not called. Factory invokes cloneDeterministic and predictDeterministicAddress, which do not delegate to implementationOf. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    },
+    "c3f1d727431942f026cf66feaa4897aeb55e0443cd416aa024a0f14a9e2b4ae5": {
+      "outcome": "held",
+      "path_id": "unresolved-other-surface",
+      "reason": "write-after-write: SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32).success. **Uninvoked imported function.** SafeTransferLib.permit2 is not called. Balancer invokes only safeTransferETH for creator claims and forceSafeTransferETH for keeper rewards. Classification addresses this exact detector on the frozen target; other source and dependency paths remain open.",
+      "evidence_ids": [
+        "lane-a-slither-id-triage"
+      ],
+      "review_status": "uninvoked_imported_function"
+    }
+  },
+  "independent_review": {
+    "file": "lane_b/gate-review.md",
+    "sha256": "9b09f4bf3fb8f06d3bcf8c5be4b37a625da4ffab32bcd4efddd29c0a19a37da2",
+    "reviewed_manifest_sha256": "02f0f446f07b2eaa3f00fc102046eecaee9c34710fdd8aa9fbdb81032fad4074",
+    "inventory_challenge": "Lane B independently matched source and evidence hashes and the exact 55 entrypoint, 66 external-call and 40 High/Medium detector ID sets, while warning that key coverage does not prove semantic completeness.",
+    "evidence_challenge": "Lane B reviewed all three listed postconditions. It accepted the zero-liquid admitted draw and the adversarial double sale within bounded real-fork traces, and challenged an unasserted second upkeep in the Balanced burst. The burst assertion was narrowed afterward and has not been independently re-reviewed against this new manifest hash.",
+    "postcondition_review": {
+      "reserve-reopen/liquidity": {
+        "status": "accepted",
+        "reason": "The pinned real FWA acquire path executed after close, full liquid claim and reopen with Balancer balance zero against positive required reserve; it does not prove jackpot settlement.",
+        "evidence_ids": [
+          "reserve-reopen"
+        ]
+      },
+      "burst-restoration/restoration": {
+        "status": "challenged",
+        "reason": "The prior manifest overstated a second upkeep and exact proceeds. The current assertion removes those clauses, but the independent reviewer assessed only the earlier manifest hash.",
+        "evidence_ids": [
+          "burst"
+        ]
+      },
+      "lying-curated-double-sale/two-deliveries-no-transfer": {
+        "status": "accepted",
+        "reason": "Two code-free funded payer balances fell, real coordinator service callbacks marked both FWA deliveries, refunds failed, and internal hostile ERC721 ownership stayed with the creator; this is conditional on dishonest collection behavior.",
+        "evidence_ids": [
+          "lying-curated-double-sale"
+        ]
+      }
+    }
+  },
+  "last_gate_check": {
+    "checked_at_utc": "2026-11-12T18:14:36+00:00",
+    "command": "python3 /Users/dd/.agents/skills/adversarial-audit/scripts/audit_gate.py audit/round8/audit-gate.json --inventory audit/round8/source-inventory-pool-pinned.json --slither-json audit/round8/slither-pool.json",
+    "exit_code": 1,
+    "failure_count": 38,
+    "output_file": "gate.output",
+    "result_scope": "26 unresolved critical-path/family/postcondition checks, 11 unresolved detector leads, and one independently challenged postcondition; mapping keys complete."
+  }
+}

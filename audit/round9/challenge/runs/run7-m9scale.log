@@ -1,0 +1,30 @@
+=== RUN 7: lane A M9Scale worst case ===
+Compiling 59 files with Solc 0.8.28
+Compiling 31 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.86s
+Solc 0.8.28 finished in 4.92s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/lane_a/addendum/M9Scale.t.sol:M9Scale
+[PASS] testBalancedMixSingleCuratedLeak() (gas: 27322858)
+Logs:
+  Balanced-mix honest/acted profit (wei): 792865821236785 812687466767705
+  Balanced-mix single-curated extra (wei): 19821645530920
+
+[PASS] testWorstCaseNetLeak() (gas: 17900324)
+Logs:
+  profit honest / acted (wei): 0 17384445750066398
+  fund   honest / acted (wei): 85036949995573405 67652504245507007
+  ETH withdrawn honest / acted (wei): 0 17384445750066398
+  extra profit extracted this cycle (wei): 17384445750066398
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 360.20ms (27.63ms CPU time)
+
+Ran 1 test suite in 364.94ms (360.20ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)
+EXIT=0

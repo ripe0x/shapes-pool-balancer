@@ -1,0 +1,6 @@
+Error: Compiler run failed:
+Error (9582): Member "maxAcquisitionsPerTx" not found or not visible after argument-dependent lookup in contract IFWAPool.
+ --> audit/round8/lane_b/validation/RouterFive.t.sol:8:18:
+  |
+8 |         assertEq(p.maxAcquisitionsPerTx(), 5);
+  |                  ^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,20 @@
+name: ci
+on: [pull_request, push]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: forge build --sizes
+      - run: npm run typecheck
+      - run: npx vitest run shared/planner.test.ts keeper/keeper.test.ts
+      # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
+      - run: forge test --match-path test/Fork.t.sol

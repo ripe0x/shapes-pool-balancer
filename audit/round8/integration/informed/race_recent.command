@@ -1,0 +1,1 @@
+FOUNDRY_TEST=audit/round8/integration/informed forge test --match-path audit/round8/integration/informed/RaceFork.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26399837 --out audit/round8/integration/informed/out --cache-path audit/round8/integration/informed/cache -vvv
