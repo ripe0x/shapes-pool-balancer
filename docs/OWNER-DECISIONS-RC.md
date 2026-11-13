@@ -13,16 +13,42 @@ branch `test/flow-restock-in-flight`, contract source identical to `ec5259c` (op
 the Balancer holds. **No purchase is refused**: in this mix the missing prize is a small part of the gate's prize
 weight. Players keep buying from a board without its headline prize, priced on that board by FWA.
 
-| Option | What the creator does | Top prize missing | Draws refused | Creator's ETH locked | Creator's claims by day 30 | Creator's end position (claims + everything still in the pool) | Risk |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Wait (today) | nothing | **20 of 30 days, still missing at day 30** | 0 | the reserve it already holds | 3.373 ETH | 4.833 ETH | The board lacks its headline prize indefinitely. Sales refill the fund only slowly (the game's 10% of markup plus fees), so in this run they never covered the 1.05 ETH. The dashboard keeps showing a design the pool doesn't have. |
-| **Add ETH** | deposits what the reserve is short by, right after the second win | 0 days | 0 | **+0.963 ETH deposited**; at day 30, 0.273 ETH more in the reserve and 0.5 ETH more in listed backing than waiting | 3.768 ETH | 6.001 ETH on 5.963 deposited | Capital at risk if the top prize is won a third time. |
-| **Continue without the 0.5 ETH prize** | saves the same design without it | 0 days (the design no longer has it) | 0 | none extra; the reserve requirement falls | **3.500 ETH (+0.127 vs wait)** | 4.833 ETH | Players lose the top prize until the creator adds it back (save the design again plus deposit). |
+What each option does to the board:
 
-How to read the position column: the wait and continue rows sold the same draws to the same winners, so their positions
-match (4.8333 vs 4.8332 ETH). Continuing frees 0.127 ETH sooner. The add-ETH row's draws were priced with the top
-prize back on the board: players paid 0.055 ETH more over the 118 later draws. It also had different winners, who were
-paid 0.14 ETH less backing. That part is luck from one run of random words, not an effect of the option.
+| Option | What the creator does | Top prize missing | Draws refused | Risk |
+| --- | --- | --- | --- | --- |
+| Wait (today) | nothing | **20 of 30 days, still missing at day 30** | 0 | The board lacks its headline prize indefinitely. Sales refill the reserve only slowly (the game's 10% of markup plus fees), and in this run they never covered the shortfall. The dashboard keeps showing a design the pool doesn't have. |
+| **Add ETH** | deposits what the reserve is short by (0.963 ETH), right after the second win | 0 days | 0 | More of the creator's ETH is exposed if the top prize is won again. |
+| **Continue without the 0.5 ETH prize** | saves the same design without it | 0 days (the design no longer has it) | 0 | Players lose the top prize until the creator adds it back (saves the design again and deposits). |
+
+Where the creator's ETH is (ETH):
+
+| | Wait | Add ETH | Continue |
+| --- | --- | --- | --- |
+| **Put in** | 5.000 | 5.963 (5.000 + 0.963 top-up) | 5.000 |
+| **Taken out during the 30 days** | 3.373 | 3.768 | 3.500 |
+| of which: deposit above the requirement, taken right after setup | 2.695 | 2.695 | 2.695 |
+| of which: profit (markup above 10%), taken as it came in | 0.414 | 0.424 | 0.414 |
+| of which: deposit released later as the requirement fell | 0.264 | 0.649 | 0.391 |
+| **Locked at day 30** (withdrawable only after closing and unlisting) | 1.461 | 2.234 | 1.334 |
+| of which: backing inside listed prizes, held by FWA | 1.200 | 1.700 | 1.200 |
+| of which: ETH in the Balancer | 0.261 | 0.534 | 0.134 |
+| **Withdrawable at day 30** (above the requirement) | 0 | 0 | 0 |
+| Reserve requirement at day 30 | 1.035 (0.774 short) | 0.534 (met) | 0.134 (met) |
+| **Net: taken out + locked − put in** | **−0.167** | **+0.038** | **−0.167** |
+
+How to read it:
+- Nothing waits 30 days. The creator withdraws whatever is above the requirement whenever they like (here: right after
+  setup, then daily) and their profit as it comes in. Only the prize backing and the reserve stay locked while the pool
+  is open.
+- The profit row is the separate profit bucket: paid out in full in every option, even while the reserve was short.
+  The loss is on the reserve, the creator's deposit that the game spends to replace won prizes. This regime forces two
+  0.5 ETH wins on consecutive draws, so it is a bad month by construction.
+- Wait and Continue sold the same draws to the same winners, so their nets match. Continuing releases 0.127 ETH more
+  during the run and locks less.
+- Add ETH's lead (+0.205 ETH net) is mostly luck. With the top prize back on the board, players paid 0.055 ETH more
+  over the 118 later draws. The same random words then picked different prizes, whose winners were paid 0.14 ETH less
+  backing. One run cannot separate these.
 
 **Recommendation: build "Continue without the 0.5 ETH prize" and show it next to "Add 0.96 ETH" on a pool whose top
 prize is missing.** The creator chooses. Why:

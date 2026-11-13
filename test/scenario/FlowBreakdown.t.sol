@@ -152,6 +152,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal actAt = type(uint256).max;
     bool internal actTopUp;
     uint256 internal toppedUp;
+    uint256 internal claimedAtSetup;
 
     function setUp() public {
         setUpFork();
@@ -227,7 +228,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     function _largeWinFacts() internal view returns (Fact[] memory x) {
-        x = new Fact[](6);
+        x = new Fact[](12);
         x[0] = Fact("forced_top_prize_draw_a", forceTopA);
         x[1] = Fact("forced_top_prize_draw_b", forceTopB);
         x[2] = Fact("days_top_prize_missing_from_design", daysTopMissing);
@@ -239,6 +240,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             claimed + address(balancer).balance + _backingListed() + pool.ownerProceeds()
         );
         x[5] = Fact("top_prizes_listed_at_end", balancer.getActiveShapes()[TOP]);
+        x[6] = Fact("claimed_right_after_setup_wei", claimedAtSetup);
+        x[7] = Fact("profit_claimed_wei", profitCredited - balancer.profit());
+        // at day 30, after the creator's last daily claim
+        x[8] = Fact("end_backing_listed_wei", _backingListed());
+        x[9] = Fact("end_held_in_balancer_wei", address(balancer).balance);
+        x[10] = Fact("end_required_reserve_wei", balancer.requiredReserve());
+        x[11] = Fact("end_withdrawable_now_wei", balancer.withdrawableSurplus());
     }
 
     /// @dev As quiet, with gas moving by draw index: 0-44 at 0.55 gwei, 45-89 at 5 gwei (the reimbursement cap),
@@ -420,7 +428,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertTrue(_keeperPass(), "keepers finished the setup");
         assertEq(balancer.admissionStatus(), 0, "purchases admitted after setup");
         assertEq(unitsListed, BOARD_UNITS, "the whole board is listed");
-        _claim();
+        claimedAtSetup = _claim();
     }
 
     function _done(string memory regime, Snap memory a, Fact[] memory extra) internal {
