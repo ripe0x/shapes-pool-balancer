@@ -147,6 +147,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal proceedsMismatch;
     uint256 internal maxInFlightAtRestock;
 
+    // E9 what-ifs on large_win: the creator acts once, right after the second top prize is won
+    uint256 internal daysTopMissing;
+    uint256 internal actAt = type(uint256).max;
+    bool internal actTopUp;
+    uint256 internal toppedUp;
+
     function setUp() public {
         setUpFork();
         keeperStart = keeper.balance;
@@ -195,10 +201,44 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         (forceTopA, forceTopB) = (60, 61);
         for (uint256 i; i < DRAWS; ++i) _single(i);
         assertGe(topWon, 2, "two top prizes were won");
-        Fact[] memory x = new Fact[](2);
+        _done("large_win", a, _largeWinFacts());
+    }
+
+    /// @dev E9 option "add ETH": large_win, and right after the second top prize is won the creator deposits what
+    ///      the reserve is short by.
+    function test_whatIf_largeWinTopUp() public {
+        Snap memory a = _launch();
+        (forceTopA, forceTopB, actAt, actTopUp) = (60, 61, 62, true);
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertGe(topWon, 2, "two top prizes were won");
+        assertGt(toppedUp, 0, "the creator topped up");
+        _done("whatif_large_win_top_up", a, _largeWinFacts());
+    }
+
+    /// @dev E9 option "continue without the 0.5 ETH prize": large_win, and right after the second top prize is won
+    ///      the creator saves the same design without it.
+    function test_whatIf_largeWinDropTop() public {
+        Snap memory a = _launch();
+        (forceTopA, forceTopB, actAt) = (60, 61, 62);
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertGe(topWon, 2, "two top prizes were won");
+        assertEq((balancer.target() >> (16 * TOP)) & 0xFFFF, 0, "the design no longer has the top prize");
+        _done("whatif_large_win_drop_top", a, _largeWinFacts());
+    }
+
+    function _largeWinFacts() internal view returns (Fact[] memory x) {
+        x = new Fact[](6);
         x[0] = Fact("forced_top_prize_draw_a", forceTopA);
         x[1] = Fact("forced_top_prize_draw_b", forceTopB);
-        _done("large_win", a, x);
+        x[2] = Fact("days_top_prize_missing_from_design", daysTopMissing);
+        x[3] = Fact("creator_topped_up_wei", toppedUp);
+        // what the creator holds at the end: claimed, plus everything still in the Balancer, its listed backing and
+        // uncollected proceeds (all claimable after closing and unlisting)
+        x[4] = Fact(
+            "creator_position_at_end_wei",
+            claimed + address(balancer).balance + _backingListed() + pool.ownerProceeds()
+        );
+        x[5] = Fact("top_prizes_listed_at_end", balancer.getActiveShapes()[TOP]);
     }
 
     /// @dev As quiet, with gas moving by draw index: 0-44 at 0.55 gwei, 45-89 at 5 gwei (the reimbursement cap),
@@ -479,6 +519,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     function _single(uint256 i) internal {
         _gasPhase(i);
+        if (i == actAt) _act();
         if (!balancer.canPurchase(buyer)) {
             _refused(1);
         } else {
@@ -711,7 +752,29 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
+    function _act() internal {
+        if (actTopUp) {
+            uint256 fund = address(balancer).balance - balancer.profit();
+            uint256 need = balancer.requiredReserve();
+            if (need > fund) {
+                toppedUp = need - fund;
+                vm.prank(creator);
+                balancer.depositETH{value: toppedUp}();
+                deposited += toppedUp;
+            }
+        } else {
+            uint256[16] memory c;
+            (c[0], c[9], c[1], c[2]) = (24, 8, 12, 2); // the launch design without the 0.5 ETH Shape
+            vm.prank(creator);
+            balancer.configure(uint16(MARKUP_BPS), plan16(c));
+        }
+        _keeperPass();
+    }
+
     function _endOfDay() internal {
+        if (balancer.enabled() && ((balancer.target() >> (16 * TOP)) & 0xFFFF) > balancer.getActiveShapes()[TOP]) {
+            ++daysTopMissing;
+        }
         _claim();
         vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.roll(vm.getBlockNumber() + 7200);
