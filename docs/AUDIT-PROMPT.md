@@ -92,8 +92,8 @@ not "in the right place".
 
 ## 3. Process
 
-- **Budget:** [owner sets before intake; rounds 7 and 8 used a 12 auditor-hour cap], including PoCs, fork and fuzz
-  campaigns, challenge and reporting. Suggested split for 12 h: discovery lane A 3 h, lane B 3 h, integration
+- **Budget:** 12 auditor-hours (owner, 2026-11-13), including PoCs, fork and fuzz campaigns, challenge and
+  reporting. Suggested split for 12 h: discovery lane A 3 h, lane B 3 h, integration
   assessor 2 h, controller (§5, reconciliation, economic tables, report) 4 h. Stop each lane at its ceiling and report what was
   used. If the cap is hit, write a partial report with exact blockers; that is not a
   clean result.
