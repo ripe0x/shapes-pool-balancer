@@ -16,7 +16,8 @@ import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/Exte
 ///         the factory's keeper list (open to anyone at deploy); it has no path into custody or pool settings.
 ///
 ///   Rehearsal: PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender <addr> --broadcast
-///   Mainnet:   PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify
+///   Mainnet:   PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> script/deploy.sh --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify
+///              (script/deploy.sh runs the asset-flow gate first; this script refuses chain id 1 without it)
 contract Deploy is Script {
     address constant FWA_FACTORY = 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C;
     address constant FWA_IMPL = 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7;
@@ -32,6 +33,12 @@ contract Deploy is Script {
         require(packsAdmin != address(0), "PACKS_ADMIN");
         address keeperAdmin = vm.envAddress("KEEPER_ADMIN");
         require(keeperAdmin != address(0), "KEEPER_ADMIN");
+        // script/deploy.sh sets this after the asset-flow gate passes (docs/ASSET-FLOW-GATE.md). A hand-set variable
+        // defeats it; a local chain (31337) is not asked.
+        require(
+            block.chainid != 1 || keccak256(bytes(vm.envOr("ASSET_GATE_PASSED", string("")))) == keccak256("yes"),
+            "asset-flow gate: deploy with script/deploy.sh"
+        );
         // Preflight: the chain must still serve the reviewed FWA implementation.
         require(block.chainid == 1 || block.chainid == 31337, "mainnet or local fork only");
         require(IFWAPoolFactory(FWA_FACTORY).implementation() == FWA_IMPL, "FWA implementation changed: re-review");

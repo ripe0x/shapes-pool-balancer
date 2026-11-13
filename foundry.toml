@@ -18,7 +18,7 @@ remappings = [
 # Draw Packs (lib/shape-packs, ripe0x/shape-packs `draw-packs` at 3a463f7) is built the way its own repository builds it.
 additional_compiler_profiles = [{ name = "packs", via_ir = true, optimizer_runs = 20 }]
 compilation_restrictions = [{ paths = "lib/shape-packs/src/**", via_ir = true, optimizer_runs = 20 }]
-fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = "read-write", path = "./test/fixtures" }, { access = "read", path = "./out" }]
+fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = "read-write", path = "./test/fixtures" }, { access = "read", path = "./out" }, { access = "read-write", path = "./docs/receipts/flow" }]
 
 [profile.default.lint]
 lint_on_build = false

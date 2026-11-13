@@ -207,8 +207,10 @@ These follow the rewrite being reviewed and re-verified (see "Rewrite status").
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):
 
    ```bash
-   PACKS_ADMIN=<address> KEEPER_ADMIN=<address> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
+   PACKS_ADMIN=<address> KEEPER_ADMIN=<address> script/deploy.sh --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
    ```
+
+   `script/deploy.sh` runs the asset-flow gate first and stops unless it passes (`docs/ASSET-FLOW-GATE.md`).
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.
 6. Start the keeper with a funded keeper key from your secret store (`docs/OPERATIONS.md`), `FROM_BLOCK` = deployment
