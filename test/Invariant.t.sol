@@ -193,6 +193,16 @@ contract InvariantTest is ForkBase {
         assertGe((w - lost) * 10_000, FILL_BPS * balancer.targetWeight(), "inventory at or above the fill floor");
     }
 
+    /// The creator's unclaimed profit is always held, claims never exceed the balance, and the creator's share of the
+    /// listed prices counts only Shape markups, each at most half its price (markup at most 100%).
+    function invariant_profitHeldAndShareBounded() public view {
+        uint256 bal = address(balancer).balance;
+        assertLe(balancer.profit(), bal, "profit held");
+        assertLe(balancer.withdrawableSurplus(), bal, "claims within the balance");
+        assertLe(balancer.creatorShareSum(), _listedShapes() * 5e17, "only Shape markups, at most half each price");
+        if (!balancer.enabled()) assertEq(balancer.profit(), 0, "everything claimable while closed");
+    }
+
     function _listedShapes() internal view returns (uint256 n) {
         uint16[16] memory a = balancer.getActiveShapes();
         for (uint256 d; d < 16; ++d) n += a[d];

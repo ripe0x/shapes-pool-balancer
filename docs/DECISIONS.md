@@ -351,3 +351,21 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     smallest first, with purchases continuing on what is listed (owner-accepted E1); the 70% fill check still pauses a
     board that falls below it. `open()` reverts `ReserveNotFunded` without the reserve (E2). `configure` rejects a
     markup below 10% (`MIN_MARKUP_BPS`): the markup is the only profit, so at 0% nothing refills the reserve.
+67. **Profit keeps flowing while the reserve refills: half of each payment's profit refills it, half is the
+    creator's.** Before this, every win that dipped the fund below the reserve stopped all withdrawals until sales
+    refilled it, so creators who withdrew regularly got nothing on about a third of draws (fork run: 61 to 138 of
+    184 draws per run at ape-ball's curve). Each collected payment is now split by the listed prices
+    (`creatorShareSum`: each Shape's markup at its listing markup, weighted by 1 / price as FWA weights draws). While
+    the fund is below `requiredReserve`, half of the markup part tops it up and half is claimable `profit`; claims spend `profit` first and never take the fund. Game first: upkeep spends unclaimed profit
+    when the fund cannot pay a restock. Fork run, 10 random and 2 forced 0.5 ETH wins, creator claiming after every
+    draw: 0 draws with nothing to claim (was 61 to 138), the same final position to 0.0001 ETH, all 184 draws sold.
+    Model (sim, 4,000 runs, 40 draws a day for 180 days, 25% markup): the top prize is off the board 2.7% of draws
+    (was 1.0%; 73% with no profit share, the zero-drift fund this rejects). After a 0.5 ETH win the fund refills in
+    42 forced-small draws (was 37) while the creator claims about 0.064 ETH (was nothing). Independent review found
+    that counting a curated NFT's whole price let a creator list throwaway NFTs just before a collection and move
+    nearly a whole payment into profit, because the split uses the listings at collection, not at each draw. Curated
+    NFTs now count zero, so listing them only lowers the share; withdrawing them raises it at most to the Shapes-only
+    share, and each Shape's share is below 1/2, so the fund keeps at least half of every payment, more than the
+    Shapes' expected restock cost (`test_listingNFTsBeforeCollectionCannotMoveFundMoney`, re-reviewed). NFT
+    sale money therefore stays in the fund until it is full. Each Shape's share is fixed at listing, so a markup change
+    cannot move fund money either. Staged restocks count in the divisor, which can only lower the creator's share.

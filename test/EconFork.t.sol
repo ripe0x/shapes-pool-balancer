@@ -6,7 +6,7 @@ import {ForkBase} from "./utils/ForkBase.sol";
 /// @notice Creator economics on a mainnet fork with the real FWA pool, VRF service, Shapes and Draw Packs, at
 ///         ape-ball's observed draw curve (43, 44, 54, 18, 0, then 1 a day; 184 draws over 30 days).
 ///         Balanced at 12 small Shapes, a 0.2 ETH NFT relisted when won, 25% markup, 1 gwei. The creator withdraws
-///         everything above the cushion at the end of each day. A player who finds purchases refused leaves.
+///         everything claimable after every draw. A player who finds purchases refused leaves.
 contract EconForkTest is ForkBase {
     uint8 constant SHAPE_KIND = 2;
     uint256 constant NFT_VALUE = 0.2 ether;
@@ -63,7 +63,8 @@ contract EconForkTest is ForkBase {
         uint256 nfts;
         uint256 withdrawn;
         uint256 playersPaid;
-        uint256 firstRefusedAfterBig;
+        uint256 dry;
+        uint256 topOff;
     }
 
     /// @param forceBigAt draw index (1-based) whose word selects the 0.5 Shape; 0 for none.
@@ -95,6 +96,8 @@ contract EconForkTest is ForkBase {
                 } else if (denom == 3) {
                     ++r.bigWins;
                 }
+                if (_claim() == 0) ++r.dry;
+                if (balancer.getActiveShapes()[3] == 0) ++r.topOff;
             }
             vm.warp(block.timestamp + 1 days);
             _claim();
@@ -108,6 +111,8 @@ contract EconForkTest is ForkBase {
         emit log_named_uint("draws refused", r.refused);
         emit log_named_uint("0.5 wins", r.bigWins);
         emit log_named_uint("NFTs won", r.nfts);
+        emit log_named_uint("draws with nothing to claim", r.dry);
+        emit log_named_uint("draws with the 0.5 off the board", r.topOff);
         emit log_named_decimal_uint("players paid incl VRF", r.playersPaid, 18);
         emit log_named_decimal_uint("creator withdrew", r.withdrawn, 18);
         emit log_named_decimal_int("creator ETH profit (if closed now)", eth, 18);

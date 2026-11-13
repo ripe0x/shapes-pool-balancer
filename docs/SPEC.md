@@ -125,7 +125,8 @@ Who is owed value:
 
 Who can take value out:
 
-- while open, the creator can withdraw ETH above `requiredReserve` with `claimSurplus`;
+- while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
+  below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything: the reserve is zero while closed, so the full balance
   is claimable once prizes are unlisted and NFTs withdrawn. Closing also sets `keeperCredit` to zero, so credit left from
   earlier listings is never paid later out of fresh deposits.
@@ -155,10 +156,21 @@ It bounds withdrawals so upkeep can always restock what an admitted draw removes
 
 ETH inside prizes and unsettled draw payments are never counted as available. The Balancer holds no prize between
 transactions, so there is no spare credit (a prize delivered to it because a buyer named it as purchaser is untracked and
-creator-recoverable). The reserve is the creator's money; it is not withdrawable while the pool is open, and `claimSurplus`
-releases only `balance − requiredReserve`. A costlier target or a mint-fee rise raises `requiredReserve` and lowers the
-surplus. Purchases continue while ETH is below it; sales refill it before anything is withdrawable, and `open()`
-needs it in ETH.
+creator-recoverable). The reserve is the creator's money; it is not withdrawable while the pool is open. A costlier
+target or a mint-fee rise raises `requiredReserve`. Purchases continue while ETH is below it, and `open()` needs it in
+ETH.
+
+**Profit and the fund (DECISIONS 67).** Each collected FWA payment is split by the listed prices. FWA weights each
+listing by 1 / price, so the Shapes' markup share of a payment is `creatorShareSum / (active listings × 1e18)`, where
+`creatorShareSum` adds, for every active Shape prize, the markup on its backing (at the markup it was listed at) divided
+by its price. Curated NFTs count zero: the split uses the listings at collection, so counting them would let a creator
+list NFTs just before a collection to move fund money into profit. A Shape's share is below markup / (1 + markup), at
+most 1/2, so the fund keeps at least half of every payment, NFT sale money included. The fund is the balance less
+unclaimed `profit`. While the fund is below `requiredReserve`, half of the markup part tops it up (up to the gap) and
+the rest is added to `profit`; at or above it, everything over the reserve is claimable. `withdrawableSurplus` is the larger of
+`profit` and `balance − requiredReserve`, and a claim spends `profit` first, so a claim never takes the fund below the
+reserve or below where it was. Game first: when the fund cannot pay a restock, upkeep spends unclaimed profit (`profit`
+is cut to the balance). Closing zeroes `profit`: the whole balance is claimable while closed.
 
 `unlistShapes(listingIds)` withdraws up to 20 listed prizes per call and redeems each for its exact backing: the extra
 prizes after a smaller target, or everything after closing. FWA allows it only while no draw is unsettled. Prizes

@@ -18,7 +18,9 @@ Open before release:
    fixed with focused fork tests; S1, S2, S5 (dishonest curated collections) and S3 are documented trust limits; E3
    (simulation VRF fee and destination checks) is open. The repairs have not been re-audited, and the audit's
    structural gate failed with open paths. DECISIONS 66 then replaced the purchase-time funding check with a funded
-   `open()` and a 10% minimum markup; E1 is accepted by the owner and needs re-audit with the rest.
+   `open()` and a 10% minimum markup; E1 is accepted by the owner and needs re-audit with the rest. DECISIONS 67 adds the
+   profit split (`profit`, `creatorShareSum`, a new `claimSurplus` limit), which changes who is paid from the balance and
+   needs the same re-audit, economic pass included.
 1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
    paid from `keeperCredit`, funded by the basefee-indexed restocking fees of the prizes each call lists), made after
    the independent review. The fee-at-draw version had one independent AI review; crediting at listing (DECISIONS 57)

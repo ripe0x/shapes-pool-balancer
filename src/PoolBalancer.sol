@@ -148,8 +148,9 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint112 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
-        uint112 price; // price listed on FWA
+        uint16 markupBps; // markup when listed: the creator's part of a Shape prize's price is its backing x this
+        uint104 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
+        uint104 price; // price listed on FWA
     }
 
     address public creator;
@@ -165,6 +166,9 @@ contract PoolBalancer is ReentrancyGuard {
     uint64 public reconciledSequence;
     /// @dev Restocking fees of prizes keepers listed (price less `base`, outside creator work), not yet paid out.
     uint128 public keeperCredit;
+    /// @dev The creator's part of payments collected while the fund was below `requiredReserve`, not yet claimed.
+    ///      While the fund is short, half of each payment's creator part refills it and half is added here.
+    uint128 public profit;
     /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
     uint256 public mintFeeCap;
     /// @dev Weight (1e36 / `base`) of the listed prizes (staged or active, not yet reconciled as drawn) and of the
@@ -172,7 +176,14 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 public prizeWeight;
     uint256 public targetWeight;
 
-    mapping(uint256 listingId => Item) public items;
+    mapping(uint256 listingId => Item) internal _items;
+    /// @dev Sum over active Shape prizes of (markup on its backing) x 1e18 / price: the markup share of FWA's
+    ///      expected-value payment is this / (active listings x 1e18), since FWA weights each listing by 1 / price.
+    ///      Curated NFTs count zero: proceeds are split at collection, against the listings then, so counting them
+    ///      would let a creator list NFTs just before a collection to move fund money into profit. NFT sale money
+    ///      stays in the fund while it is short and is claimable once it is full. A Shape's share is at most
+    ///      markup / (1 + markup) <= 1/2, so the fund always keeps at least half of each payment.
+    uint256 public creatorShareSum;
     uint256[] internal activeIds;
     mapping(uint256 listingId => uint256) internal activeIndexPlusOne;
     uint16[16] internal activeShapes;
@@ -346,6 +357,7 @@ contract PoolBalancer is ReentrancyGuard {
         enabled = false;
         creatorWork = false;
         keeperCredit = 0;
+        profit = 0; // the whole balance is claimable while closed
         if (!pool.retired()) pool.setBool(ACQUISITIONS_ENABLED_KEY, false);
         emit PurchasesClosed();
     }
@@ -394,13 +406,13 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Set a curated NFT's value; it is listed at that value plus the current markup.
     ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
-        Item storage it = items[listingId];
+        Item storage it = _items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         uint256 price = _priced(newBase);
-        it.base = uint112(newBase);
+        it.base = uint104(newBase);
         if (price != it.price) {
             pool.updatePrice(listingId, price);
-            it.price = uint112(price);
+            it.price = uint104(price);
         }
         emit CuratedRepriced(listingId, newBase, price);
     }
@@ -408,11 +420,11 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
     ///         unsettled.
     function withdrawCurated(uint256 listingId, address to) external onlyCreator nonReentrant {
-        Item storage it = items[listingId];
+        Item storage it = _items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         if (to == address(0)) revert InvalidRecipient();
         _removeActive(listingId);
-        delete items[listingId];
+        delete _items[listingId];
         pool.withdrawListingTo(listingId, to);
         emit CuratedWithdrawn(listingId, to);
     }
@@ -421,13 +433,13 @@ contract PoolBalancer is ReentrancyGuard {
     ///         pack is redeemed here for its backing. FWA allows the refund 7 days after the failed delivery.
     ///         Upkeep never touches curated collections, so a hostile collection cannot burn keeper gas or block upkeep.
     function recoverRefunded(uint256 listingId, address to) external onlyCreator nonReentrant returns (uint256 eth) {
-        Item storage it = items[listingId];
+        Item storage it = _items[listingId];
         if (it.state != PENDING || to == address(0)) revert InvalidItem();
         (address collection,,, uint256 tokenId,,,, uint8 status) = pool.listings(listingId);
         if (status != L_DELIVERY_REFUNDED) revert InvalidItem();
         uint8 kind = it.kind;
         uint8 d = it.denom;
-        delete items[listingId];
+        delete _items[listingId];
         pool.recoverRefundedNFT(listingId);
         if (kind == CURATED) IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
         else eth = _redeem(d, tokenId);
@@ -463,11 +475,13 @@ contract PoolBalancer is ReentrancyGuard {
         amount = _collect();
     }
 
-    /// @notice Withdraw ETH above `requiredReserve`.
+    /// @notice Withdraw up to `withdrawableSurplus`. Claims spend unclaimed `profit` first, so the fund never pays them.
     function claimSurplus(uint256 amount, address to) external onlyCreator nonReentrant {
         if (to == address(0)) revert InvalidRecipient();
         _collect();
         if (amount > withdrawableSurplus()) revert InsufficientSurplus();
+        uint256 mine = profit;
+        profit = amount < mine ? uint128(mine - amount) : 0;
         SafeTransferLib.safeTransferETH(to, amount);
         emit SurplusClaimed(to, amount);
     }
@@ -480,7 +494,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (n == 0 || n > 20) revert InvalidBatch();
         uint256[] memory ids = listingIds;
         for (uint256 i; i < n; ++i) {
-            Item storage it = items[ids[i]];
+            Item storage it = _items[ids[i]];
             if (it.kind != SHAPE || it.state != ACTIVE) revert InvalidItem();
         }
         emit ShapesUnlisted(n, _withdrawAndRedeem(pool, ids));
@@ -604,10 +618,12 @@ contract PoolBalancer is ReentrancyGuard {
 
         if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup) revert NoUpkeepNeeded();
         if (ops != 0 || reconciled) reward = _payKeeper(gasStart, wasSetup);
+        // Game first: restocking may spend unclaimed profit once the fund is empty.
+        if (profit > address(this).balance) profit = uint128(address(this).balance);
     }
 
     function _onDrawn(uint256 lid, bool delivered) internal {
-        Item storage it = items[lid];
+        Item storage it = _items[lid];
         // Every pool listing is ours and tracked until drawn. Never revert here: reconciliation must not be bricked.
         if (it.state != ACTIVE) return;
         uint8 kind = it.kind;
@@ -618,7 +634,7 @@ contract PoolBalancer is ReentrancyGuard {
             prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
         }
         if (delivered) {
-            delete items[lid];
+            delete _items[lid];
         } else {
             it.state = PENDING;
         }
@@ -633,13 +649,13 @@ contract PoolBalancer is ReentrancyGuard {
         for (uint256 i; i < n; ++i) {
             uint256 lid = lids[i];
             (,,, tokenIds[i],,,,) = p.listings(lid);
-            Item storage it = items[lid];
+            Item storage it = _items[lid];
             uint8 d = it.denom;
             sizes[i] = d;
             --activeShapes[d];
             prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
             _removeActive(lid);
-            delete items[lid];
+            delete _items[lid];
         }
         p.withdrawListingsTo(lids, address(this));
         for (uint256 i; i < n; ++i) {
@@ -710,7 +726,7 @@ contract PoolBalancer is ReentrancyGuard {
         for (uint256 i; i < n; ++i) {
             uint8 d = sizes[i];
             uint256 base = _prizeBase(d, fee, markup);
-            items[lids[i]] = Item(SHAPE, d, ACTIVE, uint112(base), uint112(batch[i].price));
+            _items[lids[i]] = Item(SHAPE, d, ACTIVE, uint16(markup), uint104(base), uint104(batch[i].price));
             _addActive(lids[i]);
             ++activeShapes[d];
             added += INVERSE_WEIGHT_NUMERATOR / base;
@@ -736,11 +752,14 @@ contract PoolBalancer is ReentrancyGuard {
                                   VIEWS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice ETH the creator may claim now.
+    /// @notice ETH the creator may claim now: everything above `requiredReserve`, or the unclaimed `profit` while the
+    ///         fund is below it. Everything while closed.
     function withdrawableSurplus() public view returns (uint256) {
         uint256 bal = address(this).balance;
         uint256 req = requiredReserve();
-        return bal > req ? bal - req : 0;
+        uint256 free = bal > req ? bal - req : 0;
+        uint256 mine = profit;
+        return mine > free ? mine : free;
     }
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
@@ -771,6 +790,12 @@ contract PoolBalancer is ReentrancyGuard {
         r += ((units + MAX_OPS - 1) / MAX_OPS + 1) * MAX_KEEPER_REWARD;
     }
 
+    /// @notice A tracked listing: kind (1 curated, 2 Shape or pack), size, state, `base` and FWA price.
+    function items(uint256 listingId) external view returns (uint8 kind, uint8 denom, uint8 state, uint112 base, uint112 price) {
+        Item storage it = _items[listingId];
+        return (it.kind, it.denom, it.state, it.base, it.price);
+    }
+
     function getActiveIds() external view returns (uint256[] memory) {
         return activeIds;
     }
@@ -797,17 +822,31 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && _missingUnits() != 0;
     }
 
+    /// @dev Collect FWA proceeds and split them by the listed prices. The fund (this balance less unclaimed `profit`)
+    ///      keeps everything but the Shapes' markup. While the fund is below `requiredReserve`, half of the markup tops
+    ///      it up and half becomes claimable `profit`; at or above it, everything over the reserve is claimable anyway.
     function _collect() internal returns (uint256 amount) {
         IFWAPool p = pool;
-        if (p.ownerProceeds() != 0) {
-            amount = p.withdrawOwnerProceeds();
-            emit ProceedsCollected(amount);
+        if (p.ownerProceeds() == 0) return 0;
+        amount = p.withdrawOwnerProceeds();
+        emit ProceedsCollected(amount);
+        uint256 n = activeIds.length;
+        if (!enabled || n == 0) return amount;
+        uint256 mine = amount * creatorShareSum / (n * 1e18);
+        if (mine > amount) mine = amount;
+        // profit <= the balance before this payment, so this cannot underflow.
+        uint256 fund = address(this).balance - mine - profit;
+        uint256 need = requiredReserve();
+        if (fund < need) {
+            uint256 toFund = mine / 2;
+            if (toFund > need - fund) toFund = need - fund;
+            profit += uint128(mine - toFund);
         }
     }
 
     function _priced(uint256 base) internal view returns (uint256 price) {
         price = base * (BPS + markupBps) / BPS;
-        if (base == 0 || price > type(uint112).max) revert ValueTooHigh();
+        if (base == 0 || price > type(uint104).max) revert ValueTooHigh();
     }
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
@@ -820,7 +859,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _recordCurated(uint256 lid, address collection, uint256 tokenId, uint256 base, uint256 price) internal {
-        items[lid] = Item(CURATED, 0, ACTIVE, uint112(base), uint112(price));
+        _items[lid] = Item(CURATED, 0, ACTIVE, markupBps, uint104(base), uint104(price));
         _addActive(lid);
         emit CuratedListed(lid, collection, tokenId, base, price);
     }
@@ -828,11 +867,20 @@ contract PoolBalancer is ReentrancyGuard {
     function _addActive(uint256 lid) internal {
         activeIds.push(lid);
         activeIndexPlusOne[lid] = activeIds.length;
+        creatorShareSum += _share(lid);
+    }
+
+    /// @dev A Shape prize's markup as a fraction of its price, scaled by 1e18; zero for a curated NFT.
+    function _share(uint256 lid) internal view returns (uint256) {
+        Item storage it = _items[lid];
+        if (it.kind == CURATED) return 0;
+        return _amount(it.denom) * it.markupBps * 1e18 / (BPS * it.price);
     }
 
     function _removeActive(uint256 lid) internal {
         uint256 idx = activeIndexPlusOne[lid];
         if (idx == 0) revert InvalidItem();
+        creatorShareSum -= _share(lid);
         uint256 lastId = activeIds[activeIds.length - 1];
         activeIds[idx - 1] = lastId;
         activeIndexPlusOne[lastId] = idx;

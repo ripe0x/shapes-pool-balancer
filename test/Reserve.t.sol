@@ -45,15 +45,29 @@ contract ReserveTest is ForkBase {
         revert("size not listed");
     }
 
-    /// @dev Sell single draws that each win a 0.01 Shape until the creator can withdraw again; returns the draws sold.
-    ///      Every draw is admitted on the way: purchases never wait for ETH.
-    function _sellUntilRefilled() internal returns (uint256 n) {
-        while (balancer.withdrawableSurplus() == 0) {
+    /// @dev The fund: this Balancer's ETH less the creator's unclaimed profit.
+    function _fund() internal view returns (uint256) {
+        return address(balancer).balance - balancer.profit();
+    }
+
+    /// @dev Sell single draws that each win a 0.01 Shape, the creator claiming everything claimable after each, until
+    ///      the fund holds the reserve again. Every draw is admitted, every draw pays the creator something, and no
+    ///      claim takes the fund below the reserve or below where it was.
+    function _sellUntilRefilled() internal returns (uint256 n, uint256 claimed) {
+        while (_fund() < balancer.requiredReserve()) {
             assertEq(balancer.admissionStatus(), 0, "still selling while the reserve refills");
             uint256[] memory r = buy(buyer, 1);
             fulfill(r[0], _wordFor(0));
             settle();
             fillUp();
+            uint256 f = _fund();
+            uint256 need = balancer.requiredReserve();
+            uint256 w = balancer.withdrawableSurplus();
+            assertGt(w, 0, "profit flows on every draw");
+            vm.prank(creator);
+            balancer.claimSurplus(w, creator);
+            claimed += w;
+            assertGe(_fund(), f < need ? f : need, "a claim never takes the fund");
             require(++n < 400, "reserve never refilled");
         }
     }
@@ -99,18 +113,88 @@ contract ReserveTest is ForkBase {
         settle();
         fillUp();
         assertEq(balancer.getActiveShapes()[3], 1, "0.5 Shape restocked from the spare");
-        assertLt(address(balancer).balance, need, "spare spent");
-        assertEq(balancer.withdrawableSurplus(), 0, "withdrawals wait");
+        assertLt(_fund(), need, "spare spent");
+        assertEq(balancer.withdrawableSurplus(), balancer.profit(), "only profit is claimable while the fund is short");
         assertEq(balancer.admissionStatus(), 0, "purchases continue");
-        // A second draw is admitted too.
-        uint256[] memory r2 = buy(buyer, 1);
-        fulfill(r2[0], _wordFor(0));
+
+        (uint256 n, uint256 claimed) = _sellUntilRefilled();
+        emit log_named_uint("draws to refill after the 0.5 win", n);
+        emit log_named_decimal_uint("creator claimed meanwhile", claimed, 18);
+        assertGe(_fund(), balancer.requiredReserve());
+    }
+
+    /// The creator's share of each payment follows the listed prices: the markup on each Shape prize's backing,
+    /// weighted by 1 / price as FWA weights its draws. Curated NFTs count zero.
+    function test_creatorShareFollowsListedPrices() public view {
+        uint256[] memory ids = balancer.getActiveIds();
+        uint256 expected;
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind, uint8 denom,,, uint112 price) = balancer.items(ids[i]);
+            if (kind != 1) expected += balancer.denominationAmount(denom) * MARKUP * 1e18 / (10_000 * uint256(price));
+        }
+        assertEq(balancer.creatorShareSum(), expected);
+    }
+
+    /// Review finding: proceeds are split against the listings at collection, so a creator could list NFTs just before
+    /// a collection to move fund money into profit. Curated NFTs count zero, so listing them only lowers the creator's
+    /// share. Withdrawing NFTs raises it at most to the Shapes-only share, below half the payment, so the fund always
+    /// keeps at least half of every payment.
+    function test_listingNFTsBeforeCollectionCannotMoveFundMoney() public {
+        _claimAll();
+        uint256[] memory r = buy(buyer, 1);
+        fulfill(r[0], _wordFor(3));
         settle();
         fillUp();
+        // One more draw, settled but not collected (more would trip the fill check before upkeep).
+        uint256[] memory d = buy(buyer, 1);
+        fulfill(d[0], _wordFor(0));
+        settle();
+        uint256 amount = pool.ownerProceeds();
+        assertGt(amount, 0, "proceeds waiting");
+        uint256 p0 = balancer.profit();
+        uint256 snap = vm.snapshotState();
+        balancer.collectProceeds();
+        uint256 honest = balancer.profit() - p0;
+        vm.revertToState(snap);
+        for (uint256 i; i < 5; ++i) listCurated(100 + i, 50 ether);
+        balancer.collectProceeds();
+        uint256 padded = balancer.profit() - p0;
+        assertGt(honest, 0, "profit flows while the fund is short");
+        assertLe(padded, honest, "listing NFTs never adds profit");
+        assertLt(honest, amount / 2, "the fund keeps at least half of a payment");
 
-        uint256 n = _sellUntilRefilled();
-        emit log_named_uint("draws to refill after the 0.5 win", n);
-        assertGe(address(balancer).balance, balancer.requiredReserve());
+        vm.revertToState(snap);
+        vm.prank(creator);
+        balancer.withdrawCurated(curated, creator);
+        balancer.collectProceeds();
+        assertLt(balancer.profit() - p0, amount / 2, "withdrawing NFTs leaves the fund at least half too");
+    }
+
+    /// Game first: when the fund cannot pay a restock, unclaimed profit pays it.
+    function test_unclaimedProfitRestocksWhenTheFundIsEmpty() public {
+        _claimAll();
+        uint256[] memory r = buy(buyer, 1);
+        fulfill(r[0], _wordFor(3));
+        settle();
+        fillUp();
+        // Let profit build unclaimed until the balance covers a second 0.5 Shape the fund alone cannot.
+        uint256 i;
+        while (address(balancer).balance < 0.51 ether) {
+            uint256[] memory s = buy(buyer, 1);
+            fulfill(s[0], _wordFor(0));
+            settle();
+            fillUp();
+            require(++i < 400, "balance never reached 0.51");
+        }
+        uint256[] memory b = buy(buyer, 1);
+        fulfill(b[0], _wordFor(3));
+        settle();
+        balancer.collectProceeds();
+        assertLt(_fund(), 0.5011 ether, "the fund alone cannot restock the 0.5 Shape");
+        assertGt(address(balancer).balance, 0.506 ether, "fund and profit together can");
+        fillUp();
+        assertEq(balancer.getActiveShapes()[3], 1, "0.5 Shape restocked");
+        assertEq(balancer.profit(), address(balancer).balance, "paid partly from unclaimed profit: none of the fund is left");
     }
 
     /// The worst batch at the minimum reserve (the 0.5, both 0.1 and two 0.01 Shapes) costs more to restock than the
@@ -152,7 +236,7 @@ contract ReserveTest is ForkBase {
         assertEq(paid, 0.72 ether, "winner redeemed 0.5 + 0.1 + 0.1 + 0.01 + 0.01");
 
         assertEq(balancer.admissionStatus(), 0, "purchases continue");
-        uint256 n = _sellUntilRefilled();
+        (uint256 n,) = _sellUntilRefilled();
         emit log_named_decimal_uint("held at minimum reserve", held, 18);
         emit log_named_decimal_uint("listed price of the five prizes won", owedValue, 18);
         emit log_named_uint("draws to restock and refill", n);

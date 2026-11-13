@@ -52,12 +52,13 @@ function useBalancer(b?: Address) {
     const pool = await r<Address>('pool');
     const p = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: functionName as never, args: args as never }) as Promise<T>;
-    const [creator, pendingCreator, markupBps, target, enabled, admission, required, surplus, activeIds, activeShapes, balance, mintFeeCap, reconciled] =
+    const [creator, pendingCreator, markupBps, target, enabled, admission, required, surplus, activeIds, activeShapes, balance, mintFeeCap, reconciled, profit] =
       await Promise.all([
         r<Address>('creator'), r<Address>('pendingCreator'), r<number>('markupBps'), r<bigint>('target'),
         r<boolean>('enabled'), r<number>('admissionStatus'),
         r<bigint>('requiredReserve'), r<bigint>('withdrawableSurplus'), r<bigint[]>('getActiveIds'),
         r<number[]>('getActiveShapes'), pub.getBalance({ address: b }), r<bigint>('mintFeeCap'), r<bigint>('reconciledSequence'),
+        r<bigint>('profit'),
       ]);
     // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
     // current fees (the reward bound it must leave unspent grows with the gas price).
@@ -87,7 +88,7 @@ function useBalancer(b?: Address) {
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
     return {
-      balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, balance, target, markupBps: Number(markupBps),
+      balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, listings, pending, names, ensName,
       keepersRestricted,
@@ -195,13 +196,13 @@ const poolName = (d: D) => d.ensName ?? `Pool ${short(d.balancer)}`;
 function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open' | Tab; label?: string } {
   if (d.retired) return { head: 'Retired.', body: 'The pool no longer sells draws. Withdrawals still work.' };
   if (d.target === 0n) return { head: 'Not set up.', body: 'Finish the design and save it to open purchases.' };
-  const held = d.balance + d.proceeds;
+  const held = d.balance - d.profit + d.proceeds; // the fund: unclaimed profit is the creator's
   const owed = d.required > held ? d.required - held : 0n;
   switch (d.admission) {
     case 0: return d.upkeep.needed
       ? { head: 'Open.', body: 'Drawn prizes are waiting to be restocked.', act: 'upkeep' }
       : owed > 0n
-        ? { head: 'Open.', body: `Sales are refilling the reserve. Withdrawals resume after ${eth(owed)} ETH more.` }
+        ? { head: 'Open.', body: `Half of each sale's profit refills the reserve until it is full: ${eth(owed)} ETH to go.` }
         : { head: 'Open.', body: 'Players can buy draws. Nothing needs attention.' };
     case 1: return { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     case 2: return owed > 0n
@@ -1121,7 +1122,8 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);
   const planned = plan.reduce((a, b) => a + b, 0);
   const idle = d.balance > d.required ? d.balance - d.required : 0n;
-  const short_ = d.required > d.balance ? d.required - d.balance : 0n;
+  const fund = d.balance - d.profit;
+  const short_ = d.required > fund ? d.required - fund : 0n;
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
@@ -1173,7 +1175,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <h2 className="h3">Your ETH</h2>
           <div className="kv"><span className="k">In Shapes</span><span>{eth(backing)} ETH</span></div>
           <div className="kv"><span className="k">Kept for restocking</span><span>{eth(d.required)} ETH</span></div>
-          <div className="kv"><span className="k">Not used</span><span>{eth(idle)} ETH</span></div>
+          <div className="kv"><span className="k">Ready to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
           {short_ > 0n && <div className="kv"><span className="k error">Short of the reserve</span><span className="error">{eth(short_)} ETH</span></div>}
           <div className="kv"><span className="k"><b>Total in the pool</b></span><span><b>{eth(backing + d.balance)} ETH</b></span></div>
           {d.proceeds > 0n && <div className="kv"><span className="k">Sales waiting to be collected</span><span>{eth(d.proceeds)} ETH</span></div>}
