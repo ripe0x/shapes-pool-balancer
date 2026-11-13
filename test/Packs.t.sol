@@ -132,26 +132,6 @@ contract PacksTest is ForkBase {
         assertEq(balancer.getActiveShapes()[12], 0, "surplus removed");
     }
 
-    function test_refundedPackRecoveredAndRedeemed() public {
-        uint256 lid = _listingOfSize(12);
-        (,,, uint256 tokenId,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        // Draw Packs only fail a transfer to itself, which the gate refuses; mock the delivery failing.
-        vm.mockCallRevert(packs, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        vm.clearMockedCalls();
-        fillUp();
-        vm.warp(block.timestamp + 7 days + 1);
-        vm.prank(buyer);
-        pool.refundFailedDelivery(lid);
-        uint256 before = address(balancer).balance;
-        vm.prank(creator);
-        uint256 eth = balancer.recoverRefunded(lid, creator);
-        assertEq(eth, 0.25 ether, "pack redeemed at its backing");
-        assertEq(address(balancer).balance - before, 0.25 ether);
-    }
-
     function test_packsContractRefusedAsPurchaserAndAsCurated() public {
         assertFalse(balancer.canPurchase(packs));
         vm.prank(creator);

@@ -20,7 +20,6 @@ at most 5 Shape units in 4 sizes and reconciles at most 5 draws.
 | `performUpkeep`: fill step, 5 Shapes (mint + list) | 2,428,589 to 2,513,124 | 1,934,455 to 2,002,083 | 0.80 |
 | `performUpkeep`: fill step, 1 three-Shape pack | 1,248,382 to 1,368,081 | 999,249 to 1,095,008 | 0.80 |
 | `unlistShapes(20)`: withdraw + redeem 20 prizes (creator, unpaid) | 2,617,435 | – | – |
-| `recoverRefunded`: recover + redeem a Shape (creator, unpaid) | 140,130 | – | – |
 | `canPurchase` (admission gate, under FWA's 100k stipend) | 57,152 (call) | – | – |
 | FWA `acquireBatch(5)` including the Balancer operator check | 1,661,430 | – | – |
 | `BalancerFactory.createBalancer` (clone, FWA pool, operator, Shapes + Packs approval) | 806,548 | – | – |

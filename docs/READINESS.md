@@ -64,8 +64,18 @@ or release readiness.
 - `npm run keeper:e2e`: passed. `npm run rehearsal -- --rounds 300`: passed; buyers found pools open 288/288 times,
   832 draws, the keeper sent 388 transactions with 0 reverted, waited all 24 above-cap periods and resumed without
   help, and its ETH reconciled to the wei (net +0.1436 ETH).
-- Open: the round 9 audit (`docs/AUDIT-PROMPT.md`), E3 (simulation), the real-wallet test, the FWA pool-page answer,
-  deploy values (`KEEPER_ADMIN`, Draw Packs) and your deployment authorization.
+- Open: E3 (simulation), the real-wallet test, the FWA pool-page answer, deploy values (`KEEPER_ADMIN`, Draw Packs)
+  and your deployment authorization.
+
+## Round 9 audit and repair (2026-11-13)
+
+- Round 9 audit on `c686534` (`audit/round9/report.md`): one Low finding (R9-E1, the profit split used the listings at
+  collection), E3 still open, no security finding; structural gate passed; agent review only.
+- Repair (DECISIONS 69): collect before reconciling and before listing changes; three mocked tests removed. Contract
+  changed after the audited commit, so the audit evidence covers `c686534`, not this repair. `PoolBalancer` runtime
+  20,873 B. Per-file runs passed: Reserve 10 (both new assertions fail on the old contract), Balancer 29, Packs 9,
+  Gas 23, Hardening 13, KeeperAdversarial 8, KeeperList 3, Fork 9, Parity 1, Invariant 1, EconFork 2. Not re-run:
+  the TypeScript suite (no ABI or planner change), the fork matrix, keeper e2e and rehearsal.
 
 ## Earlier verification (previous design, commit `3f1735f`)
 

@@ -284,25 +284,6 @@ contract GasBench is ForkBase {
         _report("unlistShapes(20): withdraw + redeem 20 Shapes (creator)", 0);
     }
 
-    function test_gas_recoverRefunded() public {
-        _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        fillUp();
-        uint256 lid = lastListingId();
-        (,,, uint256 tokenId,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        vm.mockCallRevert(SHAPES, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        vm.clearMockedCalls();
-        upkeep();
-        vm.warp(block.timestamp + 7 days + 1);
-        vm.prank(buyer);
-        pool.refundFailedDelivery(lid);
-        vm.prank(creator);
-        balancer.recoverRefunded(lid, creator);
-        _report("recoverRefunded: recover + redeem a Shape (creator)", 0);
-    }
-
     function test_gas_canPurchase() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();

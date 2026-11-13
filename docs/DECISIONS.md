@@ -380,3 +380,15 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     0.0001 ETH; after a 0.5 ETH win at draw 60 the creator withdrew 0.511 ETH in the month (0.460 under 50/50). The
     67 bounds hold: curated NFTs count zero, each Shape's share is below 1/2, the fund keeps at least half of every
     payment.
+69. **Proceeds are collected before the tracked listings change** (round 9 R9-E1, owner-approved repair). The split
+    (68) is an expected value per draw, correct only over the listings the draw was priced on. `performUpkeep`
+    reconciled draws (dropping the won listing) before collecting, and `withdrawCurated`, `unlistShapes` and
+    `listCurated*` did not collect first, so the split could use a different set: withdrawing NFTs raised the
+    creator's share by n / (n − k) (worst case 0.017 ETH on a 10-NFT, 100% markup board; 0.00002 ETH per event at
+    launch scale), and upkeep after an NFT draw by n / (n − 1) with no creator action. All five now collect first;
+    `test_upkeepSplitsOverTheListingsTheDrawWasPricedOn` and the tightened
+    `test_listingNFTsBeforeCollectionCannotMoveFundMoney` assert the honest split exactly. Residual: a keeper restock
+    that lists while a draw is pending adds listings that draw was not priced on (fund-favourable for curated-free
+    restocks, tiny either way). The three tests that mocked a failed Shape or pack delivery (`vm.mockCallRevert`) are
+    removed: FWA delivers Shapes and packs with a plain `transferFrom`, so that branch of `recoverRefunded` is
+    defensive and has no real test.

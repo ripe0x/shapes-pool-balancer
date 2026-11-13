@@ -381,6 +381,7 @@ contract PoolBalancer is ReentrancyGuard {
         nonReentrant
         returns (uint256 listingId)
     {
+        _collect();
         uint256 price = _pullCurated(collection, tokenId, base);
         listingId = pool.listNFT(collection, tokenId, price);
         _recordCurated(listingId, collection, tokenId, base, price);
@@ -394,6 +395,7 @@ contract PoolBalancer is ReentrancyGuard {
     {
         uint256 n = inputs.length;
         if (n == 0 || n > 20) revert InvalidBatch();
+        _collect();
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](n);
         for (uint256 i; i < n; ++i) {
             CuratedInput calldata c = inputs[i];
@@ -425,6 +427,7 @@ contract PoolBalancer is ReentrancyGuard {
         Item storage it = _items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
         if (to == address(0)) revert InvalidRecipient();
+        _collect();
         _removeActive(listingId);
         delete _items[listingId];
         pool.withdrawListingTo(listingId, to);
@@ -499,6 +502,7 @@ contract PoolBalancer is ReentrancyGuard {
             Item storage it = _items[ids[i]];
             if (it.kind != SHAPE || it.state != ACTIVE) revert InvalidItem();
         }
+        _collect();
         emit ShapesUnlisted(n, _withdrawAndRedeem(pool, ids));
         _creatorChanged();
     }
@@ -591,7 +595,11 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasStart = gasleft();
         IFWAPool p = pool;
 
-        // 1. Reconcile settled FWA sequences in order. Processed sequences are final: their listing is fixed.
+        // 1. Collect settled proceeds before reconciling: each draw was priced on the listings still tracked, so the
+        //    split must see them (reconciling first would drop the won listing and skew the share).
+        bool collected = _collect() != 0;
+
+        // 2. Reconcile settled FWA sequences in order. Processed sequences are final: their listing is fixed.
         uint64 s = reconciledSequence;
         uint64 end = p.nextSequenceToProcess() - 1;
         if (end > s + MAX_RECONCILE) end = s + uint64(MAX_RECONCILE);
@@ -601,9 +609,6 @@ contract PoolBalancer is ReentrancyGuard {
         }
         bool reconciled = s != reconciledSequence;
         if (reconciled) reconciledSequence = s;
-
-        // 2. Settled proceeds fund restocking.
-        bool collected = _collect() != 0;
 
         // 3. Restock while open.
         uint256 ops;
@@ -824,7 +829,8 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && _missingUnits() != 0;
     }
 
-    /// @dev Collect FWA proceeds and split them by the listed prices. While the fund (this balance less unclaimed
+    /// @dev Collect FWA proceeds and split them by the listed prices. Callers collect before changing the tracked
+    ///      listings, so the split uses the set the collected draws were priced on. While the fund (this balance less unclaimed
     ///      `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS becomes claimable `profit`
     ///      and the fund keeps the rest; at or above it, everything over the reserve is claimable anyway.
     function _collect() internal returns (uint256 amount) {

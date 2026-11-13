@@ -26,6 +26,21 @@ superseded**: they describe code that no longer exists and are kept below only a
 | 5 (independent adversarial audit, `audit/report.md`) | `0f01784` | dashboard only; contracts unchanged |
 | 6 (pack prizes: Draw Packs sizes 9-15) | `57510f3` | `83cd752` |
 | 7 (independent review of the simplified gate/markup rewrite) | this rewrite | per-call limits, reserve fee, setup checks (same commit) |
+| 8 (adversarial audit, `audit/round8/report.md`) | `2ac7a7e` | DECISIONS 61-68 |
+| 9 (adversarial audit, `audit/round9/report.md`) | `c686534` | DECISIONS 69 |
+
+## Round 9 (adversarial audit, 2026-11-13)
+
+Three blind AI lanes plus an independent challenger, about 5 of 12 auditor-hours, on frozen `c686534` with fork
+PoCs through the real coordinator, VRF service and FWA. The structural gate passed (structural only); no human review
+(`audit/round9/report.md`). No security finding confirmed.
+
+| ID | Severity | Finding | Outcome |
+| --- | --- | --- | --- |
+| R9-E1 | Low | The profit split used the listings at collection, not those the draw was priced on: withdrawing NFTs before collection, or upkeep reconciling before collecting, moved a little fund money into profit (M9) | Fixed: collect before any listing change and before reconciling (DECISIONS 69). `test_upkeepSplitsOverTheListingsTheDrawWasPricedOn`, `test_listingNFTsBeforeCollectionCannotMoveFundMoney` |
+| E3 | Medium | `sim/flows.ts` VRF fee still fixed | Open (carried from round 8) |
+| R9-T1 | Test | Three tests mocked a failed Shape or pack delivery | Removed (DECISIONS 69); that `recoverRefunded` branch is unreachable on the real path |
+| R9-S1 to S4 | Info | FWA config dependency for new pools; a restock invalidates a pending draw's quote; FWA's VRF fee is 0 at gas price 0; creator-only functions run re-entrantly from the keeper reward | Documented in the report; no change |
 
 ## Round 8 (adversarial audit, 2026-11-12)
 

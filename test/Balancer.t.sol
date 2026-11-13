@@ -256,39 +256,6 @@ contract BalancerTest is ForkBase {
         balancer.recoverRefunded(lid, creator);
     }
 
-    /// A Shape whose delivery failed and was refunded is recovered by the creator and redeemed for its backing.
-    function test_refundedShapeRecoveredAndRedeemed() public {
-        uint256 lid = _lastShape();
-        (,,, uint256 tokenId,,,,) = pool.listings(lid);
-        (,,,,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        vm.mockCallRevert(SHAPES, abi.encodeWithSignature("transferFrom(address,address,uint256)", address(pool), buyer, tokenId), "blocked");
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        vm.clearMockedCalls();
-        (,,,,,,, uint8 status) = pool.listings(lid);
-        assertEq(status, 6, "FWA DeliveryPending");
-        upkeep(); // reconciles and replaces the drawn Shape
-        assertTrue(balancer.canPurchase(buyer));
-
-        vm.prank(creator);
-        vm.expectRevert(PoolBalancer.InvalidItem.selector); // not refunded yet
-        balancer.recoverRefunded(lid, creator);
-
-        vm.warp(block.timestamp + 7 days + 1);
-        vm.prank(buyer);
-        pool.refundFailedDelivery(lid);
-        uint256 balBefore = address(balancer).balance;
-        vm.prank(creator);
-        uint256 eth = balancer.recoverRefunded(lid, creator);
-        assertEq(eth, 0.1 ether, "redeemed at exact backing");
-        assertEq(address(balancer).balance - balBefore, 0.1 ether, "redeemed into the balancer");
-        vm.prank(creator);
-        vm.expectRevert(PoolBalancer.InvalidItem.selector); // single use
-        balancer.recoverRefunded(lid, creator);
-        assertTrue(balancer.canPurchase(buyer), "admission unaffected");
-    }
-
     /*////////////////////////////// keeper //////////////////////////////*/
 
     function _lastShape() internal view returns (uint256 last) {

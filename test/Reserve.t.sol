@@ -160,14 +160,47 @@ contract ReserveTest is ForkBase {
         balancer.collectProceeds();
         uint256 padded = balancer.profit() - p0;
         assertGt(honest, 0, "profit flows while the fund is short");
-        assertLe(padded, honest, "listing NFTs never adds profit");
+        assertEq(padded, honest, "listing NFTs collects first: the split is the honest one");
         assertLt(honest, amount / 2, "the fund keeps at least half of a payment");
 
         vm.revertToState(snap);
         vm.prank(creator);
         balancer.withdrawCurated(curated, creator);
         balancer.collectProceeds();
-        assertLt(balancer.profit() - p0, amount / 2, "withdrawing NFTs leaves the fund at least half too");
+        assertEq(balancer.profit() - p0, honest, "withdrawing NFTs collects first: the split is the honest one");
+
+        // Unlisting Shapes also collects first.
+        vm.revertToState(snap);
+        uint256[] memory one = new uint256[](1);
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind, uint8 denom,,,) = balancer.items(ids[i]);
+            if (kind == SHAPE_KIND && denom == 3) one[0] = ids[i]; // the 0.5 Shape relisted after the win
+        }
+        vm.prank(creator);
+        balancer.unlistShapes(one);
+        assertEq(balancer.profit() - p0, honest, "unlisting Shapes collects first: the split is the honest one");
+    }
+
+    /// Round 9 R9-E1: upkeep collects before reconciling, so a draw's proceeds are split over the listings it was
+    /// priced on. Reconciling first dropped the won NFT (share 0) and booked n / (n - 1) of the share from the fund.
+    function test_upkeepSplitsOverTheListingsTheDrawWasPricedOn() public {
+        _claimAll();
+        uint256[] memory r = buy(buyer, 1);
+        fulfill(r[0], _wordFor(3));
+        settle();
+        fillUp();
+        uint256[] memory d = buy(buyer, 1);
+        _drawListing(d[0], curated);
+        assertLt(_fund(), balancer.requiredReserve(), "fund short after the big win");
+        uint256 p0 = balancer.profit();
+        uint256 snap = vm.snapshotState();
+        balancer.collectProceeds();
+        uint256 drawTime = balancer.profit() - p0;
+        vm.revertToState(snap);
+        upkeep();
+        assertGt(drawTime, 0, "profit flows while the fund is short");
+        assertEq(balancer.profit() - p0, drawTime, "upkeep books the draw-time split");
     }
 
     /// Game first: when the fund cannot pay a restock, unclaimed profit pays it.
