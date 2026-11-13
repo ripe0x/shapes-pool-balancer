@@ -2,7 +2,7 @@
 
 `test/EconFork.t.sol` on a mainnet fork at block 26,382,349 with the real FWA pool, VRF service, Shapes and Draw Packs,
 at commit `9fd5f83` (DECISIONS 66-68). Each run: the Balanced board at 10 or 12 small Shapes (12 includes one 0.5 ETH
-Shape), one 0.2 ETH NFT relisted when won, gas at 1 gwei, upkeep after every draw, the creator claiming everything
+Shape), one 0.2 ETH NFT relisted when won, basefee 0.5 gwei and gas price 1 gwei inside every call (`ForkBase`, guarded by `test/ForkContext.t.sol`), upkeep after every draw, the creator claiming everything
 claimable after every draw. Every run ends with the full closeout (close, unlist every prize, withdraw the NFT, claim
 everything): the result below is realized ETH, the Balancer ends with 0 ETH and no listings, and the realized result
 equals the pre-closeout estimate to the wei (asserted). Per draw the run also asserts that unclaimed profit is held
@@ -43,6 +43,6 @@ ECON_RUNS=6 ECON_MARKUP=2500 ECON_SMALL=12 forge test --match-path test/EconFork
 ECON_RUNS=3 ECON_MARKUP=2500 ECON_SMALL=12 ECON_PER_DAY=40 ECON_DAYS=30 forge test --match-path test/EconFork.t.sol -vv --gas-limit 100000000000
 ```
 
-Limits: one gas price (1 gwei), keepers that always restock at once, a creator who relists the NFT at once, single
+Limits: one gas context (basefee 0.5 gwei, gas price 1 gwei), keepers that always restock at once, a creator who relists the NFT at once, single
 draws rather than batches, and no slippage refunds. Six or three seeds per scenario show the spread, not tail odds;
 `sim/fund.ts` covers tails with thousands of runs.

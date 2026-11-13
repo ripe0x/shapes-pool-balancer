@@ -41,6 +41,8 @@ abstract contract ForkBase is Test {
 
     function setUpFork() internal {
         vm.createSelectFork("mainnet", FORK_BLOCK);
+        // Foundry runs test transactions at gas price 0, and at basefee 0 inside calls, unless set here; every fee,
+        // keeper reward and VRF charge depends on these. test/ForkContext.t.sol fails if they stop reaching calls.
         vm.txGasPrice(1 gwei);
         vm.fee(0.5 gwei);
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));

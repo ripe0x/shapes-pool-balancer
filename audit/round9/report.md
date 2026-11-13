@@ -4,6 +4,19 @@
 scoped evidence, not a safety proof or a release decision.** Frozen source: `fork-tests` commit
 `c686534669562e78fd33f7297c13f12e68fe3066` (production source identical to `7b32497`, and to `9fd5f83`).
 
+## Erratum (2026-11-13, after the report): gas context of the audit harnesses
+
+The independent audit found that Foundry runs test transactions at gas price 0, and at basefee 0 inside calls,
+unless a test sets them. Checked for this round (`controller/probe/`): the repository's fork tests, the release-
+candidate runs and `docs/fork-economics.md` use `ForkBase`, which sets basefee 0.5 gwei and gas price 1 gwei for every
+call (now guarded by `test/ForkContext.t.sol`). Lane B's economic and keeper tests and the integration lane's
+full-cycle and VRF tests set their own fees. **These audit harnesses did not, and ran at gas price 0 and basefee 0
+inside calls:** lane A (including the addendum), the challenger's tests, the focused tests and the controller tests.
+Effect: their restocking fees, keeper rewards and VRF fees are the zero-gas values (for example the refund test's
+VRF fee of 0, already disclosed). Their logic results (M9 levers and their direction, refunds, retirement, mint-fee
+gate, reentrancy, closeout to zero) do not depend on gas and stand; their ETH amounts are at zero gas, so the R9-E1
+per-event sizes are approximate. R9-E1 is fixed (DECISIONS 69), so the sizes were not re-measured.
+
 ## Status
 
 | Dimension | Result |

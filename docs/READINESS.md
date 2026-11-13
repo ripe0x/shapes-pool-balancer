@@ -76,6 +76,11 @@ or release readiness.
   20,873 B. Per-file runs passed: Reserve 10 (both new assertions fail on the old contract), Balancer 29, Packs 9,
   Gas 23, Hardening 13, KeeperAdversarial 8, KeeperList 3, Fork 9, Parity 1, Invariant 1, EconFork 2. Not re-run:
   the TypeScript suite (no ABI or planner change), the fork matrix, keeper e2e and rehearsal.
+- Gas context: Foundry runs test transactions at gas price 0 and basefee 0 inside calls unless set. `ForkBase` sets
+  basefee 0.5 gwei and gas price 1 gwei for every repository fork test, the release-candidate runs and the fork
+  matrix; `test/ForkContext.t.sol` now fails if that stops reaching calls and checks the listed restocking fee and
+  FWA's VRF fee against an independent calculation (both tests fail with the settings removed). Several round 9
+  audit harnesses ran at zero gas (erratum in `audit/round9/report.md`).
 
 ## Earlier verification (previous design, commit `3f1735f`)
 
