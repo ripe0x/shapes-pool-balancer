@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { BPS, economics, evaluate, listPrice, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
+import { BPS, economics, pendingDrawsAdmitted, evaluate, listPrice, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
@@ -79,6 +79,17 @@ describe('planner', () => {
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
     expect(MAX_KEEPER_REWARD).toBe(16_350_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 0.0001
+  });
+
+  it('predicts the unsettled draws the fill gate admits (test/TopHeavyGate.t.sol on the fork)', () => {
+    const counts = (pairs: [number, number][]) => { const c = Array(16).fill(0); for (const [d, n] of pairs) c[d] = n; return c; };
+    // launch board: 24 x 0.01, 8 x 0.02 pack, 12 x 0.05, 2 x 0.1, 1 x 0.5 -> weight 3.062e21, admits 9, capped at 5
+    expect(pendingDrawsAdmitted(counts([[0, 24], [9, 8], [1, 12], [2, 2], [3, 1]]))).toBe(5);
+    // Codex rc-122de71 E2 board: one 0.01 Shape and one 25 ETH Pack -> weight 1.0004e20: pauses at one pending draw
+    expect(pendingDrawsAdmitted(counts([[0, 1], [15, 1]]))).toBe(0);
+    // 17 x 0.01 Shapes is the smallest all-0.01 board that never pauses before FWA's limit
+    expect(pendingDrawsAdmitted(counts([[0, 16]]))).toBe(4);
+    expect(pendingDrawsAdmitted(counts([[0, 17]]))).toBe(5);
   });
 
   it('creator earnings are net of keeper pay, which matches the fork measurement per Shape replaced', () => {

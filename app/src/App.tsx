@@ -5,7 +5,7 @@ import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parse
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, prizeLabel, restockFeeAt, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -606,6 +606,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const vrfKnown = d.vrfFee !== undefined;
   const view = ev ? playerView(ev, d.vrfFee ?? 0n) : undefined;
   const target = packPlan(counts);
+  // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
+  const pausesAt = pendingDrawsAdmitted(counts) + 1;
   // Saving (configure) is needed for a new design, a markup or mix change, or to accept a risen Shapes mint fee.
   const configChanged = !has || markupBps !== d.markupBps || target !== d.target || d.mintFee > d.mintFeeCap;
   // The reserve uses the fee the contract will (PoolBalancer.requiredReserve): a pending configure sets the cap to the
@@ -678,6 +680,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       <p className="note" style={{ marginTop: 10 }}>{vrfKnown
         ? <>Draw price {eth(ev.drawPrice, 5)} ETH and FWA's randomness fee {eth(d.vrfFee!, 5)} ETH at today's gas. Gas is extra.</>
         : <>FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>
+      {pausesAt <= MAX_BATCH && <p className="note error" style={{ marginTop: 8 }}>With this mix, purchases pause while {pausesAt === 1 ? 'a draw is' : `${pausesAt} draws are`} unsettled, until {pausesAt === 1 ? 'it settles' : 'they settle'}.</p>}
     </div>
   ) : null;
   const gridBlock = view ? (
@@ -1274,7 +1277,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                 <div><span className="note">Per draw while the reserve refills</span><div><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
               </div>
-              <p className="note" style={{ marginTop: 10 }}>Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
+              <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
               {assume.open && (
                 <div className="row" style={{ marginTop: 10 }}>
                   <div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div>

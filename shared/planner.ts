@@ -154,6 +154,15 @@ export function shapeTotals(counts: Counts, inputs: PoolInputs) {
   return { w, wp };
 }
 
+/** Unsettled draws a fully stocked board still admits a purchase with (PoolBalancer's fill gate counts each
+ *  unreconciled draw as the loss of a 0.01 ETH prize's weight, 1e36 / backing, and admits while 70% of the target's
+ *  weight remains), capped at FWA's MAX_BATCH. Below MAX_BATCH the board pauses while that many draws are unsettled. */
+export function pendingDrawsAdmitted(counts: Counts): number {
+  const w = counts.reduce((s, n, d) => s + BigInt(n) * (NUM / DENOMS[d]), 0n);
+  const k = Number((3_000n * w) / (BPS * (NUM / DENOMS[0])));
+  return Math.min(k, MAX_BATCH);
+}
+
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
 export const shapeCount = (counts: Counts) => counts.reduce((s, n) => s + n, 0);
 
