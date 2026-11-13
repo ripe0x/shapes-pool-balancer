@@ -125,6 +125,20 @@ not "in the right place".
   Slither run cleared the build cache.
 - **Network:** fork access may need sandbox-escape approval for DNS. Record the capability preflight.
 
+**Holistic pass (all lanes and the challenger)**
+- Say when something does not make sense, inside or outside your scope, about the owner's rules, the numbers, the
+  test environment or another agent's conclusion, without needing proof first; label it suspicion, question or
+  confirmed. The report ends with a "Things that don't make sense" section.
+- Prove the environment behind every economic number from inside the executed path: Foundry runs test transactions
+  at gas price 0 and at basefee 0 inside calls unless `vm.fee` and `vm.txGasPrice` are set (views show the real
+  basefee). Set both to stated realistic values and give every number its gas and block context.
+- Check at least one absolute amount per money flow against an independent real-world calculation; conservation,
+  bounds and planner-equals-contract checks pass in a fake world too. Reconcile Foundry results with real-transaction
+  runs of the same scenario.
+- Treat any setup fix or unexplained mismatch as a possible pattern and check all evidence that shares it. Ask of the
+  whole evidence base: if the environment or a shared assumption were wrong in one way, which conclusions survive?
+- Shared guidance, where available: `/Users/dd/.agents/guidance/holistic-verification.md`.
+
 **Security pass**
 - Cover every external and public function, including compiler-generated getters, every external call and callback,
   and every owner, creator, keeper-admin and anyone path.
