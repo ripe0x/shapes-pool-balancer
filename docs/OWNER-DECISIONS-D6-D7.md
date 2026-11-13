@@ -102,7 +102,7 @@ Seizure is the same harm with a real-looking NFT.
 
 ### Owner decision: follow FWA's rules
 
-**Owner decision (confirmed directly 2026-11-13; plus an app label for collections not on a known list):** "defer to whatever FWA already does, since we're a pass-through for them". No
+**Owner decision (confirmed directly 2026-11-13; a collection label was considered and dropped for now, since FWA has no on-chain list and its site's verdict is not reachable from our app):** "defer to whatever FWA already does, since we're a pass-through for them". No
 allowlist and no new prevention in our contracts. FWA's rules, from its verified source, are now written into
 `docs/SPEC.md` (curated NFTs) and the closeout outcome O6 carries the exception: an NFT whose delivery failed stays at
 FWA until its winner takes the refund (or for good, if the collection also refuses recovery). The pool page's text for a
