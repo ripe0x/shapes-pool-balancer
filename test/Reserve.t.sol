@@ -340,6 +340,30 @@ contract ReserveTest is ForkBase {
         assertEq(balancer.markupBps(), MARKUP, "markup unchanged");
     }
 
+    /// Independent audit E2: listed prizes keep their listing price, so lowering the markup used to push a full board
+    /// under the fill gate with nothing for upkeep to restock. The gate weighs prizes by backing, so it stays open.
+    function test_lowerMarkupKeepsAFullBoardOpen() public {
+        uint256 t = balancer.target();
+        vm.prank(creator);
+        balancer.configure(10_000, t);
+        // Relist every Shape at 100% markup.
+        uint256[] memory ids = balancer.getActiveIds();
+        uint256[] memory shapeIds = new uint256[](ids.length - 1);
+        uint256 k;
+        for (uint256 i; i < ids.length; ++i) if (ids[i] != curated) shapeIds[k++] = ids[i];
+        vm.prank(creator);
+        balancer.unlistShapes(shapeIds);
+        fillUp();
+        assertEq(balancer.admissionStatus(), 0, "full board at 100% markup");
+
+        vm.prank(creator);
+        balancer.configure(1_000, t);
+        assertFalse(balancer.creatorWork(), "nothing to restock: every prize is listed");
+        assertEq(balancer.admissionStatus(), 0, "a lower markup leaves a full board open");
+        uint256[] memory d = buy(buyer, 1);
+        assertEq(d.length, 1, "a purchase goes through");
+    }
+
     /// Independent audit E3: a curated NFT listed before the first `configure` would carry no markup.
     function test_nftsListOnlyAfterTheFirstConfigure() public {
         vm.prank(creator);

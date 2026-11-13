@@ -75,7 +75,7 @@ and the minimum markup is the game's share: "if the min for a setup is 10%, and 
 - **M7. Nothing stranded.** After close, unlist and withdraw, no ETH or prize is stranded or owed to anyone but the
   creator. Excluded: the one-way FWA edge, VRF fee and Shapes mint fees, refunds FWA owes players, and a curated NFT
   whose own collection refuses the transfer.
-- **M8. Fill gate.** Purchases pause before the odds drift far from the design (the gate is at 70% of target weight,
+- **M8. Fill gate.** Purchases pause before the odds drift far from the design (the gate is at 70% of target weight, each prize weighed by 1 / its backing,
   and each unrecorded draw is charged the heaviest prize).
 - **M9. Game first, profit after.** The fund is the balance less unclaimed `profit`. While it is below the reserve,
   the creator's share of each collected payment is each Shape's markup above 10% (at its listing markup, weighted by

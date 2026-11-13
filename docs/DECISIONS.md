@@ -409,3 +409,9 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     reserve (a claim then spends only allocated profit) and, while open, a claim never takes the fund below the
     reserve. Accepted as designed: curated-collection trust (S1-S3, E11), keeper timing (E12), the stale-inventory
     revert. Decided, not yet built: the fill gate measured on prize backing (E2).
+72. **The fill gate weighs prizes by backing, not by listed price** (independent audit E2, owner-approved). Listings
+    keep the markup and mint fee of their listing block, so after a lower markup or mint fee `configure` raised the
+    target weight while the listed weight stayed put: a full board fell under 70% with nothing for upkeep to restock
+    (fork: 57% after 100% to 10% markup), and purchases stopped until the creator unlisted and reminted. Weighing each
+    prize by 1 / backing (fixed per size) makes the gate measure the mix only; the unreconciled-draw allowance is one
+    0.01 ETH prize per draw, the exact heaviest case. `test_lowerMarkupKeepsAFullBoardOpen` fails on the previous rule.

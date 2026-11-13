@@ -238,13 +238,13 @@ contract InvariantTest is ForkBase {
         assertEq(abi.decode(r, (uint256)), 0, "no pack held between calls");
     }
 
-    /// @dev prizeWeight equals the sum of 1e36/price over tracked prize items.
+    /// @dev prizeWeight equals the sum of 1e36/backing over tracked Shape and pack prizes (DECISIONS 72).
     function invariant_prizeWeightMatchesTrackedPrizes() public view {
         uint256[] memory ids = balancer.getActiveIds();
         uint256 sum;
         for (uint256 i; i < ids.length; ++i) {
-            (uint8 kind,,, uint112 base,) = balancer.items(ids[i]);
-            if (kind == 2) sum += 1e36 / base; // weighed at the price less its restocking fees
+            (uint8 kind, uint8 denom,,,) = balancer.items(ids[i]);
+            if (kind == 2) sum += 1e36 / balancer.denominationAmount(denom);
         }
         assertEq(sum, balancer.prizeWeight());
     }

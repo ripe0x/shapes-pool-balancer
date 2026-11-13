@@ -80,7 +80,7 @@ the Draw Packs contract or the FWA pool (a draw delivered to them could never be
 | 3 | NO_CURATED | no curated NFT is listed (every active listing is a prize) |
 | 4 | BUSY | 5 draws are unsettled on FWA |
 | 5 | MINT_FEE_ROSE | the Shapes mint fee is above the one the creator accepted |
-| 6 | LOW_INVENTORY | listed prize weight, less the unreconciled-draw allowance, is below 70% of the target's weight |
+| 6 | LOW_INVENTORY | listed prize weight (1 / backing per prize), less the unreconciled-draw allowance, is below 70% of the target's weight |
 
 FWA prices every draw on live inventory and refunds a draw whose price moved past the player's tolerance, so the gate does
 not need an exact inventory. It is not one batch per admission: several batches may be admitted between upkeeps, and FWA

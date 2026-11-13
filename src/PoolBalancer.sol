@@ -78,7 +78,7 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Purchases need the listed prizes' weight, less the unreconciled-draw allowance, at this share of the target's.
     uint256 internal constant FILL_BPS = 7_000;
     uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
-    /// @dev The heaviest prize listing: the smallest prize (0.01 ETH) at zero markup.
+    /// @dev The heaviest prize in the fill gate: the smallest backing (0.01 ETH). See `_weight`.
     uint256 internal constant MAX_PRIZE_WEIGHT = INVERSE_WEIGHT_NUMERATOR / 0.01 ether;
 
     // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
@@ -330,7 +330,7 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 n = _count(newTarget, d);
             if (n == 0) continue;
             prizes += n;
-            w += n * (INVERSE_WEIGHT_NUMERATOR / _prizeBase(d, fee, newMarkupBps));
+            w += n * _weight(d);
         }
         if (prizes == 0 || prizes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
         markupBps = newMarkupBps;
@@ -644,7 +644,7 @@ contract PoolBalancer is ReentrancyGuard {
         _removeActive(lid);
         if (kind == SHAPE) {
             --activeShapes[d];
-            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
+            prizeWeight -= _weight(d);
         }
         if (delivered) {
             delete _items[lid];
@@ -666,7 +666,7 @@ contract PoolBalancer is ReentrancyGuard {
             uint8 d = it.denom;
             sizes[i] = d;
             --activeShapes[d];
-            prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base;
+            prizeWeight -= _weight(d);
             _removeActive(lid);
             delete _items[lid];
         }
@@ -742,7 +742,7 @@ contract PoolBalancer is ReentrancyGuard {
             _items[lids[i]] = Item(SHAPE, d, ACTIVE, uint16(markup), uint104(base), uint104(batch[i].price));
             _addActive(lids[i]);
             ++activeShapes[d];
-            added += INVERSE_WEIGHT_NUMERATOR / base;
+            added += _weight(d);
             emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
         }
         prizeWeight += added;
@@ -934,6 +934,14 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @dev A Shape prize's price before restocking fees: what it costs to create plus the markup on its backing.
+    /// @dev A prize's weight in the fill gate: 1 / its backing. Listed prices keep the markup and fees of their listing
+    ///      block, so weighing by price would let a lower markup or mint fee push a full board under the gate with
+    ///      nothing for upkeep to restock (independent audit E2). Backing is fixed per size, so the gate measures the
+    ///      mix, not prices.
+    function _weight(uint256 d) internal pure returns (uint256) {
+        return INVERSE_WEIGHT_NUMERATOR / _amount(d);
+    }
+
     function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
         return _cost(d, fee) + _amount(d) * markup / BPS;
     }

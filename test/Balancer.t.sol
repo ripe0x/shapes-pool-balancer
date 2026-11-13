@@ -537,8 +537,10 @@ contract BalancerTest is ForkBase {
     /// LOW_INVENTORY: delayed reconciliation closes the gate before the NFT odds can move far. Asserts the gate
     /// math (listed weight, less the heaviest-prize allowance per unreconciled draw, below FILL_BPS of target).
     function test_lowInventoryGate() public {
-        // a 0.01 target sized so LOW_INVENTORY trips at the 4th unsettled draw, before BUSY at 5
-        configure(plan([uint256(12), 0, 0, 0, 0, 0, 0, 0, 0]));
+        // a 0.01 target sized so LOW_INVENTORY trips at the 4th unsettled draw, before BUSY at 5: weights are 1/backing,
+        // so 10 x 0.01 plus the 3 x 0.05 and 2 x 0.1 left listed from setUp weigh 1,080 units against a 1,000 target,
+        // and each unsettled draw is charged 100 (one 0.01 prize): 680 < 700 at the 4th, 780 >= 700 at the 3rd.
+        configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         fillUp();
         uint256 target = balancer.targetWeight();
         uint256 MAX_PRIZE_WEIGHT = 1e36 / 0.01 ether;
