@@ -49,11 +49,34 @@ average. The 0.5 ETH Shape takes about 1,094 draws.
 | Fee cap 1 gwei | 0.0354 (2.14×), −13% | pays 0.0034, most of a 25% markup's 0.004 | constant in the contract |
 | Pause purchases above about 2 gwei | no sales above it; at 2 gwei 0.0299 (1.87×) | no draws, no income | purchase gate on basefee; fewer sales in spikes |
 
-**Recommendation: keep the 5 gwei fee cap, show the all-in price (now done in the app), and set the ceiling as an
-outcome:** "all-in draw price ≤ 2.5× the expected backing up to 5 gwei on the launch board" (measured worst 2.46×). A
-lower fee cap saves players at most 13% at 5 gwei and turns the restocking fee into a cost to the creator. It cannot get
-below the 2.04× floor that FWA's own randomness fee sets. If the owner wants ≤ 2× at all times, the only lever is a
-purchase pause at high gas, which is a separate contract change and costs sales.
+**Owner decision (relayed 2026-11-13):** stay open up to 5 gwei; judge attractiveness at normal gas with a signed
+outcome that a player pays at most 1.5× the expected prize backing at 1 gwei or below; report the 5 gwei ratio as
+information; the app shows the all-in price (done).
+
+**The 1.5× outcome fails on the launch board at 25% markup above about 0.3 gwei.** Measured (current 5 gwei fee cap; a
+lower fee cap changes nothing at or below 1 gwei, because the fee's gas price is already below any of the caps):
+
+| Basefee (gas price +0.05) | All-in price | Ratio at 25% markup | 20% | 15% | 10% |
+| --- | --- | --- | --- | --- | --- |
+| 0.058 gwei (the pinned block's real basefee) | 0.022764 ETH | **1.46×** | | | |
+| 0.5 gwei | 0.024397 | 1.55× | 1.48× | 1.41× | 1.34× |
+| 1 gwei (basefee 0.95) | 0.026059 | **1.65×** | 1.58× | 1.51× | 1.44× |
+| 2 gwei | 0.029928 | 1.87× | 1.80× | 1.73× | 1.66× |
+| 5 gwei | 0.040744 | 2.46× | 2.39× | 2.32× | 2.24× |
+
+Even with no restocking fee, the launch board at 25% is 1.54× at 1 gwei. The markup, FWA's 5% edge and the Shapes mint
+fee (0.001 ETH per Shape, 10% of a 0.01 ETH Shape) set most of the ratio at low gas.
+
+| Option for the outcome | What it means | Creator cost | Recommendation |
+| --- | --- | --- | --- |
+| **a) ≤ 1.5× at today's normal gas (basefee ≤ 0.1 gwei), and report 1 gwei** | passes at 25% (1.46× measured); 1 gwei shows 1.65× as information | none | **Recommended**: matches "attractive at normal gas" with the board and markup you chose; mainnet basefee was 0.058 gwei at the pinned block |
+| b) ≤ 1.5× at 1 gwei, with the launch markup lowered to 14% | 15% gives 1.51×, so 14% or less | markup per draw falls by about 44% (14/25) | only if 1 gwei is the "normal gas" you mean |
+| c) ≤ 1.65× at 1 gwei at 25% | passes (1.65× measured, no margin) | none | weaker than what was asked |
+
+Markup is each creator's choice; this outcome describes the launch board. The fee-cap question (lower than 5 gwei)
+only matters above 1 gwei; the earlier table shows it saves players at most 13% at 5 gwei and costs the creator up to
+0.0034 ETH per draw. **Recommendation: keep the 5 gwei fee cap; no contract change.** If "yes do that" meant implementing
+a lower cap, say which cap and I will make it in the repair batch.
 
 ## D7: a curated collection that turns hostile
 
@@ -77,22 +100,18 @@ build a board of such NFTs. Refusing collections take no money; they burn the pl
 The simplest version needs no hostile code: list a worthless NFT at a high value. FWA prices it as worth that value.
 Seizure is the same harm with a real-looking NFT.
 
-### Can we stop such collections being listed through our system?
+### Owner decision: follow FWA's rules
 
-Players buy on FWA's site, and anyone can create a plain FWA pool with any collection. These options protect pools made
-through our factory.
+**Owner decision (relayed 2026-11-13):** "defer to whatever FWA already does, since we're a pass-through for them". No
+allowlist and no new prevention in our contracts. FWA's rules, from its verified source, are now written into
+`docs/SPEC.md` (curated NFTs) and the closeout outcome O6 carries the exception: an NFT whose delivery failed stays at
+FWA until its winner takes the refund (or for good, if the collection also refuses recovery). The pool page's text for a
+failed delivery states the same rules.
 
-| Option | What it stops | What it does not stop | Cost (measured where possible) | Permissionless creation |
-| --- | --- | --- | --- | --- |
-| **Allowlist at the factory**, set by an admin, with an "open to all" switch: the keeper list's pattern | Any collection not vetted: seizing, refusing, fake | A vetted collection whose admin can move tokens or that is upgradeable (vet for that). An inflated value on a real NFT | **5,450 gas** per curated listing (cold factory check, measured); a few hundred bytes. PoolBalancer has 3,841 bytes of room under the limit; the factory is 2,117 bytes | Pools stay permissionless; curated NFTs come only from listed collections. An admin key decides the list (no custody or fund powers) |
-| Checks at listing | Collections without code, non-ERC-721, a failed transfer in (already enforced); could also reject upgradeable proxies (EIP-1967 slot) | Seizing, pausing, owner-only transfers, behaviour that changes after listing: **the hostile test collection passes every check** | a few thousand gas | unchanged |
-| Bound the harm: cap curated NFTs per pool (count, or share of draw weight) | The size of the loss: a board made mostly of fake NFTs | The loss on each capped NFT | small | unchanged; limits creator designs |
-| App warnings only (flag collections not on a known list) | Creators and players using our site | Players on FWA's site; on-chain behaviour | none on-chain | unchanged |
-
-**Recommendation: the factory allowlist plus app labels, launching with a short vetted list.** The seizing
-collection takes a player's whole payment, and no check at listing time can see it coming. The allowlist costs 5,450
-gas per curated listing, and the admin's only power is which collections can be listed. If the owner wants curated
-listings fully permissionless, use the cap plus app warnings, and state the remaining risk to players.
+**What remains for players, stated for the record:** FWA treats a transfer that succeeded as final. A collection whose
+owner can move tokens can take a prize back from its winner after FWA credited the draw: measured, the winner paid
+0.017493 ETH and kept nothing, and 0.014432 ETH went to the creator's pool. Under the owner's decision this is FWA's
+domain, as for any FWA pool.
 
 ## Things that don't make sense
 

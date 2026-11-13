@@ -60,3 +60,20 @@ for k,d,p,w in bd:
     if k==2: tiers.setdefault(d,[0,w])[0]+=1
 for d,(n,w) in sorted(tiers.items(), key=lambda t: amt[t[0]]):
     print(f"tier {E(amt[d])} ETH x{n}: expected draws until one given listing is won {W/w:.0f}")
+
+# markup sweep at each basefee, current 5 gwei fee cap: what markup meets a ratio target
+print("\n### markup sweep (current fee cap), ratio of all-in price to expected Shape backing")
+for b in sorted(M):
+    m=M[b]; row=[]
+    for mk in (2500,2000,1500,1000):
+        bd=[]
+        for k,d,base,price,w in L[b]:
+            if k==2:
+                u=units(d); mint=(price-base*12500//10000-u*m['rf'])//u
+                p=base*(10000+mk)//10000+u*mint+u*m['rf']
+            else: p=base*(10000+mk)//10000
+            bd.append((k,d,p,10**36//p))
+        W=sum(x[3] for x in bd); base_,fee=quote(bd)
+        ev=sum(x[3]*amt[x[1]] for x in bd if x[0]==2)/W
+        row.append(f"{mk/100:.0f}%: {(fee+m['vrf'])/ev:.2f}x")
+    print(f"basefee {b/1e9:.2f} gwei: "+"  ".join(row))

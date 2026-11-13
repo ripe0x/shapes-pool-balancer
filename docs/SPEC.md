@@ -219,12 +219,27 @@ The reward is force-sent, so a reverting keeper cannot block upkeep.
 it is listed at that value plus the current markup, and FWA allows the change only while no draw is unsettled.
 `withdrawCurated` withdraws an active NFT from FWA to a creator-chosen address, also only while no draw is unsettled.
 
-If FWA cannot deliver a drawn NFT, the winner may refund after FWA's 7-day window; the creator then recovers it with
-`recoverRefunded(listingId, to)`, which sends a curated NFT to `to`, or redeems a drawn prize for its backing and returns
-that ETH. Upkeep never calls a curated collection, so a hostile collection cannot burn keeper gas or block upkeep.
+Failed deliveries follow FWA's rules; the Balancer adds none of its own (owner decision 2026-11-13: the Balancer is a
+pass-through for FWA here). From FWA's verified source (`external/fwa-poolsv2`, `StandardPool.sol`):
+- at settlement FWA tries to transfer the NFT to the winner with 150,000 gas; if that fails, the listing is
+  delivery-pending, the winner's draw price stays in FWA escrow and the pool owner is credited nothing;
+- for 7 days (`DELIVERY_WINDOW`) anyone may retry the delivery (`retryNFTDelivery`); a retry that succeeds credits the
+  draw normally;
+- after the 7 days only the winner can take the refund (`refundFailedDelivery`, then `withdrawAcquisitionRefund`): the
+  full draw price, FWA's edge included. The randomness fee is not refunded. There is no later deadline;
+- only after that refund can the pool owner recover the NFT; the creator calls `recoverRefunded(listingId, to)`, which
+  sends a curated NFT to `to`, or redeems a drawn prize for its backing and returns that ETH. Recovery also needs the
+  collection to allow the transfer.
+
+So the closeout returns everything to the creator except an NFT whose delivery failed and whose winner has not taken the
+refund, or whose collection refuses the recovery: that NFT, and the winner's escrowed price, stay at FWA under FWA's rules.
+Upkeep never calls a curated collection, so a hostile collection cannot burn keeper gas or block upkeep.
 
 Custody depends on the collection: one whose contract can move, burn or freeze listed tokens can take or strand a curated
-NFT, and FWA keeps such a listing drawable until its delivery fails and is refunded. A listing's price uses the markup at
+NFT, and FWA keeps such a listing drawable until its delivery fails and is refunded. FWA treats a delivery that
+transferred as final: a collection that lets its owner take tokens back can take a prize from its winner after FWA
+credited the draw (`test/HostileCollection.t.sol`, `test_seize_afterDelivery`). Players rely on the collection, as on
+any FWA pool. A listing's price uses the markup at
 the start of the listing call; a creator's own collection that reconfigures during that call is not repriced.
 
 `recoverUntrackedNFT(collection, tokenId, to)` returns an NFT the Balancer holds outside FWA (sent to it directly).

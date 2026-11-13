@@ -73,15 +73,16 @@ C closeout_pending, F restock_in_flight. "–" means the outcome is not checked 
 
 | # | Outcome (plain words) | Limit (who set it) | Q | L | I | Z | W | G | R | C | F | Result |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| O1 | **Reworded.** Keepers get their gas, a 50,000-gas overhead and 0.0001 ETH per useful call; the storage refunds they keep add at most a small amount | ≤ 0.002 ETH per 180 draws (agent; the 0.0001 ETH and 50,000 are provisional, owner to approve) | 0 | 0.00148 | 0.00148 | 0 | 0 | 0.00005 | 0 | 0.00076 | 0.00161 | pass |
+| O1 | **Reworded.** Keepers get their gas, a 50,000-gas overhead and 0.0001 ETH per useful call; the storage refunds they keep add at most a small amount | ≤ 0.002 ETH per 180 draws (owner approved D2; the 0.0001 ETH and 50,000 remain provisional) | 0 | 0.00148 | 0.00148 | 0 | 0 | 0.00005 | 0 | 0.00076 | 0.00161 | pass |
 | O2 | Restocking fees inside prizes still listed never exceed one board at the 5 gwei cap | ≤ 0.26 ETH (agent) | 0.038 | 0.038 | 0.038 | 0.038 | 0.038 | 0.074 | 0.038 | 0 | 0.038 | pass |
 | O3 | Right after closing, every wei in the Balancer is claimable | 0 ETH unclaimable (agent) | – | – | – | – | – | – | – | 0 | – | pass |
 | O4 | Every prize unlisted redeems for exactly its backing | 0 wei gap (owner goal; agent number) | – | – | – | – | – | – | – | 0 | – | pass |
 | O5 | After keepers finish, no prize is missing from the board for lack of ETH | 0 keeper passes (agent) | 0 | 0 | 0 | 0 | **119** | 0 | 0 | 0 | 0 | **fail: E9 above** |
-| O6 | After closeout, the Balancer, its listed backing and its uncollected FWA proceeds hold nothing | 0 ETH (agent) | – | – | – | – | – | – | – | 0 | – | pass |
+| O6 | After closeout, the Balancer, its listed backing and its uncollected FWA proceeds hold nothing; **exception under FWA's rules (D7):** an NFT whose delivery failed stays at FWA until its winner takes the refund | 0 ETH (agent) | – | – | – | – | – | – | – | 0 | – | pass |
 | O7 | No draw is refused for low inventory while gas is within the 5 gwei cap | 0 draws (agent) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | pass |
 | O8 | The first 10% of Shape markup goes to the game: the creator's profit share of proceeds stays under the markup above 10% | ≤ 12.00% of proceeds at a 25% markup (owner's 10%; agent's 12% at 25% markup) | 10.70% | 10.70% | 10.70% | 0 | 10.59% | 10.23% | 10.70% | 10.47% | 10.71% | pass |
 | O9 | **New.** The creator's profit follows the board each draw was priced on, with restocks listed while draws are in flight | ≤ 0.001 ETH booked beyond that split per 180 draws (agent) | – | – | – | – | – | – | – | – | 0.00030 | pass |
+| O10 | **New (D6).** A player pays at most 1.5× the expected prize backing at normal gas; the 5 gwei ratio is reported, not limited | ≤ 1.5× at basefee ≤ 0.1 gwei (owner's 1.5×; the gas level is the agent's proposal, option a in `docs/OWNER-DECISIONS-D6-D7.md`) | measured 1.46× at 0.058 gwei; 1.65× at 1 gwei and 2.46× at 5 gwei, as information | | | | | | | | | **pending owner's choice of gas level** |
 
 O9 detail (`restock_in_flight`): 180 collections checked. FWA's owner proceeds match the price computed from its board
 to the wei. The split was computed independently from FWA's active listings at each purchase. The Balancer booked

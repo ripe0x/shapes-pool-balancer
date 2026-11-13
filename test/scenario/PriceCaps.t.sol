@@ -20,8 +20,16 @@ contract PriceCapsMeasure is ForkBase {
         probe = new GasProbe();
     }
 
+    function test_board_at_fork_block_basefee() public {
+        _measure(0.058 gwei); // the pinned block's real basefee, rounded
+    }
+
     function test_board_at_0_5_gwei() public {
         _measure(0.5 gwei);
+    }
+
+    function test_board_at_0_95_gwei() public {
+        _measure(0.95 gwei); // gas price 1 gwei
     }
 
     function test_board_at_2_gwei() public {
