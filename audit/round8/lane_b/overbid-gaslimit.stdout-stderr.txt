@@ -1,0 +1,15 @@
+No files changed, compilation skipped
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testKeeperOverbidAndGasLimitDoNotInflateReward() (gas: 2571098)
+Logs:
+  normal reward 2918854350000000
+  overbid reward 2918854350000000
+  normal call pre-refund gas 789099
+  overbid call pre-refund gas 789093
+  normal spread vs upper-bound cost 512102400000000
+  overbid spread vs upper-bound cost -4972075650000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 29.80ms (3.51ms CPU time)
+
+Ran 1 test suite in 295.34ms (29.80ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

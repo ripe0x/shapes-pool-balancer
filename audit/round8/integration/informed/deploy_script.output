@@ -1,0 +1,39 @@
+Compiling 26 files with Solc 0.8.28
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 75.20ms
+Solc 0.8.28 finished in 2.62s
+Compiler run successful!
+Script ran successfully.
+
+== Return ==
+factory: contract BalancerFactory 0xD39321511B2AF4EA0bAf69c265E03afA633C6755
+impl: contract PoolBalancer 0x53B7DFFD5762a9fF9C1a018fD62C96504640EEE9
+packs: address 0x37d4Ad163c49153E9613ad805d9Ad4775B72527E
+
+== Logs ==
+  PoolBalancer implementation 0x53B7DFFD5762a9fF9C1a018fD62C96504640EEE9
+  BalancerFactory 0xD39321511B2AF4EA0bAf69c265E03afA633C6755
+  Packs 0x37d4Ad163c49153E9613ad805d9Ad4775B72527E
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 1
+
+Estimated max fee per gas: 1.529005098 gwei
+Estimated base fee per gas: 0.760752549 gwei
+Estimated max priority fee per gas: 0.0075 gwei
+
+Estimated total gas used for script: 15148269
+
+Estimated amount required: 0.023161780526875362 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/informed/project/broadcast/Deploy.s.sol/1/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/informed/project/cache/Deploy.s.sol/1/dry-run/run-latest.json
+

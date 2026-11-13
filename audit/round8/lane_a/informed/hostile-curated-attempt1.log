@@ -1,0 +1,7 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.21s
+Compiler run successful!
+Error: failed to retrieve chain ID from fork endpoint
+
+Context:
+- MPP HTTP request to https://mainnet.gateway.tenderly.co/ failed: HTTP request failed: error sending request: error sending request: client error (Connect): dns error: failed to lookup address information: nodename nor servname provided, or not known

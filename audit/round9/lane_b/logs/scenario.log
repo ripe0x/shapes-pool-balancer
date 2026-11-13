@@ -1,0 +1,33 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.95s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Scenario.t.sol:91:9:
+   |
+91 |         int256 creatorNet = int256(creatorGot) - int256(deposit);
+   |         ^^^^^^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/lane_b/Scenario.t.sol:ScenarioTest
+[FAIL: panic: arithmetic underflow or overflow (0x11)] testCreatorNetAndRoundTrip() (block: 26382349) (gas: 17578200)
+Logs:
+  draws / blocked 5 0
+  playerPaid total 0
+
+[PASS] testOpenCloseRoundTripNoDraws() (gas: 2899644)
+Logs:
+  deposit / recovered 1000000000000000000 1000000000000000000
+  residual 0
+
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 271.28ms (22.89ms CPU time)
+
+Ran 1 test suite in 287.63ms (271.28ms CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_b/Scenario.t.sol:ScenarioTest
+[FAIL: panic: arithmetic underflow or overflow (0x11)] testCreatorNetAndRoundTrip() (block: 26382349) (gas: 17578200)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

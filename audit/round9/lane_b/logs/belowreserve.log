@@ -1,0 +1,21 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.05s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/BelowReserve.t.sol:44:13:
+   |
+44 |             bool below = fund < req;
+   |             ^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_b/BelowReserve.t.sol:BelowReserveTest
+[PASS] testBelowReserveProfitBooking() (gas: 6945121)
+Logs:
+  i / profitBooked / profit 0 0 0
+     balance / fund / reserve 116548814222975887 116548814222975887 71500000000000000
+  ever booked profit (entered below-reserve regime) 0
+  max profit observed 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 272.73ms (10.27ms CPU time)
+
+Ran 1 test suite in 288.64ms (272.73ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

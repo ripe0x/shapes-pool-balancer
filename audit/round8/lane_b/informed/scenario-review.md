@@ -1,0 +1,28 @@
+# Informed economic scenario review
+
+`scenario.csv` contains **150 model cells**: three fixed prize mixes × ten gas schedules × five demand/keeper/retirement modes, 40 seeded paths of 120 abstract steps per cell. `fee-rise.csv` adds six cells for unaccepted 0.005/0.01 ETH Shapes mint-fee rises at step 40 and demand stopping at step 70. Both were generated from audit-only copies of `sim/flows.ts`; neither is a fork lifecycle or a demand forecast. The stochastic draw selection, staged listing order, 10% FWA refund condition, gas schedule, keeper participation and one-step time unit are assumptions. Player value uses the creator's 0.3 ETH BAYC valuation.
+
+The model uses the corrected Balanced launch plan (20×0.01, 10×0.05, 2×0.1, 1×0.5 ETH Shapes, seven 0.02 Packs, one 0.3 ETH curated NFT, 15% markup), Bigger (five 0.01 and five 0.5 Shapes plus NFT), and Cheap (20×0.01 plus NFT). Mint fee is 0.001 ETH unless `fee-rise.csv` says otherwise. The default model claims maximum free capital each step; `free_liquid_at_rest_mean_eth` is therefore zero in those rows. `liquid_before_claim_mean_eth` is gross Balancer liquidity before that step's claim, **not idle capital**. `inventory_backing_mean_eth` and `unwon_mint_fee_fronted_mean_eth` are capital tied to live inventory; `reserve_deficit_mean_eth` is missing liquid against the reserve formula, **not fronted capital**. No investment return on idle funds is modeled.
+
+## Selected model rows
+
+| Mix, gas, demand | Mean draws / 120 steps | Creator mean net (p05, p95), loss share | Mean gross player pay / draw, gross return | Open end-of-step share | Mean inventory backing / unwon mint fees | Max modeled reserve deficit |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Balanced, 1 gwei, one draw/step | 104.2 | +0.177 ETH (−0.373, +0.477), 25% | 0.02498 ETH, 66.5% | 87.5% | 1.507 / 0.047 ETH | 0.176 ETH |
+| Balanced, 1 gwei, five in-flight/step | 364.4 | +0.928 ETH (−0.372, +2.478), 22.5% | 0.02478 ETH, 67.4% | 61.0% | 1.490 / 0.046 ETH | 0.197 ETH |
+| Balanced, 1 gwei, burst 20/keeper every 10 steps | 75.7 | +0.092 ETH (−0.757, +0.447), 32.5% | 0.02522 ETH, 70.9% | 12.6% | 1.091 / 0.034 ETH | 5.198 ETH |
+| Balanced, 1 gwei, stop demand at step 70/late keeper | 38.0 | −0.010 ETH (−0.607, +0.202), 22.5% | 0.02537 ETH, 72.1% | 43.8% | 1.157 / 0.039 ETH | 5.166 ETH |
+| Balanced, 1 gwei, close/retire at step 60 | 221.8 | +0.542 ETH (−0.372, +1.180), 22.5% | 0.02479 ETH, 67.3% | 37.5% | 1.488 / 0.045 ETH | 0.161 ETH |
+| Bigger, 1 gwei, five in-flight/step | 78.2 | +0.187 ETH (−1.097, +1.090), 32.5% | 0.03264 ETH, 15.7% gross | 61.6% | 2.454 / 0.010 ETH | 0.649 ETH |
+| Cheap, 1 gwei, five in-flight/step | 343.0 | +0.703 ETH (−0.265, +1.605), 17.5% | 0.01747 ETH, 60.7% | 57.4% | 0.200 / 0.020 ETH | 0 ETH |
+| Balanced, 10 gwei, five in-flight/step | 10.0 | −0.079 ETH (−0.377, +0.005), 92.5% | 0.05193 ETH, 36.4% | 1.7% | 1.334 / 0.036 ETH | 5.109 ETH |
+
+In the Bigger/five row, modeled unclaimed FWA refund liability averages **8.743 ETH per path**. The displayed 15.7% player return divides prize value by gross payments; **if** every modeled refundable acquisition fee is actually paid back, the conditional ratio is 57.6%. This refund-heavy behavior has no matching real-fork settlement/recovery evidence and should not be used as an observed player-return claim. `stranded_after_unwind_eth=0` in every model row excludes that outstanding liability; it only checks the model's Balancer balance, active backing, owner proceeds and escrow after a synthetic unwind.
+
+The burst/late-keeper model permits up to five requests in a transaction, settles them each step, then leaves settled sequences unreconciled for up to ten steps. The reserve formula charges one largest prize per unreconciled sequence, so repeated steps can create a modeled 5+ ETH reserve gap even though instantaneous unsettled draws never exceed five. The modeled FWA staging/gate is approximate; the **5.198 ETH number was not fork-observed**. The actual pinned fork instead proved two allowed large/medium wins can leave one 0.5 ETH prize unrestored with admission still open.
+
+For Balanced/five in-flight, gas 0.05, 0.1, 1, 3, 4.9, 5.1 and 10 gwei gives mean player gross price 0.0213, 0.0214, 0.0248, 0.0321, 0.0391, 0.0396 and 0.0519 ETH; modeled player return 78.0%, 78.0%, 67.4%, 54.4%, 45.1%, 44.5% and 36.4%. Mean creator net ranges +0.680 to +1.474 ETH through 5.1 gwei, then −0.079 ETH at 10 gwei; loss share ranges 20–25% through 5.1 and 92.5% at 10. Slow rise, jump, and ending spike are in full CSV. This sensitivity is driven partly by the inferred gas-indexed VRF charge and estimated keeper participation; high-gas forecast claims require more protocol quote and receipt checks.
+
+The unaccepted fee-rise model stops new purchases after step 40 because `mintFee()>mintFeeCap`, then stops demand at step 70. Balanced at 1 gwei averages 152.75 draws before the halt, creator mean +0.349 ETH with 20% losing paths and 26.1% open end-of-step share. The 0.005 and 0.01 cases have identical draw/net outputs because no new prize is minted after the unaccepted change; their reserve calculations differ. Hypothetical accepted/full-relist price and capital effects are in `fee-model.json` and `formula-parity.md`.
+
+**Fork boundary:** exact Balanced static quote and one delivered 0.01-Shape/full unwind cycle match the integer model in `cycle-parity.json`; code-free wallet receipts establish keeper gas economics. The simulations do not prove M1–M8 destination invariants. In particular, `check()` is conservation plus listed backing; there is no fork stateful sequence asserting every destination after every transition, and failed-delivery refunds remain untested.

@@ -1,0 +1,1 @@
+{"gasEstimate":"3281532","baseFee":"57954497","priorityFee":"50000000","expectedReward":"845454390400000","normal":{"send":false,"reason":"estimate above reimbursable maximum"},"override":{"send":false,"reason":"estimate above reimbursable maximum"}}

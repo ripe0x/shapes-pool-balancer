@@ -1,0 +1,21 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.25s
+Compiler run successful!
+
+Ran 1 test for audit/round9/lane_b/Probe.t.sol:ProbeTest
+[PASS] testProbe() (gas: 7535727)
+Logs:
+  edgeBps 500
+  maxAcq 5
+  maxStaged 0
+  mintFee 1000000000000000
+  balancer 0x7c73233B811Ab8a3fbb44602964a92275e76a553
+  pool 0x6192917fAC8f0900EcC4b1d8570CaaDeb1842abF
+  vrfServiceFee 0
+  quote fee/vrf/total 0 0 0
+  localPurchasesEnabled false
+  acquisitionFee 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 878.40ms (878.22ms CPU time)
+
+Ran 1 test suite in 893.78ms (878.40ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

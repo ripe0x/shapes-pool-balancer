@@ -1,0 +1,10 @@
+{
+  "actor": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "txHash": "0xd402ae379c50ec771b724d6adb6f98daa3acc3dcadb503c1f1224b24a4a715d4",
+  "status": "reverted",
+  "before": "9999974292639812529163",
+  "after": "9999974270589812529163",
+  "actualDebit": "22050000000000",
+  "expectedGasOnly": "22050000000000",
+  "value": "10000000000000000"
+}

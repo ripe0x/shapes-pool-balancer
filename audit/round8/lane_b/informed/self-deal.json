@@ -1,0 +1,57 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "actor": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "payer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "purchaser": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "selectedDenom": "0",
+  "fee": "22520339287470837",
+  "vrf": "2457000000000000",
+  "playerTotal": "24977339287470837",
+  "backingRedeemed": "10000000000000000",
+  "keeperReward": "1145000000000000",
+  "keeperRecipient": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "measuredKeeperGas": "785979",
+  "receipts": [
+    {
+      "txHash": "0x6b4ea76c2ad1ade6519fcb75384328465df53cb9bb7e07269a456d70995eedf5",
+      "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "gasUsed": "550438",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "577959900000000"
+    },
+    {
+      "txHash": "0x3dfe6e87febefe68fc95b68d8fd48bf1359ef973812b903dfab47fca5f050af1",
+      "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "gasUsed": "30474",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "31997700000000"
+    },
+    {
+      "txHash": "0xb5af06e33e33b6f20f843e08eb88aa976528331761d62618632eaabcf2921c5d",
+      "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "gasUsed": "788042",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "827444100000000"
+    },
+    {
+      "txHash": "0x57661305b7ad7c08bccf7a3bc8f8864eacbf7456aa9ed2edc294442774daa8a4",
+      "from": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+      "gasUsed": "72866",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "76509300000000"
+    }
+  ],
+  "actorGasCost": "1513911000000000",
+  "expectedActorLoss": "15346250287470837",
+  "observedActorLoss": "26491250287470837",
+  "actorStart": "9999974292639812529163",
+  "actorEnd": "9999947801389525058326",
+  "rawBalances": {
+    "afterBuy": "0x21e192aaa9cb7f6fa16",
+    "afterProcess": "0x21e192a8d82ac6c3116",
+    "afterUpkeep": "0x21e19279cf454c54816",
+    "afterRedeem": "0x21e1927575e9f1f4316"
+  },
+  "sourceOfRandomWord": "coordinator-delivered test word; not under player control on mainnet"
+}

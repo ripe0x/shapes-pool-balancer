@@ -1,0 +1,21 @@
+# Informed Lane B execution record
+
+Target identity `2ac7a7e7b965d1798729068566c026128a4ba4b9`; Anvil retained from blind lane: `anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --chain-id 31337 --port 18547 --silent`, PID reported earlier as 46925. All subsequent local-fork scripts checked chain ID 31337, used `http://127.0.0.1:18547`, and reverted an `evm_snapshot` in `finally`. No mainnet broadcast, protocol mock or protocol state fake. Only the real coordinator address was impersonated for test VRF words. `anvil_setBalance` funded fresh **external actor wallets** `0x...c0dec0de` and `0x...c0dec0df` after checking their code length was zero. This is test setup, not protocol balance manipulation. FWA, Shapes, Packs and factory were neither impersonated nor modified.
+
+Commands below ran from repository root, with stderr and exit status in the named `.stderr` and `.exit` files. The output hashes are in `evidence-sha256.txt`.
+
+| Exact command | Exit | Output |
+| --- | ---: | --- |
+| `node --import tsx audit/round8/lane_b/informed/scenario.ts > audit/round8/lane_b/informed/scenario.csv 2> audit/round8/lane_b/informed/scenario.stderr` | 0 | `scenario.csv` (150 data rows) |
+| `node --import tsx audit/round8/lane_b/informed/fee-rise.ts > audit/round8/lane_b/informed/fee-rise.csv 2> audit/round8/lane_b/informed/fee-rise.stderr` | 0 | `fee-rise.csv` (6 data rows) |
+| `python3 audit/round8/lane_b/informed/fee-model.py > audit/round8/lane_b/informed/fee-model.json 2> audit/round8/lane_b/informed/fee-model.stderr` | 0 | `fee-model.json` |
+| `python3 audit/round8/lane_b/informed/cycle-parity.py > audit/round8/lane_b/informed/cycle-parity.json 2> audit/round8/lane_b/informed/cycle-parity.stderr` | 0 | `cycle-parity.json` |
+| `node audit/round8/lane_b/informed/keeper-receipts-eoa.mjs > audit/round8/lane_b/informed/keeper-receipts-eoa.json 2> audit/round8/lane_b/informed/keeper-receipts-eoa.stderr` | 0 | Seven matched true-EOA receipts, exact wallet deltas |
+| `node audit/round8/lane_b/informed/credit-ratchet-eoa.mjs > audit/round8/lane_b/informed/credit-ratchet-eoa.json 2> audit/round8/lane_b/informed/credit-ratchet-eoa.stderr` | 0 | Two real purchases, fee listing, unlist, closed reconcile, wallet delta |
+| `node audit/round8/lane_b/informed/self-deal-eoa.mjs > audit/round8/lane_b/informed/self-deal-eoa.json 2> audit/round8/lane_b/informed/self-deal-eoa.stderr` | 0 | EOA buy/process/upkeep/redeem, exact balance loss |
+| `node audit/round8/lane_b/informed/batch-receipt.mjs > audit/round8/lane_b/informed/batch-receipt.json 2> audit/round8/lane_b/informed/batch-receipt.stderr` | 1 | `acquireBatch(5)` reverted `0x64586738 = InsufficientVrfCoverage()` before keeper work; call trace retained. No batch gas receipt. |
+| `node audit/round8/lane_b/informed/anvil-balance-check.mjs > audit/round8/lane_b/informed/anvil-balance-check.json 2> audit/round8/lane_b/informed/anvil-balance-check.stderr` | 0 script; diagnostic tx reverted | Default Anvil account self-transfer diagnostic. It has 23-byte `0xef0100...` delegation code on the mainnet fork, hence cannot be treated as a plain EOA. |
+
+Failed/diagnostic predecessors are preserved: the first `./node_modules/.bin/tsx ...scenario.ts` attempt exited 1 with sandbox `listen EPERM` on a tsx IPC pipe; `node --import tsx` avoided that issue. `credit-ratchet-first.stderr` records a failed `close()` because a default keeper address was mistaken for the actual creator, then the source was corrected. `keeper-receipts-eoa-first.stderr` records Viem rejecting mixed-case nonchecksummed addresses before a purchase; lowercase addresses fixed it. `self-deal-first.stderr` and `self-deal.json` record the delegated-account balance mismatch; no profit claim uses those values. The first `batch-receipt-first.stderr` lacked a trace; the repeat retained the `debug_traceTransaction` call tree and exact selector.
+
+The blind `receipt-continue.stdout-stderr.txt` and initial informed scripts used Anvil's default unlocked accounts. On this pinned fork, accounts 0–9 each have 23 bytes of EIP-7702 delegation code, so the older description of them as “EOAs” and realized profit claims are **withdrawn**. Their transaction receipts still give reward logs, billed gas and effective price; the code-free reruns are the participant-level accounting evidence.

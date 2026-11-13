@@ -1,0 +1,14 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.91s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_a/informed/BalancedBurst.t.sol:BalancedBurstInformedTest
+[PASS] testTargetShrinkLeavesOldPrizesPurchasableUntilUnlisted() (gas: 402259678)
+Logs:
+  Q-R8-008 old live acquisition fee wei 22520339287470837
+  Q-R8-008 player payment wei 24977339287470837
+  Q-R8-008 removed-denom word trials 824
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 563.65ms (539.55ms CPU time)
+
+Ran 1 test suite in 813.64ms (563.65ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,32 @@
+{
+  "P3_split_m9_violation/pc_m9_extent": {
+    "status": "accepted",
+    "reason": "My pass-2 challenge (automatic variant uncited) is resolved: the row now cites EV_upkeeporder and EV_upkeeporder_asserted. I reran both the creator lever (RUN1/RUN2: 0.001985->0.002383, x n/(n-1)) and the automatic upkeep-order variant (my UpkeepOrderAsserted, RUN10, PASS: reconcile-before-collect over-books 0.002188->0.002553 and makes 0.000365 ETH extra withdrawable in a genuine shortfall). The stated creator-action assertion executes and is reproduced; the automatic alternative it formerly left open is now evidenced. Suggestion only: the assertion sentence could name the automatic upkeep-order variant explicitly now that its evidence is attached.",
+    "evidence_ids": ["EV_m9extent", "EV_m9worst", "EV_upkeeporder", "EV_upkeeporder_asserted"]
+  },
+  "P4_keeper_restock_delivery/pc_delivery_reentrancy": {
+    "status": "accepted",
+    "reason": "Pass-2 challenge resolved. EV_rewardreentrancy (RewardReentrancy.t.sol, reran RUN11, 4/4 PASS) now EXECUTES the reward callback: a contract-creator re-enters on its setup reward and the unguarded onlyCreator functions persist (transferCreator -> pendingCreator 0xDEAD; close -> enabled false; configure -> markupBps 2000), while guarded collectProceeds reverts inside the 100k stipend frame (reentered=false) and profit<=balance / keeperCredit<=balance hold every upkeep. No authority gain: every persisted effect is one the creator could already invoke. The variant is driven, not reasoned.",
+    "evidence_ids": ["EV_draw", "EV_refund", "EV_rewardreentrancy"]
+  },
+  "P4_keeper_restock_delivery/pc_burst_gas": {
+    "status": "accepted",
+    "reason": "EV_burst (BurstUpkeepGas.t.sol, reran, PASS) executes the stated variant: 5 unsettled acquired, 6th reverts, admissionStatus==BUSY(4); heaviest single upkeep measured 2,526,724 gas, asserted < 4,000,000 floor (and < 3.2M KEEPER_MAX_GAS); M1 asserted paidTotal 0.0005 <= creditMinted 0.001225; profit 0 <= balance and target restored (30x0.01 + 1x0.5) at rest. Numbers match the postcondition.",
+    "evidence_ids": ["EV_burst"]
+  },
+  "P6_lifecycle_closeout/pc_mintfeerose": {
+    "status": "accepted",
+    "reason": "EV_mintfeerose (MintFeeRoseGate.t.sol, reran, PASS) raises the LIVE Shapes fee through the real admin setter (sh.admin() -> setMintFee; external admin action, not a mock) and executes the whole path: admissionStatus==MINT_FEE_ROSE(5), canPurchase=false, requiredReserve 0.044->0.045 (asserted Gt), a created deficit is NOT restocked while fee>cap (creatorWork stuck true), configure re-accepts the new cap, upkeep restocks to target, admission returns OK, and close+withdraw-all leaves 0 ETH / 0 listings (M7). Executes the stated variant.",
+    "evidence_ids": ["EV_mintfeerose"]
+  },
+  "P6_lifecycle_closeout/pc_retire_closeout": {
+    "status": "accepted",
+    "reason": "EV_retire (RetireCloseout.t.sol, reran, PASS) executes close->retire with a draw in flight: pool.retired() true, the in-flight draw settles through the real coordinator route and performUpkeep reconciles it after retire (reconciledSequence increases, unsettled 0), shapes unlisted, curated withdrawn, claimSurplus, balancer ends at 0 ETH with 0 active listings (M7). Minor: 'unlisting shapes redeems exact backing' is verified only via the aggregate zero-balance M7, not a per-item backing assertion; the conservation conclusion is sound.",
+    "evidence_ids": ["EV_retire"]
+  },
+  "P8_refund_open_questions/pc_refund_player": {
+    "status": "accepted",
+    "reason": "Pass-2 challenge resolved. The player-refund AMOUNT is now established: EV_refundwithdraw (controller CuratedRefundWithdraw.t.sol, reran RUN16, PASS) calls refundFailedDelivery THEN withdrawAcquisitionRefund and the purchaser recovers exactly 0.630139131231725739 ETH (net loss after withdraw = 0); failed draw credits 0 proceeds/0 profit/0 keeper credit; recoverRefunded returns the NFT to the creator with the balancer ETH untouched; EV_refundledger drives the below-reserve variant and books 0 profit (M9 holds). Note the two-call path: refundFailedDelivery alone returns 0 (EV_refundledger logs this), withdrawAcquisitionRefund delivers the fee; the postcondition names both, so the claim matches the evidence.",
+    "evidence_ids": ["EV_refundwithdraw", "EV_refund", "EV_refundledger"]
+  }
+}

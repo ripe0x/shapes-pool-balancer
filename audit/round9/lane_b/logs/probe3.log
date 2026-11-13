@@ -1,0 +1,46 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.69s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe3.t.sol:69:10:
+   |
+69 |         (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |          ^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe3.t.sol:69:23:
+   |
+69 |         (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                       ^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe3.t.sol:69:35:
+   |
+69 |         (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                                   ^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe3.t.sol:69:71:
+   |
+69 |         (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                                                                       ^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_b/Probe3.t.sol:Probe3Test
+[PASS] testDrawCycle() (gas: 12426546)
+Logs:
+  activeIds after restock 4
+  ownerProceeds before draw 0
+  reqId status/unsettled 1 1
+  fulfilled
+  unsettled after fulfill 0
+  acq lid/status 4 2
+  processed 0
+  ownerProceeds after settle 16449584724054956
+  lastIssuedSeq/nextToProcess 1 2
+  player nft balance? 0
+  shapes owner of drawn? 4
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 388.72ms (388.48ms CPU time)
+
+Ran 1 test suite in 411.70ms (388.72ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

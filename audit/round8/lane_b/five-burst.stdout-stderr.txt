@@ -1,0 +1,15 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.20s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testFiveInflightGateAndReconcile() (gas: 6272816)
+Logs:
+  five in-flight reserve 3088500000000000000
+  five in-flight status 4
+  status after five-draw upkeep 0
+  credit after five-draw upkeep 1772758350000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 31.41ms (7.91ms CPU time)
+
+Ran 1 test suite in 312.84ms (31.41ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

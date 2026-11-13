@@ -1,0 +1,644 @@
+'forge clean' running (wd: /Users/dd/CascadeProjects/fwa-pool-balancer)
+'forge config --json' running
+'forge build --build-info src/PoolBalancer.sol' running (wd: /Users/dd/CascadeProjects/fwa-pool-balancer)
+
+Detector: incorrect-exp
+LibBytes.eqs(bytes,bytes32) (lib/solady/src/utils/LibBytes.sol#674-689) has bitwise-xor operator ^ instead of the exponentiation operator **: 
+	 - result = mload(uint256)(a) == ! x_eqs_asm_0 + 31 ^ r_eqs_asm_0 >> 3 > b >> 8 + r_eqs_asm_0 ^ mload(uint256)(a + 0x20) >> 8 + r_eqs_asm_0 (lib/solady/src/utils/LibBytes.sol#686-687)
+LibString.eqs(string,bytes32) (lib/solady/src/utils/LibString.sol#862-877) has bitwise-xor operator ^ instead of the exponentiation operator **: 
+	 - result = mload(uint256)(a) == ! x_eqs_asm_0 + 31 ^ r_eqs_asm_0 >> 3 > b >> 8 + r_eqs_asm_0 ^ mload(uint256)(a + 0x20) >> 8 + r_eqs_asm_0 (lib/solady/src/utils/LibString.sol#874-875)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-exponentiation
+
+Detector: reentrancy-eth
+Reentrancy in PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709):
+	External calls:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	- lids = p.listNFTs(batch) (src/PoolBalancer.sol#697)
+	External calls sending eth:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	State variables written after the call(s):
+	- ++ activeShapes[d_scope_1] (src/PoolBalancer.sol#704)
+	PoolBalancer.activeShapes (src/PoolBalancer.sol#173) can be used in cross function reentrancies:
+	- PoolBalancer._listedShapes() (src/PoolBalancer.sol#831-836)
+	- PoolBalancer._missingUnits() (src/PoolBalancer.sol#839-846)
+	- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#767-769)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#738-761)
+Reentrancy in PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596):
+	External calls:
+	- collected = _collect() != 0 (src/PoolBalancer.sol#579)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#792)
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#587)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+		- lids = p.listNFTs(batch) (src/PoolBalancer.sol#697)
+	External calls sending eth:
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#587)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	State variables written after the call(s):
+	- creatorWork = false (src/PoolBalancer.sol#590)
+	PoolBalancer.creatorWork (src/PoolBalancer.sol#159) can be used in cross function reentrancies:
+	- PoolBalancer._creatorChanged() (src/PoolBalancer.sol#785-787)
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#542-553)
+	- PoolBalancer.close() (src/PoolBalancer.sol#335-340)
+	- PoolBalancer.creatorWork (src/PoolBalancer.sol#159)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+
+Detector: incorrect-shift
+LibBytes.indexOfByte(bytes,bytes1,uint256) (lib/solady/src/utils/LibBytes.sol#273-307) contains an incorrect shift operation: result = i_indexOfByte_asm_0 - start_indexOfByte_asm_0 + byte(uint256,uint256)(0x1f & 0x8421084210842108cc6318c6db6d54be >> byte(uint256,uint256)(24,0x02040810204081 * c_indexOfByte_asm_0 >> r_indexOfByte_asm_0),0xc0c8c8d0c8e8d0d8c8e8e0e8d0d8e0f0c8d0e8d0e0e0d8f0d0d0e0d8f8f8f8f8) ^ r_indexOfByte_asm_0 >> 3 (lib/solady/src/utils/LibBytes.sol#296-298)
+LibString.to7BitASCIIAllowedLookup(string) (lib/solady/src/utils/LibString.sol#503-519) contains an incorrect shift operation: result = result | 1 << byte(uint256,uint256)(0,mload(uint256)(o_to7BitASCIIAllowedLookup_asm_0)) (lib/solady/src/utils/LibString.sol#509)
+LibString.toCase(string,bool) (lib/solady/src/utils/LibString.sol#646-670) contains an incorrect shift operation: flags_toCase_asm_0 = 0x3ffffff << 70 + toUpper << 5 (lib/solady/src/utils/LibString.sol#658)
+LibString.escapeHTML(string) (lib/solady/src/utils/LibString.sol#725-754) contains an incorrect shift operation: ! 1 << c_escapeHTML_asm_0 & 0x500000c400000000 (lib/solady/src/utils/LibString.sol#741-745)
+LibString.escapeJSON(string,bool) (lib/solady/src/utils/LibString.sol#758-813) contains an incorrect shift operation: ! 1 << c_escapeJSON_asm_0 & e_escapeJSON_asm_0 (lib/solady/src/utils/LibString.sol#782-787)
+LibString.escapeJSON(string,bool) (lib/solady/src/utils/LibString.sol#758-813) contains an incorrect shift operation: ! 1 << c_escapeJSON_asm_0 & 0x3700 (lib/solady/src/utils/LibString.sol#793-800)
+LibString.encodeURIComponent(string) (lib/solady/src/utils/LibString.sol#825-851) contains an incorrect shift operation: ! 1 & 0x47fffffe87fffffe03ff678200000000 >> c_encodeURIComponent_asm_0 (lib/solady/src/utils/LibString.sol#837-843)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-shift-in-assembly
+
+Detector: divide-before-multiply
+LibBytes.indexOfByte(bytes,bytes1,uint256) (lib/solady/src/utils/LibBytes.sol#273-307) performs a multiplication on the result of a division:
+	- m_indexOfByte_asm_0 = ~ 0 / 255 (lib/solady/src/utils/LibBytes.sol#284)
+	- h_indexOfByte_asm_0 = byte(uint256,uint256)(0,needle) * m_indexOfByte_asm_0 (lib/solady/src/utils/LibBytes.sol#285)
+SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#319-390) performs a multiplication on the result of a division:
+	- ! mload(uint256)(signature + n_isValidERC6492SignatureNowAllowSideEffects_asm_0) == 0x6492 * ~ isValid / 0xffff (lib/solady/src/utils/SignatureCheckerLib.sol#341-344)
+SignatureCheckerLib.isValidERC6492SignatureNow(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#400-469) performs a multiplication on the result of a division:
+	- ! mload(uint256)(signature + n_isValidERC6492SignatureNow_asm_0) == 0x6492 * ~ isValid / 0xffff (lib/solady/src/utils/SignatureCheckerLib.sol#421-424)
+PoolBalancer.configure(uint16,uint256) (src/PoolBalancer.sol#304-323) performs a multiplication on the result of a division:
+	- w += n * (INVERSE_WEIGHT_NUMERATOR / _prizeBase(d,fee,newMarkupBps)) (src/PoolBalancer.sol#314)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+
+Detector: incorrect-equality
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709) uses a dangerous strict equality:
+	- need == 0 (src/PoolBalancer.sol#671)
+PoolBalancer._payKeeper(uint256,bool) (src/PoolBalancer.sol#711-722) uses a dangerous strict equality:
+	- reward == 0 (src/PoolBalancer.sol#718)
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596) uses a dangerous strict equality:
+	- ! reconciled && ops == 0 && ! collected && creatorWork == wasSetup (src/PoolBalancer.sol#594)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+
+Detector: reentrancy-no-eth
+Reentrancy in PoolBalancer.updateCuratedPrice(uint256,uint256) (src/PoolBalancer.sol#385-395):
+	External calls:
+	- pool.updatePrice(listingId,price) (src/PoolBalancer.sol#391)
+	State variables written after the call(s):
+	- it.price = uint112(price) (src/PoolBalancer.sol#392)
+	PoolBalancer.items (src/PoolBalancer.sol#170) can be used in cross function reentrancies:
+	- PoolBalancer.items (src/PoolBalancer.sol#170)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+
+Detector: uninitialized-local
+PoolBalancer.requiredReserve().units (src/PoolBalancer.sol#744) is a local variable never initialized
+PoolBalancer.performUpkeep().ops (src/PoolBalancer.sol#582) is a local variable never initialized
+PoolBalancer.configure(uint16,uint256).prizes (src/PoolBalancer.sol#308) is a local variable never initialized
+PoolBalancer.requiredReserve().largest (src/PoolBalancer.sol#745) is a local variable never initialized
+PoolBalancer.configure(uint16,uint256).w (src/PoolBalancer.sol#309) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+
+Detector: unused-return
+PoolBalancer.recoverRefunded(uint256,address) (src/PoolBalancer.sol#412-424) ignores return value by (collection,None,None,tokenId,None,None,None,status) = pool.listings(listingId) (src/PoolBalancer.sol#415)
+PoolBalancer.setENSName(string) (src/PoolBalancer.sol#491-494) ignores return value by IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name) (src/PoolBalancer.sol#492)
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596) ignores return value by (None,None,None,lid,aStatus,None) = p.acquisitions(p.requestIdAtSequence(++ s)) (src/PoolBalancer.sol#572)
+PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]) (src/PoolBalancer.sol#618-637) ignores return value by (None,None,None,tokenIds[i],None,None,None,None) = p.listings(lid) (src/PoolBalancer.sol#624)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+Detector: write-after-write
+LibBytes.sliceCalldata(bytes,uint256,uint256).result (lib/solady/src/utils/LibBytes.sol#489) is written in both
+	result = subject + start (lib/solady/src/utils/LibBytes.sol#495)
+	result = start < end * end - start (lib/solady/src/utils/LibBytes.sol#496)
+LibBytes.sliceCalldata(bytes,uint256).result (lib/solady/src/utils/LibBytes.sol#505) is written in both
+	result = subject + start (lib/solady/src/utils/LibBytes.sol#510)
+	result = start < subject * subject - start (lib/solady/src/utils/LibBytes.sol#511)
+LibBytes.truncatedCalldata(bytes,uint256).result (lib/solady/src/utils/LibBytes.sol#534) is written in both
+	result = subject (lib/solady/src/utils/LibBytes.sol#538)
+	result = n ^ n ^ subject * subject < n (lib/solady/src/utils/LibBytes.sol#539)
+LibBytes.staticStructInCalldata(bytes,uint256).result (lib/solady/src/utils/LibBytes.sol#800) is written in both
+	result = a + offset (lib/solady/src/utils/LibBytes.sol#805)
+	result = a - offset (lib/solady/src/utils/LibBytes.sol#806)
+LibBytes.dynamicStructInCalldata(bytes,uint256).result (lib/solady/src/utils/LibBytes.sol#815) is written in both
+	result = a + s_dynamicStructInCalldata_asm_0 (lib/solady/src/utils/LibBytes.sol#821)
+	result = a - s_dynamicStructInCalldata_asm_0 (lib/solady/src/utils/LibBytes.sol#822)
+LibBytes.bytesInCalldata(bytes,uint256).result (lib/solady/src/utils/LibBytes.sol#831) is written in both
+	result = a + s_bytesInCalldata_asm_0 + 0x20 (lib/solady/src/utils/LibBytes.sol#837)
+	result = calldataload(uint256)(a + s_bytesInCalldata_asm_0) (lib/solady/src/utils/LibBytes.sol#838)
+SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32).success (lib/solady/src/utils/SafeTransferLib.sol#548) is written in both
+	success = call(uint256,uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),token,0,m_permit2_asm_0 + 0x10,0x104,codesize()(),0x00) (lib/solady/src/utils/SafeTransferLib.sol#579)
+	success = call(uint256,uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),token,0,m_permit2_asm_0 + 0x10,0xe4,codesize()(),0x00) (lib/solady/src/utils/SafeTransferLib.sol#587)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes).isValid (lib/solady/src/utils/SignatureCheckerLib.sol#35) is written in both
+	isValid = returndatasize()() > signer ^ recovered_isValidSignatureNow_asm_0 << 96 (lib/solady/src/utils/SignatureCheckerLib.sol#57)
+	isValid = staticcall(uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),signer,m_isValidSignatureNow_asm_0,returndatasize()() + 0x44,d_isValidSignatureNow_asm_0,0x20) (lib/solady/src/utils/SignatureCheckerLib.sol#70)
+SignatureCheckerLib.isValidSignatureNowCalldata(address,bytes32,bytes).isValid (lib/solady/src/utils/SignatureCheckerLib.sol#83) is written in both
+	isValid = returndatasize()() > signer ^ recovered_isValidSignatureNowCalldata_asm_0 << 96 (lib/solady/src/utils/SignatureCheckerLib.sol#105)
+	isValid = staticcall(uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),signer,m_isValidSignatureNowCalldata_asm_0,signature + 0x64,d_isValidSignatureNowCalldata_asm_0,0x20) (lib/solady/src/utils/SignatureCheckerLib.sol#118)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes32,bytes32).isValid (lib/solady/src/utils/SignatureCheckerLib.sol#131) is written in both
+	isValid = returndatasize()() > signer ^ recovered_isValidSignatureNow_asm_0 << 96 (lib/solady/src/utils/SignatureCheckerLib.sol#144)
+	isValid = staticcall(uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),signer,m_isValidSignatureNow_asm_0,0xa5,d_isValidSignatureNow_asm_0,0x20) (lib/solady/src/utils/SignatureCheckerLib.sol#158)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,uint8,bytes32,bytes32).isValid (lib/solady/src/utils/SignatureCheckerLib.sol#171) is written in both
+	isValid = returndatasize()() > signer ^ recovered_isValidSignatureNow_asm_0 << 96 (lib/solady/src/utils/SignatureCheckerLib.sol#184)
+	isValid = staticcall(uint256,uint256,uint256,uint256,uint256,uint256)(gas()(),signer,m_isValidSignatureNow_asm_0,0xa5,d_isValidSignatureNow_asm_0,0x20) (lib/solady/src/utils/SignatureCheckerLib.sol#198)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#write-after-write
+
+Detector: missing-zero-check
+PoolBalancer.constructor(address,address,bytes32,address,address,address).fwaImplementation (src/PoolBalancer.sol#234) lacks a zero-check on :
+		- FWA_IMPLEMENTATION = fwaImplementation (src/PoolBalancer.sol#236)
+PoolBalancer.transferCreator(address).newCreator (src/PoolBalancer.sol#289) lacks a zero-check on :
+		- pendingCreator = newCreator (src/PoolBalancer.sol#290)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+
+Detector: calls-loop
+PoolBalancer.constructor(address,address,bytes32,address,address,address) (src/PoolBalancer.sol#234-252) has external calls inside a loop: IShapes(shapes).denominationAt(uint8(d)) != _amount(d) (src/PoolBalancer.sol#246)
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#802-808) has external calls inside a loop: IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#805)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#802-808) has external calls inside a loop: IERC721Min(collection).ownerOf(tokenId) != address(this) (src/PoolBalancer.sol#806)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#802-808) has external calls inside a loop: IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#807)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]) (src/PoolBalancer.sol#618-637) has external calls inside a loop: (None,None,None,tokenIds[i],None,None,None,None) = p.listings(lid) (src/PoolBalancer.sol#624)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+PoolBalancer._redeem(uint8,uint256) (src/PoolBalancer.sol#641-645) has external calls inside a loop: IShapePacks(address(SHAPES)).redeem(tokenId) (src/PoolBalancer.sol#643)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+		PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])
+PoolBalancer._redeem(uint8,uint256) (src/PoolBalancer.sol#641-645) has external calls inside a loop: IShapePacks(address(PACKS)).redeem(tokenId) (src/PoolBalancer.sol#643)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+		PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596) has external calls inside a loop: (None,None,None,lid,aStatus,None) = p.acquisitions(p.requestIdAtSequence(++ s)) (src/PoolBalancer.sol#572)
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709) has external calls inside a loop: first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709) has external calls inside a loop: id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+
+Detector: reentrancy-benign
+Reentrancy in PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709):
+	External calls:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	- lids = p.listNFTs(batch) (src/PoolBalancer.sol#697)
+	External calls sending eth:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	State variables written after the call(s):
+	- _addActive(lids[i]) (src/PoolBalancer.sol#703)
+		- activeIds.push(lid) (src/PoolBalancer.sol#817)
+	- _addActive(lids[i]) (src/PoolBalancer.sol#703)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#818)
+	- items[lids[i]] = Item(SHAPE,d_scope_1,ACTIVE,uint112(base),uint112(batch[i].price)) (src/PoolBalancer.sol#702)
+	- prizeWeight += added (src/PoolBalancer.sol#708)
+Reentrancy in PoolBalancer.initialize(address) (src/PoolBalancer.sol#256-278):
+	External calls:
+	- p = fwa.createPool(bytes32(0),FWA_IMPLEMENTATION) (src/PoolBalancer.sol#267)
+	State variables written after the call(s):
+	- pool = IFWAPool(p) (src/PoolBalancer.sol#271)
+Reentrancy in PoolBalancer.listCurated(address,uint256,uint256) (src/PoolBalancer.sol#353-362):
+	External calls:
+	- price = _pullCurated(collection,tokenId,base) (src/PoolBalancer.sol#359)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#805)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#807)
+	- listingId = pool.listNFT(collection,tokenId,price) (src/PoolBalancer.sol#360)
+	State variables written after the call(s):
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#361)
+		- activeIds.push(lid) (src/PoolBalancer.sol#817)
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#361)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#818)
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#361)
+		- items[lid] = Item(CURATED,0,ACTIVE,uint112(base),uint112(price)) (src/PoolBalancer.sol#811)
+Reentrancy in PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[]) (src/PoolBalancer.sol#364-381):
+	External calls:
+	- batch[i] = IFWAPool.ListingInput(c.collection,c.tokenId,_pullCurated(c.collection,c.tokenId,c.base)) (src/PoolBalancer.sol#375)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#805)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#807)
+	- listingIds = pool.listNFTs(batch) (src/PoolBalancer.sol#377)
+	State variables written after the call(s):
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#379)
+		- activeIds.push(lid) (src/PoolBalancer.sol#817)
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#379)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#818)
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#379)
+		- items[lid] = Item(CURATED,0,ACTIVE,uint112(base),uint112(price)) (src/PoolBalancer.sol#811)
+Reentrancy in PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596):
+	External calls:
+	- collected = _collect() != 0 (src/PoolBalancer.sol#579)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#792)
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#587)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+		- lids = p.listNFTs(batch) (src/PoolBalancer.sol#697)
+	External calls sending eth:
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#587)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#674)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#684)
+	State variables written after the call(s):
+	- keeperCredit += uint128(ops * restockFee()) (src/PoolBalancer.sol#589)
+	- reward = _payKeeper(gasStart,wasSetup) (src/PoolBalancer.sol#595)
+		- keeperCredit = uint128(credit - reward) (src/PoolBalancer.sol#719)
+Reentrancy in PoolBalancer.unlistShapes(uint256[]) (src/PoolBalancer.sol#467-477):
+	External calls:
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#475)
+		- IShapePacks(address(SHAPES)).redeem(tokenId) (src/PoolBalancer.sol#643)
+		- IShapePacks(address(PACKS)).redeem(tokenId) (src/PoolBalancer.sol#643)
+		- p.withdrawListingsTo(lids,address(this)) (src/PoolBalancer.sol#633)
+	State variables written after the call(s):
+	- _creatorChanged() (src/PoolBalancer.sol#476)
+		- creatorWork = enabled && _missingUnits() != 0 (src/PoolBalancer.sol#786)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+
+Detector: reentrancy-events
+Reentrancy in PoolBalancer.close() (src/PoolBalancer.sol#335-340):
+	External calls:
+	- pool.setBool(ACQUISITIONS_ENABLED_KEY,false) (src/PoolBalancer.sol#338)
+	Event emitted after the call(s):
+	- PurchasesClosed() (src/PoolBalancer.sol#339)
+Reentrancy in PoolBalancer.initialize(address) (src/PoolBalancer.sol#256-278):
+	External calls:
+	- p = fwa.createPool(bytes32(0),FWA_IMPLEMENTATION) (src/PoolBalancer.sol#267)
+	- IFWAPool(p).setPurchaseOperator(address(this)) (src/PoolBalancer.sol#272)
+	- SHAPES.setApprovalForAll(p,true) (src/PoolBalancer.sol#273)
+	- PACKS.setApprovalForAll(p,true) (src/PoolBalancer.sol#274)
+	Event emitted after the call(s):
+	- Deposited(msg.sender,msg.value) (src/PoolBalancer.sol#277)
+	- Initialized(creator_,p) (src/PoolBalancer.sol#276)
+Reentrancy in PoolBalancer.open() (src/PoolBalancer.sol#326-332):
+	External calls:
+	- pool.setBool(ACQUISITIONS_ENABLED_KEY,true) (src/PoolBalancer.sol#330)
+	Event emitted after the call(s):
+	- PurchasesOpened() (src/PoolBalancer.sol#331)
+Reentrancy in PoolBalancer.retire() (src/PoolBalancer.sol#480-484):
+	External calls:
+	- pool.retirePool() (src/PoolBalancer.sol#482)
+	Event emitted after the call(s):
+	- PoolRetired() (src/PoolBalancer.sol#483)
+Reentrancy in PoolBalancer.setENSName(string) (src/PoolBalancer.sol#491-494):
+	External calls:
+	- IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name) (src/PoolBalancer.sol#492)
+	Event emitted after the call(s):
+	- ENSNameSet(name) (src/PoolBalancer.sol#493)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+
+Detector: assembly
+LibBytes.set(LibBytes.BytesStorage,bytes) (lib/solady/src/utils/LibBytes.sol#30-52) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#32-51)
+LibBytes.setCalldata(LibBytes.BytesStorage,bytes) (lib/solady/src/utils/LibBytes.sol#55-75) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#57-74)
+LibBytes.length(LibBytes.BytesStorage) (lib/solady/src/utils/LibBytes.sol#88-95) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#91-94)
+LibBytes.get(LibBytes.BytesStorage) (lib/solady/src/utils/LibBytes.sol#98-124) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#100-123)
+LibBytes.uint8At(LibBytes.BytesStorage,uint256) (lib/solady/src/utils/LibBytes.sol#127-150) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#129-149)
+LibBytes.replace(bytes,bytes,bytes) (lib/solady/src/utils/LibBytes.sol#157-214) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#163-213)
+LibBytes.indexOf(bytes,bytes,uint256) (lib/solady/src/utils/LibBytes.sol#219-268) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#225-267)
+LibBytes.indexOfByte(bytes,bytes1,uint256) (lib/solady/src/utils/LibBytes.sol#273-307) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#279-306)
+LibBytes.lastIndexOf(bytes,bytes,uint256) (lib/solady/src/utils/LibBytes.sol#330-362) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#336-361)
+LibBytes.startsWith(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#381-393) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#387-392)
+LibBytes.endsWith(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#396-410) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#402-409)
+LibBytes.repeat(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#413-441) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#419-440)
+LibBytes.slice(bytes,uint256,uint256) (lib/solady/src/utils/LibBytes.sol#445-472) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#451-471)
+LibBytes.sliceCalldata(bytes,uint256,uint256) (lib/solady/src/utils/LibBytes.sol#486-498) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#492-497)
+LibBytes.sliceCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#502-513) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#508-512)
+LibBytes.truncate(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#517-527) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#523-526)
+LibBytes.truncatedCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#531-541) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#537-540)
+LibBytes.indicesOf(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#545-589) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#551-588)
+LibBytes.split(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#592-633) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#599-632)
+LibBytes.concat(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#637-663) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#639-662)
+LibBytes.eq(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#666-671) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#668-670)
+LibBytes.eqs(bytes,bytes32) (lib/solady/src/utils/LibBytes.sol#674-689) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#676-688)
+LibBytes.cmp(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#693-720) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#695-719)
+LibBytes.directReturn(bytes) (lib/solady/src/utils/LibBytes.sol#723-736) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#725-735)
+LibBytes.directReturn(bytes[]) (lib/solady/src/utils/LibBytes.sol#739-774) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#741-773)
+LibBytes.load(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#777-782) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#779-781)
+LibBytes.loadCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#785-794) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#791-793)
+LibBytes.staticStructInCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#797-809) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#803-808)
+LibBytes.dynamicStructInCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#812-825) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#818-824)
+LibBytes.bytesInCalldata(bytes,uint256) (lib/solady/src/utils/LibBytes.sol#828-843) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#834-842)
+LibBytes.checkInCalldata(bytes,bytes) (lib/solady/src/utils/LibBytes.sol#846-854) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#848-853)
+LibBytes.checkInCalldata(bytes[],bytes) (lib/solady/src/utils/LibBytes.sol#857-869) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#859-868)
+LibBytes.emptyCalldata() (lib/solady/src/utils/LibBytes.sol#872-877) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibBytes.sol#874-876)
+LibString.bytesStorage(LibString.StringStorage) (lib/solady/src/utils/LibString.sol#117-126) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#123-125)
+LibString.toString(uint256) (lib/solady/src/utils/LibString.sol#133-160) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#135-159)
+LibString.toString(int256) (lib/solady/src/utils/LibString.sol#163-177) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#169-176)
+LibString.toHexString(uint256,uint256) (lib/solady/src/utils/LibString.sol#188-201) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#195-200)
+LibString.toHexStringNoPrefix(uint256,uint256) (lib/solady/src/utils/LibString.sol#208-247) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#214-246)
+LibString.toHexString(uint256) (lib/solady/src/utils/LibString.sol#253-262) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#256-261)
+LibString.toMinimalHexString(uint256) (lib/solady/src/utils/LibString.sol#268-278) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#271-277)
+LibString.toMinimalHexStringNoPrefix(uint256) (lib/solady/src/utils/LibString.sol#283-296) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#290-295)
+LibString.toHexStringNoPrefix(uint256) (lib/solady/src/utils/LibString.sol#302-329) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#304-328)
+LibString.toHexStringChecksummed(address) (lib/solady/src/utils/LibString.sol#335-352) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#338-351)
+LibString.toHexString(address) (lib/solady/src/utils/LibString.sol#356-365) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#359-364)
+LibString.toHexStringNoPrefix(address) (lib/solady/src/utils/LibString.sol#369-396) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#371-395)
+LibString.toHexString(bytes) (lib/solady/src/utils/LibString.sol#400-409) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#403-408)
+LibString.toHexStringNoPrefix(bytes) (lib/solady/src/utils/LibString.sol#413-432) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#415-431)
+LibString.runeCount(string) (lib/solady/src/utils/LibString.sol#439-453) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#441-452)
+LibString.is7BitASCII(string) (lib/solady/src/utils/LibString.sol#457-479) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#459-478)
+LibString.is7BitASCII(string,uint128) (lib/solady/src/utils/LibString.sol#484-498) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#486-497)
+LibString.to7BitASCIIAllowedLookup(string) (lib/solady/src/utils/LibString.sol#503-519) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#505-518)
+LibString.split(string,string) (lib/solady/src/utils/LibString.sol#626-636) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#633-635)
+LibString.toCase(string,bool) (lib/solady/src/utils/LibString.sol#646-670) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#652-669)
+LibString.fromSmallString(bytes32) (lib/solady/src/utils/LibString.sol#674-686) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#676-685)
+LibString.normalizeSmallString(bytes32) (lib/solady/src/utils/LibString.sol#689-697) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#691-696)
+LibString.toSmallString(string) (lib/solady/src/utils/LibString.sol#700-710) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#702-709)
+LibString.escapeHTML(string) (lib/solady/src/utils/LibString.sol#725-754) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#727-753)
+LibString.escapeJSON(string,bool) (lib/solady/src/utils/LibString.sol#758-813) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#764-812)
+LibString.encodeURIComponent(string) (lib/solady/src/utils/LibString.sol#825-851) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#827-850)
+LibString.eq(string,string) (lib/solady/src/utils/LibString.sol#854-859) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#856-858)
+LibString.eqs(string,bytes32) (lib/solady/src/utils/LibString.sol#862-877) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#864-876)
+LibString.packOne(string) (lib/solady/src/utils/LibString.sol#887-901) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#889-900)
+LibString.unpackOne(bytes32) (lib/solady/src/utils/LibString.sol#906-915) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#908-914)
+LibString.packTwo(string,string) (lib/solady/src/utils/LibString.sol#919-934) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#921-933)
+LibString.unpackTwo(bytes32) (lib/solady/src/utils/LibString.sol#939-960) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#945-959)
+LibString.directReturn(string) (lib/solady/src/utils/LibString.sol#963-976) uses assembly
+	- INLINE ASM (lib/solady/src/utils/LibString.sol#965-975)
+SafeTransferLib.safeTransferETH(address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#95-103) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#97-102)
+SafeTransferLib.safeTransferAllETH(address) (lib/solady/src/utils/SafeTransferLib.sol#106-115) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#108-114)
+SafeTransferLib.forceSafeTransferETH(address,uint256,uint256) (lib/solady/src/utils/SafeTransferLib.sol#118-132) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#120-131)
+SafeTransferLib.forceSafeTransferAllETH(address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#135-145) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#137-144)
+SafeTransferLib.forceSafeTransferETH(address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#148-162) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#150-161)
+SafeTransferLib.forceSafeTransferAllETH(address) (lib/solady/src/utils/SafeTransferLib.sol#165-176) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#167-175)
+SafeTransferLib.trySafeTransferETH(address,uint256,uint256) (lib/solady/src/utils/SafeTransferLib.sol#179-187) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#184-186)
+SafeTransferLib.trySafeTransferAllETH(address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#190-198) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#195-197)
+SafeTransferLib.safeMoveETH(address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#203-243) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#205-242)
+SafeTransferLib.safeTransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#254-272) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#256-271)
+SafeTransferLib.trySafeTransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#277-295) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#282-294)
+SafeTransferLib.safeTransferAllFrom(address,address,address) (lib/solady/src/utils/SafeTransferLib.sol#301-334) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#306-333)
+SafeTransferLib.safeTransfer(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#338-354) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#340-353)
+SafeTransferLib.safeTransferAll(address,address) (lib/solady/src/utils/SafeTransferLib.sol#358-386) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#360-385)
+SafeTransferLib.safeApprove(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#390-405) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#392-404)
+SafeTransferLib.safeApproveWithRetry(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#411-438) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#413-437)
+SafeTransferLib.balanceOf(address,address) (lib/solady/src/utils/SafeTransferLib.sol#442-456) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#444-455)
+SafeTransferLib.checkBalanceOf(address,address) (lib/solady/src/utils/SafeTransferLib.sol#461-477) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#467-476)
+SafeTransferLib.totalSupply(address) (lib/solady/src/utils/SafeTransferLib.sol#481-493) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#483-492)
+SafeTransferLib.permit2TransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#508-533) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#512-532)
+SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32) (lib/solady/src/utils/SafeTransferLib.sol#538-592) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#550-590)
+SafeTransferLib.simplePermit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32) (lib/solady/src/utils/SafeTransferLib.sol#595-645) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#606-644)
+SafeTransferLib.permit2Approve(address,address,uint160,uint48) (lib/solady/src/utils/SafeTransferLib.sol#648-665) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#652-664)
+SafeTransferLib.permit2Lockdown(address,address) (lib/solady/src/utils/SafeTransferLib.sol#668-682) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SafeTransferLib.sol#670-681)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#32-75) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#39-74)
+SignatureCheckerLib.isValidSignatureNowCalldata(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#80-123) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#87-122)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,bytes32,bytes32) (lib/solady/src/utils/SignatureCheckerLib.sol#128-163) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#135-162)
+SignatureCheckerLib.isValidSignatureNow(address,bytes32,uint8,bytes32,bytes32) (lib/solady/src/utils/SignatureCheckerLib.sol#168-203) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#175-202)
+SignatureCheckerLib.isValidERC1271SignatureNow(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#212-231) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#218-230)
+SignatureCheckerLib.isValidERC1271SignatureNowCalldata(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#234-253) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#240-252)
+SignatureCheckerLib.isValidERC1271SignatureNow(address,bytes32,bytes32,bytes32) (lib/solady/src/utils/SignatureCheckerLib.sol#257-277) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#263-276)
+SignatureCheckerLib.isValidERC1271SignatureNow(address,bytes32,uint8,bytes32,bytes32) (lib/solady/src/utils/SignatureCheckerLib.sol#281-301) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#287-300)
+SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#319-390) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#325-389)
+SignatureCheckerLib.isValidERC6492SignatureNow(address,bytes32,bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#400-469) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#405-468)
+SignatureCheckerLib.toEthSignedMessageHash(bytes32) (lib/solady/src/utils/SignatureCheckerLib.sol#479-486) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#481-485)
+SignatureCheckerLib.toEthSignedMessageHash(bytes) (lib/solady/src/utils/SignatureCheckerLib.sol#493-514) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#495-513)
+SignatureCheckerLib.emptySignature() (lib/solady/src/utils/SignatureCheckerLib.sol#521-526) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#523-525)
+SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects.asm_0.callIsValidSignature() (lib/solady/src/utils/SignatureCheckerLib.sol#326-337) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#326-337)
+SignatureCheckerLib.isValidERC6492SignatureNow.asm_0.callIsValidSignature() (lib/solady/src/utils/SignatureCheckerLib.sol#406-417) uses assembly
+	- INLINE ASM (lib/solady/src/utils/SignatureCheckerLib.sol#406-417)
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709) uses assembly
+	- INLINE ASM (src/PoolBalancer.sol#694-696)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+Detector: pragma
+2 different versions of Solidity are used:
+	- Version constraint ^0.8.4 is used by:
+		-^0.8.4 (lib/solady/src/utils/LibBytes.sol#2)
+		-^0.8.4 (lib/solady/src/utils/LibString.sol#2)
+		-^0.8.4 (lib/solady/src/utils/ReentrancyGuard.sol#2)
+		-^0.8.4 (lib/solady/src/utils/SafeTransferLib.sol#2)
+		-^0.8.4 (lib/solady/src/utils/SignatureCheckerLib.sol#2)
+	- Version constraint 0.8.28 is used by:
+		-0.8.28 (src/PoolBalancer.sol#2)
+		-0.8.28 (src/PoolPage.sol#2)
+		-0.8.28 (src/interfaces/External.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+
+Detector: costly-loop
+PoolBalancer._removeActive(uint256) (src/PoolBalancer.sol#821-829) has costly operations inside a loop:
+	- activeIds.pop() (src/PoolBalancer.sol#827)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+		PoolBalancer._onDrawn(uint256,bool)
+PoolBalancer._removeActive(uint256) (src/PoolBalancer.sol#821-829) has costly operations inside a loop:
+	- delete activeIndexPlusOne[lid] (src/PoolBalancer.sol#828)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+		PoolBalancer._onDrawn(uint256,bool)
+PoolBalancer._onDrawn(uint256,bool) (src/PoolBalancer.sol#598-615) has costly operations inside a loop:
+	- prizeWeight -= INVERSE_WEIGHT_NUMERATOR / it.base (src/PoolBalancer.sol#607)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+PoolBalancer._onDrawn(uint256,bool) (src/PoolBalancer.sol#598-615) has costly operations inside a loop:
+	- delete items[lid] (src/PoolBalancer.sol#610)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop
+
+Detector: cyclomatic-complexity
+LibBytes.replace(bytes,bytes,bytes) (lib/solady/src/utils/LibBytes.sol#157-214) has a high cyclomatic complexity (14).
+LibBytes.indexOf(bytes,bytes,uint256) (lib/solady/src/utils/LibBytes.sol#219-268) has a high cyclomatic complexity (13).
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#562-596) has a high cyclomatic complexity (12).
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#650-709) has a high cyclomatic complexity (13).
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#cyclomatic-complexity
+
+Detector: solc-version
+Version constraint ^0.8.4 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess
+	- AbiReencodingHeadOverflowWithStaticArrayCleanup
+	- DirtyBytesArrayToStorage
+	- DataLocationChangeInInternalOverride
+	- NestedCalldataArrayAbiReencodingSizeValidation
+	- SignedImmutables.
+It is used by:
+	- ^0.8.4 (lib/solady/src/utils/LibBytes.sol#2)
+	- ^0.8.4 (lib/solady/src/utils/LibString.sol#2)
+	- ^0.8.4 (lib/solady/src/utils/ReentrancyGuard.sol#2)
+	- ^0.8.4 (lib/solady/src/utils/SafeTransferLib.sol#2)
+	- ^0.8.4 (lib/solady/src/utils/SignatureCheckerLib.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+Detector: naming-convention
+Parameter LibBytes.set(LibBytes.BytesStorage,bytes).$ (lib/solady/src/utils/LibBytes.sol#30) is not in mixedCase
+Parameter LibBytes.setCalldata(LibBytes.BytesStorage,bytes).$ (lib/solady/src/utils/LibBytes.sol#55) is not in mixedCase
+Parameter LibBytes.clear(LibBytes.BytesStorage).$ (lib/solady/src/utils/LibBytes.sol#78) is not in mixedCase
+Parameter LibBytes.isEmpty(LibBytes.BytesStorage).$ (lib/solady/src/utils/LibBytes.sol#83) is not in mixedCase
+Parameter LibBytes.length(LibBytes.BytesStorage).$ (lib/solady/src/utils/LibBytes.sol#88) is not in mixedCase
+Parameter LibBytes.get(LibBytes.BytesStorage).$ (lib/solady/src/utils/LibBytes.sol#98) is not in mixedCase
+Parameter LibBytes.uint8At(LibBytes.BytesStorage,uint256).$ (lib/solady/src/utils/LibBytes.sol#127) is not in mixedCase
+Parameter LibString.set(LibString.StringStorage,string).$ (lib/solady/src/utils/LibString.sol#82) is not in mixedCase
+Parameter LibString.setCalldata(LibString.StringStorage,string).$ (lib/solady/src/utils/LibString.sol#87) is not in mixedCase
+Parameter LibString.clear(LibString.StringStorage).$ (lib/solady/src/utils/LibString.sol#92) is not in mixedCase
+Parameter LibString.isEmpty(LibString.StringStorage).$ (lib/solady/src/utils/LibString.sol#97) is not in mixedCase
+Parameter LibString.length(LibString.StringStorage).$ (lib/solady/src/utils/LibString.sol#102) is not in mixedCase
+Parameter LibString.get(LibString.StringStorage).$ (lib/solady/src/utils/LibString.sol#107) is not in mixedCase
+Parameter LibString.uint8At(LibString.StringStorage,uint256).$ (lib/solady/src/utils/LibString.sol#112) is not in mixedCase
+Parameter LibString.bytesStorage(LibString.StringStorage).$ (lib/solady/src/utils/LibString.sol#117) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects.asm_0.callIsValidSignature().signer__isValidERC6492SignatureNowAllowSideEffects_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#326) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects.asm_0.callIsValidSignature().hash__isValidERC6492SignatureNowAllowSideEffects_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#326) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNowAllowSideEffects.asm_0.callIsValidSignature().signature__isValidERC6492SignatureNowAllowSideEffects_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#326) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNow.asm_0.callIsValidSignature().signer__isValidERC6492SignatureNow_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#406) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNow.asm_0.callIsValidSignature().hash__isValidERC6492SignatureNow_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#406) is not in mixedCase
+Parameter SignatureCheckerLib.isValidERC6492SignatureNow.asm_0.callIsValidSignature().signature__isValidERC6492SignatureNow_asm_0_callIsValidSignature (lib/solady/src/utils/SignatureCheckerLib.sol#406) is not in mixedCase
+Variable PoolBalancer.FWA_FACTORY (src/PoolBalancer.sol#131) is not in mixedCase
+Variable PoolBalancer.FWA_IMPLEMENTATION (src/PoolBalancer.sol#132) is not in mixedCase
+Variable PoolBalancer.FWA_IMPLEMENTATION_CODEHASH (src/PoolBalancer.sol#133) is not in mixedCase
+Variable PoolBalancer.SHAPES (src/PoolBalancer.sol#134) is not in mixedCase
+Variable PoolBalancer.PACKS (src/PoolBalancer.sol#135) is not in mixedCase
+Variable PoolBalancer.ENS (src/PoolBalancer.sol#136) is not in mixedCase
+Function IShapePacks.MIN_PACK_VALUE() (src/interfaces/External.sol#151) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+
+Detector: too-many-digits
+LibString.escapeHTML(string) (lib/solady/src/utils/LibString.sol#725-754) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x08,0xc0000000a6ab) (lib/solady/src/utils/LibString.sol#734)
+LibString.escapeHTML(string) (lib/solady/src/utils/LibString.sol#725-754) uses literals with too many digits:
+	- ! 1 << c_escapeHTML_asm_0 & 0x500000c400000000 (lib/solady/src/utils/LibString.sol#741-745)
+LibString.encodeURIComponent(string) (lib/solady/src/utils/LibString.sol#825-851) uses literals with too many digits:
+	- ! 1 & 0x47fffffe87fffffe03ff678200000000 >> c_encodeURIComponent_asm_0 (lib/solady/src/utils/LibString.sol#837-843)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- ALPHANUMERIC_7_BIT_ASCII = 0x7fffffe07fffffe03ff000000000000 (lib/solady/src/utils/LibString.sol#48)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- LETTERS_7_BIT_ASCII = 0x7fffffe07fffffe0000000000000000 (lib/solady/src/utils/LibString.sol#51)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- LOWERCASE_7_BIT_ASCII = 0x7fffffe000000000000000000000000 (lib/solady/src/utils/LibString.sol#54)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- UPPERCASE_7_BIT_ASCII = 0x7fffffe0000000000000000 (lib/solady/src/utils/LibString.sol#57)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- DIGITS_7_BIT_ASCII = 0x3ff000000000000 (lib/solady/src/utils/LibString.sol#60)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- HEXDIGITS_7_BIT_ASCII = 0x7e0000007e03ff000000000000 (lib/solady/src/utils/LibString.sol#63)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- OCTDIGITS_7_BIT_ASCII = 0xff000000000000 (lib/solady/src/utils/LibString.sol#66)
+LibString.slitherConstructorConstantVariables() (lib/solady/src/utils/LibString.sol#15-977) uses literals with too many digits:
+	- PUNCTUATION_7_BIT_ASCII = 0x78000001f8000001fc00fffe00000000 (lib/solady/src/utils/LibString.sol#72)
+SafeTransferLib.safeTransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#254-272) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x0c,0x23b872dd000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#261)
+SafeTransferLib.trySafeTransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#277-295) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x0c,0x23b872dd000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#287)
+SafeTransferLib.safeTransferAllFrom(address,address,address) (lib/solady/src/utils/SafeTransferLib.sol#301-334) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x0c,0x70a08231000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#310)
+SafeTransferLib.safeTransfer(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#338-354) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0xa9059cbb000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#343)
+SafeTransferLib.safeTransferAll(address,address) (lib/solady/src/utils/SafeTransferLib.sol#358-386) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0xa9059cbb000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#375)
+SafeTransferLib.safeApprove(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#390-405) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x095ea7b3000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#395)
+SafeTransferLib.safeApproveWithRetry(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#411-438) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x095ea7b3000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#416)
+SafeTransferLib.safeApproveWithRetry(address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#411-438) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x095ea7b3000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#422)
+SafeTransferLib.balanceOf(address,address) (lib/solady/src/utils/SafeTransferLib.sol#442-456) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x70a08231000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#446)
+SafeTransferLib.checkBalanceOf(address,address) (lib/solady/src/utils/SafeTransferLib.sol#461-477) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x70a08231000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#469)
+SafeTransferLib.permit2TransferFrom(address,address,address,uint256) (lib/solady/src/utils/SafeTransferLib.sol#508-533) uses literals with too many digits:
+	- mstore(uint256,uint256)(m_permit2TransferFrom_asm_0,0x36c78516000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#519)
+SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32) (lib/solady/src/utils/SafeTransferLib.sol#538-592) uses literals with too many digits:
+	- mstore(uint256,uint256)(0x00,0x7ecebe00000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#568)
+SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32) (lib/solady/src/utils/SafeTransferLib.sol#538-592) uses literals with too many digits:
+	- mstore(uint256,uint256)(m_permit2_asm_0,0x8fcbaf0c000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#573)
+SafeTransferLib.permit2(address,address,address,uint256,uint256,uint8,bytes32,bytes32) (lib/solady/src/utils/SafeTransferLib.sol#538-592) uses literals with too many digits:
+	- mstore(uint256,uint256)(m_permit2_asm_0,0xd505accf000000000000000000000000) (lib/solady/src/utils/SafeTransferLib.sol#582)
+SafeTransferLib.slitherConstructorConstantVariables() (lib/solady/src/utils/SafeTransferLib.sol#11-683) uses literals with too many digits:
+	- GAS_STIPEND_NO_GRIEF = 100000 (lib/solady/src/utils/SafeTransferLib.sol#52)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+src/PoolBalancer.sol analyzed (15 contracts with 101 detectors), 232 result(s) found

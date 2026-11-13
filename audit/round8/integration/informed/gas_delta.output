@@ -1,0 +1,144 @@
+/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getContractError.ts:84
+  return new ContractFunctionExecutionError(cause as BaseError, {
+         ^
+
+
+ContractFunctionExecutionError: Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.
+
+- Address must be a hex value of 20 bytes (40 hex characters).
+- Address must match its checksum counterpart.
+ 
+Estimate Gas Arguments:
+  from:                  0x70997970C51812dcA010C7d01b50e0d17dc79C8
+  to:                    0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1
+  data:                  0x6e4d243a
+  maxFeePerGas:          5 gwei
+  maxPriorityFeePerGas:  0.05 gwei
+ 
+Contract Call:
+  address:   0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1
+  function:  performUpkeep()
+  sender:    0x70997970C51812dcA010C7d01b50e0d17dc79C8
+
+Docs: https://viem.sh/docs/contract/estimateContractGas
+Version: viem@2.57.17
+    at getContractError (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getContractError.ts:84:10)
+    at estimateContractGas (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/estimateContractGas.ts:138:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/informed/gas_delta.ts:71:25) {
+  cause: EstimateGasExecutionError: Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.
+  
+  - Address must be a hex value of 20 bytes (40 hex characters).
+  - Address must match its checksum counterpart.
+   
+  Estimate Gas Arguments:
+    from:                  0x70997970C51812dcA010C7d01b50e0d17dc79C8
+    to:                    0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1
+    data:                  0x6e4d243a
+    maxFeePerGas:          5 gwei
+    maxPriorityFeePerGas:  0.05 gwei
+  
+  Version: viem@2.57.17
+      at getEstimateGasError (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getEstimateGasError.ts:42:10)
+      at estimateGas (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/estimateGas.ts:230:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async estimateContractGas (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/estimateContractGas.ts:126:17)
+      at async <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/informed/gas_delta.ts:71:25) {
+    cause: InvalidAddressError: Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.
+    
+    - Address must be a hex value of 20 bytes (40 hex characters).
+    - Address must match its checksum counterpart.
+    
+    Version: viem@2.57.17
+        at assertRequest (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/transaction/assertRequest.ts:39:11)
+        at prepareTransactionRequest (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/wallet/prepareTransactionRequest.ts:742:3)
+        at estimateGas (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/estimateGas.ts:169:17)
+        at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        at async estimateContractGas (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/estimateContractGas.ts:126:17)
+        at async <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/informed/gas_delta.ts:71:25) {
+      details: undefined,
+      docsPath: undefined,
+      metaMessages: [
+        '- Address must be a hex value of 20 bytes (40 hex characters).',
+        '- Address must match its checksum counterpart.'
+      ],
+      shortMessage: 'Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.',
+      version: '2.57.17'
+    },
+    details: undefined,
+    docsPath: undefined,
+    metaMessages: [
+      '- Address must be a hex value of 20 bytes (40 hex characters).',
+      '- Address must match its checksum counterpart.',
+      ' ',
+      'Estimate Gas Arguments:',
+      '  from:                  0x70997970C51812dcA010C7d01b50e0d17dc79C8\n' +
+        '  to:                    0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1\n' +
+        '  data:                  0x6e4d243a\n' +
+        '  maxFeePerGas:          5 gwei\n' +
+        '  maxPriorityFeePerGas:  0.05 gwei'
+    ],
+    shortMessage: 'Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.',
+    version: '2.57.17'
+  },
+  details: undefined,
+  docsPath: '/docs/contract/estimateContractGas',
+  metaMessages: [
+    '- Address must be a hex value of 20 bytes (40 hex characters).',
+    '- Address must match its checksum counterpart.',
+    ' ',
+    'Estimate Gas Arguments:',
+    '  from:                  0x70997970C51812dcA010C7d01b50e0d17dc79C8\n' +
+      '  to:                    0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1\n' +
+      '  data:                  0x6e4d243a\n' +
+      '  maxFeePerGas:          5 gwei\n' +
+      '  maxPriorityFeePerGas:  0.05 gwei',
+    ' ',
+    'Contract Call:',
+    '  address:   0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1\n' +
+      '  function:  performUpkeep()\n' +
+      '  sender:    0x70997970C51812dcA010C7d01b50e0d17dc79C8'
+  ],
+  shortMessage: 'Address "0x70997970C51812dcA010C7d01b50e0d17dc79C8" is invalid.',
+  version: '2.57.17',
+  abi: [
+    {
+      name: 'configure',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { type: 'uint16', name: 'markupBps' },
+        { type: 'uint256', name: 'target' }
+      ],
+      outputs: []
+    },
+    {
+      name: 'open',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [],
+      outputs: []
+    },
+    {
+      name: 'performUpkeep',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [],
+      outputs: [ { type: 'uint256' } ]
+    },
+    {
+      name: 'getActiveIds',
+      type: 'function',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [ { type: 'uint256[]' } ]
+    }
+  ],
+  args: undefined,
+  contractAddress: '0xDc2DF8c7D9e8B087C986125b03aFCCAF22306ce1',
+  formattedArgs: undefined,
+  functionName: 'performUpkeep',
+  sender: '0x70997970C51812dcA010C7d01b50e0d17dc79C8'
+}
+
+Node.js v22.19.0

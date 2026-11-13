@@ -1,0 +1,76 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "actor": "0x00000000000000000000000000000000c0dec0de",
+  "payer": "0x00000000000000000000000000000000c0dec0de",
+  "purchaser": "0x00000000000000000000000000000000c0dec0de",
+  "callbackRoute": "actual coordinator -> real VRF service -> real FWA pool",
+  "selectedDenom": "0",
+  "fee": "22520339287470837",
+  "vrf": "2457000000000000",
+  "playerTotal": "24977339287470837",
+  "backingRedeemed": "10000000000000000",
+  "keeperReward": "1145000000000000",
+  "keeperRecipient": "0x00000000000000000000000000000000c0dEc0DE",
+  "measuredKeeperGas": "786023",
+  "listedPrice": "13645000000000000",
+  "callbackReceipt": {
+    "txHash": "0x53da0fc997affae11d0f2ec572f9f5c4bfe20c46f8a448bfbc07ea2ceabf7974",
+    "status": "success",
+    "from": "0xd7f86b4b8cae7d942340ff628f82735b7a20893a",
+    "to": "0x7d93bd9de5dc121992ea4a59e61b2519fa1ed65d"
+  },
+  "refundProbe": {
+    "txHash": "0xe1786939a3aabd11a935a7ce7c84cc94c77d270b453a03a0261b22cc3da167a0",
+    "status": "reverted",
+    "billedGas": "32858",
+    "effectiveGasPrice": "1050000000",
+    "revertSelector": "0x83ad9f5a"
+  },
+  "receipts": [
+    {
+      "txHash": "0xa022b447e5f8befbe41126ef8831d291939dc9ac9d57a1105061f362e0029e4d",
+      "status": "success",
+      "from": "0x00000000000000000000000000000000c0dec0de",
+      "gasUsed": "550246",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "577758300000000"
+    },
+    {
+      "txHash": "0x746b237546a9970ec296b3e04704cb122a509eb9b7b4ede78e7348f36f1412d5",
+      "status": "success",
+      "from": "0x00000000000000000000000000000000c0dec0de",
+      "gasUsed": "30474",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "31997700000000"
+    },
+    {
+      "txHash": "0xc8e20fc2dd7b221158cd3fdaa1f8f0224a2f3d9ef1961c55849ea015fe1ff687",
+      "status": "success",
+      "from": "0x00000000000000000000000000000000c0dec0de",
+      "gasUsed": "776126",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "814932300000000"
+    },
+    {
+      "txHash": "0xe1f0cd1e03b61e18dfdb231e9852f5d56d2e82eb76c4666d6ea281137174ea92",
+      "status": "success",
+      "from": "0x00000000000000000000000000000000c0dec0de",
+      "gasUsed": "62485",
+      "effectiveGasPrice": "1050000000",
+      "gasCost": "65609250000000"
+    }
+  ],
+  "actorGasCost": "1490297550000000",
+  "expectedActorLoss": "15322636837470837",
+  "observedActorLoss": "15322636837470837",
+  "actorStart": "100000000000000000000",
+  "actorEnd": "99984677363162529163",
+  "rawBalances": {
+    "afterBuy": "0x56b6c93f391292e0b",
+    "afterProcess": "0x56b6c76d9859e650b",
+    "afterUpkeep": "0x56b6da30b65a10a0b",
+    "afterRedeem": "0x56b90ee51fd57bd8b"
+  },
+  "sourceOfRandomWord": "coordinator-delivered test word; not under player control on mainnet"
+}

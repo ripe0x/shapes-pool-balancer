@@ -1,0 +1,9 @@
+No files changed, compilation skipped
+
+Ran 3 tests for audit/round9/lane_b/Econ.t.sol:EconTest
+[PASS] testClaimPreservesFund() (gas: 14911106)
+[PASS] testFullCycleNothingStranded() (gas: 15522076)
+[PASS] testNftSaleMoneyBookedAsProfit() (gas: 15240112)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 365.90ms (85.08ms CPU time)
+
+Ran 1 test suite in 383.93ms (365.90ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

@@ -1,0 +1,31 @@
+Warning: lib/forge-std: missing from foundry.lock (found dc647cc030d9d65910d8f1172a0cde48d7106e32)
+Warning: lib/shape-packs: missing from foundry.lock (found 3a463f750eee56b0ca175999f184a32909173780)
+Warning: lib/solady: missing from foundry.lock (found acd959aa4bd04720d640bf4e6a5c71037510cc4b)
+Unable to resolve imports:
+      "../../../../src/PoolBalancer.sol" in "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/validation/new_creator/HostileCreator.sol"
+      "../../../../src/BalancerFactory.sol" in "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/validation/new_creator/HostileCreator.sol"
+with remappings:
+      forge-std/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/forge-std/src/
+      solady/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/solady/src/
+      packs/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/src/
+      shapes/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/lib/shapes/src/
+      @openzeppelin/contracts/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/
+      ladder/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/lib/shapes/ladders/mainnet/
+      openzeppelin-contracts/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/
+      shape-packs/=/Users/dd/CascadeProjects/fwa-pool-balancer/lib/shape-packs/
+Compiling 60 files with Solc 0.8.28
+Solc 0.8.28 finished in 202.13ms
+Error: Compiler run failed:
+Error (6275): Source "audit/src/PoolBalancer.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "audit/src/PoolBalancer.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/lane_b/validation/new_creator/HostileCreator.sol:5:1:
+  |
+5 | import {PoolBalancer} from "../../../../src/PoolBalancer.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "audit/src/BalancerFactory.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "audit/src/BalancerFactory.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/lane_b/validation/new_creator/HostileCreator.sol:6:1:
+  |
+6 | import {BalancerFactory} from "../../../../src/BalancerFactory.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

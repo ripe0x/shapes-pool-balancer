@@ -1,0 +1,22 @@
+=== RUN: MintFeeRoseGate ===
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.37s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/focused/MintFeeRoseGate.t.sol:MintFeeRoseGateTest
+[PASS] testMintFeeRoseGate() (gas: 6727776)
+Logs:
+  live mintFee at setup: 1000000000000000
+  reserve before / after fee rise: 44000000000000000 45000000000000000
+  missing shapes still present, restock blocked by MINT_FEE_ROSE
+  final balancer balance after close+withdraw-all: 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 504.07ms (247.52ms CPU time)
+
+Ran 1 test suite in 509.15ms (504.07ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

@@ -1,0 +1,38 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.93s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/controller/UpkeepOrder.t.sol:UpkeepOrderTest
+[PASS] testCuratedDrawUpkeepBooksMoreThanExpected() (gas: 82722006)
+Logs:
+  curated NFT drawn
+    listings in split set before reconcile: 6
+    profit booked, collect first (draw-time set): 1985495699365404
+    profit booked, upkeep (reconcile then collect): 0
+    claimable after collect first: 1985495699365404
+    claimable after collect first, then upkeep: 16970031742476116
+    fund / reserve after collect first + upkeep: 58984536043110712 44000000000000000
+    claimable after upkeep only: 16970031742476116
+    fund / reserve after upkeep only: 60970031742476116 44000000000000000
+
+[PASS] testShapeDrawUpkeepOrder() (gas: 8189279)
+Logs:
+  0.01 Shape drawn
+    listings in split set before reconcile: 6
+    profit booked, collect first (draw-time set): 1985495699365404
+    profit booked, upkeep (reconcile then collect): 0
+    claimable after collect first: 1985495699365404
+    claimable after collect first, then upkeep: 5725031742476116
+    fund / reserve after collect first + upkeep: 47739536043110712 44000000000000000
+    claimable after upkeep only: 5725031742476116
+    fund / reserve after upkeep only: 49725031742476116 44000000000000000
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 511.52ms (74.54ms CPU time)
+
+Ran 1 test suite in 514.75ms (511.52ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

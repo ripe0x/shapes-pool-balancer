@@ -1,0 +1,3 @@
+FAIL: path P8_refund_open_questions: unresolved outcome
+FAIL: independent review: missing or outside manifest directory
+FAIL: independent reviewer must assess every postcondition

@@ -31,18 +31,24 @@ abstract contract ForkBase is Test {
     IFWAPool internal pool;
     IShapes internal shapes = IShapes(SHAPES);
     MockNFT internal nft;
+    address internal packs;
 
     address internal creator = makeAddr("creator");
     address internal keeper = makeAddr("keeper");
     address internal buyer = makeAddr("buyer");
     address internal stranger = makeAddr("stranger");
+    address internal keeperAdmin = makeAddr("keeperAdmin");
 
     function setUpFork() internal {
         vm.createSelectFork("mainnet", FORK_BLOCK);
+        // Foundry runs test transactions at gas price 0, and at basefee 0 inside calls, unless set here; every fee,
+        // keeper reward and VRF charge depends on these. test/ForkContext.t.sol fails if they stop reaching calls.
         vm.txGasPrice(1 gwei);
         vm.fee(0.5 gwei);
-        PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, ENS);
-        factory = new BalancerFactory(address(impl));
+        address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
+        packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
+        PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
+        factory = new BalancerFactory(address(impl), keeperAdmin);
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
@@ -63,6 +69,14 @@ abstract contract ForkBase is Test {
         }
     }
 
+    /// @dev Pack sixteen prize counts: the nine Shapes denominations, then the pack sizes
+    ///      0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH.
+    function plan16(uint256[16] memory counts) internal pure returns (uint256 p) {
+        for (uint256 d; d < 16; ++d) {
+            p |= counts[d] << (16 * d);
+        }
+    }
+
     function listCurated(uint256 id, uint256 base) internal returns (uint256 lid) {
         nft.mint(creator, id);
         vm.startPrank(creator);
@@ -71,16 +85,10 @@ abstract contract ForkBase is Test {
         vm.stopPrank();
     }
 
-    function configure(uint256 maxDrawPrice, uint16 minOdds, uint256[] memory plans) internal {
+    /// @dev Configure at MARKUP with prize target `t` (see `plan`, `plan16`).
+    function configure(uint256 t) internal {
         vm.prank(creator);
-        balancer.configure(
-            PoolBalancer.Config({
-                maxDrawPrice: uint128(maxDrawPrice),
-                minCuratedOddsBps: minOdds,
-                markupBps: MARKUP
-            }),
-            plans
-        );
+        balancer.configure(MARKUP, t);
     }
 
     function upkeep() internal {
@@ -88,12 +96,17 @@ abstract contract ForkBase is Test {
         balancer.performUpkeep();
     }
 
-    /// @dev Run upkeep until the plan is fully listed (each call is bounded by MAX_OPS).
-    function fillUp() internal {
-        upkeep();
-        for (uint256 i; i < 10 && balancer.admissionStatus() == 2; ++i) {
-            upkeep();
+    /// @dev Run upkeep until it has nothing left to do (each call is bounded by MAX_OPS); returns the calls that worked.
+    function fillUp() internal returns (uint256 calls) {
+        for (uint256 i; i < 40; ++i) {
+            vm.prank(keeper, keeper);
+            try balancer.performUpkeep() {
+                ++calls;
+            } catch {
+                return calls;
+            }
         }
+        revert("upkeep never settled");
     }
 
     function buy(address who, uint256 count) internal returns (uint256[] memory ids) {

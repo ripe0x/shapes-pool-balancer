@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round9/lane_b/Scenario.t.sol:ScenarioTest
+[PASS] testCreatorNetAndRoundTrip() (gas: 16386416)
+[PASS] testOpenCloseRoundTripNoDraws() (gas: 2899644)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 334.43ms (33.44ms CPU time)
+
+Ran 1 test suite in 353.00ms (334.43ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

@@ -1,0 +1,37 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "creator": "0xc5c7b46843014B1591e9aF24de797156cde67f08",
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "keeper": "0x00000000000000000000000000000000c0dec0df",
+  "factory": "0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3",
+  "balancer": "0xF586a9DaC85D6009Fcb2aC87f9E2512e8e148ed5",
+  "pool": "0xb01D20E4299F004204A59bF657f77E2Fb7d97F7E",
+  "opening": {
+    "txHash": "0x48b773ff7e7a392e3c80d43bf7f6e92810988eb8a72a65fd9c793ce329cfe106",
+    "oldRestockFee": "290000000000000",
+    "oldListedPrice": "12790000000000000",
+    "keeperCredit": "0"
+  },
+  "draw": {
+    "txHash": "0x06c6f46ee7866b444f4d950d5f78d8aae04b2d486bfa4d48c775bdae2f24f5e1",
+    "quoteFee": "25898865256155845",
+    "vrf": "11583000000000000",
+    "total": "37481865256155845",
+    "listingId": "2",
+    "status": "2"
+  },
+  "replacement": {
+    "txHash": "0xc4b95f309471d1c89dbfc2bcddef7857dce8e3d9cd8ee84055425dd6918eb6c7",
+    "newRestockFee": "4655000000000000",
+    "newListedPrice": "17155000000000000",
+    "creditBefore": "0",
+    "creditAfter": "179348100000000",
+    "measuredGas": "803162",
+    "billedGas": "793242",
+    "effectiveGasPrice": "4950000000",
+    "reward": "4475651900000000",
+    "billedCost": "3926547900000000",
+    "keeperWalletDelta": "549104000000000"
+  }
+}

@@ -1,0 +1,15 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 938.05ms
+Compiler run successful!
+
+Ran 1 test for audit/round9/integration/RestockInventoryVersion.t.sol:RestockInventoryVersionTest
+[PASS] test_listingBumpsInventoryVersion() (gas: 2648714)
+Logs:
+  inventoryVersion before listing: 0
+  inventoryVersion after 1st listing: 1
+  inventoryVersion after restock listing: 2
+  version delta per listing: 1
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 486.34ms (486.14ms CPU time)
+
+Ran 1 test suite in 520.26ms (486.34ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

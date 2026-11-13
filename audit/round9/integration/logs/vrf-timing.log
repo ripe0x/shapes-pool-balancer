@@ -1,0 +1,30 @@
+Compiling 57 files with Solc 0.8.28
+Compiling 31 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.95s
+Solc 0.8.28 finished in 3.93s
+Compiler run successful!
+
+Ran 3 tests for audit/round9/integration/FwaVrfTiming.t.sol:FwaVrfTimingTest
+[PASS] testFactoryParamsLiveAtPinned() (gas: 38531)
+[PASS] testFactoryParamsLiveAtRecent() (gas: 38674)
+[PASS] testVrfFeeMovesWithGasPrice() (gas: 793853)
+Logs:
+  gasprice(wei): 0
+    vrfServiceFee(wei): 0
+  gasprice(wei): 100000000
+    vrfServiceFee(wei): 234000000000000
+  gasprice(wei): 1000000000
+    vrfServiceFee(wei): 2340000000000000
+  gasprice(wei): 3000000000
+    vrfServiceFee(wei): 7020000000000000
+  gasprice(wei): 5000000000
+    vrfServiceFee(wei): 11700000000000000
+  gasprice(wei): 50000000000
+    vrfServiceFee(wei): 117000000000000000
+  vrf @ gasprice 0: 0
+  vrf @ gasprice 5gwei: 11700000000000000
+  underestimate (5gwei - 0): 11700000000000000
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 763.87ms (1.66s CPU time)
+
+Ran 1 test suite in 785.14ms (763.87ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

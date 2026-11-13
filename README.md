@@ -4,8 +4,9 @@ Creator-operated [FWA](https://pools.fwa.fun) community pools that use ETH-backe
 [Shapes](https://shapes.ripe.wtf) as automatically replenished inventory.
 
 A creator deploys a `PoolBalancer`, which creates and permanently owns an FWA standard pool. The creator lists curated
-NFTs and approves a Shapes plan; players buy on FWA's own site with ETH; a permissionless keeper restores Shapes after
-draws from the Balancer's ETH and settled proceeds. Surplus above the funded reserve belongs to the creator.
+NFTs and sets a target mix of ETH-backed prizes (Shapes and Draw Packs); players buy on FWA's own site with ETH; a
+permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. Surplus above the reserve
+belongs to the creator.
 
 **Not deployed to mainnet.** See [docs/READINESS.md](docs/READINESS.md).
 
@@ -103,7 +104,7 @@ anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 2638234
 ```
 
 ```bash
-forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
+PACKS_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 KEEPER_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
 ```
 
 ```bash

@@ -1,0 +1,6 @@
+Warning: lib/forge-std: missing from foundry.lock (found dc647cc030d9d65910d8f1172a0cde48d7106e32)
+Warning: lib/shape-packs: missing from foundry.lock (found 3a463f750eee56b0ca175999f184a32909173780)
+Warning: lib/solady: missing from foundry.lock (found acd959aa4bd04720d640bf4e6a5c71037510cc4b)
+Compiling 8 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.49s
+Compiler run successful!

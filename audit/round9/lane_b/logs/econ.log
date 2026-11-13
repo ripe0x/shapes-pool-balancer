@@ -1,0 +1,37 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.91s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Econ.t.sol:31:9:
+   |
+31 |         uint256 deposited = 5 ether;
+   |         ^^^^^^^^^^^^^^^^^
+
+
+Ran 3 tests for audit/round9/lane_b/Econ.t.sol:EconTest
+[PASS] testClaimPreservesFund() (gas: 14911106)
+Logs:
+  claim / fundBefore / fundAfter 4931001521973057574 4975001521973057574 44000000000000000
+  claim / fundBefore / fundAfter 8999253773057574 52999253773057574 44000000000000000
+  claim / fundBefore / fundAfter 8999253773057574 52999253773057574 44000000000000000
+  claim / fundBefore / fundAfter 8999253773057574 52999253773057574 44000000000000000
+  claim / fundBefore / fundAfter 8999253773057574 52999253773057574 44000000000000000
+
+[PASS] testFullCycleNothingStranded() (gas: 15522071)
+Logs:
+  balancer residual wei 0
+  pool ownerProceeds residual 0
+
+[FAIL: expected below reserve: 5000000000000000000 >= 66000000000000000] testNftSaleMoneyBookedAsProfit() (block: 26382349) (gas: 3240390)
+Suite result: FAILED. 2 passed; 1 failed; 0 skipped; finished in 294.90ms (59.79ms CPU time)
+
+Ran 1 test suite in 312.80ms (294.90ms CPU time): 2 tests passed, 1 failed, 0 skipped (3 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_b/Econ.t.sol:EconTest
+[FAIL: expected below reserve: 5000000000000000000 >= 66000000000000000] testNftSaleMoneyBookedAsProfit() (block: 26382349) (gas: 3240390)
+
+Encountered a total of 1 failing tests, 2 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

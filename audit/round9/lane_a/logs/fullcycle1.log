@@ -1,0 +1,63 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.75s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_a/FullCycle.t.sol:75:9:
+   |
+75 |         IFWAPool p = b.pool();
+   |         ^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_a/FullCycle.t.sol:79:9:
+   |
+79 |         uint256 need = b.requiredReserve(); // zero while closed; compute after enabling via a trial
+   |         ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> audit/round9/lane_a/FullCycle.t.sol:135:9:
+    |
+135 |         IFWAPool p = b.pool();
+    |         ^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> audit/round9/lane_a/FullCycle.t.sol:140:9:
+    |
+140 |         uint256 deposited = 10 ether;
+    |         ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> audit/round9/lane_a/FullCycle.t.sol:194:9:
+    |
+194 |         uint256 creatorBalBefore = creator.balance;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 2 tests for audit/round9/lane_a/FullCycle.t.sol:FullCycle
+[FAIL: custom error 0x24e6a72a] testFullCycleConservation() (block: 26382349) (gas: 5679460)
+[FAIL: M9: curated (NFT sale) proceeds booked as withdrawable profit: 0 <= 0] testM9CuratedDraw() (block: 26382349) (gas: 93407877)
+Logs:
+  curated drawn at w = 45
+  profit after curated draw (wei): 0
+  fund (wei): 75357977029244281
+  requiredReserve (wei): 44000000000000000
+  fund < reserve (game-first regime)? false
+
+Suite result: FAILED. 0 passed; 2 failed; 0 skipped; finished in 343.97ms (45.45ms CPU time)
+
+Ran 1 test suite in 359.59ms (343.97ms CPU time): 0 tests passed, 2 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 2 failing tests in audit/round9/lane_a/FullCycle.t.sol:FullCycle
+[FAIL: custom error 0x24e6a72a] testFullCycleConservation() (block: 26382349) (gas: 5679460)
+[FAIL: M9: curated (NFT sale) proceeds booked as withdrawable profit: 0 <= 0] testM9CuratedDraw() (block: 26382349) (gas: 93407877)
+
+Encountered a total of 2 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

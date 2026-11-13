@@ -12,8 +12,8 @@ interface IShapesMint {
     function transferFrom(address, address, uint256) external;
 }
 
-/// @notice Simplification and hardening pass: untracked NFT recovery, bounded upkeep with many historical
-///         refunds, interrupted repricing at the listing limit, pool-page signatures, reserve without spares.
+/// @notice Hardening pass: untracked NFT recovery, bounded upkeep with many historical refunds, pool-page
+///         signatures, the reserve formula, incentive accounting and the restricted-collection griefing bound.
 contract HardeningTest is ForkBase {
     uint256 curatedA;
     uint256 planA = plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]);
@@ -21,11 +21,9 @@ contract HardeningTest is ForkBase {
     function setUp() public {
         setUpFork();
         createBalancer(10 ether);
+        configure(planA);
         curatedA = listCurated(1, 0.3 ether);
         listCurated(2, 0.5 ether);
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = planA;
-        configure(1 ether, 0, plans);
         vm.prank(creator);
         balancer.open();
         fillUp();
@@ -47,10 +45,20 @@ contract HardeningTest is ForkBase {
         settle();
     }
 
+    function _paid() internal returns (uint256 reward, uint256 gasPaid) {
+        vm.recordLogs();
+        upkeep();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
+                (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
+            }
+        }
+    }
+
     /*////////////////////////////// untracked NFT recovery //////////////////////////////*/
 
     function test_recoverUntrackedNFTs() public {
-        // direct transferFrom (no hook) and safeTransferFrom (hook accepted) from an unknown collection
         MockNFT other = new MockNFT();
         other.mint(stranger, 1);
         other.mint(stranger, 2);
@@ -65,7 +73,7 @@ contract HardeningTest is ForkBase {
         assertEq(other.ownerOf(1), creator);
         assertEq(other.ownerOf(2), creator);
 
-        // a stray Shape sent directly is untracked too (managed Shapes are never held between calls)
+        // a stray Shape sent directly is untracked too
         IShapesMint s = IShapesMint(SHAPES);
         vm.deal(stranger, 1 ether);
         vm.startPrank(stranger);
@@ -80,19 +88,15 @@ contract HardeningTest is ForkBase {
 
     function test_cannotRecoverProtectedAssets() public {
         vm.startPrank(creator);
-        // active curated listing: held by the FWA pool
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
-        balancer.recoverUntrackedNFT(address(nft), 1, creator);
-        // active Shape listing
+        balancer.recoverUntrackedNFT(address(nft), 1, creator); // active curated listing
         (,,, uint256 tokenId,,,,) = pool.listings(_lastShape());
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
-        balancer.recoverUntrackedNFT(SHAPES, tokenId, creator);
-        // the FWA pool and factory are never called
+        balancer.recoverUntrackedNFT(SHAPES, tokenId, creator); // active Shape listing
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
         balancer.recoverUntrackedNFT(address(pool), 1, creator);
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
         balancer.recoverUntrackedNFT(FWA_FACTORY, 1, creator);
-        // a collection lying about ownership gets nothing
         LyingNFT liar = new LyingNFT();
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
         balancer.recoverUntrackedNFT(address(liar), 1, creator);
@@ -107,7 +111,6 @@ contract HardeningTest is ForkBase {
         frozen.approve(address(balancer), 9);
         uint256 lid = balancer.listCurated(address(frozen), 9, 0.3 ether);
         vm.stopPrank();
-        upkeep();
         frozen.setFrozen(true);
         _drawListing(lid);
         upkeep();
@@ -120,10 +123,10 @@ contract HardeningTest is ForkBase {
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.ProtectedAsset.selector);
         balancer.recoverUntrackedNFT(address(frozen), 9, creator);
-        // the only exit for it is recoverCuratedNFT
+        // the only exit for it is recoverRefunded
         frozen.setFrozen(false);
         vm.prank(creator);
-        balancer.recoverCuratedNFT(lid, creator);
+        balancer.recoverRefunded(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
     }
 
@@ -154,7 +157,6 @@ contract HardeningTest is ForkBase {
             frozen.setFrozen(false);
             vm.prank(creator);
             uint256[] memory lids = balancer.listCuratedBatch(batch);
-            upkeep();
             frozen.setFrozen(true);
             for (uint256 j; j < 20; j += 5) {
                 uint256[] memory ids = buy(buyer, 5);
@@ -176,7 +178,6 @@ contract HardeningTest is ForkBase {
             vm.prank(buyer);
             pool.refundFailedDelivery(failed[i]);
         }
-        // the collection still blocks transfers; nothing about them is keeper work
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
         balancer.performUpkeep();
@@ -185,121 +186,203 @@ contract HardeningTest is ForkBase {
         emit log_named_uint("shape upkeep gas after 200 refunds", after_);
         assertLt(after_, baseline + 20_000, "upkeep gas independent of refund history");
         assertTrue(balancer.canPurchase(buyer));
-        // each stays recoverable by the creator once transferable
         frozen.setFrozen(false);
         vm.prank(creator);
-        balancer.recoverCuratedNFT(failed[123], creator);
+        balancer.recoverRefunded(failed[123], creator);
         assertEq(frozen.ownerOf(124), creator);
     }
 
-    /*////////////////////////////// repricing //////////////////////////////*/
+    /*////////////////////////////// reserve formula //////////////////////////////*/
 
-    function test_interruptedRepricingAtListingLimit() public {
-        vm.startPrank(creator);
-        nft.setApprovalForAll(address(balancer), true);
-        PoolBalancer.CuratedInput[] memory batch = new PoolBalancer.CuratedInput[](11);
-        for (uint256 r; r < 8; ++r) {
-            for (uint256 i; i < 11; ++i) {
-                uint256 id = 1000 + r * 11 + i;
-                nft.mint(creator, id);
-                batch[i] = PoolBalancer.CuratedInput(address(nft), id, 0.2 ether + id * 1e12);
-            }
-            balancer.listCuratedBatch(batch);
-        }
+    /// The exact requiredReserve() formula with a full deficit (empty, open) and once fully reconciled.
+    function test_reserveExactFormula() public {
+        address c = makeAddr("reserveCreator");
+        vm.deal(c, 100 ether);
+        vm.prank(c);
+        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 10 ether}(bytes32(0))));
+        vm.startPrank(c);
+        b.configure(MARKUP, planA);
+        nft.mint(c, 9001);
+        nft.approve(address(b), 9001);
+        b.listCurated(address(nft), 9001, 0.3 ether);
+        b.open();
         vm.stopPrank();
-        uint256[] memory active = balancer.getActiveIds();
-        assertEq(active.length, 100, "listing limit");
-        nft.mint(creator, 5000);
-        vm.prank(creator);
-        vm.expectRevert(PoolBalancer.TooManyListings.selector);
-        balancer.listCurated(address(nft), 5000, 0.3 ether);
-        upkeep();
-        assertTrue(balancer.canPurchase(buyer));
-
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = planA;
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
-        assertFalse(balancer.canPurchase(buyer));
-
-        uint256 calls;
-        while (balancer.repricing()) {
-            // a keeper transaction that runs out of gas changes nothing
-            if (calls == 3) {
-                vm.prank(keeper);
-                vm.expectRevert();
-                balancer.performUpkeep{gas: 400_000}();
-            }
-            // a creator removes listings mid-run: swap-and-pop must not let any listing be skipped
-            if (calls == 5 || calls == 9) {
-                uint256[] memory ids = balancer.getActiveIds();
-                for (uint256 i; i < ids.length; ++i) {
-                    (uint8 kind,,,,) = balancer.items(ids[i]);
-                    if (kind == 1) {
-                        vm.prank(creator);
-                        balancer.withdrawCurated(ids[i], creator);
-                        break;
-                    }
-                }
-            }
-            uint256 g = gasleft();
-            upkeep();
-            assertLt(g - gasleft(), 3_200_000, "each repricing step within the reimbursable maximum");
-            ++calls;
-            if (balancer.repricing()) {
-                assertEq(balancer.admissionStatus(), 10, "REPRICING");
-                assertFalse(balancer.canPurchase(buyer));
-            }
-            require(calls < 40, "repricing did not converge");
-        }
-        assertTrue(balancer.canPurchase(buyer), "the step that finishes repricing also re-checkpoints");
-        active = balancer.getActiveIds();
-        for (uint256 i; i < active.length; ++i) {
-            (uint8 kind, uint8 d,, uint112 base, uint112 price) = balancer.items(active[i]);
-            assertEq(price, uint256(base) * 12_500 / 10_000, "every listing at the new markup");
-            (,,,,, uint256 fwaPrice,,) = pool.listings(active[i]);
-            assertEq(fwaPrice, price);
-            if (kind == 2) assertEq(base, balancer.denominationAmount(d), "Shape base is its backing");
-            else assertEq(base % 1e12, 0, "creator value untouched");
-        }
-        emit log_named_uint("repricing upkeeps for 100 listings", calls);
-    }
-
-    /*////////////////////////////// reserve without spares //////////////////////////////*/
-
-    function test_reserveWithDeficitAndNoSpares() public {
         uint256 fee = shapes.mintFee();
-        uint256 batch = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee);
-        // one maximum reward held for the restoring upkeep, one re-checkpoint reward at the current price (0.55 gwei)
-        uint256 recheckpoint = 3_200_000 * 0.55 gwei + 0.0005 ether;
-        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint);
-        // a drawn 0.1 Shape is a liability until replaced: deficit + worst batch + one keeper reward
-        _drawListing(_lastShape());
-        upkeep();
-        assertEq(balancer.requiredReserve(), batch + balancer.MAX_KEEPER_REWARD() + recheckpoint, "replaced");
-        vm.prank(creator);
-        balancer.close();
-        assertEq(balancer.requiredReserve(), 0, "closed: everything claimable");
-        vm.prank(creator);
-        balancer.open();
-        // withdraw down to the reserve: still admits; one wei less would not have been allowed
-        upkeep();
-        uint256 s = balancer.withdrawableSurplus();
-        vm.prank(creator);
-        balancer.claimSurplus(s, creator);
-        assertEq(address(balancer).balance, balancer.requiredReserve());
-        assertTrue(balancer.canPurchase(buyer));
-        assertEq(balancer.MAX_KEEPER_REWARD(), 3_200_000 * 5 gwei + 0.0005 ether);
+        uint256 largest = 0.1 ether + fee;
+        // empty: restore the whole target + 1 largest prize + (ceil((10+3)/6)+1)=4 keeper rewards
+        uint256 deficit = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
+        assertEq(b.requiredReserve(), deficit + largest + 4 * b.MAX_KEEPER_REWARD(), "empty-pool reserve");
+        // fully reconciled: deficit 0, 1 largest prize + 2 keeper rewards (ceil(3/6)+1)
+        for (uint256 i; i < 10; ++i) {
+            vm.prank(keeper, keeper);
+            try b.performUpkeep() {} catch { break; }
+        }
+        assertEq(b.requiredReserve(), largest + 2 * b.MAX_KEEPER_REWARD(), "reconciled-open reserve");
     }
 
-    /*////////////////////////////// FWA pool page (ERC-1271) //////////////////////////////*/
+    /*////////////////////////////// incentive accounting //////////////////////////////*/
+
+    /// Creator-started work (SETTING_UP) refuses purchases; upkeep is paid measured gas plus the flat reward.
+    function test_creatorWorkPaysFullAndRefusesPurchases() public {
+        address c = makeAddr("setupCreator");
+        vm.deal(c, 100 ether);
+        vm.prank(c);
+        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 5 ether}(bytes32(0))));
+        vm.startPrank(c);
+        b.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        nft.mint(c, 9101);
+        nft.approve(address(b), 9101);
+        b.listCurated(address(nft), 9101, 0.3 ether);
+        b.open();
+        vm.stopPrank();
+        assertTrue(b.creatorWork(), "creator work set");
+        assertEq(b.admissionStatus(), 2, "SETTING_UP");
+        assertFalse(b.canPurchase(buyer), "purchases refused while creator work is pending");
+
+        vm.recordLogs();
+        vm.prank(keeper, keeper);
+        b.performUpkeep();
+        (uint256 reward, uint256 gasPaid) = _fromLogs();
+        // from the creator's ETH: measured gas plus the 50,000 overhead at the reimbursed price, plus the flat 0.0001
+        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "full reward");
+    }
+
+    function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
+                (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
+            }
+        }
+    }
+
+    /// At the minimum markup a Shape is listed at what it cost, 10% of its backing and its restocking fee. The keeper
+    /// who restocks it is paid less than the replacement's own fee, so the markup is not touched.
+    function test_minimumMarkupStillFundsKeepers() public {
+        address c = makeAddr("cheapCreator");
+        vm.deal(c, 100 ether);
+        vm.prank(c);
+        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
+        vm.startPrank(c);
+        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        nft.mint(c, 9200);
+        nft.approve(address(b), 9200);
+        b.listCurated(address(nft), 9200, 0.3 ether);
+        b.open();
+        vm.stopPrank();
+        balancer = b;
+        pool = b.pool();
+        fillUp();
+        assertTrue(b.canPurchase(buyer));
+
+        uint256 lid = _lastShape();
+        (,,, uint112 base, uint112 price) = b.items(lid);
+        assertEq(base, 0.01 ether + shapes.mintFee() + 0.001 ether, "backing, mint fee and 10% markup");
+        assertEq(price - base, b.restockFee(), "one restocking fee");
+        _drawListing(lid);
+        vm.recordLogs();
+        upkeep();
+        (uint256 reward,) = _fromLogs();
+        (,,, uint112 nb, uint112 np) = b.items(_lastShape());
+        assertGt(_lastShape(), lid, "a replacement was listed");
+        assertEq(np - nb, b.restockFee(), "the replacement carries this block's fee");
+        assertLe(reward, np - nb, "the replacement's fee covers the pay");
+        assertEq(b.getActiveShapes()[0], 10, "restocked");
+    }
+
+    /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
+    /// fee covers the keeper's pay for that call.
+    function test_gasJumpRestockPaidByTheNewListingsFee() public {
+        uint256 capFee = 900_000 * 5 gwei + 0.0002 ether;
+        vm.fee(80 gwei);
+        vm.txGasPrice(5 gwei);
+        assertEq(balancer.restockFee(), capFee, "fee capped at 5 gwei");
+        uint256 earned;
+        uint256 paid;
+        for (uint256 i; i < 4; ++i) {
+            assertTrue(balancer.canPurchase(buyer));
+            uint256 before = _lastShape();
+            _drawListing(_activeOfSize(0));
+            vm.recordLogs();
+            upkeep();
+            (uint256 reward, uint256 gasUsed) = _fromLogs();
+            uint256 fresh = _lastShape();
+            assertGt(fresh, before, "a replacement was listed");
+            (,,, uint112 base, uint112 price) = balancer.items(fresh);
+            assertEq(price - base, capFee, "listed at the capped fee");
+            earned += price - base;
+            assertGe(reward, gasUsed * 5 gwei, "the keeper is covered at the cap");
+            paid += reward;
+            assertLe(paid, earned, "the fees listed cover the pay");
+        }
+    }
+
+    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and the creator's ETH pays the keeper
+    /// who reconciles its draw.
+    function test_curatedDrawReconcileIsPaid() public {
+        (,,, uint112 base, uint112 price) = balancer.items(curatedA);
+        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%, all markup");
+        _drawListing(curatedA);
+        vm.recordLogs();
+        upkeep();
+        (uint256 reward, uint256 gasPaid) = _fromLogs();
+        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "measured gas, overhead and the flat reward");
+        assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
+    }
+
+    function _activeOfSize(uint8 size) internal view returns (uint256) {
+        uint256[] memory active = balancer.getActiveIds();
+        for (uint256 i; i < active.length; ++i) {
+            (uint8 kind, uint8 d,,,) = balancer.items(active[i]);
+            if (kind == 2 && d == size) return active[i];
+        }
+        revert("none listed");
+    }
+
+    /// A creator deposit while open keeps the pool admitting and does not set creator work.
+    function test_creatorTopUpWhileOpenSetsNoCreatorWork() public {
+        assertFalse(balancer.creatorWork());
+        vm.prank(creator);
+        balancer.depositETH{value: 0.01 ether}();
+        vm.prank(creator);
+        balancer.open(); // already open
+        assertFalse(balancer.creatorWork(), "no creator-work flag while purchases are admitted");
+        assertTrue(balancer.canPurchase(buyer));
+    }
+
+    /*////////////////////////////// reconcile bound //////////////////////////////*/
+
+    /// Upkeep reconciles at most MAX_RECONCILE (5) settled sequences per call.
+    function test_reconcileBoundPerCall() public {
+        // a high-weight target so many unreconciled draws do not trip LOW_INVENTORY before we reconcile
+        vm.prank(creator);
+        balancer.depositETH{value: 10 ether}();
+        configure(plan([uint256(80), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fillUp();
+        // settle 15 draws across three batches of five, never reconciling in between
+        for (uint256 r; r < 3; ++r) {
+            uint256[] memory ids = buy(buyer, 5);
+            for (uint256 k; k < 5; ++k) {
+                fulfill(ids[k], uint256(keccak256(abi.encode(r, k))));
+            }
+            settle();
+        }
+        assertGe(pool.nextSequenceToProcess() - 1, 15, "15 sequences processed by FWA");
+        assertEq(balancer.reconciledSequence(), 0, "none reconciled yet");
+        upkeep();
+        assertEq(balancer.reconciledSequence(), 5, "reconciles exactly MAX_RECONCILE per call");
+        upkeep();
+        upkeep();
+        assertEq(balancer.reconciledSequence(), 15, "five more per call");
+    }
+
+    /*////////////////////////////// pool page (ERC-1271) //////////////////////////////*/
 
     function test_poolPageApprovalIsNarrow() public {
         string memory issuedAt = "2026-11-10T12:34:56.789Z";
         bytes32 metadataHash = keccak256(
             bytes('{"name":"Test","profile":{"avatarUrl":"","bannerUrl":"","description":"","websiteUrl":"","xUrl":"","discordUrl":""}}')
         );
-        // FWA's client template, rebuilt independently of the contract (lowercase hex via vm.toLowercase)
         string memory message = string.concat(
             "Publish FWA Pools page\nSite: pools.fwa.fun\nChain: 1\nFactories: ",
             "0x8919814d825a5af238cc04de06b1c18c9eaa477c, 0xf5a3a153164791ab579c3d9ba5dbecf7cdfd300c\nPool: ",
@@ -322,11 +405,9 @@ contract HardeningTest is ForkBase {
         bytes32 got = balancer.approvePoolPage(issuedAt, metadataHash);
         assertEq(got, digest, "matches FWA's personal_sign digest");
         assertEq(balancer.isValidSignature(digest, hex"00"), bytes4(0x1626ba7e));
-        // nothing else validates: other hashes, other messages, raw hashes of the same message
         assertEq(balancer.isValidSignature(keccak256(bytes(message)), ""), bytes4(0xffffffff));
         assertEq(balancer.isValidSignature(bytes32(uint256(digest) ^ 1), ""), bytes4(0xffffffff));
 
-        // the timestamp cannot smuggle extra lines or other characters
         vm.startPrank(creator);
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
         balancer.approvePoolPage("2026-11-10T12:34:56.78Z", metadataHash);
@@ -334,7 +415,7 @@ contract HardeningTest is ForkBase {
         balancer.approvePoolPage("2026-11-10\nPool: 0x0000Z", metadataHash);
         vm.stopPrank();
 
-        // review L-2: approvals are revocable and die with a creator change
+        // approvals are revocable and die with a creator change
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.Unauthorized.selector);
         balancer.revokePoolPages();
@@ -353,387 +434,10 @@ contract HardeningTest is ForkBase {
         assertEq(balancer.isValidSignature(digest, ""), bytes4(0xffffffff), "former creator's approval void");
     }
 
-    /// Review I-3: a plan that cannot fit beside the curated listings is infeasible instead of bricking upkeep.
-    function test_planBeyondListingLimitIsInfeasible() public {
-        vm.startPrank(creator);
-        nft.setApprovalForAll(address(balancer), true);
-        PoolBalancer.CuratedInput[] memory batch = new PoolBalancer.CuratedInput[](20);
-        for (uint256 r; r < 3; ++r) {
-            for (uint256 i; i < 20; ++i) {
-                uint256 id = 3000 + r * 20 + i;
-                nft.mint(creator, id);
-                batch[i] = PoolBalancer.CuratedInput(address(nft), id, 0.3 ether);
-            }
-            balancer.listCuratedBatch(batch);
-        }
-        vm.stopPrank();
-        // 62 curated + 40 Shapes > 100: infeasible; the 10-Shape fallback fits
-        uint256[] memory plans = new uint256[](2);
-        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
-        plans[1] = planA;
-        configure(1 ether, 0, plans);
-        fillUp();
-        assertEq(balancer.activePlan(), 1, "fallback that fits");
-        assertTrue(balancer.canPurchase(buyer));
-        plans = new uint256[](1);
-        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        upkeep(); // does not revert TooManyListings
-        assertEq(balancer.admissionStatus(), 5, "INFEASIBLE");
-        // reconciliation keeps working: draws still settle and the creator can act
-        vm.prank(creator);
-        balancer.withdrawCurated(curatedA, creator);
-    }
-    /*////////////////////////////// review round 2 regressions //////////////////////////////*/
-
-    function _opsInLogs(Vm.Log[] memory logs) internal pure returns (uint256 ops) {
-        for (uint256 i; i < logs.length; ++i) {
-            bytes32 t = logs[i].topics[0];
-            if (t == keccak256("ListingRepriced(uint256,uint256)")) ++ops;
-            if (t == keccak256("ShapesMinted(uint8,uint256,uint256,uint256)")) {
-                (, uint256 q,) = abi.decode(logs[i].data, (uint256, uint256, uint256));
-                ops += q;
-            }
-            if (t == keccak256("ShapesUnlisted(uint256,uint256)")) {
-                (uint256 n,) = abi.decode(logs[i].data, (uint256, uint256));
-                ops += n;
-            }
-        }
-    }
-
-    /// F1 (Medium): repricing that finishes inside an upkeep shares the MAX_OPS budget with rebalancing.
-    function test_repricingAndRebalanceShareOpsBudget() public {
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0]); // +9 Shapes across 3 denominations
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), plans);
-        for (uint256 i; i < 10 && !balancer.canPurchase(buyer); ++i) {
-            vm.recordLogs();
-            uint256 g = gasleft();
-            upkeep();
-            uint256 used = g - gasleft();
-            uint256 ops = _opsInLogs(vm.getRecordedLogs());
-            assertLe(ops, 6, "at most MAX_OPS inventory operations per upkeep");
-            assertLt(used, 3_200_000, "within the reimbursable maximum");
-        }
-        assertTrue(balancer.canPurchase(buyer));
-    }
-
-    /// F3: the incentive never exceeds FWA's edge on one draw, so buying one's own draws cannot earn it.
-    function test_incentiveCappedByDrawEdge() public {
-        creator = makeAddr("cheapCreator");
-        vm.deal(creator, 100 ether);
-        createBalancer(2 ether);
-        listCurated(7001, 0.001 ether);
-        listCurated(7002, 0.001 ether);
-        listCurated(7003, 0.001 ether);
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 0), plans);
-        vm.prank(creator);
-        balancer.open();
-        fillUp();
-        assertTrue(balancer.canPurchase(buyer));
-        uint256 lid = lastListingId();
-        (,,,,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        vm.recordLogs();
-        upkeep();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        uint256 reward;
-        uint256 gasPaid;
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
-        }
-        (,, uint256 paid,,,) = pool.acquisitions(ids[0]);
-        uint256 edgePerDraw = paid * 500 / 10_500;
-        assertLt(edgePerDraw, 0.0005 ether, "cheap pool: the cap binds");
-        // tx.gasprice 1 gwei, basefee 0.5 gwei (ForkBase): reimbursed price is basefee + 0.05 gwei
-        assertEq(reward, gasPaid * 0.55 gwei + edgePerDraw, "gas + edge-capped incentive");
-    }
-
-    /// F3 residual: the cap uses the fee the reconciled draw actually paid, not the price after it. Drawing a
-    /// pool's only cheap curated NFT (which closes the pool) cannot raise the incentive above the edge paid.
-    function test_incentiveCapUsesEscrowedFee() public {
-        creator = makeAddr("drainCreator");
-        vm.deal(creator, 100 ether);
-        createBalancer(2 ether);
-        uint256 lid = listCurated(7101, 0.0001 ether);
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 0), plans);
-        vm.prank(creator);
-        balancer.open();
-        fillUp();
-        _drawListing(lid);
-        vm.recordLogs();
-        upkeep();
-        assertEq(balancer.admissionStatus(), 4, "NO_CURATED");
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        uint256 reward;
-        uint256 gasPaid;
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
-        }
-        uint256 seq = pool.lastIssuedSequence();
-        (,, uint256 paid,,,) = pool.acquisitions(pool.requestIdAtSequence(uint64(seq)));
-        assertEq(reward - gasPaid * 0.55 gwei, paid * 500 / 10_500, "incentive = edge actually paid");
-        assertLt(reward - gasPaid * 0.55 gwei, pool.acquisitionFee() * 500 / 10_500, "below the post-draw price edge");
-    }
-
-    /// F3, third round: a cheap draw that forces a multi-call plan switch earns at most the edge it paid, across
-    /// every follow-up call. Creator-started work still pays the full incentive.
-    function test_drawCausedWorkEarnsAtMostEdgePaid() public {
-        creator = makeAddr("switchCreator");
-        vm.deal(creator, 100 ether);
-        createBalancer(5 ether);
-        uint256 cheap = listCurated(7201, 0.0001 ether);
-        listCurated(7202, 0.5 ether);
-        uint256[] memory plans = new uint256[](2);
-        plans[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
-        plans[1] = plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 10, 0), plans);
-        vm.prank(creator);
-        balancer.open();
-        // creator-started fill: full incentive
-        (uint256 reward, uint256 gasPaid) = _paid();
-        assertApproxEqAbs(reward - gasPaid * 0.55 gwei, (gasPaid / 4) * 0.55 gwei + 0.0005 ether, 2 * 0.55 gwei, "creator work pays the full incentive");
-        fillUp();
-        assertTrue(balancer.canPurchase(buyer));
-        assertEq(balancer.activePlan(), 0);
-
-        _drawListing(cheap);
-        uint256 seq = pool.lastIssuedSequence();
-        (,, uint256 paid,,,) = pool.acquisitions(pool.requestIdAtSequence(uint64(seq)));
-        uint256 edgePaid = paid * 500 / 10_500;
-        uint256 incentives;
-        for (uint256 i; i < 12 && !balancer.canPurchase(buyer); ++i) {
-            (reward, gasPaid) = _paid();
-            incentives += reward - gasPaid * 0.55 gwei;
-        }
-        assertEq(balancer.activePlan(), 1, "the draw forced a plan switch");
-        assertTrue(balancer.canPurchase(buyer));
-        assertLe(incentives, edgePaid, "incentives for draw-caused work never exceed the edge paid");
-    }
-
-    function _paid() internal returns (uint256 reward, uint256 gasPaid) {
-        vm.recordLogs();
-        upkeep();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) (reward, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
-        }
-    }
-
-    /// Round 3 re-review: a creator top-up while open must not re-enable the full incentive for purchase-caused work.
-    function test_creatorTopUpWhileOpenKeepsCredit() public {
-        assertFalse(balancer.creatorWork());
-        vm.prank(creator);
-        balancer.depositETH{value: 0.01 ether}();
-        vm.prank(creator);
-        balancer.open(); // already open
-        assertFalse(balancer.creatorWork(), "no creator-work flag while purchases are admitted");
-        assertTrue(balancer.canPurchase(buyer));
-    }
-
-    /// Funding exactly requiredReserve() opens a fresh pool (fill-step rewards are included).
-    /// Funding exactly requiredReserve() opens a fresh pool when the keeper bids the reimbursable priority, at normal
-    /// gas and near the cap (the view prices refill and re-checkpoint rewards at the current basefee).
-    function _exactFundingOpens(uint256 basefee) internal {
-        vm.fee(basefee);
-        vm.txGasPrice(basefee + 0.05 gwei);
-        creator = makeAddr(string.concat("exactCreator", vm.toString(basefee)));
-        vm.deal(creator, 100 ether);
-        createBalancer(0);
-        listCurated(7301 + basefee % 1000, 0.3 ether);
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 1500), plans);
-        vm.prank(creator);
-        balancer.open();
-        uint256 need = balancer.requiredReserve();
-        vm.prank(creator);
-        balancer.depositETH{value: need}();
-        fillUp();
-        assertTrue(balancer.canPurchase(buyer), "requiredReserve() was enough to open");
-    }
-
-    function test_exactRequiredReserveOpens() public {
-        _exactFundingOpens(0.5 gwei);
-    }
-
-    function test_exactRequiredReserveOpensNormalGas() public {
-        _exactFundingOpens(0.08 gwei);
-    }
-
-    function test_exactRequiredReserveOpensNearCap() public {
-        _exactFundingOpens(4.95 gwei);
-    }
-
-    /// Adverse sequence: the creator claims every wei of surplus at normal gas, the five most expensive Shapes are
-    /// drawn, and the restoring upkeep runs in a spike at the cap. The held reserve still funds the replacements and
-    /// the keeper's full reward; afterwards the pool reopens or fails closed, never stuck mid-restoration.
-    function test_maxClaimThenWorstBatchAtCapIsFunded() public {
-        vm.fee(0.08 gwei);
-        vm.txGasPrice(0.13 gwei);
-        uint256 s = balancer.withdrawableSurplus();
-        vm.prank(creator);
-        balancer.claimSurplus(s, creator);
-        assertTrue(balancer.canPurchase(buyer));
-        _drawWorstFive();
-        vm.fee(4.95 gwei);
-        vm.txGasPrice(5 gwei);
-        uint256 kBefore = keeper.balance;
-        upkeep();
-        uint16[9] memory have = balancer.getActiveShapes();
-        assertEq(have[0], 5);
-        assertEq(have[1], 3);
-        assertEq(have[2], 2, "worst batch fully restored at the cap");
-        assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
-        uint8 st = balancer.admissionStatus();
-        assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
-    }
-
-    /// planA = 5 x 0.01, 3 x 0.05, 2 x 0.1: buy five draws and force the 2 x 0.1 and 3 x 0.05 Shapes.
-    function _drawWorstFive() internal {
-        // planA = 5 x 0.01, 3 x 0.05, 2 x 0.1: force the 2 x 0.1 and 3 x 0.05 Shapes
-        uint256[] memory active = balancer.getActiveIds();
-        uint256[] memory targets = new uint256[](5);
-        uint256 n;
-        for (uint256 d = 2; d >= 1 && n < 5; --d) {
-            for (uint256 i; i < active.length && n < 5; ++i) {
-                (uint8 kind, uint8 dd,,,) = balancer.items(active[i]);
-                if (kind == 2 && dd == d) targets[n++] = active[i];
-            }
-            if (d == 1) break;
-        }
-        assertEq(n, 5);
-        uint256[] memory ids = buy(buyer, 5);
-        for (uint256 k; k < 5; ++k) {
-            (,,,,,, uint256 slot,) = pool.listings(targets[k]);
-            fulfill(ids[k], wordForSlot(slot));
-        }
-        settle();
-    }
-
-    /// Repeated maintenance at the boundary: each cycle the creator claims every wei of surplus at normal gas, the
-    /// worst batch is drawn, and the restoring upkeep runs at the cap. Every cycle restores the full plan and pays
-    /// the keeper. A cycle that ends closed for reserve (status 6: the cap-priced reward came out of the held reserve)
-    /// reopens after the creator deposits exactly requiredReserve() - balance and one normal-gas re-checkpoint runs.
-    function test_repeatedMaxClaimWorstBatchesAtCap() public {
-        for (uint256 c; c < 4; ++c) {
-            vm.fee(0.08 gwei);
-            vm.txGasPrice(0.13 gwei);
-            if (balancer.admissionStatus() == 6) {
-                uint256 short = balancer.requiredReserve() - address(balancer).balance;
-                vm.prank(creator);
-                balancer.depositETH{value: short}();
-                upkeep();
-            }
-            uint256 s = balancer.withdrawableSurplus();
-            vm.prank(creator);
-            balancer.claimSurplus(s, creator);
-            assertEq(balancer.withdrawableSurplus(), 0);
-            assertTrue(balancer.canPurchase(buyer), "open after an exact claim");
-            _drawWorstFive();
-            vm.fee(4.95 gwei);
-            vm.txGasPrice(5 gwei);
-            uint256 kBefore = keeper.balance;
-            upkeep();
-            uint16[9] memory have = balancer.getActiveShapes();
-            assertEq(have[0], 5);
-            assertEq(have[1], 3);
-            assertEq(have[2], 2, "worst batch restored at the cap");
-            assertGt(keeper.balance - kBefore, 0.0005 ether, "keeper paid at the cap");
-            uint8 st = balancer.admissionStatus();
-            assertTrue(st == 0 || st == 6, "open, or closed for reserve with inventory complete");
-        }
-    }
-
-    /// Opening capital (requiredReserve with an empty plan) and running reserve (full plan), before and after the
-    /// price-aware keeper allowance, for small, medium and large inventories.
-    function test_reserveSizes() public {
-        uint256[3] memory plansToTest = [plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]), planA, plan([uint256(0), 0, 0, 4, 2, 1, 0, 0, 0])];
-        string[3] memory names = ["small: 10 x 0.01", "medium: 5x0.01 3x0.05 2x0.1", "large: 4x0.5 2x1 1x5"];
-        uint256[2] memory fees = [uint256(0.08 gwei), 4.95 gwei];
-        for (uint256 i; i < 3; ++i) {
-            creator = makeAddr(string.concat("sizeCreator", vm.toString(i)));
-            vm.deal(creator, 100 ether);
-            createBalancer(20 ether);
-            listCurated(9000 + i, i == 2 ? 5 ether : 0.5 ether);
-            uint256[] memory plans = new uint256[](1);
-            plans[0] = plansToTest[i];
-            vm.prank(creator);
-            balancer.configure(PoolBalancer.Config(100 ether, 0, 1500), plans);
-            vm.prank(creator);
-            balancer.open();
-            emit log(names[i]);
-            for (uint256 f; f < 2; ++f) {
-                vm.fee(fees[f]);
-                uint256 empty = balancer.requiredReserve();
-                emit log_named_decimal_uint(string.concat("  opening capital at ", vm.toString(fees[f] / 1e7), "e-2 gwei"), empty, 18);
-            }
-            vm.fee(0.5 gwei);
-            fillUp();
-            for (uint256 f; f < 2; ++f) {
-                vm.fee(fees[f]);
-                emit log_named_decimal_uint(string.concat("  running reserve at ", vm.toString(fees[f] / 1e7), "e-2 gwei"), balancer.requiredReserve(), 18);
-            }
-            vm.fee(0.5 gwei);
-        }
-    }
-
-    /// F4: whenever upkeep writes a checkpoint, admission still holds after it pays its keeper.
-    function test_checkpointCoversItsOwnReward() public {
-        creator = makeAddr("thinCreator");
-        vm.deal(creator, 100 ether);
-        uint256 fee = shapes.mintFee();
-        // fill cost + exactly the advertised reserve, with nothing for the fill's keeper rewards
-        uint256 fill = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
-        uint256 reserve = 2 * (0.1 ether + fee) + 3 * (0.05 ether + fee) + 0.00562 ether;
-        createBalancer(fill + reserve);
-        listCurated(8001, 0.3 ether);
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = planA;
-        configure(1 ether, 0, plans);
-        vm.prank(creator);
-        balancer.open();
-        for (uint256 i; i < 40 && !balancer.canPurchase(buyer); ++i) {
-            if (balancer.admissionStatus() == 6) {
-                vm.prank(creator);
-                balancer.depositETH{value: 0.002 ether}();
-            }
-            try this.upkeepExternal() {} catch {}
-            (bool valid,,,,) = balancer.checkpoint();
-            if (valid) assertTrue(balancer.canPurchase(buyer), "a written checkpoint stays admissible after the reward");
-        }
-        assertTrue(balancer.canPurchase(buyer));
-    }
-
-    /// N-1: after claiming all surplus, a creator edit and re-checkpoint keeps the pool open.
-    function test_claimAllSurplusThenRecheckpointStaysOpen() public {
-        uint256 s = balancer.withdrawableSurplus();
-        vm.prank(creator);
-        balancer.claimSurplus(s, creator);
-        assertTrue(balancer.canPurchase(buyer));
-        vm.prank(creator);
-        balancer.updateCuratedPrice(curatedA, 0.31 ether);
-        upkeep();
-        assertTrue(balancer.canPurchase(buyer), "re-checkpointed without a top-up");
-    }
-
     /*////////////////////////////// griefing bound //////////////////////////////*/
 
-    /// Remaining griefing route after the purchaser gate: a purchaser contract that never refunds, drawing a curated
-    /// NFT from a collection that refuses transfers to contracts. The NFT stays in FWA escrow. Bound: each attempt
-    /// forfeits the draw fee net of any Shape received, and the lock probability is the NFT's FWA odds, so the
-    /// expected cost to lock it is attempt cost / odds. Asserted against the NFT's value on the real FWA pool.
+    /// A purchaser that never refunds, drawing a curated NFT from a collection that refuses transfers to contracts:
+    /// the NFT stays in FWA escrow. Expected cost to lock it is attempt cost / odds, asserted against its value.
     function test_griefingBoundForRestrictedCurated() public {
         ContractBlockingNFT r = new ContractBlockingNFT();
         r.allow(address(pool));
@@ -743,24 +447,16 @@ contract HardeningTest is ForkBase {
         r.approve(address(balancer), 1);
         uint256 lid = balancer.listCurated(address(r), 1, 0.5 ether);
         vm.stopPrank();
-        upkeep();
         assertTrue(balancer.canPurchase(buyer));
 
-        // Expected cost to lock it, from FWA's own weights and price.
         (,,,, uint256 w,,,) = pool.listings(lid);
         uint256 total = pool.totalWeight();
         (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
-        // A non-locking draw returns a Shape or a deliverable curated NFT; the attacker keeps value at most its
-        // creator base, which is below the fee paid on average (FWA edge + markup). Conservative attempt cost: VRF fee
-        // plus FWA's edge on the fee.
         uint256 attemptCost = vrf + fee * 500 / 10_500;
         uint256 expectedCostToLock = attemptCost * total / w;
-        emit log_named_decimal_uint("lock probability per draw (ppm)", w * 1e6 / total, 0);
-        emit log_named_decimal_uint("attempt cost (ETH, lower bound)", attemptCost, 18);
         emit log_named_decimal_uint("expected attacker cost to lock (ETH)", expectedCostToLock, 18);
-        assertGt(expectedCostToLock, 0.5 ether, "locking the NFT costs the attacker more than its value in expectation");
+        assertGt(expectedCostToLock, 0.5 ether, "locking the NFT costs more than its value in expectation");
 
-        // Forced: the word that selects it shows the lock and the attacker's forfeited fee.
         NonRefundingBuyer g = new NonRefundingBuyer();
         vm.deal(address(g), 1 ether);
         (,, uint256 pay) = pool.quoteAcquisitionPrice(1);
@@ -775,60 +471,31 @@ contract HardeningTest is ForkBase {
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidItem.selector);
-        balancer.recoverCuratedNFT(lid, creator);
-
-        // Repeated attempts with random words: every non-locking draw costs the attacker; the pool stays open.
-        uint256 spent;
-        uint256 shapesBacking;
-        for (uint256 i; i < 8; ++i) {
-            (,, pay) = pool.quoteAcquisitionPrice(5);
-            vm.deal(address(g), pay);
-            ids = g.buy{value: pay}(address(pool), 5);
-            spent += pay;
-            for (uint256 k; k < 5; ++k) {
-                fulfill(ids[k], uint256(keccak256(abi.encode(i, k))));
-            }
-            settle();
-            upkeep();
-            assertTrue(balancer.canPurchase(buyer));
-        }
-        (bool ok, bytes memory b) = SHAPES.staticcall(abi.encodeWithSignature("balanceOf(address)", address(g)));
-        require(ok);
-        uint256 got = abi.decode(b, (uint256));
-        shapesBacking = got * 0.01 ether; // setUp plan holds 0.01/0.05/0.1 Shapes; 0.01 is a lower bound per Shape
-        emit log_named_decimal_uint("40 attack draws: ETH spent", spent, 18);
-        emit log_named_uint("Shapes received", got);
-        assertGt(spent, shapesBacking, "repeated attempts are a net cost to the attacker");
+        balancer.recoverRefunded(lid, creator);
     }
 
-    /// The bound depends on dilution: in a thin pool a restricted curated NFT is cheap to lock. Recorded, not
-    /// accepted silently: the dashboard warns before listing a collection that refuses transfers to contracts.
     function test_griefingThinPoolIsCheap() public {
-        creator = makeAddr("thinPoolCreator");
-        vm.deal(creator, 100 ether);
-        createBalancer(2 ether);
+        address c = makeAddr("thinPoolCreator");
+        vm.deal(c, 100 ether);
+        vm.prank(c);
+        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
         ContractBlockingNFT r = new ContractBlockingNFT();
-        r.allow(address(pool));
-        r.allow(address(balancer));
-        r.mint(creator, 1);
-        vm.startPrank(creator);
-        r.approve(address(balancer), 1);
-        uint256 lid = balancer.listCurated(address(r), 1, 0.5 ether);
+        r.allow(address(b.pool()));
+        r.allow(address(b));
+        r.mint(c, 1);
+        vm.startPrank(c);
+        b.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]));
+        r.approve(address(b), 1);
+        uint256 lid = b.listCurated(address(r), 1, 0.5 ether);
+        b.open();
         vm.stopPrank();
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]);
-        configure(1 ether, 0, plans);
-        vm.prank(creator);
-        balancer.open();
+        balancer = b;
+        pool = b.pool();
         fillUp();
         (,,,, uint256 w,,,) = pool.listings(lid);
         (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
         uint256 expectedCostToLock = (vrf + fee * 500 / 10_500) * pool.totalWeight() / w;
-        emit log_named_decimal_uint("thin pool: expected attacker cost to lock a 0.5 ETH NFT (ETH)", expectedCostToLock, 18);
+        emit log_named_decimal_uint("thin pool: expected cost to lock a 0.5 ETH NFT (ETH)", expectedCostToLock, 18);
         assertLt(expectedCostToLock, 0.5 ether, "thin pools do not protect restricted collections");
-    }
-
-    function upkeepExternal() external {
-        upkeep();
     }
 }

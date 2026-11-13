@@ -1,0 +1,7 @@
+{
+  "balancerFactory": "0xde1627CA9D57bb646eda817366F96Daf3595A436",
+  "block": 26382349,
+  "chainId": 31337,
+  "packs": "0x7D26890d0Ab943aA0fdAE86E729fD3173770015a",
+  "poolBalancerImplementation": "0x4575acc57E1FFA7CcccD5969898d1114c0792216"
+}

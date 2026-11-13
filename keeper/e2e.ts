@@ -7,7 +7,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPublicClient, createTestClient, createWalletClient, http, keccak256, parseAbi, toBytes, toHex, type Address } from 'viem';
-import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { balancerFactoryAbi, fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { MAX_KEEPER_REWARD } from '../shared/planner';
 import { Keeper } from './keeper';
 
 const PORT = Number(process.env.E2E_PORT ?? 18546);
@@ -22,9 +23,9 @@ const ACCTS = [
 const VRF_SERVICE = '0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d' as const;
 const serviceAbi = parseAbi(['function coordinator() view returns (address)', 'function rawFulfillRandomWords(uint256 requestId, uint256[] randomWords)']);
 
-const pub = createPublicClient({ transport: http(RPC) });
-const test = createTestClient({ mode: 'anvil', transport: http(RPC) });
-const wallet = createWalletClient({ transport: http(RPC) });
+const pub = createPublicClient({ transport: http(RPC, { timeout: 60_000 }) });
+const test = createTestClient({ mode: 'anvil', transport: http(RPC, { timeout: 60_000 }) });
+const wallet = createWalletClient({ transport: http(RPC, { timeout: 60_000 }) });
 const logs: string[] = [];
 
 async function main() {
@@ -58,6 +59,18 @@ let factory: Address;
 
 async function status(b: Address) {
   return Number(await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'admissionStatus' }));
+}
+
+/** Admitting, every draw reconciled and the target fully listed: what the keeper restores after draws. */
+async function stocked(b: Address) {
+  const r = (fn: string) => pub.readContract({ address: b, abi: poolBalancerAbi, functionName: fn as never });
+  const pool = (await r('pool')) as Address;
+  const t = (await r('target')) as bigint;
+  const have = (await r('getActiveShapes')) as readonly number[];
+  const last = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'lastIssuedSequence' });
+  if ((await r('reconciledSequence')) !== last) return false;
+  for (let d = 0; d < 16; d++) if (Number((t >> BigInt(16 * d)) & 0xffffn) !== Number(have[d])) return false;
+  return (await status(b)) === 0;
 }
 
 async function tickUntil(k: Keeper, done: () => Promise<boolean>, max = 12) {
@@ -103,7 +116,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
 }
 
 async function run() {
-  sh(`forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
+  sh(`PACKS_ADMIN=${ACCTS[0]} KEEPER_ADMIN=${ACCTS[0]} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${ACCTS[0]} --broadcast`);
   factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory;
   const b1 = await setupPool(ACCTS[1]);
   const b2 = await setupPool(ACCTS[2]);
@@ -119,7 +132,7 @@ async function run() {
   let k = mk();
 
   // 1. discovery and initial fill of both pools
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   assert.equal(k.state.balancers.length, 2, 'discovered both');
   const kb0 = await pub.getBalance({ address: keeperAddr });
   console.log('✓ discovered and filled 2 pools; sent', k.state.stats.sent);
@@ -127,9 +140,9 @@ async function run() {
   // 2. real FWA draws on both pools, then reconciliation and replenishment
   await buyAndSettle(b1, 3, '0x00000000000000000000000000000000000b0b01', 11n);
   await buyAndSettle(b2, 5, '0x00000000000000000000000000000000000b0b02', 99n);
-  assert.notEqual(await status(b1), 0);
-  assert.notEqual(await status(b2), 0);
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  assert.equal(await stocked(b1), false, 'drawn prizes are missing until upkeep');
+  assert.equal(await stocked(b2), false, 'drawn prizes are missing until upkeep');
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   const kb1 = await pub.getBalance({ address: keeperAddr });
   assert.ok(kb1 > kb0, 'keeper earned more than it spent');
   console.log('✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)');
@@ -143,6 +156,24 @@ async function run() {
   assert.equal(k.state.balancers.length, 2);
   assert.equal(k.state.stats.sent, sentBefore, 'no redundant sends after restart');
   console.log('✓ restart resumes without duplicate work');
+
+  // 3b. crash right after broadcasting, before the hash was saved: the restart must not send a second upkeep
+  await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b04', 11n);
+  await test.setAutomine(false);
+  await k.tick();
+  const crashed = k.state.pending[b1];
+  assert.ok(crashed, 'upkeep in flight');
+  crashed.hashes = []; // the state file as written before the broadcast
+  k.save();
+  const sentBeforeCrash = k.state.stats.sent;
+  k = mk();
+  await k.tick();
+  assert.equal(k.state.stats.sent, sentBeforeCrash, 'no second upkeep after the restart');
+  assert.equal(await pub.getTransactionCount({ address: keeperAddr, blockTag: 'pending' }), crashed.nonce + 1, 'one transaction at that nonce');
+  await test.mine({ blocks: 1 });
+  await test.setAutomine(true);
+  await tickUntil(k, async () => (await stocked(b1)) && Object.keys(k.state.pending).length === 0);
+  console.log('✓ restart after an unrecorded broadcast waits for it instead of sending again');
 
   // 4. stuck transaction is replaced with bumped fees and mined once
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b03', 7n);
@@ -160,7 +191,7 @@ async function run() {
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });
   await test.setAutomine(true);
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   assert.equal(Object.keys(k.state.pending).length, 0);
   console.log('✓ replacement tx mined; stats', JSON.stringify(k.state.stats));
 
@@ -179,7 +210,7 @@ async function run() {
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b05', 21n);
   await buyAndSettle(b2, 4, '0x00000000000000000000000000000000000b0b06', 22n);
   k = mk();
-  await tickUntil(k, async () => (await status(b1)) === 0 && (await status(b2)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   console.log('✓ downtime: restarted keeper restored both pools');
 
   // 7. gas policy: above the bid cap the keeper waits instead of overbidding
@@ -192,12 +223,12 @@ async function run() {
   assert.ok(logs.some((l) => l.startsWith('skip: basefee above bid cap')));
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   console.log('✓ waited through a basefee spike, then serviced');
 
   // 8. Purchaser gate. The only known way to make a Shape delivery fail is a purchase naming the Shapes contract
   //    (Shapes rejects only transfers to itself); the Balancer refuses it, so FWA reverts the purchase.
-  //    `recoverRefundedShape` stays for unknown failures and is covered by the fork test with a mocked revert.
+  //    `recoverRefunded` stays for unknown failures and is covered by the fork test with a mocked revert.
   const SHAPES = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0' as Address;
   const pool1 = (await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
   const gateBuyer = '0x00000000000000000000000000000000000b0b08' as Address;
@@ -233,21 +264,38 @@ async function run() {
   assert.equal(await pub.verifyMessage({ address: b1, message: 'hello', signature: PLACEHOLDER_SIG }), false, 'arbitrary message rejected');
   console.log('✓ pool page approval verifies through viem ERC-1271; other messages rejected');
 
+  // 9b. keeper list (on the factory, keeper admin = deployer): while restricted to other keepers the pool is skipped
+  //     quietly; once approved, it is serviced
+  const restrict = async (fn: 'setKeepersRestricted' | 'setKeeperApproved', args: readonly unknown[]) => {
+    const h = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName: fn, args: args as never, account: ACCTS[0] as Address, chain: null });
+    assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success');
+  };
+  await restrict('setKeepersRestricted', [true]);
+  await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b08', 41n);
+  const sentBeforeList = k.state.stats.sent;
+  await k.tick();
+  assert.equal(k.state.stats.sent, sentBeforeList, 'no send to a pool that has not approved this keeper');
+  assert.ok(!k.errors[b1], 'a restricted pool is not reported as an error');
+  await restrict('setKeeperApproved', [keeperAddr, true]);
+  await tickUntil(k, async () => (await stocked(b1)));
+  await restrict('setKeepersRestricted', [false]);
+  console.log('✓ keeper list: skipped while not approved, serviced once approved');
+
   // 10. one broken pool does not stop the others
   await buyAndSettle(b1, 2, '0x00000000000000000000000000000000000b0b04', 5n);
   await test.setCode({ address: b2, bytecode: '0xfe' });
-  await tickUntil(k, async () => (await status(b1)) === 0);
+  await tickUntil(k, async () => (await stocked(b1)));
   assert.ok(k.errors[b2], 'b2 error recorded');
   assert.equal(k.health().balancers, 2);
   console.log('✓ per-pool error isolation; health', JSON.stringify(k.health()));
 }
 
-/** Reimbursed gas must never exceed the gas the receipt billed (after EVM refunds). */
+/** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the restocking fees of the prizes listed. */
 function checkAudit(k: Keeper) {
-  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), reimbursedGas: Number(a.reimbursedGas), ratio: a.reimbursedGas ? Number(a.reimbursedGas) / Number(a.gasUsed) : 0, rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
+  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
   console.table(rows);
-  for (const a of k.audit) assert.ok(a.reimbursedGas <= a.gasUsed, `reimbursed ${a.reimbursedGas} > billed ${a.gasUsed} (${a.hash})`);
-  console.log('✓ reimbursed gas <= billed gas for', k.audit.length, 'keeper txs');
+  for (const a of k.audit) assert.ok(a.reward <= MAX_KEEPER_REWARD, `reward ${a.reward} above the maximum (${a.hash})`);
+  console.log('✓ rewards within MAX_KEEPER_REWARD for', k.audit.length, 'keeper txs');
 }
 
 main().catch((e) => {

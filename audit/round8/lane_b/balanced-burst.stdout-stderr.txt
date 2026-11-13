@@ -1,0 +1,21 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.63s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testBalancedLaunchMixReserveAfterLargeAndMediumWins() (gas: 59928135)
+Logs:
+  Balanced pre-burst reserve 534000000000000000
+  Balanced creator max withdrawal 1849801013300000000
+  Balanced large-win trials 94
+  Balanced medium-win trials 17
+  Balanced two-draw player total 49944436685203616
+  Balanced FWA owner proceeds 42886130176384398
+  Balanced 0.1 prizes after upkeep 2
+  Balanced 0.5 prizes after upkeep 0
+  Balanced pool ETH after upkeep 474741130176384398
+  Balanced required reserve after upkeep 1035000000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 99.49ms (75.80ms CPU time)
+
+Ran 1 test suite in 444.45ms (99.49ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

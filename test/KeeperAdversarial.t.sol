@@ -27,8 +27,9 @@ contract RefundingKeeper {
 }
 
 /// @notice Attacks on the keeper reward. Each self-dealing test measures the attacker's net result across the whole
-///         sequence: rewards - upkeep gas - FWA fee - VRF fee - purchase gas + value of the NFTs received, valued at
-///         their FWA listing price (generous to the attacker: the creator's base is lower).
+///         sequence: rewards - upkeep gas - FWA fee - VRF fee - purchase gas + value of the prizes received: a Shape or
+///         pack at the ETH it redeems for, a curated NFT at its FWA listing price (generous to the attacker: the
+///         creator's base is lower).
 contract KeeperAdversarialTest is ForkBase {
     uint256 constant BASEFEE = 0.05 gwei; // cheap gas favours the attacker
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
@@ -40,28 +41,23 @@ contract KeeperAdversarialTest is ForkBase {
     }
 
     /// @dev A pool where the edge credit binds: cheap curated NFTs, 0.01 ETH Shapes, no markup.
-    function _cheapPool(uint256 curatedCount, uint256 curatedBase, uint256[] memory plans, uint16 minOdds) internal {
-        creator = makeAddr(string.concat("cheap", vm.toString(curatedCount), vm.toString(curatedBase), vm.toString(plans.length)));
+    function _cheapPool(uint256 curatedCount, uint256 curatedBase, uint256 target) internal {
+        creator = makeAddr(string.concat("cheap", vm.toString(curatedCount), vm.toString(curatedBase), vm.toString(target)));
         vm.deal(creator, 100 ether);
         createBalancer(10 ether);
+        vm.prank(creator);
+        balancer.configure(1000, target);
         for (uint256 i; i < curatedCount; ++i) {
             listCurated(500 + i, curatedBase);
         }
         vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, minOdds, 0), plans);
-        vm.prank(creator);
         balancer.open();
-        for (uint256 i; i < 12 && balancer.admissionStatus() != 0; ++i) {
+        for (uint256 i; i < 16 && balancer.admissionStatus() != 0; ++i) {
             upkeep();
         }
         assertEq(balancer.admissionStatus(), 0, "pool open");
         vm.fee(BASEFEE);
         vm.txGasPrice(BASEFEE);
-    }
-
-    function _one(uint256 p) internal pure returns (uint256[] memory ps) {
-        ps = new uint256[](1);
-        ps[0] = p;
     }
 
     /// @dev Attacker buys `count` draws selecting `words`, then runs every upkeep itself. Returns net PnL.
@@ -73,11 +69,12 @@ contract KeeperAdversarialTest is ForkBase {
         vm.prank(atk, atk);
         uint256[] memory ids = pool.acquireBatch{value: total}(atk, count, 0, 0, 10_000, v, block.timestamp + 1);
         pnl -= int256(total + (g0 - gasleft()) * BASEFEE);
-        // value received: the FWA listing price of every listing the batch actually drew
         uint256[] memory active = balancer.getActiveIds();
         uint256[] memory prices = new uint256[](active.length);
         for (uint256 i; i < active.length; ++i) {
-            (,,,,, prices[i],,) = pool.listings(active[i]);
+            (uint8 kind, uint8 d,,,) = balancer.items(active[i]);
+            if (kind == 2) prices[i] = _backing(d);
+            else (,,,,, prices[i],,) = pool.listings(active[i]);
         }
         for (uint256 k; k < count; ++k) {
             fulfill(ids[k], words[k]);
@@ -99,6 +96,13 @@ contract KeeperAdversarialTest is ForkBase {
         }
     }
 
+    /// @dev ETH a prize of size `d` redeems for (PoolBalancer's size table).
+    function _backing(uint8 d) internal pure returns (uint256) {
+        uint256[16] memory v = [uint256(0.01 ether), 0.05 ether, 0.1 ether, 0.5 ether, 1 ether, 5 ether, 10 ether,
+            50 ether, 100 ether, 0.02 ether, 0.03 ether, 0.2 ether, 0.25 ether, 2 ether, 2.5 ether, 25 ether];
+        return v[d];
+    }
+
     function _words(uint256 n, uint256 salt) internal pure returns (uint256[] memory w) {
         w = new uint256[](n);
         for (uint256 i; i < n; ++i) {
@@ -109,7 +113,7 @@ contract KeeperAdversarialTest is ForkBase {
     /*////////////////////////////// 1. gas bids and gas limits //////////////////////////////*/
 
     function test_inflatedBidOrGasLimitDoesNotRaiseReward() public {
-        _cheapPool(2, 0.3 ether, _one(plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
         uint256[] memory ids = buy(buyer, 2);
         fulfill(ids[0], uint256(keccak256("a")));
         fulfill(ids[1], uint256(keccak256("b")));
@@ -120,7 +124,7 @@ contract KeeperAdversarialTest is ForkBase {
         vm.prank(keeper, keeper);
         uint256 honest = balancer.performUpkeep{gas: 5_000_000}();
         vm.revertToState(snap);
-        vm.txGasPrice(40 gwei); // ApeBall-style overbid and a huge gas limit
+        vm.txGasPrice(40 gwei); // overbid and a huge gas limit
         vm.prank(keeper, keeper);
         uint256 greedy = balancer.performUpkeep{gas: 30_000_000}();
         assertEq(greedy, honest, "reward independent of bid above the priority cap and of the gas limit");
@@ -129,7 +133,7 @@ contract KeeperAdversarialTest is ForkBase {
     /*////////////////////////////// 3. caller-side refunds //////////////////////////////*/
 
     function test_callerRefundsDoNotChangePoolPayment() public {
-        _cheapPool(2, 0.3 ether, _one(plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], uint256(keccak256("c")));
         settle();
@@ -140,43 +144,40 @@ contract KeeperAdversarialTest is ForkBase {
         uint256 plain = balancer.performUpkeep();
         vm.revertToState(snap);
         uint256 viaRefunds = rk.run(balancer);
-        // Within a few hundred gas of measurement difference (warm/cold context), not the ~300k of refunds created.
         assertApproxEqAbs(viaRefunds, plain, 1_000 * BASEFEE + 1, "pool pays for its own work only");
     }
 
     /*////////////////////////////// 4-7. self-dealing //////////////////////////////*/
 
     function test_selfDealingSingleDrawCheapPool() public {
-        _cheapPool(3, 0.001 ether, _one(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         int256 pnl = _selfDeal(_words(1, 1));
         emit log_named_decimal_int("single cheap draw PnL (ETH)", pnl, 18);
         assertLe(pnl, 0);
     }
 
     function test_selfDealingRepeatedLowValuePurchases() public {
-        _cheapPool(3, 0.001 ether, _one(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         int256 total;
         uint256 batches;
         for (uint256 i; i < 10; ++i) {
             // an honest creator restocks cheap curated NFTs as they are drawn (worst case for the pool)
             while (balancer.admissionStatus() != 0) {
                 listCurated(700 + i * 10 + batches, 0.001 ether);
-                upkeep();
+                if (balancer.admissionStatus() == 2 || balancer.admissionStatus() == 6) upkeep();
             }
             vm.fee(BASEFEE);
             vm.txGasPrice(BASEFEE);
             total += _selfDeal(_words(1 + (i % 5), 100 + i));
             ++batches;
         }
-        emit log_named_uint("self-dealt batches", batches);
         emit log_named_decimal_int("cumulative PnL (ETH)", total, 18);
         assertEq(batches, 10, "every batch ran");
         assertLe(total, 0);
     }
 
     function test_selfDealingDrainsOnlyCheapCurated() public {
-        uint256[] memory ps = _one(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        _cheapPool(1, 0.0001 ether, ps, 0);
+        _cheapPool(1, 0.0001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         uint256[] memory w = new uint256[](1);
         w[0] = 1; // slot 1: the cheap curated NFT; the pool closes NO_CURATED afterwards
         int256 pnl = _selfDeal(w);
@@ -184,71 +185,76 @@ contract KeeperAdversarialTest is ForkBase {
         assertLe(pnl, 0);
     }
 
-    function test_selfDealingForcedPlanSwitch() public {
-        uint256[] memory ps = new uint256[](2);
-        ps[0] = plan([uint256(40), 0, 0, 0, 0, 0, 0, 0, 0]);
-        ps[1] = plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]);
-        creator = makeAddr("switchAtk");
-        vm.deal(creator, 100 ether);
-        createBalancer(10 ether);
-        listCurated(600, 0.0001 ether);
-        listCurated(601, 0.5 ether);
-        vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 10, 0), ps);
-        vm.prank(creator);
-        balancer.open();
-        for (uint256 i; i < 12 && balancer.admissionStatus() != 0; ++i) {
-            upkeep();
-        }
-        vm.fee(BASEFEE);
-        vm.txGasPrice(BASEFEE);
-        uint256[] memory w = new uint256[](1);
-        w[0] = 1; // the cheap curated NFT: forces a 39-Shape redemption over several calls
-        int256 pnl = _selfDeal(w);
-        assertEq(balancer.activePlan(), 1, "switched");
-        emit log_named_decimal_int("forced plan switch, PnL across all follow-up calls (ETH)", pnl, 18);
-        assertLe(pnl, 0);
-    }
-
     /*////////////////////////////// 8-10. creator-caused work //////////////////////////////*/
 
-    /// Repricing is creator-only and admission stays closed until it completes, so no purchase can create it or
-    /// coincide with it.
-    function test_noPurchasesDuringRepricing() public {
-        _cheapPool(2, 0.3 ether, _one(plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0])), 0);
+    /// Creator work (SETTING_UP) is creator-only and admission stays closed until it completes, so no purchase can
+    /// create it or coincide with it.
+    function test_noPurchasesDuringCreatorWork() public {
+        _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
-        balancer.configure(PoolBalancer.Config(1 ether, 0, 2500), _one(plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0])));
+        balancer.configure(1000, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0])); // grow the target
         assertTrue(balancer.creatorWork());
         assertFalse(balancer.canPurchase(atk));
         upkeep();
-        assertTrue(balancer.repricing() || balancer.canPurchase(atk));
-        if (balancer.repricing()) assertFalse(balancer.canPurchase(atk));
+        assertTrue(balancer.creatorWork() || balancer.canPurchase(atk));
+        if (balancer.creatorWork()) assertFalse(balancer.canPurchase(atk));
     }
 
-    /// A creator deposit while open never enables full incentives for purchase-caused work.
+    /// A deposit changes nothing about pay: each of the attacker's upkeep calls gets measured gas at the reimbursed
+    /// price plus one flat reward. (Its P&L here also carries prize luck, so the bound is asserted on the rewards.)
     function test_depositDoesNotUnlockFullIncentive() public {
-        _cheapPool(3, 0.001 ether, _one(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
         balancer.depositETH{value: 1 ether}();
         vm.prank(atk);
         balancer.depositETH{value: 1 wei}();
         assertFalse(balancer.creatorWork());
-        int256 pnl = _selfDeal(_words(1, 7));
-        assertLe(pnl, 0);
+        uint256 lastBefore = lastListingId();
+        // Draw a Shape prize, so a replacement is listed and credited.
+        uint256[] memory word = new uint256[](1);
+        uint256[] memory listed = balancer.getActiveIds();
+        for (uint256 i; i < listed.length; ++i) {
+            (uint8 kind,,,,) = balancer.items(listed[i]);
+            if (kind != 2) continue;
+            (,,,,,, uint256 slot,) = pool.listings(listed[i]);
+            word[0] = wordForSlot(slot);
+            break;
+        }
+        _selfDeal(word);
+        uint256 credited;
+        uint256[] memory active = balancer.getActiveIds();
+        for (uint256 i; i < active.length; ++i) {
+            if (active[i] <= lastBefore) continue;
+            (uint8 kind,,, uint112 base, uint112 price) = balancer.items(active[i]);
+            if (kind == 2) credited += price - base;
+        }
+        uint256 calls;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].topics[0] == KEEPER_PAID) {
+                (uint256 r, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
+                assertEq(r, (g + 50_000) * BASEFEE + 0.0001 ether, "measured gas and overhead at the reimbursed price, one flat reward");
+                ++calls;
+            }
+        }
+        assertGt(credited, 0, "a Shape prize was drawn and replaced");
+        assertEq(calls, 1, "one draw, one paid call");
     }
 
-    /// Accepted (I-6): a batch bought before a creator action that closes admission is reconciled with the full
+    /// Accepted (I-6): a batch bought before a creator action that sets creator work is reconciled with the full
     /// incentive. The buyer cannot cause or time the creator action; the extra is at most one incentive.
     function test_creatorActionDuringOutstandingBatchBound() public {
-        _cheapPool(3, 0.001 ether, _one(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0])), 0);
+        _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         (,, uint256 total) = pool.quoteAcquisitionPrice(1);
         uint256 v = pool.inventoryVersion();
         vm.prank(atk, atk);
         uint256[] memory ids = pool.acquireBatch{value: total}(atk, 1, 0, 0, 10_000, v, block.timestamp + 1);
         fulfill(ids[0], uint256(keccak256("i6")));
         settle();
+        // creator action that sets creator work: grow the target so restocking runs under the full incentive
         vm.prank(creator);
-        balancer.close(); // creator action: sets creator work
+        balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        assertTrue(balancer.creatorWork());
         vm.recordLogs();
         vm.prank(atk, atk);
         uint256 reward = balancer.performUpkeep();
@@ -257,6 +263,6 @@ contract KeeperAdversarialTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) (, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
         }
-        assertLe(reward - gasPaid * BASEFEE, 0.0005 ether + (gasPaid / 4 + 21_000) * BASEFEE + 0.0001 ether, "at most one incentive");
+        assertLe(reward - gasPaid * BASEFEE, 0.0001 ether + (gasPaid / 4 + 50_000) * BASEFEE + 0.0001 ether, "at most one incentive");
     }
 }

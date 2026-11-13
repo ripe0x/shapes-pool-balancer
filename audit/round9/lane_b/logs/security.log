@@ -1,0 +1,23 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.25s
+Compiler run successful!
+
+Ran 6 tests for audit/round9/lane_b/Security.t.sol:SecurityTest
+[FAIL: assertion failed] testCanPurchaseRefusesProtected() (block: 26382349) (gas: 2588428)
+[PASS] testCreatorOnlyGating() (gas: 1161706)
+[PASS] testImplementationLockedAndNoReinit() (gas: 986300)
+[PASS] testKeeperRestriction() (gas: 4347420)
+[PASS] testPoolPageEpochInvalidation() (gas: 1178722)
+[PASS] testRecoverUntrackedGuards() (gas: 1835316)
+Suite result: FAILED. 5 passed; 1 failed; 0 skipped; finished in 387.73ms (140.99ms CPU time)
+
+Ran 1 test suite in 403.32ms (387.73ms CPU time): 5 tests passed, 1 failed, 0 skipped (6 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit/round9/lane_b/Security.t.sol:SecurityTest
+[FAIL: assertion failed] testCanPurchaseRefusesProtected() (block: 26382349) (gas: 2588428)
+
+Encountered a total of 1 failing tests, 5 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

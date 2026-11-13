@@ -1,0 +1,260 @@
+node:internal/errors:983
+  const err = new Error(message);
+              ^
+
+Error: Command failed: forge script script/Deploy.s.sol:Deploy --root /Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project --out out --cache-path cache --rpc-url http://127.0.0.1:18570 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast -vv
+Error: script failed: vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)
+
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:915:11)
+    at execFileSync (node:child_process:951:15)
+    at <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/cap_reward.ts:49:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    'Compiling 1 files with Solc 0.8.28\n' +
+      'Compiling 26 files with Solc 0.8.28\n' +
+      'Solc 0.8.28 finished in 70.09ms\n' +
+      'Solc 0.8.28 finished in 2.64s\n' +
+      'Compiler run successful!\n' +
+      'Traces:\n' +
+      '  [271726] Create2Deployer::create2()\n' +
+      '    ├─ [239097] → new PoolPage@0xAdB0BA180d96Bc457eFaDb7A0631b6C71002eeb5\n' +
+      '    │   └─ ← [Return] 1194 bytes of code\n' +
+      '    └─ ← [Return] 0xadb0ba180d96bc457efadb7a0631b6c71002eeb5\n' +
+      '\n' +
+      '  [5830440] → new Deploy@0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519\n' +
+      '    └─ ← [Return] 29006 bytes of code\n' +
+      '\n' +
+      '  [5113210] Deploy::run()\n' +
+      '    ├─ [0] VM::envAddress("PACKS_ADMIN") [staticcall]\n' +
+      '    │   └─ ← [Return] <env var value>\n' +
+      '    ├─ [0] VM::envAddress("KEEPER_ADMIN") [staticcall]\n' +
+      '    │   └─ ← [Return] <env var value>\n' +
+      '    ├─ [2970] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::implementation() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7\n' +
+      '    ├─ [1327] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxAcquisitionsPerTx() [staticcall]\n' +
+      '    │   └─ ← [Return] 5\n' +
+      '    ├─ [0] VM::startBroadcast()\n' +
+      '    │   └─ ← [Return]\n' +
+      '    ├─ [0] VM::deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", 0x0000000000000000000000006fe9193276bf7abcbee44ab7afd717d637d6faf0)\n' +
+      '    │   ├─ [1875658] → new ShapePackRenderer@0x7eD3c5f3712b1EF457c83D02fD52D3B16E6234A2\n' +
+      '    │   │   └─ ← [Return] 9354 bytes of code\n' +
+      '    │   └─ ← [Return] ShapePackRenderer: [0x7eD3c5f3712b1EF457c83D02fD52D3B16E6234A2]\n' +
+      '    ├─ [0] VM::deployCode("out/ShapePacks.sol/ShapePacks.json", 0x0000000000000000000000006fe9193276bf7abcbee44ab7afd717d637d6faf00000000000000000000000007ed3c5f3712b1ef457c83d02fd52d3b16e6234a2000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000010506f6f6c205072697a65205061636b730000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000095052495a455041434b0000000000000000000000000000000000000000000000)\n' +
+      '    │   ├─ [3899644] → new ShapePacks@0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\n' +
+      '    │   │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0x01ffc9a7) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] true\n' +
+      '    │   │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xffffffff) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] false\n' +
+      '    │   │   ├─ [383] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xa1c892cd) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] true\n' +
+      '    │   │   ├─ [271] ShapePackRenderer::supportsInterface(0x01ffc9a7) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] true\n' +
+      '    │   │   ├─ [303] ShapePackRenderer::supportsInterface(0xffffffff) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] false\n' +
+      '    │   │   ├─ [303] ShapePackRenderer::supportsInterface(0x92372d21) [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] true\n' +
+      '    │   │   ├─ [1481] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::unit() [staticcall]\n' +
+      '    │   │   │   └─ ← [Return] 10000000000000000 [1e16]\n' +
+      '    │   │   ├─ emit AdminTransferred(previousAdmin: 0x0000000000000000000000000000000000000000, newAdmin: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)\n' +
+      '    │   │   └─ ← [Return] 17768 bytes of code\n' +
+      '    │   └─ ← [Return] ShapePacks: [0x7D26890d0Ab943aA0fdAE86E729fD3173770015a]\n' +
+      '    ├─ [4423558] → new PoolBalancer@0x4575acc57E1FFA7CcccD5969898d1114c0792216\n' +
+      '    │   ├─ [975] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationCount() [staticcall]\n' +
+      '    │   │   └─ ← [Return] 9\n' +
+      '    │   ├─ [1559] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(0) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 10000000000000000 [1e16]\n' +
+      '    │   ├─ [1581] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(1) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 50000000000000000 [5e16]\n' +
+      '    │   ├─ [1603] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(2) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 100000000000000000 [1e17]\n' +
+      '    │   ├─ [1625] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(3) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 500000000000000000 [5e17]\n' +
+      '    │   ├─ [1647] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(4) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 1000000000000000000 [1e18]\n' +
+      '    │   ├─ [1669] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(5) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 5000000000000000000 [5e18]\n' +
+      '    │   ├─ [1691] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(6) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 10000000000000000000 [1e19]\n' +
+      '    │   ├─ [1713] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(7) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 50000000000000000000 [5e19]\n' +
+      '    │   ├─ [1735] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(8) [staticcall]\n' +
+      '    │   │   └─ ← [Return] 100000000000000000000 [1e20]\n' +
+      '    │   ├─ [372] ShapePacks::shapes() [staticcall]\n' +
+      '    │   │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+      '    │   ├─ [1297] ShapePacks::MIN_PACK_VALUE() [staticcall]\n' +
+      '    │   │   └─ ← [Return] 20000000000000000 [2e16]\n' +
+      '    │   └─ ← [Return] 19933 bytes of code\n' +
+      '    ├─ [538163] → new BalancerFactory@0xde1627CA9D57bb646eda817366F96Daf3595A436\n' +
+      '    │   ├─ emit KeeperAdminTransferred(oldKeeperAdmin: 0x0000000000000000000000000000000000000000, newKeeperAdmin: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)\n' +
+      '    │   └─ ← [Return] 2117 bytes of code\n' +
+      '    ├─ [0] VM::stopBroadcast()\n' +
+      '    │   └─ ← [Return]\n' +
+      '    ├─ [256] BalancerFactory::implementation() [staticcall]\n' +
+      '    │   └─ ← [Return] PoolBalancer: [0x4575acc57E1FFA7CcccD5969898d1114c0792216]\n' +
+      '    ├─ [2563] BalancerFactory::keeperAdmin() [staticcall]\n' +
+      '    │   └─ ← [Return] 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\n' +
+      '    ├─ [2290] BalancerFactory::keepersRestricted() [staticcall]\n' +
+      '    │   └─ ← [Return] false\n' +
+      '    ├─ [2376] PoolBalancer::creator() [staticcall]\n' +
+      '    │   └─ ← [Return] ECRecover: [0x0000000000000000000000000000000000000001]\n' +
+      '    ├─ [362] PoolBalancer::FWA_FACTORY() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C\n' +
+      '    ├─ [1198] PoolBalancer::FWA_IMPLEMENTATION() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7\n' +
+      '    ├─ [802] PoolBalancer::SHAPES() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+      '    ├─ [516] PoolBalancer::ENS() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e\n' +
+      '    ├─ [824] PoolBalancer::PACKS() [staticcall]\n' +
+      '    │   └─ ← [Return] ShapePacks: [0x7D26890d0Ab943aA0fdAE86E729fD3173770015a]\n' +
+      '    ├─ [372] ShapePacks::shapes() [staticcall]\n' +
+      '    │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+      '    ├─ [1297] ShapePacks::MIN_PACK_VALUE() [staticcall]\n' +
+      '    │   └─ ← [Return] 20000000000000000 [2e16]\n' +
+      '    ├─ [0] VM::serializeUint("<stringified JSON>", "chainId", 31337 [3.133e4])\n' +
+      '    │   └─ ← [Return] "{\\"chainId\\":31337}"\n' +
+      '    ├─ [0] VM::serializeUint("<stringified JSON>", "block", 26382349 [2.638e7])\n' +
+      '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337}"\n' +
+      '    ├─ [0] VM::serializeAddress("<stringified JSON>", "poolBalancerImplementation", 0x4575acc57E1FFA7CcccD5969898d1114c0792216)\n' +
+      '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337,\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+      '    ├─ [0] VM::serializeAddress("<stringified JSON>", "packs", 0x7D26890d0Ab943aA0fdAE86E729fD3173770015a)\n' +
+      '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337,\\"packs\\":\\"0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\\",\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+      '    ├─ [0] VM::serializeAddress("<stringified JSON>", "balancerFactory", 0xde1627CA9D57bb646eda817366F96Daf3595A436)\n' +
+      '    │   └─ ← [Return] "{\\"balancerFactory\\":\\"0xde1627CA9D57bb646eda817366F96Daf3595A436\\",\\"block\\":26382349,\\"chainId\\":31337,\\"packs\\":\\"0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\\",\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+      '    ├─ [0] VM::toString(31337 [3.133e4]) [staticcall]\n' +
+      '    │   └─ ← [Return] "31337"\n' +
+      '    ├─ [0] VM::writeJson("<stringified JSON>", "./deployments/31337.json")\n' +
+      '    │   └─ ← [Revert] vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n' +
+      '    └─ ← [Revert] vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n' +
+      '\n' +
+      '\n',
+    'Error: script failed: vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n'
+  ],
+  pid: 77917,
+  stdout: 'Compiling 1 files with Solc 0.8.28\n' +
+    'Compiling 26 files with Solc 0.8.28\n' +
+    'Solc 0.8.28 finished in 70.09ms\n' +
+    'Solc 0.8.28 finished in 2.64s\n' +
+    'Compiler run successful!\n' +
+    'Traces:\n' +
+    '  [271726] Create2Deployer::create2()\n' +
+    '    ├─ [239097] → new PoolPage@0xAdB0BA180d96Bc457eFaDb7A0631b6C71002eeb5\n' +
+    '    │   └─ ← [Return] 1194 bytes of code\n' +
+    '    └─ ← [Return] 0xadb0ba180d96bc457efadb7a0631b6c71002eeb5\n' +
+    '\n' +
+    '  [5830440] → new Deploy@0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519\n' +
+    '    └─ ← [Return] 29006 bytes of code\n' +
+    '\n' +
+    '  [5113210] Deploy::run()\n' +
+    '    ├─ [0] VM::envAddress("PACKS_ADMIN") [staticcall]\n' +
+    '    │   └─ ← [Return] <env var value>\n' +
+    '    ├─ [0] VM::envAddress("KEEPER_ADMIN") [staticcall]\n' +
+    '    │   └─ ← [Return] <env var value>\n' +
+    '    ├─ [2970] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::implementation() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7\n' +
+    '    ├─ [1327] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C::maxAcquisitionsPerTx() [staticcall]\n' +
+    '    │   └─ ← [Return] 5\n' +
+    '    ├─ [0] VM::startBroadcast()\n' +
+    '    │   └─ ← [Return]\n' +
+    '    ├─ [0] VM::deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", 0x0000000000000000000000006fe9193276bf7abcbee44ab7afd717d637d6faf0)\n' +
+    '    │   ├─ [1875658] → new ShapePackRenderer@0x7eD3c5f3712b1EF457c83D02fD52D3B16E6234A2\n' +
+    '    │   │   └─ ← [Return] 9354 bytes of code\n' +
+    '    │   └─ ← [Return] ShapePackRenderer: [0x7eD3c5f3712b1EF457c83D02fD52D3B16E6234A2]\n' +
+    '    ├─ [0] VM::deployCode("out/ShapePacks.sol/ShapePacks.json", 0x0000000000000000000000006fe9193276bf7abcbee44ab7afd717d637d6faf00000000000000000000000007ed3c5f3712b1ef457c83d02fd52d3b16e6234a2000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000010506f6f6c205072697a65205061636b730000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000095052495a455041434b0000000000000000000000000000000000000000000000)\n' +
+    '    │   ├─ [3899644] → new ShapePacks@0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\n' +
+    '    │   │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0x01ffc9a7) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] true\n' +
+    '    │   │   ├─ [748] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xffffffff) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] false\n' +
+    '    │   │   ├─ [383] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::supportsInterface(0xa1c892cd) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] true\n' +
+    '    │   │   ├─ [271] ShapePackRenderer::supportsInterface(0x01ffc9a7) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] true\n' +
+    '    │   │   ├─ [303] ShapePackRenderer::supportsInterface(0xffffffff) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] false\n' +
+    '    │   │   ├─ [303] ShapePackRenderer::supportsInterface(0x92372d21) [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] true\n' +
+    '    │   │   ├─ [1481] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::unit() [staticcall]\n' +
+    '    │   │   │   └─ ← [Return] 10000000000000000 [1e16]\n' +
+    '    │   │   ├─ emit AdminTransferred(previousAdmin: 0x0000000000000000000000000000000000000000, newAdmin: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)\n' +
+    '    │   │   └─ ← [Return] 17768 bytes of code\n' +
+    '    │   └─ ← [Return] ShapePacks: [0x7D26890d0Ab943aA0fdAE86E729fD3173770015a]\n' +
+    '    ├─ [4423558] → new PoolBalancer@0x4575acc57E1FFA7CcccD5969898d1114c0792216\n' +
+    '    │   ├─ [975] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationCount() [staticcall]\n' +
+    '    │   │   └─ ← [Return] 9\n' +
+    '    │   ├─ [1559] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(0) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 10000000000000000 [1e16]\n' +
+    '    │   ├─ [1581] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(1) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 50000000000000000 [5e16]\n' +
+    '    │   ├─ [1603] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(2) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 100000000000000000 [1e17]\n' +
+    '    │   ├─ [1625] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(3) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 500000000000000000 [5e17]\n' +
+    '    │   ├─ [1647] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(4) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 1000000000000000000 [1e18]\n' +
+    '    │   ├─ [1669] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(5) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 5000000000000000000 [5e18]\n' +
+    '    │   ├─ [1691] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(6) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 10000000000000000000 [1e19]\n' +
+    '    │   ├─ [1713] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(7) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 50000000000000000000 [5e19]\n' +
+    '    │   ├─ [1735] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0::denominationAt(8) [staticcall]\n' +
+    '    │   │   └─ ← [Return] 100000000000000000000 [1e20]\n' +
+    '    │   ├─ [372] ShapePacks::shapes() [staticcall]\n' +
+    '    │   │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+    '    │   ├─ [1297] ShapePacks::MIN_PACK_VALUE() [staticcall]\n' +
+    '    │   │   └─ ← [Return] 20000000000000000 [2e16]\n' +
+    '    │   └─ ← [Return] 19933 bytes of code\n' +
+    '    ├─ [538163] → new BalancerFactory@0xde1627CA9D57bb646eda817366F96Daf3595A436\n' +
+    '    │   ├─ emit KeeperAdminTransferred(oldKeeperAdmin: 0x0000000000000000000000000000000000000000, newKeeperAdmin: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)\n' +
+    '    │   └─ ← [Return] 2117 bytes of code\n' +
+    '    ├─ [0] VM::stopBroadcast()\n' +
+    '    │   └─ ← [Return]\n' +
+    '    ├─ [256] BalancerFactory::implementation() [staticcall]\n' +
+    '    │   └─ ← [Return] PoolBalancer: [0x4575acc57E1FFA7CcccD5969898d1114c0792216]\n' +
+    '    ├─ [2563] BalancerFactory::keeperAdmin() [staticcall]\n' +
+    '    │   └─ ← [Return] 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\n' +
+    '    ├─ [2290] BalancerFactory::keepersRestricted() [staticcall]\n' +
+    '    │   └─ ← [Return] false\n' +
+    '    ├─ [2376] PoolBalancer::creator() [staticcall]\n' +
+    '    │   └─ ← [Return] ECRecover: [0x0000000000000000000000000000000000000001]\n' +
+    '    ├─ [362] PoolBalancer::FWA_FACTORY() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C\n' +
+    '    ├─ [1198] PoolBalancer::FWA_IMPLEMENTATION() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7\n' +
+    '    ├─ [802] PoolBalancer::SHAPES() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+    '    ├─ [516] PoolBalancer::ENS() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e\n' +
+    '    ├─ [824] PoolBalancer::PACKS() [staticcall]\n' +
+    '    │   └─ ← [Return] ShapePacks: [0x7D26890d0Ab943aA0fdAE86E729fD3173770015a]\n' +
+    '    ├─ [372] ShapePacks::shapes() [staticcall]\n' +
+    '    │   └─ ← [Return] 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0\n' +
+    '    ├─ [1297] ShapePacks::MIN_PACK_VALUE() [staticcall]\n' +
+    '    │   └─ ← [Return] 20000000000000000 [2e16]\n' +
+    '    ├─ [0] VM::serializeUint("<stringified JSON>", "chainId", 31337 [3.133e4])\n' +
+    '    │   └─ ← [Return] "{\\"chainId\\":31337}"\n' +
+    '    ├─ [0] VM::serializeUint("<stringified JSON>", "block", 26382349 [2.638e7])\n' +
+    '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337}"\n' +
+    '    ├─ [0] VM::serializeAddress("<stringified JSON>", "poolBalancerImplementation", 0x4575acc57E1FFA7CcccD5969898d1114c0792216)\n' +
+    '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337,\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+    '    ├─ [0] VM::serializeAddress("<stringified JSON>", "packs", 0x7D26890d0Ab943aA0fdAE86E729fD3173770015a)\n' +
+    '    │   └─ ← [Return] "{\\"block\\":26382349,\\"chainId\\":31337,\\"packs\\":\\"0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\\",\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+    '    ├─ [0] VM::serializeAddress("<stringified JSON>", "balancerFactory", 0xde1627CA9D57bb646eda817366F96Daf3595A436)\n' +
+    '    │   └─ ← [Return] "{\\"balancerFactory\\":\\"0xde1627CA9D57bb646eda817366F96Daf3595A436\\",\\"block\\":26382349,\\"chainId\\":31337,\\"packs\\":\\"0x7D26890d0Ab943aA0fdAE86E729fD3173770015a\\",\\"poolBalancerImplementation\\":\\"0x4575acc57E1FFA7CcccD5969898d1114c0792216\\"}"\n' +
+    '    ├─ [0] VM::toString(31337 [3.133e4]) [staticcall]\n' +
+    '    │   └─ ← [Return] "31337"\n' +
+    '    ├─ [0] VM::writeJson("<stringified JSON>", "./deployments/31337.json")\n' +
+    '    │   └─ ← [Revert] vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n' +
+    '    └─ ← [Revert] vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n' +
+    '\n' +
+    '\n',
+  stderr: 'Error: script failed: vm.writeJson: failed to open file "/Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/integration/validation/project/deployments/31337.json": No such file or directory (os error 2)\n'
+}
+
+Node.js v22.19.0

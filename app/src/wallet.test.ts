@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { scanWalletNfts } from './wallet';
+import { scanWalletNfts, walletCollections } from './wallet';
 
 const OWNER = '0x00000000000000000000000000000000000000aa';
 const A = '0x00000000000000000000000000000000000000a1';
@@ -57,5 +57,30 @@ describe('scanWalletNfts', () => {
     const r = await scanWalletNfts(c2 as never, OWNER, 1);
     expect(c2.requests).toEqual([[2_000_001n, 2_000_010n]]);
     expect(r.map((n) => n.tokenId)).toEqual([1n, 9n]);
+  });
+});
+
+describe('walletCollections (scan + Alchemy prices)', () => {
+  const C = '0x00000000000000000000000000000000000000c4';
+  const logs = [nft(A, 1n, 10), nft(A, 2n, 20), nft(B, 7n, 30), nft(C, 9n, 40)];
+  const owners = { [`${A}:1`]: OWNER, [`${A}:2`]: OWNER, [`${B}:7`]: OWNER, [`${C}:9`]: OWNER };
+
+  it('groups by collection, drops spam and lists the highest floor first', async () => {
+    (globalThis as { fetch?: unknown }).fetch = async () => ({ ok: true, json: async () => ({ contracts: [
+      { address: A, name: 'Alpha', openSeaMetadata: { floorPrice: 0.01, collectionSlug: 'alpha' } },
+      { address: B, name: 'Beta', openSeaMetadata: { floorPrice: 2.5, imageUrl: 'https://img/b' } },
+      { address: C, name: 'Junk', isSpam: true },
+    ] }) });
+    const r = await walletCollections(client(logs, owners, 10_000_000) as never, OWNER, 31337);
+    expect(r.map((c) => [c.name, c.count, c.floor])).toEqual([['Beta', 1, 2.5], ['Alpha', 2, 0.01]]);
+    expect(r[0].image).toBe('https://img/b');
+    expect(r[1].tokens?.map((t) => t.tokenId)).toEqual([1n, 2n]);
+  });
+
+  it('still lists the wallet when the price service fails', async () => {
+    (globalThis as { fetch?: unknown }).fetch = async () => ({ ok: false, status: 429 });
+    const r = await walletCollections(client(logs, owners, 10_000_000) as never, OWNER, 31337);
+    expect(r).toHaveLength(3);
+    expect(r.every((c) => c.floor === undefined)).toBe(true);
   });
 });

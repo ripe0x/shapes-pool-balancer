@@ -1,0 +1,31 @@
+=== RUN 6: integration test_full_draw_cycle ===
+No files changed, compilation skipped
+
+Ran 1 test for audit/round9/integration/FullCycle.t.sol:FullCycleTest
+[PASS] test_full_draw_cycle() (gas: 2029012)
+Logs:
+  chainlink requestId: 94782623901646048224103269094433485951264266060021871943327168528472285848174
+  vrf consumer (sender): 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  player spend total (fee+vrf): 21194431194541526
+  drawn listingId: 2
+  drawn collection: 0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0
+  drawn tokenId: 307
+  drawn listing status: 4
+  prize owner after draw: 0x000000000000000000000000000000000000bEEF
+  keeper reward (wei): 1145000000000000
+  approx gasUsed (test-frame, incl overhead): 804633
+  approx billed cost @1gwei: 804633000000000
+  keeper net (reward - billed): 340367000000000
+  ownerProceeds settled (pre-upkeep): 17956601137658597
+  pool balance delta over cycle: 5811601137658597
+  pool ownerProceeds now: 0
+  reconciledSequence: 1
+  keeperCredit now: 0
+  profit now: 0
+  admission after: 0
+  active listings after: 4
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.09s (161.17ms CPU time)
+
+Ran 1 test suite in 1.09s (1.09s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+EXIT=0

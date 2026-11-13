@@ -1,0 +1,93 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "baseGwei": "4.9",
+  "effectiveGwei": "4.95",
+  "pool": "0xc0CE6B85bB0bc02c1b072d291af3ad47c0c670a0",
+  "router": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "baseline": {
+    "sequence": "1",
+    "unsettled": "0",
+    "routerEth": "105334050073774037"
+  },
+  "results": [
+    {
+      "count": 1,
+      "quote": {
+        "fee": "22520339287470837",
+        "vrf": "11583000000000000",
+        "total": "34103339287470837"
+      },
+      "txHash": "0x11cfb42bfde8073234d80ea09e78d5b83deb8f28e63270523590598dc3d7cd05",
+      "status": "success",
+      "gasUsed": "553324",
+      "effectiveGasPrice": "4950000000",
+      "sequenceAfter": "2",
+      "unsettledAfter": "1"
+    },
+    {
+      "count": 2,
+      "quote": {
+        "fee": "22520339287470837",
+        "vrf": "11583000000000000",
+        "total": "68206678574941674"
+      },
+      "txHash": "0x43e6aa2fd48b2dfcf636347000ceedb836627a185500d8e42e577c1bfa2fe472",
+      "status": "success",
+      "gasUsed": "816689",
+      "effectiveGasPrice": "4950000000",
+      "sequenceAfter": "3",
+      "unsettledAfter": "2"
+    },
+    {
+      "count": 3,
+      "quote": {
+        "fee": "22520339287470837",
+        "vrf": "11583000000000000",
+        "total": "102310017862412511"
+      },
+      "txHash": "0x9d4ba0d5296e3910532846ab932a7877dab5ac46197920cab1b1a0dddefba28f",
+      "status": "success",
+      "gasUsed": "1080057",
+      "effectiveGasPrice": "4950000000",
+      "sequenceAfter": "4",
+      "unsettledAfter": "3"
+    },
+    {
+      "count": 4,
+      "quote": {
+        "fee": "22520339287470837",
+        "vrf": "11583000000000000",
+        "total": "136413357149883348"
+      },
+      "txHash": "0x11f5eab839c7de8d0fe16c29b3b18c029b500903e99b9eefbb8f043a102c92be",
+      "status": "success",
+      "gasUsed": "1363852",
+      "effectiveGasPrice": "4950000000",
+      "sequenceAfter": "5",
+      "unsettledAfter": "4"
+    },
+    {
+      "count": 5,
+      "quote": {
+        "fee": "22520339287470837",
+        "vrf": "11583000000000000",
+        "total": "170516696437354185"
+      },
+      "txHash": "0x3cf7a9868746a32991c4e182bacffe5020e419d5c5ec685788f7a42128c73a17",
+      "status": "reverted",
+      "gasUsed": "228264",
+      "effectiveGasPrice": "4950000000",
+      "sequenceAfter": "1",
+      "unsettledAfter": "0",
+      "revertSelector": "0x64586738",
+      "routerCall": {
+        "input": "0x688189d30000000000000000000000000000000000000000000000000000000000000005",
+        "output": "0x64586738",
+        "error": "execution reverted",
+        "gasUsed": "0x1a79d"
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+=== RUN11: RewardReentrancy ===
+Compiling 31 files with Solc 0.8.28
+Compiling 59 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.95s
+Solc 0.8.28 finished in 5.21s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 4 tests for audit/round9/focused/RewardReentrancy.t.sol:RewardReentrancyTest
+[PASS] testCloseReentry() (gas: 4704167)
+Logs:
+  close reentry completed within stipend: true
+    enabled after (false => close executed re-entrantly): false
+
+[PASS] testConfigureReentry() (gas: 4717204)
+Logs:
+  configure reentry completed within stipend: true
+    markupBps after (2000 => configure executed re-entrantly): 2000
+
+[PASS] testGuardedCollectReentry() (gas: 12316077)
+Logs:
+  guarded collectProceeds reentry completed: false
+
+[PASS] testTransferCreatorReentry() (gas: 4725106)
+Logs:
+  transferCreator reentry completed within stipend: true
+    pendingCreator after: 0x000000000000000000000000000000000000dEaD
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 5.00s (9.59s CPU time)
+
+Ran 1 test suite in 5.00s (5.00s CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)
+EXIT=0

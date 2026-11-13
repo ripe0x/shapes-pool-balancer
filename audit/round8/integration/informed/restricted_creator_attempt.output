@@ -1,0 +1,56 @@
+Error: Compiler run failed:
+Error (6275): Source "audit/round8/integration/informed/project/lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/mocks/docs/ERC4626Fees.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "audit/round8/integration/informed/project/lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/mocks/docs/ERC4626Fees.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/mocks/token/ERC4646FeesMock.sol:5:1:
+  |
+5 | import {ERC4626Fees} from "../docs/ERC4626Fees.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/utils/EIP712.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/utils/EIP712.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/solady/ext/wake/EIP712Mock.sol:3:1:
+  |
+3 | import "src/utils/EIP712.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/tokens/ERC1155.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/tokens/ERC1155.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/solady/ext/wake/ERC1155Mock.sol:2:1:
+  |
+2 | import "src/tokens/ERC1155.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/tokens/ERC20.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/tokens/ERC20.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+  --> audit/round8/integration/informed/project/lib/solady/ext/wake/ERC20Mock.sol:37:1:
+   |
+37 | import "src/tokens/ERC20.sol";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/utils/SafeTransferLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/utils/SafeTransferLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+  --> audit/round8/integration/informed/project/lib/solady/ext/wake/ERC20Mock.sol:38:1:
+   |
+38 | import "src/utils/SafeTransferLib.sol";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/tokens/ERC721.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/tokens/ERC721.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/solady/ext/wake/ERC721Mock.sol:2:1:
+  |
+2 | import "src/tokens/ERC721.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/utils/MerkleProofLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/utils/MerkleProofLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/solady/ext/wake/MerkleProofMock.sol:3:1:
+  |
+3 | import "src/utils/MerkleProofLib.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (6275): Source "src/utils/SignatureCheckerLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ParserError: Source "src/utils/SignatureCheckerLib.sol" not found: File not found. Searched the following locations: "/Users/dd/CascadeProjects/fwa-pool-balancer".
+ --> audit/round8/integration/informed/project/lib/solady/ext/wake/SignatureCheckerMock.sol:2:1:
+  |
+2 | import "src/utils/SignatureCheckerLib.sol";
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

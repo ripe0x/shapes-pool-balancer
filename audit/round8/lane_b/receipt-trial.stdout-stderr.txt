@@ -1,0 +1,10 @@
+file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/receipt-trial.mjs:42
+  if (r.status !== 'success') throw new Error(`local fork tx reverted ${hash}`);
+                                    ^
+
+Error: local fork tx reverted 0x98249251908cd057f54de6704a084006eda9609a494f17aa7de0d9b16b225cea
+    at wait (file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/receipt-trial.mjs:42:37)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/dd/CascadeProjects/fwa-pool-balancer/audit/round8/lane_b/receipt-trial.mjs:86:1
+
+Node.js v22.19.0

@@ -1,0 +1,66 @@
+{
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "player": "0x00000000000000000000000000000000c0dec0de",
+  "keeper": "0x00000000000000000000000000000000c0dec0df",
+  "quote": {
+    "fee": "22520339287470837",
+    "vrf": "2457000000000000",
+    "total": "99909357149883348"
+  },
+  "purchaseTx": "0x3acfce6c08711c03b0e18926bac7a1d3e309f4985ad416b1300f3c952eee829d",
+  "admissionStatusWhileFourInFlight": "0",
+  "inFlightReserve": "2571000000000000000",
+  "acquisitions": [
+    {
+      "requestId": "10412546148382297689149577695111706927753226567136918663491445919880671230910",
+      "listingId": "34",
+      "status": "2"
+    },
+    {
+      "requestId": "36030075426630241987174162388021095287136497829864346917197886983247232644403",
+      "listingId": "10",
+      "status": "2"
+    },
+    {
+      "requestId": "92367533472835761172630044416897595817107170413701864800877801613411939654281",
+      "listingId": "14",
+      "status": "2"
+    },
+    {
+      "requestId": "35087158592926974600582876360127850688610045006173988963160525295399340477856",
+      "listingId": "21",
+      "status": "2"
+    }
+  ],
+  "callbackRoute": "coordinator -> VRF service -> FWA pool",
+  "creditBefore": "0",
+  "variants": [
+    {
+      "bidGwei": "1.05",
+      "txHash": "0x494c4f9c02deaa0e1f8ef2204ef6ddd7708943a8764c8ace58014397bc26c2dc",
+      "gasLimit": "8000000",
+      "billedGas": "2108146",
+      "effectiveGasPrice": "1050000000",
+      "measuredGas": "2164066",
+      "reward": "2772269300000000",
+      "billedCost": "2213553300000000",
+      "walletGain": "558716000000000",
+      "creditAfter": "1807730700000000",
+      "reconciledSequence": "5"
+    },
+    {
+      "bidGwei": "5.05",
+      "txHash": "0xffe8ef787e9a7a1961bd3f529f7df23d5d1d285ee8edc630f2e9f5a089507bf5",
+      "gasLimit": "8000000",
+      "billedGas": "2108118",
+      "effectiveGasPrice": "5050000000",
+      "measuredGas": "2164038",
+      "reward": "2772239900000000",
+      "billedCost": "10645995900000000",
+      "walletGain": "-7873756000000000",
+      "creditAfter": "1807760100000000",
+      "reconciledSequence": "5"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+Compiling 61 files with Solc 0.8.28
+Compiling 56 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.26s
+Solc 0.8.28 finished in 6.15s
+Compiler run successful!
+
+Ran 3 tests for audit/round8/lane_a/informed/security_followup/SecurityEdges.t.sol:SecurityEdgesInformedTest
+[PASS] testBatchCallbackMixedPricesAndAtomicRollback() (gas: 2950959)
+Logs:
+  first batch price wei 100000000000000000
+  second batch price wei 200000000000000000
+
+[PASS] testContractKeeperAndCreatorETHReentryBlocked() (gas: 2705338)
+Logs:
+  keeper reentry selector
+  0xab143c06
+  creator ETH reentry selector
+  0xab143c06
+
+[PASS] testRepricingDuringUnsettledDrawRollsBackThenSucceeds() (gas: 3746926)
+Logs:
+  shape-select word trials 1
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 8.51s (7.23s CPU time)
+
+Ran 1 test suite in 8.80s (8.51s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

@@ -4,6 +4,7 @@ import { writeContract } from '@wagmi/core';
 import { prepareWrite } from './tx';
 
 const ACCOUNT = '0x00000000000000000000000000000000000c0ffe' as const;
+const FEES = { maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 50_000_000n };
 const CALL = { address: '0x00000000000000000000000000000000000ba1a5', abi: [], functionName: 'listCurated', args: [1n, 2n], value: 3n };
 
 /** Records every call so tests can check what was simulated and estimated. */
@@ -12,6 +13,7 @@ function client(opts: { estimate?: bigint; simulateError?: Error; estimateError?
   return {
     calls,
     chain: { id: 1 },
+    estimateFeesPerGas: async () => FEES,
     simulateContract: async (arg: never) => {
       calls.push({ fn: 'simulate', arg });
       if (opts.simulateError) throw opts.simulateError;
@@ -30,9 +32,18 @@ describe('prepareWrite', () => {
     const c = client({ estimate: 658_714n });
     const out = await prepareWrite(c as never, ACCOUNT, CALL);
     expect(out.gas).toBe(856_328n); // 658,714 × 1.3, rounded down
-    expect(out).toEqual({ ...CALL, account: ACCOUNT, chainId: 1, gas: 856_328n }); // no gas price fields are added
+    expect(out).toEqual({ ...CALL, ...FEES, account: ACCOUNT, chainId: 1, gas: 856_328n });
     expect(c.calls.map((x) => x.fn)).toEqual(['simulate', 'estimate']);
-    for (const x of c.calls) expect(x.arg).toEqual({ ...CALL, account: ACCOUNT });
+    // Simulated and estimated at the fees it is sent with (round 8 E6: price 0 under-quotes upkeep and VRF).
+    for (const x of c.calls) expect(x.arg).toEqual({ ...CALL, ...FEES, account: ACCOUNT });
+  });
+
+  it('keeps fees the caller supplied', async () => {
+    const c = client();
+    const mine = { maxFeePerGas: 9n, maxPriorityFeePerGas: 1n };
+    const out = await prepareWrite(c as never, ACCOUNT, { ...CALL, ...mine });
+    expect(out).toMatchObject(mine);
+    expect(c.calls[0].arg).toMatchObject(mine);
   });
 
   it('keeps a gas limit the caller supplied and does not estimate', async () => {

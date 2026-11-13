@@ -1,0 +1,59 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.15s
+Compiler run successful!
+
+Ran 1 test for audit/round8/lane_b/EconomicProbe.t.sol:EconomicProbe
+[PASS] testGasSweepOneDrawOneRestock() (gas: 14812638)
+Logs:
+  base fee wei 0
+  quote total wei 22515218342601808
+  restock fee wei 245000000000000
+  keeper reward wei 245000000000000
+  call gas pre-refund upper bound 791304
+  keeper spread versus upper-bound cost wei 245000000000000
+  base fee wei 50000000
+  quote total wei 22749218342601808
+  restock fee wei 290000000000000
+  keeper reward wei 290000000000000
+  call gas pre-refund upper bound 791267
+  keeper spread versus upper-bound cost wei 210873300000000
+  base fee wei 100000000
+  quote total wei 22866218342601808
+  restock fee wei 335000000000000
+  keeper reward wei 335000000000000
+  call gas pre-refund upper bound 791268
+  keeper spread versus upper-bound cost wei 216309800000000
+  base fee wei 1000000000
+  quote total wei 24972218342601808
+  restock fee wei 1145000000000000
+  keeper reward wei 1145000000000000
+  call gas pre-refund upper bound 791268
+  keeper spread versus upper-bound cost wei 314168600000000
+  base fee wei 3000000000
+  quote total wei 29652218342601808
+  restock fee wei 2945000000000000
+  keeper reward wei 2918854350000000
+  call gas pre-refund upper bound 791246
+  keeper spread versus upper-bound cost wei 505554050000000
+  base fee wei 4900000000
+  quote total wei 34098218342601808
+  restock fee wei 4655000000000000
+  keeper reward wei 4425681650000000
+  call gas pre-refund upper bound 791246
+  keeper spread versus upper-bound cost wei 509013950000000
+  base fee wei 5100000000
+  quote total wei 34566218342601808
+  restock fee wei 4700000000000000
+  keeper reward wei 4465550000000000
+  call gas pre-refund upper bound 791300
+  keeper spread versus upper-bound cost wei 390355000000000
+  base fee wei 10000000000
+  quote total wei 46032218342601808
+  restock fee wei 4700000000000000
+  keeper reward wei 4465550000000000
+  call gas pre-refund upper bound 791300
+  keeper spread versus upper-bound cost wei -3487015000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 48.74ms (21.76ms CPU time)
+
+Ran 1 test suite in 381.55ms (48.74ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

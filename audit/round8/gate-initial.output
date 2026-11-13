@@ -1,0 +1,67 @@
+FAIL: path reserve-reopen: identity family unresolved
+FAIL: path reserve-reopen: quantity family unresolved
+FAIL: path reserve-reopen: value_attribution family unresolved
+FAIL: path reserve-reopen: authorization family unresolved
+FAIL: path reserve-reopen: callback family unresolved
+FAIL: path reserve-reopen: timing family unresolved
+FAIL: path burst-restoration: identity family unresolved
+FAIL: path burst-restoration: quantity family unresolved
+FAIL: path burst-restoration: value_attribution family unresolved
+FAIL: path burst-restoration: authorization family unresolved
+FAIL: path burst-restoration: callback family unresolved
+FAIL: path burst-restoration: timing family unresolved
+FAIL: path unresolved-other-surface: unresolved outcome
+FAIL: path unresolved-other-surface: no postconditions
+FAIL: path unresolved-other-surface: identity family unresolved
+FAIL: path unresolved-other-surface: quantity family unresolved
+FAIL: path unresolved-other-surface: value_attribution family unresolved
+FAIL: path unresolved-other-surface: authorization family unresolved
+FAIL: path unresolved-other-surface: callback family unresolved
+FAIL: path unresolved-other-surface: timing family unresolved
+FAIL: entrypoint_review: must exactly cover compiler inventory
+FAIL: external_call_review: must exactly cover compiler inventory
+FAIL: triage must exactly cover all High/Medium Slither alerts
+FAIL: Slither 09f87709f411fb9331256897fbd37b14cc60a40735f127198efec9f41c819122: unresolved
+FAIL: Slither 463effadf8f945a0012311ccae819a5b6c93acfe0a5edf3855c362ec3bb996b2: unresolved
+FAIL: Slither 4a780579f209c43f51515b18420f6fbff83dbbaa7aa18a6af0bea31520524ef4: unresolved
+FAIL: Slither ee6e97ccc7f41d13dd877f8ad85b2eb7e5944f7a90cc01656acff559e48bcdb8: unresolved
+FAIL: Slither 5a877ff0fb2420c1da87c36550ee3cd1ba221db28b8c9f8c3dea46441afbdcf4: unresolved
+FAIL: Slither 78ae51650d5d44f0aa20eb49a41638c2729285635654c179f3facd7d7275f48d: unresolved
+FAIL: Slither 9b60c22720c288114e71ad338ec78c3924dfe9c6a45997c9b0fc3919958637c5: unresolved
+FAIL: Slither abe866b8846d825beaced96acac5dd63706229e5a9ad541410e99c294549bc16: unresolved
+FAIL: Slither c7fdde091768e56fabe7b8b5ba07c1e21756b3212de7c75375049e992ca5776a: unresolved
+FAIL: Slither c9732fb0632604823a9cc54f673fe115ff9be011825b13f473911bfa42cd7b89: unresolved
+FAIL: Slither fc53a449b6d62523d64704d84554f4e5ad2cfbd7b4f24c28c171ec57a68c481e: unresolved
+FAIL: Slither 1dec5a4cea5de73672765b80a093d409b18716ae5443c811db0e3bea75ded70c: unresolved
+FAIL: Slither 738f82ffcc328e555c4a76830e0d9dc05f4b72e1dcdcc45d3b6795312b82972e: unresolved
+FAIL: Slither e656c916aea5fb1919b941bd2eb57087692e4f557bb30f99ccc436d92dc310fb: unresolved
+FAIL: Slither ca908850024205c43d924acb64025e24a1e9c166109af9e71a24ccee54a9e764: unresolved
+FAIL: Slither 29e64124e5f10c84472ace0cb9ab00abb9096f08a31b38d612689da9b51b97e0: unresolved
+FAIL: Slither 8385ee99145535ecc1acad777650347fd6fe19f3ec285952ac8e9f5c9c2c365d: unresolved
+FAIL: Slither ac0dfa237880ad04d641facfcbbdd91b3fcd1bec553b5086dd3df4c54ac27ffb: unresolved
+FAIL: Slither d024bf1977c33a30ef0b7e763099ce54009439b3085182be5e6595e5333e31ed: unresolved
+FAIL: Slither 1ca0c07904b0363968743ada551aee98479306c52221169c29fdc6266dd3ccaa: unresolved
+FAIL: Slither 1cd5f43085774237fc823ba6b3eb40cc7073fbf1b620df4efb6eec2789a5ea36: unresolved
+FAIL: Slither 24233dd2420667cfbdac85f0d2eeb2b5af854ba3fc570dbcd9322d4817524846: unresolved
+FAIL: Slither b4947e3dbc486bf593661d5abd74b60e5d67e258c0d279474bab476f4aae2881: unresolved
+FAIL: Slither e5c2b16bb2d357526e4a404240870db66e01fe35daa8f600075d923ff83797ff: unresolved
+FAIL: Slither 7c4b497ff291ad0ce37b1fcb5989c0f9369b45d81cb046f267c143b323b9300b: unresolved
+FAIL: Slither 89942a5e4bf8b67ae221051d122bc9b509567008f0bd29bc75e12ffc57c3692f: unresolved
+FAIL: Slither c10811b4cf9b6b0a1cb60a090a6170cc27a5f94d70c29cce387ba6e45842e43e: unresolved
+FAIL: Slither eb583c928dc691a0c97ec50a39ba435b6adf629654298b53903bbee80a073755: unresolved
+FAIL: Slither 12a6edcf19a4eb488cac65f2f0d97b2088f685cedac9b201dd5dbe97a8a86ae5: unresolved
+FAIL: Slither 2034acc00c3f8a17ad97e0d932e7b4f98af0d390968d439b3b9cb5bdc87acd57: unresolved
+FAIL: Slither 22f90abab8c875c61f2e2a674601237d63be68b67815434fd92666ffa184b2fd: unresolved
+FAIL: Slither 32d33486337cb865e252595562a1fac092228aa2b62f61f807f188698134ee88: unresolved
+FAIL: Slither 4013ced37a4e2a07961f60c6e75f9ce0960817630fd7bea4d6c0b8a823e7a65c: unresolved
+FAIL: Slither 49e3b7c290b5a0a1326f726060bfea1efcbc7d44218c4a1252280cfe0ef19453: unresolved
+FAIL: Slither 7e9f05581dcd8f57cd9e083e9f31f0b1c9baa6227c8436851d5b3abcc20a3fd6: unresolved
+FAIL: Slither 82b4ae6bdcc956e9750c9f73a3d53df199be7de63808ca5ed2d532e0e812737d: unresolved
+FAIL: Slither a54acc6f73c89757bc6272aea1437cbda1e6fa2d74ad1b70d8dcb218b10fe64f: unresolved
+FAIL: Slither ad5a625428522cc514c2f43f820da517bafa32e98846377d9ad37b0c81acda66: unresolved
+FAIL: Slither 82e1a575497bcb73fa830290fe20d7d3d67494d0e562b3517bb37cc7e0fbb39f: unresolved
+FAIL: Slither c3f1d727431942f026cf66feaa4897aeb55e0443cd416aa024a0f14a9e2b4ae5: unresolved
+FAIL: independent review: file and SHA-256 required
+FAIL: independent review missing inventory_challenge
+FAIL: independent review missing evidence_challenge
+FAIL: independent reviewer must assess every postcondition

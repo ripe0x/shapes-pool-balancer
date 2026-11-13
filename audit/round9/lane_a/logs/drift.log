@@ -1,0 +1,9 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.08s
+Compiler run successful!
+
+Ran 1 test for audit/round9/lane_a/Drift.t.sol:Drift
+[PASS] testRecentBlockInitialize() (gas: 7342359)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.71s (2.71s CPU time)
+
+Ran 1 test suite in 2.71s (2.71s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

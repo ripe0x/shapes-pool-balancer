@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for audit/round8/preflight/Sentinel.t.sol:SentinelTest
+[PASS] testFuzzNeutralArithmetic(uint64) (runs: 256, μ: 209, ~: 209)
+[PASS] testNeutralArithmetic() (gas: 140)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.64ms (1.44ms CPU time)
+
+Ran 1 test suite in 269.79ms (1.64ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

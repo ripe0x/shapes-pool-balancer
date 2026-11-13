@@ -1,0 +1,55 @@
+/Users/dd/CascadeProjects/fwa-pool-balancer
+/Users/dd/.local/agent-guards/bin/forge
+forge Version: 1.8.1
+Commit SHA: 982849d3140c01fd3b72905759581a132df7aa98
+Build Timestamp: 2026-08-28T17:50:40.383510000Z (1787939440)
+Build Profile: dist
+/Users/dd/.local/bin/solc
+solc, the solidity compiler commandline interface
+Version: 0.8.26+commit.8a97fa7a.Darwin.appleclang
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+# 50 keeps PoolBalancer under EIP-170 (24,576 B) with headroom after pack prizes; at 200 it had 8 bytes spare.
+optimizer_runs = 50
+via_ir = true
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "solady/=lib/solady/src/",
+    "packs/=lib/shape-packs/src/",
+    "shapes/=lib/shape-packs/lib/shapes/src/",
+    "@openzeppelin/contracts/=lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/",
+]
+# Draw Packs (lib/shape-packs, ripe0x/shape-packs `draw-packs` at 3a463f7) is built the way its own repository builds it.
+additional_compiler_profiles = [{ name = "packs", via_ir = true, optimizer_runs = 20 }]
+compilation_restrictions = [{ paths = "lib/shape-packs/src/**", via_ir = true, optimizer_runs = 20 }]
+fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = "read-write", path = "./test/fixtures" }, { access = "read", path = "./out" }]
+
+[profile.default.lint]
+lint_on_build = false
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 64
+
+[rpc_endpoints]
+mainnet = "https://mainnet.gateway.tenderly.co"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.28;
+
+contract SentinelTest {
+    function testNeutralArithmetic() public pure {
+        assert(2 + 2 == 4);
+    }
+
+    function testFuzzNeutralArithmetic(uint64 x) public pure {
+        assert(uint256(x) + 1 > uint256(x));
+    }
+}

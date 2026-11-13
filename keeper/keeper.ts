@@ -1,9 +1,8 @@
 // Shared permissionless keeper for every Balancer created by one BalancerFactory.
-// Each tick: discover Balancers and failed Shape deliveries from events (re-scanning a reorg window),
-// then for each Balancer simulate `performUpkeep` (or `recoverRefundedShape`) at the gas price it would
-// bid. The simulation returns the contract's reward; the call is sent only when that reward covers the
-// estimated cost under the configured policy. Expected reverts (NoUpkeepNeeded, PoolBusy) mean "nothing
-// to do"; any other revert is reported as a pool error. One in-flight tx per Balancer, replaced with
+// Each tick: discover Balancers from events (re-scanning a reorg window), then for each Balancer simulate
+// `performUpkeep` at the gas price it would bid. The simulation returns the contract's reward; the call is
+// sent only when that reward covers the estimated cost under the configured policy. NoUpkeepNeeded means
+// "nothing to do"; any other revert is reported as a pool error. One in-flight tx per Balancer, replaced with
 // bumped fees only while still profitable. State persists to a JSON file so restarts resume safely.
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -15,17 +14,24 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
-const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
 const GWEI = 10n ** 9n;
-/** Reverts that only mean "no work right now". */
-export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'PoolBusy']);
-/** Contract constants (src/PoolBalancer.sol). */
+/** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
+ *  upkeep to keepers that do not include this one. */
+export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
+/** Contract constants (src/PoolBalancer.sol). KEEPER_MAX_GAS caps the gas the reward pays for, not the call's gas. */
 export const KEEPER_MAX_GAS = 3_200_000n;
-const SHAPE = 2;
-const PENDING = 2;
-const L_DELIVERY_REFUNDED = 7;
+/** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
+ *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
+ *  upkeep (5 reconciles + 5 Shape units in 4 sizes) measures under KEEPER_MAX_GAS on a fork (test/Gas.t.sol); this
+ *  floor adds 25% for Shapes mint gas varying by block. Only gas used is billed. */
+export const UPKEEP_GAS_FLOOR = 4_000_000n;
 
-type Fn = 'performUpkeep' | 'recoverRefundedShape';
+/** Gas limit for an upkeep estimated at `estimate`: 30% headroom, never below UPKEEP_GAS_FLOOR. */
+export const gasLimitFor = (estimate: bigint) => {
+  const g = (estimate * 13n) / 10n;
+  return g > UPKEEP_GAS_FLOOR ? g : UPKEEP_GAS_FLOOR;
+};
+type Fn = 'performUpkeep';
 
 export interface Policy {
   /** Gas units from `eth_estimateGas` (pre-refund execution gas: an upper bound on the billed gas). */
@@ -38,9 +44,9 @@ export interface Policy {
   maxLossWei: bigint;
 }
 
-/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). */
+/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). The reward pays for at most
+ *  KEEPER_MAX_GAS, so a larger estimate simply costs more than it earns unless the reward still covers it. */
 export function decide(p: Policy): { send: boolean; reason: string } {
-  if (p.gasEstimate > KEEPER_MAX_GAS) return { send: false, reason: 'estimate above reimbursable maximum' };
   const cost = p.gasEstimate * (p.baseFee + p.priorityFee);
   if (p.expectedReward + p.maxLossWei < cost) return { send: false, reason: 'unprofitable at current gas' };
   return { send: true, reason: 'ok' };
@@ -62,16 +68,15 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { fn: Fn; args: string[]; hashes: Hash[]; nonce: number; gas: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { fn: Fn; args: string[]; hashes: Hash[]; nonce: number; gas: string; estimate?: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State {
   lastScanned: string;
   balancers: Address[];
   /** Shape listing ids whose FWA delivery failed, per Balancer, until recovered or settled. */
-  refundWatch: Record<string, string[]>;
   pending: Record<string, Pending>;
   stats: { sent: number; mined: number; reverted: number; replaced: number; skippedUnprofitable: number; spentWei: string; earnedWei: string };
 }
-export interface AuditEntry { balancer: Address; fn: Fn; hash: Hash; gasUsed: bigint; reimbursedGas: bigint; reward: bigint; cost: bigint }
+export interface AuditEntry { balancer: Address; fn: Fn; hash: Hash; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint }
 
 export class Keeper {
   readonly pub: PublicClient;
@@ -85,7 +90,8 @@ export class Keeper {
 
   constructor(cfg: KeeperConfig) {
     this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
-    const transport = http(cfg.rpcUrl);
+    // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
+    const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
     this.wallet = createWalletClient({ transport, account: cfg.account });
     this.state = this.load();
@@ -97,7 +103,7 @@ export class Keeper {
 
   private load(): State {
     const fresh: State = {
-      lastScanned: (this.c.fromBlock - 1n).toString(), balancers: [], refundWatch: {}, pending: {},
+      lastScanned: (this.c.fromBlock - 1n).toString(), balancers: [], pending: {},
       stats: { sent: 0, mined: 0, reverted: 0, replaced: 0, skippedUnprofitable: 0, spentWei: '0', earnedWei: '0' },
     };
     if (!existsSync(this.c.stateFile)) return fresh;
@@ -136,15 +142,6 @@ export class Keeper {
           this.log('discovered', { balancer: b, block: l.blockNumber?.toString() });
         }
       }
-      if (this.state.balancers.length) {
-        const drawn = await this.pub.getLogs({ address: this.state.balancers, event: DRAWN, fromBlock: start, toBlock: end });
-        for (const l of drawn) {
-          if (l.args.delivered || l.args.kind !== SHAPE) continue;
-          const w = (this.state.refundWatch[getAddress(l.address)] ??= []); // logs carry lowercase addresses
-          const id = l.args.listingId!.toString();
-          if (!w.includes(id)) w.push(id);
-        }
-      }
     }
     // A Balancer whose creation was reorged out has no code; forget it.
     const kept: Address[] = [];
@@ -154,7 +151,6 @@ export class Keeper {
       else {
         this.log('dropped (no code, reorged)', { balancer: b });
         delete this.state.pending[b];
-        delete this.state.refundWatch[b];
       }
     }
     this.state.balancers = kept;
@@ -194,20 +190,7 @@ export class Keeper {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
       return;
     }
-    if (await this.attempt(b, 'performUpkeep', [], head, baseFee, max, priority)) return;
-    // Refunded Shapes: recover and redeem (gas-only reward).
-    const watch = this.state.refundWatch[b] ?? [];
-    if (!watch.length) return;
-    const pool = (await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'pool' })) as Address;
-    for (const id of [...watch]) {
-      const item = (await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'items', args: [BigInt(id)] })) as readonly unknown[];
-      if (Number(item[2]) !== PENDING) {
-        this.state.refundWatch[b] = this.state.refundWatch[b].filter((x) => x !== id); // recovered or forgotten
-        continue;
-      }
-      const listing = (await this.pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'listings', args: [BigInt(id)] })) as readonly unknown[];
-      if (Number(listing[7]) === L_DELIVERY_REFUNDED && (await this.attempt(b, 'recoverRefundedShape', [id], head, baseFee, max, priority))) return;
-    }
+    await this.attempt(b, 'performUpkeep', [], head, baseFee, max, priority);
   }
 
   /** Simulate, apply the profitability policy and send. Returns true if a tx was sent. */
@@ -220,7 +203,6 @@ export class Keeper {
     } catch (e) {
       const name = revertName(e);
       if (name && EXPECTED_REVERTS.has(name)) return false;
-      if (fn === 'recoverRefundedShape' && name === 'InvalidItem') return false; // not refunded yet
       throw e; // unexpected: surface as a pool error
     }
     const gasEstimate = await this.pub.estimateContractGas(call as never);
@@ -230,12 +212,18 @@ export class Keeper {
       this.log(`skip: ${verdict.reason}`, { balancer: b, fn, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });
       return false;
     }
-    // Shapes mint gas varies with the block seed: the limit has 30% headroom. Only gas actually used is
-    // billed, and the contract reimburses measured gas, never the limit.
-    const gas = (gasEstimate * 13n) / 10n;
+    // The contract reimburses measured gas, never the limit; only gas used is billed.
+    const gas = gasLimitFor(gasEstimate);
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
+    // Saved before broadcasting: a restart after the broadcast finds this nonce in flight and waits for or replaces
+    // it, instead of sending a second upkeep at the next nonce.
+    this.state.pending[b] = { fn, args, hashes: [], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.save();
+    // An error here may still have broadcast (lost response): keep the nonce pending, so the next ticks wait for it or
+    // replace it at the same nonce rather than sending a second upkeep at the next one.
     const hash = await this.send(b, fn, callArgs, nonce, maxFeePerGas, priority, gas);
-    this.state.pending[b] = { fn, args, hashes: [hash], nonce, gas: gas.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.state.pending[b].hashes.push(hash);
+    this.save();
     this.state.stats.sent++;
     this.log(`sent ${fn}`, { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
     return true;
@@ -257,17 +245,17 @@ export class Keeper {
       else this.state.stats.reverted++;
       const cost = r.gasUsed * r.effectiveGasPrice;
       let reward = 0n;
-      let reimbursedGas = 0n;
+      let measuredGas = 0n;
       for (const l of r.logs) {
         try {
           const ev = decodeEventLog({ abi: poolBalancerAbi, data: l.data, topics: l.topics });
-          if (ev.eventName === 'KeeperPaid') ({ amount: reward, gasUsed: reimbursedGas } = ev.args as { amount: bigint; gasUsed: bigint });
+          if (ev.eventName === 'KeeperPaid') ({ amount: reward, gasUsed: measuredGas } = ev.args as { amount: bigint; gasUsed: bigint });
         } catch {} // other contracts' events
       }
       this.state.stats.spentWei = (BigInt(this.state.stats.spentWei) + cost).toString();
       this.state.stats.earnedWei = (BigInt(this.state.stats.earnedWei) + reward).toString();
-      this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, reimbursedGas, reward, cost });
-      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), reimbursedGas: reimbursedGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
+      this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, measuredGas, reward, cost });
+      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), gasLimit: p.gas, measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
       delete this.state.pending[b];
       return false;
     }
@@ -291,7 +279,7 @@ export class Keeper {
     try {
       const call = { address: b, abi: poolBalancerAbi, functionName: p.fn, args: p.args.map(BigInt), account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
       const reward = (await this.pub.simulateContract(call as never)).result as bigint;
-      const verdict = decide({ gasEstimate: BigInt(p.gas) * 10n / 13n, expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
+      const verdict = decide({ gasEstimate: p.estimate ? BigInt(p.estimate) : BigInt(p.gas) * 10n / 13n, expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
       if (!verdict.send) {
         this.log(`waiting: replacement ${verdict.reason}`, { balancer: b });
         return true;
@@ -369,8 +357,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
-    // Default covers gas-only paid calls (refund-only batches) to ~1.3 gwei and unpaid re-checkpoints (155k gas)
-    // to ~0.85 gwei, with estimates ~78k gas above billed; set 0 for a strictly profitable keeper.
+    // Default covers gas-only paid calls (reconcile-only upkeep) to ~1.3 gwei, with estimates ~78k gas above
+    // billed; set 0 for a strictly profitable keeper.
     maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
   });
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));

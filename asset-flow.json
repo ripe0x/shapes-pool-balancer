@@ -1,0 +1,21 @@
+{
+  "source_paths": ["src", "script", "foundry.toml", ".gitmodules"],
+  "evidence_paths": ["test/scenario/FlowBreakdown.t.sol", "test/utils/FlowBreakdown.sol", "test/utils/ForkBase.sol"],
+  "scorecard_dir": "docs/receipts/flow",
+  "required_regimes": ["quiet", "limits_at_max", "max_then_idle", "zero_demand", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending", "restock_in_flight"],
+  "drift_groups": [["quiet", "limits_at_max", "max_then_idle"]],
+  "drift_threshold_bps": 500,
+  "test_command": "forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
+  "outcomes": [
+    {"id": "O1", "text": "DRAFT. Keepers are paid their gas, a 50,000-gas overhead allowance and 0.0001 ETH per useful call (provisional); the storage refunds they also keep add at most 0.002 ETH per 180 draws.", "metric": "facts.keeper_paid_beyond_gas_and_reward_wei", "max": 2000000000000000},
+    {"id": "O2", "text": "DRAFT. All buyers fund restocking fees: the fee is built into every draw price (about 0.001 ETH per draw at 0.5 gwei on the launch board); the creator fronts the fees of prizes still listed, never more than one board at the 5 gwei cap (55 Shapes x 0.0047 ETH).", "metric": "facts.restock_fees_outstanding_wei", "max": 260000000000000000},
+    {"id": "O3", "text": "DRAFT. Unused restocking fees go to the creator: right after closing, every wei in the Balancer is claimable except the keeper pay held for draws not yet reconciled (D3).", "metric": "facts.unclaimable_after_close_beyond_held_pay_wei", "max": 0, "regimes": ["closeout_pending"]},
+    {"id": "O4", "text": "DRAFT. Exact redeemable backing: every prize unlisted redeems for exactly its backing.", "metric": "facts.redeem_gap_wei", "max": 0, "regimes": ["closeout_pending"]},
+    {"id": "O5", "text": "DRAFT. The reserve keeps winners paid: after keepers finish, no prize is missing from the board for lack of ETH.", "metric": "facts.restock_incomplete_after_full_pass", "max": 0},
+    {"id": "O6", "text": "DRAFT. Closeout returns everything: after the closeout the Balancer, its listed backing and its FWA proceeds hold nothing. Exception, under FWA's rules: an NFT whose delivery failed stays at FWA until its winner takes the refund.", "metric": "facts.creator_assets_left_wei", "max": 0, "regimes": ["closeout_pending"]},
+    {"id": "O7", "text": "DRAFT. The fill gate never blocks the sales that refill prizes: no draw is refused for low inventory while gas is within the 5 gwei cap.", "metric": "facts.refused_low_inventory_within_gas_cap", "max": 0},
+    {"id": "O8", "text": "DRAFT. The first 10% of Shape markup goes to the game: profit credited to the creator stays under the markup above 10% (at a 25% markup, 12% of proceeds).", "metric": "facts.profit_share_of_proceeds_bps", "max": 1200},
+    {"id": "O9", "text": "DRAFT. The creator's profit follows the board each draw was priced on: with restocks listed while draws are in flight, profit booked beyond that split stays under 0.001 ETH per 180 draws.", "metric": "facts.split_overbooked_wei", "max": 1000000000000000, "regimes": ["restock_in_flight"]}
+  ],
+  "explained": []
+}

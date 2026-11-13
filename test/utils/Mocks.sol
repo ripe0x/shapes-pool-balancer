@@ -144,3 +144,36 @@ contract NonRefundingBuyer {
 
     receive() external payable {}
 }
+
+interface IBalancerCreator {
+    function acceptCreator() external;
+    function listCurated(address, uint256, uint256) external returns (uint256);
+    function configure(uint16, uint256) external;
+    function target() external view returns (uint256);
+}
+
+/// @dev A collection that is also the Balancer's creator and reconfigures the markup from inside its own transfer.
+contract ReconfiguringNFT is MockNFT {
+    uint16 internal armedMarkup;
+    address internal armedBalancer;
+
+    function becomeCreator(address b) external {
+        IBalancerCreator(b).acceptCreator();
+    }
+
+    function listWithCallback(address b, uint256 id, uint256 base, uint16 markupDuringPull) external returns (uint256) {
+        _mint(address(this), id);
+        this.approve(b, id);
+        armedBalancer = b;
+        armedMarkup = markupDuringPull;
+        return IBalancerCreator(b).listCurated(address(this), id, base);
+    }
+
+    function _beforeTokenTransfer(address from, address, uint256) internal override {
+        address b = armedBalancer;
+        if (b != address(0) && from != address(0)) {
+            armedBalancer = address(0);
+            IBalancerCreator(b).configure(armedMarkup, IBalancerCreator(b).target());
+        }
+    }
+}

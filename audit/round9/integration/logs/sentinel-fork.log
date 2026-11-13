@@ -1,0 +1,9 @@
+No files changed, compilation skipped
+
+Ran 3 tests for audit/round9/preflight/Sentinel.t.sol:SentinelTest
+[PASS] testForkReadsBlock() (gas: 6395)
+[PASS] testFuzzNeutralArithmetic(uint64) (runs: 256, μ: 339, ~: 339)
+[PASS] testNeutralArithmetic() (gas: 261)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.14s (1.14s CPU time)
+
+Ran 1 test suite in 1.15s (1.14s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

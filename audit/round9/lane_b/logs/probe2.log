@@ -1,0 +1,54 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.86s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe2.t.sol:86:27:
+   |
+86 |             (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                           ^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe2.t.sol:86:39:
+   |
+86 |             (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                                       ^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> audit/round9/lane_b/Probe2.t.sol:86:75:
+   |
+86 |             (address pur, uint256 rb, uint256 esc, uint256 lid, uint8 st, bool tp) = pool.acquisitions(reqId);
+   |                                                                           ^^^^^^^
+
+
+Ran 1 test for audit/round9/lane_b/Probe2.t.sol:Probe2Test
+[PASS] testProbeDraw() (gas: 11303232)
+Logs:
+  admissionStatus after upkeep 0
+  activeIds 2
+  vrfService() 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  vrfService() 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  vrfCoordinator() 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  quote fee/vrf/total 22784763465082939 0 22784763465082939
+  inventoryVersion 2
+  acquire ok reqId 94782623901646048224103269094433485951264266060021871943327168528472285848174
+  acq purchaser/lid/status 0x000000000000000000000000000000000000bEEF 0 1
+  unsettled 1
+  nlogs 7
+  log emitter 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  0x015dc3aa9002d7fa6b98cf88da11ecfd40c7bfd9eb1c52ee914fd1a62a4c9817
+  log emitter 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  0xf7797de23269c41b86bcb0a933f5bc13c15d4c4e79b4432a14f8e3ec1a8adbf4
+  log emitter 0x6192917fAC8f0900EcC4b1d8570CaaDeb1842abF
+  0xdb28a60cee2e8c31915c78f9bcac218bee7a8039e7507da768916fe4d080bd3a
+  log emitter 0xD7f86b4b8Cae7D942340FF628F82735b7a20893a
+  0xeb0e3652e0f44f417695e6e90f2f42c99b65cd7169074c5a654b16b9748c3a4e
+  log emitter 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d
+  0x28f521cf7abd0044cba5bb040c5217ff69a4e5865f5262905018698e68fe7d00
+  log emitter 0x6192917fAC8f0900EcC4b1d8570CaaDeb1842abF
+  0xf23e34f4aa4a06ecddd309d9692e7b7ca45b76fd0d5f4ce4f7fbf29731d9abd6
+  log emitter 0x6192917fAC8f0900EcC4b1d8570CaaDeb1842abF
+  0x3e5b01ceee4741bf17318a3f74c2fd1dbac13bba024b4f6b5bca0ca1851e3f70
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 669.93ms (669.69ms CPU time)
+
+Ran 1 test suite in 692.64ms (669.93ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

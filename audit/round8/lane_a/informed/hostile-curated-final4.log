@@ -1,0 +1,28 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.23s
+Compiler run successful!
+
+Ran 4 tests for audit/round8/lane_a/informed/HostileCurated.t.sol:HostileCuratedInformedTest
+[PASS] testCreatorCallbackChangesMarkupDuringListing() (gas: 2360335)
+Logs:
+  F3 markup bps 10000
+  F3 FWA price wei 100000000000000000
+
+[PASS] testOutsiderFreezeBlocksOnlyCuratedExit() (gas: 2648834)
+Logs:
+  F2 frozen token owner 0x5A07220De54CFd5F7E2e81813CDEd4fe7D16a0a0
+
+[PASS] testOutsiderSeizureLeavesAdmittingGhostListing() (gas: 2400917)
+Logs:
+  F1 ghost listing id 1
+
+[PASS] testRejectedDeliveryRefundAndCreatorRecovery() (gas: 7272960)
+Logs:
+  pending listing status 6
+  FWA acquisition fee wei 22742431673280128
+  FWA VRF fee wei 2457000000000000
+  curated word trials 8
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 16.07ms (19.13ms CPU time)
+
+Ran 1 test suite in 293.73ms (16.07ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

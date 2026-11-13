@@ -1,0 +1,22 @@
+=== RUN10b: asserted upkeep-order over-booking ===
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.31s
+Compiler run successful with warnings:
+Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+  --> audit/round9/lane_a/helpers/MockCollections.sol:91:27:
+   |
+91 |     function transferFrom(address from, address to, uint256 id) public {
+   |                           ^^^^^^^^^^^^
+
+
+Ran 1 test for audit/round9/challenge/UpkeepOrderAsserted.t.sol:UpkeepOrderAsserted
+[PASS] testUpkeepOrderOverBooksInGenuineShortfall() (gas: 237376590)
+Logs:
+  booked collect-first (EV split) / upkeep (reconcile-first): 2188128931267067 2552817086478245
+  claimable collect-first / upkeep                          : 4282774057522775 4647462212733953
+  extra fund money made withdrawable by the keeper order (wei): 364688155211178
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 382.63ms (137.20ms CPU time)
+
+Ran 1 test suite in 384.87ms (382.63ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
+EXIT=0

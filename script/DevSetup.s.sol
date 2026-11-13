@@ -25,7 +25,7 @@ contract DemoNFT is ERC721 {
 }
 
 /// @notice Local fork only: creates POOLS demo Balancers (one per anvil sender in CREATORS),
-///         each with two curated NFTs, a small Shapes plan, opened but not yet upkept.
+///         each with two curated NFTs, a small prize target, opened but not yet upkept.
 ///   FACTORY=<addr> forge script script/DevSetup.s.sol --tc DevSetup --rpc-url http://127.0.0.1:8545 --unlocked --sender <creator> --broadcast
 contract DevSetup is Script {
     function run() external {
@@ -36,14 +36,12 @@ contract DevSetup is Script {
         DemoNFT nft = new DemoNFT();
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 3 ether}(salt)));
         address creator = b.creator();
+        b.configure(1500, 5 | (3 << 16) | (2 << 32)); // 15% markup; 5 x 0.01, 3 x 0.05, 2 x 0.1 (before listing NFTs)
         for (uint256 i = 1; i <= 2; ++i) {
             nft.mint(creator, i);
             nft.approve(address(b), i);
             b.listCurated(address(nft), i, i * 0.25 ether);
         }
-        uint256[] memory plans = new uint256[](1);
-        plans[0] = 5 | (3 << 16) | (2 << 32); // 5 x 0.01, 3 x 0.05, 2 x 0.1
-        b.configure(PoolBalancer.Config(0.05 ether, 30, 1500), plans);
         b.open();
         vm.stopBroadcast();
         console.log("Balancer", address(b));

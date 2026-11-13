@@ -1,0 +1,7 @@
+No files changed, compilation skipped
+
+Ran 1 test for audit/round8/integration/informed/GasPriceFork.t.sol:GasPriceForkTest
+[PASS] testGasPriceZeroSimulationDiffersFromBid() (gas: 1636210)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 694.92ms (125.57ms CPU time)
+
+Ran 1 test suite in 990.73ms (694.92ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
