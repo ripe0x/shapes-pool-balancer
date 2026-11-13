@@ -200,9 +200,8 @@ contract KeeperAdversarialTest is ForkBase {
         if (balancer.creatorWork()) assertFalse(balancer.canPurchase(atk));
     }
 
-    /// A creator deposit while open never enables full incentives for purchase-caused work: the attacker's upkeep is
-    /// paid only from the restocking fees of the replacements it lists. (Its P&L here also carries prize luck, so the
-    /// bound is asserted on the rewards.)
+    /// A deposit changes nothing about pay: each of the attacker's upkeep calls gets measured gas at the reimbursed
+    /// price plus one flat reward. (Its P&L here also carries prize luck, so the bound is asserted on the rewards.)
     function test_depositDoesNotUnlockFullIncentive() public {
         _cheapPool(3, 0.001 ether, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
@@ -210,7 +209,6 @@ contract KeeperAdversarialTest is ForkBase {
         vm.prank(atk);
         balancer.depositETH{value: 1 wei}();
         assertFalse(balancer.creatorWork());
-        assertEq(balancer.keeperCredit(), 0);
         uint256 lastBefore = lastListingId();
         // Draw a Shape prize, so a replacement is listed and credited.
         uint256[] memory word = new uint256[](1);
@@ -230,17 +228,17 @@ contract KeeperAdversarialTest is ForkBase {
             (uint8 kind,,, uint112 base, uint112 price) = balancer.items(active[i]);
             if (kind == 2) credited += price - base;
         }
-        uint256 paid;
+        uint256 calls;
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) {
-                (uint256 r,) = abi.decode(logs[i].data, (uint256, uint256));
-                paid += r;
+                (uint256 r, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
+                assertEq(r, (g + 50_000) * BASEFEE + 0.0001 ether, "measured gas and overhead at the reimbursed price, one flat reward");
+                ++calls;
             }
         }
         assertGt(credited, 0, "a Shape prize was drawn and replaced");
-        assertLe(paid, credited, "rewards never exceed the fees of the replacements listed");
-        assertEq(balancer.keeperCredit(), credited - paid);
+        assertEq(calls, 1, "one draw, one paid call");
     }
 
     /// Accepted (I-6): a batch bought before a creator action that sets creator work is reconciled with the full
@@ -265,6 +263,6 @@ contract KeeperAdversarialTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) (, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
         }
-        assertLe(reward - gasPaid * BASEFEE, 0.0005 ether + (gasPaid / 4 + 21_000) * BASEFEE + 0.0001 ether, "at most one incentive");
+        assertLe(reward - gasPaid * BASEFEE, 0.0001 ether + (gasPaid / 4 + 50_000) * BASEFEE + 0.0001 ether, "at most one incentive");
     }
 }

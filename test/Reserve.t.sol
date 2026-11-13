@@ -295,21 +295,16 @@ contract ReserveTest is ForkBase {
     }
 
 
-    /// E5: credit left from keeper listings returns to the creator at close, so a later deposit never pays it.
-    function test_closeReturnsKeeperCredit() public {
-        // A 0.01 Shape (listed right after the curated NFT) drawn and restocked by a keeper bidding below the fee's
-        // gas price: part of the restocking fee is left as credit.
+    /// E5: closing leaves nothing owed to keepers; the only pay after it is for reconciling a draw that settles later.
+    function test_closeLeavesNothingOwedToKeepers() public {
         uint256[] memory r = buy(buyer, 1);
         _drawListing(r[0], curated + 1);
-        vm.txGasPrice(0.01 gwei);
         upkeep();
-        vm.txGasPrice(1 gwei);
-        assertGt(balancer.keeperCredit(), 0, "unspent restocking fees");
 
         uint256[] memory pending = buy(buyer, 1);
         vm.prank(creator);
         balancer.close();
-        assertEq(balancer.keeperCredit(), 0, "close returns credit");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "everything claimable");
         _claimAll();
         assertEq(address(balancer).balance, 0);
 
@@ -323,8 +318,13 @@ contract ReserveTest is ForkBase {
         uint256 keeperBefore = keeper.balance;
         upkeep(); // reconciles the last draw
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
-        assertEq(keeper.balance, keeperBefore, "no reward after close");
-        assertEq(address(balancer).balance, 0.001 ether + proceeds, "deposit untouched");
+        uint256 paid = keeper.balance - keeperBefore;
+        assertGe(paid, 0.0001 ether, "reconciling the last draw is paid");
+        assertLt(paid, 0.0003 ether, "one cheap call");
+        assertEq(address(balancer).balance, 0.001 ether + proceeds - paid, "nothing else left");
+        vm.prank(keeper, keeper);
+        vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
+        balancer.performUpkeep();
     }
 
     /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is

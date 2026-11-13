@@ -76,11 +76,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal backingWon;
     uint256 internal mintFees;
     uint256 internal keeperPaidSetup;
-    uint256 internal keeperPaidCredit;
+    uint256 internal keeperPaidPlay;
     uint256 internal keeperGasCost;
-    uint256 internal creditReleased;
+    uint256 internal paidBeyondGasAndReward;
     uint256 internal feesListed; // restocking fees inside the prices of every prize listed
-    uint256 internal feesListedByKeepers; // of those, listed outside creator-started work (they fund keeper credit)
     uint256 internal feesWon;
     uint256 internal feesUnlisted;
     uint256 internal markupWon; // full markup on the backing of Shape prizes won
@@ -275,10 +274,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         Fact[] memory x = new Fact[](16);
         x[0] = Fact("draws_pending_at_close", 5);
         _collectNow();
-        x[1] = Fact("keeper_credit_at_close_wei", balancer.keeperCredit());
-        creditReleased += balancer.keeperCredit();
         vm.prank(creator);
         balancer.close();
+        x[1] = Fact("unclaimable_after_close_wei", address(balancer).balance - balancer.withdrawableSurplus());
         // what the creator can take while the draws are still pending
         uint256[] memory first = _chunk(_ids(SHAPE_KIND), 0);
         x[2] = Fact("unlist_blocked_while_pending", _unlist(first) ? 0 : 1);
@@ -295,9 +293,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertEq(pool.unsettledAcquisitionCount(), 0, "every pending draw settled or timed out");
         x[5] = Fact("blocks_until_closeout_possible", vm.getBlockNumber() - startBlock);
         x[6] = Fact("draws_expired_after_close", expired);
+        // the creator claimed everything at close, so the keeper's pay for reconciling comes from the proceeds of the
+        // draws that settled afterwards
+        uint256 paidBefore = keeper.balance;
+        _keeperPass();
         uint256 creatorUpkeeps;
-        while (_upkeep(creator, false) == RAN) ++creatorUpkeeps; // unpaid: closing zeroed the keeper credit
+        while (_upkeep(creator, false) == RAN) ++creatorUpkeeps;
         x[7] = Fact("creator_upkeeps_to_reconcile", creatorUpkeeps);
+        x[10] = Fact("keeper_paid_after_close_wei", keeper.balance - paidBefore);
         uint256[] memory prizes = _ids(SHAPE_KIND);
         for (uint256 from; from < prizes.length; from += 20) assertTrue(_unlist(_chunk(prizes, from)), "unlist");
         x[8] = Fact("nfts_returned_to_creator", _withdrawNfts());
@@ -307,7 +310,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.prank(buyer, buyer);
         refundsWithdrawn += IPoolMore(address(pool)).withdrawAcquisitionRefund();
         x[9] = Fact("pool_retired", pool.retired() ? 1 : 0);
-        x[10] = Fact("keeper_credit_after_close_wei", balancer.keeperCredit());
         x[11] = Fact("creator_assets_left_wei", address(balancer).balance + _backingListed() + pool.ownerProceeds());
         x[12] = Fact("prizes_still_listed", balancer.getActiveIds().length);
         x[13] = Fact("creator_net_gain_wei", claimed > deposited ? claimed - deposited : 0);
@@ -371,13 +373,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[24] = Fact("top_prizes_won", topWon);
         f[25] = Fact("top_prize_not_listed_when_forced", topNotListedWhenForced);
         f[26] = Fact("days_run", daysRun);
-        f[27] = Fact("keeper_paid_from_credit_wei", keeperPaidCredit);
+        f[27] = Fact("keeper_paid_outside_creator_work_wei", keeperPaidPlay);
         f[28] = Fact("keeper_paid_for_creator_work_wei", keeperPaidSetup);
         f[29] = Fact("keeper_gas_cost_wei", keeperGasCost);
-        uint256 paid = keeperPaidCredit + keeperPaidSetup;
+        uint256 paid = keeperPaidPlay + keeperPaidSetup;
         f[30] = Fact("keeper_profit_wei", paid > keeperGasCost ? paid - keeperGasCost : 0);
         f[31] = Fact("keeper_loss_wei", keeperGasCost > paid ? keeperGasCost - paid : 0);
-        f[32] = Fact("keeper_paid_beyond_restock_fees_wei", keeperPaidCredit > feesListedByKeepers ? keeperPaidCredit - feesListedByKeepers : 0);
+        f[32] = Fact("keeper_paid_beyond_gas_and_reward_wei", paidBeyondGasAndReward);
         f[33] = Fact("restock_fees_listed_wei", feesListed);
         f[34] = Fact("restock_fees_won_wei", feesWon);
         f[35] = Fact("restock_fees_outstanding_wei", feesListed - feesWon - feesUnlisted);
@@ -665,8 +667,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             ++upkeepsRun;
             if (who == keeper) {
                 if (setupWork) keeperPaidSetup += reward;
-                else keeperPaidCredit += reward;
+                else keeperPaidPlay += reward;
                 keeperGasCost += cost;
+                // the rule: this transaction's gas (here measured from outside, plus intrinsic gas and the Balancer's
+                // 50,000 overhead allowance) at min(bid, basefee + 0.05 gwei, 5 gwei), plus one flat 0.0001 ETH.
+                // The Balancer measures gas before storage refunds, so calls that clear storage come out above it.
+                uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
+                uint256 most = (cost / gasNow + 50_000) * price + 0.0001 ether;
+                if (reward > most) paidBeyondGasAndReward += reward - most;
             } else {
                 claimed += reward;
             }
@@ -676,7 +684,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
-            uint256 units = _scanListings(!setupWork);
+            uint256 units = _scanListings();
             if (units > maxUnits) maxUnits = units;
             // what left the Balancer other than the reward went to Shapes and Draw Packs
             mintFees += bal0 + op0 - reward - address(balancer).balance - (backingMinted - minted0);
@@ -694,7 +702,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     /// @dev Books every FWA listing made since the last scan; returns the Shape units among them.
-    function _scanListings(bool byKeepers) internal returns (uint256 units) {
+    function _scanListings() internal returns (uint256 units) {
         while (true) {
             (address col,,, uint256 tokenId,,,, uint8 status) = pool.listings(nextLid);
             if (status == 0) break;
@@ -703,7 +711,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 backingMinted += _backingOf(col, tokenId);
                 units += _shapesIn(d);
                 feesListed += price - base;
-                if (byKeepers) feesListedByKeepers += price - base;
             }
             ++nextLid;
         }
@@ -725,7 +732,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         IERC721Min(BAYC).approve(address(balancer), id);
         balancer.listCurated(BAYC, id, NFT_VALUE);
         vm.stopPrank();
-        _scanListings(false);
+        _scanListings();
         ++nftsListed;
     }
 
@@ -867,14 +874,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         o[5] = Item("refunds withdrawn by players", refundsWithdrawn);
     }
 
-    /// @dev The Balancer's ETH is split in this order: unclaimed creator profit, keeper credit, the reserve (up to
+    /// @dev The Balancer's ETH is split in this order: unclaimed creator profit, the reserve (up to
     ///      `requiredReserve`), then whatever is above it. FWA's edge stays inside the FWA pool, so it shows in the
     ///      last bucket.
     function flowBuckets() internal view override returns (Bucket[] memory k) {
-        k = new Bucket[](7);
+        k = new Bucket[](6);
         uint256 bal;
         uint256 profit;
-        uint256 credit;
         uint256 need;
         uint256 implied;
         uint256 proceeds;
@@ -883,36 +889,30 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             bal = address(balancer).balance;
             profit = balancer.profit();
             if (profit > bal) profit = bal;
-            credit = balancer.keeperCredit();
-            if (credit > bal - profit) credit = bal - profit;
             need = balancer.requiredReserve();
             uint16[16] memory have = balancer.getActiveShapes();
             for (uint256 d; d < 16; ++d) implied += uint256(have[d]) * balancer.denominationAmount(d);
             proceeds = pool.ownerProceeds();
             fwaOther = address(pool).balance - proceeds;
         }
-        // keeper credit is owed out of the same ETH `requiredReserve` counts, so the reserve is shown net of it
-        need = need > credit ? need - credit : 0;
-        uint256 rest = bal - profit - credit;
+        uint256 rest = bal - profit;
         uint256 reserve = rest < need ? rest : need;
         k[0] = Bucket("creator profit (unclaimed)", profit, false, 0, false, 0);
-        k[1] = Bucket("keeper credit", credit, false, 0, false, 0);
-        k[2] = Bucket("creator reserve (net of keeper credit)", reserve, false, 0, true, need);
-        k[3] = Bucket("fund above the reserve", rest - reserve, false, 0, false, 0);
-        k[4] = Bucket("Shape and Pack backing listed on FWA", _backingListed(), true, implied, false, 0);
-        k[5] = Bucket("held by FWA: owner proceeds not yet collected", proceeds, false, 0, false, 0);
-        k[6] = Bucket("held by FWA: pending draws, player refund credit and FWA's edge", fwaOther, false, 0, false, 0);
+        k[1] = Bucket("creator reserve", reserve, false, 0, true, need);
+        k[2] = Bucket("fund above the reserve", rest - reserve, false, 0, false, 0);
+        k[3] = Bucket("Shape and Pack backing listed on FWA", _backingListed(), true, implied, false, 0);
+        k[4] = Bucket("held by FWA: owner proceeds not yet collected", proceeds, false, 0, false, 0);
+        k[5] = Bucket("held by FWA: pending draws, player refund credit and FWA's edge", fwaOther, false, 0, false, 0);
     }
 
     function flowFlows() internal view override returns (Flow[] memory f) {
-        f = new Flow[](8);
+        f = new Flow[](7);
         f[0] = Flow("creator -> Balancer: deposits | claimed back", deposited, true, claimed);
         f[1] = Flow("players -> FWA: draw payments | refunds withdrawn", playersPaid, true, refundsWithdrawn);
         f[2] = Flow("FWA -> Balancer: owner proceeds collected", proceedsCollected, false, 0);
         f[3] = Flow("Balancer -> Shapes and Packs: prize backing | redeemed", backingMinted, true, backingRedeemed);
-        f[4] = Flow("Balancer -> keepers: from restocking fees | fees in prizes won", keeperPaidCredit, true, feesWon);
+        f[4] = Flow("Balancer -> keepers: reconcile and restock | restocking fees in prizes won", keeperPaidPlay, true, feesWon);
         f[5] = Flow("Balancer -> keepers: creator-started work (creator's ETH)", keeperPaidSetup, false, 0);
         f[6] = Flow("proceeds -> creator profit: markup above the game's 10%", profitCredited, false, 0);
-        f[7] = Flow("keeper credit -> creator: unspent credit released at close", creditReleased, false, 0);
     }
 }

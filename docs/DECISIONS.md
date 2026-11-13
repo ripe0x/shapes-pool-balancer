@@ -415,3 +415,16 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     (fork: 57% after 100% to 10% markup), and purchases stopped until the creator unlisted and reminted. Weighing each
     prize by 1 / backing (fixed per size) makes the gate measure the mix only; the unreconciled-draw allowance is one
     0.01 ETH prize per draw, the exact heaviest case. `test_lowerMarkupKeepsAFullBoardOpen` fails on the previous rule.
+73. **Keepers are paid for every useful upkeep, from the creator's ETH** (owner decision 2026-11-13, relayed through
+    the coordinating session; constants PROVISIONAL, not owner-approved). Supersedes the `keeperCredit` rule (decision
+    text above and `docs/SPEC.md`, `docs/GAS.md`, `docs/OPERATIONS.md`, `docs/SECURITY.md` wherever they describe pay
+    capped by restocking fees). A call that reconciles a draw or lists a prize is paid
+    `(min(measured gas, 3.2M) + 50,000) × min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH`; a call that does neither
+    is paid nothing. `keeperCredit` is removed; `close` no longer zeroes anything and upkeep after closing is paid.
+    The restocking fee stays in every prize price and is now simply the creator's income. Why: draws that timed out
+    or won an NFT earned a keeper nothing, so a profit-only keeper left them unreconciled until the fill gate closed
+    (flow regime `randomness_not_delivered`: 55 draws refused, 71 upkeeps skipped; after: 0 and 0). The 50,000 gas
+    overhead was added because real receipts put 24k to 46k gas outside the measured span, which the 0.0001 ETH flat
+    reward alone does not cover at 5 gwei. `MAX_KEEPER_REWARD` is 0.01635 ETH (was 0.0165); `requiredReserve` and
+    `_fillDeficit` keep their formulas. Abuse bound: what a call does is fixed by state, so the most paid calls is one
+    per sequence FWA processed (`test/KeeperPay.t.sol`).

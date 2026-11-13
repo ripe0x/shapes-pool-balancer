@@ -7,9 +7,9 @@
   "drift_threshold_bps": 500,
   "test_command": "forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
   "outcomes": [
-    {"id": "O1", "text": "DRAFT. Creator markup never pays outside keepers: keeper pay outside creator-started work never exceeds the restocking fees priced into the prizes keepers listed.", "metric": "facts.keeper_paid_beyond_restock_fees_wei", "max": 0},
+    {"id": "O1", "text": "DRAFT. Creator markup never pays outside keepers beyond gas plus the small reward: no upkeep is paid more than its gas at the reimbursed price plus 0.0001 ETH (provisional).", "metric": "facts.keeper_paid_beyond_gas_and_reward_wei", "max": 0},
     {"id": "O2", "text": "DRAFT. Restocking fees are fronted, then repaid by winners: fees inside prizes still listed never exceed one board at the 5 gwei cap (55 Shapes x 0.0047 ETH).", "metric": "facts.restock_fees_outstanding_wei", "max": 260000000000000000},
-    {"id": "O3", "text": "DRAFT. Unused keeper fees go to the creator: after closing no keeper credit remains.", "metric": "facts.keeper_credit_after_close_wei", "max": 0, "regimes": ["closeout_pending"]},
+    {"id": "O3", "text": "DRAFT. Unused restocking fees go to the creator: right after closing, every wei in the Balancer is claimable.", "metric": "facts.unclaimable_after_close_wei", "max": 0, "regimes": ["closeout_pending"]},
     {"id": "O4", "text": "DRAFT. Exact redeemable backing: every prize unlisted redeems for exactly its backing.", "metric": "facts.redeem_gap_wei", "max": 0, "regimes": ["closeout_pending"]},
     {"id": "O5", "text": "DRAFT. The reserve keeps winners paid: after keepers finish, no prize is missing from the board for lack of ETH.", "metric": "facts.restock_incomplete_after_full_pass", "max": 0},
     {"id": "O6", "text": "DRAFT. Closeout returns everything: after the closeout the Balancer, its listed backing and its FWA proceeds hold nothing.", "metric": "facts.creator_assets_left_wei", "max": 0, "regimes": ["closeout_pending"]},

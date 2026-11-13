@@ -12,14 +12,16 @@ export const MAX_SHAPES_PER_PLAN = 80; // PoolBalancer.MAX_SHAPES_PER_PLAN
 export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
 export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
-export const KEEPER_INCENTIVE = 5n * 10n ** 14n;
-/** Reward = measured gas x min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0005 ETH, capped by the restocking fees earned. */
-export const MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+export const KEEPER_INCENTIVE = 10n ** 14n; // provisional, not owner-approved
+export const KEEPER_OVERHEAD_GAS = 50_000n; // provisional: gas a transaction pays outside the measured span
+/** Reward = (measured gas + 50,000) x min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH, for every call that
+ *  reconciles a draw or lists a prize, from the creator's ETH. */
+export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
 /** Bound on one call's reward at a price (PoolBalancer._rewardBound). */
-export const rewardBound = (price: bigint) => KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
+export const rewardBound = (price: bigint) => (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
-/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; keepers are paid only from these fees. */
+/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; what the winner repays toward keeper pay. */
 export const RESTOCK_FEE_GAS = 900_000n;
 export const RESTOCK_FEE_FLAT = 2n * 10n ** 14n;
 export const restockFeeAt = (baseFee: bigint) => RESTOCK_FEE_GAS * rewardPrice(baseFee) + RESTOCK_FEE_FLAT;

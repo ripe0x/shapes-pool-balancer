@@ -222,7 +222,7 @@ contract HardeningTest is ForkBase {
 
     /*////////////////////////////// incentive accounting //////////////////////////////*/
 
-    /// Creator-started work (SETTING_UP) refuses purchases and pays the full incentive; the credit is not spent.
+    /// Creator-started work (SETTING_UP) refuses purchases; upkeep is paid measured gas plus the flat reward.
     function test_creatorWorkPaysFullAndRefusesPurchases() public {
         address c = makeAddr("setupCreator");
         vm.deal(c, 100 ether);
@@ -243,9 +243,8 @@ contract HardeningTest is ForkBase {
         vm.prank(keeper, keeper);
         b.performUpkeep();
         (uint256 reward, uint256 gasPaid) = _fromLogs();
-        // paid in full from the creator's ETH: measured gas at the reimbursed price plus the fixed 0.0005 (credit 0)
-        assertEq(reward, gasPaid * 0.55 gwei + 0.0005 ether, "full reward");
-        assertEq(b.keeperCredit(), 0, "no credit spent or earned");
+        // from the creator's ETH: measured gas plus the 50,000 overhead at the reimbursed price, plus the flat 0.0001
+        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "full reward");
     }
 
     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
@@ -257,8 +256,8 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// At the minimum markup a Shape is listed at what it cost, 10% of its backing and its restocking fee. The keeper who
-    /// restocks it is paid from the replacement's own fee, credited when the replacement is listed, never the markup.
+    /// At the minimum markup a Shape is listed at what it cost, 10% of its backing and its restocking fee. The keeper
+    /// who restocks it is paid less than the replacement's own fee, so the markup is not touched.
     function test_minimumMarkupStillFundsKeepers() public {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
@@ -287,15 +286,13 @@ contract HardeningTest is ForkBase {
         (,,, uint112 nb, uint112 np) = b.items(_lastShape());
         assertGt(_lastShape(), lid, "a replacement was listed");
         assertEq(np - nb, b.restockFee(), "the replacement carries this block's fee");
-        assertLe(reward, np - nb, "paid from the replacement's fee only");
-        assertEq(b.keeperCredit(), np - nb - reward);
+        assertLe(reward, np - nb, "the replacement's fee covers the pay");
         assertEq(b.getActiveShapes()[0], 10, "restocked");
     }
 
     /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
-    /// fee pays the keeper in the same call. The keeper is covered, and lifetime pay never exceeds the fees credited.
+    /// fee covers the keeper's pay for that call.
     function test_gasJumpRestockPaidByTheNewListingsFee() public {
-        assertEq(balancer.keeperCredit(), 0, "setup work earns no credit");
         uint256 capFee = 900_000 * 5 gwei + 0.0002 ether;
         vm.fee(80 gwei);
         vm.txGasPrice(5 gwei);
@@ -316,21 +313,21 @@ contract HardeningTest is ForkBase {
             earned += price - base;
             assertGe(reward, gasUsed * 5 gwei, "the keeper is covered at the cap");
             paid += reward;
-            assertLe(paid, earned, "never more than the fees credited");
-            assertEq(balancer.keeperCredit(), earned - paid);
+            assertLe(paid, earned, "the fees listed cover the pay");
         }
     }
 
-    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and drawing it earns keepers nothing.
-    function test_curatedDrawEarnsKeepersNothing() public {
+    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and the creator's ETH pays the keeper
+    /// who reconciles its draw.
+    function test_curatedDrawReconcileIsPaid() public {
         (,,, uint112 base, uint112 price) = balancer.items(curatedA);
         assertEq(price - base, 0.045 ether, "0.3 ETH at 15%, all markup");
         _drawListing(curatedA);
         vm.recordLogs();
         upkeep();
-        (uint256 reward,) = _fromLogs();
-        assertEq(reward, 0, "no credit, no pay");
-        assertEq(balancer.keeperCredit(), 0);
+        (uint256 reward, uint256 gasPaid) = _fromLogs();
+        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "measured gas, overhead and the flat reward");
+        assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
     }
 
     function _activeOfSize(uint8 size) internal view returns (uint256) {
@@ -343,7 +340,7 @@ contract HardeningTest is ForkBase {
     }
 
     /// A creator deposit while open keeps the pool admitting and does not set creator work.
-    function test_creatorTopUpWhileOpenKeepsCredit() public {
+    function test_creatorTopUpWhileOpenSetsNoCreatorWork() public {
         assertFalse(balancer.creatorWork());
         vm.prank(creator);
         balancer.depositETH{value: 0.01 ether}();

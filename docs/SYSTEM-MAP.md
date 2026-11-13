@@ -20,7 +20,6 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Bucket | Where | Whose | Its own stated need |
 | --- | --- | --- | --- |
 | Creator profit (unclaimed) | Balancer ETH, `profit` | creator | none |
-| Keeper credit | Balancer ETH, `keeperCredit` | keepers until `close`, then creator | none |
 | Creator reserve | Balancer ETH up to `requiredReserve()` | creator, locked while open | restore the board + one largest prize per unreconciled draw + one spare + keeper rewards for that work |
 | Fund above the reserve | Balancer ETH above `requiredReserve()` | creator, claimable | none |
 | Shape and Pack backing | Shapes contract, tokens held by the FWA pool | creator (redeemable only by unlisting) | the target board |
@@ -28,7 +27,8 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Pending draws, refund credit, FWA edge | FWA pool | players and FWA | none |
 | Curated NFTs | FWA pool | creator until won | at least one listed, or purchases stop |
 
-Keeper credit and the reserve are not separate ETH: credit is owed out of the balance `requiredReserve()` counts.
+Keeper pay has no bucket of its own: it comes out of the Balancer's ETH (the fund first, unclaimed profit only once the
+fund is empty).
 
 ## Flows
 
@@ -42,16 +42,14 @@ Keeper credit and the reserve are not separate ETH: credit is owed out of the ba
 | 6 | Owner proceeds -> Balancer | anyone (`collectProceeds`), every upkeep and creator action | no |
 | 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection, only while the fund is below the reserve | spent first by the next claim; restocking may spend it when the fund is empty |
 | 8 | Balancer -> Shapes / Packs: backing + mint fee, token listed on FWA | keeper upkeep while open, smallest prize first, at most 5 Shapes per call | backing yes (creator `unlistShapes`, only while no draw is unsettled); mint fee no |
-| 9 | Balancer -> keeper: reward paid from keeper credit | upkeep that reconciles or restocks; credit grows by the restocking fee of each prize that call lists | fronted by the pool; comes back inside the price of that prize when it is won |
-| 10 | Balancer -> keeper: reward for creator-started work | upkeep after `open`, `configure` or unlisting, until the board is restored | no (creator's cost) |
-| 11 | Keeper credit -> creator | `close` zeroes the credit | no |
-| 12 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
-| 13 | FWA pool -> player: refund credit withdrawn | player | no |
+| 9 | Balancer -> keeper: gas plus a flat 0.0001 ETH (provisional) | any upkeep that reconciles a draw or lists a prize | the restocking fee inside each prize's price comes back when it is won; pay for draws that timed out or won an NFT does not |
+| 10 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
+| 11 | FWA pool -> player: refund credit withdrawn | player | no |
 
 ## One-way ratchets and stuck states to watch
 
-- `reconciledSequence` only moves when someone runs upkeep. Draws that timed out or won an NFT add no keeper credit, so
-  a profit-only keeper is not paid to reconcile them. Each unreconciled draw counts against the fill gate.
+- `reconciledSequence` only moves when someone runs upkeep, and each unreconciled draw counts against the fill gate.
+  Reconciling is paid, so a profit-only keeper does it up to the 5 gwei cap; above the cap keepers wait.
 - Listed prices are never repriced: a prize listed at high gas keeps its higher restocking fee until it is won or unlisted.
 - `retire` is irreversible. `mintFeeCap` moves only when the creator configures.
 - Unlisting and NFT withdrawal wait for every pending draw (FWA rule); ETH does not.

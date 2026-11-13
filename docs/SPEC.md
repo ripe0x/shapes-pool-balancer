@@ -201,6 +201,9 @@ history: refunded or stuck deliveries are `PENDING` and cost nothing per upkeep.
 Keeper reward, paid for any call that reconciles draws or restocks (a call that only collects proceeds pays nothing):
 
 - price = `min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)`: a keeper that bids more priority pays the excess itself;
+- SUPERSEDED by `docs/DECISIONS.md` 73 (provisional constants): every call that reconciles or lists is paid
+  `(min(measured, 3.2M) + 50,000) × price + 0.0001 ETH` from the creator's ETH; there is no `keeperCredit`. The
+  bullets below that cap pay by credit describe the previous rule.
 - reward = `min(measured, 3.2M) × price + 0.0005 ETH`; the fixed part covers gas outside the measured span (intrinsic,
   calldata) and the `eth_estimateGas` gap keepers cost work with;
 - work a creator action started (open, configure, unlist) is paid in full from the creator's ETH; purchases are

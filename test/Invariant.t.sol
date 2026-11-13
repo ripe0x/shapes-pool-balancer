@@ -24,9 +24,10 @@ contract Handler is Test {
     uint256 nextNft = 1000;
     uint256 public purchasesAdmitted;
     /// Restocking fees of the prizes keepers listed outside creator work (listed price less `base`).
-    uint256 public earned;
+    uint256 public maxReward;
     /// Keeper rewards paid outside creator work.
     uint256 public paidFromFees;
+    uint256 public paidWithoutWork;
     mapping(uint8 => uint256) public closedReasons;
 
     uint256 immutable targetA;
@@ -86,17 +87,18 @@ contract Handler is Test {
         for (uint256 i; i < before.length; ++i) {
             if (before[i] > last) last = before[i];
         }
-        bool setup = b.creatorWork();
+        uint64 seq = b.reconciledSequence();
         try b.performUpkeep() returns (uint256 reward) {
-            if (setup) return;
+            if (reward == 0) return;
             paidFromFees += reward;
-            // Credit is the restocking fees of the prizes this call listed (listing ids only grow).
+            if (reward > maxReward) maxReward = reward;
+            // A paid call reconciled a draw or listed a prize (listing ids only grow).
+            bool worked = b.reconciledSequence() != seq;
             uint256[] memory ids = b.getActiveIds();
-            for (uint256 i; i < ids.length; ++i) {
-                if (ids[i] <= last) continue;
-                (uint8 kind,,, uint112 base, uint112 price) = b.items(ids[i]);
-                if (kind == 2) earned += price - base;
+            for (uint256 i; i < ids.length && !worked; ++i) {
+                if (ids[i] > last) worked = true;
             }
+            if (!worked) ++paidWithoutWork;
         } catch {}
     }
 
@@ -215,11 +217,10 @@ contract InvariantTest is ForkBase {
         }
     }
 
-    /// Keepers are paid outside creator work only from the restocking fees of the prizes they listed, never from the
-    /// creator's markup.
-    function invariant_keeperPayWithinRestockFees() public view {
-        assertLe(handler.paidFromFees(), handler.earned());
-        assertEq(balancer.keeperCredit(), handler.earned() - handler.paidFromFees());
+    /// Keepers are paid only for a call that reconciled a draw or listed a prize, at most MAX_KEEPER_REWARD each.
+    function invariant_keeperPaidOnlyForWork() public view {
+        assertEq(handler.paidWithoutWork(), 0);
+        assertLe(handler.maxReward(), balancer.MAX_KEEPER_REWARD());
     }
 
     function invariant_permanentOwnershipAndOperator() public view {

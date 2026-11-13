@@ -3,22 +3,21 @@ import { decide, gasLimitFor, KEEPER_MAX_GAS, UPKEEP_GAS_FLOOR } from './keeper'
 
 const GWEI = 10n ** 9n;
 /**
- * PoolBalancer._payKeeper: price = min(bid, basefee + 0.05 gwei, 5 gwei); measured gas x price + 0.0005 ETH, capped
- * outside creator work by `credit`, the restocking fees of the prizes the call lists.
+ * PoolBalancer._payKeeper: price = min(bid, basefee + 0.05 gwei, 5 gwei); (measured gas + 50,000) x price + 0.0001 ETH,
+ * for every call that reconciles a draw or lists a prize.
  */
-const reward = (measured: bigint, baseFee: bigint, bid: bigint, credit = 10n ** 18n) => {
+const reward = (measured: bigint, baseFee: bigint, bid: bigint) => {
   let price = bid;
   if (price > baseFee + GWEI / 20n) price = baseFee + GWEI / 20n;
   if (price > 5n * GWEI) price = 5n * GWEI;
-  const full = measured * price + 5n * 10n ** 14n;
-  return full < credit ? full : credit;
+  return (measured + 50_000n) * price + 10n ** 14n;
 };
 
 describe('keeper profitability policy across gas prices', () => {
   // A 1-Shape replacement, costed the way a keeper must: eth_estimateGas, measured 70-80k above the measured span.
   const measured = 820_000n;
   const billed = 900_000n;
-  for (const baseGwei of [0.05, 0.2, 1, 2, 4.9]) {
+  for (const baseGwei of [0.05, 0.2, 1, 2, 3.2]) {
     it(`replacement upkeep is worth sending at ${baseGwei} gwei basefee`, () => {
       const baseFee = BigInt(Math.round(baseGwei * 1e9));
       const prio = GWEI / 20n;
@@ -27,17 +26,20 @@ describe('keeper profitability policy across gas prices', () => {
     });
   }
 
+  // The estimate is 80k above the measured span; the reward allows 50k plus 0.0001 ETH, so above about 3.3 gwei the
+  // estimate costs more than the reward and the default 0.0002 ETH loss allowance is what sends the call.
+  it('replacement upkeep near the cap is sent within the default loss allowance', () => {
+    const baseFee = 4_900_000_000n;
+    const prio = GWEI / 20n;
+    const r = reward(measured, baseFee, baseFee + prio);
+    expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
+    expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: prio, maxLossWei: 2n * 10n ** 14n }).send).toBe(true);
+  });
+
   it('waits above the 5 gwei cap (basefee spike)', () => {
     const baseFee = 8n * GWEI;
     const d = decide({ gasEstimate: billed, expectedReward: reward(measured, baseFee, baseFee + GWEI / 20n), baseFee, priorityFee: GWEI / 20n, maxLossWei: 0n });
     expect(d).toEqual({ send: false, reason: 'unprofitable at current gas' });
-  });
-
-  it('waits when the credit cannot cover the call (a reconcile-only call at high gas)', () => {
-    const baseFee = 4n * GWEI;
-    const credit = 6n * 10n ** 14n; // ~0.0006 ETH left over from earlier restocks
-    const r = reward(measured, baseFee, baseFee + GWEI / 20n, credit);
-    expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: GWEI / 20n, maxLossWei: 0n }).send).toBe(false);
   });
 
   it('overbidding priority never pays: the excess is not reimbursed', () => {
@@ -47,20 +49,22 @@ describe('keeper profitability policy across gas prices', () => {
     expect(decide({ gasEstimate: billed, expectedReward: r, baseFee, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
   });
 
-  // Refund-only batch: ~164k measured, ~197k billed, estimate ~78k above billed. A refund earns no restocking fee.
-  it('unpaid work is sent only within the loss allowance at low gas', () => {
+  // Refund-only batch: ~164k measured, ~197k billed, estimate ~78k above billed. It lists nothing and is still paid.
+  it('reconcile-only work is sent without a loss allowance at low gas', () => {
     const prio = GWEI / 20n;
     const bf = GWEI / 10n;
-    const r = reward(164_000n, bf, bf + prio, 0n);
-    expect(r).toBe(0n);
-    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(false);
-    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 2n * 10n ** 14n }).send).toBe(true);
+    const r = reward(164_000n, bf, bf + prio);
+    expect(r).toBe(214_000n * (bf + prio) + 10n ** 14n);
+    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(true);
   });
 
-  it('unpaid work waits for the creator near the cap', () => {
+  // The policy judges against eth_estimateGas, which overstates billed gas; near the cap that gap (61k gas x 5 gwei)
+  // is more than the flat reward, so the loss allowance decides.
+  it('reconcile-only work near the cap needs the loss allowance to cover the estimate gap', () => {
     const bf = 4_950_000_000n;
-    const r = reward(164_000n, bf, bf + GWEI / 20n, 0n);
-    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: GWEI / 20n, maxLossWei: 2n * 10n ** 14n }).send).toBe(false);
+    const r = reward(164_000n, bf, bf + GWEI / 20n);
+    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: GWEI / 20n, maxLossWei: 0n }).send).toBe(false);
+    expect(decide({ gasEstimate: 275_000n, expectedReward: r, baseFee: bf, priorityFee: GWEI / 20n, maxLossWei: 3n * 10n ** 14n }).send).toBe(true);
   });
 
   it('sends an opening stockup estimated above KEEPER_MAX_GAS when the capped reward covers it', () => {

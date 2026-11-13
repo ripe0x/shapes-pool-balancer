@@ -8,8 +8,8 @@ import {PoolBalancer} from "../src/PoolBalancer.sol";
 /// @notice Mainnet-fork gas measurements used to set keeper reward bounds (docs/GAS.md).
 ///         Run isolated so each call is a real transaction (intrinsic gas, cold storage, final refunds):
 ///         forge test --match-path test/Gas.t.sol --isolate -vv
-///         Rewards outside creator work are capped by the restocking fees of the prizes each call lists
-///         (keeperCredit), so a reward above the billed gas comes out of those fees, never the creator's markup.
+///         Every call that reconciles or lists is paid measured gas at the reimbursed price plus a flat reward, from
+///         the creator's ETH; the restocking fees in the prices are the creator's income for it.
 contract GasBench is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     uint256 constant KEEPER_MAX_GAS = 3_200_000;
@@ -367,9 +367,8 @@ contract GasBench is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
     }
 
-    /// A curated NFT carries no restocking fee, so reconciling a curated draw alone is unpaid; an honest keeper
-    /// reconciles it with later Shape draws, whose fees pay for the call.
-    function test_profitAtCap_curatedReconcileUnpaid() public {
+    /// A curated NFT carries no restocking fee; reconciling its draw alone still pays its keeper at the cap.
+    function test_profitAtCap_curatedReconcilePaid() public {
         _configure(plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         uint256 lid = listCurated(3, 0.3 ether);
         fillUp();
@@ -377,8 +376,7 @@ contract GasBench is ForkBase {
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], wordForSlot(slot));
         settle();
-        assertLt(_profitAtCap("reconcile 1 curated draw, no credit"), 0);
-        assertEq(balancer.keeperCredit(), 0);
+        assertGe(_profitAtCap("reconcile 1 curated draw"), 0);
     }
 
     /*////////////////////// break-even basefee per upkeep type //////////////////////*/

@@ -78,7 +78,7 @@ describe('planner', () => {
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
-    expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // 3.2M * 5 gwei + 0.0005
+    expect(MAX_KEEPER_REWARD).toBe(16_350_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 0.0001
   });
 
   it('the creator keeps the markup; players pay mint and restocking fees on top', () => {
