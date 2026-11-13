@@ -134,10 +134,10 @@ contract KeeperPayTest is ForkBase {
         assertEq(balancer.reconciledSequence(), 0, "nothing reconciled");
     }
 
-    /// A caller cannot choose how much one call does, so the most paid calls it can get is one per sequence FWA
-    /// processed. Five timed-out draws processed and reconciled one at a time cost the creator five small rewards;
-    /// each needs its own draw, whose randomness fee alone is more than the keeper's margin.
-    function test_splitCallsAreBoundedByProcessedDraws() public {
+    /// FWA processing is permissionless, so anyone can process a ready batch one draw at a time and reconcile after
+    /// each: one batch becomes up to five paid calls (audit rc-ec5259c finding 6). The bound is one paid call per
+    /// processed draw, not one per batch. The splitter needs no draws of its own; players bought these.
+    function test_splitCallsArePaidOncePerProcessedDraw() public {
         _open(0.5 gwei);
         fillUp();
         _timeOut(5);
@@ -159,11 +159,39 @@ contract KeeperPayTest is ForkBase {
         }
         _noWork();
         assertLt(split - batched, 4 * 0.0003 ether, "splitting costs the creator at most one small reward per draw");
-        // what the five draws cost whoever bought them, with the price refunded: 5 x 2.34M gas x 0.55 gwei
-        assertEq(VRF_GAS * gasPrice, 0.001287 ether, "randomness fee per draw");
-        assertLt(split, 5 * VRF_GAS * gasPrice, "the pay is less than the randomness fees those draws burned");
         emit log_named_decimal_uint("paid for one batched call", batched, 18);
         emit log_named_decimal_uint("paid for five split calls", split, 18);
+    }
+
+    /// Audit rc-ec5259c finding 3 (characterization of the current rule, not the intended one): after `close`, the
+    /// creator may claim every wei, so a later useful reconcile of draws that all expired brings no proceeds and is
+    /// paid nothing. The log shows what the reward rule would have paid.
+    function test_postCloseReconcileAfterFullClaimIsUnpaid() public {
+        _open(0.5 gwei);
+        fillUp();
+        buy(buyer, 5);
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(balancer.withdrawableSurplus(), creator);
+        vm.stopPrank();
+        assertEq(address(balancer).balance, 0, "closed: the creator claimed every wei");
+        vm.roll(vm.getBlockNumber() + 40); // past FWA's word deadline
+        pool.processAcquisitions(5);
+        assertEq(pool.ownerProceeds(), 0, "all five expired: no proceeds");
+        assertEq(balancer.reconciledSequence(), 0, "reached: five processed draws await reconciliation");
+        uint256 before = keeper.balance;
+        vm.prank(keeper, keeper);
+        uint256 reward = balancer.performUpkeep();
+        (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        require(ok, "lastCallGas");
+        (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
+        assertEq(balancer.reconciledSequence(), 5, "the call did useful work");
+        assertEq(reward, 0, "and was paid nothing");
+        assertEq(keeper.balance, before, "the keeper's wallet only lost gas");
+        emit log_named_uint("gas used by the unpaid call", used);
+        emit log_named_decimal_uint("rule would pay at 0.55 gwei (approx.)", (uint256(used) + OVERHEAD) * gasPrice + FLAT, 18);
+        emit log_named_decimal_uint("rule would pay at 5 gwei (approx.)", (uint256(used) + OVERHEAD) * 5 gwei + FLAT, 18);
+        emit log_named_decimal_uint("MAX_KEEPER_REWARD", balancer.MAX_KEEPER_REWARD(), 18);
     }
 
     function test_keeperWalletNotLower_halfGwei() public {

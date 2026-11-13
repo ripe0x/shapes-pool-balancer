@@ -8,6 +8,10 @@ import {IERC721Min} from "../../src/interfaces/External.sol";
 
 interface IPoolMore {
     function selectionTimeoutBlocks() external view returns (uint256);
+    function accruedProtocolFees() external view returns (uint256);
+    function deliveryEscrowTotal() external view returns (uint256);
+    function acquisitionEscrowTotal() external view returns (uint256);
+    function acquisitionRefundCreditTotal() external view returns (uint256);
     function acquisitionRefundCredit(address purchaser) external view returns (uint256);
     function withdrawAcquisitionRefund() external returns (uint256 amount);
 }
@@ -336,7 +340,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertTrue(balancer.canPurchase(buyer), "open before the last batch");
         uint256[] memory ids = _buy(5);
         assertEq(pool.unsettledAcquisitionCount(), 5, "five draws pending at close");
-        Fact[] memory x = new Fact[](16);
+        Fact[] memory x = new Fact[](21);
         x[0] = Fact("draws_pending_at_close", 5);
         _collectNow();
         vm.prank(creator);
@@ -380,6 +384,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[13] = Fact("creator_net_gain_wei", claimed > deposited ? claimed - deposited : 0);
         x[14] = Fact("creator_net_loss_wei", deposited > claimed ? deposited - claimed : 0);
         x[15] = Fact("redeem_gap_wei", redeemGap);
+        // what FWA still holds after the closeout, by whose it is (FWA's own public totals)
+        IPoolMore m = IPoolMore(address(pool));
+        uint256 fwaHeld = address(pool).balance;
+        uint256 named = m.accruedProtocolFees() + m.deliveryEscrowTotal() + m.acquisitionEscrowTotal()
+            + m.acquisitionRefundCreditTotal() + pool.ownerProceeds();
+        x[16] = Fact("fwa_held_after_closeout_wei", fwaHeld);
+        x[17] = Fact("fwa_protocol_fees_accrued_wei", m.accruedProtocolFees());
+        x[18] = Fact("fwa_player_escrow_and_refund_credit_wei", m.deliveryEscrowTotal() + m.acquisitionEscrowTotal() + m.acquisitionRefundCreditTotal());
+        x[19] = Fact("fwa_owner_proceeds_wei", pool.ownerProceeds());
+        x[20] = Fact("fwa_held_not_named_wei", fwaHeld > named ? fwaHeld - named : 0);
+        assertEq(fwaHeld, named, "every wei FWA holds is in one of its named totals");
         _done("closeout_pending", a, x);
     }
 
