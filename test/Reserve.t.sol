@@ -295,23 +295,21 @@ contract ReserveTest is ForkBase {
     }
 
 
-    /// E5: credit left from keeper listings returns to the creator at close, so a later deposit never pays it.
-    function test_closeReturnsKeeperCredit() public {
-        // A 0.01 Shape (listed right after the curated NFT) drawn and restocked by a keeper bidding below the fee's
-        // gas price: part of the restocking fee is left as credit.
+    /// E5, with D3: closing keeps back only the keeper pay for draws not yet reconciled (one maximum reward per five),
+    /// which pays the reconcile of a draw that settles later; everything else is claimable.
+    function test_closeHoldsOnlyPayForUnreconciledDraws() public {
         uint256[] memory r = buy(buyer, 1);
         _drawListing(r[0], curated + 1);
-        vm.txGasPrice(0.01 gwei);
         upkeep();
-        vm.txGasPrice(1 gwei);
-        assertGt(balancer.keeperCredit(), 0, "unspent restocking fees");
 
         uint256[] memory pending = buy(buyer, 1);
         vm.prank(creator);
         balancer.close();
-        assertEq(balancer.keeperCredit(), 0, "close returns credit");
+        uint256 held = balancer.MAX_KEEPER_REWARD();
+        assertEq(balancer.requiredReserve(), held, "one unreconciled draw: one maximum reward held");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
         _claimAll();
-        assertEq(address(balancer).balance, 0);
+        assertEq(address(balancer).balance, held, "only the held pay is left");
 
         _drawListing(pending[0], curated + 2);
         uint256 proceeds = pool.ownerProceeds();
@@ -323,8 +321,15 @@ contract ReserveTest is ForkBase {
         uint256 keeperBefore = keeper.balance;
         upkeep(); // reconciles the last draw
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
-        assertEq(keeper.balance, keeperBefore, "no reward after close");
-        assertEq(address(balancer).balance, 0.001 ether + proceeds, "deposit untouched");
+        uint256 paid = keeper.balance - keeperBefore;
+        assertGe(paid, 0.0001 ether, "reconciling the last draw is paid");
+        assertLt(paid, 0.0003 ether, "one cheap call");
+        assertEq(address(balancer).balance, held + 0.001 ether + proceeds - paid, "nothing else left");
+        assertEq(balancer.requiredReserve(), 0, "nothing held once reconciled");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "and all of it claimable");
+        vm.prank(keeper, keeper);
+        vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
+        balancer.performUpkeep();
     }
 
     /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is

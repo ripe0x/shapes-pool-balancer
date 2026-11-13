@@ -28,8 +28,8 @@ interface IKeeperList {
 ///        the reserve in ETH.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
-///        from the basefee then. That fee pays the keeper who lists the prize, in the same call, so it matches the gas
-///        actually spent; the pool's ETH fronts it and the player who later wins the prize repays it in the price.
+///        from the basefee then. The fee is the creator's income for keeper pay: the pool's ETH pays the keeper who
+///        lists the prize; the fee is in the prize's price, which FWA's single draw price spreads over all buyers.
 ///      - Upkeep reconciles settled FWA sequences in order (MAX_RECONCILE per call) and restocks while draws are still
 ///        unsettled; FWA stages those listings and activates them in order.
 ///      - While open, the creator cannot withdraw the cost of restoring the target, plus one largest prize for each
@@ -84,25 +84,31 @@ contract PoolBalancer is ReentrancyGuard {
     // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
     // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE). Upkeep is permissionless, so
     //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
-    // - reward = measured gas (capped) x price + KEEPER_INCENTIVE, which covers the keeper's gas outside the
-    //   measured span.
-    // - Work a creator action started (`creatorWork`: open, configure, unlisting) is paid in full from the creator's
-    //   ETH; purchases are refused until it is done. All other rewards come out of `keeperCredit`, which grows by the
-    //   restocking fees of the prizes each call lists, so lifetime keeper pay never exceeds the fees priced into the
-    //   prizes keepers listed and never touches the creator's markup.
+    // - reward = (measured gas, capped, + KEEPER_OVERHEAD_GAS) x price + KEEPER_INCENTIVE, for every call that
+    //   reconciles a draw or lists a prize, from the creator's ETH here (the fund first; unclaimed profit only once
+    //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
+    //   outside the measured span (intrinsic gas, the keeper-list check, the reward transfer; measured 24k-46k), so
+    //   the incentive is the keeper's margin at any gas price up to the cap.
+    // - A call reconciles every sequence FWA has processed (up to MAX_RECONCILE) and restocks the whole deficit (up to
+    //   MAX_OPS), and a draw FWA has not processed cannot be reconciled or paid for. FWA processing is permissionless,
+    //   so anyone can process a ready batch one draw at a time and reconcile after each: the bound is one paid call
+    //   per processed draw, not per batch (audit rc-ec5259c finding 6, accepted and budgeted by the owner: about
+    //   0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most MAX_KEEPER_REWARD and needs a processed
+    //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
+    //   KEEPER_INCENTIVE per call.
     // - Restocking fee per Shape = RESTOCK_FEE_GAS x min(basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE) +
-    //   RESTOCK_FEE_FLAT, at the listing block. Fee and work share a block, so the fee tracks the gas the listing call
-    //   pays at any basefee up to the cap (above it keepers wait); basefee is not the caller's to choose. The pool's
-    //   ETH fronts the fee until a player wins that prize; fees of prizes unlisted or never drawn are the creator's
-    //   cost, at most the target's Shapes x restockFee(). Unspent credit pays reconcile-only calls until `close`
-    //   returns it to the creator.
-    // - A deficit to restock needs a paid draw (or a creator action, which earns no credit), so buying one's own draws
-    //   pays the price, FWA's edge and the VRF fee for at most KEEPER_INCENTIVE of profit per call.
+    //   RESTOCK_FEE_FLAT, at the listing block: the creator's income for keeper pay, sized to the gas a listing call
+    //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
+    //   the cost until a player wins that prize; draws that win an NFT or time out bring no fee, so reconciling them
+    //   is the creator's cost, as are the fees of prizes unlisted or never drawn.
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
-    uint256 internal constant KEEPER_INCENTIVE = 0.0005 ether;
-    uint256 public constant MAX_KEEPER_REWARD = KEEPER_MAX_GAS * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
+    /// @dev PROVISIONAL (not owner-approved): small against gas, about a fifth of one Shape restock at 0.5 gwei.
+    uint256 internal constant KEEPER_INCENTIVE = 0.0001 ether;
+    /// @dev PROVISIONAL (not owner-approved): see the reward rule above.
+    uint256 internal constant KEEPER_OVERHEAD_GAS = 50_000;
+    uint256 public constant MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
     /// @dev With RESTOCK_FEE_FLAT, covers an upkeep that reconciles one draw and restocks one Shape (measured 763k-864k
     ///      gas across pools and blocks; Shapes mint gas varies with the block) at any basefee up to the cap.
     uint256 internal constant RESTOCK_FEE_GAS = 900_000;
@@ -163,11 +169,9 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 public target;
     uint16 public markupBps;
     bool public enabled;
-    /// @dev True from a creator action until upkeep has restored the target (see keeper compensation above).
+    /// @dev True from a creator action until upkeep has restored the target; purchases wait for it.
     bool public creatorWork;
     uint64 public reconciledSequence;
-    /// @dev Restocking fees of prizes keepers listed (price less `base`, outside creator work), not yet paid out.
-    uint128 public keeperCredit;
     /// @dev The creator's part of payments collected while the fund was below `requiredReserve`, not yet claimed:
     ///      the markup above MIN_MARKUP_BPS. The fund keeps the rest of each payment, MIN_MARKUP_BPS of markup included.
     uint128 public profit;
@@ -353,13 +357,11 @@ contract PoolBalancer is ReentrancyGuard {
         emit PurchasesOpened();
     }
 
-    /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected. Unspent keeper
-    ///         credit returns to the creator: closing frees the whole balance, so credit left standing would later be
-    ///         paid from fresh deposits. Upkeep after closing earns keepers nothing.
+    /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected. The whole
+    ///         balance becomes claimable; upkeep that reconciles draws settled after closing is still paid from it.
     function close() external onlyCreator nonReentrant {
         enabled = false;
         creatorWork = false;
-        keeperCredit = 0;
         profit = 0; // the whole balance is claimable while closed
         if (!pool.retired()) pool.setBool(ACQUISITIONS_ENABLED_KEY, false);
         emit PurchasesClosed();
@@ -623,14 +625,12 @@ contract PoolBalancer is ReentrancyGuard {
             uint256 fee = SHAPES.mintFee();
             if (fee <= mintFeeCap) {
                 ops = _fillDeficit(p, fee);
-                // This call's listings carry `ops` restocking fees at this block's basefee: they pay for this call.
-                if (!wasSetup) keeperCredit += uint128(ops * restockFee());
                 if (wasSetup && _missingUnits() == 0) creatorWork = false;
             }
         }
 
         if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup) revert NoUpkeepNeeded();
-        if (ops != 0 || reconciled) reward = _payKeeper(gasStart, wasSetup);
+        if (ops != 0 || reconciled) reward = _payKeeper(gasStart);
         // Game first: restocking may spend unclaimed profit once the fund is empty.
         if (profit > address(this).balance) profit = uint128(address(this).balance);
     }
@@ -748,15 +748,12 @@ contract PoolBalancer is ReentrancyGuard {
         prizeWeight += added;
     }
 
-    function _payKeeper(uint256 gasStart, bool setup) internal returns (uint256 reward) {
+    function _payKeeper(uint256 gasStart) internal returns (uint256 reward) {
         uint256 measured = gasStart - gasleft();
         if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
-        reward = measured * _rewardPrice(tx.gasprice) + KEEPER_INCENTIVE;
-        uint256 credit = keeperCredit;
-        if (!setup && reward > credit) reward = credit;
+        reward = (measured + KEEPER_OVERHEAD_GAS) * _rewardPrice(tx.gasprice) + KEEPER_INCENTIVE;
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
-        if (!setup) keeperCredit = uint128(credit - reward);
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
         emit KeeperPaid(msg.sender, reward, measured);
     }
@@ -766,7 +763,7 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice ETH the creator may claim now: everything above `requiredReserve`, or the unclaimed `profit` while the
-    ///         fund is below it. Everything while closed.
+    ///         fund is below it. While closed, everything but the keeper pay held for unreconciled draws.
     function withdrawableSurplus() public view returns (uint256) {
         uint256 bal = address(this).balance;
         uint256 req = requiredReserve();
@@ -777,9 +774,14 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
     ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
-    ///         upkeep call that work takes plus one. Zero while closed.
+    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_RECONCILE draws FWA
+    ///         issued that are not yet reconciled, so useful reconciliation after closing is always paid (audit
+    ///         rc-ec5259c finding 3). Closing stops purchases, so this only falls as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {
-        if (!enabled) return 0;
+        if (!enabled) {
+            uint256 owed = pool.lastIssuedSequence() - reconciledSequence;
+            return (owed + MAX_RECONCILE - 1) / MAX_RECONCILE * MAX_KEEPER_REWARD;
+        }
         uint256 plan = target;
         // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.
         uint256 fee = SHAPES.mintFee();
@@ -923,12 +925,12 @@ contract PoolBalancer is ReentrancyGuard {
         if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
     }
 
-    /// @dev Upper bound of one call's reward at `price`: measured gas (<= KEEPER_MAX_GAS) x price + KEEPER_INCENTIVE.
+    /// @dev Upper bound of one call's reward at `price` (see the reward rule).
     function _rewardBound(uint256 price) internal pure returns (uint256) {
-        return KEEPER_MAX_GAS * price + KEEPER_INCENTIVE;
+        return (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
     }
 
-    /// @notice Restocking fee per Shape for a prize listed now; keepers are paid only from these fees.
+    /// @notice Restocking fee per Shape for a prize listed now, built into its price: all buyers fund it.
     function restockFee() public view returns (uint256) {
         return RESTOCK_FEE_GAS * _rewardPrice(type(uint256).max) + RESTOCK_FEE_FLAT;
     }

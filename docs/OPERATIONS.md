@@ -37,10 +37,10 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
   but the keeper address must hold the limit × max fee (0.02 ETH at 5 gwei) to send.
 - `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
   at the current basefee. A receipt can cost more if basefee rises before inclusion.
-  Outside creator-started work a pool pays only from `keeperCredit`: the restocking fees of the prizes each call lists,
-  at that block's basefee, so one draw covers its restock up to 5 gwei whatever gas was before. Calls that reconcile
-  only refunded or curated draws are paid from credit left over, if any; the default allowance covers them at low gas,
-  and the next restock reconciles them anyway. Set 0 for a strictly profitable keeper.
+  A pool pays every call that reconciles a draw or lists a prize: (measured gas + 50,000) x the reimbursed price +
+  0.0001 ETH (provisional constants, `docs/DECISIONS.md` 73), from the creator's ETH. The gas estimate runs about 80k
+  above the measured span, so above roughly 3.3 gwei the allowance is what sends a call. Set 0 for a keeper that
+  never sends below its estimate.
 - Refunded NFTs and prizes are recovered by the creator with `recoverRefunded(listingId, to)`, not by the keeper.
 
 - Health: `GET http://localhost:8787/health` (503 if no tick for 2 minutes). Per-pool errors are listed and do not stop
@@ -94,7 +94,8 @@ show when a fee makes the configuration uneconomic.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
-5. `claimSurplus(balance, to)`; while closed the full balance is claimable.
+5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except 0.01635 ETH per 5 draws not yet
+   reconciled, held to pay the keeper who reconciles them. Run upkeep (or wait for a keeper), then claim the rest.
 6. Optional and permanent: `retire()`.
 
 ## FWA pool page

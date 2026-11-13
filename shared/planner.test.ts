@@ -78,7 +78,16 @@ describe('planner', () => {
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
-    expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // 3.2M * 5 gwei + 0.0005
+    expect(MAX_KEEPER_REWARD).toBe(16_350_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 0.0001
+  });
+
+  it('creator earnings are net of keeper pay, which matches the fork measurement per Shape replaced', () => {
+    // all 0.01 Shapes: every draw wins one Shape, so keeper pay per draw is one replacement call
+    const e = economics([10, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [], restockFee: restockFeeAt(5n * 10n ** 8n) });
+    // test/scenario/PriceCaps.t.sol: one draw reconciled and one 0.01 Shape restocked paid 0.00057346805 ETH at
+    // basefee 0.5 gwei, gas price 0.55 gwei
+    expect(e.keeperPayPerDraw).toBeCloseTo(0.00057346805, 6);
+    expect(e.keptPerDraw).toBeCloseTo(e.markupPerDraw + e.restockFeesPerDraw - e.keeperPayPerDraw, 12);
   });
 
   it('the creator keeps the markup; players pay mint and restocking fees on top', () => {

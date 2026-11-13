@@ -22,7 +22,7 @@ Open before release:
    profit split (`profit`, `profitShareSum`, a new `claimSurplus` limit), which changes who is paid from the balance and
    needs the same re-audit, economic pass included.
 1. **Review of the round 7 repairs and the keeper-pay changes** (per-call limits, reserve fee, setup checks; keepers
-   paid from `keeperCredit`, funded by the basefee-indexed restocking fees of the prizes each call lists), made after
+   then paid from `keeperCredit`; since replaced by DECISIONS 73, every reconciling or listing call paid from the creator's ETH), made after
    the independent review. The fee-at-draw version had one independent AI review; crediting at listing (DECISIONS 57)
    has not been independently reviewed.
 2. **Re-run the fork suites, keeper e2e and both launch rehearsals** against the rewrite, then freeze a release
@@ -207,8 +207,10 @@ These follow the rewrite being reviewed and re-verified (see "Rewrite status").
 5. Deploy and verify (the script re-checks the FWA implementation and code hash and aborts if FWA changed):
 
    ```bash
-   PACKS_ADMIN=<address> KEEPER_ADMIN=<address> forge script script/Deploy.s.sol --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
+   PACKS_ADMIN=<address> KEEPER_ADMIN=<address> script/deploy.sh --rpc-url https://mainnet.gateway.tenderly.co --account <keystore-name> --broadcast --verify
    ```
+
+   `script/deploy.sh` runs the asset-flow gate first and stops unless it passes (`docs/ASSET-FLOW-GATE.md`).
 
    `ETHERSCAN_API_KEY` must be set in the environment for `--verify`. The script writes `deployments/1.json`.
 6. Start the keeper with a funded keeper key from your secret store (`docs/OPERATIONS.md`), `FROM_BLOCK` = deployment

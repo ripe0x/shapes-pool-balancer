@@ -293,20 +293,20 @@ contract BalancerTest is ForkBase {
         vm.fee(0.15 gwei);
         vm.txGasPrice(3 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(stranger);
-        // gas part reimbursed at basefee + 0.05 gwei; incentive capped by the draw's edge credit
+        // gas part reimbursed at basefee + 0.05 gwei, plus the flat reward
         assertGe(reward, gasPaid * 0.2 gwei, "gas reimbursed at basefee + 0.05 gwei");
-        assertLe(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0005 ether + 2 * 0.2 gwei);
+        assertLe(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0001 ether + 2 * 0.2 gwei);
 
         _drawOneShape();
         vm.txGasPrice(0.17 gwei);
         (reward, gasPaid) = _paidUpkeep(keeper);
         assertGe(reward, gasPaid * 0.17 gwei);
-        assertLe(reward, (gasPaid + gasPaid / 4) * 0.17 gwei + 0.0005 ether + 2 * 0.17 gwei);
+        assertLe(reward, (gasPaid + gasPaid / 4) * 0.17 gwei + 0.0001 ether + 2 * 0.17 gwei);
 
         _drawOneShape();
         vm.txGasPrice(5_000 gwei);
         (reward, gasPaid) = _paidUpkeep(stranger);
-        assertLe(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0005 ether + 2 * 0.2 gwei, "absurd bid capped");
+        assertLe(reward, (gasPaid + gasPaid / 4) * 0.2 gwei + 0.0001 ether + 2 * 0.2 gwei, "absurd bid capped");
     }
 
     function test_basefeeSpikeCappedAtMaxGasPrice() public {
@@ -316,7 +316,7 @@ contract BalancerTest is ForkBase {
         vm.txGasPrice(80 gwei);
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
         assertGe(reward, gasPaid * 5 gwei, "refund-safe gas at the capped price");
-        assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0005 ether, "never above measured gas x cap + incentive");
+        assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0001 ether, "never above measured gas x cap + incentive");
         assertLe(reward, balancer.MAX_KEEPER_REWARD());
     }
 
@@ -357,15 +357,15 @@ contract BalancerTest is ForkBase {
         balancer.performUpkeep();
     }
 
-    /// A refunded draw earns no markup, so reconciling it pays nothing from an empty credit.
-    function test_refundOnlyBatchEarnsNothing() public {
-        assertEq(balancer.keeperCredit(), 0);
+    /// A refunded draw brings no restocking fee; reconciling it is still paid, from the creator's ETH.
+    function test_refundOnlyBatchIsPaid() public {
         buy(buyer, 1);
         vm.roll(block.number + 40); // word deadline passes
         pool.processAcquisitions(1);
         uint256 before = keeper.balance;
         upkeep();
-        assertEq(keeper.balance - before, 0, "nothing earned, nothing paid");
+        assertGe(keeper.balance - before, 0.0001 ether, "gas and the flat reward");
+        assertLe(keeper.balance - before, balancer.MAX_KEEPER_REWARD());
         assertTrue(balancer.canPurchase(buyer));
     }
 

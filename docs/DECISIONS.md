@@ -67,7 +67,8 @@ Review the **Money and authority** section first.
     when curated changes break the current one. The creator pre-approves up to 4 plans in preference order; upkeep
     keeps the active plan while feasible, else activates the first feasible one. No solver runs on-chain or as a
     service. If none fits, purchases close (status 5).
-13. **Nothing is ever staged.** The Balancer never lists while FWA has an unresolved acquisition, so FWA staging is
+13. **Nothing is ever staged.** (Superseded by 47: upkeep restocks while draws are pending and FWA stages
+    those listings.) The Balancer never lists while FWA has an unresolved acquisition, so FWA staging is
     never used and the dashboard shows no staged Shapes. Curated edits and upkeep revert `PoolBusy` during that window
     and succeed once the draw settles.
 14. **Any curated edit closes purchases until the next upkeep** (checkpoint invalidated first). The bundled keeper
@@ -415,3 +416,16 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     (fork: 57% after 100% to 10% markup), and purchases stopped until the creator unlisted and reminted. Weighing each
     prize by 1 / backing (fixed per size) makes the gate measure the mix only; the unreconciled-draw allowance is one
     0.01 ETH prize per draw, the exact heaviest case. `test_lowerMarkupKeepsAFullBoardOpen` fails on the previous rule.
+73. **Keepers are paid for every useful upkeep, from the creator's ETH** (owner decision 2026-11-13, relayed through
+    the coordinating session; constants PROVISIONAL, not owner-approved). Supersedes the `keeperCredit` rule (decision
+    text above and `docs/SPEC.md`, `docs/GAS.md`, `docs/OPERATIONS.md`, `docs/SECURITY.md` wherever they describe pay
+    capped by restocking fees). A call that reconciles a draw or lists a prize is paid
+    `(min(measured gas, 3.2M) + 50,000) × min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH`; a call that does neither
+    is paid nothing. `keeperCredit` is removed; `close` no longer zeroes anything and upkeep after closing is paid.
+    The restocking fee stays in every prize price and is now simply the creator's income. Why: draws that timed out
+    or won an NFT earned a keeper nothing, so a profit-only keeper left them unreconciled until the fill gate closed
+    (flow regime `randomness_not_delivered`: 55 draws refused, 71 upkeeps skipped; after: 0 and 0). The 50,000 gas
+    overhead was added because real receipts put 24k to 46k gas outside the measured span, which the 0.0001 ETH flat
+    reward alone does not cover at 5 gwei. `MAX_KEEPER_REWARD` is 0.01635 ETH (was 0.0165); `requiredReserve` and
+    `_fillDeficit` keep their formulas. Abuse bound: what a call does is fixed by state, so the most paid calls is one
+    per sequence FWA processed (`test/KeeperPay.t.sol`).
