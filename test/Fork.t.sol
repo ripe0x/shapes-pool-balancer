@@ -22,11 +22,11 @@ contract ForkScenarioTest is ForkBase {
     function setUp() public {
         setUpFork();
         createBalancer(5 ether);
-        curatedA = listCurated(1, 0.3 ether);
-        curatedB = listCurated(2, 0.5 ether);
         // 5 x 0.01, 3 x 0.05, 2 x 0.1 => 0.4 ETH backing
         mainTarget = plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]);
         configure(mainTarget);
+        curatedA = listCurated(1, 0.3 ether);
+        curatedB = listCurated(2, 0.5 ether);
         vm.prank(creator);
         balancer.open();
     }

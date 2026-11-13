@@ -3,6 +3,9 @@
 
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
+/** PoolBalancer.MIN_MARKUP_BPS: the game's share of every markup. While the fund is below the reserve, only the markup
+ *  above this is the creator's claimable profit; the rest refills the reserve. */
+export const MIN_MARKUP_BPS = 1_000n;
 export const MAX_BATCH = 5;
 export const MAX_OPS = 5; // PoolBalancer.MAX_OPS: Shape units restocked per upkeep call
 export const MAX_SHAPES_PER_PLAN = 80; // PoolBalancer.MAX_SHAPES_PER_PLAN
@@ -86,6 +89,10 @@ export interface PoolInputs {
   /** FWA prices of curated NFTs already listed, matching the first entries of `curatedBases`. A listing keeps the
    *  markup in force when it was made; entries without a price are new and priced at `markupBps`. */
   curatedPrices?: bigint[];
+  /** FWA prices of Shape prizes already listed, by size index (0..15): each size's array holds the actual listed price
+   *  of each active prize of that size, which keeps the markup and fees in force when it was listed. Prizes beyond the
+   *  listed count (new ones the plan adds) are priced at the current markup and fees. Parallels `curatedPrices`. */
+  shapePrices?: bigint[][];
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -126,15 +133,21 @@ export function curatedTotals(inputs: Pick<PoolInputs, 'curatedBases' | 'markupB
   return { w, wp };
 }
 
+/** The FWA price of the k-th listed prize of size `d`: the price it was listed at if it is already listed, else the
+ *  price a new prize of that size takes at the current markup and fees. */
+export const shapePriceAt = (d: number, k: number, inputs: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee' | 'shapePrices'>) =>
+  inputs.shapePrices?.[d]?.[k] ?? prizePrice(d, inputs);
+
 export function shapeTotals(counts: Counts, inputs: PoolInputs) {
   let w = 0n;
   let wp = 0n;
   counts.forEach((n, d) => {
-    if (!n) return;
-    const p = prizePrice(d, inputs);
-    const wi = weightOf(p);
-    w += BigInt(n) * wi;
-    wp += BigInt(n) * wi * p;
+    for (let k = 0; k < n; k++) {
+      const p = shapePriceAt(d, k, inputs);
+      const wi = weightOf(p);
+      w += wi;
+      wp += wi * p;
+    }
   });
   return { w, wp };
 }
@@ -189,8 +202,11 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   });
   counts.forEach((n, d) => {
     if (!n) return;
-    const p = prizePrice(d, inputs);
-    tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, value: DENOMS[d], listPrice: p, oddsPpm: Number((BigInt(n) * weightOf(p) * 1_000_000n) / (tW || 1n)) });
+    // Each listed prize of this size keeps its own price (different markup/fees at listing time), so weigh them one by
+    // one; new prizes the plan adds beyond the listed count fall back to the current price.
+    let dw = 0n;
+    for (let k = 0; k < n; k++) dw += weightOf(shapePriceAt(d, k, inputs));
+    tiers.push({ label: prizeLabel(d), kind: 'shape', size: d, count: n, value: DENOMS[d], listPrice: shapePriceAt(d, 0, inputs), oddsPpm: Number((dw * 1_000_000n) / (tW || 1n)) });
   });
 
   return {
@@ -219,7 +235,11 @@ const toEth = (x: bigint) => Number(x) / 1e18;
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
   const m = BigInt(inputs.markupBps);
+  // The game's share (the first MIN_MARKUP_BPS of markup) refills the reserve; only the markup above it is the creator's
+  // claimable profit while the fund is below the reserve. Curated NFTs contribute nothing to profit while short.
+  const claimM = m > MIN_MARKUP_BPS ? m - MIN_MARKUP_BPS : 0n;
   let markup = 0;
+  let claimable = 0;
   let mint = 0;
   let restock = 0;
   for (const t of ev.tiers) {
@@ -228,15 +248,19 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     else {
       const shapes = BigInt(SHAPES_IN[t.size!]);
       markup += p * toEth((DENOMS[t.size!] * m) / BPS);
+      claimable += p * toEth((DENOMS[t.size!] * claimM) / BPS);
       mint += p * toEth(shapes * inputs.mintFee);
       restock += p * toEth(shapes * inputs.restockFee);
     }
   }
   return {
     ownerProceeds: toEth(ev.ownerProceedsPerDraw),
-    /** The creator's markup: what the creator keeps per draw, at least. A model average: prize luck moves short runs
-     *  either way. */
+    /** The markup priced into every draw: what the creator keeps per draw on average (all of it is withdrawable once the
+     *  reserve is full). A model average: prize luck moves short runs either way. */
     markupPerDraw: markup,
+    /** What the creator can withdraw per draw while the fund is below the reserve: the Shape markup above
+     *  MIN_MARKUP_BPS. A model average: prize luck moves short runs either way. */
+    claimablePerDraw: claimable,
     mintFeesPerDraw: mint,
     restockFeesPerDraw: restock,
   };

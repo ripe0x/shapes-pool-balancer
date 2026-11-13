@@ -157,6 +157,24 @@ async function run() {
   assert.equal(k.state.stats.sent, sentBefore, 'no redundant sends after restart');
   console.log('✓ restart resumes without duplicate work');
 
+  // 3b. crash right after broadcasting, before the hash was saved: the restart must not send a second upkeep
+  await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b04', 11n);
+  await test.setAutomine(false);
+  await k.tick();
+  const crashed = k.state.pending[b1];
+  assert.ok(crashed, 'upkeep in flight');
+  crashed.hashes = []; // the state file as written before the broadcast
+  k.save();
+  const sentBeforeCrash = k.state.stats.sent;
+  k = mk();
+  await k.tick();
+  assert.equal(k.state.stats.sent, sentBeforeCrash, 'no second upkeep after the restart');
+  assert.equal(await pub.getTransactionCount({ address: keeperAddr, blockTag: 'pending' }), crashed.nonce + 1, 'one transaction at that nonce');
+  await test.mine({ blocks: 1 });
+  await test.setAutomine(true);
+  await tickUntil(k, async () => (await stocked(b1)) && Object.keys(k.state.pending).length === 0);
+  console.log('✓ restart after an unrecorded broadcast waits for it instead of sending again');
+
   // 4. stuck transaction is replaced with bumped fees and mined once
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b03', 7n);
   await test.setAutomine(false);

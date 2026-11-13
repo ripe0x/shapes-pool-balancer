@@ -19,7 +19,6 @@ contract PacksTest is ForkBase {
     function setUp() public {
         setUpFork();
         createBalancer(5 ether);
-        listCurated(1, 0.3 ether);
         uint256[16] memory c;
         c[0] = 4;
         c[9] = 3;
@@ -27,6 +26,7 @@ contract PacksTest is ForkBase {
         c[12] = 1;
         mixTarget = plan16(c);
         configure(mixTarget);
+        listCurated(1, 0.3 ether);
         vm.prank(creator);
         balancer.open();
         fillUp();

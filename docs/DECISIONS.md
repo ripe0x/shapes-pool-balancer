@@ -392,3 +392,20 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     restocks, tiny either way). The three tests that mocked a failed Shape or pack delivery (`vm.mockCallRevert`) are
     removed: FWA delivers Shapes and packs with a plain `transferFrom`, so that branch of `recoverRefunded` is
     defensive and has no real test.
+70. **Independent audit repairs (contract, keeper, dashboard).** From the independent audit of `c686534`: curated NFTs
+    list only after the first `configure` (`InvalidConfig` otherwise), so none lists at 0% markup (its E3); `open()`
+    collects settled FWA proceeds and checks the reserve against ETH held here, not proceeds still at FWA (E5); every
+    creator function (`configure`, `open`, `close`, `transferCreator`, `acceptCreator`, `retire`, `setENSName`, page
+    approvals) is `nonReentrant`, so neither a creator-controlled collection's transfer nor a creator-run keeper's
+    reward callback can reconfigure or close mid-call (S4 and round 9 R9-S4); the bundled keeper saves a pending
+    upkeep before broadcasting, so a restart reuses the nonce instead of sending a duplicate; the dashboard saves the
+    design before listing NFTs, reserves at max(live mint fee, accepted cap), simulates upkeep with real fees as the
+    creator, prices the live board from actual Shape listing prices (E8), shows the claimable share and a player
+    return that includes FWA's VRF fee (E6), and finds pools transferred to the wallet (`CreatorTransferred`).
+71. **Owner decisions on the independent audit (2026-11-13).** `sim/flows.ts` is removed (round 8 E3): it fixed the VRF
+    fee at 0.0003 ETH and had no profit bucket; `sim/fund.ts` and the fork matrix are the economic evidence. M7 and M9
+    are reworded (audit prompts): M7 excludes the one-way FWA edge, VRF and Shapes mint fees, refunds FWA owes players,
+    and a curated NFT whose own collection refuses the transfer; M9's claim rule applies while the fund is below the
+    reserve (a claim then spends only allocated profit) and, while open, a claim never takes the fund below the
+    reserve. Accepted as designed: curated-collection trust (S1-S3, E11), keeper timing (E12), the stale-inventory
+    revert. Decided, not yet built: the fill gate measured on prize backing (E2).

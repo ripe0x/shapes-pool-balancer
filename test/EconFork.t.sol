@@ -34,7 +34,6 @@ contract EconForkTest is ForkBase {
             for (uint256 i; i < days_; ++i) perDay.push(steady);
         }
         createBalancer(deposited);
-        listCurated(nextNft++, NFT_VALUE);
         // shared/design.ts Balanced board: per 24 small Shapes, 8 x 0.02 pack, 12 x 0.05, 2 x 0.1, 1 x 0.5, rounded
         // half up, at least one 0.1.
         uint256[16] memory c;
@@ -46,6 +45,7 @@ contract EconForkTest is ForkBase {
         c[3] = (small + 12) / 24;
         vm.prank(creator);
         balancer.configure(uint16(markup), plan16(c));
+        listCurated(nextNft++, NFT_VALUE);
         vm.prank(creator);
         balancer.open();
         fillUp();

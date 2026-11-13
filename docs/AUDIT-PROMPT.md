@@ -73,13 +73,15 @@ and the minimum markup is the game's share: "if the min for a setup is 10%, and 
   after a big win uses the spare, sales refill it (owner-accepted: back-to-back big wins leave prizes off the board
   until sales restock them, smallest first). No winner is ever unpaid: every listed prize holds its own backing.
 - **M7. Nothing stranded.** After close, unlist and withdraw, no ETH or prize is stranded or owed to anyone but the
-  creator.
+  creator. Excluded: the one-way FWA edge, VRF fee and Shapes mint fees, refunds FWA owes players, and a curated NFT
+  whose own collection refuses the transfer.
 - **M8. Fill gate.** Purchases pause before the odds drift far from the design (the gate is at 70% of target weight,
   and each unrecorded draw is charged the heaviest prize).
 - **M9. Game first, profit after.** The fund is the balance less unclaimed `profit`. While it is below the reserve,
   the creator's share of each collected payment is each Shape's markup above 10% (at its listing markup, weighted by
   1 / price as FWA weights draws); the fund keeps the rest, including the first 10% of markup and all NFT sale money.
-  A claim never takes the fund below the reserve or below where it was. Upkeep spends unclaimed profit only when the
+  While the fund is below the reserve, a claim never lowers it (it spends only allocated profit); while open, a claim never
+  takes the fund below the reserve. Upkeep spends unclaimed profit only when the
   fund cannot pay a restock. No creator action (markup changes, listing or withdrawing NFTs, unlisting, timing of
   collection, creator transfer, open/close) may move fund money into profit.
 
@@ -184,7 +186,7 @@ not "in the right place".
   - NFT odds against the design;
   - idle and fronted capital;
   - anything stranded.
-- `sim/flows.ts` models the contract. Check its formulas against the contract line by line, and check its numbers
+- `sim/fund.ts` models the contract (`sim/flows.ts` was removed, DECISIONS 71). Check its formulas against the contract line by line, and check its numbers
   against a fork run of the same scenario. A simulation that disagrees with the fork is a finding.
 
 **Liveness and timing pass**

@@ -17,6 +17,7 @@ contract GasBench is ForkBase {
     function setUp() public {
         setUpFork();
         createBalancer(20 ether);
+        configure(plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0])); // NFTs list only after a first configure
         listCurated(1, 0.3 ether);
         listCurated(2, 0.5 ether);
     }

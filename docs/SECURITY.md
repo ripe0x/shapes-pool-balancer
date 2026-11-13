@@ -29,6 +29,28 @@ superseded**: they describe code that no longer exists and are kept below only a
 | 8 (adversarial audit, `audit/round8/report.md`) | `2ac7a7e` | DECISIONS 61-68 |
 | 9 (adversarial audit, `audit/round9/report.md`) | `c686534` | DECISIONS 69 |
 
+## Independent audit (2026-11-13, informed, on `c686534`)
+
+An outside agent audit (report pasted by the owner; prompt `docs/INDEPENDENT-AUDIT-PROMPT.md`). Its fork evidence found
+Foundry's zero-gas default in its own harnesses and calibrated the affected runs. Outcomes:
+
+| ID | Finding | Outcome |
+| --- | --- | --- |
+| E1 | Profit split used the listings at collection | Fixed for withdrawal and upkeep order (DECISIONS 69); restock-while-pending residual accepted |
+| E2 | Lowering markup or mint fee can stop sales on a full board | Decided: fill gate on prize backing (DECISIONS 71), not yet built |
+| E3 | Dashboard listed NFTs before saving the markup | Fixed: contract refuses curated listings before `configure`; dashboard saves first (DECISIONS 70) |
+| E4 | Planner understated the deposit after the mint fee fell | Fixed: reserve at max(live fee, accepted cap) (DECISIONS 70) |
+| E5 | `open()` counted proceeds still at FWA | Fixed: `open()` collects first (DECISIONS 70) |
+| E6 | Earnings and player return labels | Fixed: average and refill-period figures shown separately; return includes the VRF fee |
+| E7 | Simulation (round 8 E3) | Closed: `sim/flows.ts` removed (DECISIONS 71) |
+| E8 | Planner repriced listed Shapes | Fixed: live listing prices (DECISIONS 70) |
+| E9 | Top-heavy pool can stall after two top wins | Open: owner deciding (continue with a smaller board, or add ETH) |
+| E10 | Leftover keeper credit plus a near-free NFT | Open: owner deciding (no bonus for record-only upkeep) |
+| E11, S1-S3 | Hostile curated collections | Accepted: creator chooses collections |
+| E12 | Keeper timing uses more fees | Accepted as designed |
+| S4 | Batch listing callback mixed markups | Fixed: creator functions `nonReentrant` (DECISIONS 70) |
+| Off-chain | Upkeep precheck at gas 0; transferred pools not found; keeper duplicate after restart | Fixed (DECISIONS 70) |
+
 ## Round 9 (adversarial audit, 2026-11-13)
 
 Three blind AI lanes plus an independent challenger, about 5 of 12 auditor-hours, on frozen `c686534` with fork

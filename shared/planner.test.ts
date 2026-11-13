@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { economics, evaluate, MAX_KEEPER_REWARD, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
+import { BPS, economics, evaluate, listPrice, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
 
 const EDGE = 500;
 
@@ -31,6 +31,26 @@ describe('planner', () => {
     // A new NFT added after the listed one is priced at the current markup.
     const added = evaluate(counts, { ...at, curatedBases: [E / 50n, E / 10n], curatedPrices: [E / 50n] });
     expect(added.tiers[1].listPrice).toBe((E / 10n) * 11n / 10n);
+  });
+
+  it('prices listed Shapes at their live FWA price, so a historical board matches FWA\'s fee formula (E8)', () => {
+    const edge = EDGE;
+    const at = { curatedBases: [E / 2n], markupBps: 2000, edgeBps: edge, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n) };
+    // Four 0.01 Shapes listed earlier at 10% markup, before the creator raised it to 20%; FWA keeps their old price.
+    const listedPrice = prizePrice(0, { ...at, markupBps: 1000 });
+    const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
+    const curatedPrices = [listPrice(E / 2n, at.markupBps)];
+    const live = evaluate(counts, { ...at, curatedPrices, shapePrices: [[listedPrice, listedPrice, listedPrice, listedPrice]] });
+
+    // Independent of evaluate: FWA's acquisitionFee is the inverse-weight average of the actual listed prices x (1 + edge).
+    const prices = [curatedPrices[0], listedPrice, listedPrice, listedPrice, listedPrice];
+    const w = prices.reduce((s, p) => s + NUM / p, 0n);
+    const wp = prices.reduce((s, p) => s + (NUM / p) * p, 0n);
+    const expected = ((wp / w) * (BPS + BigInt(edge))) / BPS;
+    expect(live.drawPrice).toBe(expected);
+
+    // Pricing the same board at the current 20% markup (as if freshly listed) is more expensive: listed prizes are cheaper.
+    expect(evaluate(counts, { ...at, curatedPrices }).drawPrice).toBeGreaterThan(live.drawPrice);
   });
 
   it('packs and unpacks plans', () => {

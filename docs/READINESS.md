@@ -82,6 +82,18 @@ or release readiness.
   FWA's VRF fee against an independent calculation (both tests fail with the settings removed). Several round 9
   audit harnesses ran at zero gas (erratum in `audit/round9/report.md`).
 
+## Independent-audit repairs (2026-11-13, DECISIONS 70-71)
+
+- Fork test files one at a time on the repaired contract: ForkContext 2, Reserve 13, Balancer 29, Packs 9, Gas 23,
+  Hardening 13, KeeperAdversarial 8, KeeperList 3, Fork 9, Parity 1, Invariant 2, EconFork 2, all passed. The four
+  new contract tests fail on the previous contract. `PoolBalancer` runtime 21,161 B.
+- `npm run keeper:e2e` passed, including a restart after an unrecorded broadcast. Vitest planner and tx tests passed;
+  typecheck and app build exit 0.
+- Dashboard on the 8545 dev fork with the new factory: created a pool with an NFT (design saved before listing; NFT
+  listed at 0.0625 ETH = 0.05 + 25%), purchases opened and the first upkeep listed Shapes; a pool transferred to the
+  dev account appears in its list. Not exercised in the UI: the mint-fee-fall reserve and live Shape prices after a
+  markup change (planner unit test only).
+
 ## Earlier verification (previous design, commit `3f1735f`)
 
 The checks in this section ran against the pre-rewrite design and are kept as a record of the verification method. They

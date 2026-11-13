@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {ReconfiguringNFT} from "./utils/Mocks.sol";
 
 /// @notice Reserve rules on a mainnet fork with the real FWA pool, VRF service and Shapes: a pool opens only with its
@@ -15,9 +16,9 @@ contract ReserveTest is ForkBase {
     function setUp() public {
         setUpFork();
         createBalancer(5 ether);
-        curated = listCurated(1, 0.3 ether);
         // 4 x 0.01, 2 x 0.1, 1 x 0.5: the 0.5 Shape is listed last.
         configure(plan([uint256(4), 0, 2, 1, 0, 0, 0, 0, 0]));
+        curated = listCurated(1, 0.3 ether);
         vm.prank(creator);
         balancer.open();
         fillUp();
@@ -326,19 +327,93 @@ contract ReserveTest is ForkBase {
         assertEq(address(balancer).balance, 0.001 ether + proceeds, "deposit untouched");
     }
 
-    /// S4: a collection that is also the creator changes the markup inside its transfer; the listing uses the markup
-    ///     in force once the token is held.
-    function test_curatedPricedAfterCollectionCallback() public {
+    /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is
+    ///     guarded, so the listing reverts and the markup stays as configured.
+    function test_collectionCallbackCannotReconfigure() public {
         ReconfiguringNFT hostile = new ReconfiguringNFT();
         vm.prank(creator);
         balancer.transferCreator(address(hostile));
         hostile.becomeCreator(address(balancer));
 
-        uint256 lid = hostile.listWithCallback(address(balancer), 7, 0.1 ether, 10_000);
-        assertEq(balancer.markupBps(), 10_000, "callback reconfigured");
-        (,,,, uint112 price) = balancer.items(lid);
-        (,,,,, uint256 fwaPrice,,) = pool.listings(lid);
-        assertEq(price, 0.2 ether, "priced at the markup in force after the pull");
-        assertEq(fwaPrice, 0.2 ether);
+        vm.expectRevert(ReentrancyGuard.Reentrancy.selector);
+        hostile.listWithCallback(address(balancer), 7, 0.1 ether, 10_000);
+        assertEq(balancer.markupBps(), MARKUP, "markup unchanged");
+    }
+
+    /// Independent audit E3: a curated NFT listed before the first `configure` would carry no markup.
+    function test_nftsListOnlyAfterTheFirstConfigure() public {
+        vm.prank(creator);
+        PoolBalancer fresh = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(1)))));
+        nft.mint(creator, 50);
+        vm.startPrank(creator);
+        nft.approve(address(fresh), 50);
+        vm.expectRevert(PoolBalancer.InvalidConfig.selector);
+        fresh.listCurated(address(nft), 50, 0.3 ether);
+        fresh.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]));
+        uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
+        vm.stopPrank();
+        (,,,, uint112 price) = fresh.items(lid);
+        assertEq(price, 0.3 ether * (10_000 + uint256(MARKUP)) / 10_000, "listed at the configured markup");
+    }
+
+    /// Independent audit E5: `open` collects settled FWA proceeds into this contract before checking the reserve, so
+    /// the reserve is checked against ETH actually held here.
+    function test_openCollectsSettledProceedsFirst() public {
+        uint256[] memory d = buy(buyer, 1);
+        fulfill(d[0], _wordFor(0));
+        settle();
+        vm.prank(creator);
+        balancer.close();
+        uint256 proceeds = pool.ownerProceeds();
+        assertGt(proceeds, 0, "settled proceeds waiting at FWA");
+        uint256 before = address(balancer).balance;
+        vm.prank(creator);
+        balancer.open();
+        assertEq(pool.ownerProceeds(), 0, "collected on open");
+        assertEq(address(balancer).balance, before + proceeds, "proceeds now held here");
+        assertGe(address(balancer).balance - balancer.profit(), balancer.requiredReserve(), "reserve held in ETH here");
+    }
+
+    /// Round 9 R9-S4: a creator contract running upkeep cannot re-enter creator functions from its keeper reward.
+    function test_creatorKeeperCannotReenterFromReward() public {
+        CreatorKeeper ck = new CreatorKeeper(balancer);
+        vm.prank(creator);
+        balancer.transferCreator(address(ck));
+        ck.accept();
+        uint256[] memory d = buy(buyer, 1);
+        fulfill(d[0], _wordFor(0));
+        settle();
+        uint256 reward = ck.upkeep();
+        assertGt(reward, 0, "creator work earns a reward");
+        assertTrue(ck.tried(), "the reward reached the creator contract");
+        assertFalse(ck.closedInside(), "close() inside the reward callback was refused");
+        assertTrue(balancer.enabled(), "pool still open");
+    }
+}
+
+/// A creator contract that runs upkeep itself and tries to close the pool when the keeper reward arrives.
+contract CreatorKeeper {
+    PoolBalancer internal b;
+    bool public tried;
+    bool public closedInside;
+
+    constructor(PoolBalancer b_) {
+        b = b_;
+    }
+
+    function accept() external {
+        b.acceptCreator();
+    }
+
+    function upkeep() external returns (uint256) {
+        return b.performUpkeep();
+    }
+
+    receive() external payable {
+        if (msg.sender != address(b) || tried) return;
+        tried = true;
+        try b.close() {
+            closedInside = true;
+        } catch {}
     }
 }

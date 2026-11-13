@@ -215,8 +215,15 @@ export class Keeper {
     // The contract reimburses measured gas, never the limit; only gas used is billed.
     const gas = gasLimitFor(gasEstimate);
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
+    // Saved before broadcasting: a restart after the broadcast finds this nonce in flight and waits for or replaces
+    // it, instead of sending a second upkeep at the next nonce.
+    this.state.pending[b] = { fn, args, hashes: [], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.save();
+    // An error here may still have broadcast (lost response): keep the nonce pending, so the next ticks wait for it or
+    // replace it at the same nonce rather than sending a second upkeep at the next one.
     const hash = await this.send(b, fn, callArgs, nonce, maxFeePerGas, priority, gas);
-    this.state.pending[b] = { fn, args, hashes: [hash], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.state.pending[b].hashes.push(hash);
+    this.save();
     this.state.stats.sent++;
     this.log(`sent ${fn}`, { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
     return true;

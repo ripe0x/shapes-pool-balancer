@@ -305,12 +305,12 @@ contract PoolBalancer is ReentrancyGuard {
                             CREATOR AUTHORITY
     //////////////////////////////////////////////////////////////*/
 
-    function transferCreator(address newCreator) external onlyCreator {
+    function transferCreator(address newCreator) external onlyCreator nonReentrant {
         pendingCreator = newCreator;
         emit CreatorTransferStarted(msg.sender, newCreator);
     }
 
-    function acceptCreator() external {
+    function acceptCreator() external nonReentrant {
         if (msg.sender != pendingCreator || msg.sender == address(0)) revert Unauthorized();
         emit CreatorTransferred(creator, msg.sender);
         creator = msg.sender;
@@ -320,7 +320,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Set the markup for new listings and the target prize mix, and accept the current Shapes mint fee.
     /// @dev Existing listings keep their prices. A smaller target leaves extra prizes listed until `unlistShapes`.
-    function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator {
+    function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator nonReentrant {
         if (newMarkupBps < MIN_MARKUP_BPS || newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
         if (newTarget >> (16 * DENOMS) != 0) revert InvalidPlan();
         uint256 fee = SHAPES.mintFee();
@@ -343,11 +343,12 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Allow purchases; they start once upkeep has restored the target. Needs `requiredReserve` in ETH, so a
     ///         pool never opens without the ETH to stock its target and restock a big win.
-    function open() external onlyCreator {
+    function open() external onlyCreator nonReentrant {
         if (target == 0) revert InvalidConfig();
+        _collect(); // while closed, all settled proceeds join the fund
         enabled = true;
         _creatorChanged();
-        if (address(this).balance + pool.ownerProceeds() < requiredReserve()) revert ReserveNotFunded();
+        if (address(this).balance - profit < requiredReserve()) revert ReserveNotFunded();
         pool.setBool(ACQUISITIONS_ENABLED_KEY, true);
         emit PurchasesOpened();
     }
@@ -355,7 +356,7 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Stop new purchases immediately. Outstanding FWA draws, refunds and claims are unaffected. Unspent keeper
     ///         credit returns to the creator: closing frees the whole balance, so credit left standing would later be
     ///         paid from fresh deposits. Upkeep after closing earns keepers nothing.
-    function close() external onlyCreator {
+    function close() external onlyCreator nonReentrant {
         enabled = false;
         creatorWork = false;
         keeperCredit = 0;
@@ -508,7 +509,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice Irreversibly retire the FWA pool. Withdrawals, unlisting and recovery remain available.
-    function retire() external onlyCreator {
+    function retire() external onlyCreator nonReentrant {
         if (enabled) revert NotClosed();
         pool.retirePool();
         emit PoolRetired();
@@ -519,7 +520,7 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Set this contract's ENS reverse record via the current `addr.reverse` registrar ("" clears it).
-    function setENSName(string calldata name) external onlyCreator {
+    function setENSName(string calldata name) external onlyCreator nonReentrant {
         IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name);
         emit ENSNameSet(name);
     }
@@ -535,14 +536,19 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Approved digests are always "Publish FWA Pools page" messages naming this pool, so
     ///      `isValidSignature` cannot authorize anything else (no FWA, Shapes or ERC721 function
     ///      accepts such a message). Format verified against pools.fwa.fun's client code 2026-11-10.
-    function approvePoolPage(string calldata issuedAt, bytes32 metadataHash) external onlyCreator returns (bytes32 digest) {
+    function approvePoolPage(string calldata issuedAt, bytes32 metadataHash)
+        external
+        onlyCreator
+        nonReentrant
+        returns (bytes32 digest)
+    {
         digest = PoolPage.digest(address(FWA_FACTORY), address(pool), issuedAt, metadataHash);
         pageApprovedEpoch[digest] = pageEpoch + 1;
         emit PoolPageApproved(digest, issuedAt, metadataHash);
     }
 
     /// @notice Invalidate every pool-page approval made so far.
-    function revokePoolPages() external onlyCreator {
+    function revokePoolPages() external onlyCreator nonReentrant {
         emit PoolPagesRevoked(++pageEpoch);
     }
 
@@ -853,11 +859,12 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
+        if (markupBps == 0) revert InvalidConfig(); // configure first, so NFTs list at the creator's markup
         if (collection == address(SHAPES) || collection == address(PACKS)) revert ShapesNotCurated();
         IERC721Min(collection).transferFrom(msg.sender, address(this), tokenId);
         if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert InvalidItem();
         IERC721Min(collection).approve(address(pool), tokenId);
-        // Priced after the collection's calls: a creator-controlled collection may reconfigure the markup inside them.
+        // `configure` is guarded, so a collection's calls cannot change the markup this listing (or batch) uses.
         price = _priced(base);
     }
 
