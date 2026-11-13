@@ -4,7 +4,8 @@
 // chain, so NFT money stays in the fund) and the rest, which goes to the game fund. The fund pays every restock,
 // smallest first, when it can. While the fund is below its target (one largest prize) a share `s` of the markup part
 // tops it up; above target the overflow is profit. The creator withdraws profit daily. s = 1 with the cushion
-// deposited is the rule before the split (2ad61fd); the contract uses s = 1/2 with the cushion required at open.
+// deposited is the rule before the split (2ad61fd); s = 1/2 was DECISIONS 67; the contract now uses s = 10% / markup
+// (DECISIONS 68: the first 10% of markup refills, the rest is profit), written s < 0 here.
 import { parseEther } from 'viem';
 import { mixOf, styleBonus, type DesignInputs } from '../shared/design';
 import { restockFeeAt, prizePrice, prizeCost, listPrice, SHAPES_IN, DENOMS } from '../shared/planner';
@@ -42,7 +43,8 @@ function run(small: number, markupBps: number, sched: number[], d: Design, runs:
         const ev = N / S, creator = C / S, replace = ev - creator;
         inflow += ev;
         F += replace;
-        const toFund = F < T ? Math.min(creator * d.s, T - F) : 0;
+        const share = d.s < 0 ? 1000 / markupBps : d.s;
+        const toFund = F < T ? Math.min(creator * share, T - F) : 0;
         F += toFund;
         P += creator - toFund;
         // Draw.
@@ -76,6 +78,7 @@ const q = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y); 
 const pct = (x: number) => `${(100 * x).toFixed(1)}%`;
 const designs: Design[] = [
   { name: "today (s=100%, cushion)", s: 1, cushion: true },
+  { name: 'first 10% of markup refills (contract)', s: -1, cushion: true },
   { name: 's=50%, cushion', s: 0.5, cushion: true },
   { name: 's=25%, cushion', s: 0.25, cushion: true },
   { name: 's=0%, cushion', s: 0, cushion: true },

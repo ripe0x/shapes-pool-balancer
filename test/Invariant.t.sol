@@ -199,7 +199,7 @@ contract InvariantTest is ForkBase {
         uint256 bal = address(balancer).balance;
         assertLe(balancer.profit(), bal, "profit held");
         assertLe(balancer.withdrawableSurplus(), bal, "claims within the balance");
-        assertLe(balancer.creatorShareSum(), _listedShapes() * 5e17, "only Shape markups, at most half each price");
+        assertLe(balancer.profitShareSum(), _listedShapes() * 5e17, "only Shape markups, at most half each price");
         if (!balancer.enabled()) assertEq(balancer.profit(), 0, "everything claimable while closed");
     }
 

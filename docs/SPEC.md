@@ -160,14 +160,15 @@ creator-recoverable). The reserve is the creator's money; it is not withdrawable
 target or a mint-fee rise raises `requiredReserve`. Purchases continue while ETH is below it, and `open()` needs it in
 ETH.
 
-**Profit and the fund (DECISIONS 67).** Each collected FWA payment is split by the listed prices. FWA weights each
-listing by 1 / price, so the Shapes' markup share of a payment is `creatorShareSum / (active listings × 1e18)`, where
-`creatorShareSum` adds, for every active Shape prize, the markup on its backing (at the markup it was listed at) divided
-by its price. Curated NFTs count zero: the split uses the listings at collection, so counting them would let a creator
-list NFTs just before a collection to move fund money into profit. A Shape's share is below markup / (1 + markup), at
-most 1/2, so the fund keeps at least half of every payment, NFT sale money included. The fund is the balance less
-unclaimed `profit`. While the fund is below `requiredReserve`, half of the markup part tops it up (up to the gap) and
-the rest is added to `profit`; at or above it, everything over the reserve is claimable. `withdrawableSurplus` is the larger of
+**Profit and the fund (DECISIONS 67, 68).** The first 10% of markup (`MIN_MARKUP_BPS`) is the game's: it refills the
+reserve. The markup above it is the creator's profit. Each collected FWA payment is split by the listed prices. FWA
+weights each listing by 1 / price, so the creator's share of a payment is `profitShareSum / (active listings × 1e18)`,
+where `profitShareSum` adds, for every active Shape prize, the markup above 10% on its backing (at the markup it was
+listed at) divided by its price. Curated NFTs count zero: the split uses the listings at collection, so counting them
+would let a creator list NFTs just before a collection to move fund money into profit. A Shape's share is below
+markup / (1 + markup), at most 1/2, so the fund keeps at least half of every payment, NFT sale money included. The fund
+is the balance less unclaimed `profit`. While the fund is below `requiredReserve`, the creator's share is added to
+`profit` and the fund keeps the rest; at or above it, everything over the reserve is claimable. `withdrawableSurplus` is the larger of
 `profit` and `balance − requiredReserve`, and a claim spends `profit` first, so a claim never takes the fund below the
 reserve or below where it was. Game first: when the fund cannot pay a restock, upkeep spends unclaimed profit (`profit`
 is cut to the balance). Closing zeroes `profit`: the whole balance is claimable while closed.

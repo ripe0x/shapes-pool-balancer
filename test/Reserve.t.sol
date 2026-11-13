@@ -130,9 +130,9 @@ contract ReserveTest is ForkBase {
         uint256 expected;
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind, uint8 denom,,, uint112 price) = balancer.items(ids[i]);
-            if (kind != 1) expected += balancer.denominationAmount(denom) * MARKUP * 1e18 / (10_000 * uint256(price));
+            if (kind != 1) expected += balancer.denominationAmount(denom) * (MARKUP - 1000) * 1e18 / (10_000 * uint256(price));
         }
-        assertEq(balancer.creatorShareSum(), expected);
+        assertEq(balancer.profitShareSum(), expected);
     }
 
     /// Review finding: proceeds are split against the listings at collection, so a creator could list NFTs just before
@@ -172,6 +172,10 @@ contract ReserveTest is ForkBase {
 
     /// Game first: when the fund cannot pay a restock, unclaimed profit pays it.
     function test_unclaimedProfitRestocksWhenTheFundIsEmpty() public {
+        // A 100% markup, so restocked prizes carry a large share above the 10% the fund keeps.
+        uint256 t = balancer.target();
+        vm.prank(creator);
+        balancer.configure(10_000, t);
         _claimAll();
         uint256[] memory r = buy(buyer, 1);
         fulfill(r[0], _wordFor(3));

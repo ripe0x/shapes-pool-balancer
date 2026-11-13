@@ -369,3 +369,14 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     Shapes' expected restock cost (`test_listingNFTsBeforeCollectionCannotMoveFundMoney`, re-reviewed). NFT
     sale money therefore stays in the fund until it is full. Each Shape's share is fixed at listing, so a markup change
     cannot move fund money either. Staged restocks count in the divisor, which can only lower the creator's share.
+68. **The first 10% of markup refills the reserve; the markup above it is the creator's** (owner's rule, supersedes
+    67's 50/50). While the fund is below `requiredReserve`, the creator's share of each payment is each Shape's markup
+    above `MIN_MARKUP_BPS` (`profitShareSum`, renamed from `creatorShareSum`) and the fund keeps the rest. The game
+    then refills at the same rate in every pool, set by the minimum, rather than by the creator's markup: at 40 draws
+    a day for 180 days the top prize is off the board 3.0% to 3.8% of draws at any markup from 10% to 50% (50/50 gave
+    7.1% at 10% and 0.9% at 50%), and creators charging more keep more during a refill (2/3 at 30%, 4/5 at 50%). At
+    the 10% minimum the creator keeps nothing during a refill, as before the split. Totals are unchanged (sim/fund.ts).
+    Fork run at ape-ball's curve, 25% markup, 12 seeds: 0 draws with nothing to claim, the same final positions to
+    0.0001 ETH; after a 0.5 ETH win at draw 60 the creator withdrew 0.511 ETH in the month (0.460 under 50/50). The
+    67 bounds hold: curated NFTs count zero, each Shape's share is below 1/2, the fund keeps at least half of every
+    payment.

@@ -24,7 +24,8 @@ interface IKeeperList {
 ///        Shapes mint fee is above what the creator accepted, while the prizes' weight, after assuming every
 ///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight. Purchases do not
 ///        wait for ETH: each prize's price covers replacing it, so after a big win uses the reserve's spare, sales
-///        refill it from the markup (at least MIN_MARKUP_BPS) while withdrawals wait. `open` needs the reserve in ETH.
+///        refill it from the first MIN_MARKUP_BPS of markup while the creator keeps the markup above it. `open` needs
+///        the reserve in ETH.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. That fee pays the keeper who lists the prize, in the same call, so it matches the gas
@@ -71,7 +72,8 @@ contract PoolBalancer is ReentrancyGuard {
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
-    /// @dev Markup is the only profit in a prize's price, so it is what refills the reserve after a big win.
+    /// @dev The game's share of every markup: the only profit in a prize's price, so the part that refills the reserve
+    ///      after a big win. The creator's profit is the markup above it.
     uint256 internal constant MIN_MARKUP_BPS = 1_000;
     /// @dev Purchases need the listed prizes' weight, less the unreconciled-draw allowance, at this share of the target's.
     uint256 internal constant FILL_BPS = 7_000;
@@ -166,8 +168,8 @@ contract PoolBalancer is ReentrancyGuard {
     uint64 public reconciledSequence;
     /// @dev Restocking fees of prizes keepers listed (price less `base`, outside creator work), not yet paid out.
     uint128 public keeperCredit;
-    /// @dev The creator's part of payments collected while the fund was below `requiredReserve`, not yet claimed.
-    ///      While the fund is short, half of each payment's creator part refills it and half is added here.
+    /// @dev The creator's part of payments collected while the fund was below `requiredReserve`, not yet claimed:
+    ///      the markup above MIN_MARKUP_BPS. The fund keeps the rest of each payment, MIN_MARKUP_BPS of markup included.
     uint128 public profit;
     /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
     uint256 public mintFeeCap;
@@ -177,13 +179,13 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 public targetWeight;
 
     mapping(uint256 listingId => Item) internal _items;
-    /// @dev Sum over active Shape prizes of (markup on its backing) x 1e18 / price: the markup share of FWA's
-    ///      expected-value payment is this / (active listings x 1e18), since FWA weights each listing by 1 / price.
-    ///      Curated NFTs count zero: proceeds are split at collection, against the listings then, so counting them
-    ///      would let a creator list NFTs just before a collection to move fund money into profit. NFT sale money
-    ///      stays in the fund while it is short and is claimable once it is full. A Shape's share is at most
+    /// @dev Sum over active Shape prizes of (markup above MIN_MARKUP_BPS, on its backing) x 1e18 / price: the creator's
+    ///      share of FWA's expected-value payment is this / (active listings x 1e18), since FWA weights each listing by
+    ///      1 / price. Curated NFTs count zero: proceeds are split at collection, against the listings then, so
+    ///      counting them would let a creator list NFTs just before a collection to move fund money into profit. NFT
+    ///      sale money stays in the fund while it is short and is claimable once it is full. A Shape's share is below
     ///      markup / (1 + markup) <= 1/2, so the fund always keeps at least half of each payment.
-    uint256 public creatorShareSum;
+    uint256 public profitShareSum;
     uint256[] internal activeIds;
     mapping(uint256 listingId => uint256) internal activeIndexPlusOne;
     uint16[16] internal activeShapes;
@@ -822,9 +824,9 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && _missingUnits() != 0;
     }
 
-    /// @dev Collect FWA proceeds and split them by the listed prices. The fund (this balance less unclaimed `profit`)
-    ///      keeps everything but the Shapes' markup. While the fund is below `requiredReserve`, half of the markup tops
-    ///      it up and half becomes claimable `profit`; at or above it, everything over the reserve is claimable anyway.
+    /// @dev Collect FWA proceeds and split them by the listed prices. While the fund (this balance less unclaimed
+    ///      `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS becomes claimable `profit`
+    ///      and the fund keeps the rest; at or above it, everything over the reserve is claimable anyway.
     function _collect() internal returns (uint256 amount) {
         IFWAPool p = pool;
         if (p.ownerProceeds() == 0) return 0;
@@ -832,16 +834,11 @@ contract PoolBalancer is ReentrancyGuard {
         emit ProceedsCollected(amount);
         uint256 n = activeIds.length;
         if (!enabled || n == 0) return amount;
-        uint256 mine = amount * creatorShareSum / (n * 1e18);
+        uint256 mine = amount * profitShareSum / (n * 1e18);
         if (mine > amount) mine = amount;
         // profit <= the balance before this payment, so this cannot underflow.
         uint256 fund = address(this).balance - mine - profit;
-        uint256 need = requiredReserve();
-        if (fund < need) {
-            uint256 toFund = mine / 2;
-            if (toFund > need - fund) toFund = need - fund;
-            profit += uint128(mine - toFund);
-        }
+        if (fund < requiredReserve()) profit += uint128(mine);
     }
 
     function _priced(uint256 base) internal view returns (uint256 price) {
@@ -867,20 +864,21 @@ contract PoolBalancer is ReentrancyGuard {
     function _addActive(uint256 lid) internal {
         activeIds.push(lid);
         activeIndexPlusOne[lid] = activeIds.length;
-        creatorShareSum += _share(lid);
+        profitShareSum += _share(lid);
     }
 
-    /// @dev A Shape prize's markup as a fraction of its price, scaled by 1e18; zero for a curated NFT.
+    /// @dev A Shape prize's markup above MIN_MARKUP_BPS as a fraction of its price, scaled by 1e18; zero for a curated
+    ///      NFT. Shapes are listed only after `configure`, so their markup is at least the minimum.
     function _share(uint256 lid) internal view returns (uint256) {
         Item storage it = _items[lid];
         if (it.kind == CURATED) return 0;
-        return _amount(it.denom) * it.markupBps * 1e18 / (BPS * it.price);
+        return _amount(it.denom) * (it.markupBps - MIN_MARKUP_BPS) * 1e18 / (BPS * it.price);
     }
 
     function _removeActive(uint256 lid) internal {
         uint256 idx = activeIndexPlusOne[lid];
         if (idx == 0) revert InvalidItem();
-        creatorShareSum -= _share(lid);
+        profitShareSum -= _share(lid);
         uint256 lastId = activeIds[activeIds.length - 1];
         activeIds[idx - 1] = lastId;
         activeIndexPlusOne[lastId] = idx;

@@ -202,7 +202,7 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'open'
     case 0: return d.upkeep.needed
       ? { head: 'Open.', body: 'Drawn prizes are waiting to be restocked.', act: 'upkeep' }
       : owed > 0n
-        ? { head: 'Open.', body: `Half of each sale's profit refills the reserve until it is full: ${eth(owed)} ETH to go.` }
+        ? { head: 'Open.', body: `The first 10% of markup refills the reserve until it is full: ${eth(owed)} ETH to go.` }
         : { head: 'Open.', body: 'Players can buy draws. Nothing needs attention.' };
     case 1: return { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     case 2: return owed > 0n
