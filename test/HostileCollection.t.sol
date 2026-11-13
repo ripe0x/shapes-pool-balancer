@@ -236,3 +236,16 @@ contract HostileCollectionTest is ForkBase {
         _log("seized after delivery");
     }
 }
+
+/// @notice What an allowlist check at listing would cost: the factory's existing keeper-list read, the same pattern
+///         (one cold call to the factory and one cold storage read), measured cold.
+contract AllowlistCheckCost is ForkBase {
+    function test_coldFactoryListCheckGas() public {
+        setUpFork();
+        createBalancer(1 ether);
+        vm.cool(address(factory));
+        uint256 g = gasleft();
+        factory.canKeep(address(0xBEEF));
+        emit log_named_uint("cold factory list check, gas", g - gasleft());
+    }
+}

@@ -21,7 +21,7 @@ export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER
 export const rewardBound = (price: bigint) => (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
-/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; what the winner repays toward keeper pay. */
+/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; built into the draw price, the creator's income toward keeper pay. */
 export const RESTOCK_FEE_GAS = 900_000n;
 export const RESTOCK_FEE_FLAT = 2n * 10n ** 14n;
 export const restockFeeAt = (baseFee: bigint) => RESTOCK_FEE_GAS * rewardPrice(baseFee) + RESTOCK_FEE_FLAT;
@@ -228,6 +228,13 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
 
 const toEth = (x: bigint) => Number(x) / 1e18;
 
+/** Keeper pay inputs (PoolBalancer, DECISIONS 73; mainnet fork, test/scenario/PriceCaps.t.sol): reward =
+ *  (measured gas + 50,000) x price + 0.0001 ETH. One draw reconciled and one 0.01 Shape restocked measured about
+ *  811k gas, an NFT-win reconcile about 137k; both below include the 50,000 overhead. */
+const KEEPER_GAS_PER_SHAPE = 861_000n;
+const KEEPER_GAS_RECONCILE = 187_000n;
+const KEEPER_FLAT = 10n ** 14n;
+
 /**
  * Expected ETH per draw, by where it goes. Players pay for mint fees and keepers on top of the markup: a drawn Shape
  * prize's price is its cost, the creator's markup on its backing and its restocking fees; a curated NFT's is its value
@@ -244,15 +251,21 @@ export function economics(counts: Counts, inputs: PoolInputs) {
   let claimable = 0;
   let mint = 0;
   let restock = 0;
+  let keeper = 0;
+  // The keeper's reimbursed gas price, recovered from the restocking fee (900k gas x price + 0.0002 ETH).
+  const price = inputs.restockFee > RESTOCK_FEE_FLAT ? (inputs.restockFee - RESTOCK_FEE_FLAT) / 900_000n : 0n;
   for (const t of ev.tiers) {
     const p = t.oddsPpm / 1e6; // this tier, all its listings
-    if (t.kind === 'curated') markup += p * toEth(t.listPrice - t.value);
-    else {
+    if (t.kind === 'curated') {
+      markup += p * toEth(t.listPrice - t.value);
+      keeper += p * toEth(KEEPER_GAS_RECONCILE * price + KEEPER_FLAT);
+    } else {
       const shapes = BigInt(SHAPES_IN[t.size!]);
       markup += p * toEth((DENOMS[t.size!] * m) / BPS);
       claimable += p * toEth((DENOMS[t.size!] * claimM) / BPS);
       mint += p * toEth(shapes * inputs.mintFee);
       restock += p * toEth(shapes * inputs.restockFee);
+      keeper += p * Number(shapes) * toEth(KEEPER_GAS_PER_SHAPE * price + KEEPER_FLAT);
     }
   }
   return {
@@ -265,5 +278,10 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     claimablePerDraw: claimable,
     mintFeesPerDraw: mint,
     restockFeesPerDraw: restock,
+    /** Keeper pay per draw, from the creator's ETH: each Shape won is replaced by its own upkeep call and each NFT win is
+     *  reconciled by one (batched calls cost less, so this is an upper estimate). */
+    keeperPayPerDraw: keeper,
+    /** What the creator keeps per draw: markup plus restocking fees, less keeper pay. A model average. */
+    keptPerDraw: markup + restock - keeper,
   };
 }
