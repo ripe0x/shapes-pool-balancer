@@ -50,6 +50,23 @@ Open before release:
 8. **Keeper admin address (DECISIONS 60):** `KEEPER_ADMIN`, who controls the factory's keeper list, is your call.
 9. **Your explicit deployment authorization** and the release-candidate checks below, re-run on the frozen rewrite.
 
+## Release-candidate checks (2026-11-13, commit `7b32497`)
+
+Frozen at `7b32497` (tracked tree clean). Verification of the implementation only; not an audit, product acceptance
+or release readiness.
+
+- `CANDIDATE_RUN=1 forge test`: 112 tests in 12 suites passed, exit 0 (invariants included, 64 runs × 4,096 calls; the
+  campaign admits only a few purchases per run, so it is weak on draw paths).
+- `CANDIDATE_RUN=1 npm run test:ts`: 48 tests in 5 files passed; `npm run typecheck` and `npm run build:app` exit 0
+  (Vite warns about chunk size only). `PoolBalancer` runtime 20,818 B (limit 24,576).
+- Fork economics matrix, 8 scenarios with full closeout (`docs/fork-economics.md`): every draw sold, none refused,
+  the Balancer empty after closeout and the realized result equal to the estimate to the wei in every run.
+- `npm run keeper:e2e`: passed. `npm run rehearsal -- --rounds 300`: passed; buyers found pools open 288/288 times,
+  832 draws, the keeper sent 388 transactions with 0 reverted, waited all 24 above-cap periods and resumed without
+  help, and its ETH reconciled to the wei (net +0.1436 ETH).
+- Open: the round 9 audit (`docs/AUDIT-PROMPT.md`), E3 (simulation), the real-wallet test, the FWA pool-page answer,
+  deploy values (`KEEPER_ADMIN`, Draw Packs) and your deployment authorization.
+
 ## Earlier verification (previous design, commit `3f1735f`)
 
 The checks in this section ran against the pre-rewrite design and are kept as a record of the verification method. They
