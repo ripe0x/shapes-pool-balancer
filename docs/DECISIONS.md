@@ -429,3 +429,9 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     reward alone does not cover at 5 gwei. `MAX_KEEPER_REWARD` is 0.01635 ETH (was 0.0165); `requiredReserve` and
     `_fillDeficit` keep their formulas. Abuse bound: what a call does is fixed by state, so the most paid calls is one
     per sequence FWA processed (`test/KeeperPay.t.sol`).
+74. **Launch-readiness decisions D12 to D15** (owner, 2026-11-13: "Yes, all four"; `docs/LAUNCH-READINESS.md`).
+    D12: R4 is measured by O11 (restocking fees repaid in won prizes cover keeper pay for play on the launch board, 0.1 to
+    5 gwei; the creator's setup work and NFT-dominated boards shown as information). D13: R8 is measured by O12 (the
+    creator ends ahead in quiet operation at 0.1 to 5 gwei; prize luck and zero demand as information). D14: the keeper
+    constants of DECISIONS 73 are final: 0.0001 ETH flat reward and 50,000-gas overhead (rehearsal receipts: 0.000146 ETH
+    per call above billed gas over 336 mined calls). D15: no contract caps; the canary is the owner's own small first pool.

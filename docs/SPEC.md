@@ -203,7 +203,7 @@ Keeper reward, paid for any call that reconciles draws or restocks (a call that 
 - price = `min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)`: a keeper that bids more priority pays the excess itself;
 - reward = `(min(measured, 3.2M) + 50,000) × price + 0.0001 ETH`, from the creator's ETH (the fund first, unclaimed
   profit only once the fund is empty), for every call that reconciles a draw or lists a prize, open or closed
-  (`docs/DECISIONS.md` 73; both constants provisional). The 50,000 is gas a transaction pays outside the measured span
+  (`docs/DECISIONS.md` 73-74; both constants owner-approved). The 50,000 is gas a transaction pays outside the measured span
   (measured 24k-46k); the 0.0001 ETH is the keeper's margin;
 - what a call does is fixed by state (every processed sequence up to 5, the whole deficit up to 5 Shape units), so work
   cannot be split into more paid calls, and each paid call needs a sequence FWA processed or a deficit. Buying one's own
@@ -289,7 +289,7 @@ FWA's server checks ERC-1271 (its client allows long contract signatures; server
 | Reconcile up to 5 settled sequences per call; restock while draws are unsettled | Upkeep keeps up with bursts, and FWA stages the restock until the draws settle. |
 | Redeem prizes for backing instead of keeping spares | Prizes never sit in the Balancer between transactions; one mint fee per Shape re-minted when the target grows again. |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
-| (Measured gas + 50,000) × price + 0.0001 ETH for every call that reconciles or lists, from the creator's ETH, 0.05 gwei priority cap (DECISIONS 73, constants provisional) | Draws that time out or win an NFT bring no restocking fee; paying their reconcile only from fees left them unreconciled until the fill gate closed (flow regime `randomness_not_delivered`: 55 draws refused before, 0 after). The restocking fee stays in each Shape prize's price as the creator's income toward keeper pay. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
+| (Measured gas + 50,000) × price + 0.0001 ETH for every call that reconciles or lists, from the creator's ETH, 0.05 gwei priority cap (DECISIONS 73-74, constants owner-approved) | Draws that time out or win an NFT bring no restocking fee; paying their reconcile only from fees left them unreconciled until the fill gate closed (flow regime `randomness_not_delivered`: 55 draws refused before, 0 after). The restocking fee stays in each Shape prize's price as the creator's income toward keeper pay. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
 | Withdrawal reserve = restore target + (unreconciled draws + 1) × largest prize + keeper rewards | Limits withdrawals and admits purchases only while held in ETH, so upkeep can always restock an admitted draw (simulation: without the spare, the top prize was missing half the time; round 8 E1, E2). |
 | Clone factory, `via_ir`, 50 optimizer runs | Cheap deployment per creator; runtime under EIP-170's 24,576 B limit, with the pool-page message builder in the `PoolPage` library. |
 | Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |

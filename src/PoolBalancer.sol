@@ -104,9 +104,9 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
-    /// @dev PROVISIONAL (not owner-approved): small against gas, about a fifth of one Shape restock at 0.5 gwei.
+    /// @dev Owner-approved (D14, 2026-11-13): small against gas, about a fifth of one Shape restock at 0.5 gwei.
     uint256 internal constant KEEPER_INCENTIVE = 0.0001 ether;
-    /// @dev PROVISIONAL (not owner-approved): see the reward rule above.
+    /// @dev Owner-approved (D14, 2026-11-13): see the reward rule above.
     uint256 internal constant KEEPER_OVERHEAD_GAS = 50_000;
     uint256 public constant MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
     /// @dev With RESTOCK_FEE_FLAT, covers an upkeep that reconciles one draw and restocks one Shape (measured 763k-864k

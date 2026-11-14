@@ -162,6 +162,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal secondArrivals;
     uint256 internal secondRefusedWhilePending;
     uint256 internal secondSold;
+    // gas-level regimes and the player's price (O10)
+    uint256 internal baseFeeRegime; // 0: BASEFEE
+    bool internal trackPrice;
+    uint256 internal maxPriceToBackingBps;
+    uint256 internal minPriceToBackingBps = type(uint256).max;
 
     function setUp() public {
         setUpFork();
@@ -271,11 +276,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
         assertGt(secondRefusedWhilePending, 0, "reached: second buyers were refused while a draw was pending");
         assertEq(firstBuyRevert, uint32(0x24e6a72a), "refused by FWA's PurchaseNotAllowed(): the Balancer's fill gate");
-        Fact[] memory x = new Fact[](4);
+        Fact[] memory x = new Fact[](5);
         x[0] = Fact("pending_draws_admitted_by_board", admitted);
         x[1] = Fact("second_buyer_arrivals_while_pending", secondArrivals);
         x[2] = Fact("second_buyer_refused_while_pending", secondRefusedWhilePending);
         x[3] = Fact("second_buyer_sold_while_pending", secondSold);
+        // R16: longest a pause lasts if the randomness never arrives: FWA's selection timeout, then anyone processes the
+        // expired draw and upkeep reconciles it (the keeper's next poll)
+        x[4] = Fact("pause_worst_case_blocks_before_processing", IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
         _done("top_heavy", a, x);
     }
 
@@ -320,6 +328,54 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[0] = Fact("board_shape_units", units);
         x[1] = Fact("pending_draws_admitted_by_board", 3_000 * balancer.targetWeight() / (10_000 * (1e36 / 0.01 ether)));
         _done(regime, a, x);
+    }
+
+    /// @dev R19 / O10: the launch board at normal gas (basefee 0.1 gwei), quiet play; before every draw, FWA's all-in
+    ///      quote (draw price and randomness fee) against the expected Shape backing of a draw, computed from FWA's
+    ///      active listings (weight x backing / total weight; an NFT counts as 0).
+    function test_breakdown_normalGas() public {
+        baseFeeRegime = 0.1 gwei;
+        Snap memory a = _launch();
+        trackPrice = true;
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        Fact[] memory x = new Fact[](3);
+        x[0] = Fact("player_price_to_backing_bps_max", maxPriceToBackingBps);
+        x[1] = Fact("player_price_to_backing_bps_min", minPriceToBackingBps);
+        x[2] = Fact("base_fee_wei", feeNow);
+        _done("normal_gas", a, x);
+    }
+
+    /// @dev R4: quiet play with gas held at 2 gwei (basefee 1.95) and at the 5 gwei cap (basefee 4.95).
+    function test_breakdown_gas2() public {
+        baseFeeRegime = 1.95 gwei;
+        Snap memory a = _launch();
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        _done("gas_2_gwei", a, new Fact[](0));
+    }
+
+    function test_breakdown_gas5() public {
+        baseFeeRegime = CAP_FEE;
+        Snap memory a = _launch();
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        _done("gas_5_gwei", a, new Fact[](0));
+    }
+
+    function _trackPrice() internal {
+        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
+        uint256 w;
+        uint256 wb;
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 k; k < ids.length; ++k) {
+            (,,,, uint256 weight,,, uint8 st) = pool.listings(ids[k]);
+            if (st != 1) continue;
+            w += weight;
+            (uint8 kind, uint8 d,,,) = balancer.items(ids[k]);
+            if (kind == SHAPE_KIND) wb += weight * balancer.denominationAmount(d);
+        }
+        if (wb == 0) return;
+        uint256 r = total * 10_000 * w / wb;
+        if (r > maxPriceToBackingBps) maxPriceToBackingBps = r;
+        if (r < minPriceToBackingBps) minPriceToBackingBps = r;
     }
 
     function _largeWinFacts() internal view returns (Fact[] memory x) {
@@ -531,7 +587,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     function _launchWith(uint256[16] memory c, uint256 deposit, uint256 boardUnits) internal returns (Snap memory a) {
-        (gasNow, feeNow) = (BASEFEE + TIP, BASEFEE);
+        uint256 bf = baseFeeRegime == 0 ? BASEFEE : baseFeeRegime;
+        (gasNow, feeNow) = (bf + TIP, bf);
         a = flowBegin(gasNow, feeNow, FORK_BLOCK);
         probe = new GasProbe();
         createBalancer(deposit);
@@ -551,7 +608,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 52;
+        uint256 n = 57;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -606,6 +663,19 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         (f[48].key, f[49].key, f[50].key) =
             ("unpaid_upkeeps_needed_at_end", "max_unpaid_upkeep_cost_wei", "admission_status_after_unpaid_upkeep");
         f[51] = Fact("days_ending_with_a_prize_missing", daysPrizeMissing);
+        // R4: the creator's keeper net, restocking fees repaid inside won prizes less all keeper pay
+        uint256 keeperAll = keeperPaidPlay + keeperPaidSetup;
+        f[52] = Fact("creator_keeper_net_gain_wei", feesWon > keeperAll ? feesWon - keeperAll : 0);
+        f[53] = Fact("creator_keeper_net_loss_wei", keeperAll > feesWon ? keeperAll - feesWon : 0);
+        // the same for play only, leaving out the creator's own setup work (opening, configuring, unlisting)
+        f[56] = Fact("creator_keeper_play_net_loss_wei", keeperPaidPlay > feesWon ? keeperPaidPlay - feesWon : 0);
+        // R8: the creator's net, everything claimed or still theirs (Balancer ETH, listed backing, uncollected
+        // proceeds) less everything deposited and the NFTs given away at their stated value (the harness hands the
+        // creator a fresh NFT after each win, so that value is a cost here)
+        uint256 held = claimed + address(balancer).balance + _backingListed() + pool.ownerProceeds();
+        uint256 cost = deposited + nftsWon * NFT_VALUE;
+        f[54] = Fact("creator_net_gain_wei", held > cost ? held - cost : 0);
+        f[55] = Fact("creator_net_loss_wei", cost > held ? cost - held : 0);
         for (uint256 j; j < extra.length; ++j) f[n + j] = extra[j];
         flowReport(regime, a, f);
     }
@@ -644,6 +714,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     function _single(uint256 i) internal {
         _gasPhase(i);
+        if (trackPrice) _trackPrice();
         if (i == actAt) _act();
         if (!balancer.canPurchase(buyer)) {
             _refused(1);

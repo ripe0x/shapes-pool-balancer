@@ -31,7 +31,7 @@ superseded**: they describe code that no longer exists and are kept below only a
 
 ## Independent audit (2026-11-13, informed, on `c686534`)
 
-An outside agent audit (report pasted by the owner; prompt `docs/INDEPENDENT-AUDIT-PROMPT.md`). Its fork evidence found
+An outside agent audit (report pasted by the owner; prompt now `audit/history/INDEPENDENT-AUDIT-PROMPT.md`). Its fork evidence found
 Foundry's zero-gas default in its own harnesses and calibrated the affected runs. Outcomes:
 
 | ID | Finding | Outcome |
