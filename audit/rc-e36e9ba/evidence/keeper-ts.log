@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-audit-e36e9ba
+
+ ✓ keeper/keeper.test.ts (14 tests) 2ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  12:48:08
+   Duration  444ms (transform 47ms, setup 0ms, collect 222ms, tests 2ms, environment 0ms, prepare 37ms)
+

@@ -1,0 +1,679 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 17.28s
+Compiler run successful!
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchTraceTest
+[PASS] test_margin_pad0_5gwei() (gas: 7929371934)
+Logs:
+  listings before play (all active, no removals): 48
+  coarse: largest h on a failure: 339568
+  coarse: least returning probe gas: 2960000
+  fine: largest h on a failure: 339873
+  least succeeding performUpkeep limit: 3102074
+  refunded: 497600
+  billed gas: 2595955
+  paid wei: 15469940000000000
+  cost wei: 12979775000000000
+  keeper net wei: 2490165000000000
+
+[PASS] test_margin_pad2000_5gwei() (gas: 9955962909)
+Logs:
+  listings before play (all active, no removals): 2048
+  coarse: largest h on a failure: 342952
+  coarse: least returning probe gas: 3169000
+  fine: largest h on a failure: 343090
+  least succeeding performUpkeep limit: 3314493
+  refunded: 511600
+  billed gas: 2791055
+  paid wei: 16350000000000000
+  cost wei: 13955275000000000
+  keeper net wei: 2394725000000000
+
+[PASS] test_margin_pad976_055gwei() (gas: 9170794430)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 1887500000000000
+  cost wei: 1528131000000000
+  keeper net wei: 359369000000000
+
+[PASS] test_margin_pad976_5gwei() (gas: 9170794518)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 16350000000000000
+  cost wei: 13892100000000000
+  keeper net wei: 2457900000000000
+
+[PASS] test_probeHog_noPad() (gas: 61963297)
+Logs:
+  listings before play (all active, no removals): 48
+  processAcquisitions(2) alone: 2356498
+  performUpkeep uncapped, from caller frame: 2579945
+  refunded: 497600
+  execution gas before refund (used+refunded): 3072491
+  measured inside performUpkeep: 3023988
+  billed incl 21000: 2595891
+  reward wei: 1790693400000000
+  headroom under 3.2M: 176012
+
+[PASS] test_probeHog_pad13() (gas: 64726763)
+Logs:
+  listings before play (all active, no removals): 61
+  processAcquisitions(2) alone: 2429498
+  performUpkeep uncapped, from caller frame: 2662645
+  refunded: 506000
+  execution gas before refund (used+refunded): 3163591
+  measured inside performUpkeep: 3115088
+  billed incl 21000: 2678591
+  reward wei: 1840798400000000
+  headroom under 3.2M: 84912
+
+[PASS] test_probeHog_pad16() (gas: 63522882)
+Logs:
+  listings before play (all active, no removals): 64
+  processAcquisitions(2) alone: 2415348
+  performUpkeep uncapped, from caller frame: 2638795
+  refunded: 503200
+  execution gas before refund (used+refunded): 3136941
+  measured inside performUpkeep: 3088438
+  billed incl 21000: 2654741
+  reward wei: 1826140900000000
+  headroom under 3.2M: 111562
+
+[PASS] test_probeHog_pad208() (gas: 215761795)
+Logs:
+  listings before play (all active, no removals): 256
+  processAcquisitions(2) alone: 2457098
+  performUpkeep uncapped, from caller frame: 2680645
+  refunded: 492000
+  execution gas before refund (used+refunded): 3167591
+  measured inside performUpkeep: 3119088
+  billed incl 21000: 2696591
+  reward wei: 1842998400000000
+  headroom under 3.2M: 80912
+
+[PASS] test_probeHog_pad336() (gas: 296075426)
+Logs:
+  listings before play (all active, no removals): 384
+  processAcquisitions(2) alone: 2459423
+  performUpkeep uncapped, from caller frame: 2668115
+  refunded: 511900
+  execution gas before refund (used+refunded): 3174961
+  measured inside performUpkeep: 3126458
+  billed incl 21000: 2684061
+  reward wei: 1847051900000000
+  headroom under 3.2M: 73542
+
+[PASS] test_probeHog_pad464() (gas: 411160741)
+Logs:
+  listings before play (all active, no removals): 512
+  processAcquisitions(2) alone: 2497023
+  performUpkeep uncapped, from caller frame: 2727220
+  refunded: 531200
+  execution gas before refund (used+refunded): 3253366
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2743166
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_probeHog_pad80() (gas: 121672662)
+Logs:
+  listings before play (all active, no removals): 128
+  processAcquisitions(2) alone: 2434898
+  performUpkeep uncapped, from caller frame: 2665075
+  refunded: 525600
+  execution gas before refund (used+refunded): 3185621
+  measured inside performUpkeep: 3137118
+  billed incl 21000: 2681021
+  reward wei: 1852914900000000
+  headroom under 3.2M: 62882
+
+[PASS] test_probeHog_pad976() (gas: 766436581)
+Logs:
+  listings before play (all active, no removals): 1024
+  processAcquisitions(2) alone: 2544098
+  performUpkeep uncapped, from caller frame: 2762410
+  refunded: 511900
+  execution gas before refund (used+refunded): 3269256
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2778356
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_trace_pad0() (gas: 58232302)
+Logs:
+  listings before play (all active, no removals): 48
+
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 91.27s (305.35s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/audit/d16d/CatchMargin.t.sol:D16dOpenSweepTest
+[PASS] test_margin_pad0_5gwei() (gas: 7929145043)
+Logs:
+  listings before play (all active, no removals): 48
+  coarse: largest h on a failure: 339568
+  coarse: least returning probe gas: 2960000
+  fine: largest h on a failure: 339873
+  least succeeding performUpkeep limit: 3102074
+  refunded: 497600
+  billed gas: 2595955
+  paid wei: 15469940000000000
+  cost wei: 12979775000000000
+  keeper net wei: 2490165000000000
+
+[PASS] test_margin_pad2000_5gwei() (gas: 9955735996)
+Logs:
+  listings before play (all active, no removals): 2048
+  coarse: largest h on a failure: 342952
+  coarse: least returning probe gas: 3169000
+  fine: largest h on a failure: 343090
+  least succeeding performUpkeep limit: 3314493
+  refunded: 511600
+  billed gas: 2791055
+  paid wei: 16350000000000000
+  cost wei: 13955275000000000
+  keeper net wei: 2394725000000000
+
+[PASS] test_margin_pad976_055gwei() (gas: 9170567539)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 1887500000000000
+  cost wei: 1528131000000000
+  keeper net wei: 359369000000000
+
+[PASS] test_margin_pad976_5gwei() (gas: 9170567627)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 16350000000000000
+  cost wei: 13892100000000000
+  keeper net wei: 2457900000000000
+
+[PASS] test_open_pad2000() (gas: 6936611203)
+Logs:
+  listings before play (all active, no removals): 2048
+  least succeeding limit: 3314493
+  coarse oks: 593
+  fine oks: 101
+
+[PASS] test_probeHog_noPad() (gas: 61963297)
+Logs:
+  listings before play (all active, no removals): 48
+  processAcquisitions(2) alone: 2356498
+  performUpkeep uncapped, from caller frame: 2579945
+  refunded: 497600
+  execution gas before refund (used+refunded): 3072491
+  measured inside performUpkeep: 3023988
+  billed incl 21000: 2595891
+  reward wei: 1790693400000000
+  headroom under 3.2M: 176012
+
+[PASS] test_probeHog_pad13() (gas: 64726785)
+Logs:
+  listings before play (all active, no removals): 61
+  processAcquisitions(2) alone: 2429498
+  performUpkeep uncapped, from caller frame: 2662645
+  refunded: 506000
+  execution gas before refund (used+refunded): 3163591
+  measured inside performUpkeep: 3115088
+  billed incl 21000: 2678591
+  reward wei: 1840798400000000
+  headroom under 3.2M: 84912
+
+[PASS] test_probeHog_pad16() (gas: 63522904)
+Logs:
+  listings before play (all active, no removals): 64
+  processAcquisitions(2) alone: 2415348
+  performUpkeep uncapped, from caller frame: 2638795
+  refunded: 503200
+  execution gas before refund (used+refunded): 3136941
+  measured inside performUpkeep: 3088438
+  billed incl 21000: 2654741
+  reward wei: 1826140900000000
+  headroom under 3.2M: 111562
+
+[PASS] test_probeHog_pad208() (gas: 215761795)
+Logs:
+  listings before play (all active, no removals): 256
+  processAcquisitions(2) alone: 2457098
+  performUpkeep uncapped, from caller frame: 2680645
+  refunded: 492000
+  execution gas before refund (used+refunded): 3167591
+  measured inside performUpkeep: 3119088
+  billed incl 21000: 2696591
+  reward wei: 1842998400000000
+  headroom under 3.2M: 80912
+
+[PASS] test_probeHog_pad336() (gas: 296075426)
+Logs:
+  listings before play (all active, no removals): 384
+  processAcquisitions(2) alone: 2459423
+  performUpkeep uncapped, from caller frame: 2668115
+  refunded: 511900
+  execution gas before refund (used+refunded): 3174961
+  measured inside performUpkeep: 3126458
+  billed incl 21000: 2684061
+  reward wei: 1847051900000000
+  headroom under 3.2M: 73542
+
+[PASS] test_probeHog_pad464() (gas: 411160741)
+Logs:
+  listings before play (all active, no removals): 512
+  processAcquisitions(2) alone: 2497023
+  performUpkeep uncapped, from caller frame: 2727220
+  refunded: 531200
+  execution gas before refund (used+refunded): 3253366
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2743166
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_probeHog_pad80() (gas: 121672662)
+Logs:
+  listings before play (all active, no removals): 128
+  processAcquisitions(2) alone: 2434898
+  performUpkeep uncapped, from caller frame: 2665075
+  refunded: 525600
+  execution gas before refund (used+refunded): 3185621
+  measured inside performUpkeep: 3137118
+  billed incl 21000: 2681021
+  reward wei: 1852914900000000
+  headroom under 3.2M: 62882
+
+[PASS] test_probeHog_pad976() (gas: 766436581)
+Logs:
+  listings before play (all active, no removals): 1024
+  processAcquisitions(2) alone: 2544098
+  performUpkeep uncapped, from caller frame: 2762410
+  refunded: 511900
+  execution gas before refund (used+refunded): 3269256
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2778356
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 91.53s (345.71s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 12 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchMarginTest
+[PASS] test_margin_pad0_5gwei() (gas: 7929144477)
+Logs:
+  listings before play (all active, no removals): 48
+  coarse: largest h on a failure: 339568
+  coarse: least returning probe gas: 2960000
+  fine: largest h on a failure: 339873
+  least succeeding performUpkeep limit: 3102074
+  refunded: 497600
+  billed gas: 2595955
+  paid wei: 15469940000000000
+  cost wei: 12979775000000000
+  keeper net wei: 2490165000000000
+
+[PASS] test_margin_pad2000_5gwei() (gas: 9955735452)
+Logs:
+  listings before play (all active, no removals): 2048
+  coarse: largest h on a failure: 342952
+  coarse: least returning probe gas: 3169000
+  fine: largest h on a failure: 343090
+  least succeeding performUpkeep limit: 3314493
+  refunded: 511600
+  billed gas: 2791055
+  paid wei: 16350000000000000
+  cost wei: 13955275000000000
+  keeper net wei: 2394725000000000
+
+[PASS] test_margin_pad976_055gwei() (gas: 9170566973)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 1887500000000000
+  cost wei: 1528131000000000
+  keeper net wei: 359369000000000
+
+[PASS] test_margin_pad976_5gwei() (gas: 9170567061)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 16350000000000000
+  cost wei: 13892100000000000
+  keeper net wei: 2457900000000000
+
+[PASS] test_probeHog_noPad() (gas: 61962318)
+Logs:
+  listings before play (all active, no removals): 48
+  processAcquisitions(2) alone: 2356498
+  performUpkeep uncapped, from caller frame: 2579945
+  refunded: 497600
+  execution gas before refund (used+refunded): 3072491
+  measured inside performUpkeep: 3023988
+  billed incl 21000: 2595891
+  reward wei: 1790693400000000
+  headroom under 3.2M: 176012
+
+[PASS] test_probeHog_pad13() (gas: 64725784)
+Logs:
+  listings before play (all active, no removals): 61
+  processAcquisitions(2) alone: 2429498
+  performUpkeep uncapped, from caller frame: 2662645
+  refunded: 506000
+  execution gas before refund (used+refunded): 3163591
+  measured inside performUpkeep: 3115088
+  billed incl 21000: 2678591
+  reward wei: 1840798400000000
+  headroom under 3.2M: 84912
+
+[PASS] test_probeHog_pad16() (gas: 63521903)
+Logs:
+  listings before play (all active, no removals): 64
+  processAcquisitions(2) alone: 2415348
+  performUpkeep uncapped, from caller frame: 2638795
+  refunded: 503200
+  execution gas before refund (used+refunded): 3136941
+  measured inside performUpkeep: 3088438
+  billed incl 21000: 2654741
+  reward wei: 1826140900000000
+  headroom under 3.2M: 111562
+
+[PASS] test_probeHog_pad208() (gas: 215760816)
+Logs:
+  listings before play (all active, no removals): 256
+  processAcquisitions(2) alone: 2457098
+  performUpkeep uncapped, from caller frame: 2680645
+  refunded: 492000
+  execution gas before refund (used+refunded): 3167591
+  measured inside performUpkeep: 3119088
+  billed incl 21000: 2696591
+  reward wei: 1842998400000000
+  headroom under 3.2M: 80912
+
+[PASS] test_probeHog_pad336() (gas: 296074447)
+Logs:
+  listings before play (all active, no removals): 384
+  processAcquisitions(2) alone: 2459423
+  performUpkeep uncapped, from caller frame: 2668115
+  refunded: 511900
+  execution gas before refund (used+refunded): 3174961
+  measured inside performUpkeep: 3126458
+  billed incl 21000: 2684061
+  reward wei: 1847051900000000
+  headroom under 3.2M: 73542
+
+[PASS] test_probeHog_pad464() (gas: 411159762)
+Logs:
+  listings before play (all active, no removals): 512
+  processAcquisitions(2) alone: 2497023
+  performUpkeep uncapped, from caller frame: 2727220
+  refunded: 531200
+  execution gas before refund (used+refunded): 3253366
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2743166
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_probeHog_pad80() (gas: 121671683)
+Logs:
+  listings before play (all active, no removals): 128
+  processAcquisitions(2) alone: 2434898
+  performUpkeep uncapped, from caller frame: 2665075
+  refunded: 525600
+  execution gas before refund (used+refunded): 3185621
+  measured inside performUpkeep: 3137118
+  billed incl 21000: 2681021
+  reward wei: 1852914900000000
+  headroom under 3.2M: 62882
+
+[PASS] test_probeHog_pad976() (gas: 766435580)
+Logs:
+  listings before play (all active, no removals): 1024
+  processAcquisitions(2) alone: 2544098
+  performUpkeep uncapped, from caller frame: 2762410
+  refunded: 511900
+  execution gas before refund (used+refunded): 3269256
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2778356
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 91.56s (266.35s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchWhichTest
+[PASS] test_margin_pad0_5gwei() (gas: 7929371956)
+Logs:
+  listings before play (all active, no removals): 48
+  coarse: largest h on a failure: 339568
+  coarse: least returning probe gas: 2960000
+  fine: largest h on a failure: 339873
+  least succeeding performUpkeep limit: 3102074
+  refunded: 497600
+  billed gas: 2595955
+  paid wei: 15469940000000000
+  cost wei: 12979775000000000
+  keeper net wei: 2490165000000000
+
+[PASS] test_margin_pad2000_5gwei() (gas: 9955962909)
+Logs:
+  listings before play (all active, no removals): 2048
+  coarse: largest h on a failure: 342952
+  coarse: least returning probe gas: 3169000
+  fine: largest h on a failure: 343090
+  least succeeding performUpkeep limit: 3314493
+  refunded: 511600
+  billed gas: 2791055
+  paid wei: 16350000000000000
+  cost wei: 13955275000000000
+  keeper net wei: 2394725000000000
+
+[PASS] test_margin_pad976_055gwei() (gas: 9170794452)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 1887500000000000
+  cost wei: 1528131000000000
+  keeper net wei: 359369000000000
+
+[PASS] test_margin_pad976_5gwei() (gas: 9170794540)
+Logs:
+  listings before play (all active, no removals): 1024
+  coarse: largest h on a failure: 342418
+  coarse: least returning probe gas: 3168000
+  fine: largest h on a failure: 343078
+  least succeeding performUpkeep limit: 3301963
+  refunded: 511900
+  billed gas: 2778420
+  paid wei: 16350000000000000
+  cost wei: 13892100000000000
+  keeper net wei: 2457900000000000
+
+[PASS] test_probeHog_noPad() (gas: 61964485)
+Logs:
+  listings before play (all active, no removals): 48
+  processAcquisitions(2) alone: 2356498
+  performUpkeep uncapped, from caller frame: 2579945
+  refunded: 497600
+  execution gas before refund (used+refunded): 3072491
+  measured inside performUpkeep: 3023988
+  billed incl 21000: 2595891
+  reward wei: 1790693400000000
+  headroom under 3.2M: 176012
+
+[PASS] test_probeHog_pad13() (gas: 64727973)
+Logs:
+  listings before play (all active, no removals): 61
+  processAcquisitions(2) alone: 2429498
+  performUpkeep uncapped, from caller frame: 2662645
+  refunded: 506000
+  execution gas before refund (used+refunded): 3163591
+  measured inside performUpkeep: 3115088
+  billed incl 21000: 2678591
+  reward wei: 1840798400000000
+  headroom under 3.2M: 84912
+
+[PASS] test_probeHog_pad16() (gas: 63524092)
+Logs:
+  listings before play (all active, no removals): 64
+  processAcquisitions(2) alone: 2415348
+  performUpkeep uncapped, from caller frame: 2638795
+  refunded: 503200
+  execution gas before refund (used+refunded): 3136941
+  measured inside performUpkeep: 3088438
+  billed incl 21000: 2654741
+  reward wei: 1826140900000000
+  headroom under 3.2M: 111562
+
+[PASS] test_probeHog_pad208() (gas: 215762983)
+Logs:
+  listings before play (all active, no removals): 256
+  processAcquisitions(2) alone: 2457098
+  performUpkeep uncapped, from caller frame: 2680645
+  refunded: 492000
+  execution gas before refund (used+refunded): 3167591
+  measured inside performUpkeep: 3119088
+  billed incl 21000: 2696591
+  reward wei: 1842998400000000
+  headroom under 3.2M: 80912
+
+[PASS] test_probeHog_pad336() (gas: 296076614)
+Logs:
+  listings before play (all active, no removals): 384
+  processAcquisitions(2) alone: 2459423
+  performUpkeep uncapped, from caller frame: 2668115
+  refunded: 511900
+  execution gas before refund (used+refunded): 3174961
+  measured inside performUpkeep: 3126458
+  billed incl 21000: 2684061
+  reward wei: 1847051900000000
+  headroom under 3.2M: 73542
+
+[PASS] test_probeHog_pad464() (gas: 411161929)
+Logs:
+  listings before play (all active, no removals): 512
+  processAcquisitions(2) alone: 2497023
+  performUpkeep uncapped, from caller frame: 2727220
+  refunded: 531200
+  execution gas before refund (used+refunded): 3253366
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2743166
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_probeHog_pad80() (gas: 121673850)
+Logs:
+  listings before play (all active, no removals): 128
+  processAcquisitions(2) alone: 2434898
+  performUpkeep uncapped, from caller frame: 2665075
+  refunded: 525600
+  execution gas before refund (used+refunded): 3185621
+  measured inside performUpkeep: 3137118
+  billed incl 21000: 2681021
+  reward wei: 1852914900000000
+  headroom under 3.2M: 62882
+
+[PASS] test_probeHog_pad976() (gas: 766437769)
+Logs:
+  listings before play (all active, no removals): 1024
+  processAcquisitions(2) alone: 2544098
+  performUpkeep uncapped, from caller frame: 2762410
+  refunded: 511900
+  execution gas before refund (used+refunded): 3269256
+  measured inside performUpkeep: 3200000
+  billed incl 21000: 2778356
+  reward wei: 1887500000000000
+  headroom under 3.2M: 0
+
+[PASS] test_which_pad0() (gas: 8952770803)
+Logs:
+  listings before play (all active, no removals): 48
+  argmax G: 2959318
+  max h: 339881
+  G=2900000 ok=0 h=281490
+  G=2902000 ok=0 h=283459
+  G=2904000 ok=0 h=285427
+  G=2906000 ok=0 h=287396
+  G=2908000 ok=0 h=289365
+  G=2910000 ok=0 h=291334
+  G=2912000 ok=0 h=293302
+  G=2914000 ok=0 h=295271
+  G=2916000 ok=0 h=297240
+  G=2918000 ok=0 h=299209
+  G=2920000 ok=0 h=301177
+  G=2922000 ok=0 h=303146
+  G=2924000 ok=0 h=305115
+  G=2926000 ok=0 h=307084
+  G=2928000 ok=0 h=309052
+  G=2930000 ok=0 h=311021
+  G=2932000 ok=0 h=312990
+  G=2934000 ok=0 h=314959
+  G=2936000 ok=0 h=316927
+  G=2938000 ok=0 h=318896
+  G=2940000 ok=0 h=320865
+  G=2942000 ok=0 h=322834
+  G=2944000 ok=0 h=324802
+  G=2946000 ok=0 h=326771
+  G=2948000 ok=0 h=328740
+  G=2950000 ok=0 h=330709
+  G=2952000 ok=0 h=332677
+  G=2954000 ok=0 h=334646
+  G=2956000 ok=0 h=336615
+  G=2958000 ok=0 h=338584
+  G=2960000 ok=1 h=0
+
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 92.36s (356.23s CPU time)
+
+Ran 4 test suites in 92.54s (366.72s CPU time): 51 tests passed, 0 failed, 0 skipped (51 total tests)

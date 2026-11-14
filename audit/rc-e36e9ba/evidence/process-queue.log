@@ -1,0 +1,31 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+No files changed, compilation skipped
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 1 test for test/ProcessQueue.t.sol:ProcessQueueTest
+[PASS] test_upkeepSettlesDrawsThatReservedAStagedRestock() (gas: 164549157)
+Logs:
+    measured inside performUpkeep: 1170082
+  processing upkeep: reward (wei): 771045100000000
+    billed gas incl. 21000: 1031485
+    keeper margin over billed gas (wei): 203728350000000
+  draws that reserved a staged restock: 20
+  purchase attempts refused along the way: 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 610.79ms (222.66ms CPU time)
+
+Ran 1 test suite in 643.94ms (610.79ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
