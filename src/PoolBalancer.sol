@@ -70,6 +70,9 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_RECONCILE = 5;
     /// @dev FWA draws processed per upkeep (owner decision D16): keeps the worst upkeep under KEEPER_MAX_GAS.
     uint256 internal constant MAX_PROCESS = 2;
+    /// @dev Gas left before processing above which FWA's processing of MAX_PROCESS draws cannot run out of gas (worst
+    ///      measured 2.30M: two draws that each reserved six listings of a collection burning FWA's stipends).
+    uint256 internal constant MIN_PROCESS_GAS = 3_000_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -250,6 +253,7 @@ contract PoolBalancer is ReentrancyGuard {
     error InsufficientSurplus();
     error ReserveNotFunded();
     error NoUpkeepNeeded();
+    error InsufficientGas();
     error InvalidBatch();
     error ProtectedAsset();
 
@@ -612,7 +616,9 @@ contract PoolBalancer is ReentrancyGuard {
         //    D16). FWA stops at a draw still waiting for its randomness; a failure here never blocks the rest of upkeep.
         //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
         //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
-        //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing).
+        //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing). Processing that
+        //    reverted with less than MIN_PROCESS_GAS left reverts the whole upkeep instead: a call never succeeds with
+        //    processing starved, so a gas estimate is enough to process (D16 re-attack 2, finding 1).
         bool processed;
         uint64 next = p.nextSequenceToProcess();
         if (next <= p.lastIssuedSequence()) {
@@ -620,6 +626,7 @@ contract PoolBalancer is ReentrancyGuard {
             try p.processAcquisitions(MAX_PROCESS) {
                 processed = p.nextSequenceToProcess() != next;
             } catch {
+                if (g < MIN_PROCESS_GAS) revert InsufficientGas();
                 gasStart -= g - gasleft();
             }
         }
@@ -797,7 +804,8 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
     ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
-    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_PROCESS draws FWA
+    ///         upkeep call that work takes plus one (calls that only process FWA's queue are paid from the proceeds of
+    ///         the draws they settle or, for expired draws, from the unspent largest-prize allowance). While closed: one maximum keeper reward per MAX_PROCESS draws FWA
     ///         issued that are not yet reconciled, so useful processing and reconciliation after closing is always
     ///         paid (audit rc-ec5259c finding 3; D16 re-attack F2). Closing stops purchases, so this only falls as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {

@@ -8,7 +8,7 @@ import {D16WorstUpkeepTest, IFwaExtra, GasHogCollection} from "./WorstUpkeep.t.s
 ///         upkeep still succeeds. The gas burned by the failed processing must not be paid for (on af1075c it was:
 ///         1.42M gas, 0.0075 ETH at 5 gwei, for one reconcile). Closed pool (no restock after closing), honest NFTs.
 contract D16StarveTest is D16WorstUpkeepTest {
-    function test_starvedProcessingIsNotPaid_closed_5gwei() public {
+    function test_noGasLimitStarvesProcessing_closed_5gwei() public {
         _setGas(0.5 gwei, 0.55 gwei);
         _launchBoard();
         hog = new GasHogCollection();
@@ -48,18 +48,11 @@ contract D16StarveTest is D16WorstUpkeepTest {
                 vm.revertToState(snap);
             }
         }
-        assertGt(found, 0, "a gas limit exists where processing fails, reconciling succeeds and the keeper is paid");
-        emit log_named_uint("call gas limit that starves processing", found);
-        (uint256 reward, uint256 billed, uint256 measured) = _measureWithGas(found);
-        assertEq(pool.nextSequenceToProcess(), next, "nothing processed");
-        emit log_named_uint("  measured (paid for)", measured);
-        emit log_named_uint("  billed gas", billed);
-        emit log_named_uint("  reward (wei)", reward);
-        emit log_named_uint("  reconciled draws", balancer.reconciledSequence() - rec);
-        emit log_named_uint("hold left for the four draws still waiting (wei)", address(balancer).balance);
-        // Requirement (D16 re-attack F3): the gas burned by the failed processing is not paid for. Reconciling the one
-        // fast-path draw alone measures about 145k gas.
-        assertLt(measured, 250_000, "failed processing is not paid for");
+        // Requirement (D16 re-attack F3, then re-attack 2 finding 1): no gas limit lets the call succeed with processing
+        // starved. On af1075c the creator paid 1.42M gas for one reconcile at a 1.48M limit; at 4a83c47 that call was
+        // unpaid for the failed processing but still succeeded, so a raw gas estimate lost the keeper 0.011 ETH.
+        assertEq(found, 0, "no gas limit succeeds with processing starved");
+        emit log_named_uint("hold kept for the five waiting draws (wei)", address(balancer).balance);
     }
 
     function _measureWithGas(uint256 g) internal returns (uint256 reward, uint256 billed, uint256 measured) {

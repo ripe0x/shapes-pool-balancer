@@ -457,3 +457,9 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     gwei). F3: gas burned by processing that reverted is not paid for (a chosen gas limit made FWA revert on purpose
     and the creator paid 1.42M gas for one reconcile). Requirement tests in `test/audit/d16/` fail on `af1075c`.
     With these, O1's refunds fell to 30,404 gas per draw (worst call 100,772).
+78. **Second D16 re-attack** (independent, of `4a83c47`). F2 held in every order tried. Finding 1: F3 made a call
+    succeed with processing starved and unpaid, so a keeper sending a node's raw gas estimate lost about 0.011 ETH at
+    5 gwei; processing that fails with under MIN_PROCESS_GAS (3,000,000) left now reverts the whole upkeep
+    (`InsufficientGas`), so every successful call has processed and estimates land above the band. Finding 2: the
+    worst upkeep measures up to 3.22M with 1,024 listings (2.98M was the launch-board case); keepers stay covered
+    because about 530k gas is refunded, so the requirement tests assert keeper cover, not "measured < 3.2M".

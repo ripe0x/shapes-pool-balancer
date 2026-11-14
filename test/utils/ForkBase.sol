@@ -134,7 +134,7 @@ abstract contract ForkBase is Test {
 
     /// @dev Deliver `word` through the real VRF service, then process the canonical queue.
     function fulfill(uint256 requestId, uint256 word) internal {
-        vm.roll(block.number + 3);
+        vm.roll(vm.getBlockNumber() + 3);
         uint256[] memory words = new uint256[](1);
         words[0] = word;
         vm.prank(IVRFService(VRF_SERVICE).coordinator());

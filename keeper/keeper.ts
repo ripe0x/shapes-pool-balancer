@@ -23,8 +23,10 @@ export const KEEPER_MAX_GAS = 3_200_000n;
 /** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
  *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
  *  upkeeps measure under KEEPER_MAX_GAS on a fork: 5 reconciles + 5 Shape units in 4 sizes (test/Gas.t.sol), and two
- *  processed draws that each reserved FWA's maximum six listings + 5 reconciles, 2.98M (a call that processes skips
- *  restocking; test/audit/d16/WorstUpkeep.t.sol); this floor adds headroom for Shapes mint gas varying by block. Only gas used is billed. */
+ *  processed draws that each reserved FWA's maximum six listings + 5 reconciles, 2.98M to 3.22M (a call that processes
+ *  skips restocking; test/audit/d16/WorstUpkeep.t.sol, test/audit/d16b/WorstUpkeepB.t.sol). Processing that fails
+ *  with under 3,000,000 gas left reverts the whole upkeep (InsufficientGas), so the limit must clear that too; this
+ *  floor does, and adds headroom for Shapes mint gas varying by block. Only gas used is billed. */
 export const UPKEEP_GAS_FLOOR = 4_000_000n;
 
 /** Gas limit for an upkeep estimated at `estimate`: 30% headroom, never below UPKEEP_GAS_FLOOR. */

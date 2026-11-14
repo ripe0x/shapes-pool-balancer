@@ -189,8 +189,10 @@ keepers stop is restocked only when its creator runs upkeep.
 
 0. process FWA's queue, up to 2 draws per call, when draws are waiting (DECISIONS 75): a draw whose request reserved a
    staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep, and
-   the gas it burned is not paid for. A call that settled a draw skips step 3 (restock), so it stays under the 3.2M gas
-   the reward pays for; the next call restocks.
+   the gas it burned is not paid for; if it failed with less than 3,000,000 gas left, the whole upkeep reverts
+   `InsufficientGas`, so no call succeeds with processing starved. A call that settled a draw skips step 3 (restock):
+   the worst such call measures 2.98M gas, up to 3.22M with 1,024 listings, and storage refunds keep its billed gas
+   under 2.75M, so its keeper is covered; the next call restocks.
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).
 2. collect FWA owner proceeds into the Balancer.

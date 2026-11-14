@@ -76,6 +76,16 @@ requirement tests (`test/audit/d16/`), each failing on `af1075c` and passing aft
 | — | Keeper gas limit could fall short when a draw becomes ready after the estimate | reasoned | the keeper's 4M gas floor is above the repaired worst (2.98M); comment updated |
 | — | Upkeep pays to process expired draws, which bring no fee | reasoned | intended: their players' refund credit needs processing; the creator's cost |
 
+### Second re-attack (`4a83c47`)
+
+| # | Finding | Basis | Repair |
+| --- | --- | --- | --- |
+| 1 | F3 left a band of gas limits where the call succeeds with processing starved and unpaid; geth's estimate lands in it, so a keeper sending the raw estimate lost 0.0114 ETH at 5 gwei (0.00125 at 0.55) | executed | processing that fails with under 3,000,000 gas left reverts the whole upkeep (`InsufficientGas`); tests assert no gas limit succeeds without processing |
+| 2 | Worst upkeep measures up to 3.22M (hostile collection, 1,024 listings), past the 3.2M the reward pays for; billed 2.74M, keeper covered at 0.15 to 5 gwei | executed | requirement restated as keeper cover; figures corrected |
+| 3 | F2 hold margin thin at 5 gwei (1.516M single call against a 1.565M per-draw budget); fulfilled draws are paid from their proceeds | executed | none: held in every order tried |
+| — | Skipping restock after processing could starve restocking | executed, not reproduced | 150 blocks of sustained play, 0 LOW_INVENTORY blocks; asserted |
+| — | A deterministic FWA failure inside the try is silent: keepers see only `NoUpkeepNeeded` | reasoned | follow-up: keeper alert when FWA's queue head stays ready or expired |
+
 ## Things that don't make sense
 
 - Every regime and both rehearsals processed FWA's queue themselves, so none of our evidence could show S1. The same
