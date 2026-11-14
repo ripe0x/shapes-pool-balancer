@@ -418,6 +418,58 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _noProcessor("no_processor_5_gwei");
     }
 
+    /// @dev ape-Ball's opening days on mainnet (43, 44, 54 and 18 draws; its own upkeep processed up to 6 waiting draws
+    ///      in one call). Each round of seven: A buys and settles, B buys, keepers reconcile A and restock its prize
+    ///      (staged, since B is in flight), C buys and reserves that restock (losing FWA's randomness fast path), B's
+    ///      word arrives, then four more players buy before any keeper acts. The five words arrive last to first, so when
+    ///      keepers next act C and the four behind it wait in FWA's queue: the most the Balancer admits (MAX_BATCH).
+    ///      Keepers process them two per call.
+    function test_breakdown_burst() public {
+        Snap memory a = _launch();
+        uint8[4] memory roundsPerDay = [6, 6, 8, 3];
+        uint256 w;
+        for (uint256 d; d < 4; ++d) {
+            for (uint256 r; r < roundsPerDay[d]; ++r) {
+                uint256[] memory pa = _tryBuy();
+                if (pa.length == 1) _deliver(pa[0], _word(w++));
+                uint256[] memory pb = _tryBuy();
+                _keeperPass();
+                uint256[5] memory c;
+                uint256 nc;
+                for (uint256 k; k < 5; ++k) {
+                    uint256[] memory p = _tryBuy();
+                    if (p.length == 1) {
+                        c[nc++] = p[0];
+                        if (k == 0 && IReservedListings(address(pool)).reservedListingCount(pool.lastIssuedSequence()) != 0) {
+                            ++reservedDraws;
+                        }
+                    }
+                    if (k == 0 && pb.length == 1) _deliver(pb[0], _word(w++));
+                }
+                for (uint256 k = nc; k > 0; --k) _deliver(c[k - 1], _word(w++));
+                _keeperPass();
+                _account(openIds);
+                while (nftsToRelist != 0) {
+                    --nftsToRelist;
+                    _listNft();
+                    _keeperPass();
+                }
+            }
+            _service();
+            _account(openIds);
+            uint256 u = pool.unsettledAcquisitionCount();
+            if (u > maxUnsettledAtDayEnd) maxUnsettledAtDayEnd = u;
+            _endOfDay();
+        }
+        assertGt(reservedDraws, 0, "reached: draws reserved a staged restock and lost FWA's fast path");
+        assertEq(fwaQueueReadyMax, 5, "reached: five draws waiting in FWA's queue at one keeper call (MAX_BATCH)");
+        Fact[] memory x = new Fact[](3);
+        x[0] = Fact("draws_that_reserved_a_staged_restock", reservedDraws);
+        x[1] = Fact("unsettled_draws_at_day_end_max", maxUnsettledAtDayEnd);
+        x[2] = Fact("unsettled_draws_at_end", pool.unsettledAcquisitionCount());
+        _done("burst", a, x);
+    }
+
     function _noProcessor(string memory regime) internal {
         Snap memory a = _launch();
         for (uint256 i; i < DRAWS; ++i) {
@@ -691,6 +743,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.prank(creator);
         balancer.open();
         assertTrue(_keeperPass(), "keepers finished the setup");
+        assertEq(_implementation(address(pool)), 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7, "FWA pool clones StandardPool: its code is cooled too");
+        assertTrue(_implementation(address(balancer)) != address(0), "the Balancer is a clone: its code is cooled too");
         assertEq(balancer.admissionStatus(), 0, "purchases admitted after setup");
         assertEq(unitsListed, boardUnits, "the whole board is listed");
         claimedAtSetup = _claim();
@@ -787,10 +841,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         if (!balancer.enabled()) return (0, 0, balancer.admissionStatus());
         uint256 snap = vm.snapshotState();
         for (; calls < 40; ++calls) {
-            vm.cool(address(balancer));
-            vm.cool(address(pool));
-            vm.cool(SHAPES);
-            vm.cool(packs);
+            _coolKeeperTx();
             uint256 g = gasleft();
             vm.prank(creator, creator);
             try balancer.performUpkeep() returns (uint256 reward) {
@@ -1099,7 +1150,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     function _upkeep(address who, bool rational) internal returns (uint8) {
         // measured on its own; performUpkeep collects first anyway, at the same state
         if (splitCheck) _collectNow();
-        uint256 ready = _fwaQueueReady();
+        uint256 ready = this.fwaQueueReady(); // own frame: its memory does not grow this one's
         if (ready > fwaQueueReadyMax) fwaQueueReadyMax = ready;
         uint256 snap = vm.snapshotState();
         uint256 bal0 = address(balancer).balance;
@@ -1109,10 +1160,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         bool setupWork = balancer.creatorWork();
         uint256 who0 = who.balance;
         // a keeper transaction starts with every account and slot cold
-        vm.cool(address(balancer));
-        vm.cool(address(pool));
-        vm.cool(SHAPES);
-        vm.cool(packs);
+        _coolKeeperTx();
         uint256 g = gasleft();
         vm.prank(who, who);
         vm.recordLogs();
@@ -1178,10 +1226,34 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
+    /// @dev A keeper transaction starts with every account and slot cold, including the code a clone or proxy runs:
+    ///      the harness's own reads (bookkeeping, the FWA queue count) would otherwise leave it warm.
+    function _coolKeeperTx() internal {
+        address[4] memory xs = [address(balancer), address(pool), SHAPES, packs];
+        for (uint256 i; i < 4; ++i) {
+            vm.cool(xs[i]);
+            address impl = _implementation(xs[i]);
+            if (impl != address(0)) vm.cool(impl);
+        }
+    }
+
+    /// @dev Solady minimal clone target (44 bytes, `3d3d3d3d363d3d37363d73` + address; the Balancer and FWA's pool),
+    ///      else the EIP-1967 implementation slot (zero when neither).
+    function _implementation(address a) internal view returns (address impl) {
+        bytes memory c = a.code;
+        if (c.length == 44 && uint8(c[0]) == 0x3d && uint8(c[10]) == 0x73) {
+            assembly ("memory-safe") {
+                impl := shr(96, mload(add(c, 43)))
+            }
+        } else {
+            impl = address(uint160(uint256(vm.load(a, 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))));
+        }
+    }
+
     /// @dev Draws FWA's processAcquisitions would settle or expire now: the prefix of its queue that is Ready, TimedOut,
     ///      or Pending past its word deadline (StandardPool.processAcquisitions). Reads FWA's storage only, so it warms
     ///      nothing the measured upkeep would find cold (the pool is cooled before the call).
-    function _fwaQueueReady() internal view returns (uint256 n) {
+    function fwaQueueReady() external view returns (uint256 n) {
         IPoolMore m = IPoolMore(address(pool));
         for (uint64 s = pool.nextSequenceToProcess(); s <= pool.lastIssuedSequence(); ++s) {
             uint256 id = m.requestIdAtSequence(s);

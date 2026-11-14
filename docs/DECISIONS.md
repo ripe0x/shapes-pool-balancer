@@ -498,3 +498,14 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     per 161 draws and breaks the starved-gas margin above about 6.7M of processing), and removing the try/catch with
     its starved-gas check (fail-closed upkeep; no non-gas processing failure is known, and a stuck queue blocks sales
     and reconciling either way). No contract change.
+83. **Burst regime and fully cold keeper measurement** (owner, 2026-11-14: "Add burst first"). New required regime
+    `burst`: ape-Ball's opening days (6, 6, 8 and 3 rounds of seven draws, 156 bought, 5 refused), each round built so
+    five draws wait in FWA's queue at one keeper call, the most the Balancer admits (MAX_BATCH = 5; ape-Ball's own
+    manager reached 6 because it has no such limit). Reached 5 (asserted); 44 calls found more than 2 waiting; 22 draws
+    lost the fast path. Every outcome holds: 0 draws unsettled at day end (O13), no keeper loss on play (O11), refunds
+    kept 51,591 gas per draw (O1, limit 80,000), worst single call 182,980 gas. Also: the harness now cools the code
+    the Balancer and FWA's pool run (both Solady clones) before each measured upkeep, as a real keeper transaction
+    starts; it had stayed warm from the harness's own reads. O1 moved from 30,404 to 31,105 gas per draw at the cap
+    (31,039 at 0.55 gwei; 0.084 ETH over 540 draws, 4.2% of the creator's net); O11's NFT-heavy figure stays 0.036 ETH.
+    The queue read runs in its own call frame; it leaves the Balancer's reward unchanged, and the keeper's cost measured
+    from outside moves about 29 gas per call (the test frame's memory).
