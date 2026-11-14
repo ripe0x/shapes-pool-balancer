@@ -493,3 +493,8 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     8 calls above 2, all fulfilled draws, not expiries) and FWA's sponsored processor 9. At 2 per call such a
     queue takes up to 3 calls (one block each) instead of 1, costing about 0.00014 ETH per extra call at 0.55 gwei
     and delaying the restock those calls skip. 2 stays: a latency and cost matter, not a stall.
+82. **Upkeep's processing stays as built** (owner, 2026-11-14: "Keep as built"). Weighed and declined: lifting
+    MAX_PROCESS above 2 (ape-Ball has no per-call pay cap, its calls ran to 5.0M gas; for us it saves about 0.002 ETH
+    per 161 draws and breaks the starved-gas margin above about 6.7M of processing), and removing the try/catch with
+    its starved-gas check (fail-closed upkeep; no non-gas processing failure is known, and a stuck queue blocks sales
+    and reconciling either way). No contract change.
