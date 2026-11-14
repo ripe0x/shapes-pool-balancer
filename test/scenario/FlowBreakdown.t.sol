@@ -15,6 +15,11 @@ interface IPoolMore {
     function acquisitionRefundCreditTotal() external view returns (uint256);
     function acquisitionRefundCredit(address purchaser) external view returns (uint256);
     function withdrawAcquisitionRefund() external returns (uint256 amount);
+    function requestIdAtSequence(uint64 sequence) external view returns (uint256);
+    function acquisitionMeta(uint256 requestId)
+        external
+        view
+        returns (uint64 sequence, uint64 wordDeadlineBlock, uint64 rewardEpoch, uint16, uint16, uint256 randomWord);
 }
 
 interface IReservedListings {
@@ -122,6 +127,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal upkeepsNothing;
     uint256 internal upkeepReverts;
     uint256 internal upkeepsWhileUnsettled;
+    uint256 internal fwaQueueReadyMax;
+    uint256 internal upkeepsWithQueueReady;
+    uint256 internal upkeepsWithQueueReadyOver2;
     uint256 internal restocksStaged;
     uint256 internal incompleteAfterFullPass;
     uint256 internal lowInventoryAfterFullPass;
@@ -692,7 +700,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 60;
+        uint256 n = 63;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -765,6 +773,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[57] = Fact("keeper_refund_gas_kept_per_draw", requested == 0 ? 0 : paidBeyondGas / requested);
         f[58] = Fact("keeper_refund_gas_kept_worst_call", paidBeyondGasWorstCall);
         f[59] = Fact("keeper_refund_share_of_creator_net_bps", held > cost ? paidBeyondGasAndReward * 10_000 / (held - cost) : 0);
+        // how many draws FWA's queue held ready to process when a call ran, against the 2 a call processes (information)
+        f[60] = Fact("fwa_queue_ready_max", fwaQueueReadyMax);
+        f[61] = Fact("upkeeps_with_fwa_queue_ready", upkeepsWithQueueReady);
+        f[62] = Fact("upkeeps_with_fwa_queue_ready_over_2", upkeepsWithQueueReadyOver2);
         for (uint256 j; j < extra.length; ++j) f[n + j] = extra[j];
         flowReport(regime, a, f);
     }
@@ -1087,6 +1099,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     function _upkeep(address who, bool rational) internal returns (uint8) {
         // measured on its own; performUpkeep collects first anyway, at the same state
         if (splitCheck) _collectNow();
+        uint256 ready = _fwaQueueReady();
+        if (ready > fwaQueueReadyMax) fwaQueueReadyMax = ready;
         uint256 snap = vm.snapshotState();
         uint256 bal0 = address(balancer).balance;
         uint256 op0 = pool.ownerProceeds();
@@ -1116,6 +1130,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             vm.deleteStateSnapshot(snap);
             assertEq(who.balance - who0, reward, "the caller received the reward");
             ++upkeepsRun;
+            if (ready != 0) ++upkeepsWithQueueReady;
+            if (ready > 2) ++upkeepsWithQueueReadyOver2; // the Balancer processes at most 2 per call (MAX_PROCESS)
             if (who == keeper) {
                 if (setupWork) keeperPaidSetup += reward;
                 else keeperPaidPlay += reward;
@@ -1159,6 +1175,24 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             if (bytes4(err) == PoolBalancer.NoUpkeepNeeded.selector) ++upkeepsNothing;
             else ++upkeepReverts;
             return NOTHING;
+        }
+    }
+
+    /// @dev Draws FWA's processAcquisitions would settle or expire now: the prefix of its queue that is Ready, TimedOut,
+    ///      or Pending past its word deadline (StandardPool.processAcquisitions). Reads FWA's storage only, so it warms
+    ///      nothing the measured upkeep would find cold (the pool is cooled before the call).
+    function _fwaQueueReady() internal view returns (uint256 n) {
+        IPoolMore m = IPoolMore(address(pool));
+        for (uint64 s = pool.nextSequenceToProcess(); s <= pool.lastIssuedSequence(); ++s) {
+            uint256 id = m.requestIdAtSequence(s);
+            (,,,, uint8 st,) = pool.acquisitions(id);
+            if (st == 1) {
+                (, uint64 deadline,,,,) = m.acquisitionMeta(id);
+                if (vm.getBlockNumber() <= deadline) break;
+            } else if (st != 5 && st != 6) {
+                break;
+            }
+            ++n;
         }
     }
 

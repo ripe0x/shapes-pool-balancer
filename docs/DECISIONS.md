@@ -480,3 +480,11 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     MAX_PROCESS = 2 (crossing it needs about 6.7M of processing). Comment corrected; `test/audit/d16d/CatchMargin.t.sol`
     asserts it. Known gap, no trigger found: if processing ever fails for a reason other than gas, upkeep continues
     unpaid for it and the keeper's reward-based pricing would not see the loss (up to 0.0056 ETH per call at 5 gwei).
+81. **MAX_PROCESS = 2 checked against the backlog it meets** (information; no contract change). The flow breakdown now
+    records, at every upkeep, how many draws FWA's queue held ready to process (`fwa_queue_ready_max`,
+    `upkeeps_with_fwa_queue_ready`, `upkeeps_with_fwa_queue_ready_over_2`). Across the 21 regimes: 0 in 17; 1 in both
+    no_processor regimes (179 and 180 calls); more than 2 only where draws expired: closeout_pending 3 (1 call),
+    randomness_not_delivered 5 (2 calls). Expired draws need no prize transfer or notifier, so the cap costs only an
+    extra call there. Limit: the harness runs keepers after every randomness delivery, so it cannot show a burst of
+    words landing behind a draw that lost FWA's fast path within one keeper poll (12 s); that needs three or more
+    draws settled in about one block behind such a draw. 2 stays.
