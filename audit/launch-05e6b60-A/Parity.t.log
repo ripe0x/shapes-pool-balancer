@@ -1,0 +1,9 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.29s
+Compiler run successful!
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 58137093)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.58s (5.17s CPU time)
+
+Ran 1 test suite in 5.59s (5.58s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

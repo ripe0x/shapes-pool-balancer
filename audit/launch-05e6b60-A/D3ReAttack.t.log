@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for test/audit/D3ReAttack.t.sol:D3ReAttackTest
+[PASS] test_holdCannotGrowAfterCloseAndNeverStrandsOnPendingDraws() (gas: 1537825)
+[PASS] test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() (gas: 3128501)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 338.02ms (10.51ms CPU time)
+
+Ran 1 test suite in 344.36ms (338.02ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

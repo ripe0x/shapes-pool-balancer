@@ -1,0 +1,9 @@
+No files changed, compilation skipped
+
+Ran 3 tests for test/KeeperList.t.sol:KeeperListTest
+[PASS] test_factoryKeeperListCoversEveryPoolAndIsOpenByDefault() (gas: 4847117)
+[PASS] test_keeperAdminTransferIsTwoStep() (gas: 2470400)
+[PASS] test_oneListCoversEveryPool() (gas: 12287830)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.43s (1.46s CPU time)
+
+Ran 1 test suite in 1.44s (1.43s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

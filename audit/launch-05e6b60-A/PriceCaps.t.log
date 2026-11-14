@@ -1,0 +1,11 @@
+No files changed, compilation skipped
+
+Ran 5 tests for test/scenario/PriceCaps.t.sol:PriceCapsMeasure
+[PASS] test_board_at_0_5_gwei() (gas: 37842115)
+[PASS] test_board_at_0_95_gwei() (gas: 37841736)
+[PASS] test_board_at_2_gwei() (gas: 37841956)
+[PASS] test_board_at_4_95_gwei() (gas: 37841868)
+[PASS] test_board_at_fork_block_basefee() (gas: 37841846)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 365.25ms (294.42ms CPU time)
+
+Ran 1 test suite in 370.28ms (365.25ms CPU time): 5 tests passed, 0 failed, 0 skipped (5 total tests)

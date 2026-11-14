@@ -1,0 +1,10 @@
+Compiling 51 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.53s
+Compiler run successful!
+
+Ran 2 tests for test/EconFork.t.sol:EconForkTest
+[PASS] test_econBigWin() (gas: 836641140)
+[PASS] test_econRandom() (gas: 826447606)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 3.51s (5.90s CPU time)
+
+Ran 1 test suite in 3.52s (3.51s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

@@ -1,8 +1,8 @@
 # Launch audit (section 0b) on `05e6b60`: triage
 
 Step A (informed, Codex) and step B (uninformed, stripped copy) audited `main` at `05e6b60`, source hash `d4a80a3f…`;
-step C compared them (coordinating session). Step B's report and its 17 tests are in `audit/launch-05e6b60-B/`. Step A's
-report: path to be supplied by the owner. No contract code has changed; nothing below is repaired in contracts until the
+step C compared them (coordinating session). Reports and kept tests: `audit/launch-05e6b60-A/` with
+`test/audit/launch-A/` (2 files, 3 tests, pass here), and `audit/launch-05e6b60-B/` with `test/audit/LaunchB.t.sol`. No contract code has changed; nothing below is repaired in contracts until the
 owner chooses.
 
 ## Findings
@@ -18,7 +18,20 @@ owner chooses.
 | C4 | Regimes run at basefee 0.5 gwei; the fork block's real basefee was 0.058 gwei and today's about 0.155 gwei | A, B | reasoned | `normal_gas` (0.1 gwei) exists; the others stay at 0.5 | information |
 | C5 | A keeper that loses a race pays for a reverted call; not modelled | A, B | reasoned | about 50k gas (0.00003 ETH at 0.55 gwei) per lost race; the keeper simulates before sending | gap, information |
 | C6 | Not executed by either: the app with a connected wallet (Add ETH, Continue, markup change), live randomness timing, mined keeper receipts, keeper restart | A, B | — | the dashboard paths were clicked on the local fork with the dev account; the 300-round rehearsal has receipts and restarts | rehearsal (step D) |
+| A1 | Accepted hostile-collection loss (R20): a creator's own collection can take back a delivered NFT; the player keeps nothing (0.0175 ETH measured) | A | executed | known, owner-accepted | no change; the app should not imply every NFT win is durable |
+| A2 | Creators need a per-board forecast: O10 and O11 hold for the launch board, while NFT-dominated boards lose up to 0.035 ETH of keeper pay per 180 draws | A | reasoned | the planner shows draw price, odds and estimated earnings per design; it does not forecast keeper cost per board | information; candidate for the planner |
+| A3 | App tests feed in made-up successful answers from external services (`app/src/wallet.test.ts` line 69, a fake Alchemy reply; `app/src/tx.test.ts`, a fake node and wallet provider). The owner's rule allows a failing service only | A | reasoned | confirmed | repair, no decision: run `tx.test.ts` against a real local node; keep only failing-service fakes; read Alchemy live behind an opt-in flag |
 | B4 | The deploy gate accepts any `SOURCE_HASH` beside a `REPORT.md`, and a hand-set environment variable defeats `Deploy.s.sol`'s check | B | reasoned | confirmed; documented in `docs/ASSET-FLOW-GATE.md` | information |
+
+### Step C: what each audit found that the other missed
+
+| Only A | Only B |
+| --- | --- |
+| A2 per-board forecast (reasoned); A3 fabricated service answers in app tests (reasoned) | **S1 nothing processes FWA's queue (executed)**; E1 O10's scope (executed); E2 the game's 10% above the reserve (executed); B4 gate and environment-variable bypass (reasoned) |
+
+Both: the How it works copy (C1), "DRAFT" in signed text (C2), the public factory (C3), regimes at 0.5 gwei (C4), lost
+races (C5), the untested wallet-connected app (C6). Neither executed: the wallet-connected app, live randomness timing,
+mined receipts on mainnet, a production keeper restart against a real node. Those belong to the rehearsal (step D).
 
 ### The harness was doing a job nobody does in production
 

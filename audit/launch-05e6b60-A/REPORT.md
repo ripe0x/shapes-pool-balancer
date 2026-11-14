@@ -1,0 +1,88 @@
+# Launch audit A: informed whole-candidate review
+
+**Candidate:** detached `05e6b60b192d7b185c07b374ddf25c8f5b2472e2` (main), source hash `d4a80a3f0d150bdc00d78e19c70a656a33f8f873f8e2c87c593f20ee35ba6f16`. `git diff 05e6b60 -- src test` was empty at intake. Last audited revision located in the tree: `122de71`. The owner-confirmed source is `OWNER-REQUIREMENTS.md`; the owner-signed `asset-flow.json` approval hash starts `f085518e`. This is **step A, informed**, on the whole candidate. The 90-minute cap was not exhausted; no continuation was used. No tracked file, contract, review record (`SOURCE_HASH`), commit, deployment or broadcast was made by this audit. The checkout already contained the unrelated untracked `AUDIT-REQUEST.md` at intake.
+
+## Findings, ranked by consequence
+
+### 1. Accepted hostile-collection loss to players (security and participant rights; executed, previously known)
+
+R20 deliberately follows FWA's rules without an allowlist. A creator who controls an NFT collection can have FWA deliver its token to a winner, then seize it through collection logic. On the pinned fork at block **26,382,349**, basefee **0.5 gwei**, bid **1 gwei** (`ForkBase` sets both; `test/ForkContext.t.sol` proves those values inside a state-changing call), `test_seize_afterDelivery` reached FWA listing status 4: the player spent **0.017493291227069053 ETH** including **0.00234 ETH** randomness fee, the Balancer received **0.014431705930541956 ETH** proceeds, and the creator took the NFT back. FWA has no refund once it records delivery. The loss scales with the NFT's value and can recur with creator-controlled listings.
+
+`forge test --match-path test/HostileCollection.t.sol --match-test 'test_seize_afterDelivery|test_refuseDelivery_playerRefunded_creatorRecovers' --gas-limit 100000000000 -vv` exited **0**, 2/2; [detail](HostileCollection-detail.log). Refused delivery also reached FWA status 6: before the player takes the seven-day refund, neither proceeds nor refund credit is available. The full file exited 0, 5/5. This is an **owner-accepted exception**, not a newly discovered defect. The smallest technical prevention would restrict eligible collections or escrow payment against durable ownership, which changes R20's approved participant rights and requires an owner decision. The current app should not imply that every completed NFT win is durable.
+
+### 2. Creator cost and pause copy contradict the signed economics (economic/product; reasoned from executed flows)
+
+`app/src/HowItWorks.tsx` says in the FAQ that mint fees and keepers are paid from fees in prize prices, **“never from your markup”**, and answers **“No”** to whether purchases pause after draws. The actual contract pays keepers immediately from the creator-funded Balancer (`_payKeeper`), including setup and NFT-only reconciliation where no restocking fee was earned. The signed zero-demand fork regime received **no player payment**, yet the creator spent **0.055 ETH** in Shapes mint fees and **0.01644893645 ETH** in keeper pay; net loss was **0.07144893645 ETH** on the 5 ETH launch deposit at basefee 0.5 / bid 0.55 gwei. The owner explicitly accepted setup cost and the pause, so the contract result is within the decision; the explanation to prospective creators is inaccurate.
+
+Our [admission boundary test](../../test/audit/launch-A/AdmissionBoundary.t.sol) ran against real FWA and Shapes at the same gas context, with a state-changing fee witness: a full three-Shape board admitted the first draw, refused the second while the first was unsettled, then reopened after FWA expiry and keeper reconciliation. `forge test --match-path test/audit/launch-A/AdmissionBoundary.t.sol --gas-limit 100000000000` exited **0**, 2/2; [output](AdmissionBoundary.log). No ETH was taken for the rejected purchase. In the approved top-heavy regime, the pause can last FWA's 30-block selection timeout plus processing, about 31 blocks before a keeper acts. **Smallest fix:** update the FAQ and adjacent cost copy to state that the creator funds setup and all keeper calls from pool ETH, that won-prize fees help repay this cost, and that thin boards can pause while draws settle. Keep the owner's approved amounts and rules intact.
+
+## Independent economic map and comparison
+
+Derived from `PoolBalancer`, `BalancerFactory`, FWA's vendored `StandardPool` and the Shape/Pack interfaces before reading `docs/SYSTEM-MAP.md`: the creator puts ETH into the Balancer and curated NFTs into FWA custody. Balancer ETH splits into claimable profit, the open reserve, and free surplus. The reserve covers missing prize backing and mint fees, one largest prize per unreconciled draw plus a spare, and bounded keeper calls; while closed it holds keeper pay for unreconciled draws. The Balancer mints ETH-backed Shapes/Packs and lists them on FWA. Players pay FWA the draw price and its randomness fee. On a fulfilled draw, the winner receives the prize, FWA keeps its edge, and owner proceeds flow to the Balancer. A Shape win removes backing from creator assets and its listing's restocking fee becomes creator income; upkeep pays a caller immediately from Balancer ETH. On expiry, FWA credits the player's draw-price refund, but the randomness fee does not return. At close, active prizes can be unlisted and their exact backing redeemed; unreconciled draws hold keeper pay, and failed delivery can leave an NFT in FWA until the player chooses the refund.
+
+This matches the builder's map for normal paths. Its shorthand “keeper pay ... comes out of the fund first” is an accounting order, not a distinct funded keeper bucket. The delivery-pending collection case is a material exception: the purchaser controls whether FWA can release that NFT after failed delivery. One-way ratchets are FWA issued sequence and listing IDs, Balancer `reconciledSequence` and page epochs, and historical prices fixed at listing. The code uses the counters for ordering and revocation, but no separate owner rationale for every ratchet was obtained in this audit. The owner has accepted the listing-price persistence and 30-block pending window; neither sequence counter is a claimable balance. The formerly absent closed-pool keeper hold now retains up to **0.01635 ETH** per five unreconciled draws at the 5 gwei cap. No newly loosened contract limit was found since `122de71`; the keeper constants did not change value. Running cost is one paid call per processed draw, **0.0001 ETH** flat plus **50,000 gas** overhead allowance and measured gas at the capped reimbursed price. At 5 gwei, the maximum reward per call is **0.01635 ETH**; actual setup keeper pay in the 180-draw gas-5 regime was **0.139826695 ETH** total.
+
+### One-screen scorecard against signed outcomes
+
+The gate regenerated all **19** specified regimes on the pinned fork and found the stated metric within each approved bound. Its exit was **2 / INCOMPLETE only because the post-repair review record is intentionally absent**; [full scorecard](asset-gate.log). The first sandboxed attempt failed at Tenderly DNS before any regime, then the same command outside the network-restricted sandbox generated all 19. These rows summarize the scope actually measured, not behavior for every possible board or live gas market.
+
+| Outcome | Measured worst or deciding result | Signed bound / qualification |
+| --- | ---: | --- |
+| O1 keeper refunds | 0.0016128827 ETH extra / 180, `restock_in_flight` | ≤0.002 ETH |
+| O2 fees in outstanding prizes | 0.2585 ETH, `gas_5_gwei` | ≤0.26 ETH |
+| O3 closed hold excess | 0 wei | 0 in `closeout_pending` |
+| O4 redeem backing gap | 0 wei | 0 in `closeout_pending` |
+| O5 missing after owner response | 0 days | 0 in top-up/drop-top what-ifs; without response `large_win` had 20 missing days, `largest_board` 23 |
+| O6 creator assets left after closeout | 0 wei | 0 in `closeout_pending`; R20 NFT exception |
+| O7 low-inventory refusals after reconciliation within gas cap | 0 in measured regimes | 0; thin boards can pause while unsettled |
+| O8 profit share | 1,090 bps, `normal_gas` | ≤1,200 bps |
+| O9 profit overbooking | 0.00030087494702457 ETH | ≤0.001 ETH in `restock_in_flight` |
+| O10 all-in player price / Shape backing | 1.4661× at 0.1 gwei basefee | ≤1.5× on launch board |
+| O11 launch-board keeper play loss | 0; smallest play gain 0.018758 ETH in `gas_spike` | 0 loss in named launch-board regimes; extreme top-heavy loses 0.03527539 ETH, information |
+| O12 launch-board creator loss | 0; smallest quiet-regime gain 0.336668145 ETH at 5 gwei | 0 loss in four named quiet gas regimes; zero demand loses 0.07144893645 ETH, information |
+
+**Money destinations (ETH):** at block 26,382,349, basefee 0.5 / bid 0.55 gwei, the quiet 180-draw run took **5.0 creator + 4.3915295867 player = 9.3915295867**. It ended with **3.7731859524 creator claimed, 2.58 winner backing, 0.1228946064 keeper pay, 0.23166 randomness fees, 0.252 Shapes mint fees, 0.5337 reserve, 1.7 listed backing, about 0.198089 still at FWA**; the receipt's destination mismatch was 0 wei. The exact independent Shape fee check was **252 Shape units minted × 0.001 ETH = 0.252 ETH**. At 5 gwei (basefee 4.95 / bid 5), keeper pay rose to **0.97429121 ETH** total (0.834464515 play + 0.139826695 setup), randomness fees to **2.106 ETH**, and outstanding restocking fees to **0.2585 ETH**. In closeout, **1.68 ETH** of minted backing returned through unlisting/redeeming, the Balancer/its listed backing/owner proceeds ended at zero, and about **0.101246 ETH** remained at FWA in its own fee/refund/pending buckets; it is not creator surplus. These are fork measurements and do not include all wallet transaction gas in the creator-net outcome.
+
+## Security and requirement attack coverage
+
+| Requirement group | Attempt and observed outcome |
+| --- | --- |
+| R1-R3 authority and RPC | No deploy, broadcast, secret, publish or commit; all chain calls used `https://mainnet.gateway.tenderly.co`. Deployment script's `--require-review` gate was read, not invoked to deploy. |
+| R4-R5, R10-R13, R28 keepers | Ran `KeeperPay` 8/8, `KeeperAdversarial` 8/8, `KeeperList` 3/3, D3 re-attack 2/2 and own closeout lifecycle. The closed hold paid five split expiries in the shipped test; an empty/no-work call did not earn a reward. Restricted factory keepers, creator fallback and open default were exercised by shipped tests. A compromised keeper admin can restrict all pools and delay them; it cannot claim assets. |
+| R6-R9, R14-R17, R19, R24-R27 game and money | Asset gate 19 regimes; `Reserve` 14/14, `PriceCaps` 5/5, `Packs` 9/9, `EconFork` 2/2, `Parity` 1/1, `ForkContext` 2/2, low-balance/own-hold challenges 1/1 each. Tests reached large wins, gas spike, randomness outage, min/max boards and markups, pending closeout, redemption and profit split drift. The owner response after a large win was modeled, not performed through the dashboard. |
+| R20-R21 curated NFTs | `HostileCollection` 5/5 reached refusal, refund/recovery and post-delivery seizure. R20 is accepted; app has no verified-collection label per R21. |
+| R15, R18 off-chain | Read changed dashboard calculations and labels, ran TypeScript typecheck and app build, and pure keeper/planner tests. The live Add ETH / Continue buttons and a wallet-connected markup change were **not** exercised: this checkout has no deployed Balancer or configured `VITE_FACTORY`, and this audit's no-deploy/no-broadcast instruction precludes creating one. |
+
+The test harness uses the real deployed FWA factory/implementation, Shapes and VRF service on a fork; it impersonates the actual coordinator to deliver a word, so it cannot reproduce live oracle timing. `MockNFT` in `ForkBase` is a locally deployed **untrusted curated collection**, which the system accepts by design, not a substitute for FWA or Shapes. Actor wallets are funded with `vm.deal`; protocol balances/storage are not faked. The recent-block [lifecycle](../../test/audit/launch-A/RecentBlockLifecycle.t.sol) passed at block **26,410,296** with basefee 0.5 / bid 0.55 gwei set and witnessed inside a call: FWA purchase, 40-block expiry, keeper reconciliation, close, unlist, NFT withdrawal, claim to zero and retire. This verifies current-block integration under the stated test gas, not a mined transaction's P&L.
+
+`forge build --sizes` exited 0; PoolBalancer runtime was **20,859 bytes** (3,717 below EIP-170). `slither . --filter-paths 'lib/|external/|test/' --json audit/launch-05e6b60-A/slither.json` exited **255** because it emitted 65 detectors, not because compilation failed. Its high reentrancy alerts target `performUpkeep`/`_fillDeficit`; the external entry is `nonReentrant`, and the unguarded callbacks observed (`receive`, `depositETH`) add ETH rather than move existing assets. The medium division alert is the intentional ceiling division for closed hold; zero-initialized locals and strict equalities are intentional. No Slither alert was promoted to a finding without an executed path. [Raw results](slither.json).
+
+`npm ci --offline` restored the exact lockfile dependencies; `npm run typecheck` and `npm run build:app` exited 0. Five Vitest files passed 51/51, but successful external-service answers fabricated in the wallet/transaction tests are **not admissible integration evidence** under the no-mocks rule; only their local logic and the pure keeper/planner/design tests inform this audit. The app build did not exercise interaction. No assertion weakening was identified in `git diff 122de71..05e6b60 -- test`: the removed lines relocate setup and expand facts/regimes; the source contract diff changes comments only.
+
+## External facts and limits
+
+Tenderly live reads at block **26,410,296** found FWA factory `0x8919814D825a5Af238cC04DE06b1C18c9eaA477C` pointing to implementation `0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7`, codehash `0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02`, max acquisitions 5, staged-listing cap 0, edge 500 bps; Shapes at `0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0` had a 0.001 ETH mint fee. At the same read, the VRF service `0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d` reported gas estimate 1,800,000, margin 3,000 bps and zero flat fee, yielding 2,340,000 gas units. The vendored FWA source is marked Sourcify runtime/creation **partial match** in `external/fwa-poolsv2/README.md`; this audit independently checked the implementation codehash and live values, not a fresh Sourcify download or every source file's byte-for-byte match.
+
+Not examined: mainnet transaction ordering/competing keepers, actual gas refunds on newly mined transactions, live Chainlink randomness timing/failure, the wallet-connected dashboard, production keeper restart/state persistence against a real node, every hostile ERC-721 behavior, every allowed 16-size mix, current-block 180-draw economics, and the launch rehearsal/canary (steps D/E, outside step A). The earlier reports inform this audit; the second auditor's uninformed step B has not been read or influenced here. This report does not establish a negative result over those paths or launch readiness.
+
+## Time table and stop
+
+Wall clock on **2026-11-13 EST** (UTC samples were taken by the execution host). Start **21:36:01**; report finalized at approximately **21:48 EST**, about **12 minutes**. Phase boundaries are minute-rounded where work overlapped; command outcomes above are exact. The whole step A stayed below 90 minutes; no conditional continuation.
+
+| Section 0 step | Approximate interval EST | Time | Work |
+| --- | --- | ---: | --- |
+| 1. Intake | 21:36-21:37 | ~1 min | revision, requirements, scope, submodules, source hash |
+| 2. Economic pass | 21:37-21:40 | ~3 min | independent map, gate, 19-regime scorecard and flow receipts |
+| 3. Security pass | 21:39-21:46 | ~7 min, overlapping | code/FWA trace, new fork attacks, recent-block lifecycle, static triage |
+| 4. Shipped tests | 21:39-21:46 | ~7 min, overlapping | focused Forge files, TS files, bytecode/build |
+| 5. Fresh-context challenge | not performed in A | 0 | step B is separately assigned to a different uninformed auditor; A is explicitly informed |
+| 6. Report | 21:46-21:48 | ~2 min | evidence, findings, limits |
+| 7. Stop | 21:48 | <1 min | status and run-log check |
+
+## Things that don't make sense
+
+- **Confirmed copy mismatch:** the FAQ says buyers' prize fees pay setup costs even when zero buyers exist; the executed zero-demand loss shows otherwise. It also says draws do not pause, although both the accepted D8 design and our real-path test show a pause.
+- **Open question:** the owner's 1.5× player-price bound and keeper-play nonloss apply to the launch board; the factory allows every board and markup. NFT-dominated boards in the signed scorecard lose up to 0.03527539 ETH in keeper play per 180 draws. A prospective creator needs a clear per-board forecast before funding one.
+- **Open evidence gap:** the approved R15 response and R18 estimate labels were not observed in a wallet-connected UI under this audit's no-deployment restriction. A later rehearsal must decide whether the owner can understand and complete those actions.
+- **Source-of-truth ambiguity:** the SSH-signed, owner-confirmed outcome text still starts every line with “DRAFT.” The signature and requirements history establish approval, but the label could mislead a future reviewer or operator about which numbers are binding.
+- **Canary scope:** D15 accepts no factory cap. `createBalancer` is permissionless, so the owner's small first pool limits only their own deposit; it cannot bound other creators' pools once the factory address is public. The planned canary must state this exposure plainly before broadcast.

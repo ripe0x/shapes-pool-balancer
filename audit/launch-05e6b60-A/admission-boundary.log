@@ -1,0 +1,19 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.47s
+Compiler run successful!
+
+Ran 2 tests for test/audit/launch-A/AdmissionBoundary.t.sol:AdmissionBoundaryTest
+[PASS] test_fourSmallShapesAdmitFirstPurchase() (gas: 5380071)
+[FAIL: low-inventory rejection at full inventory: 0 != 6] test_threeSmallShapesNeverAdmitFirstPurchase() (block: 26382349) (gas: 4457332)
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 382.51ms (18.25ms CPU time)
+
+Ran 1 test suite in 390.12ms (382.51ms CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/audit/launch-A/AdmissionBoundary.t.sol:AdmissionBoundaryTest
+[FAIL: low-inventory rejection at full inventory: 0 != 6] test_threeSmallShapesNeverAdmitFirstPurchase() (block: 26382349) (gas: 4457332)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
