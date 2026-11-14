@@ -442,3 +442,9 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     paid under the usual rule. `test/ProcessQueue.t.sol` fails on the previous contract; regime `no_processor` and the
     keeper e2e run without the harness processing. D17: O10 restated to the launch board at steady normal gas. D18: the
     game's 10% stays as built.
+76. **O1 in gas per draw** (owner decision D19, 2026-11-13). With upkeep processing FWA's queue, keepers keep the storage
+    refunds FWA's processing releases; the Balancer measures gas before refunds and cannot see them. O1 is now at most
+    80,000 gas per draw averaged over a run (was 0.002 ETH per 180 draws, D2), so the bound does not move with gas
+    price. No contract change: deducting an estimate would underpay keepers whenever the real refund is smaller, the
+    stall D16 fixed. Measured: 67,660 gas per draw at 0.55 gwei, 67,072 at the 5 gwei cap (new required regime
+    `no_processor_5_gwei`), worst single call 295,284 gas; 0.181 ETH over 540 draws at the cap, 7.8% of the creator's net.

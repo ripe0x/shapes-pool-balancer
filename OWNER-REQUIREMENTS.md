@@ -36,6 +36,7 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   never spent on keepers") → **O1**. The flat reward (0.0001 ETH) and overhead (50,000 gas) are final (D14, "Yes, all
   four").
 - R11. D2: "D2 yes: accept, limit 0.002 ETH per 180 draws": keepers keep storage refunds on top of gas → **O1**.
+  Superseded by R32 (D19): the limit is now in gas per draw.
 - R12. D4: "D4 yes: accept and budget one paid call per processed draw; fix the comment." → budgeted inside O11's net.
 - R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**.
 
@@ -113,13 +114,18 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 ## Launch-audit decisions (owner, 2026-11-13: "Yes, all three")
 
 - R29. D16: upkeep processes FWA's queue and is paid for it: before reconciling, `performUpkeep` calls
-  `processAcquisitions(2)` when draws are waiting, so any paid keeper unblocks a pool → **O13** *(proposed)*: with only
+  `processAcquisitions(2)` when draws are waiting, so any paid keeper unblocks a pool → **O13**: with only
   players, randomness and keepers acting, no day ends with a draw unsettled (`no_processor` regime: 539 draws, 179 of
   them lost FWA's fast path, none left unsettled). Corrects R16's "then anyone processes".
 - R30. D17: O10 is the launch board at steady normal gas; after a spike prices stay higher until the prizes listed during
   it are won again, and a creator's own markup and NFT values can exceed 1.5×: information → **O10** (restated).
 - R31. D18: the game's first 10% of markup refills the reserve while the fund is below it; above the reserve the creator
   may claim everything → **O8** (unchanged).
+- R32. D19 (owner, 2026-11-13: "O1: option 1. Restate in gas: refunds kept at most 80,000 gas per draw, as a gate
+  fact. No contract change."): processing FWA's queue clears storage, and the keeper keeps refunds the Balancer cannot
+  see → **O1**: at most 80,000 gas per draw, averaged over a run. Measured with only keepers processing: 67,660 gas per
+  draw at 0.55 gwei, 67,072 at the 5 gwei cap; worst single call 295,284 gas. At the 5 gwei cap, 0.181 ETH over 540
+  draws, 7.8% of the creator's net (`no_processor_5_gwei`): information.
 
 ## Decisions log (history, not requirements)
 

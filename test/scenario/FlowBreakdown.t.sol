@@ -94,6 +94,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal keeperGasCost;
     uint256 internal paidBeyondGasAndReward;
     uint256 internal paidBeyondGas; // the same, in gas at the reimbursed price
+    uint256 internal paidBeyondGasWorstCall;
     uint256 internal feesListed; // restocking fees inside the prices of every prize listed
     uint256 internal feesWon;
     uint256 internal feesUnlisted;
@@ -400,6 +401,16 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     ///      (staged, since B is in flight), C buys and reserves that staged restock, which costs C FWA's randomness fast
     ///      path; then B's and C's words arrive and keepers run.
     function test_breakdown_noProcessor() public {
+        _noProcessor("no_processor");
+    }
+
+    /// @dev The same at the 5 gwei reimbursement cap (basefee 4.95 gwei): measures the refunds keepers keep there.
+    function test_breakdown_noProcessor5() public {
+        baseFeeRegime = CAP_FEE;
+        _noProcessor("no_processor_5_gwei");
+    }
+
+    function _noProcessor(string memory regime) internal {
         Snap memory a = _launch();
         for (uint256 i; i < DRAWS; ++i) {
             uint256[] memory pa = _tryBuy();
@@ -432,7 +443,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[0] = Fact("draws_that_reserved_a_staged_restock", reservedDraws);
         x[1] = Fact("unsettled_draws_at_day_end_max", maxUnsettledAtDayEnd);
         x[2] = Fact("unsettled_draws_at_end", pool.unsettledAcquisitionCount());
-        _done("no_processor", a, x);
+        _done(regime, a, x);
     }
 
     function _tryBuy() internal returns (uint256[] memory ids) {
@@ -681,7 +692,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 58;
+        uint256 n = 60;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -741,7 +752,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[52] = Fact("creator_keeper_net_gain_wei", feesWon > keeperAll ? feesWon - keeperAll : 0);
         f[53] = Fact("creator_keeper_net_loss_wei", keeperAll > feesWon ? keeperAll - feesWon : 0);
         // the same for play only, leaving out the creator's own setup work (opening, configuring, unlisting)
-        f[57] = Fact("keeper_refund_gas_kept_per_draw", requested == 0 ? 0 : paidBeyondGas / requested);
         f[56] = Fact("creator_keeper_play_net_loss_wei", keeperPaidPlay > feesWon ? keeperPaidPlay - feesWon : 0);
         // R8: the creator's net, everything claimed or still theirs (Balancer ETH, listed backing, uncollected
         // proceeds) less everything deposited and the NFTs given away at their stated value (the harness hands the
@@ -750,6 +760,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 cost = deposited + nftsWon * NFT_VALUE;
         f[54] = Fact("creator_net_gain_wei", held > cost ? held - cost : 0);
         f[55] = Fact("creator_net_loss_wei", cost > held ? cost - held : 0);
+        // O1: storage refunds a keeper keeps beyond the pay rule (the Balancer measures gas before refunds), averaged
+        // per draw requested and for the worst single call, and as a share of the creator's net (information)
+        f[57] = Fact("keeper_refund_gas_kept_per_draw", requested == 0 ? 0 : paidBeyondGas / requested);
+        f[58] = Fact("keeper_refund_gas_kept_worst_call", paidBeyondGasWorstCall);
+        f[59] = Fact("keeper_refund_share_of_creator_net_bps", held > cost ? paidBeyondGasAndReward * 10_000 / (held - cost) : 0);
         for (uint256 j; j < extra.length; ++j) f[n + j] = extra[j];
         flowReport(regime, a, f);
     }
@@ -1113,6 +1128,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 if (reward > most) {
                     paidBeyondGasAndReward += reward - most;
                     paidBeyondGas += (reward - most) / price;
+                    if ((reward - most) / price > paidBeyondGasWorstCall) paidBeyondGasWorstCall = (reward - most) / price;
                 }
             } else {
                 claimed += reward;
