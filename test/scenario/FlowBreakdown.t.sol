@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {Vm} from "forge-std/Vm.sol";
 import {ForkBase, IVRFService} from "../utils/ForkBase.sol";
 import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
@@ -14,6 +15,10 @@ interface IPoolMore {
     function acquisitionRefundCreditTotal() external view returns (uint256);
     function acquisitionRefundCredit(address purchaser) external view returns (uint256);
     function withdrawAcquisitionRefund() external returns (uint256 amount);
+}
+
+interface IReservedListings {
+    function reservedListingCount(uint64 sequence) external view returns (uint256);
 }
 
 interface IPackValue {
@@ -66,6 +71,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal nextLid = 1;
     uint256 internal nextNft = 100;
     mapping(uint256 id => bool) internal done;
+    // each listing as listed, kept by the harness: upkeep that processes FWA's queue (D16) reconciles a draw in the
+    // same call, after which the Balancer no longer holds the item
+    mapping(uint256 lid => uint8) internal lidKind;
+    mapping(uint256 lid => uint8) internal lidDenom;
+    mapping(uint256 lid => uint256) internal lidFee;
 
     // cumulative money counters, each measured from a balance change or a real read at the moment it happens
     uint256 internal deposited;
@@ -83,6 +93,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal keeperPaidPlay;
     uint256 internal keeperGasCost;
     uint256 internal paidBeyondGasAndReward;
+    uint256 internal paidBeyondGas; // the same, in gas at the reimbursed price
     uint256 internal feesListed; // restocking fees inside the prices of every prize listed
     uint256 internal feesWon;
     uint256 internal feesUnlisted;
@@ -141,6 +152,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     mapping(uint256 id => uint256) internal drawShare; // drawBase x sum(markup above 10% / price) over them / count
     uint256 internal uncollectedBase;
     uint256 internal uncollectedShare;
+    uint256[] internal splitIds; // every draw bought while the split is checked
     uint256 internal splitChecks;
     uint256 internal splitSkippedAboveReserve;
     uint256 internal splitExpected;
@@ -162,6 +174,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal secondArrivals;
     uint256 internal secondRefusedWhilePending;
     uint256 internal secondSold;
+    // no_processor (D16): FWA's queue is processed only by what production runs
+    uint256 internal reservedDraws;
+    uint256 internal maxUnsettledAtDayEnd;
+    uint256[] internal openIds;
     // gas-level regimes and the player's price (O10)
     uint256 internal baseFeeRegime; // 0: BASEFEE
     bool internal trackPrice;
@@ -266,7 +282,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                         ++secondRefusedWhilePending;
                     }
                     _deliver(ids[0], _word(i));
-                    _process();
+                    _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
                     _account(ids);
                     if (more.length == 1) _account(more);
                 }
@@ -378,6 +394,63 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         if (r < minPriceToBackingBps) minPriceToBackingBps = r;
     }
 
+    /// @dev D16 (launch audit B, S1): only players, the randomness service and keepers act; the harness never calls FWA's
+    ///      processAcquisitions. Keepers act between every two events, as a keeper polling every 12 seconds does. Each
+    ///      step three players overlap: A and B buy, A's word arrives, the keeper reconciles A and restocks its prize
+    ///      (staged, since B is in flight), C buys and reserves that staged restock, which costs C FWA's randomness fast
+    ///      path; then B's and C's words arrive and keepers run.
+    function test_breakdown_noProcessor() public {
+        Snap memory a = _launch();
+        for (uint256 i; i < DRAWS; ++i) {
+            uint256[] memory pa = _tryBuy();
+            uint256[] memory pb = _tryBuy();
+            if (pa.length == 1) _deliver(pa[0], _word(i));
+            _keeperPass();
+            uint256[] memory pc = _tryBuy();
+            if (pc.length == 1 && IReservedListings(address(pool)).reservedListingCount(pool.lastIssuedSequence()) != 0) {
+                ++reservedDraws;
+            }
+            if (pb.length == 1) _deliver(pb[0], _word(i + DRAWS));
+            if (pc.length == 1) _deliver(pc[0], _word(i + 2 * DRAWS));
+            _keeperPass();
+            _account(openIds);
+            while (nftsToRelist != 0) {
+                --nftsToRelist;
+                _listNft();
+                _keeperPass();
+            }
+            if ((i + 1) % PER_DAY == 0) {
+                _service();
+                _account(openIds);
+                uint256 u = pool.unsettledAcquisitionCount();
+                if (u > maxUnsettledAtDayEnd) maxUnsettledAtDayEnd = u;
+                _endOfDay();
+            }
+        }
+        assertGt(reservedDraws, 0, "reached: draws reserved a staged restock and lost FWA's fast path");
+        Fact[] memory x = new Fact[](3);
+        x[0] = Fact("draws_that_reserved_a_staged_restock", reservedDraws);
+        x[1] = Fact("unsettled_draws_at_day_end_max", maxUnsettledAtDayEnd);
+        x[2] = Fact("unsettled_draws_at_end", pool.unsettledAcquisitionCount());
+        _done("no_processor", a, x);
+    }
+
+    function _tryBuy() internal returns (uint256[] memory ids) {
+        if (!balancer.canPurchase(buyer)) {
+            _refused(1);
+            return ids;
+        }
+        ids = _buy(1);
+        if (ids.length == 1) openIds.push(ids[0]);
+    }
+
+    function _collectedIn(Vm.Log[] memory logs) internal view returns (uint256 amount) {
+        bytes32 topic = keccak256("ProceedsCollected(uint256)");
+        for (uint256 k; k < logs.length; ++k) {
+            if (logs[k].emitter == address(balancer) && logs[k].topics[0] == topic) amount += abi.decode(logs[k].data, (uint256));
+        }
+    }
+
     function _largeWinFacts() internal view returns (Fact[] memory x) {
         x = new Fact[](12);
         x[0] = Fact("forced_top_prize_draw_a", forceTopA);
@@ -445,7 +518,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             }
             if ((i + 1) % PER_DAY != 0) continue;
             vm.roll(vm.getBlockNumber() + timeout + 1);
-            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _process();
+            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
             assembly ("memory-safe") {
                 mstore(late, nLate)
             }
@@ -459,7 +532,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertGt(expired, 0, "FWA expired draws through its timeout");
         assertGt(credit, 0, "the player holds refund credit");
         for (uint256 k; k < nLate; ++k) _deliver(late[k], uint256(keccak256(abi.encode(SEED, "late", k))));
-        _process();
+        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
         vm.prank(buyer, buyer);
         refundsWithdrawn += IPoolMore(address(pool)).withdrawAcquisitionRefund();
         _service();
@@ -506,10 +579,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 startBlock = vm.getBlockNumber();
         _deliver(ids[0], _word(90));
         _deliver(ids[1], _word(91));
-        _process();
+        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
         _account(ids);
         vm.roll(vm.getBlockNumber() + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
-        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _process();
+        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
         _account(ids);
         assertEq(pool.unsettledAcquisitionCount(), 0, "every pending draw settled or timed out");
         x[5] = Fact("blocks_until_closeout_possible", vm.getBlockNumber() - startBlock);
@@ -608,7 +681,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 57;
+        uint256 n = 58;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -668,6 +741,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[52] = Fact("creator_keeper_net_gain_wei", feesWon > keeperAll ? feesWon - keeperAll : 0);
         f[53] = Fact("creator_keeper_net_loss_wei", keeperAll > feesWon ? keeperAll - feesWon : 0);
         // the same for play only, leaving out the creator's own setup work (opening, configuring, unlisting)
+        f[57] = Fact("keeper_refund_gas_kept_per_draw", requested == 0 ? 0 : paidBeyondGas / requested);
         f[56] = Fact("creator_keeper_play_net_loss_wei", keeperPaidPlay > feesWon ? keeperPaidPlay - feesWon : 0);
         // R8: the creator's net, everything claimed or still theirs (Balancer ETH, listed backing, uncollected
         // proceeds) less everything deposited and the NFTs given away at their stated value (the harness hands the
@@ -722,7 +796,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256[] memory ids = _buy(1);
             if (ids.length == 1) {
                 _deliver(ids[0], _word(i));
-                _process();
+                _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
                 _account(ids);
             }
         }
@@ -741,13 +815,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 if (ids.length == 5 && balancer.admissionStatus() == 4) ++busySeen;
                 for (uint256 k; k < ids.length; ++k) {
                     if (k == 2 && batch % 2 == 0) {
-                        _process();
+                        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
                         _account(ids);
                         _keeperPass();
                     }
                     _deliver(ids[k], _word(i + k));
                 }
-                _process();
+                _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
                 _account(ids);
             }
             _service();
@@ -767,7 +841,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 uint256[] memory ids = _buy(n);
                 for (uint256 k; k < ids.length; ++k) {
                     _deliver(ids[k], _word(i + k));
-                    _process();
+                    _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
                     _account(ids);
                     _keeperPass(); // the remaining draws of the batch are still unsettled
                 }
@@ -861,7 +935,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.prank(buyer, buyer);
         ids = pool.acquireBatch{value: total}(buyer, n, 0, 0, 10_000, version, vm.getBlockTimestamp() + 1);
         assertEq(before - buyer.balance, total, "the player paid the quote");
-        for (uint256 k; k < ids.length; ++k) (drawBase[ids[k]], drawShare[ids[k]]) = (qBase, qShare);
+        for (uint256 k; k < ids.length; ++k) {
+            (drawBase[ids[k]], drawShare[ids[k]]) = (qBase, qShare);
+            if (splitCheck) splitIds.push(ids[k]);
+        }
         vrf = total - (address(pool).balance - poolBefore); // what FWA passed on to its randomness service
     }
 
@@ -893,26 +970,24 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
-    function _process() internal {
-        try pool.processAcquisitions(5) {} catch {}
-    }
 
-    /// @dev Books each newly final draw. Must run before upkeep reconciles it (the Balancer then forgets the item).
+    /// @dev Books each newly final draw, from the harness's own listing records and FWA's state (the Balancer forgets
+    ///      an item once reconciled).
     function _account(uint256[] memory ids) internal {
         for (uint256 i; i < ids.length; ++i) {
             if (done[ids[i]]) continue;
-            (,,, uint256 lid, uint8 status,) = pool.acquisitions(ids[i]);
+            (address purchaser,,, uint256 lid, uint8 status,) = pool.acquisitions(ids[i]);
             if (status == 2) {
                 done[ids[i]] = true;
                 ++fulfilled;
                 uncollectedBase += drawBase[ids[i]];
                 uncollectedShare += drawShare[ids[i]];
-                (uint8 kind, uint8 d,, uint112 base, uint112 price) = balancer.items(lid);
+                (uint8 kind, uint8 d) = (lidKind[lid], lidDenom[lid]);
                 if (kind == SHAPE_KIND) {
                     (address col,,, uint256 tokenId,,,,) = pool.listings(lid);
-                    assertEq(IERC721Min(col).ownerOf(tokenId), buyer, "the winner holds the prize");
+                    assertEq(IERC721Min(col).ownerOf(tokenId), purchaser, "the winner holds the prize");
                     backingWon += _backingOf(col, tokenId);
-                    feesWon += price - base;
+                    feesWon += lidFee[lid];
                     markupWon += balancer.denominationAmount(d) * MARKUP_BPS / 10_000;
                     if (d == TOP) ++topWon;
                 } else if (kind == CURATED_KIND) {
@@ -1011,8 +1086,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.cool(packs);
         uint256 g = gasleft();
         vm.prank(who, who);
+        vm.recordLogs();
         try balancer.performUpkeep() returns (uint256 reward) {
             uint256 cost = (g - gasleft() + 21_000) * gasNow;
+            // proceeds this call collected, from the Balancer's own event (read after the gas is measured): upkeep may
+            // settle draws first (D16), so more than was waiting before the call can arrive
+            op0 = _collectedIn(vm.getRecordedLogs());
             if (rational && reward < cost) {
                 vm.revertToStateAndDelete(snap);
                 ++upkeepsSkipped;
@@ -1031,13 +1110,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 // The Balancer measures gas before storage refunds, so calls that clear storage come out above it.
                 uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
                 uint256 most = (cost / gasNow + 50_000) * price + 0.0001 ether;
-                if (reward > most) paidBeyondGasAndReward += reward - most;
+                if (reward > most) {
+                    paidBeyondGasAndReward += reward - most;
+                    paidBeyondGas += (reward - most) / price;
+                }
             } else {
                 claimed += reward;
             }
             proceedsCollected += op0;
             uint256 p1 = balancer.profit();
             if (p1 > p0) profitCredited += p1 - p0;
+            if (splitCheck && op0 != 0) _checkSplit(op0, p1 > p0 ? p1 - p0 : 0); // upkeep settled draws itself (D16)
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
@@ -1069,6 +1152,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             (address col,,, uint256 tokenId,,,, uint8 status) = pool.listings(nextLid);
             if (status == 0) break;
             (uint8 kind, uint8 d,, uint112 base, uint112 price) = balancer.items(nextLid);
+            (lidKind[nextLid], lidDenom[nextLid]) = (kind, d);
+            if (kind == SHAPE_KIND) lidFee[nextLid] = price - base;
             if (kind == SHAPE_KIND) {
                 backingMinted += _backingOf(col, tokenId);
                 units += _shapesIn(d);
@@ -1110,29 +1195,34 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         proceedsCollected += op;
         uint256 p1 = balancer.profit();
         if (p1 > p0) profitCredited += p1 - p0;
-        if (splitCheck) {
-            proceedsMismatch += op > uncollectedBase ? op - uncollectedBase : uncollectedBase - op;
-            if (p1 > p0) {
-                uint256 booked = p1 - p0;
-                ++splitChecks;
-                splitExpected += uncollectedShare;
-                splitBooked += booked;
-                uint256 err;
-                if (booked > uncollectedShare) {
-                    err = booked - uncollectedShare;
-                    splitOver += err;
-                } else {
-                    err = uncollectedShare - booked;
-                    splitUnder += err;
-                }
-                if (uncollectedShare != 0 && err * 10_000 / uncollectedShare > splitMaxErrorBps) {
-                    splitMaxErrorBps = err * 10_000 / uncollectedShare;
-                }
+        if (splitCheck) _checkSplit(op, p1 > p0 ? p1 - p0 : 0);
+    }
+
+    /// @dev Checks one collection of `op` proceeds that booked `booked` profit against the split computed from the
+    ///      board each collected draw was priced on. Every draw final by now is booked first: FWA's randomness fast
+    ///      path and upkeep (D16) settle draws before the harness's own `_account` reaches them.
+    function _checkSplit(uint256 op, uint256 booked) internal {
+        _account(splitIds);
+        proceedsMismatch += op > uncollectedBase ? op - uncollectedBase : uncollectedBase - op;
+        if (booked != 0) {
+            ++splitChecks;
+            splitExpected += uncollectedShare;
+            splitBooked += booked;
+            uint256 err;
+            if (booked > uncollectedShare) {
+                err = booked - uncollectedShare;
+                splitOver += err;
             } else {
-                ++splitSkippedAboveReserve;
+                err = uncollectedShare - booked;
+                splitUnder += err;
             }
-            (uncollectedBase, uncollectedShare) = (0, 0);
+            if (uncollectedShare != 0 && err * 10_000 / uncollectedShare > splitMaxErrorBps) {
+                splitMaxErrorBps = err * 10_000 / uncollectedShare;
+            }
+        } else {
+            ++splitSkippedAboveReserve;
         }
+        (uncollectedBase, uncollectedShare) = (0, 0);
     }
 
     function _claim() internal returns (uint256 s) {

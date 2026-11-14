@@ -140,17 +140,26 @@ contract KeeperPayTest is ForkBase {
     function test_splitCallsArePaidOncePerProcessedDraw() public {
         _open(0.5 gwei);
         fillUp();
-        _timeOut(5);
+        // Four draws: on this ten-Shape board the fill gate refuses a fifth single draw while four are unreconciled.
+        uint256 firstExpired = buyOnePerBlock(buyer, 4);
         uint256 snap = vm.snapshotState();
-        pool.processAcquisitions(5);
-        (uint256 batched,,) = _paid();
-        assertEq(balancer.reconciledSequence(), 5, "one call reconciles all five");
+        // Fewest calls: all four expired at once. Upkeep processes at most MAX_PROCESS (2) per call: 2, 2.
+        vm.roll(firstExpired + 3);
+        uint256 batched;
+        for (uint256 i; i < 2; ++i) {
+            (uint256 reward,,) = _paid();
+            batched += reward;
+        }
+        assertEq(balancer.reconciledSequence(), 4, "two calls reconcile all four");
+        _noWork();
         vm.revertToState(snap);
 
+        // Most calls: one draw expires per block, so each call processes and reconciles exactly one.
         uint256 split;
-        for (uint256 i; i < 5; ++i) {
-            _noWork(); // nothing newly processed: nothing to be paid for
-            pool.processAcquisitions(1);
+        for (uint256 i; i < 4; ++i) {
+            vm.roll(firstExpired + i - 1);
+            _noWork(); // the head is neither ready nor expired: nothing to be paid for
+            vm.roll(firstExpired + i);
             (uint256 reward, uint256 measured,) = _paid();
             assertEq(balancer.reconciledSequence(), i + 1, "each paid call advances reconciliation");
             assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + FLAT);
@@ -158,9 +167,9 @@ contract KeeperPayTest is ForkBase {
             split += reward;
         }
         _noWork();
-        assertLt(split - batched, 4 * 0.0003 ether, "splitting costs the creator at most one small reward per draw");
-        emit log_named_decimal_uint("paid for one batched call", batched, 18);
-        emit log_named_decimal_uint("paid for five split calls", split, 18);
+        assertLt(split - batched, 2 * 0.0003 ether, "splitting costs the creator at most one small reward per extra call");
+        emit log_named_decimal_uint("paid for two batched calls", batched, 18);
+        emit log_named_decimal_uint("paid for four split calls", split, 18);
     }
 
     /// Audit rc-ec5259c finding 3, repaired (owner decision D3): while closed, `requiredReserve` holds one maximum keeper

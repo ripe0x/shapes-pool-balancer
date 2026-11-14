@@ -10,7 +10,7 @@ contract ChallengeTest is KeeperPayTest {
     function test_closedSplitAtMaxGas() public {
         _open(4.95 gwei);
         fillUp();
-        buy(buyer, 5);
+        uint256 firstExpired = buyOnePerBlock(buyer, 4); // the fill gate admits four single draws on this board
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
@@ -19,10 +19,9 @@ contract ChallengeTest is KeeperPayTest {
         vm.prank(creator);
         balancer.claimSurplus(claimable, creator);
         assertEq(address(balancer).balance, held);
-        vm.roll(block.number + 40);
         uint256 paid;
-        for (uint256 i; i < 5; ++i) {
-            pool.processAcquisitions(1);
+        for (uint256 i; i < 4; ++i) {
+            vm.roll(firstExpired + i); // one more draw expired; upkeep processes and reconciles it (D16)
             (uint256 reward,, int256 pnl) = _paid();
             paid += reward;
             emit log_named_decimal_uint("paid", reward, 18);
@@ -30,7 +29,7 @@ contract ChallengeTest is KeeperPayTest {
             assertGt(reward, 0);
             assertGe(pnl, 0);
         }
-        assertEq(balancer.reconciledSequence(), 5);
+        assertEq(balancer.reconciledSequence(), 4);
         emit log_named_decimal_uint("held", held, 18);
         emit log_named_decimal_uint("total paid", paid, 18);
     }

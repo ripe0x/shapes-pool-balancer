@@ -68,6 +68,8 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_OPS = 5;
     /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
     uint256 internal constant MAX_RECONCILE = 5;
+    /// @dev FWA draws processed per upkeep (owner decision D16): keeps the worst upkeep under KEEPER_MAX_GAS.
+    uint256 internal constant MAX_PROCESS = 2;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -602,6 +604,15 @@ contract PoolBalancer is ReentrancyGuard {
         if (msg.sender != creator && !factory.canKeep(msg.sender)) revert KeeperNotApproved();
         uint256 gasStart = gasleft();
         IFWAPool p = pool;
+
+        // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
+        //    also only ever takes the queue's head), and a ready draw never expires, so it and every draw behind it wait
+        //    for an explicit processAcquisitions that nobody else is bound to call (launch audit B, S1; owner decision
+        //    D16). FWA stops at a draw still waiting for its randomness; a failure here never blocks the rest of upkeep.
+        //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
+        if (p.nextSequenceToProcess() <= p.lastIssuedSequence()) {
+            try p.processAcquisitions(MAX_PROCESS) {} catch {}
+        }
 
         // 1. Collect settled proceeds before reconciling: each draw was priced on the listings still tracked, so the
         //    split must see them (reconciling first would drop the won listing and skew the share).

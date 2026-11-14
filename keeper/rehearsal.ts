@@ -128,9 +128,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, words: bi
     const id = await read<bigint>(pool, fwaPoolAbi, 'requestIdAtSequence', [BigInt(s)]);
     await send({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'rawFulfillRandomWords', args: [id, [words[s - before - 1]]], account: coord, gas: 5_000_000n });
   }
-  if (await read<bigint>(pool, fwaPoolAbi, 'unsettledAcquisitionCount')) {
-    await send({ address: pool, abi: fwaPoolAbi, functionName: 'processAcquisitions', args: [5n], account: DEPLOYER });
-  }
+  // Nobody processes FWA's queue here: draws the randomness fast path skips wait for the keeper's upkeep (D16).
 }
 
 async function main() {

@@ -63,15 +63,16 @@ contract D3ReAttackTest is ForkBase {
     }
 
     /// @notice Core D3 requirement under the split-call pattern at the gas cap, with the owner's exact motivating case:
-    ///         draws that all expire (no proceeds), reconciled ONE PER CALL. FWA processing is permissionless, so a
-    ///         five-draw batch can be reconciled across five paid calls. The batch-sized hold must pay every one.
+    ///         draws that all expire (no proceeds), reconciled ONE PER CALL. Draws bought in successive blocks expire
+    ///         in successive blocks, so upkeep (which processes FWA's queue itself, D16) can meet them one at a time:
+    ///         five paid calls for five draws. The batch-sized hold must pay every one.
     function test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() public {
         // Independent absolute check of the constant the hold is built from.
         assertEq(balancer.MAX_KEEPER_REWARD(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01635 ETH at the cap");
         assertEq(_independentMaxReward(), 0.01635 ether, "0.01635 ETH");
 
-        // Five draws issued in one batch, left pending (no VRF), then closed: the worst in-flight count for one batch.
-        uint256[] memory reqs = buy(buyer, 5);
+        // Five draws issued one per block, left pending (no VRF), then closed.
+        uint256 firstExpired = buyOnePerBlock(buyer, 5);
         assertEq(pool.lastIssuedSequence(), 5, "five sequences issued");
         assertEq(balancer.reconciledSequence(), 0, "none reconciled yet");
 
@@ -88,13 +89,10 @@ contract D3ReAttackTest is ForkBase {
         assertEq(address(balancer).balance, held, "only the held pay remains");
         assertEq(pool.ownerProceeds(), 0, "expired draws bring no proceeds: the hold is the sole pay source");
 
-        // Expire the pending draws (deadline is selectionTimeoutBlocks ahead of issuance), then reconcile ONE per call.
-        vm.roll(block.number + 100); // past the 30-block selection timeout
-
+        // Each block expires one more draw; upkeep processes and reconciles exactly that one. Nobody else processes.
         uint256 totalPaid;
-        for (uint256 i; i < reqs.length; ++i) {
-            // Force-expire exactly one head sequence in FWA (permissionless), so the next upkeep reconciles just one.
-            pool.processAcquisitions(1);
+        for (uint256 i; i < 5; ++i) {
+            vm.roll(firstExpired + i);
             uint64 before = balancer.reconciledSequence();
             uint256 keeperBefore = keeper.balance;
             vm.prank(keeper, keeper);

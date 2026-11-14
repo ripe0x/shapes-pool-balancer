@@ -435,3 +435,10 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     creator ends ahead in quiet operation at 0.1 to 5 gwei; prize luck and zero demand as information). D14: the keeper
     constants of DECISIONS 73 are final: 0.0001 ETH flat reward and 50,000-gas overhead (rehearsal receipts: 0.000146 ETH
     per call above billed gas over 336 mined calls). D15: no contract caps; the canary is the owner's own small first pool.
+75. **Launch-audit decisions D16 to D18** (owner, 2026-11-13: "Yes, all three"; `docs/LAUNCH-AUDIT-TRIAGE.md`). D16:
+    `performUpkeep` first calls FWA's `processAcquisitions(MAX_PROCESS = 2)` in a try/catch when draws are waiting: a
+    draw whose request reserved a staged restock skips FWA's randomness fast path and, before this, waited for a processor
+    nothing in the system ran (launch audit B, S1). The settled draws are reconciled in the same call, so the keeper is
+    paid under the usual rule. `test/ProcessQueue.t.sol` fails on the previous contract; regime `no_processor` and the
+    keeper e2e run without the harness processing. D17: O10 restated to the launch board at steady normal gas. D18: the
+    game's 10% stays as built.

@@ -187,6 +187,8 @@ keepers it approves (`BalancerFactory.setKeepersRestricted`, `setKeeperApproved`
 pool's creator can always run its own. The reward rules are the same either way; while restricted, a pool whose approved
 keepers stop is restocked only when its creator runs upkeep.
 
+0. process FWA's queue, up to 2 draws per call, when draws are waiting (DECISIONS 75): a draw whose request reserved a
+   staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep.
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).
 2. collect FWA owner proceeds into the Balancer.

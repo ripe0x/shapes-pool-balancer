@@ -110,6 +110,17 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   later, sales stopped). FWA's own sponsored processor processed only 2 pools in the last 50,000 blocks. Decision D16 in
   `docs/LAUNCH-AUDIT-TRIAGE.md`.
 
+## Launch-audit decisions (owner, 2026-11-13: "Yes, all three")
+
+- R29. D16: upkeep processes FWA's queue and is paid for it: before reconciling, `performUpkeep` calls
+  `processAcquisitions(2)` when draws are waiting, so any paid keeper unblocks a pool → **O13** *(proposed)*: with only
+  players, randomness and keepers acting, no day ends with a draw unsettled (`no_processor` regime: 539 draws, 179 of
+  them lost FWA's fast path, none left unsettled). Corrects R16's "then anyone processes".
+- R30. D17: O10 is the launch board at steady normal gas; after a spike prices stay higher until the prizes listed during
+  it are won again, and a creator's own markup and NFT values can exceed 1.5×: information → **O10** (restated).
+- R31. D18: the game's first 10% of markup refills the reserve while the fund is below it; above the reserve the creator
+  may claim everything → **O8** (unchanged).
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

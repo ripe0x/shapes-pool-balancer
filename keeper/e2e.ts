@@ -108,11 +108,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
     const fh = await wallet.writeContract({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'rawFulfillRandomWords', args: [id as bigint, [BigInt(keccak256(toHex(word * 1000n + BigInt(s))))]], account: coord, chain: null, gas: 5_000_000n });
     await pub.waitForTransactionReceipt({ hash: fh });
   }
-  const unsettled = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'unsettledAcquisitionCount' });
-  if (unsettled) {
-    const ph = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'processAcquisitions', args: [5n], account: ACCTS[0], chain: null });
-    await pub.waitForTransactionReceipt({ hash: ph });
-  }
+  // Nobody processes FWA's queue here: draws the randomness fast path skips wait for the keeper's upkeep (D16).
 }
 
 async function run() {

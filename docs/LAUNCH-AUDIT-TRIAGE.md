@@ -39,13 +39,16 @@ Every call the fork harness makes that is not a player, an attacker or an extern
 
 | Harness call | Production component | Status |
 | --- | --- | --- |
-| `pool.processAcquisitions` (`ForkBase.settle`, `FlowBreakdown._process`, `keeper/e2e.ts`, `keeper/rehearsal.ts`) | **none** | S1 |
+| `pool.processAcquisitions` (`ForkBase.settle`, `FlowBreakdown._process`, `keeper/e2e.ts`, `keeper/rehearsal.ts`) | **none** before D16; `performUpkeep` after it | S1, repaired (D16): removed from every regime, the e2e run and the rehearsal; `ForkBase.settle` stays in unit tests as the permissionless call anyone may make |
 | randomness delivered as the coordinator (impersonation) | Chainlink VRF through FWA's service | stand-in; real timing untested |
 | `performUpkeep` after every draw | the keeper service (`keeper/keeper.ts`) | covered; the rehearsal runs the real service |
 | creator claims, relists, closes, unlists | the creator through the app | covered for the paths clicked on the fork |
 | `collectProceeds` before upkeep (split check) | `performUpkeep` collects first anyway | equivalent |
 
-No regime yet runs with the harness doing only what users do. One is part of D16.
+After D16 every regime runs with only players, the randomness service, keepers and the creator acting. Moving the
+other 19 regimes off harness processing changed their facts by at most 2 upkeeps and 0.00045 ETH of keeper pay; it
+also exposed that the split check booked draws after upkeep had already collected their proceeds (a harness pairing
+error: profit booked was identical before and after), now booked at every collection.
 
 ## Decisions for the owner
 

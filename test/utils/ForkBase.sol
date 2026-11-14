@@ -12,6 +12,10 @@ interface IVRFService {
     function rawFulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) external;
 }
 
+interface ITimeout {
+    function selectionTimeoutBlocks() external view returns (uint256);
+}
+
 /// @dev Mainnet fork against the deployed FWA PoolFactory, StandardPoolBuyback and Shapes.
 ///      Randomness is delivered through the real FWA VRF service by impersonating its Chainlink
 ///      coordinator, the only caller the service accepts.
@@ -113,6 +117,19 @@ abstract contract ForkBase is Test {
         (,, uint256 total) = pool.quoteAcquisitionPrice(count);
         vm.prank(who, who);
         ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, pool.inventoryVersion(), block.timestamp + 1);
+    }
+
+    /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has
+    ///      expired; each later block expires exactly one more. Upkeep processes FWA's queue itself (D16) and stops at
+    ///      a head that is neither ready nor expired, so rolling to `firstExpired + i` lets call i reconcile exactly
+    ///      one draw: the most calls, and so the most keeper pay, a batch can cost.
+    function buyOnePerBlock(address who, uint256 n) internal returns (uint256 firstExpired) {
+        uint256 timeout = ITimeout(address(pool)).selectionTimeoutBlocks();
+        firstExpired = vm.getBlockNumber() + timeout + 1;
+        for (uint256 i; i < n; ++i) {
+            if (i != 0) vm.roll(vm.getBlockNumber() + 1);
+            buy(who, 1);
+        }
     }
 
     /// @dev Deliver `word` through the real VRF service, then process the canonical queue.
