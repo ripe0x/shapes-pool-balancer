@@ -6,6 +6,8 @@ set and asserted inside a transaction), 180 draws per regime unless stated.
 
 ## Decisions for the owner
 
+**Decided 2026-11-13: D12 a, D13 a, D14 a, D15 a ("Yes, all four").**
+
 | # | Decision | Options and measured numbers | Recommendation and why |
 | --- | --- | --- | --- |
 | D12 | R4 "never loses money with keepers" as an outcome | **a) O11 as drafted:** on the launch board, restocking fees repaid in won prizes cover keeper pay for play at 0.1 to 5 gwei, through a gas spike and a randomness outage. Measured +0.019 to +0.12 ETH. Information: the creator's own setup work (opening fill) costs 0.0054 to 0.14 ETH from 0.1 to 5 gwei, so at 5 gwei the total is −0.020 ETH over 180 draws (the fees in still-listed prizes, 0.26 ETH, come back as those prizes are won); NFT-dominated boards lose 0.025 to 0.035 ETH (an NFT win brings no fee, but its reconcile is paid). **b) Include setup work in the outcome:** fails at 5 gwei (−0.020). **c) Add a restocking fee to NFT listings:** a contract change | **a.** It measures the flow R4 is about. Setup is a one-time cost the creator chooses, and the NFT case is about 0.0002 ETH per NFT win |

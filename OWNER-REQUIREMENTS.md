@@ -10,8 +10,8 @@ Markers: *(relayed)* the decision reached us through another session; *(agent wo
 owner's intent; *(proposed)* an outcome or number the owner has not yet chosen.
 
 **Status (2026-11-13):** R1 to R23 confirmed by the owner ("gtg"). This version restructures them on review of the
-audit-process guidance (pointers, restated money goals, the log split off) and adds R24 to R28: **to reconfirm**, with the
-proposed outcomes O11 and O12 and the final keeper constants (decision table in `docs/LAUNCH-READINESS.md`).
+audit-process guidance (pointers, restated money goals, the log split off) and adds R24 to R28: **to reconfirm**. D12 to D15 (O11, O12, the keeper constants, no caps) were decided by the owner on
+2026-11-13: "Yes, all four".
 
 ## Authority and safety (owner, 2026-11-10)
 
@@ -25,7 +25,7 @@ proposed outcomes O11 and O12 and the final keeper constants (decision table in 
 
 - R4. "we need to make this so it never loses money with keepers"; "The markup is where they make money"; "the gas at
   listing time != gas at draw time". Under option B the creator pays keepers and the restocking fee in each price is the
-  creator's income, so this is the balance of two flows → **O11** *(proposed)*: restocking fees repaid in won prizes
+  creator's income, so this is the balance of two flows → **O11** (D12, "Yes, all four"): restocking fees repaid in won prizes
   cover keeper pay for play on the launch board at 0.1 to 5 gwei. Measured, 180 draws: +0.019 to +0.12 ETH; with the
   creator's own setup work counted, −0.020 ETH at 5 gwei (setup 0.14 ETH); NFT-dominated boards −0.025 to −0.035 ETH for play
   (an NFT win brings no fee).
@@ -33,8 +33,8 @@ proposed outcomes O11 and O12 and the final keeper constants (decision table in 
   individually → `test/KeeperList.t.sol` (open by default; restricted list; creator always allowed; admin reopens).
 - R10. Option B *(relayed)*: every useful upkeep (one that reconciles a draw or lists a prize) is paid from the
   creator's ETH at gas plus a small flat reward; a call that does nothing is paid nothing. Replaces M1 ("the markup is
-  never spent on keepers") → **O1**. The flat reward (0.0001 ETH) and overhead (50,000 gas) are **to be fixed by the
-  owner** before signing.
+  never spent on keepers") → **O1**. The flat reward (0.0001 ETH) and overhead (50,000 gas) are final (D14, "Yes, all
+  four").
 - R11. D2: "D2 yes: accept, limit 0.002 ETH per 180 draws": keepers keep storage refunds on top of gas → **O1**.
 - R12. D4: "D4 yes: accept and budget one paid call per processed draw; fix the comment." → budgeted inside O11's net.
 - R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**.
@@ -50,7 +50,7 @@ proposed outcomes O11 and O12 and the final keeper constants (decision table in 
   1/3 - 2/3?" → **O8**.
 - R8. Product goal *(agent wording)*: the pool stays open through ordinary mainnet gas up to 5 gwei, funds itself from
   sales, is profitable for the creator in expectation, at a draw price players will accept → **O7** (open), **O10**
-  (price), **O12** *(proposed)* (the creator ends ahead in quiet operation at 0.1 to 5 gwei: measured +0.34 to +1.28 ETH
+  (price), **O12** (D13, "Yes, all four") (the creator ends ahead in quiet operation at 0.1 to 5 gwei: measured +0.34 to +1.28 ETH
   per 180 draws on a 5 ETH deposit).
 - R9. Exact redeemable backing *(agent wording, M4)*: every prize holds its backing and returns to the pool at exactly
   that value when unlisted or recovered → **O4**.
@@ -99,9 +99,8 @@ proposed outcomes O11 and O12 and the final keeper constants (decision table in 
 
 ## Added on review, 2026-11-13 (to reconfirm)
 
-- R28 *(proposed)*. Final keeper constants: the flat reward and overhead allowance in R10, as numbers the owner signs
-  (today 0.0001 ETH and 50,000 gas; rehearsal receipts: 336 keeper transactions earned 0.000146 ETH each above their
-  billed gas on average).
+- R28. Final keeper constants (D14, "Yes, all four"): flat reward 0.0001 ETH and overhead allowance 50,000 gas
+  (rehearsal receipts: 336 keeper transactions earned 0.000146 ETH each above their billed gas on average).
 
 ## Decisions log (history, not requirements)
 
@@ -109,3 +108,5 @@ proposed outcomes O11 and O12 and the final keeper constants (decision table in 
 - 2026-11-13. Merges on the owner's word: PR #3 ("merge"), PR #2 ("Yes, merge PR #2"), PR #1 ("Yes, merge PR #1"),
   PR #4 ("merge").
 - 2026-11-13. This file confirmed ("gtg"), then restructured on the audit-process review above.
+- 2026-11-13. D12 to D15 decided: "Yes, all four" (O11, O12, keeper constants final, no contract caps; canary is the
+  owner's own small first pool).

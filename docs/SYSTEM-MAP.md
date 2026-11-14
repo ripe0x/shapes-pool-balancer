@@ -42,7 +42,7 @@ fund is empty).
 | 6 | Owner proceeds -> Balancer | anyone (`collectProceeds`), every upkeep and creator action | no |
 | 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection, only while the fund is below the reserve | spent first by the next claim; restocking may spend it when the fund is empty |
 | 8 | Balancer -> Shapes / Packs: backing + mint fee, token listed on FWA | keeper upkeep while open, smallest prize first, at most 5 Shapes per call | backing yes (creator `unlistShapes`, only while no draw is unsettled); mint fee no |
-| 9 | Balancer -> keeper: gas plus a flat 0.0001 ETH (provisional) | any upkeep that reconciles a draw or lists a prize | the restocking fee inside each prize's price comes back when it is won; pay for draws that timed out or won an NFT does not |
+| 9 | Balancer -> keeper: gas plus a flat 0.0001 ETH (owner-approved, D14) | any upkeep that reconciles a draw or lists a prize | the restocking fee inside each prize's price comes back when it is won; pay for draws that timed out or won an NFT does not |
 | 10 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
 | 11 | FWA pool -> player: refund credit withdrawn | player | no |
 

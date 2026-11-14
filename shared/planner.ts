@@ -12,8 +12,8 @@ export const MAX_SHAPES_PER_PLAN = 80; // PoolBalancer.MAX_SHAPES_PER_PLAN
 export const KEEPER_MAX_GAS = 3_200_000n;
 export const KEEPER_PRIORITY_CAP = 5n * 10n ** 7n; // 0.05 gwei over basefee
 export const KEEPER_MAX_GAS_PRICE = 5n * 10n ** 9n;
-export const KEEPER_INCENTIVE = 10n ** 14n; // provisional, not owner-approved
-export const KEEPER_OVERHEAD_GAS = 50_000n; // provisional: gas a transaction pays outside the measured span
+export const KEEPER_INCENTIVE = 10n ** 14n; // owner-approved (D14)
+export const KEEPER_OVERHEAD_GAS = 50_000n; // owner-approved (D14): gas a transaction pays outside the measured span
 /** Reward = (measured gas + 50,000) x min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH, for every call that
  *  reconciles a draw or lists a prize, from the creator's ETH. */
 export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;

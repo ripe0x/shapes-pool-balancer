@@ -43,7 +43,7 @@ MAX_KEEPER_REWARD = (3.2M + 50,000) × 5 gwei + 0.0001 ETH = 0.01635 ETH
 restockFee = 900k × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH   (per Shape in a prize, at the listing block)
 ```
 
-DECISIONS 73 (both constants provisional). The 50,000 gas is what a transaction pays outside the measured span (21k
+DECISIONS 73 and 74 (both constants owner-approved, D14). The 50,000 gas is what a transaction pays outside the measured span (21k
 intrinsic, calldata, the keeper-list check, the reward transfer; measured 24k-46k), so the 0.0001 ETH is the keeper's
 margin at any price up to the cap. The `KeeperPaid` event's `gasUsed` is the measured gas.
 
@@ -175,8 +175,8 @@ measured on the rewrite** (the previous design's `test_reserveSizes` numbers do 
 | `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
 | `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
 | `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
-| `KEEPER_INCENTIVE` | 0.0001 ETH (provisional) | the keeper's margin per paid call |
-| `KEEPER_OVERHEAD_GAS` | 50,000 (provisional) | gas outside the measured span (measured 24k-46k) |
+| `KEEPER_INCENTIVE` | 0.0001 ETH (owner-approved, D14) | the keeper's margin per paid call |
+| `KEEPER_OVERHEAD_GAS` | 50,000 (owner-approved, D14) | gas outside the measured span (measured 24k-46k) |
 | `MAX_KEEPER_REWARD` | 0.01635 ETH | `(3.2M + 50,000) × 5 gwei + 0.0001`; `requiredReserve` holds one per restocking call plus one |
 
 The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
