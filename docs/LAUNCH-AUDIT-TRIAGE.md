@@ -86,6 +86,15 @@ requirement tests (`test/audit/d16/`), each failing on `af1075c` and passing aft
 | — | Skipping restock after processing could starve restocking | executed, not reproduced | 150 blocks of sustained play, 0 LOW_INVENTORY blocks; asserted |
 | — | A deterministic FWA failure inside the try is silent: keepers see only `NoUpkeepNeeded` | reasoned | follow-up: keeper alert when FWA's queue head stays ready or expired |
 
+### Third re-attack (`1dcddf2`)
+
+| # | Finding | Basis | Repair |
+| --- | --- | --- | --- |
+| 1 | A starved call still succeeded above MIN_PROCESS_GAS with 512+ listings and a hostile collection (processing needs 3.09M-3.12M before FWA's stipends; 2.95M forwarded at 3M); the estimate landed there: 0.0134 ETH lost per raw-estimate call at 5 gwei | executed | starvation judged by the gas the failed call handed back (under 400,000 beyond the caller's 1/64), at any pool size; sweeps 1.5M-4.2M at pads 0, 464 and 976 |
+| 2 | A collection whose transfer depends on gas can be left DeliveryPending at some low limits while processing returns normally | executed | none in the contract: FWA lets any caller pick the gas; the app's (1.3x estimate) and keeper's (1.3x, 4M floor) limits deliver; curation risk, information |
+| 3 | keeper.ts priced calls at the estimate (0.37M-0.48M above billed for processing calls) and skipped profitable processing from about 1.45 gwei | executed | keeper prices at the gas the simulated reward pays for, unless the reward was cut by KEEPER_MAX_GAS or the balance |
+| 4 | A deterministic FWA failure would push estimates high and keepers would skip that pool | reasoned | moot with the hand-back rule: a failure that is not for want of gas leaves gas to spare, so upkeep continues unpaid for it and estimates stay normal (reasoned); keeper alert for a stuck queue is a follow-up |
+
 ## Things that don't make sense
 
 - Every regime and both rehearsals processed FWA's queue themselves, so none of our evidence could show S1. The same

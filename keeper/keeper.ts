@@ -25,8 +25,8 @@ export const KEEPER_MAX_GAS = 3_200_000n;
  *  upkeeps measure under KEEPER_MAX_GAS on a fork: 5 reconciles + 5 Shape units in 4 sizes (test/Gas.t.sol), and two
  *  processed draws that each reserved FWA's maximum six listings + 5 reconciles, 2.98M to 3.22M (a call that processes
  *  skips restocking; test/audit/d16/WorstUpkeep.t.sol, test/audit/d16b/WorstUpkeepB.t.sol). Processing that fails
- *  with under 3,000,000 gas left reverts the whole upkeep (InsufficientGas), so the limit must clear that too; this
- *  floor does, and adds headroom for Shapes mint gas varying by block. Only gas used is billed. */
+ *  for want of gas reverts the whole upkeep (InsufficientGas), so a limit too small to process never succeeds; this
+ *  floor adds headroom for Shapes mint gas varying by block. Only gas used is billed. */
 export const UPKEEP_GAS_FLOOR = 4_000_000n;
 
 /** Gas limit for an upkeep estimated at `estimate`: 30% headroom, never below UPKEEP_GAS_FLOOR. */
@@ -45,13 +45,30 @@ export interface Policy {
   priorityFee: bigint;
   /** Loss the operator accepts per call (e.g. gas-only reconciliations that keep pools open). */
   maxLossWei: bigint;
+  /** The Balancer's ETH balance before the call, which caps the reward. Without it the cost is the estimate. */
+  balance?: bigint;
 }
 
-/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). The reward pays for at most
- *  KEEPER_MAX_GAS, so a larger estimate simply costs more than it earns unless the reward still covers it. */
+const KEEPER_OVERHEAD_GAS = 50_000n;
+const KEEPER_INCENTIVE = 10n ** 14n;
+const KEEPER_MAX_GAS_PRICE = 5_000_000_000n;
+const KEEPER_PRIORITY_CAP = 50_000_000n;
+
+/** Send only when the contract's reward covers the expected cost (within `maxLossWei`). The cost is the gas the
+ *  simulated reward pays for (the Balancer's measured gas plus its 50,000 overhead, which covers everything outside
+ *  the measured span, so billed gas never exceeds it) unless that reward was cut by KEEPER_MAX_GAS or the Balancer's
+ *  balance; then it is `eth_estimateGas`. The estimate is the least limit that succeeds, which for upkeeps that
+ *  process FWA's queue is 0.37M-0.48M above the gas billed (D16 re-attack 3, finding 3). */
 export function decide(p: Policy): { send: boolean; reason: string } {
-  const cost = p.gasEstimate * (p.baseFee + p.priorityFee);
-  if (p.expectedReward + p.maxLossWei < cost) return { send: false, reason: 'unprofitable at current gas' };
+  const price = p.baseFee + p.priorityFee;
+  let gas = p.gasEstimate;
+  if (p.balance !== undefined && p.expectedReward < p.balance && p.expectedReward > KEEPER_INCENTIVE) {
+    let reimbursed = price < p.baseFee + KEEPER_PRIORITY_CAP ? price : p.baseFee + KEEPER_PRIORITY_CAP;
+    if (reimbursed > KEEPER_MAX_GAS_PRICE) reimbursed = KEEPER_MAX_GAS_PRICE;
+    const paidGas = (p.expectedReward - KEEPER_INCENTIVE) / reimbursed;
+    if (paidGas < KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS && paidGas < gas) gas = paidGas;
+  }
+  if (p.expectedReward + p.maxLossWei < gas * price) return { send: false, reason: 'unprofitable at current gas' };
   return { send: true, reason: 'ok' };
 }
 
@@ -209,7 +226,8 @@ export class Keeper {
       throw e; // unexpected: surface as a pool error
     }
     const gasEstimate = await this.pub.estimateContractGas(call as never);
-    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei });
+    const balance = await this.pub.getBalance({ address: b });
+    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei, balance });
     if (!verdict.send) {
       this.state.stats.skippedUnprofitable++;
       this.log(`skip: ${verdict.reason}`, { balancer: b, fn, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });

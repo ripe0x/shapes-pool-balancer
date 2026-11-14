@@ -463,3 +463,13 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     (`InsufficientGas`), so every successful call has processed and estimates land above the band. Finding 2: the
     worst upkeep measures up to 3.22M with 1,024 listings (2.98M was the launch-board case); keepers stay covered
     because about 530k gas is refunded, so the requirement tests assert keeper cover, not "measured < 3.2M".
+79. **Third D16 re-attack** (independent, of `1dcddf2`). Finding 1: MIN_PROCESS_GAS (3,000,000) was sized on the gas
+    processing uses, not the gas it needs before FWA's fixed stipends (notifier `call(300000)`, refused below 290,000);
+    with 512 or more listings and a hostile collection a starved call still succeeded above it and the estimate landed
+    there (0.0134 ETH lost per raw-estimate call at 5 gwei). The threshold is replaced by what the failed call handed
+    back: under 400,000 gas beyond the caller's 1/64 means it was starved (FWA's one deliberate gas refusal is the
+    notifier's, and an out-of-gas hands back nothing), at any pool size. Finding 3: keeper.ts priced every call at its
+    gas estimate, 0.37M-0.48M above the billed gas for calls that process, and skipped profitable processing from about
+    1.45 gwei; it now prices at the gas the simulated reward pays for unless that reward was cut by the cap or the
+    balance. Finding 2 (a gas-dependent collection left DeliveryPending at some low limits) is FWA's: any caller of
+    `processAcquisitions` picks the gas; the app's and keeper's limits deliver; information and a curation risk.

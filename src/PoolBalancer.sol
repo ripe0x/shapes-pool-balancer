@@ -70,9 +70,10 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_RECONCILE = 5;
     /// @dev FWA draws processed per upkeep (owner decision D16): keeps the worst upkeep under KEEPER_MAX_GAS.
     uint256 internal constant MAX_PROCESS = 2;
-    /// @dev Gas left before processing above which FWA's processing of MAX_PROCESS draws cannot run out of gas (worst
-    ///      measured 2.30M: two draws that each reserved six listings of a collection burning FWA's stipends).
-    uint256 internal constant MIN_PROCESS_GAS = 3_000_000;
+    /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
+    ///      notifier would start with under 290,000 gas (its `call(300000)` gets 63/64 of what is left), and an
+    ///      out-of-gas hands back nothing. A failure with more than this left was not for want of gas.
+    uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -617,8 +618,8 @@ contract PoolBalancer is ReentrancyGuard {
         //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
         //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
         //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing). Processing that
-        //    reverted with less than MIN_PROCESS_GAS left reverts the whole upkeep instead: a call never succeeds with
-        //    processing starved, so a gas estimate is enough to process (D16 re-attack 2, finding 1).
+        //    failed for want of gas reverts the whole upkeep instead, at any pool size: a call never succeeds with
+        //    processing starved, so a gas estimate is enough to process (D16 re-attacks 2 and 3).
         bool processed;
         uint64 next = p.nextSequenceToProcess();
         if (next <= p.lastIssuedSequence()) {
@@ -626,8 +627,9 @@ contract PoolBalancer is ReentrancyGuard {
             try p.processAcquisitions(MAX_PROCESS) {
                 processed = p.nextSequenceToProcess() != next;
             } catch {
-                if (g < MIN_PROCESS_GAS) revert InsufficientGas();
-                gasStart -= g - gasleft();
+                uint256 left = gasleft();
+                if (left < g / 64 + PROCESS_STARVED_GAS) revert InsufficientGas();
+                gasStart -= g - left;
             }
         }
 
