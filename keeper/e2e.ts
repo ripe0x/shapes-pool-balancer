@@ -288,7 +288,7 @@ async function run() {
 
 /** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the restocking fees of the prizes listed. */
 function checkAudit(k: Keeper) {
-  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
+  const rows = k.audit.map((a) => ({ gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
   console.table(rows);
   for (const a of k.audit) assert.ok(a.reward <= MAX_KEEPER_REWARD, `reward ${a.reward} above the maximum (${a.hash})`);
   console.log('✓ rewards within MAX_KEEPER_REWARD for', k.audit.length, 'keeper txs');

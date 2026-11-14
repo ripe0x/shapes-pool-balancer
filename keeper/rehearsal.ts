@@ -99,18 +99,6 @@ async function send(p: Record<string, unknown>) {
   return r;
 }
 
-/** Word that makes FWA select `lid`: cumulative weight of active listings in lower slots (FWA's segment tree order). */
-async function wordFor(b: Address, pool: Address, lid: bigint) {
-  const ids = await read<bigint[]>(b, poolBalancerAbi, 'getActiveIds');
-  const target = await read<readonly unknown[]>(pool, fwaPoolAbi, 'listings', [lid]);
-  let acc = 0n;
-  for (const id of ids) {
-    const l = await read<readonly unknown[]>(pool, fwaPoolAbi, 'listings', [id]);
-    if (Number(l[7]) === 1 && (l[6] as bigint) < (target[6] as bigint)) acc += l[4] as bigint;
-  }
-  return acc;
-}
-
 async function buyAndSettle(b: Address, count: number, buyer: Address, words: bigint[]) {
   const pool = await read<Address>(b, poolBalancerAbi, 'pool');
   await test.impersonateAccount({ address: buyer });
@@ -207,7 +195,7 @@ async function main() {
       await test.impersonateAccount({ address: CREATORS[i] });
       await send({ address: demo[i], abi: demoAbi, functionName: 'mint', args: [CREATORS[i], id], account: CREATORS[i] });
       await send({ address: demo[i], abi: erc721Abi, functionName: 'approve', args: [balancers[i], id], account: CREATORS[i] });
-      await send({ address: balancers[i], abi: poolBalancerAbi, functionName: 'listCurated', args: [demo[i], id, 25n * 10n ** 16n], account: CREATORS[i] });
+      await send({ address: balancers[i], abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [[{ collection: demo[i], tokenId: id, base: 25n * 10n ** 16n }]], account: CREATORS[i] });
       stats.creatorRestocks++;
     };
     const keepStocked = async () => {

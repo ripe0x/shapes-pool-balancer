@@ -17,8 +17,6 @@ export const KEEPER_OVERHEAD_GAS = 50_000n; // owner-approved (D14): gas a trans
 /** Reward = (measured gas + 50,000) x min(bid, basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH, for every call that
  *  reconciles a draw or lists a prize, from the creator's ETH. */
 export const MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
-/** Bound on one call's reward at a price (PoolBalancer._rewardBound). */
-export const rewardBound = (price: bigint) => (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
 /** Price an honest keeper is reimbursed at: min(basefee + 0.05 gwei, 5 gwei). */
 export const rewardPrice = (baseFee: bigint) => (baseFee + KEEPER_PRIORITY_CAP > KEEPER_MAX_GAS_PRICE ? KEEPER_MAX_GAS_PRICE : baseFee + KEEPER_PRIORITY_CAP);
 /** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; built into the draw price, the creator's income toward keeper pay. */
@@ -69,16 +67,6 @@ export const BY_VALUE: readonly number[] = DENOMS.map((_, i) => i).sort((a, b) =
 /** ETH to create one prize of size d: its backing plus a mint fee per Shape inside. */
 export const prizeCost = (d: number, mintFee: bigint) => DENOMS[d] + BigInt(SHAPES_IN[d]) * mintFee;
 export const prizeLabel = (d: number) => `${DENOM_LABELS[d]} ETH ${isPack(d) ? 'Pack' : 'Shape'}`;
-
-/** Billed gas from isolated mainnet-fork transactions (docs/GAS.md). Cost estimates only, never limits.
- *  The pool pays the keeper at most this (4/5 of measured gas is 80-99% of billed gas). */
-export const GAS = {
-  upkeepBase: 833_000, // reconcile + collect + replace 1 Shape + checkpoint
-  perShape: 327_000, // each additional Shape replaced in the same denomination
-  perExtraDenom: 153_000, // separate mint call for each further denomination
-  reconcileOnly: 220_000, // curated-only or refund-only batch
-  redeemPerShape: 120_000, // plan switch: withdraw + redeem each surplus Shape (~1.0M for 6)
-};
 
 export type Counts = number[]; // length 16, indexed like DENOMS
 
@@ -186,7 +174,6 @@ export interface Evaluation {
   capital: bigint;
   shapes: number;
   requiredReserve: bigint; // PoolBalancer.requiredReserve() with the target fully listed and reconciled
-  initialMintFees: bigint;
   ownerProceedsPerDraw: bigint; // EV paid to the owner on each delivered draw
 }
 
@@ -230,7 +217,6 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
     capital,
     shapes,
     requiredReserve: requiredReserveAt(counts, counts, inputs.mintFee),
-    initialMintFees: counts.reduce((s, n, d) => s + BigInt(n * SHAPES_IN[d]) * inputs.mintFee, 0n),
     ownerProceedsPerDraw: ev,
   };
 }
@@ -242,7 +228,6 @@ const toEth = (x: bigint) => Number(x) / 1e18;
  *  811k gas, an NFT-win reconcile about 137k; both below include the 50,000 overhead. */
 const KEEPER_GAS_PER_SHAPE = 861_000n;
 const KEEPER_GAS_RECONCILE = 187_000n;
-const KEEPER_FLAT = 10n ** 14n;
 
 /**
  * Expected ETH per draw, by where it goes. Players pay for mint fees and keepers on top of the markup: a drawn Shape
@@ -262,19 +247,19 @@ export function economics(counts: Counts, inputs: PoolInputs) {
   let restock = 0;
   let keeper = 0;
   // The keeper's reimbursed gas price, recovered from the restocking fee (900k gas x price + 0.0002 ETH).
-  const price = inputs.restockFee > RESTOCK_FEE_FLAT ? (inputs.restockFee - RESTOCK_FEE_FLAT) / 900_000n : 0n;
+  const price = inputs.restockFee > RESTOCK_FEE_FLAT ? (inputs.restockFee - RESTOCK_FEE_FLAT) / RESTOCK_FEE_GAS : 0n;
   for (const t of ev.tiers) {
     const p = t.oddsPpm / 1e6; // this tier, all its listings
     if (t.kind === 'curated') {
       markup += p * toEth(t.listPrice - t.value);
-      keeper += p * toEth(KEEPER_GAS_RECONCILE * price + KEEPER_FLAT);
+      keeper += p * toEth(KEEPER_GAS_RECONCILE * price + KEEPER_INCENTIVE);
     } else {
       const shapes = BigInt(SHAPES_IN[t.size!]);
       markup += p * toEth((DENOMS[t.size!] * m) / BPS);
       claimable += p * toEth((DENOMS[t.size!] * claimM) / BPS);
       mint += p * toEth(shapes * inputs.mintFee);
       restock += p * toEth(shapes * inputs.restockFee);
-      keeper += p * Number(shapes) * toEth(KEEPER_GAS_PER_SHAPE * price + KEEPER_FLAT);
+      keeper += p * Number(shapes) * toEth(KEEPER_GAS_PER_SHAPE * price + KEEPER_INCENTIVE);
     }
   }
   return {

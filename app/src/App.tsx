@@ -1,15 +1,16 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, shapeCount, unpackPlan, type Counts,
 } from '../../shared/planner';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
@@ -34,7 +35,6 @@ export const STATUS: Record<number, string> = {
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
@@ -114,32 +114,6 @@ function useBalancer(b?: Address) {
   }, [load, b]);
   useEffect(() => { refresh(); const t = setInterval(refresh, 15_000); return () => clearInterval(t); }, [refresh]);
   return { data, error, refresh };
-}
-
-const ERRORS: Record<string, string> = {
-  NoUpkeepNeeded: 'nothing to do right now',
-  WithdrawLocked: 'draws are settling on FWA; try again in a minute',
-  InsufficientSurplus: 'amount exceeds claimable surplus',
-  ReserveNotFunded: 'deposit the reserve first',
-  InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
-  Unauthorized: 'only the creator can do this',
-  NotClosed: 'close purchases first',
-  InvalidPlan: `the mix needs 1 to ${MAX_SHAPES_PER_PLAN} prizes`,
-  ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
-  ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
-  InvalidItem: 'not available for this action (check its FWA status)',
-};
-
-function explain(e: unknown): string {
-  if (e instanceof BaseError) {
-    const reverted = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
-    const name = reverted?.data?.errorName;
-    // Error(string) reverts carry their message as the reason.
-    if (name === 'Error' && reverted?.reason) return reverted.reason;
-    if (name) return ERRORS[name] ?? name;
-    return e.shortMessage;
-  }
-  return (e as Error).message;
 }
 
 function useTx(onDone: () => void) {
@@ -573,7 +547,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const initial = useRef({ style, custom, small });
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = MAX_SHAPES_PER_PLAN - shapeTotal(bonus);
+  const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
   const smallUsed = Math.max(0, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
   // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
@@ -601,7 +575,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
   const ready = bases.length > 0 && total > 0;
-  const ev = ready ? describe(counts, inputs) : undefined;
+  const ev = ready ? evaluate(counts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
   const view = ev ? playerView(ev, d.vrfFee ?? 0n) : undefined;
@@ -644,7 +618,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   };
 
   // Inventory: one square per item in the pool, each with its own chance per draw.
-  const nftGroup = groups.find((g) => g.nft);
   // Same group order as the 100-draw view (most frequent first), so the two views line up.
   const curatedTiers = view?.tiers.filter((t) => t.kind === 'curated') ?? [];
   const items: InvItem[] = view ? ordered.flatMap(({ g }): InvItem[] => {
@@ -744,7 +717,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
-  const savedEv = has && bases.length ? describe(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
+  const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
   const savedView = savedEv ? playerView(savedEv, d.vrfFee ?? 0n) : undefined;
   const compare = has && savedEv && savedView && view && ev ? (
     <div className="result-block" style={{ paddingTop: 0 }}>
@@ -912,7 +885,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           <div className="step-head"><span className="n">{has ? 2 : 3}</span><h2 className="h3">Pool size</h2></div>
           <div className="limit" style={{ marginTop: 0 }}>
             <div className="top"><label htmlFor="small">Small prizes (0.01 ETH Shapes)</label><b>{smallUsed}</b></div>
-            <input id="small" type="range" min={shapeTotal(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
+            <input id="small" type="range" min={shapeCount(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
               onChange={(e) => change(setSmall)(Number(e.target.value))} />
             <p className="note">More small prizes make your NFTs rarer and the draw cheaper. A pool holds up to {MAX_SHAPES_PER_PLAN} Shapes.</p>
             <p className="note" style={{ marginTop: 6 }}>The pool keeps this mix: each prize that is won is replaced with the same prize, paid from the pool's ETH. Your NFTs are not replaced.</p>
@@ -1097,9 +1070,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
     vrfFee: d.vrfFee, shapePrices: livePrices, have: d.activeShapes,
   };
-  const before = plan && bases.length ? describe(plan, inputs) : undefined;
-  const after = plan && newBases.length ? describe(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
-  const cost = (ev: ReturnType<typeof describe>) => ev.drawPrice + (d.vrfFee ?? 0n);
+  const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
+  const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
+  const cost = (ev: ReturnType<typeof evaluate>) => ev.drawPrice + (d.vrfFee ?? 0n);
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;

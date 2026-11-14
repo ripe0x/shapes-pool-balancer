@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
-import { BY_VALUE, DENOMS, capitalOf, economics, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
-import { describe, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BY_VALUE, DENOMS, capitalOf, economics, evaluate, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
+import { ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 
 // One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee, 1 gwei gas.
 const EXAMPLE: DesignInputs = {
@@ -20,7 +20,7 @@ const oneIn = (p: number) => `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.roun
 
 /** Groups of a mix, smallest value first, with shade, chance per draw and worth against the draw price. */
 function groups(counts: Counts) {
-  const ev = describe(counts, EXAMPLE);
+  const ev = evaluate(counts, EXAMPLE);
   const view = playerView(ev, 0n);
   const sizes = BY_VALUE.filter((i) => counts[i] > 0);
   const shade = (k: number): CSSProperties => ({ background: sizes.length > 1 && k === sizes.length - 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, k)] });
