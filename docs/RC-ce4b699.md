@@ -97,7 +97,7 @@ Gate after these changes: 12 required regimes, all nine outcomes pass; INCOMPLET
   `extreme_bottom_heavy` (80 × 0.01), `smallest_board` (one 0.01), `largest_board` (80 × 100 ETH, 8,000 ETH backing).
   All nine outcomes hold in all four. The largest board shows the E9 pattern at scale: 30 of 180 draws won a 100 ETH
   prize (13.8% expected), the reserve was up to 585 ETH short and 23 days ended with a prize missing: the case the Add
-  ETH / Continue buttons answer. 16 required regimes now.
+  ETH / Continue buttons answer. (Correction, 2026-11-14: an editing error left these four out of the gate until `gate-extremes`; it now requires 19 regimes.)
 - `review_dir: "audit"` in `asset-flow.json` and `--require-review` in `script/deploy.sh`: deploying needs a review
   record (`audit/**/SOURCE_HASH`) for the exact source. Set before signing, because it changes the approval hash.
 - Codex's kept tests are permanent under `test/audit/` (OwnHoldChallenge, LowBalanceHoldProbe, NormalGasBoundary,
