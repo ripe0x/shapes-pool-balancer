@@ -129,9 +129,10 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   draw at 0.55 gwei, 67,072 at the 5 gwei cap; worst single call 295,284 gas. At the 5 gwei cap, 0.181 ETH over 540
   draws, 7.8% of the creator's net (`no_processor_5_gwei`): information. After the D16 re-attack repairs (DECISIONS 77):
   30,404 gas per draw at the cap, worst single call 100,772 gas, 0.082 ETH over 540 draws, 4.1% of the creator's net.
-  With keeper transactions measured fully cold (DECISIONS 83): 31,105 gas per draw at the cap (31,039 at 0.55 gwei),
-  0.084 ETH over 540 draws, 4.2% of the creator's net; in bursts that leave five draws waiting (`burst`) 51,591 per
-  draw, worst single call 182,980 gas.
+  With keeper transactions measured fully cold (DECISIONS 83) and after the simplification cuts (DECISIONS 84):
+  31,118 gas per draw at the cap (31,051 at 0.55 gwei), 0.084 ETH over 540 draws, 4.2% of the creator's net; in
+  bursts that leave five draws waiting (`burst`) 51,606 per draw, worst single call 183,010 gas. Measured with
+  Foundry 1.8.1, which CI and the gate now require.
 
 ## Decisions log (history, not requirements)
 

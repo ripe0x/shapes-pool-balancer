@@ -509,3 +509,27 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     (31,039 at 0.55 gwei; 0.084 ETH over 540 draws, 4.2% of the creator's net); O11's NFT-heavy figure stays 0.036 ETH.
     The queue read runs in its own call frame; it leaves the Balancer's reward unchanged, and the keeper's cost measured
     from outside moves about 29 gas per call (the test frame's memory).
+84. **Audit of `e36e9ba` and two simplification reviews acted on in one pass** (owner, 2026-11-14: "do those and the
+    simplifications in one pass"). Reports kept in `audit/rc-e36e9ba/` (release-candidate audit; its raw Slither
+    JSON is left out, the log is kept) and `audit/simplify-e36e9ba/` (two independent reviewers).
+    - Audit S1 (test-only, reproduced): `ForkBase.buy` evaluated `pool.inventoryVersion()` after `vm.prank`, so the
+      test contract paid every draw. Fixed; the helper asserts the named player paid; `stranger` is now funded. No
+      shipped test's conclusion depended on the payer (FWA takes the purchaser as an argument; nothing reads
+      `tx.origin`). S2 is decision 82's accepted gap; E1 and E2 are signed costs.
+    - Contract cuts, the six both reviewers found and the second ran on a fork: C1 (FWA's `createPool(salt,
+      expected)` already enforces the implementation and owner), C2 (implementation codehash checked once in the
+      constructor), C5 (one loop in `unlistShapes`; `_removeActive` rejects anything not active), C6 (single
+      `listCurated` removed; tests use `test/utils/ListOne.sol`), C9 (`retired()` check in upkeep: an open Balancer
+      is never retired), F1 (factory's `allBalancers`/`balancerCount`). Runtime 21,315 to 20,555 bytes; factory 2,117
+      to 1,898. Not taken: event cuts (the audit trail and canary alerts need them), deriving `prizeWeight` (moves gas
+      into the purchase hook), `activeIds`, `collectProceeds`, and the reviewers' smaller cuts.
+    - Off-chain: keeper `fn`/`args` plumbing and duplicate constants removed (one source in `shared/planner.ts`);
+      keeper `audit` list capped at 1,000 entries (it grew for the life of the process); the dashboard now names
+      FWA's `WithdrawLocked` (`app/src/errors.ts`, tested); dead planner/design/app code removed. Source comments
+      state rules instead of audit history.
+    - Evidence: CI pins Foundry v1.8.1 and runs every TypeScript test; the gate's test command refuses any other
+      Foundry version (on 1.5.1 the refunds-kept fact reads 0). O4 and O6 count listed backing from FWA's listings,
+      not the Balancer's list.
+    - Every outcome holds in all 22 regimes; O1 now 31,118 gas per draw at the cap (31,051 at 0.55 gwei), 51,606 in
+      bursts, worst call 183,010. The contract changed after the audit, so `audit/rc-e36e9ba/SOURCE_HASH` no longer
+      matches: the cuts need their own audit pass and the outcomes a new signature.
