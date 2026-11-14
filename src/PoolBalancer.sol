@@ -71,8 +71,11 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev FWA draws processed per upkeep (owner decision D16): keeps the worst upkeep under KEEPER_MAX_GAS.
     uint256 internal constant MAX_PROCESS = 2;
     /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
-    ///      notifier would start with under 290,000 gas (its `call(300000)` gets 63/64 of what is left), and an
-    ///      out-of-gas hands back nothing. A failure with more than this left was not for want of gas.
+    ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
+    ///      so a starved failure hands back at most about 343,000 (measured, 48 to 2,048 listings;
+    ///      test/audit/d16d/CatchMargin.t.sol). A failure with more than this left was not for want of gas. The proxy's
+    ///      share grows with the gas processing needs: this holds for MAX_PROCESS = 2 and FWA's six-listing
+    ///      reservations (at most about 3.3M); re-measure if either changes.
     uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.

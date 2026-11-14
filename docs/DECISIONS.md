@@ -473,3 +473,10 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     1.45 gwei; it now prices at the gas the simulated reward pays for unless that reward was cut by the cap or the
     balance. Finding 2 (a gas-dependent collection left DeliveryPending at some low limits) is FWA's: any caller of
     `processAcquisitions` picks the gas; the app's and keeper's limits deliver; information and a curation risk.
+80. **Fourth D16 re-attack** (independent, of `b6b1a33`): no starved success at any limit or pool size (48 to 2,048
+    listings, open and closed, sweeps at 2k and 50-gas steps); the keeper's 4M floor covers the worst upkeep with 0.68M
+    to spare and nets +0.0024 ETH at 5 gwei. Correction: the FWA pool is a proxy keeping 1/64 of what it forwards, so
+    a starved failure hands back up to 343,090 gas; the margin under 400,000 is about 57k, not 105k, and is tied to
+    MAX_PROCESS = 2 (crossing it needs about 6.7M of processing). Comment corrected; `test/audit/d16d/CatchMargin.t.sol`
+    asserts it. Known gap, no trigger found: if processing ever fails for a reason other than gas, upkeep continues
+    unpaid for it and the keeper's reward-based pricing would not see the loss (up to 0.0056 ETH per call at 5 gwei).

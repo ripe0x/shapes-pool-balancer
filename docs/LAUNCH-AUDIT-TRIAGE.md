@@ -95,6 +95,15 @@ requirement tests (`test/audit/d16/`), each failing on `af1075c` and passing aft
 | 3 | keeper.ts priced calls at the estimate (0.37M-0.48M above billed for processing calls) and skipped profitable processing from about 1.45 gwei | executed | keeper prices at the gas the simulated reward pays for, unless the reward was cut by KEEPER_MAX_GAS or the balance |
 | 4 | A deterministic FWA failure would push estimates high and keepers would skip that pool | reasoned | moot with the hand-back rule: a failure that is not for want of gas leaves gas to spare, so upkeep continues unpaid for it and estimates stay normal (reasoned); keeper alert for a stuck queue is a follow-up |
 
+### Fourth re-attack (`b6b1a33`)
+
+| # | Finding | Basis | Disposition |
+| --- | --- | --- | --- |
+| 1 | The comment's premise was wrong: the FWA pool proxy keeps 1/64, so a starved failure hands back up to 343,090 gas; margin about 57k under the 400,000 threshold, tied to MAX_PROCESS = 2 | executed | comment and records corrected; `CatchMargin.t.sol` asserts no starved failure hands back 400k and no starved success |
+| 2 | If processing fails for a non-gas reason, upkeep continues unpaid for it and the keeper's reward-based pricing would send at a loss (0.00053 ETH at 0.55 gwei, 0.0056 at 5 gwei) | reasoned, model | no trigger in FWA's code; documented in `keeper.ts` |
+| 3 | 4M keeper floor covers the worst upkeep (least succeeding 3.31M at 2,048 listings); keeper nets +0.0024 ETH at 5 gwei, relying on about 512k of refunds | executed | information |
+| 4 | Open pool, 2,048 listings, swept 1.0M-4.5M: every success processed | executed | none |
+
 ## Things that don't make sense
 
 - Every regime and both rehearsals processed FWA's queue themselves, so none of our evidence could show S1. The same

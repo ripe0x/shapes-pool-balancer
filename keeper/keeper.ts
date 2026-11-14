@@ -58,7 +58,10 @@ const KEEPER_PRIORITY_CAP = 50_000_000n;
  *  simulated reward pays for (the Balancer's measured gas plus its 50,000 overhead, which covers everything outside
  *  the measured span, so billed gas never exceeds it) unless that reward was cut by KEEPER_MAX_GAS or the Balancer's
  *  balance; then it is `eth_estimateGas`. The estimate is the least limit that succeeds, which for upkeeps that
- *  process FWA's queue is 0.37M-0.48M above the gas billed (D16 re-attack 3, finding 3). */
+ *  process FWA's queue is 0.37M-0.48M above the gas billed (D16 re-attack 3, finding 3). One path breaks the
+ *  premise: processing that fails for a reason other than gas, after which upkeep continues unpaid for it. FWA's code
+ *  has no known trigger for it (D16 re-attack 4); if one appears, a keeper loses up to about 0.0056 ETH per call at
+ *  5 gwei. */
 export function decide(p: Policy): { send: boolean; reason: string } {
   const price = p.baseFee + p.priorityFee;
   let gas = p.gasEstimate;
