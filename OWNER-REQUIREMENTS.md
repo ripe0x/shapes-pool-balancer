@@ -9,8 +9,8 @@ decisions are appended, never rewritten.
 Markers: *(relayed)* the decision reached us through another session; *(agent wording)* an agent's words for the
 owner's intent; *(proposed)* an outcome or number the owner has not yet chosen.
 
-**Status (2026-11-13):** R1 to R23 confirmed by the owner ("gtg"). This version restructures them on review of the
-audit-process guidance (pointers, restated money goals, the log split off) and adds R24 to R28: **to reconfirm**. D12 to D15 (O11, O12, the keeper constants, no caps) were decided by the owner on
+**Status (2026-11-13): confirmed by the owner** ("gtg" for R1 to R23; "Yes, confirm it" for this restructured version
+with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were decided by the owner on
 2026-11-13: "Yes, all four".
 
 ## Authority and safety (owner, 2026-11-10)
@@ -97,7 +97,7 @@ audit-process guidance (pointers, restated money goals, the log split off) and a
   refund, which only the player can claim (`test/HostileCollection.t.sol`). → **O6** exception.
 - R21. Collection label: "lets just drop that for now." No verified/unverified label in the app.
 
-## Added on review, 2026-11-13 (to reconfirm)
+## Added on review, 2026-11-13
 
 - R28. Final keeper constants (D14, "Yes, all four"): flat reward 0.0001 ETH and overhead allowance 50,000 gas
   (rehearsal receipts: 336 keeper transactions earned 0.000146 ETH each above their billed gas on average).
@@ -108,5 +108,6 @@ audit-process guidance (pointers, restated money goals, the log split off) and a
 - 2026-11-13. Merges on the owner's word: PR #3 ("merge"), PR #2 ("Yes, merge PR #2"), PR #1 ("Yes, merge PR #1"),
   PR #4 ("merge").
 - 2026-11-13. This file confirmed ("gtg"), then restructured on the audit-process review above.
+- 2026-11-13. Restructured version confirmed: "Yes, confirm it".
 - 2026-11-13. D12 to D15 decided: "Yes, all four" (O11, O12, keeper constants final, no contract caps; canary is the
   owner's own small first pool).
