@@ -487,4 +487,9 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     randomness_not_delivered 5 (2 calls). Expired draws need no prize transfer or notifier, so the cap costs only an
     extra call there. Limit: the harness runs keepers after every randomness delivery, so it cannot show a burst of
     words landing behind a draw that lost FWA's fast path within one keeper poll (12 s); that needs three or more
-    draws settled in about one block behind such a draw. 2 stays.
+    draws settled in about one block behind such a draw. Mainnet shows it does happen: ape-Ball's FWA pool
+    (`0xAACB…78F7`, 161 draws, blocks 26,365,113 to 26,403,463) settled 105 on the randomness fast path; its own
+    manager contract's paid `upkeep` (`0xb338…7ab6`) processed 47 in 23 transactions (1, 2, 3, 4 and 6 draws per call;
+    8 calls above 2, all fulfilled draws, not expiries) and FWA's sponsored processor 9. At 2 per call such a
+    queue takes up to 3 calls (one block each) instead of 1, costing about 0.00014 ETH per extra call at 0.55 gwei
+    and delaying the restock those calls skip. 2 stays: a latency and cost matter, not a stall.
