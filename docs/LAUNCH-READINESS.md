@@ -28,6 +28,8 @@ set and asserted inside a transaction), 180 draws per regime unless stated.
   readable from one block; they come from the keeper's receipts and the pool's events.
 - **When to open further:** after a canary closeout with O3, O4 and O6 at zero and keeper receipts within O1, the owner
   announces the factory. There is no cap to raise.
+- **The factory is public from deployment:** anyone who learns its address can create a pool; the owner's small first
+  pool limits only the owner's own deposit, not what other creators do.
 - **What cannot be capped:** other creators' pools once the factory is public; FWA's and Shapes' own admin powers
   (pause, mint fee up to 0.01 ETH); a creator's own NFT collection (R20).
 - **Alerts that stay on:** the keeper's health endpoint (no tick for 2 minutes), its per-pool errors and loss-making

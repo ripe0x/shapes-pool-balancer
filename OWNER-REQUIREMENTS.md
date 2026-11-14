@@ -102,6 +102,14 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - R28. Final keeper constants (D14, "Yes, all four"): flat reward 0.0001 ETH and overhead allowance 50,000 gas
   (rehearsal receipts: 336 keeper transactions earned 0.000146 ETH each above their billed gas on average).
 
+## Corrections found by the launch audit (2026-11-13)
+
+- To R16 and O7: "then anyone processes the expired draw" names no one. Nothing in the system calls FWA's
+  `processAcquisitions`, and a draw whose request reserved a staged restock skips FWA's randomness fast path, so it and
+  every draw behind it wait until someone processes (launch audit B, S1; reproduced: 5 draws unsettled 10,000 blocks
+  later, sales stopped). FWA's own sponsored processor processed only 2 pools in the last 50,000 blocks. Decision D16 in
+  `docs/LAUNCH-AUDIT-TRIAGE.md`.
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

@@ -1,0 +1,117 @@
+No files changed, compilation skipped
+
+Ran 17 tests for test/auditB/AttackB.t.sol:AttackB
+[PASS] test_O10_afterSpike() (gas: 153021459)
+Logs:
+  draws sold during the spike 60
+  ratio at 0.1 gwei before the spike (bps) 14661
+  ratio at 0.1 gwei after the spike (bps) 16790
+
+[PASS] test_O10_launchBoardAtMaxMarkup() (gas: 31844248)
+Logs:
+  launch board, markup 100%, basefee 0.1 gwei: price/backing bps 22713
+
+[PASS] test_O10_launchBoardAtMinMarkup() (gas: 31793203)
+Logs:
+  launch board, markup 10%, basefee 0.1 gwei: price/backing bps 13049
+
+[PASS] test_O10_overpricedCurated() (gas: 44218774)
+Logs:
+  ratio before (bps) 14661
+  ratio with 20 curated at 50 ETH (bps) 20676
+  draw price now (wei) 31966551186460823
+
+[PASS] test_O10_smallestBoard() (gas: 3755066)
+Logs:
+  one 0.01 Shape, markup 25%, basefee 0.1 gwei: price/backing bps 29423
+
+[PASS] test_O10_spikeRecovery() (gas: 217636225)
+Logs:
+  after 30 draws at 2 gwei, ratio at 0.1 gwei (bps) 15321
+  draws at 0.1 gwei until the ratio is back under 1.5x 30
+  ratio then (bps) 14981
+
+[PASS] test_O1_bottomHeavy_5gwei() (gas: 159273416)
+Logs:
+  80 x 0.01 board, 60 draws at 5 gwei: paid beyond (wei) 0
+  scaled to 180 draws 0
+
+[PASS] test_O1_launch_5gwei() (gas: 148844508)
+Logs:
+  launch board, 60 draws at 5 gwei: paid beyond (wei) 0
+  scaled to 180 draws 0
+
+[PASS] test_O1_packBoard_5gwei() (gas: 204842659)
+Logs:
+  pack board, 60 draws at 5 gwei: paid beyond gas+50k+0.0001 (wei) 0
+  scaled to 180 draws 0
+
+[PASS] test_O5_bigWinsAfterMaxClaim() (gas: 37949564)
+Logs:
+  0.5 ETH Shapes listed after two wins (target 1) 0
+  admission status 0
+  fund, requiredReserve 71235584582876720 1034700000000000000
+  0.5 ETH Shapes listed after Add ETH 1
+
+[PASS] test_R7_maxClaimingCreator() (gas: 290902397)
+Logs:
+  proceeds collected (wei) 2636324031587281156
+  claimed while open (wei) 8087644455505692982
+  of which credited as profit (wei) 279876190142356582
+  markup above 10% on Shape prizes won (wei) 354000000000000000
+  backing of Shape prizes won (wei) 2360000000000000000
+  fund at end, requiredReserve 207195746031588174 533700000000000000
+
+[PASS] test_closeClaimThenSplitReconcileAtCap() (gas: 34418702)
+Logs:
+  held after the claim 16350000000000000
+  reward 898870000000000 cost 801115000000000
+  reward 898870000000000 cost 801115000000000
+  reward 898870000000000 cost 801115000000000
+  reward 898870000000000 cost 801115000000000
+  reward 898870000000000 cost 801115000000000
+  keeper shortfall total 0
+  left after reconciling 121905109965654200
+
+[PASS] test_gasGriefDeliveryFailure() (gas: 511606308)
+Logs:
+  status after the callback (5 = Ready) 5
+  gas limits that settled normally 1036
+  gas limits that left delivery pending 0
+
+[PASS] test_keeperAdminLocksOutKeepers() (gas: 46580114)
+Logs:
+  draws sold with no keeper able to reconcile 10
+  admission status then 6
+  unreconciled draws 10
+
+[PASS] test_reservedBatchDrawWaitsForAProcessor() (gas: 38274280)
+Logs:
+  purchases refused, status 4 after round 4
+  draws whose request reserved a staged restock 2
+  most draws left unsettled with no processor 5
+  unsettled at end 5
+  admission status at end 4
+  unsettled 10,000 blocks later 5
+
+[PASS] test_shapesFeeAtCap_thenCloseout() (gas: 38464366)
+Logs:
+  mint fee now 10000000000000000
+  required reserve while open at the raised fee 2105400000000000000
+  left in the Balancer 0
+  owner proceeds left at FWA 0
+
+[PASS] test_worstUpkeepGas_mixedPacks() (gas: 50852543)
+Logs:
+  upkeep gas 2194322 reward wei 11687790000000000
+     real cost at 5 gwei incl 21k 11076610000000000
+  upkeep gas 2043990 reward wei 10586125000000000
+     real cost at 5 gwei incl 21k 10324950000000000
+  upkeep gas 1264986 reward wei 6625110000000000
+     real cost at 5 gwei incl 21k 6429930000000000
+  max upkeep gas 2194322
+
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 1.24s (3.39s CPU time)
+
+Ran 1 test suite in 1.24s (1.24s CPU time): 17 tests passed, 0 failed, 0 skipped (17 total tests)
+exit=0

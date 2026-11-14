@@ -108,7 +108,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
           <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">Keepers are paid only from the restocking fees of the prizes they list, priced at the gas of the moment. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid from your pool's ETH for each upkeep that restocks prizes or records draws; the restocking fee in each prize's price is your income toward that pay. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -168,9 +168,9 @@ const FAQ: [string, string][] = [
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Mint fees and keepers are paid from fees in prize prices, never from your markup. The pool fronts those fees until each prize is won, so prizes still listed when you close keep their mint and restocking fees; stocking the pool when you open it costs gas, repaid as those first prizes are won. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['Can I lose money?', 'Mint fees and restocking fees are built into prize prices, and all buyers fund them. Keepers are paid from your ETH in the pool, including for draws that win one of your NFTs or time out, which bring no restocking fee. The pool fronts the fees until prizes are won, so prizes still listed when you close keep theirs, and stocking the pool when you open it costs gas even if nobody buys. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
-  ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
+  ['Do purchases pause after draws?', 'Usually not. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, when the Shapes mint fee rises above the one you accepted, and, for a mix with little prize weight, while a few draws are unsettled (the design page says how many).'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to prizes listed after the change; prizes already listed keep their price."],
 ];
