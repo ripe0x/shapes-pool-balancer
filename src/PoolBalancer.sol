@@ -91,9 +91,10 @@ contract PoolBalancer is ReentrancyGuard {
     //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
     //   outside the measured span (intrinsic gas, the keeper-list check, the reward transfer; measured 24k-46k), so
     //   the incentive is the keeper's margin at any gas price up to the cap.
-    // - A call reconciles every sequence FWA has processed (up to MAX_RECONCILE) and restocks the whole deficit (up to
-    //   MAX_OPS), and a draw FWA has not processed cannot be reconciled or paid for. FWA processing is permissionless,
-    //   so anyone can process a ready batch one draw at a time and reconcile after each: the bound is one paid call
+    // - A call processes up to MAX_PROCESS of FWA's draws, reconciles every sequence FWA has processed (up to
+    //   MAX_RECONCILE) and, when it processed none, restocks the whole deficit (up to MAX_OPS); a draw FWA has not
+    //   processed cannot be reconciled or paid for. Draws become ready or expire one block at a time, and FWA
+    //   processing is permissionless, so a batch can be reconciled one draw per call: the bound is one paid call
     //   per processed draw, not per batch (audit rc-ec5259c finding 6, accepted and budgeted by the owner: about
     //   0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most MAX_KEEPER_REWARD and needs a processed
     //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
@@ -610,8 +611,17 @@ contract PoolBalancer is ReentrancyGuard {
         //    for an explicit processAcquisitions that nobody else is bound to call (launch audit B, S1; owner decision
         //    D16). FWA stops at a draw still waiting for its randomness; a failure here never blocks the rest of upkeep.
         //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
-        if (p.nextSequenceToProcess() <= p.lastIssuedSequence()) {
-            try p.processAcquisitions(MAX_PROCESS) {} catch {}
+        //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
+        //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing).
+        bool processed;
+        uint64 next = p.nextSequenceToProcess();
+        if (next <= p.lastIssuedSequence()) {
+            uint256 g = gasleft();
+            try p.processAcquisitions(MAX_PROCESS) {
+                processed = p.nextSequenceToProcess() != next;
+            } catch {
+                gasStart -= g - gasleft();
+            }
         }
 
         // 1. Collect settled proceeds before reconciling: each draw was priced on the listings still tracked, so the
@@ -629,10 +639,12 @@ contract PoolBalancer is ReentrancyGuard {
         bool reconciled = s != reconciledSequence;
         if (reconciled) reconciledSequence = s;
 
-        // 3. Restock while open.
+        // 3. Restock while open, in a call that settled no draw: a draw that reserved FWA's maximum six listings costs
+        //    up to about 1.15M gas to process, so processing two and restocking in one call can pass KEEPER_MAX_GAS and
+        //    leave the keeper unpaid for the excess. The next call restocks.
         uint256 ops;
         bool wasSetup = creatorWork;
-        if (enabled && !p.retired() && !FWA_FACTORY.globalWithdrawOnly()) {
+        if (!processed && enabled && !p.retired() && !FWA_FACTORY.globalWithdrawOnly()) {
             uint256 fee = SHAPES.mintFee();
             if (fee <= mintFeeCap) {
                 ops = _fillDeficit(p, fee);
@@ -785,13 +797,14 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
     ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
-    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_RECONCILE draws FWA
-    ///         issued that are not yet reconciled, so useful reconciliation after closing is always paid (audit
-    ///         rc-ec5259c finding 3). Closing stops purchases, so this only falls as keepers reconcile.
+    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_PROCESS draws FWA
+    ///         issued that are not yet reconciled, so useful processing and reconciliation after closing is always
+    ///         paid (audit rc-ec5259c finding 3; D16 re-attack F2). Closing stops purchases, so this only falls as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {
         if (!enabled) {
+            // One maximum reward per MAX_PROCESS draws: each upkeep may need to process the draws it reconciles (D16).
             uint256 owed = pool.lastIssuedSequence() - reconciledSequence;
-            return (owed + MAX_RECONCILE - 1) / MAX_RECONCILE * MAX_KEEPER_REWARD;
+            return (owed + MAX_PROCESS - 1) / MAX_PROCESS * MAX_KEEPER_REWARD;
         }
         uint256 plan = target;
         // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.

@@ -24,7 +24,7 @@ contract OwnHoldChallenge is ForkBase {
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 0.01635 ether);
+        assertEq(held, 3 * 0.01635 ether); // ceil(5 owed / 2) maximum rewards
         uint256 available = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(available, creator);

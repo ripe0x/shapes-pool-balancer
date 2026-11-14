@@ -38,7 +38,9 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - R11. D2: "D2 yes: accept, limit 0.002 ETH per 180 draws": keepers keep storage refunds on top of gas → **O1**.
   Superseded by R32 (D19): the limit is now in gas per draw.
 - R12. D4: "D4 yes: accept and budget one paid call per processed draw; fix the comment." → budgeted inside O11's net.
-- R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**.
+- R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**. Since D16
+  the hold is one maximum keeper reward per 2 such draws (was per 5): upkeep processes at most 2 draws per call, and
+  the per-5 hold left a keeper 0.0054 ETH short at 5 gwei (D16 re-attack F2).
 
 ## The game and the creator's money
 
@@ -125,7 +127,8 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   fact. No contract change."): processing FWA's queue clears storage, and the keeper keeps refunds the Balancer cannot
   see → **O1**: at most 80,000 gas per draw, averaged over a run. Measured with only keepers processing: 67,660 gas per
   draw at 0.55 gwei, 67,072 at the 5 gwei cap; worst single call 295,284 gas. At the 5 gwei cap, 0.181 ETH over 540
-  draws, 7.8% of the creator's net (`no_processor_5_gwei`): information.
+  draws, 7.8% of the creator's net (`no_processor_5_gwei`): information. After the D16 re-attack repairs (DECISIONS 77):
+  30,404 gas per draw at the cap, worst single call 100,772 gas, 0.082 ETH over 540 draws, 4.1% of the creator's net.
 
 ## Decisions log (history, not requirements)
 

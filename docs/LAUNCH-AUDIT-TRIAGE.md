@@ -62,6 +62,20 @@ error: profit booked was identical before and after), now booked at every collec
 If D16 b is chosen, the batch for the next signature is: the repair, the no-processor regime, O10 restated (D17), and
 "DRAFT" removed from the outcome text. One re-signature covers all of it.
 
+## Independent re-attack of the D16 repair (`af1075c`)
+
+Fresh-context agent, informed, 16 minutes, mainnet fork, `--isolate`; its tests were re-run here and turned into
+requirement tests (`test/audit/d16/`), each failing on `af1075c` and passing after the repair.
+
+| # | Finding | Basis | Repair |
+| --- | --- | --- | --- |
+| F1 | Worst upkeep passes the 3.2M pay cap: two processed draws that each reserved six listings (1.87M honest NFTs, 2.30M gas-hog collection) plus reconcile and restock, 3.41M to 4.16M billed; a keeper sending only covered calls skipped every pass, 5 draws unsettled, sales stopped (BUSY) | executed | a call that settles a draw skips restocking: worst 2.98M measured, keeper covered at 0.15, 0.55 and 5 gwei, stall test sells 20 of 20. Cost: split calls add 0.016 ETH of keeper pay per 180 draws at 0.55 gwei, 0.105 at 5 gwei, inside the restocking fees |
+| F2 | Closed hold (one maximum reward per 5 draws) left the keeper 0.0054 ETH short at 5 gwei on expired reserved draws | executed | hold one maximum reward per 2 draws (0.049 ETH for 5); worst case, one draw per call, paid 0.0241 ETH in full |
+| F3 | A chosen gas limit makes FWA revert processing on purpose; the creator paid 1.42M gas (0.0075 ETH at 5 gwei) for one reconcile | executed | gas of a reverted processing call is not paid for: 79,707 gas paid in the same case |
+| F4 | Refunds kept per processed draw (107k to 191k gas) exceed the 80,000 per-draw average O1 states | executed, economic | wording, owner: O1 states the average over all draws and the worst single call (100,772 gas after the repairs) |
+| — | Keeper gas limit could fall short when a draw becomes ready after the estimate | reasoned | the keeper's 4M gas floor is above the repaired worst (2.98M); comment updated |
+| — | Upkeep pays to process expired draws, which bring no fee | reasoned | intended: their players' refund credit needs processing; the creator's cost |
+
 ## Things that don't make sense
 
 - Every regime and both rehearsals processed FWA's queue themselves, so none of our evidence could show S1. The same

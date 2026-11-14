@@ -448,3 +448,12 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     price. No contract change: deducting an estimate would underpay keepers whenever the real refund is smaller, the
     stall D16 fixed. Measured: 67,660 gas per draw at 0.55 gwei, 67,072 at the 5 gwei cap (new required regime
     `no_processor_5_gwei`), worst single call 295,284 gas; 0.181 ETH over 540 draws at the cap, 7.8% of the creator's net.
+77. **D16 re-attack repairs** (independent re-attack of `af1075c`; `docs/LAUNCH-AUDIT-TRIAGE.md`). F1: a draw that
+    reserved FWA's maximum six listings costs up to about 1.15M gas to process, so processing two and restocking in one
+    call passed KEEPER_MAX_GAS and a keeper sending only covered calls stalled the pool. A call that settles a draw now
+    skips restocking (worst measured 2.98M; split calls add keeper pay of 0.016 ETH per 180 draws at 0.55 gwei, 0.105
+    at 5 gwei, still inside the restocking fees). F2: while closed the hold is one maximum reward per MAX_PROCESS (2)
+    unreconciled draws, so it pays every useful post-close call (the D3 rule; per 5 it was 0.0054 ETH short at 5
+    gwei). F3: gas burned by processing that reverted is not paid for (a chosen gas limit made FWA revert on purpose
+    and the creator paid 1.42M gas for one reconcile). Requirement tests in `test/audit/d16/` fail on `af1075c`.
+    With these, O1's refunds fell to 30,404 gas per draw (worst call 100,772).

@@ -128,8 +128,8 @@ Who can take value out:
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything except the keeper pay held for draws not yet
-  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 5 such draws (owner decision
-  D3, 2026-11-13). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
+  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 2 such draws (owner decision
+  D3, 2026-11-13; per 2 since upkeep processes at most 2 draws per call, D16). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
   everything is reconciled. Closing stops purchases, so the held amount only falls.
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
@@ -188,7 +188,9 @@ pool's creator can always run its own. The reward rules are the same either way;
 keepers stop is restocked only when its creator runs upkeep.
 
 0. process FWA's queue, up to 2 draws per call, when draws are waiting (DECISIONS 75): a draw whose request reserved a
-   staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep.
+   staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep, and
+   the gas it burned is not paid for. A call that settled a draw skips step 3 (restock), so it stays under the 3.2M gas
+   the reward pays for; the next call restocks.
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).
 2. collect FWA owner proceeds into the Balancer.
