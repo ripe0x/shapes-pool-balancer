@@ -6,6 +6,9 @@ import {ForkBase, IVRFService} from "../utils/ForkBase.sol";
 import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
+import {ListOne} from "../utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IPoolMore {
     function selectionTimeoutBlocks() external view returns (uint256);
@@ -1437,15 +1440,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
-    /// @dev Backing of the tracked prizes the FWA pool really holds, read from Shapes and Draw Packs.
+    /// @dev Backing of every Shape and pack FWA still holds, found from FWA's own listings rather than the Balancer's
+    ///      list, so a prize the Balancer lost track of would still be counted.
     function _backingListed() internal view returns (uint256 held) {
         if (address(balancer) == address(0)) return 0;
-        uint256[] memory ids = balancer.getActiveIds();
-        for (uint256 i; i < ids.length; ++i) {
-            (uint8 kind,,,,) = balancer.items(ids[i]);
-            if (kind != SHAPE_KIND) continue;
-            (address col,,, uint256 tokenId,,,,) = pool.listings(ids[i]);
-            if (IERC721Min(col).ownerOf(tokenId) == address(pool)) held += _backingOf(col, tokenId);
+        uint256 last = lastListingId();
+        for (uint256 lid = 1; lid <= last; ++lid) {
+            (address col,,, uint256 tokenId,,,,) = pool.listings(lid);
+            if (col != SHAPES && col != packs) continue;
+            try IERC721Min(col).ownerOf(tokenId) returns (address holder) {
+                if (holder == address(pool)) held += _backingOf(col, tokenId);
+            } catch {} // redeemed and burned
         }
     }
 

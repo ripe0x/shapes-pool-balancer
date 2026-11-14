@@ -5,6 +5,10 @@ import {console2} from "forge-std/Test.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {GasProbe} from "../utils/FlowBreakdown.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
+import {PoolBalancer} from "../../src/PoolBalancer.sol";
+import {ListOne} from "../utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice D6 measurement (no code change): the launch board listed fresh at basefee 0.5, 2 and 4.95 gwei (gas price
 ///         +0.05 gwei), on the pinned mainnet fork with the real FWA pool, randomness service and Shapes. Logs every

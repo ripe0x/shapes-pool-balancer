@@ -5,6 +5,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {ReconfiguringNFT} from "./utils/Mocks.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice Reserve rules on a mainnet fork with the real FWA pool, VRF service and Shapes: a pool opens only with its
 ///         reserve in ETH (E2), purchases continue while sales refill it after big wins (DECISIONS 66), closing

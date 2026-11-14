@@ -5,6 +5,10 @@ import {KeeperPayTest} from "../KeeperPay.t.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {GasProbe} from "../utils/FlowBreakdown.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
+import {PoolBalancer} from "../../src/PoolBalancer.sol";
+import {ListOne} from "../utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 contract ChallengeTest is KeeperPayTest {
     function test_closedSplitAtMaxGas() public {

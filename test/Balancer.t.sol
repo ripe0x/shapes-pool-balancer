@@ -8,6 +8,9 @@ import {
 import {Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {LibString} from "solady/utils/LibString.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IShapesAdmin {
     function setMintFee(uint256) external;
@@ -57,7 +60,7 @@ contract BalancerTest is ForkBase {
         assertTrue(address(b2.pool()) != address(pool));
         assertEq(b2.pool().owner(), address(b2));
         assertEq(b2.creator(), other);
-        assertEq(factory.balancerCount(), 2);
+        assertTrue(factory.isBalancer(address(b2)) && factory.isBalancer(address(balancer)), "both are this factory's");
         vm.prank(creator);
         PoolBalancer b3 = PoolBalancer(payable(factory.createBalancer(bytes32(uint256(1)))));
         assertEq(b3.pool().owner(), address(b3));

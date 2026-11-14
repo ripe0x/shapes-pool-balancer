@@ -6,6 +6,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice Keeper pay: every upkeep that reconciles a draw or lists a prize is paid its gas plus a flat reward from the
 ///         creator's ETH; a call that does neither is paid nothing. Mainnet fork, real FWA pool, randomness service,

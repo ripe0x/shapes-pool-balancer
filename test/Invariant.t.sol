@@ -123,7 +123,9 @@ contract Handler is Test {
         nft.mint(creator, id);
         vm.startPrank(creator);
         nft.approve(address(b), id);
-        try b.listCurated(address(nft), id, base) {} catch {}
+        PoolBalancer.CuratedInput[] memory one = new PoolBalancer.CuratedInput[](1);
+        one[0] = PoolBalancer.CuratedInput(address(nft), id, base);
+        try b.listCuratedBatch(one) {} catch {}
         vm.stopPrank();
     }
 

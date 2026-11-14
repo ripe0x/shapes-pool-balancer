@@ -6,6 +6,9 @@ import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
 import {MockNFT} from "./Mocks.sol";
+import {ListOne} from "./ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IVRFService {
     function coordinator() external view returns (address);
@@ -56,6 +59,7 @@ abstract contract ForkBase is Test {
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
+        vm.deal(stranger, 1_000 ether);
         vm.deal(keeper, 1 ether);
     }
 
@@ -115,8 +119,12 @@ abstract contract ForkBase is Test {
 
     function buy(address who, uint256 count) internal returns (uint256[] memory ids) {
         (,, uint256 total) = pool.quoteAcquisitionPrice(count);
+        // read before the prank: an argument's external call would otherwise take it, and the harness would pay
+        uint256 version = pool.inventoryVersion();
+        uint256 before = who.balance;
         vm.prank(who, who);
-        ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, pool.inventoryVersion(), block.timestamp + 1);
+        ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, version, block.timestamp + 1);
+        assertEq(before - who.balance, total, "the named player paid the quote");
     }
 
     /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has

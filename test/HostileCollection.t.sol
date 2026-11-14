@@ -5,6 +5,9 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IPoolRefunds {
     function acquisitionRefundCredit(address purchaser) external view returns (uint256);

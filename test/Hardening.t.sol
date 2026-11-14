@@ -5,6 +5,9 @@ import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {MockNFT, FreezableNFT, LyingNFT, ContractBlockingNFT, NonRefundingBuyer} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IShapesMint {
     function mintBatch(uint256 amountWei, uint256 quantity) external payable returns (uint256 firstTokenId);

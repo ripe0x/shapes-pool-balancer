@@ -5,6 +5,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {Vm} from "forge-std/Test.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice The factory's keeper list, on a mainnet fork (real FWA + Shapes).
 contract KeeperListTest is ForkBase {
