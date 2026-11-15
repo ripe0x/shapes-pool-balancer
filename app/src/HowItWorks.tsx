@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, capitalOf, economics, evaluate, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
@@ -56,6 +56,11 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
 }
 
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
+  // A link to #how-<id> opens that question.
+  useEffect(() => {
+    const q = document.getElementById(location.hash.slice(1));
+    if (q instanceof HTMLDetailsElement) { q.open = true; q.scrollIntoView(); }
+  }, []);
   const counts = mixOf(SMALL, styleBonus('board', EXAMPLE, SMALL));
   const { ev, view, list } = groups(counts);
   const econ = economics(counts, EXAMPLE);
@@ -156,14 +161,14 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
       <section className="hiw-sec">
         <h2 className="h3">Questions</h2>
         <div className="hiw-faq">
-          {FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
+          {FAQ.map(([q, a, id]) => <details key={q} id={id}><summary>{q}</summary><p>{a}</p></details>)}
         </div>
       </section>
     </main>
   );
 }
 
-const FAQ: [string, string][] = [
+const FAQ: [string, string, string?][] = [
   ['What is a Shape?', 'An NFT from the Shapes project that holds a fixed amount of ETH. Whoever owns it can redeem it for exactly that ETH at any time, or keep it.'],
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
@@ -171,6 +176,7 @@ const FAQ: [string, string][] = [
   ['Can I lose money?', 'Mint fees and restocking fees are built into prize prices, and all buyers fund them. Keepers are paid from your ETH in the pool, including for draws that win one of your NFTs or time out, which bring no restocking fee. The pool fronts the fees until prizes are won, so prizes still listed when you close keep theirs, and stocking the pool when you open it costs gas even if nobody buys. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'Usually not. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, when the Shapes mint fee rises above the one you accepted, and, for a mix with little prize weight, while a few draws are unsettled (the design page says how many).'],
+  ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won, usually within a minute. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. Every pool also pauses while five draws are unsettled. The pause ends on its own as the draws settle.', 'how-pause'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to prizes listed after the change; prizes already listed keep their price."],
 ];
