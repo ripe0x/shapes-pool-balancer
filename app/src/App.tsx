@@ -221,9 +221,9 @@ export function App() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<string>();
   // How it works lives at #how, so it can be linked to and the back button leaves it.
-  const [help, setHelpState] = useState(() => location.hash.startsWith('#how'));
-  useEffect(() => { const h = () => { const on = location.hash.startsWith('#how'); setHelpState(on); if (on) window.scrollTo(0, 0); }; window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
-  const setHelp = (on: boolean) => { if (on !== location.hash.startsWith('#how')) location.hash = on ? 'how' : ''; setHelpState(on); if (on) window.scrollTo(0, 0); };
+  const [help, setHelpState] = useState(() => location.hash === '#how');
+  useEffect(() => { const h = () => { const on = location.hash === '#how'; setHelpState(on); if (on) window.scrollTo(0, 0); }; window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
+  const setHelp = (on: boolean) => { if (on !== (location.hash === '#how')) location.hash = on ? 'how' : ''; setHelpState(on); if (on) window.scrollTo(0, 0); };
 
   const loadMine = useCallback(async () => {
     if (!pub || !address || !FACTORY) return;
@@ -657,7 +657,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       <p className="note" style={{ marginTop: 10 }}>{vrfKnown
         ? <>Draw price {eth(ev.drawPrice, 5)} ETH and FWA's randomness fee {eth(d.vrfFee!, 5)} ETH at today's gas. Gas is extra.</>
         : <>FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>
-      {pausesAt < MAX_BATCH && <p className="note" style={{ marginTop: 8 }}>With this mix, purchases pause while {pausesAt === 1 ? 'a draw is' : `${pausesAt} draws are`} unsettled, until {pausesAt === 1 ? 'it settles' : 'they settle'}. <a href="#how-pause">Why</a></p>}
+      {pausesAt < MAX_BATCH && <p className="note" style={{ marginTop: 8 }}>{pausesAt === 1
+        ? 'With this mix, each purchase waits until the previous draw settles, usually about a minute. More small Shapes let more draws run at once.'
+        : `With this mix, up to ${pausesAt - 1} draws can be settling at once; the next purchase waits until one settles, usually about a minute. More small Shapes raise the limit.`}</p>}
     </div>
   ) : null;
   const gridBlock = view ? (
