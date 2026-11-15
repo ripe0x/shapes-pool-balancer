@@ -533,3 +533,17 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     - Every outcome holds in all 22 regimes; O1 now 31,118 gas per draw at the cap (31,051 at 0.55 gwei), 51,606 in
       bursts, worst call 183,010. The contract changed after the audit, so `audit/rc-e36e9ba/SOURCE_HASH` no longer
       matches: the cuts need their own audit pass and the outcomes a new signature.
+85. **Uninformed audit of `8ec98cb` triaged; no contract change** (owner, 2026-11-15: "Accept, reword O9").
+    Report in `audit/rc-8ec98cb/`; every executed witness reproduced here with the same numbers.
+    - E2 (creator profit split uses today's board for a draw priced on an earlier one): real, and decision 69's
+      residual measured only with the markup fixed. Accepted: no math error (credited profit never exceeds ETH held),
+      no player affected, every prize keeps its backing; the excess comes from the creator's own reserve and only a
+      creator's markup raise while draws are unsettled makes it large. O9 restated (R33).
+    - E3: O13 overstated who acts. Settling needs an open keeper list or an active listed keeper; continued sales need
+      the creator to relist won curated NFTs (the regimes' harness does). O13 restated (R34).
+    - E1 (a 100 ETH prize board can lose about 199 ETH of the creator's deposit to forced wins): accepted design, D15
+      and R26; every winner paid, sales stop on a missing prize.
+    - S1 (dashboard stuck on "Loading your pools…" when the factory log query fails): fixed, error with Retry.
+    - S2 (`admissionStatus` ignores FWA's global withdraw-only switch): no change; FWA rejects the purchase itself.
+    - The review record `audit/rc-8ec98cb/SOURCE_HASH` is filed: the source is unchanged since the audit and no
+      finding needed a contract repair. The outcomes need a new signature (hash `e0e9684b…`).

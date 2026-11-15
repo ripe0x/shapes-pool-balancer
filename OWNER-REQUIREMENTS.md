@@ -134,6 +134,14 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   bursts that leave five draws waiting (`burst`) 51,606 per draw, worst single call 183,010 gas. Measured with
   Foundry 1.8.1, which CI and the gate now require.
 
+## Audit of 8ec98cb decisions (owner, 2026-11-15: "Accept, reword O9")
+
+- R33. E2 accepted: a creator who raises the markup while draws are unsettled can book profit from the new board for
+  a draw priced on the old one, taken from their own reserve (0.00276 ETH in one draw at launch scale; no player is
+  affected and every prize stays backed) → **O9** restated: the 0.001 ETH bound holds with the markup unchanged.
+- R34. O13's conditions stated: settling needs an open keeper list or an active listed keeper; sales continuing needs
+  the creator to relist curated NFTs, which the regimes do → **O13** restated. No contract change.
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

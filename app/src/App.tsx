@@ -218,6 +218,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<string>();
   // How it works lives at #how, so it can be linked to and the back button leaves it.
   const [help, setHelpState] = useState(() => location.hash === '#how');
@@ -249,7 +250,8 @@ export function App() {
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
-  useEffect(() => { setLoaded(false); setPage(undefined); loadMine().catch(() => undefined); }, [loadMine]);
+  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
+  useEffect(() => { setLoaded(false); setPage(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -292,10 +294,12 @@ export function App() {
           {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setPage('list')}>Back to your pools</button></span>}
         </div>
       )}
-      {isConnected && !loaded && <p className="txline">Loading your pools…</p>}
+      {isConnected && !loaded && (loadFailed
+        ? <p className="txline bad">Couldn't load your pools. <button className="link" onClick={reload}>Retry</button></p>
+        : <p className="txline">Loading your pools…</p>)}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b, failure) => { open(b); setNotice(failure); loadMine(); }} />
+          onCreated={(b, failure) => { open(b); setNotice(failure); reload(); }} />
       )}
       {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setNotice(undefined); setPage('new'); }} />}
       {isConnected && loaded && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} notice={notice} />}
