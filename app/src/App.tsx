@@ -966,7 +966,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 : <div><span>Not used</span>{figureEth(ev && have - needed)}</div>}
             </>
           )}
-          <div><span>You keep per draw</span>{econ ? <span><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><span>Average per draw</span>{econ ? <span><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><span>Per draw while the reserve refills</span>{econ ? <span><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
         </div>
         {save}
         {view && ev && econ && (
@@ -995,7 +996,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                   <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Kept in the pool while open'}</span><span>{eth(needed)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
                   <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Per draw while the reserve refills</span><span>{signed(econ.claimablePerDraw)} ETH</span></div>
                   <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking fee per Shape, at today's gas</span><span>{eth(d.restockFee, 5)} ETH</span></div>
                 </div>
@@ -1281,7 +1281,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {econ ? (
             <>
               <div className="row" style={{ gap: 40, marginTop: 12 }}>
-                <div><span className="note">Per draw</span><div><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Average per draw</span><div><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Per draw while the reserve refills</span><div><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
               </div>
