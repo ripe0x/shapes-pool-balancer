@@ -527,7 +527,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
   // Shape pool size: how many 0.01 ETH Shapes; a style scales its other Shapes with it. More of them make the NFTs rarer and the draw cheaper.
-  const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
+  // At least one small Shape: a style's other Shapes scale with them, so 0 would leave a one-prize pool.
+  const [small, setSmall] = useState(Math.max(1, has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL));
   // A saved pool shows its saved mix until something changes.
   const [edited, setEdited] = useState(!has);
   const [restricted, setRestricted] = useState<string>();
@@ -555,7 +556,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
   const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
-  const smallUsed = Math.max(0, Math.min(small, room));
+  const smallUsed = Math.max(1, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
   // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
   // design prices the new Shapes at the current markup instead.
@@ -922,8 +923,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{smallUsed} <small>small Shapes</small></span></div>
-              <input id="small" type="range" min={shapeCount(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{smallUsed} <small>small Shape{smallUsed === 1 ? '' : 's'}</small></span></div>
+              <input id="small" type="range" min={1} max={room} step={1} value={smallUsed}
                 onChange={(e) => change(setSmall)(Number(e.target.value))} />
               <p className="note">More small Shapes make curated NFTs rarer and the draw cheaper.</p>
             </div>
