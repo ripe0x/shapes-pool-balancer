@@ -604,7 +604,8 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
       witness: 0.00247 ETH lost at 4 gwei); a stale call now costs the keeper only the gas up to the check. The keeper
       reads the hash with the settings it prices on and keeps it for replacements; the dashboard reads it at send time.
     - F2: the restocking fee is restockGas x price + incentive + restockFlat, and `SettingsLib.check` requires
-      restockGas >= overheadGas + 850k. The fee then carries a restock-one upkeep's pay at any settings
+      restockGas >= overheadGas + 850k. The fee then carries a restock-one upkeep's pay at the settings of its listing
+      (decision 92 for prizes listed before a change)
       (`test_lowestRestockFeeCoversItsRestock`: at the lowest fee and highest incentive, 0.0055 ETH carried against
       0.005422 ETH paid for 834,418 measured gas at 5 gwei). The default restockFlat falls from 0.0002 to 0.0001 ETH, so
       the default fee is unchanged (900k x price + 0.0002 ETH) and so are the gate's regimes and signed outcomes.
@@ -636,3 +637,24 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     Costs that grow with the pool: a first fill takes one paid upkeep per 5 Shapes (200 for 1,000 single Shapes,
     about 0.3 ETH of keeper pay at 0.5 gwei basefee: 200 x (2.5M + 50k gas) x 0.55 gwei + 200 x 0.0001 ETH), the reserve holds the larger target, and the dashboard reads two values
     per listing on load (now batched into multicalls). Test helper `fillUp` allows 400 calls.
+92. **Review of `67a9e1e` acted on** (owner, 2026-11-16: "Yes, build them"; report `audit/rc-67a9e1e/REPORT.md`, in
+    the review's own worktree at `2323ade`).
+    - E1, accepted as the creator's cost (option A): a listed restocking fee never changes, so raising pay settings
+      (or gas within the cap) after a prize is listed costs the creator the difference when that prize is restocked,
+      until it is won and relisted. The review's witness: a fee listed at 0.55 gwei (0.000695 ETH) against 0.052435 ETH
+      of keeper pay after the cap went to 50 gwei with the highest incentive and overhead. Rejected: capping pay per old
+      prize (keepers would skip those restocks) and repricing old listings on a settings change (one FWA price update
+      per listing, beyond one transaction at 1,000 prizes). R37's addition, `src/Settings.sol`, `src/PoolBalancer.sol`
+      (comments only) and `docs/SECURITY.md` now say "under the settings and gas price of its listing". The dashboard's
+      Keeper pay section already states that restocking fees change from the next prizes listed.
+    - S1: the keeper computes the hash from the one `settings()` read it prices on (`settingsHash` in
+      `shared/planner.ts`, checked against the contract's value and `cast`), so the hash it sends always names the
+      settings it priced.
+    - S2: a replacement is priced on the current settings read and carries the current hash, at the same nonce. A
+      pending entry saved before `settingsHash` existed, or one whose settings changed, is replaced instead of waiting
+      forever (local fork: a legacy entry at nonce 111 was replaced and mined).
+    - E2: O11's information figure was 0.036 ETH from decision 83; decision 86 (no markup on curated NFTs) moved
+      `extreme_top_heavy` to 0.0371 ETH and O11 was not restated then. Now "up to 0.038 ETH (measured 0.0371)"; the
+      owner re-signs the outcomes.
+    - Left open: dashboard load at very large inventories (two reads per listing, unpaged lifetime logs) and reads
+      not pinned to one block.

@@ -275,8 +275,10 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
   limits: at most 0.311 ETH per paid upkeep, and only for upkeeps that reconcile a draw or list a prize, at gas actually
   spent. Raising the caps also raises each pool's held reserve, so a pool funded at the old reserve stops admitting
   purchases until its creator deposits more or the admin restores the settings (at every limit, a pool needs 0.311 ETH
-  per budgeted upkeep). The restocking fee always carries at least a restock-one upkeep's pay (restockGas >= overheadGas
-  + 850k, plus the incentive), so no setting makes restocking spend the reserve. A settings change never reaches an
+  per budgeted upkeep). A restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing
+  (restockGas >= overheadGas + 850k, plus the incentive). Listed fees never change, so raising pay settings costs each
+  pool the difference on prizes listed before, until they are won and relisted (decision 92; review of 67a9e1e E1:
+  0.052 ETH on one restock after a 0.55 to 50 gwei change). A settings change never reaches an
   upkeep already priced: `performUpkeep` takes the `settingsHash()` the keeper read and reverts `StaleSettings` if it
   changed (audit rc-f5c81d6 F1).
 - **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the

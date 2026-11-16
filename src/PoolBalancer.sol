@@ -117,7 +117,9 @@ contract PoolBalancer is ReentrancyGuard {
     //   is the creator's cost, as are the fees of prizes unlisted or never drawn.
     //   restockGas is at least overheadGas + 850k (SettingsLib.check), so with the incentive the fee covers an upkeep
     //   that reconciles one draw and restocks one Shape (measured 763k-864k gas across pools and blocks; Shapes mint gas
-    //   varies with the block) at any settings, less at most 14k gas that the default restockFlat covers.
+    //   varies with the block) under the settings and price of its listing block, less at most 14k gas that the default
+    //   restockFlat covers. A listed fee is fixed: pay settings or gas raised later cost the creator the difference on
+    //   prizes listed before (decision 92).
     /// @dev Override mask bits for `setOverrides`, one per creator-overridable setting.
     uint8 internal constant OVR_MAX_GAS_PRICE = 1;
     uint8 internal constant OVR_PRIORITY_CAP = 2;

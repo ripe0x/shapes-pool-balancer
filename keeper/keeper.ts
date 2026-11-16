@@ -12,7 +12,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { poolBalancerAbi } from '../shared/abi';
-import { DEFAULT_SETTINGS, settingsFrom, type KeeperSettings } from '../shared/planner';
+import { DEFAULT_SETTINGS, settingsFrom, settingsHash as hashOf, type KeeperSettings } from '../shared/planner';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
@@ -88,7 +88,7 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { hashes: Hash[]; nonce: number; settingsHash: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { hashes: Hash[]; nonce: number; settingsHash?: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State {
   lastScanned: string;
   balancers: Address[];
@@ -208,14 +208,11 @@ export class Keeper {
 
   private async service(b: Address, head: bigint, baseFee: bigint) {
     const p = this.state.pending[b];
-    // The settings and the hash performUpkeep checks; a change between the two reads makes the simulation revert
-    // StaleSettings, and the next tick reads again.
-    const [raw, settingsHash] = await Promise.all([
-      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }),
-      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settingsHash' }) as Promise<Hash>,
-    ]);
-    const settings = settingsFrom(raw);
-    if (p && (await this.resolvePending(b, p, head, baseFee, settings))) return; // still in flight
+    // One settings read prices the call and names the hash performUpkeep checks: if the settings change before
+    // inclusion, the call reverts StaleSettings at its start instead of paying by settings it was not priced on.
+    const settings = settingsFrom(await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }));
+    const settingsHash = hashOf(settings);
+    if (p && (await this.resolvePending(b, p, head, baseFee, settings, settingsHash))) return; // still in flight
     const { priority, max, cap } = this.fees(baseFee, settings.maxGasPrice);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
@@ -269,7 +266,7 @@ export class Keeper {
   }
 
   /** Returns true while a tx for `b` remains in flight. */
-  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint, settings: KeeperSettings): Promise<boolean> {
+  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint, settings: KeeperSettings, settingsHash: Hash): Promise<boolean> {
     for (const h of p.hashes) {
       const r = await this.pub.getTransactionReceipt({ hash: h }).catch(() => null);
       if (!r) continue;
@@ -310,16 +307,19 @@ export class Keeper {
       return true;
     }
     try {
-      // The replacement keeps the settings hash it was priced on; if they changed, it simulates StaleSettings and waits.
-      const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [p.settingsHash], account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
+      // A replacement is priced on this tick's settings read, at the same nonce: if the settings changed since the
+      // original was sent, or the entry predates settingsHash, the replacement carries the current hash and the
+      // original (if it is still mined first) reverts StaleSettings at its start.
+      const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
       const reward = (await this.pub.simulateContract(call as never)).result as bigint;
       const verdict = decide({ gasEstimate: BigInt(p.estimate), expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei, settings });
       if (!verdict.send) {
         this.log(`waiting: replacement ${verdict.reason}`, { balancer: b });
         return true;
       }
-      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas), p.settingsHash);
+      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas), settingsHash);
       p.hashes.push(hash);
+      p.settingsHash = settingsHash;
       p.maxFeePerGas = max.toString();
       p.maxPriorityFeePerGas = prio.toString();
       p.sentBlock = head.toString();

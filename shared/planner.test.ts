@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
+import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, settingsHash, unpackPlan, DEFAULT_SETTINGS } from './planner';
 
 const EDGE = 500;
 
@@ -124,5 +124,16 @@ describe('planner', () => {
     expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
     // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
     expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
+  });
+});
+
+describe('settingsHash', () => {
+  it('matches PoolBalancer.settingsHash() at the defaults (read from a local fork deployment of 67a9e1e)', () => {
+    expect(settingsHash(DEFAULT_SETTINGS)).toBe('0x45d0100b7eaa1034f0173ddd16e7859f5701e0ffed30f0a72a6a82d11c8d9f7c');
+  });
+  it('matches cast keccak of the ABI encoding at other values', () => {
+    // cast keccak $(cast abi-encode "f(uint64,uint64,uint64,uint64,uint32,uint32,uint32,uint32)" 50000000000 2000000000 1000000000000000 0 6000000 200000 1050000 7)
+    const s = { maxGasPrice: 50n * 10n ** 9n, priorityCap: 2n * 10n ** 9n, incentive: 10n ** 15n, restockFlat: 0n, maxGas: 6_000_000n, overheadGas: 200_000n, restockGas: 1_050_000n, maxPrizes: 7 };
+    expect(settingsHash(s)).toBe('0x3b999d8f727c0630ebdfa97aab6b29436735e206c81d546f6c4677b4ff06288d');
   });
 });

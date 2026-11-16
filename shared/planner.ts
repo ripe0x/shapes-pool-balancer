@@ -1,5 +1,6 @@
 // Prize-mix planner. Prices, odds and the reserve use the same integer arithmetic as PoolBalancer and FWA
 // StandardPool, so the numbers shown match the chain for the same curated set, markup, edge and mint fee.
+import { encodeAbiParameters, keccak256, type Hash } from 'viem';
 
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
@@ -41,6 +42,13 @@ export const settingsFrom = (r: Record<keyof KeeperSettings, bigint | number>): 
   restockGas: BigInt(r.restockGas),
   maxPrizes: Number(r.maxPrizes),
 });
+/** PoolBalancer.settingsHash(): keccak256 of the ABI-encoded Settings struct (eight static fields, one word each). A
+ *  keeper computes it from the same `settings()` read it prices a call on, so the hash it sends always names those
+ *  settings (two separate reads could straddle a change and back). */
+export const settingsHash = (s: KeeperSettings): Hash => keccak256(encodeAbiParameters(
+  [{ type: 'uint64' }, { type: 'uint64' }, { type: 'uint64' }, { type: 'uint64' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint32' }],
+  [s.maxGasPrice, s.priorityCap, s.incentive, s.restockFlat, Number(s.maxGas), Number(s.overheadGas), Number(s.restockGas), s.maxPrizes],
+));
 /** The plan size the factory allows by default; a pool's live limit is `settings.maxPrizes`. */
 export const MAX_SHAPES_PER_PLAN = DEFAULT_SETTINGS.maxPrizes;
 /** Reward = (measured gas, at most maxGas, + overheadGas) x min(bid, basefee + priorityCap, maxGasPrice) + incentive,

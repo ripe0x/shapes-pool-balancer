@@ -29,7 +29,9 @@ library SettingsLib {
     /// @dev Limits that keep the system working at any setting: keepers are always paid at least the gas of the worst
     ///      measured upkeep (2.78M of maxGas) and its outside-span overhead (measured 24k-46k of overheadGas); the
     ///      restocking fee's gas covers a restock-one upkeep and its overhead (restockGas >= overheadGas + 850k; the fee
-    ///      also carries the incentive), so no setting makes restocking spend the reserve; a gas price cap of at least
+    ///      also carries the incentive), so a prize's fee pays its own restock under the settings and gas price of its
+    ///      listing block. A listed fee never changes: if pay settings or gas rise later, restocking an older prize
+    ///      costs the creator the difference until it is won and relisted (decision 92); a gas price cap of at least
     ///      1 gwei; at most 1,000 prizes. Upper limits bound what a keeper call can cost the creator:
     ///      (6M + 200k) x 50 gwei + 0.001 ETH = 0.311 ETH.
     function check(Settings memory s) internal pure {

@@ -158,8 +158,10 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - R37. Keeper pay, the restocking fee and the prize limit are adjustable: the factory admin sets defaults, a creator may
   adjust their own pool's keeper pay, and only within limits that keep the system working (decision 88).
 - R38. No limit on curated NFTs per pool ("if not, don't set one"; decision 89).
-- R37 holds through settings changes: an upkeep runs only under the settings its caller priced it on, and the
-  restocking fee always carries a restock-one upkeep's pay (decision 90).
+- R37 holds through settings changes: an upkeep runs only under the settings its caller priced it on, and a prize's
+  restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing (decision 90).
+  Raising pay settings later costs the creator the difference on prizes listed before, until they are won and
+  relisted (owner, 2026-11-16, accepting option A of the 67a9e1e review's E1; decision 92).
 
 ## Decisions log (history, not requirements)
 
