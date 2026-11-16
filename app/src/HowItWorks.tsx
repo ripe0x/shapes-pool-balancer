@@ -135,8 +135,8 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
       </section>
 
       <section className="hiw-sec">
-        <h2 className="h3">6. Game styles</h2>
-        <p className="hiw-p">A style decides which prizes sit next to your NFTs. The pool size slider sets how many small Shapes there are.</p>
+        <h2 className="h3">6. Shape styles</h2>
+        <p className="hiw-p">A Shape style decides which Shapes sit next to your NFTs. The Small Shapes slider sets how many 0.01 ETH Shapes there are.</p>
         <div className="hiw-styles">
           {STYLES.map((s) => {
             const c = mixOf(SMALL, styleBonus(s.key, EXAMPLE, SMALL));

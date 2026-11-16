@@ -526,7 +526,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
-  // Pool size: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
+  // Small Shapes: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
   const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
   // A saved pool shows its saved mix until something changes.
   const [edited, setEdited] = useState(!has);
@@ -731,7 +731,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         [vrfKnown ? 'Players pay' : 'Draw price', `${eth(savedView.cost, 5)} ETH`, `${eth(view.cost, 5)} ETH${markupBps !== d.markupBps ? ' as prizes restock' : ''}`],
         ['Chance of one of your NFTs', pctOf(savedView.curated), pctOf(view.curated)],
         ['Shapes', mixText(savedCounts), mixText(counts)],
-        ['Your markup', `${d.markupBps / 100}%`, `${markup}%`],
+        ['Your markup on Shapes', `${d.markupBps / 100}%`, `${markup}%`],
         ['Kept in the pool while open', `${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee }))} ETH`, `${eth(needed)} ETH`],
       ] as const).map(([k, a, b]) => (
         <div className="kv" key={k}><span className="k">{k}</span><span>{a === b || !configChanged ? a : <><span className="muted">{a} →</span> <b>{b}</b></>}</span></div>
@@ -892,7 +892,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           </div>
           <div className="group-body">
             <div>
-              <h3 className="ctl" id="style-label">Game style</h3>
+              <h3 className="ctl" id="style-label">Shape style</h3>
               <div className="tiles" role="group" aria-labelledby="style-label">
                 {GAME_STYLES.map((g) => (
                   <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
@@ -925,13 +925,13 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Pool size</label><span className="big-v">{smallUsed} <small>small Shapes</small></span></div>
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Small Shapes</label><span className="big-v">{smallUsed} <small>× 0.01 ETH</small></span></div>
               <input id="small" type="range" min={shapeCount(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
                 onChange={(e) => change(setSmall)(Number(e.target.value))} />
               <p className="note">More small Shapes make curated NFTs rarer and the draw cheaper.</p>
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="markup">Your markup</label><span className="big-v">{markup}%</span></div>
+              <div className="ctl-row"><label className="ctl" htmlFor="markup">Your markup on Shapes</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
               <p className="note">Added to the price of every Shape prize. It is yours. While the reserve is short, the first 10% refills it.</p>
               <p className="note" style={{ marginTop: 6 }}>Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
@@ -1290,7 +1290,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               {how && (
                 <div style={{ marginTop: 12 }}>
                   <div className="kv"><span className="k">Average prize value on FWA</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Your markup</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Your markup on Shapes</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Shapes mint fees, paid by players</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking fees, paid by players</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Keeper pay, from your ETH</span><span>−{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
