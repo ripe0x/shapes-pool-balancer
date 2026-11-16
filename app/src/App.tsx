@@ -526,7 +526,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
-  // Small Shapes: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
+  // Shape pool size: how many 0.01 ETH Shapes; a style scales its other Shapes with it. More of them make the NFTs rarer and the draw cheaper.
   const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
   // A saved pool shows its saved mix until something changes.
   const [edited, setEdited] = useState(!has);
@@ -925,7 +925,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Small Shapes</label><span className="big-v">{smallUsed} <small>× 0.01 ETH</small></span></div>
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{smallUsed} <small>small Shapes</small></span></div>
               <input id="small" type="range" min={shapeCount(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
                 onChange={(e) => change(setSmall)(Number(e.target.value))} />
               <p className="note">More small Shapes make curated NFTs rarer and the draw cheaper.</p>
