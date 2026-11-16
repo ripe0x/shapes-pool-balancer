@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-/// @notice Keeper-pay and pool-size values (decision 88). The BalancerFactory's keeper admin sets the defaults every
+/// @notice Keeper-pay and pool-size values. The BalancerFactory's keeper admin sets the defaults every
 ///         Balancer reads; a pool's creator may override the four marked "creator" for their own pool. Each field is
 ///         checked on its own against the limits in `SettingsLib.check`, so any mix of defaults and overrides is in
 ///         range. None of them touches prize backing: they set what keepers are paid from the creator's ETH, the
@@ -20,18 +20,19 @@ struct Settings {
 library SettingsLib {
     error SettingOutOfRange();
 
-    /// @dev Decisions 54, 58, 73, 74 and 90 (restocking fee), 91 (1,000 prizes, measured: upkeep gas does not grow with
-    ///      the pool, test/Gas.t.sol and test/audit/d16b/WorstUpkeepB.t.sol).
+    /// @dev The factory's settings at deployment. Upkeep work is bounded per call, so the worst upkeep's gas does not
+    ///      grow with the number of prizes (measured the same at 200 and 1,000).
     function defaults() internal pure returns (Settings memory) {
         return Settings(5 gwei, 0.05 gwei, 0.0001 ether, 0.0001 ether, 3_200_000, 50_000, 900_000, 1_000);
     }
 
-    /// @dev Limits that keep the system working at any setting: keepers are always paid at least the gas of the worst
-    ///      measured upkeep (2.78M of maxGas) and its outside-span overhead (measured 24k-46k of overheadGas); the
+    /// @dev Limits that keep the system working at any setting: maxGas covers the billed gas of the worst measured
+    ///      upkeep (2.87M, with a curated collection that spends every FWA gas allowance, at 4,096 listings) and
+    ///      overheadGas its outside-span gas (measured 24k-46k); the
     ///      restocking fee's gas covers a restock-one upkeep and its overhead (restockGas >= overheadGas + 850k; the fee
     ///      also carries the incentive), so a prize's fee pays its own restock under the settings and gas price of its
     ///      listing block. A listed fee never changes: if pay settings or gas rise later, restocking an older prize
-    ///      costs the creator the difference until it is won and relisted (decision 92); a gas price cap of at least
+    ///      costs the creator the difference until it is won and relisted; a gas price cap of at least
     ///      1 gwei; at most 1,000 prizes. Upper limits bound what a keeper call can cost the creator:
     ///      (6M + 200k) x 50 gwei + 0.001 ETH = 0.311 ETH.
     function check(Settings memory s) internal pure {

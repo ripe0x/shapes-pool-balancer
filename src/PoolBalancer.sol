@@ -18,7 +18,7 @@ interface IBalancerFactory {
 ///         prizes; anyone (or, while its factory restricts upkeep, approved keepers and the creator) may call
 ///         `performUpkeep` to restock drawn prizes from this contract's ETH. Players buy on FWA directly; this contract is
 ///         FWA's purchase operator.
-/// @dev Design (money flows in docs/SPEC.md):
+/// @dev Design:
 ///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
 ///        no new draw while upkeep is finishing creator-started work, while no curated NFT is listed (the pool exists to
@@ -75,9 +75,8 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
     ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
     ///      so a starved failure hands back at most about 343,000 (measured, 48 to 2,048 listings). A failure with more
-    ///      than this left was not for want of gas. The proxy's
-    ///      share grows with the gas processing needs: this holds for MAX_PROCESS = 2 and FWA's six-listing
-    ///      reservations (at most about 3.3M); re-measure if either changes.
+    ///      than this left was not for want of gas. The proxy's share grows with the gas processing needs, so the bound
+    ///      holds for MAX_PROCESS = 2 and FWA's six-listing reservations (at most about 3.3M).
     uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against the 3.2M pay cap.
@@ -92,11 +91,10 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev The heaviest prize in the fill gate: the smallest backing (0.01 ETH). See `_weight`.
     uint256 internal constant MAX_PRIZE_WEIGHT = INVERSE_WEIGHT_NUMERATOR / 0.01 ether;
 
-    // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents). The values are
-    // `settings()` (decision 88): the factory's defaults with this pool's overrides. Defaults: maxGas 3.2M, priorityCap
-    // 0.05 gwei, maxGasPrice 5 gwei, overheadGas 50,000, incentive 0.0001 ETH, restockGas 900k, restockFlat 0.0001 ETH.
-    // - price = min(tx.gasprice, basefee + priorityCap, maxGasPrice). Upkeep is permissionless, so
-    //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
+    // Keeper compensation. The values are `settings()`: the factory's defaults with this pool's overrides.
+    // - price = min(tx.gasprice, basefee + priorityCap, maxGasPrice), so a keeper is never reimbursed at a gas price it
+    //   chose above basefee + priorityCap. Upkeep is permissionless, so competing keepers bid whatever priority is
+    //   reimbursed; the cap is what the pool pays above basefee.
     // - reward = (measured gas, capped at maxGas, + overheadGas) x price + incentive, for every call that
     //   reconciles a draw or lists a prize, from the creator's ETH here (the fund first; unclaimed profit only once
     //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
@@ -106,10 +104,9 @@ contract PoolBalancer is ReentrancyGuard {
     //   MAX_RECONCILE) and, when it processed none, restocks the whole deficit (up to MAX_OPS); a draw FWA has not
     //   processed cannot be reconciled or paid for. Draws become ready or expire one block at a time, and FWA
     //   processing is permissionless, so a batch can be reconciled one draw per call: the bound is one paid call
-    //   per processed draw, not per batch (about 0.000124 ETH extra per draw at 0.55 gwei, within the owner's budget).
-    //   Each paid call is at most maxKeeperReward() and needs a processed
-    //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
-    //   the incentive per call.
+    //   per processed draw, not per batch (about 0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most
+    //   maxKeeperReward() and needs a processed sequence (a paid draw) or a deficit (a won prize or a creator action),
+    //   so splitting work across calls gains a keeper at most the incentive per extra call.
     // - Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + incentive + restockFlat, at
     //   the listing block: the creator's income for keeper pay, sized to the gas a listing call
     //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
@@ -119,7 +116,7 @@ contract PoolBalancer is ReentrancyGuard {
     //   that reconciles one draw and restocks one Shape (measured 763k-864k gas across pools and blocks; Shapes mint gas
     //   varies with the block) under the settings and price of its listing block, less at most 14k gas that the default
     //   restockFlat covers. A listed fee is fixed: pay settings or gas raised later cost the creator the difference on
-    //   prizes listed before (decision 92).
+    //   prizes listed before.
     /// @dev Override mask bits for `setOverrides`, one per creator-overridable setting.
     uint8 internal constant OVR_MAX_GAS_PRICE = 1;
     uint8 internal constant OVR_PRIORITY_CAP = 2;
@@ -588,7 +585,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///         (24 chars, e.g. 2026-11-10T12:34:56.789Z); `metadataHash` is keccak256 of the page JSON.
     /// @dev Approved digests are always "Publish FWA Pools page" messages naming this pool, so
     ///      `isValidSignature` cannot authorize anything else (no FWA, Shapes or ERC721 function
-    ///      accepts such a message). Format verified against pools.fwa.fun's client code 2026-11-10.
+    ///      accepts such a message).
     function approvePoolPage(string calldata issuedAt, bytes32 metadataHash)
         external
         onlyCreator
@@ -661,8 +658,9 @@ contract PoolBalancer is ReentrancyGuard {
 
         // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
         //    also only ever takes the queue's head), and a ready draw never expires, so it and every draw behind it wait
-        //    for an explicit processAcquisitions that nobody else is bound to call. FWA stops at a draw still waiting for its randomness; a failure here never blocks the rest of upkeep.
-        //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
+        //    for an explicit processAcquisitions that nobody else is bound to call. FWA stops at a draw still waiting
+        //    for its randomness; a failure here never blocks the rest of upkeep. The draws it settles are reconciled
+        //    below in the same call, so the work is paid like any reconcile.
         //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
         //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing). Processing that
         //    failed for want of gas reverts the whole upkeep instead, at any pool size: a call never succeeds with
@@ -899,8 +897,8 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @dev Collect FWA proceeds and split them by the listed prices. Callers collect before changing the tracked
-    ///      listings, so the split uses the set the collected draws were priced on. While the fund (this balance less unclaimed
-    ///      `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS becomes claimable `profit`
+    ///      listings, so the split uses the set the collected draws were priced on. While the fund (this balance less
+    ///      unclaimed `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS becomes claimable `profit`
     ///      and the fund keeps the rest; at or above it, everything over the reserve is claimable anyway.
     function _collect() internal returns (uint256 amount) {
         IFWAPool p = pool;
@@ -1005,8 +1003,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @dev A prize's weight in the fill gate: 1 / its backing. Listed prices keep the markup and fees of their listing
     ///      block, so weighing by price would let a lower markup or mint fee push a full board under the gate with
-    ///      nothing for upkeep to restock. Backing is fixed per size, so the gate measures the
-    ///      mix, not prices.
+    ///      nothing for upkeep to restock. Backing is fixed per size, so the gate measures the mix, not prices.
     function _weight(uint256 d) internal pure returns (uint256) {
         return INVERSE_WEIGHT_NUMERATOR / _amount(d);
     }

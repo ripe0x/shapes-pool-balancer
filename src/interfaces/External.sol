@@ -34,7 +34,7 @@ interface IFWAPool {
     function setPurchaseOperator(address newOperator) external;
     function retirePool() external;
 
-    // purchases (used by tests and the keeper only; players use FWA directly)
+    // purchases (the Balancer never calls these; players buy on FWA directly)
     function acquire(
         address purchaser,
         uint256 maxAcquisitionFee,
@@ -139,8 +139,8 @@ interface IReverseRegistrar {
     function setName(string calldata name) external returns (bytes32);
 }
 
-/// @dev Draw Packs (ripe0x/shape-packs `draw-packs` at 3a463f7): an ERC-721 whose token holds Shapes in custody and
-///      redeems for exactly their backing. Only what the Balancer calls.
+/// @dev Draw Packs: an ERC-721 whose token holds Shapes in custody and redeems for exactly their backing. Only what the
+///      Balancer calls.
 interface IShapePacks {
     function createPackTo(uint256[] calldata shapeIds, uint32[] calldata mintCounts, address to)
         external
