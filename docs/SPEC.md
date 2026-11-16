@@ -45,9 +45,10 @@ Balancer by anyone, and NFTs sent to it directly, belong to the creator; there i
 - `markupBps`: a fixed operating markup (10% to 100%), the creator's to keep. It is the only profit in a price, so it
   is what refills the reserve after a big win. A curated NFT lists at its value, with no markup (decision 86). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
   markup + one restocking fee per Shape inside: players pay the mint fee and keepers on top of the markup. The
-  restocking fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, at the basefee of the
+  restocking fee is `restockFee()` = restockGas (900k) × min(basefee + priorityCap, maxGasPrice) + incentive (0.0001 ETH) +
+  restockFlat (0.0001 ETH), defaults in brackets, at the basefee of the
   listing block; it pays the keeper call that lists the prize. Prices are set when a listing is made. Existing listings keep their prices; nothing is repriced.
-- `target`: the prize mix, sixteen 16-bit counts packed into one uint256, 1 to 200 prizes in total (decision 87). Sizes 0 to 8 are the
+- `target`: the prize mix, sixteen 16-bit counts packed into one uint256, 1 to `settings().maxPrizes` prizes in total (default and highest 1,000; decision 91). Sizes 0 to 8 are the
   Shapes denominations (0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100 ETH), each prize one Shape. Sizes 9 to 15 are 0.02, 0.03,
   0.2, 0.25, 2, 2.5 and 25 ETH, each prize one Draw Pack holding the fewest Shapes that sum to it (2 or 3; e.g.
   0.25 = 2×0.1 + 0.05). A target set with only the first nine sizes decodes unchanged.

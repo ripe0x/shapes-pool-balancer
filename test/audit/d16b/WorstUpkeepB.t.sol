@@ -175,10 +175,11 @@ contract D16bWorstUpkeepTest is ForkBase {
 
     function _measure(uint256 basefee, uint256 bid) internal returns (uint256 reward, uint256 billed, uint256 measured) {
         _setGas(basefee, bid);
+        bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep();
+        reward = balancer.performUpkeep(uh1);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 q; q < logs.length; ++q) {
             if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -204,9 +205,10 @@ contract D16bWorstUpkeepTest is ForkBase {
             vm.revertToState(snap);
             snap = vm.snapshotState();
             _setGas(0.5 gwei, 0.55 gwei);
+            bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
             g0 = gasleft();
-            balancer.performUpkeep();
+            balancer.performUpkeep(uh2);
             emit log_named_uint("performUpkeep uncapped, from caller frame", g0 - gasleft());
             vm.revertToState(snap);
         }
@@ -261,5 +263,16 @@ contract D16bWorstUpkeepTest is ForkBase {
 
     function test_probeHog_pad464() public {
         _run(464);
+    }
+
+    /// Unlimited curated NFTs (decision 89, audit rc-f5c81d6): FWA's selection tree deepens by one level each time the
+    /// listings pass a power of two. 48 + 2,000 = 2,048: fresh slots start at 2,049 (12 levels).
+    function test_probeHog_pad2000() public {
+        _run(2000);
+    }
+
+    /// 48 + 4,048 = 4,096: fresh slots start at 4,097 (13 levels).
+    function test_probeHog_pad4048() public {
+        _run(4048);
     }
 }

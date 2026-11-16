@@ -37,6 +37,7 @@ const LEDGER = [
  *  out + held - put in, which equals sales - prizes won - mint fees - keeper pay, plus ETH sent to the pool directly
  *  (`other`). Curated NFTs won are counted apart: they are not ETH. */
 interface Ledger { putIn: bigint; takenOut: bigint; held: bigint; earned: bigint; sales: bigint; prizesWon: bigint; mintFees: bigint; keeperPay: bigint; other: bigint; nftsWon: number; nftValues: bigint }
+const L_DELIVERY_PENDING = 6;
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
 
@@ -100,7 +101,7 @@ function useBalancer(b?: Address) {
     // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
     // current fees (the reward bound it must leave unspent grows with the gas price).
     const fees = await pub.estimateFeesPerGas();
-    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: creator, ...fees })
+    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [await r<Hash>('settingsHash')], account: creator, ...fees })
       .then(() => ({ needed: true }), () => ({ needed: false }));
     // Drawn items whose FWA delivery failed are not scanned on chain; find them from events. The same scan feeds the
     // lifetime ledger.
@@ -110,7 +111,10 @@ function useBalancer(b?: Address) {
     const factoryAddr = await r<Address>('factory');
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
-    const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b), liveSettings(pub), r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
+    // Defaults come from this pool's own factory, which may not be the one this dashboard creates pools with.
+    const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b),
+      pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'settings' }).then(settingsFrom),
+      r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
     const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee, vrfFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'), p<bigint>('lastIssuedSequence'),
@@ -135,16 +139,24 @@ function useBalancer(b?: Address) {
     const backingOf = (ls: Listing[]) => ls.filter((l) => l.kind === 2).reduce((t, l) => t + DENOMS[l.denom], 0n);
     const putIn = sum('Deposited', (a) => a.amount as bigint); // includes the deposit made at creation
     const takenOut = sum('SurplusClaimed', (a) => a.amount as bigint);
-    const held = balance + backingOf(listings) + backingOf(pending) + proceeds;
+    // FWA status 1 is listed, 6 a failed delivery awaiting retry or refund, 7 refunded (the creator recovers it). Any
+    // other status on a prize the Balancer still tracks means FWA delivered it: before upkeep reconciled the draw, or
+    // on a retry after a failed delivery (which the Balancer never revisits).
+    const tracked = [...listings, ...pending];
+    const stillHeld = (l: Listing) => l.fwaStatus === 1 || l.fwaStatus === L_DELIVERY_PENDING || l.fwaStatus === L_DELIVERY_REFUNDED;
+    const delivered = tracked.filter((l) => !stillHeld(l));
+    const deliveredNfts = delivered.filter((l) => l.kind === 1);
+    const held = balance + backingOf(tracked.filter(stillHeld)) + proceeds;
     const sales = sum('ProceedsCollected', (a) => a.amount as bigint) + proceeds;
-    const prizesWon = drawn.filter((l) => l.args.kind === 2 && l.args.delivered).reduce((t, l) => t + DENOMS[l.args.denom!], 0n);
+    const prizesWon = drawn.filter((l) => l.args.kind === 2 && l.args.delivered).reduce((t, l) => t + DENOMS[l.args.denom!], 0n) + backingOf(delivered);
     const mintFees = sum('ShapesMinted', (a) => (a.cost as bigint) - (a.quantity as bigint) * DENOMS[Number(a.denom)]);
     const keeperPay = sum('KeeperPaid', (a) => a.amount as bigint);
     const earned = takenOut + held - putIn;
     const ledger: Ledger = {
       putIn, takenOut, held, earned, sales, prizesWon, mintFees, keeperPay,
       other: earned - (sales - prizesWon - mintFees - keeperPay),
-      nftsWon: nftWins.length, nftValues: nftWins.reduce((t, l) => t + (values.get(l.args.listingId!) ?? 0n), 0n),
+      nftsWon: nftWins.length + deliveredNfts.length,
+      nftValues: nftWins.reduce((t, l) => t + (values.get(l.args.listingId!) ?? 0n), 0n) + deliveredNfts.reduce((t, l) => t + l.base, 0n),
     };
     return {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
@@ -282,9 +294,14 @@ export function App() {
       pub.getLogs({ event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: FROM_BLOCK }).catch(() => []),
     ]);
     const candidates = [...new Set([...created.map((l) => l.args.balancer!), ...received.map((l) => l.address as Address)])];
-    const owned = await Promise.all(candidates.map((b) =>
-      (pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'creator' }) as Promise<Address>)
-        .then((c) => (c.toLowerCase() === address.toLowerCase() ? b : undefined)).catch(() => undefined)));
+    // Any contract can emit CreatorTransferred: only Balancers this dashboard's factory deployed are listed.
+    const owned = await Promise.all(candidates.map(async (b) => {
+      const [ours, c] = await Promise.all([
+        pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [b] }) as Promise<boolean>,
+        pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'creator' }) as Promise<Address>,
+      ]).catch(() => [false, undefined] as const);
+      return ours && c?.toLowerCase() === address.toLowerCase() ? b : undefined;
+    }));
     const list = owned.filter(Boolean) as Address[];
     setMine(list);
     // Keep the selection only if it belongs to the connected account (it changes when the wallet switches accounts).
@@ -393,6 +410,7 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
 
 function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; notice?: string }) {
   const { data: d, error, refresh } = useBalancer(balancer);
+  const pub = usePublicClient();
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
   if (!d) return <p className="txline">Loading…</p>;
@@ -402,7 +420,8 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
   // A pool created but never configured continues in the designer.
   const setup = d.target === 0n && isCreator && !d.retired;
   const tabs: Tab[] = setup ? ['overview', 'nfts', 'settings'] : ['overview', 'nfts', 'mix', 'settings'];
-  const upkeep = () => tx.send('Run upkeep', [() => tx.write({ ...B, functionName: 'performUpkeep' })]);
+  const upkeep = () => tx.send('Run upkeep', [async () => tx.write({ ...B, functionName: 'performUpkeep',
+    args: [await pub!.readContract({ ...B, functionName: 'settingsHash' })] })]);
   const action = st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>
     : st.act === 'open' && isCreator ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>
       : st.act && st.act !== tab && st.act !== 'open' ? <button className="link" onClick={() => setTab(st.act as Tab)}>{st.label}</button>
@@ -544,7 +563,8 @@ const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: Dr
  *  simulates exactly as the send will (EIP-1559 fees from the node, the creator account), so NoUpkeepNeeded is not
  *  misjudged at gas price 0, where upkeep's reward bound is lower than at inclusion. */
 const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => ['Run upkeep', async () => {
-  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep' as const };
+  const args = [await pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settingsHash' })] as const;
+  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep' as const, args };
   const needed = await prepareWrite(pub, me, call).then(() => true, () => false);
   return needed ? tx.write(call) : undefined;
 }];
@@ -1256,12 +1276,11 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const gone = plan.map((n, i) => (n > d.activeShapes[i] ? i : -1)).filter((i) => i >= 0);
   const goneLabel = missing === 1 ? `the ${eth(DENOMS[gone[0]], 3).replace(/\.?0+$/, '')} ETH prize` : 'the missing prizes';
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
-  // What the withdrawable ETH is, counting earnings first: the contract keeps one balance, so the split is a convention.
-  const earned = d.ledger.earned;
+  // What the withdrawable ETH is, as the contract counts it: withdrawals spend unclaimed profit first.
   const withdrawSplit = d.surplus === 0n ? 'Nothing above what the pool keeps to run.'
-    : earned <= 0n ? 'Your deposit the pool does not need.'
-      : earned >= d.surplus ? `${eth(d.surplus)} ETH of the ${eth(earned)} ETH you have earned; the rest is held in the pool's prizes and reserve.`
-        : `${eth(earned)} ETH earned and ${eth(d.surplus - earned)} ETH of your deposit the pool does not need.`;
+    : d.profit === 0n ? 'Your deposit the pool does not need.'
+      : d.profit >= d.surplus ? 'Your earnings.'
+        : `${eth(d.profit)} ETH of earnings and ${eth(d.surplus - d.profit)} ETH of your deposit the pool does not need.`;
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
   const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
@@ -1411,7 +1430,7 @@ const PAY_FIELDS = [
   { key: 'maxGasPrice', bit: 1, label: 'Gas price cap', unit: 'gwei', dec: 9, min: '1', max: '50' },
   { key: 'priorityCap', bit: 2, label: 'Priority fee cap', unit: 'gwei', dec: 9, min: '0', max: '2' },
   { key: 'incentive', bit: 4, label: 'Reward per keeper call', unit: 'ETH', dec: 18, min: '0', max: '0.001' },
-  { key: 'restockFlat', bit: 8, label: 'Flat restocking fee per Shape', unit: 'ETH', dec: 18, min: '0', max: '0.002' },
+  { key: 'restockFlat', bit: 8, label: 'Extra restocking fee per Shape, on top of gas and the reward', unit: 'ETH', dec: 18, min: '0', max: '0.002' },
 ] as const;
 
 function KeeperPay({ d, tx }: { d: D; tx: Tx }) {

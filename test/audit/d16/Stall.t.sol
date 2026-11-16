@@ -20,8 +20,9 @@ contract D16StallTest is D16WorstUpkeepTest {
     }
 
     function _measureOrZero() internal returns (uint256 reward, uint256 billed, uint256 measured) {
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        try balancer.performUpkeep() returns (uint256 r) {
+        try balancer.performUpkeep(uh1) returns (uint256 r) {
             reward = r;
             (bool ok, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
             require(ok);

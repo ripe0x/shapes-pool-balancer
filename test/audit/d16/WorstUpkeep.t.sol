@@ -198,10 +198,11 @@ contract D16WorstUpkeepTest is ForkBase {
 
     function _measure(uint256 basefee, uint256 bid) internal returns (uint256 reward, uint256 billed, uint256 measured) {
         _setGas(basefee, bid);
+        bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep();
+        reward = balancer.performUpkeep(uh1);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 q; q < logs.length; ++q) {
             if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -245,8 +246,9 @@ contract D16WorstUpkeepTest is ForkBase {
         // the restock this call left for later: every further call is covered too
         for (uint256 k; k < 5; ++k) {
             uint256 snap = vm.snapshotState();
+            bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch {
+            try balancer.performUpkeep(uh2) {} catch {
                 vm.revertToState(snap);
                 return;
             }

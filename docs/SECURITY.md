@@ -273,7 +273,12 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
   override the four keeper-pay values for their pool. A compromised admin can at worst slow restocking (purchases pause
   at LOW_INVENTORY) or, for pools that follow its defaults, raise what keepers are paid from creators' ETH to the
   limits: at most 0.311 ETH per paid upkeep, and only for upkeeps that reconcile a draw or list a prize, at gas actually
-  spent. Raising the caps also raises each pool's held reserve.
+  spent. Raising the caps also raises each pool's held reserve, so a pool funded at the old reserve stops admitting
+  purchases until its creator deposits more or the admin restores the settings (at every limit, a pool needs 0.311 ETH
+  per budgeted upkeep). The restocking fee always carries at least a restock-one upkeep's pay (restockGas >= overheadGas
+  + 850k, plus the incentive), so no setting makes restocking spend the reserve. A settings change never reaches an
+  upkeep already priced: `performUpkeep` takes the `settingsHash()` the keeper read and reverts `StaleSettings` if it
+  changed (audit rc-f5c81d6 F1).
 - **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the
   target's (charging each unreconciled draw the heaviest possible prize) and admits more than one batch between upkeeps.
   Player protection against a draw that drifts the odds comes from FWA pricing each draw on live inventory and refunding

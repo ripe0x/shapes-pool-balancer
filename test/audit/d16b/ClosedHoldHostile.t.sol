@@ -56,8 +56,9 @@ contract D16bClosedHoldHostileTest is D16bWorstUpkeepTest {
         }
         fulfill(r0, 1);
         if (reconcileFirst) {
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            balancer.performUpkeep(); // reconciles r0 (fast path); a restock stages behind the reserved draws
+            balancer.performUpkeep(uh1); // reconciles r0 (fast path); a restock stages behind the reserved draws
             assertEq(balancer.reconciledSequence() + 4, pool.lastIssuedSequence());
         }
         vm.prank(creator);

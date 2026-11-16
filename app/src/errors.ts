@@ -15,6 +15,7 @@ const ERRORS: Record<string, string> = {
   ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
   InvalidItem: 'not available for this action (check its FWA status)',
   SettingOutOfRange: 'a value is outside its allowed range',
+  StaleSettings: 'the keeper-pay settings changed; try again',
 };
 
 export function explain(e: unknown): string {

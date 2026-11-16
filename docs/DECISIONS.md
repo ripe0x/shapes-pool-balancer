@@ -596,3 +596,43 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
 89. **No limit on the number of curated NFTs** (owner, 2026-11-16: "do we need to set a max for nfts? if not, don't
     set one"). The dashboard's 20-NFT total came from decision 42's 100-listing cap, which no longer exists; the
     contract has no total. The dashboard now lists any number, in transactions of 20 (FWA's MAX_INVENTORY_BATCH).
+90. **Review of `f5c81d6` repaired** (owner, 2026-11-16: "read my notes and then do your recs on the others";
+    report `audit/rc-f5c81d6/REPORT.md`).
+    - F1: `performUpkeep(bytes32 expected)` takes the `settingsHash()` the caller read (keccak256 of the ABI-encoded
+      `settings()`) and reverts `StaleSettings` at its start if the settings changed since. A creator override or an
+      admin default between a keeper's simulation and inclusion can no longer cut its pay below its gas (the review's
+      witness: 0.00247 ETH lost at 4 gwei); a stale call now costs the keeper only the gas up to the check. The keeper
+      reads the hash with the settings it prices on and keeps it for replacements; the dashboard reads it at send time.
+    - F2: the restocking fee is restockGas x price + incentive + restockFlat, and `SettingsLib.check` requires
+      restockGas >= overheadGas + 850k. The fee then carries a restock-one upkeep's pay at any settings
+      (`test_lowestRestockFeeCoversItsRestock`: at the lowest fee and highest incentive, 0.0055 ETH carried against
+      0.005422 ETH paid for 834,418 measured gas at 5 gwei). The default restockFlat falls from 0.0002 to 0.0001 ETH, so
+      the default fee is unchanged (900k x price + 0.0002 ETH) and so are the gate's regimes and signed outcomes.
+      restockFlat is the creator's margin, 0 or more; a creator who sets it to 0 accepts up to 14k gas per restock
+      (the measured 864k high against the 850k floor) as their own cost.
+    - F4: the dashboard's Settings form compares overrides against the pool's own factory's defaults.
+    - F5: the keeper's bid cap per pool is the lower of the pool's `maxGasPrice` and `MAX_GAS_PRICE_GWEI` (default
+      50, was 5), so a pool that raises its cap is served above 5 gwei.
+    - F6 and the ledger: a prize the Balancer still tracks whose FWA listing is no longer listed (1), awaiting
+      delivery retry or refund (6) or refunded (7) was delivered to its player; Overview counts it as won, not held,
+      including a failed delivery that FWA later retried.
+    - Withdraw split: from the contract's `profit`, which withdrawals spend first, not from lifetime earnings.
+    - The pool list shows only Balancers this dashboard's factory deployed (`isBalancer`); any contract can emit
+      `CreatorTransferred`.
+    - The gate's draw regimes impersonate the Chainlink coordinator, since a fork cannot get real VRF delivery: the
+      owner accepts this as an exception to the no-mocks rule ("this is an ok exception"). Real delivery is covered by
+      the real-transaction rehearsal and the canary.
+    - Not changed: a creator may still set a 1 gwei cap or a zero incentive for their own pool (keepers then skip it
+      above that gas price, and the creator can run upkeep themselves), and the admin's raising the caps raises every
+      pool's reserve (`docs/SECURITY.md`).
+91. **Pools hold up to 1,000 prizes by default** (owner, 2026-11-16: "i'd rather measure now and set it higher"; review
+    of `f5c81d6` F3 found R36's 200 and decision 88's 1,000 limit in conflict). `maxPrizes` defaults to 1,000, its
+    highest allowed value. Measured on the pinned fork: the worst upkeep (reconcile 5 draws, restock 5 Shapes in 4
+    sizes) is 2,646,369 gas at 1,000 prizes and 100 curated NFTs against 2,646,324 at 200 and 20, so pool size does not
+    raise upkeep gas. Decision 89's unlimited curated NFTs, measured with a hostile collection that burns every FWA
+    stipend: the keeper's billed gas grows about 50k per doubling of listings (2.77M at 1,024, 2.82M at 2,048, 2.87M
+    at 4,096; FWA's `processAcquisitions(2)` 2.51M, 2.57M, 2.61M), and the measured span reaches the 3.2M pay cap from
+    1,024 listings; pay covers 3.25M gas, so billed gas stays covered to about 2^7 times more listings than measured.
+    Costs that grow with the pool: a first fill takes one paid upkeep per 5 Shapes (200 for 1,000 single Shapes,
+    about 0.3 ETH of keeper pay at 0.5 gwei basefee: 200 x (2.5M + 50k gas) x 0.55 gwei + 200 x 0.0001 ETH), the reserve holds the larger target, and the dashboard reads two values
+    per listing on load (now batched into multicalls). Test helper `fillUp` allows 400 calls.

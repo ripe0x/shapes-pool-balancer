@@ -17,7 +17,7 @@ import { DEFAULT_SETTINGS, settingsFrom, type KeeperSettings } from '../shared/p
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
  *  upkeep to keepers that do not include this one. */
-export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
+export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved', 'StaleSettings']);
 /** The default maxGas: it caps the gas the reward pays for, not the call's gas. Each pool's own is `settings().maxGas`. */
 export const KEEPER_MAX_GAS = DEFAULT_SETTINGS.maxGas;
 /** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
@@ -79,7 +79,7 @@ export interface KeeperConfig {
   stateFile: string;
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
-  maxGasPriceGwei?: number; // never bid above this; a pool reimburses at most its settings().maxGasPrice (default 5 gwei)
+  maxGasPriceGwei?: number; // never bid above this, nor above a pool's settings().maxGasPrice, the most it reimburses (default 50 gwei, the highest a pool may set)
   priorityGwei?: number; // a pool reimburses at most its settings().priorityCap over basefee (default 0.05 gwei)
   maxLossWei?: bigint;
   replaceAfterBlocks?: number;
@@ -88,7 +88,7 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { hashes: Hash[]; nonce: number; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { hashes: Hash[]; nonce: number; settingsHash: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State {
   lastScanned: string;
   balancers: Address[];
@@ -111,7 +111,7 @@ export class Keeper {
   private readonly c: Required<Omit<KeeperConfig, 'log'>> & Pick<KeeperConfig, 'log'>;
 
   constructor(cfg: KeeperConfig) {
-    this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
     const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
@@ -197,27 +197,37 @@ export class Keeper {
     this.save();
   }
 
-  private fees(baseFee: bigint) {
+  /** Bid limits for one pool: never above the operator's cap or the pool's reimbursed cap. */
+  private fees(baseFee: bigint, poolCap: bigint) {
     const priority = this.gwei(this.c.priorityGwei);
-    const cap = this.gwei(this.c.maxGasPriceGwei);
+    const own = this.gwei(this.c.maxGasPriceGwei);
+    const cap = poolCap < own ? poolCap : own;
     const max = baseFee * 2n + priority > cap ? cap : baseFee * 2n + priority;
     return { priority, max, cap };
   }
 
   private async service(b: Address, head: bigint, baseFee: bigint) {
     const p = this.state.pending[b];
-    if (p && (await this.resolvePending(b, p, head, baseFee))) return; // still in flight
-    const { priority, max, cap } = this.fees(baseFee);
+    // The settings and the hash performUpkeep checks; a change between the two reads makes the simulation revert
+    // StaleSettings, and the next tick reads again.
+    const [raw, settingsHash] = await Promise.all([
+      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }),
+      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settingsHash' }) as Promise<Hash>,
+    ]);
+    const settings = settingsFrom(raw);
+    if (p && (await this.resolvePending(b, p, head, baseFee, settings))) return; // still in flight
+    const { priority, max, cap } = this.fees(baseFee, settings.maxGasPrice);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
       return;
     }
-    await this.attempt(b, head, baseFee, max, priority);
+    await this.attempt(b, head, baseFee, max, priority, settings, settingsHash);
   }
 
   /** Simulate, apply the profitability policy and send. Returns true if a tx was sent. */
-  private async attempt(b: Address, head: bigint, baseFee: bigint, maxFeePerGas: bigint, priority: bigint): Promise<boolean> {
-    const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority } as const;
+  private async attempt(b: Address, head: bigint, baseFee: bigint, maxFeePerGas: bigint, priority: bigint, settings: KeeperSettings, settingsHash: Hash): Promise<boolean> {
+    // The pool pays by the settings this hash names, or the call reverts at its start (StaleSettings).
+    const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority } as const;
     let reward: bigint;
     try {
       reward = (await this.pub.simulateContract(call as never)).result as bigint;
@@ -228,7 +238,6 @@ export class Keeper {
     }
     const gasEstimate = await this.pub.estimateContractGas(call as never);
     const balance = await this.pub.getBalance({ address: b });
-    const settings = settingsFrom(await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }));
     const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei, balance, settings });
     if (!verdict.send) {
       this.state.stats.skippedUnprofitable++;
@@ -240,11 +249,11 @@ export class Keeper {
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
     // Saved before broadcasting: a restart after the broadcast finds this nonce in flight and waits for or replaces
     // it, instead of sending a second upkeep at the next nonce.
-    this.state.pending[b] = { hashes: [], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.state.pending[b] = { hashes: [], nonce, settingsHash, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.save();
     // An error here may still have broadcast (lost response): keep the nonce pending, so the next ticks wait for it or
     // replace it at the same nonce rather than sending a second upkeep at the next one.
-    const hash = await this.send(b, nonce, maxFeePerGas, priority, gas);
+    const hash = await this.send(b, nonce, maxFeePerGas, priority, gas, settingsHash);
     this.state.pending[b].hashes.push(hash);
     this.save();
     this.state.stats.sent++;
@@ -252,15 +261,15 @@ export class Keeper {
     return true;
   }
 
-  private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint) {
+  private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint, settingsHash: Hash) {
     return this.wallet.writeContract({
-      address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: this.c.account, chain: null,
+      address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.c.account, chain: null,
       nonce, maxFeePerGas, maxPriorityFeePerGas, gas,
     } as never);
   }
 
   /** Returns true while a tx for `b` remains in flight. */
-  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint): Promise<boolean> {
+  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint, settings: KeeperSettings): Promise<boolean> {
     for (const h of p.hashes) {
       const r = await this.pub.getTransactionReceipt({ hash: h }).catch(() => null);
       if (!r) continue;
@@ -292,7 +301,7 @@ export class Keeper {
     if (head - BigInt(p.sentBlock) < BigInt(this.c.replaceAfterBlocks)) return true;
     if (p.replacements >= this.c.maxReplacements) return true;
     // Replace with the same nonce and +25% fees, only while the bid stays under the cap and profitable.
-    const { cap } = this.fees(baseFee);
+    const { cap } = this.fees(baseFee, settings.maxGasPrice);
     const prio = (BigInt(p.maxPriorityFeePerGas) * 125n) / 100n + 1n;
     let max = (BigInt(p.maxFeePerGas) * 125n) / 100n + 1n;
     if (max < baseFee + prio) max = baseFee + prio;
@@ -301,14 +310,15 @@ export class Keeper {
       return true;
     }
     try {
-      const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
+      // The replacement keeps the settings hash it was priced on; if they changed, it simulates StaleSettings and waits.
+      const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [p.settingsHash], account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
       const reward = (await this.pub.simulateContract(call as never)).result as bigint;
-      const verdict = decide({ gasEstimate: BigInt(p.estimate), expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
+      const verdict = decide({ gasEstimate: BigInt(p.estimate), expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei, settings });
       if (!verdict.send) {
         this.log(`waiting: replacement ${verdict.reason}`, { balancer: b });
         return true;
       }
-      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas));
+      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas), p.settingsHash);
       p.hashes.push(hash);
       p.maxFeePerGas = max.toString();
       p.maxPriorityFeePerGas = prio.toString();
@@ -379,7 +389,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     fromBlock: BigInt(env('FROM_BLOCK')),
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
-    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
+    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '50')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
     // Default covers gas-only paid calls (reconcile-only upkeep) to ~1.3 gwei, with estimates ~78k gas above
     // billed; set 0 for a strictly profitable keeper.

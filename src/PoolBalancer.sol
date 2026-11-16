@@ -94,7 +94,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents). The values are
     // `settings()` (decision 88): the factory's defaults with this pool's overrides. Defaults: maxGas 3.2M, priorityCap
-    // 0.05 gwei, maxGasPrice 5 gwei, overheadGas 50,000, incentive 0.0001 ETH, restockGas 900k, restockFlat 0.0002 ETH.
+    // 0.05 gwei, maxGasPrice 5 gwei, overheadGas 50,000, incentive 0.0001 ETH, restockGas 900k, restockFlat 0.0001 ETH.
     // - price = min(tx.gasprice, basefee + priorityCap, maxGasPrice). Upkeep is permissionless, so
     //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
     // - reward = (measured gas, capped at maxGas, + overheadGas) x price + incentive, for every call that
@@ -110,13 +110,14 @@ contract PoolBalancer is ReentrancyGuard {
     //   Each paid call is at most maxKeeperReward() and needs a processed
     //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
     //   the incentive per call.
-    // - Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + restockFlat, at the
-    //   listing block: the creator's income for keeper pay, sized to the gas a listing call
+    // - Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + incentive + restockFlat, at
+    //   the listing block: the creator's income for keeper pay, sized to the gas a listing call
     //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
     //   the cost until a player wins that prize; draws that win an NFT or time out bring no fee, so reconciling them
     //   is the creator's cost, as are the fees of prizes unlisted or never drawn.
-    //   The default restockGas, with restockFlat, covers an upkeep that reconciles one draw and restocks one Shape
-    //   (measured 763k-864k gas across pools and blocks; Shapes mint gas varies with the block).
+    //   restockGas is at least overheadGas + 850k (SettingsLib.check), so with the incentive the fee covers an upkeep
+    //   that reconciles one draw and restocks one Shape (measured 763k-864k gas across pools and blocks; Shapes mint gas
+    //   varies with the block) at any settings, less at most 14k gas that the default restockFlat covers.
     /// @dev Override mask bits for `setOverrides`, one per creator-overridable setting.
     uint8 internal constant OVR_MAX_GAS_PRICE = 1;
     uint8 internal constant OVR_PRIORITY_CAP = 2;
@@ -255,6 +256,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     error Unauthorized();
     error KeeperNotApproved();
+    error StaleSettings();
     error AlreadyInitialized();
     error UnreviewedImplementation();
     error UnsupportedFWAConfig();
@@ -645,10 +647,14 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Permissionless maintenance: reconcile settled draws, collect proceeds and restock toward the target.
     ///         Reverts `NoUpkeepNeeded` when it would change nothing; simulate it to learn whether work exists and
     ///         what it pays. Pays `msg.sender` only for reconciling draws or inventory work.
-    function performUpkeep() external nonReentrant returns (uint256 reward) {
+    /// @param expected `settingsHash()` as the caller read it: reverts `StaleSettings` if the settings changed since,
+    ///        so a keeper is paid by the settings it priced its call on (an override or a new factory default between
+    ///        its simulation and inclusion could otherwise cut its pay below its gas).
+    function performUpkeep(bytes32 expected) external nonReentrant returns (uint256 reward) {
         if (msg.sender != creator && !factory.canKeep(msg.sender)) revert KeeperNotApproved();
         uint256 gasStart = gasleft();
         Settings memory st = settings();
+        if (keccak256(abi.encode(st)) != expected) revert StaleSettings();
         IFWAPool p = pool;
 
         // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
@@ -978,6 +984,11 @@ contract PoolBalancer is ReentrancyGuard {
         if (o.mask & OVR_PRIORITY_CAP != 0) s.priorityCap = o.priorityCap;
         if (o.mask & OVR_INCENTIVE != 0) s.incentive = o.incentive;
         if (o.mask & OVR_RESTOCK_FLAT != 0) s.restockFlat = o.restockFlat;
+    }
+
+    /// @notice The hash `performUpkeep` checks: keccak256 of the ABI-encoded `settings()`.
+    function settingsHash() external view returns (bytes32) {
+        return keccak256(abi.encode(settings()));
     }
 
     /// @notice The most one upkeep can pay under the settings in force.

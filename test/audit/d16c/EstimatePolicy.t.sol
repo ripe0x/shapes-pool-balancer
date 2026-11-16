@@ -17,9 +17,10 @@ contract D16cEstimatePolicyTest is D16NaturalReservedTest {
     function _call(uint256 G) internal returns (bool ok, uint256 reward, uint256 billed, bool processed) {
         uint256 snap = vm.snapshotState();
         uint256 u = pool.unsettledAcquisitionCount();
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         bytes memory ret;
-        (ok, ret) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep()"));
+        (ok, ret) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh1)));
         if (ok) reward = abi.decode(ret, (uint256));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));

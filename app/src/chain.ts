@@ -34,4 +34,6 @@ export const config = createConfig({
     ? [...wallets, mock({ accounts: [import.meta.env.VITE_DEV_ACCOUNT as Address] })]
     : wallets,
   transports: { [chain.id]: http(rpcUrl) } as Record<number, ReturnType<typeof http>>,
+  // Reads made together go out as one multicall: a pool reads two values per listing on load (2,200 reads at 1,100).
+  batch: { multicall: { batchSize: 16_384 } },
 });

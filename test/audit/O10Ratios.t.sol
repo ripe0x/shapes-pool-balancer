@@ -50,8 +50,9 @@ contract O10Ratios is ForkBase {
         vm.prank(creator);
         balancer.open();
         for (uint256 i; i < 200; ++i) {
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch { break; }
+            try balancer.performUpkeep(uh1) {} catch { break; }
         }
         assertEq(balancer.admissionStatus(), 0, "open");
     }

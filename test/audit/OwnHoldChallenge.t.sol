@@ -54,9 +54,10 @@ contract OwnHoldChallenge is ForkBase {
         // One draw expires per block; upkeep processes and reconciles each (D16), nobody else touches FWA's queue.
         for (uint256 i; i < 5; ++i) {
             vm.roll(firstExpired + i);
+            bytes32 uh1 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
-            balancer.performUpkeep();
+            balancer.performUpkeep(uh1);
             assertGt(keeper.balance - before, 0.0001 ether);
         }
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());

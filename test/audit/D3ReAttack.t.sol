@@ -95,8 +95,9 @@ contract D3ReAttackTest is ForkBase {
             vm.roll(firstExpired + i);
             uint64 before = balancer.reconciledSequence();
             uint256 keeperBefore = keeper.balance;
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            balancer.performUpkeep();
+            balancer.performUpkeep(uh1);
             uint256 pay = keeper.balance - keeperBefore;
             totalPaid += pay;
 
@@ -120,9 +121,10 @@ contract D3ReAttackTest is ForkBase {
         assertEq(address(balancer).balance, 0, "closeout ends at zero");
 
         // No further paid work exists.
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
     }
 
     /// @notice The hold cannot be grown after close, and in-flight draws that NEVER receive VRF still drain it: FWA
@@ -157,8 +159,9 @@ contract D3ReAttackTest is ForkBase {
         pool.processAcquisitions(5); // force-expires both pending heads
         assertEq(pool.nextSequenceToProcess() - 1, pool.lastIssuedSequence(), "FWA caught up; no stuck sequence");
 
+        bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(); // reconciles both (<= MAX_RECONCILE)
+        balancer.performUpkeep(uh3); // reconciles both (<= MAX_RECONCILE)
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "all reconciled");
         assertEq(balancer.requiredReserve(), 0, "hold released once reconciled");
 

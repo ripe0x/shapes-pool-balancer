@@ -216,6 +216,39 @@ contract GasBench is ForkBase {
         assertLt(used, (KEEPER_MAX_GAS * 90) / 100, "worst upkeep under KEEPER_MAX_GAS with 10% margin");
     }
 
+    /// The same worst case at the factory's highest prize limit: 1,000 prizes and 100 curated NFTs (1,148 listings, so
+    /// FWA's selection tree is past 1,024). Audit rc-f5c81d6 F3.
+    function test_gas_worstCaseUpkeepFullUnits_1000Prizes() public {
+        assertEq(factory.settings().maxPrizes, 1_000, "the default prize limit");
+        _listMany(98, 700);
+        uint8[6] memory first = [uint8(0), 0, 0, 1, 2, 3];
+        uint256 used = _worstAfterHeldRestock(first, 988, "WORST CASE upkeep at 1,000 prizes and 100 NFTs");
+        uint256 t = balancer.target();
+        uint256 prizes;
+        for (uint256 d; d < 16; ++d) prizes += (t >> (16 * d)) & 0xFFFF;
+        assertEq(prizes, 1_000, "a 1,000-prize target");
+        uint16[16] memory have = balancer.getActiveShapes();
+        uint256 listedShapes;
+        for (uint256 d; d < 16; ++d) listedShapes += have[d];
+        assertEq(balancer.getActiveIds().length - listedShapes, 100, "100 curated NFTs listed");
+        assertLt(used, (KEEPER_MAX_GAS * 90) / 100, "worst upkeep under KEEPER_MAX_GAS with 10% margin");
+    }
+
+    function _listMany(uint256 n, uint256 firstId) internal {
+        vm.startPrank(creator);
+        for (uint256 b; b < n; b += 20) {
+            uint256 k = n - b < 20 ? n - b : 20;
+            PoolBalancer.CuratedInput[] memory in_ = new PoolBalancer.CuratedInput[](k);
+            for (uint256 i; i < k; ++i) {
+                nft.mint(creator, firstId + b + i);
+                nft.approve(address(balancer), firstId + b + i);
+                in_[i] = PoolBalancer.CuratedInput(address(nft), firstId + b + i, 0.3 ether);
+            }
+            balancer.listCuratedBatch(in_);
+        }
+        vm.stopPrank();
+    }
+
     /// Draws `first` (restock held back by a temporary mint-fee rise), reconciles them, then draws five large prizes and
     /// measures the one upkeep that reconciles those five and restocks the held prizes.
     function _worstAfterHeldRestock(uint8[6] memory first, uint256 small, string memory label) internal returns (uint256 used) {
@@ -239,10 +272,9 @@ contract GasBench is ForkBase {
         assertTrue(ok);
         uint8[5] memory big = [uint8(7), 7, 8, 8, 7];
         for (uint256 k; k < 5; ++k) _drawSize(big[k]);
-        uint256 g = gasleft();
-        _upkeep(label);
-        used = g - gasleft();
-        emit log_named_uint("  actual gas used (measured span + overhead)", used);
+        // The gas the contract measures and pays for. The test frame's own span around the call also counts the test
+        // contract's memory growth, which at 1,000 prizes adds about 0.5M gas that no keeper transaction pays.
+        used = _upkeep(label);
         assertEq(balancer.reconciledSequence(), 11);
     }
 

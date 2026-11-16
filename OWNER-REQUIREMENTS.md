@@ -150,13 +150,16 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 
 ## Pool size (owner, 2026-11-16: "set max to 200")
 
-- R36. A plan holds 1 to 200 prizes (was 80; decision 87).
+- R36. A plan holds 1 to 1,000 prizes by default, the factory admin's `maxPrizes` setting, measured before it was set
+  (owner, 2026-11-16: "i'd rather measure now and set it higher"; was 200, decisions 87 and 91).
 
 ## Adjustable settings (owner, 2026-11-16)
 
 - R37. Keeper pay, the restocking fee and the prize limit are adjustable: the factory admin sets defaults, a creator may
   adjust their own pool's keeper pay, and only within limits that keep the system working (decision 88).
 - R38. No limit on curated NFTs per pool ("if not, don't set one"; decision 89).
+- R37 holds through settings changes: an upkeep runs only under the settings its caller priced it on, and the
+  restocking fee always carries a restock-one upkeep's pay (decision 90).
 
 ## Decisions log (history, not requirements)
 

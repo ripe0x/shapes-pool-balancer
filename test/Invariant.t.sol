@@ -88,7 +88,7 @@ contract Handler is Test {
             if (before[i] > last) last = before[i];
         }
         uint64 seq = b.reconciledSequence();
-        try b.performUpkeep() returns (uint256 reward) {
+        try b.performUpkeep(b.settingsHash()) returns (uint256 reward) {
             if (reward == 0) return;
             paidFromFees += reward;
             if (reward > maxReward) maxReward = reward;

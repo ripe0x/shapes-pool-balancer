@@ -125,4 +125,4 @@ FACTORY=<factory> FROM_BLOCK=<block> KEEPER_PRIVATE_KEY=<from your secret store>
 ```
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md). The pool keeps working for existing players if the keeper stops; anyone can
-call `performUpkeep()`.
+call `performUpkeep(settingsHash())`.

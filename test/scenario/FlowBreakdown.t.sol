@@ -845,9 +845,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 snap = vm.snapshotState();
         for (; calls < 40; ++calls) {
             _coolKeeperTx();
+            bytes32 uh1 = balancer.settingsHash();
             uint256 g = gasleft();
             vm.prank(creator, creator);
-            try balancer.performUpkeep() returns (uint256 reward) {
+            try balancer.performUpkeep(uh1) returns (uint256 reward) {
                 uint256 cost = (g - gasleft() + 21_000) * gasNow;
                 cost = cost > reward ? cost - reward : 0;
                 if (cost > maxCost) maxCost = cost;
@@ -1164,10 +1165,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 who0 = who.balance;
         // a keeper transaction starts with every account and slot cold
         _coolKeeperTx();
+        bytes32 uh2 = balancer.settingsHash();
         uint256 g = gasleft();
         vm.prank(who, who);
         vm.recordLogs();
-        try balancer.performUpkeep() returns (uint256 reward) {
+        try balancer.performUpkeep(uh2) returns (uint256 reward) {
             uint256 cost = (g - gasleft() + 21_000) * gasNow;
             // proceeds this call collected, from the Balancer's own event (read after the gas is measured): upkeep may
             // settle draws first (D16), so more than was waiting before the call can arrive

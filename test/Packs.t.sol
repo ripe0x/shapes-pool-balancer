@@ -121,9 +121,10 @@ contract PacksTest is ForkBase {
         assertEq(balancer.creatorWork(), false, "no deficit, so no creator work");
         assertTrue(balancer.canPurchase(buyer), "still open with surplus listed");
         // upkeep restocks deficits only; the surplus 0.25 pack stays listed until unlisted
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
 
         uint256 lid = _listingOfSize(12);
         uint256[] memory surplus = new uint256[](1);

@@ -64,10 +64,11 @@ contract KeeperPayTest is ForkBase {
     /// @dev One keeper call. `pnl` is the reward less this call's gas at the gas price, plus 21,000 in case the run is
     ///      not isolated (isolated runs already bill intrinsic gas, so the cost is then overstated).
     function _paid() internal returns (uint256 reward, uint256 measured, int256 pnl) {
+        bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep();
+        reward = balancer.performUpkeep(uh1);
         (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
@@ -80,10 +81,11 @@ contract KeeperPayTest is ForkBase {
     }
 
     function _noWork() internal {
+        bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
         assertEq(keeper.balance, before, "no work, no pay");
     }
 

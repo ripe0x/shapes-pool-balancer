@@ -24,11 +24,11 @@ export const DEFAULT_SETTINGS: KeeperSettings = {
   maxGasPrice: 5n * 10n ** 9n,
   priorityCap: 5n * 10n ** 7n,
   incentive: 10n ** 14n,
-  restockFlat: 2n * 10n ** 14n,
+  restockFlat: 10n ** 14n,
   maxGas: 3_200_000n,
   overheadGas: 50_000n,
   restockGas: 900_000n,
-  maxPrizes: 200,
+  maxPrizes: 1_000,
 };
 /** A `settings()` read from the chain: viem decodes the uint32 fields as numbers and the uint64 ones as bigints. */
 export const settingsFrom = (r: Record<keyof KeeperSettings, bigint | number>): KeeperSettings => ({
@@ -51,7 +51,7 @@ export const MAX_KEEPER_REWARD = maxKeeperReward();
 export const rewardPrice = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) =>
   (baseFee + s.priorityCap > s.maxGasPrice ? s.maxGasPrice : baseFee + s.priorityCap);
 /** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; built into the draw price, the creator's income toward keeper pay. */
-export const restockFeeAt = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) => s.restockGas * rewardPrice(baseFee, s) + s.restockFlat;
+export const restockFeeAt = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) => s.restockGas * rewardPrice(baseFee, s) + s.incentive + s.restockFlat;
 /** PoolBalancer.requiredReserve() while open: restoring `target` from `have`, one largest prize for each unreconciled
  *  draw and one spare, and a maximum keeper reward for each upkeep call that work takes plus one. */
 export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, unreconciled = 0, maxReward = MAX_KEEPER_REWARD): bigint {
@@ -276,9 +276,10 @@ export function economics(counts: Counts, inputs: PoolInputs) {
   let mint = 0;
   let restock = 0;
   let keeper = 0;
-  // The keeper's reimbursed gas price, recovered from the restocking fee (restockGas x price + restockFlat).
+  // The keeper's reimbursed gas price, recovered from the restocking fee (restockGas x price + incentive + restockFlat).
   const st = inputs.settings ?? DEFAULT_SETTINGS;
-  const price = inputs.restockFee > st.restockFlat ? (inputs.restockFee - st.restockFlat) / st.restockGas : 0n;
+  const flat = st.incentive + st.restockFlat;
+  const price = inputs.restockFee > flat ? (inputs.restockFee - flat) / st.restockGas : 0n;
   for (const t of ev.tiers) {
     const p = t.oddsPpm / 1e6; // this tier, all its listings
     if (t.kind === 'curated') {

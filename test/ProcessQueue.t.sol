@@ -26,8 +26,9 @@ contract ProcessQueueTest is ForkBase {
     }
 
     function _keeper() internal {
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        try balancer.performUpkeep() {} catch {}
+        try balancer.performUpkeep(uh1) {} catch {}
     }
 
     function test_upkeepSettlesDrawsThatReservedAStagedRestock() public {
@@ -67,10 +68,11 @@ contract ProcessQueueTest is ForkBase {
         // keepers alone settle everything that has its randomness; with --isolate each call is its own transaction, so
         // the keeper's real cost (billed gas after refunds, plus 21,000) can be set against its reward
         for (uint256 k; k < 10 && pool.unsettledAcquisitionCount() != 0; ++k) {
+            bytes32 uh2 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
             vm.recordLogs();
-            try balancer.performUpkeep() returns (uint256 reward) {
+            try balancer.performUpkeep(uh2) returns (uint256 reward) {
                 Vm.Log[] memory logs = vm.getRecordedLogs();
                 for (uint256 q; q < logs.length; ++q) {
                     if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {

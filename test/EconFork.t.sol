@@ -108,8 +108,9 @@ contract EconForkTest is ForkBase {
     }
 
     function upkeepOnce() external {
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
     }
 
     struct R {

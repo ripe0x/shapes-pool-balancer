@@ -54,8 +54,9 @@ contract RecentBlockLifecycleTest is ForkBase {
         assertEq(pool.lastIssuedSequence(), 1, "real FWA purchase issued");
         vm.roll(block.number + 40);
         assertEq(pool.processAcquisitions(1), 1, "expired without randomness");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
         assertEq(balancer.reconciledSequence(), 1, "keeper reconciled");
 
         vm.prank(creator);

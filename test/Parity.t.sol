@@ -40,8 +40,9 @@ contract ParityFixture is ForkBase {
         vm.stopPrank();
         // Fully list the target (the gate opens at 70% inventory; the fixture needs every prize listed).
         for (uint256 i; i < 40; ++i) {
+            bytes32 uh1 = b.settingsHash();
             vm.prank(keeper, keeper);
-            try b.performUpkeep() {} catch {
+            try b.performUpkeep(uh1) {} catch {
                 break;
             }
         }

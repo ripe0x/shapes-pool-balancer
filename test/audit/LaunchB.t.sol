@@ -53,8 +53,9 @@ contract AttackB is ForkBase {
         vm.prank(creator);
         balancer.open();
         for (uint256 i; i < 200; ++i) {
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch { break; }
+            try balancer.performUpkeep(uh1) {} catch { break; }
         }
         assertEq(balancer.admissionStatus(), 0, "open");
     }
@@ -253,9 +254,10 @@ contract AttackB is ForkBase {
             vm.cool(address(pool));
             vm.cool(SHAPES);
             vm.cool(packs);
+            bytes32 uh2 = balancer.settingsHash();
             uint256 g = gasleft();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() returns (uint256 reward) {
+            try balancer.performUpkeep(uh2) returns (uint256 reward) {
                 uint256 used = g - gasleft();
                 if (used > maxGas) maxGas = used;
                 console.log("upkeep gas", used, "reward wei", reward);
@@ -296,8 +298,9 @@ contract AttackB is ForkBase {
             fulfill(r[0], uint256(keccak256(abi.encode("lock", i))));
             settle();
             ++sold;
+            bytes32 uh3 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {
+            try balancer.performUpkeep(uh3) {
                 revert("unapproved keeper ran upkeep");
             } catch {}
         }
@@ -307,8 +310,9 @@ contract AttackB is ForkBase {
         assertTrue(balancer.admissionStatus() != 0 && balancer.admissionStatus() != 3, "sales stop without keepers");
         // the creator restores it
         for (uint256 i; i < 10; ++i) {
+            bytes32 uh4 = balancer.settingsHash();
             vm.prank(creator, creator);
-            try balancer.performUpkeep() {} catch { break; }
+            try balancer.performUpkeep(uh4) {} catch { break; }
         }
         if (balancer.admissionStatus() == 3) listCurated(4000, 0.2 ether);
         assertEq(balancer.admissionStatus(), 0, "creator upkeep reopens sales");
@@ -379,9 +383,10 @@ contract AttackB is ForkBase {
             fulfill(r[k], uint256(keccak256(abi.encode("c", k)))); // FWA's fast path processes it in the callback
             vm.cool(address(balancer));
             vm.cool(address(pool));
+            bytes32 uh5 = balancer.settingsHash();
             uint256 g = gasleft();
             vm.prank(keeper, keeper);
-            uint256 reward = balancer.performUpkeep();
+            uint256 reward = balancer.performUpkeep(uh5);
             uint256 cost = (g - gasleft() + 21_000) * 5 gwei;
             console.log("reward", reward, "cost", cost);
             if (reward < cost) short += cost - reward;
@@ -399,9 +404,10 @@ contract AttackB is ForkBase {
         vm.cool(address(pool));
         vm.cool(SHAPES);
         vm.cool(packs);
+        bytes32 uh6 = balancer.settingsHash();
         uint256 g = gasleft();
         vm.prank(keeper, keeper);
-        try balancer.performUpkeep() returns (uint256 reward) {
+        try balancer.performUpkeep(uh6) returns (uint256 reward) {
             uint256 used = g - gasleft() + 21_000;
             uint256 most = (used + 50_000) * price + 0.0001 ether;
             return (reward > most ? reward - most : 0, true);
@@ -499,8 +505,9 @@ contract AttackB is ForkBase {
             }
             uint256[] memory r = buy(buyer, 1);
             // the keeper runs while this draw is in flight: the restock of earlier wins is staged
+            bytes32 uh7 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch {}
+            try balancer.performUpkeep(uh7) {} catch {}
             uint256[] memory r2;
             if (balancer.admissionStatus() == 0) {
                 // a second player buys while the first draw is unsettled: this request reserves the staged restock
@@ -523,8 +530,9 @@ contract AttackB is ForkBase {
         uint256 g = gasleft();
         uint256 n = pool.processAcquisitions(5);
         console.log("processed", n, "gas for processAcquisitions(5)", g - gasleft());
+        bytes32 uh8 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep();
+        uint256 reward = balancer.performUpkeep(uh8);
         console.log("following upkeep reward (wei)", reward);
         console.log("admission status after", balancer.admissionStatus());
     }

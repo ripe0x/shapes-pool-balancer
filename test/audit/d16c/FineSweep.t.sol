@@ -13,8 +13,9 @@ contract D16cFineSweepTest is D16bGasLimitWindowTest {
         while (hi - lo > 1) {
             uint256 mid = (lo + hi) / 2;
             uint256 snap = vm.snapshotState();
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeWithSignature("performUpkeep()"));
+            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeCall(balancer.performUpkeep, (uh1)));
             vm.revertToState(snap);
             if (ok) hi = mid;
             else lo = mid;
@@ -45,8 +46,9 @@ contract D16cWindowReasonTest is D16cFineSweepTest {
         bytes4 last;
         for (uint256 G = 2_900_000; G < L; G += 1_000) {
             uint256 snap = vm.snapshotState();
+            bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok, bytes memory ret) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep()"));
+            (bool ok, bytes memory ret) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh2)));
             vm.revertToState(snap);
             assertFalse(ok);
             bytes4 sel = ret.length >= 4 ? bytes4(ret) : bytes4(0);

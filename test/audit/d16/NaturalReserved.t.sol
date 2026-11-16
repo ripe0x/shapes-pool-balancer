@@ -23,8 +23,9 @@ contract D16NaturalReservedTest is D16WorstUpkeepTest {
 
     function _keeperUntilIdle() internal {
         for (uint256 i; i < 10; ++i) {
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch { return; }
+            try balancer.performUpkeep(uh1) {} catch { return; }
         }
     }
 

@@ -139,11 +139,13 @@ contract D16cGasGateTest is D16bWorstUpkeepTest {
         r4 = buy(buyer, 1)[0];
         r5 = r4;
         fulfill(r1, uint256(keccak256("w")));
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
         for (uint256 k; k < 3; ++k) {
+            bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {} catch {}
+            try balancer.performUpkeep(uh2) {} catch {}
         }
         assertEq(balancer.reconciledSequence() + 1, pool.lastIssuedSequence(), "only the gate draw left");
         assertEq(pool.ownerProceeds(), 0, "nothing to collect");
@@ -231,9 +233,10 @@ contract D16cGasGateTest is D16bWorstUpkeepTest {
 
     function _try(uint256 G) internal returns (bool ok, bool processed, uint8 s4, uint8 s5, uint256 paid, uint256 cost) {
         uint256 snap = vm.snapshotState();
+        bytes32 uh3 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep()"));
+        (ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh3)));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         cost = (uint256(used) + 21_000) * 0.55 gwei;

@@ -52,8 +52,9 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
         while (hi - lo > 1) {
             uint256 mid = (lo + hi) / 2;
             uint256 snap = vm.snapshotState();
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeWithSignature("performUpkeep()"));
+            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeCall(balancer.performUpkeep, (uh1)));
             vm.revertToState(snap);
             if (ok) hi = mid;
             else lo = mid;
@@ -79,9 +80,10 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
         emit log_named_uint("least succeeding performUpkeep limit", L);
         assertLe(L, 4_000_000, "the keeper's 4M floor covers the worst upkeep");
 
+        bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeWithSignature("performUpkeep()"));
+        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeCall(balancer.performUpkeep, (uh2)));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         assertTrue(ok, "4M succeeds");
@@ -160,8 +162,9 @@ contract D16dOpenSweepTest is D16dCatchMarginTest {
     function _upkeepSweep(uint256 lo, uint256 hi, uint256 step) internal returns (uint256 oks) {
         for (uint256 G = lo; G <= hi; G += step) {
             uint256 snap = vm.snapshotState();
+            bytes32 uh3 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep()"));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh3)));
             bool done = IProcess(address(pool)).unsettledAcquisitionCount() == 0;
             vm.revertToState(snap);
             if (ok) ++oks;

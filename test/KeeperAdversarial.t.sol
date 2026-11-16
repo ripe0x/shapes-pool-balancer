@@ -16,11 +16,11 @@ contract RefundingKeeper {
         }
     }
 
-    function run(PoolBalancer b) external returns (uint256 reward) {
+    function run(PoolBalancer b, bytes32 settingsHash) external returns (uint256 reward) {
         for (uint256 i; i < 64; ++i) {
             junk[i] = 0;
         }
-        reward = b.performUpkeep();
+        reward = b.performUpkeep(settingsHash);
     }
 
     receive() external payable {}
@@ -86,9 +86,10 @@ contract KeeperAdversarialTest is ForkBase {
         }
         vm.recordLogs();
         for (uint256 i; i < 12; ++i) {
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(atk, atk);
             uint256 g = gasleft();
-            try balancer.performUpkeep() returns (uint256 r) {
+            try balancer.performUpkeep(uh1) returns (uint256 r) {
                 pnl += int256(r) - int256((g - gasleft() + 21_000) * BASEFEE);
             } catch {
                 break;
@@ -121,12 +122,14 @@ contract KeeperAdversarialTest is ForkBase {
         vm.fee(1 gwei);
         uint256 snap = vm.snapshotState();
         vm.txGasPrice(1.05 gwei); // honest: basefee + 0.05 gwei
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        uint256 honest = balancer.performUpkeep{gas: 5_000_000}();
+        uint256 honest = balancer.performUpkeep{gas: 5_000_000}(uh2);
         vm.revertToState(snap);
         vm.txGasPrice(40 gwei); // overbid and a huge gas limit
+        bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        uint256 greedy = balancer.performUpkeep{gas: 30_000_000}();
+        uint256 greedy = balancer.performUpkeep{gas: 30_000_000}(uh3);
         assertEq(greedy, honest, "reward independent of bid above the priority cap and of the gas limit");
     }
 
@@ -139,11 +142,12 @@ contract KeeperAdversarialTest is ForkBase {
         settle();
         RefundingKeeper rk = new RefundingKeeper();
         rk.prime();
+        bytes32 uh4 = balancer.settingsHash();
         uint256 snap = vm.snapshotState();
         vm.prank(keeper, keeper);
-        uint256 plain = balancer.performUpkeep();
+        uint256 plain = balancer.performUpkeep(uh4);
         vm.revertToState(snap);
-        uint256 viaRefunds = rk.run(balancer);
+        uint256 viaRefunds = rk.run(balancer, uh4);
         assertApproxEqAbs(viaRefunds, plain, 1_000 * BASEFEE + 1, "pool pays for its own work only");
     }
 
@@ -255,9 +259,10 @@ contract KeeperAdversarialTest is ForkBase {
         vm.prank(creator);
         balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
         assertTrue(balancer.creatorWork());
+        bytes32 uh5 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(atk, atk);
-        uint256 reward = balancer.performUpkeep();
+        uint256 reward = balancer.performUpkeep(uh5);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         uint256 gasPaid;
         for (uint256 i; i < logs.length; ++i) {

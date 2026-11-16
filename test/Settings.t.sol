@@ -22,7 +22,7 @@ contract SettingsTest is ForkBase {
     }
 
     function _defaults() internal pure returns (Settings memory) {
-        return Settings(5 gwei, 0.05 gwei, 0.0001 ether, 0.0002 ether, 3_200_000, 50_000, 900_000, 200);
+        return Settings(5 gwei, 0.05 gwei, 0.0001 ether, 0.0001 ether, 3_200_000, 50_000, 900_000, 1_000);
     }
 
     function _setDefaults(Settings memory s) internal {
@@ -36,7 +36,7 @@ contract SettingsTest is ForkBase {
 
     // ------------------------------------------------------------------ defaults and the admin
 
-    function test_defaultsAreThePreviousConstants() public view {
+    function test_defaults() public view {
         _eq(factory.settings(), _defaults());
         _eq(balancer.settings(), _defaults());
         assertEq(balancer.maxKeeperReward(), 0.01635 ether, "(3.2M + 50k) x 5 gwei + 0.0001");
@@ -53,15 +53,15 @@ contract SettingsTest is ForkBase {
 
     /// Every field is refused one step outside its limits and accepted at them.
     function test_adminDefaultsStayWithinLimits() public {
-        Settings memory lo = Settings(1 gwei, 0, 0, 0, 3_200_000, 50_000, 500_000, 1);
+        Settings memory lo = Settings(1 gwei, 0, 0, 0, 3_200_000, 50_000, 900_000, 1);
         Settings memory hi = Settings(50 gwei, 2 gwei, 0.001 ether, 0.002 ether, 6_000_000, 200_000, 2_000_000, 1_000);
         _setDefaults(lo);
         _eq(factory.settings(), lo);
         _setDefaults(hi);
         _eq(factory.settings(), hi);
 
-        Settings[13] memory bad;
-        for (uint256 i; i < 13; ++i) bad[i] = _defaults();
+        Settings[14] memory bad;
+        for (uint256 i; i < 14; ++i) bad[i] = _defaults();
         bad[0].maxGasPrice = 1 gwei - 1;
         bad[1].maxGasPrice = 50 gwei + 1;
         bad[2].priorityCap = 2 gwei + 1;
@@ -71,11 +71,12 @@ contract SettingsTest is ForkBase {
         bad[6].maxGas = 6_000_000 + 1;
         bad[7].overheadGas = 50_000 - 1;
         bad[8].overheadGas = 200_000 + 1;
-        bad[9].restockGas = 500_000 - 1;
+        bad[9].restockGas = 900_000 - 1; // overheadGas 50k + 850k
         bad[10].restockGas = 2_000_000 + 1;
         bad[11].maxPrizes = 0;
         bad[12].maxPrizes = 1_001;
-        for (uint256 i; i < 13; ++i) {
+        bad[13].overheadGas = 50_001; // more overhead paid than the restocking fee's 900k gas covers
+        for (uint256 i; i < 14; ++i) {
             vm.prank(keeperAdmin);
             vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
             factory.setSettings(bad[i]);
@@ -144,12 +145,14 @@ contract SettingsTest is ForkBase {
         balancer.setOverrides(2 | 4, 0, 1 gwei, 0.0005 ether, 0);
         Settings memory d = _defaults();
         d.overheadGas = 120_000;
+        d.restockGas = 970_000; // the restocking fee's gas stays at least overheadGas + 850k
         _setDefaults(d);
         vm.fee(0.5 gwei);
         vm.txGasPrice(2 gwei); // bid above basefee + priority cap: reimbursed at 1.5 gwei
+        bytes32 uh1 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep();
+        uint256 reward = balancer.performUpkeep(uh1);
         (uint256 paid, uint256 measured) = _paid();
         assertEq(paid, reward);
         assertGt(measured, 0);
@@ -170,17 +173,18 @@ contract SettingsTest is ForkBase {
         assertEq(balancer.maxKeeperReward(), (6_000_000 + 50_000) * 5 gwei + 0.0001 ether, "the cap raises the bound");
     }
 
-    /// Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + restockFlat, at listing.
+    /// Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + incentive + restockFlat, at
+    /// listing.
     function test_restockFeeFollowsTheSettings() public {
         vm.fee(20 gwei);
-        assertEq(balancer.restockFee(), 900_000 * 5 gwei + 0.0002 ether, "default: capped at 5 gwei");
+        assertEq(balancer.restockFee(), 900_000 * 5 gwei + 0.0002 ether, "default: capped at 5 gwei, unchanged");
         vm.prank(creator);
         balancer.setOverrides(1 | 8, 30 gwei, 0, 0, 0.001 ether);
-        assertEq(balancer.restockFee(), 900_000 * 20.05 gwei + 0.001 ether, "creator's cap and flat fee");
+        assertEq(balancer.restockFee(), 900_000 * 20.05 gwei + 0.0001 ether + 0.001 ether, "creator's cap and flat fee");
         Settings memory d = _defaults();
         d.restockGas = 1_200_000;
         _setDefaults(d);
-        uint256 fee = 1_200_000 * 20.05 gwei + 0.001 ether;
+        uint256 fee = 1_200_000 * 20.05 gwei + 0.0001 ether + 0.001 ether;
         assertEq(balancer.restockFee(), fee, "admin's gas with the creator's overrides");
         // The next prize listed carries exactly that fee per Shape on top of its base.
         vm.txGasPrice(20.05 gwei);
@@ -236,9 +240,10 @@ contract SettingsTest is ForkBase {
         uint256 maxReward = balancer.maxKeeperReward();
         assertEq(maxReward, (6_000_000 + 200_000) * 50 gwei + 0.001 ether, "0.311 ETH");
         for (uint256 i; i < 10; ++i) {
+            bytes32 uh2 = balancer.settingsHash();
             vm.recordLogs();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() returns (uint256 reward) {
+            try balancer.performUpkeep(uh2) returns (uint256 reward) {
                 assertLe(reward, maxReward);
             } catch {
                 break;
@@ -263,6 +268,70 @@ contract SettingsTest is ForkBase {
         vm.prank(creator);
         balancer.unlistShapes(shapeIds);
         assertEq(address(balancer).balance - before, face, "each Shape redeemed for its exact backing");
+    }
+
+    // ------------------------------------------------------------------ audit rc-f5c81d6 F1 and F2
+
+    /// F1: a keeper's upkeep priced on one set of settings does not run under another. Lowering the cap between the
+    /// keeper's read and its call reverts the call at its start instead of paying below its gas.
+    function test_upkeepRefusesSettingsChangedSinceTheKeeperRead() public {
+        bytes32 priced = balancer.settingsHash();
+        assertEq(priced, keccak256(abi.encode(balancer.settings())));
+        vm.prank(creator);
+        balancer.setOverrides(1, 1 gwei, 0, 0, 0);
+        vm.fee(4 gwei);
+        vm.txGasPrice(4 gwei);
+        vm.prank(keeper, keeper);
+        vm.expectRevert(PoolBalancer.StaleSettings.selector);
+        balancer.performUpkeep(priced);
+        // A change by the admin is caught the same way.
+        priced = balancer.settingsHash();
+        Settings memory d = _defaults();
+        d.incentive = 0;
+        _setDefaults(d);
+        vm.prank(keeper, keeper);
+        vm.expectRevert(PoolBalancer.StaleSettings.selector);
+        balancer.performUpkeep(priced);
+        // Read again, the call runs.
+        bytes32 uh3 = balancer.settingsHash();
+        vm.prank(keeper, keeper);
+        balancer.performUpkeep(uh3);
+    }
+
+    /// F2: at the lowest restocking fee the limits allow (restockGas = overheadGas + 850k, no flat fee) and the
+    /// highest incentive, the fee carried by a won Shape still covers the upkeep that reconciles that draw and
+    /// restocks it, paid at the same gas price.
+    function test_lowestRestockFeeCoversItsRestock() public {
+        Settings memory d = _defaults();
+        d.overheadGas = 50_000;
+        d.restockGas = 900_000;
+        d.restockFlat = 0;
+        d.incentive = 0.001 ether;
+        _setDefaults(d);
+        vm.fee(5 gwei);
+        vm.txGasPrice(5 gwei);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, plan([uint256(30), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.stopPrank();
+        fillUp();
+        // Draw one 0.01 Shape listed under these settings.
+        uint256 lid = lastListingId();
+        (, , , uint112 base, uint112 price) = balancer.items(lid);
+        uint256 fee = 900_000 * 5 gwei + 0.001 ether;
+        assertGe(uint256(price) - base, fee, "listed with the floor fee");
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        bytes32 uh4 = balancer.settingsHash();
+        vm.recordLogs();
+        vm.prank(keeper, keeper);
+        balancer.performUpkeep(uh4);
+        (uint256 paid, uint256 measured) = _paid();
+        emit log_named_uint("reconcile + restock one Shape, measured gas", measured);
+        emit log_named_uint("keeper paid (wei)", paid);
+        emit log_named_uint("restocking fee in the won Shape (wei)", fee);
+        assertGe(fee, paid, "the won Shape's fee covers its restock");
     }
 
     function _paid() internal returns (uint256 amount, uint256 measured) {

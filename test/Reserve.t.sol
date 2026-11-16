@@ -330,9 +330,10 @@ contract ReserveTest is ForkBase {
         assertEq(address(balancer).balance, held + 0.001 ether + proceeds - paid, "nothing else left");
         assertEq(balancer.requiredReserve(), 0, "nothing held once reconciled");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "and all of it claimable");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
     }
 
     /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is
@@ -438,7 +439,7 @@ contract CreatorKeeper {
     }
 
     function upkeep() external returns (uint256) {
-        return b.performUpkeep();
+        return b.performUpkeep(b.settingsHash());
     }
 
     receive() external payable {

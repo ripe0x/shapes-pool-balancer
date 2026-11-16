@@ -201,9 +201,10 @@ contract BalancerTest is ForkBase {
         vm.stopPrank();
         assertTrue(staged != 0);
         // upkeep does not revert PoolBusy: nothing settled yet
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
 
         fulfill(ids[0], wordForSlot(slot));
         settle();
@@ -246,9 +247,10 @@ contract BalancerTest is ForkBase {
         pool.refundFailedDelivery(lid);
         frozen.setFrozen(false);
 
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
         vm.prank(creator);
         balancer.recoverRefunded(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
@@ -279,9 +281,10 @@ contract BalancerTest is ForkBase {
     }
 
     function _paidUpkeep(address who) internal returns (uint256 reward, uint256 gasPaid) {
+        bytes32 uh3 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(who, who);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh3);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -341,23 +344,26 @@ contract BalancerTest is ForkBase {
     }
 
     function test_noRewardForUnnecessaryWork() public {
+        bytes32 uh4 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh4);
 
         // re-configuring the same target leaves no work
         configure(planA);
+        bytes32 uh5 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh5);
         assertTrue(balancer.canPurchase(buyer));
 
         // a second keeper racing the same work finds nothing left
         _drawOneShape();
         upkeep();
+        bytes32 uh6 = balancer.settingsHash();
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh6);
     }
 
     /// A refunded draw brings no restocking fee; reconciling it is still paid, from the creator's ETH.
@@ -568,8 +574,8 @@ contract BalancerTest is ForkBase {
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, 0); // empty
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, plan([uint256(201), 0, 0, 0, 0, 0, 0, 0, 0])); // > 200 prizes
-        balancer.configure(1500, plan([uint256(200), 0, 0, 0, 0, 0, 0, 0, 0])); // 200 is accepted
+        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0])); // > 1,000 prizes
+        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0])); // 1,000 is accepted
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, planA | (uint256(1) << 256 - 1)); // stray high bits above 16 counts
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
@@ -764,9 +770,10 @@ contract BalancerTest is ForkBase {
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(buyer);
         pool.refundFailedDelivery(lid);
+        bytes32 uh7 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh7);
         _drawOneShape();
         uint256 g = gasleft();
         upkeep();

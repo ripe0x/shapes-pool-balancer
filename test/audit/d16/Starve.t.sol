@@ -36,8 +36,9 @@ contract D16StarveTest is D16WorstUpkeepTest {
         uint256 found;
         for (uint256 g = 150_000; g < 3_000_000; g += 10_000) {
             uint256 snap = vm.snapshotState();
+            bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep{gas: g}() returns (uint256 paid) {
+            try balancer.performUpkeep{gas: g}(uh1) returns (uint256 paid) {
                 bool starved = pool.nextSequenceToProcess() == next && balancer.reconciledSequence() > rec && paid != 0;
                 vm.revertToState(snap);
                 if (starved) {
@@ -56,10 +57,11 @@ contract D16StarveTest is D16WorstUpkeepTest {
     }
 
     function _measureWithGas(uint256 g) internal returns (uint256 reward, uint256 billed, uint256 measured) {
+        bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep{gas: g}();
+        reward = balancer.performUpkeep{gas: g}(uh2);
         measured = _lastMeasured();
         (bool ok, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok);

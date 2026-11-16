@@ -12,9 +12,10 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
     function _try(uint256 G) internal returns (bool ok, bool processed, uint256 paid, uint256 billed) {
         uint256 snap = vm.snapshotState();
         uint64 next = pool.nextSequenceToProcess();
+        bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep()"));
+        (ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh1)));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         billed = uint256(used) + 21_000;
@@ -54,8 +55,9 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
         _setGas(4.95 gwei, 5 gwei);
         // step 1 of the estimator: run at a high limit
         uint256 snap = vm.snapshotState();
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeWithSignature("performUpkeep()"));
+        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeCall(balancer.performUpkeep, (uh2)));
         (, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 usedHi,, int64 refHi,) = abi.decode(rr, (uint64, uint64, uint64, int64, uint64));
         vm.revertToState(snap);

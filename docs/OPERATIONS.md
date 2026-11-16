@@ -6,17 +6,17 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | --- | --- | --- | --- |
 | 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | CLOSED | Closed by creator | `open()` |
-| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeep()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
+| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeep(settingsHash())` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
 | 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
-| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep()` to restock; if it stays at 6, `depositETH()` and upkeep again |
+| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep(settingsHash())` to restock; if it stays at 6, `depositETH()` and upkeep again |
 
 ## Keeper down
 
 New purchases pause once prize weight falls below 70% of the target (status 6) or 5 draws are unsettled (status 4).
 Outstanding draws, refunds and NFT claims are unaffected: FWA settles them itself. Anyone, including the creator from the
-dashboard, can call `performUpkeep()`. Run a second keeper with the same factory address; duplicate submissions just
+dashboard, can call `performUpkeep(settingsHash())`. Run a second keeper with the same factory address; duplicate submissions just
 revert `NoUpkeepNeeded` in simulation and are never sent.
 
 ## Keeper service
@@ -48,7 +48,10 @@ RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOS
 - State: `STATE_FILE` holds discovered Balancers, the last scanned block and in-flight transactions. Deleting it is safe:
   the keeper rescans from `FROM_BLOCK`.
 - Stuck transaction: the keeper replaces it after 3 blocks with +25% fees, up to 5 times, only while the bid stays under
-  `MAX_GAS_PRICE_GWEI` (default 5, the contract's reimbursement cap) and the simulated reward still covers the cost.
+  the pool's `settings().maxGasPrice` (its reimbursement cap, 5 gwei by default) and `MAX_GAS_PRICE_GWEI` (the operator's
+  own limit, default 50, the highest a pool may set), and the simulated reward still covers the cost. A replacement
+  keeps the settings hash it was priced on: if the pool's settings changed, it reverts `StaleSettings` at a small cost
+  instead of running at pay the keeper did not price.
   Otherwise it waits. During a basefee spike above 5 gwei (~0.9% of blocks over the last 90 days; longest measured
   episode ~42 min) pools pause new purchases until gas falls; existing draws are unaffected. A creator can always run upkeep from the dashboard and pay the gas themself.
 - Reorgs: the last 64 blocks are rescanned every tick; Balancers whose creation was reorged out are dropped.
@@ -90,7 +93,7 @@ show when a fee makes the configuration uneconomic.
 ## Recover all capital
 
 1. `close()`.
-2. Wait for FWA to settle any unsettled draws, then run `performUpkeep()` once to reconcile them.
+2. Wait for FWA to settle any unsettled draws, then run `performUpkeep(settingsHash())` once to reconcile them.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.

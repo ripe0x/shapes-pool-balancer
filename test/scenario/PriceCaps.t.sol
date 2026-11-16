@@ -90,8 +90,9 @@ contract PriceCapsMeasure is ForkBase {
         settle();
         (,,,,,,, uint8 st) = pool.listings(lid);
         assertEq(st, 4, "reached: the chosen prize was won");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep();
+        reward = balancer.performUpkeep(uh1);
     }
 
     function _listNft() internal returns (uint256 lid) {
