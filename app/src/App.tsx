@@ -392,8 +392,6 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
         <span className="actions">
           {action}
           {d.upkeep.needed && st.act !== 'upkeep' && <button className="link quiet" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>}
-          {isCreator && d.enabled && <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => tx.write({ ...B, functionName: 'close' })])}>Close purchases</button>}
-          {isCreator && !d.enabled && st.act !== 'open' && d.target !== 0n && !d.retired && <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>}
         </span>
       </div>
       {(tx.busy || tx.msg) && <p className={`txline${tx.msg && !tx.msg.ok ? ' bad' : ''}`} aria-live="polite">{tx.busy ? `${tx.busy}…` : tx.msg!.text}</p>}
@@ -632,6 +630,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const savedReserveFee = d.mintFee > d.mintFeeCap ? d.mintFee : d.mintFeeCap;
   const reserveMintFee = configChanged ? d.mintFee : savedReserveFee;
   const needed = ready ? ethNeeded(counts, { ...inputs, mintFee: reserveMintFee }) : 0n;
+  // An existing pool being edited: each figure shows its value after saving, with the value now beside it.
+  const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
+  const savedView = savedEv ? playerView(savedEv) : undefined;
+  const editing = has && configChanged && !!savedEv;
+  const now = (before: string, after: string) => (editing && before !== after ? <span className="was">now {before}</span> : null);
   // A new pool is created with what it needs, rounded up to 0.01 ETH. A saved pool counts the prizes unlisting would redeem.
   const deposit = fresh ? ((needed + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
   const have = fresh ? deposit : available(d.balance, d.activeShapes, counts);
@@ -678,12 +681,15 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const oddsLine = (key: string) => { const p = oddsOf(key); return p ? `Won about ${oneIn(p)} draws` : undefined; };
   const common = view?.tiers.reduce((a, t) => (t.odds > a.odds ? t : a), view.tiers[0]);
   const prize = (t: NonNullable<typeof common>) => (t.kind === 'curated' ? 'A curated NFT' : `A ${t.label}`);
+  const topText = (v: NonNullable<typeof view>) => `${v.top.kind === 'curated' ? 'Curated NFT' : v.top.label} · ${v.top.multiple.toFixed(1)}×`;
+  const avgText = (v: NonNullable<typeof view>) => `${(v.avgReturn * 100).toFixed(0)}% of the price`;
   const playBlock = view ? (
     <div className="players">
       <h3 className="ctl">For players</h3>
-      <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}</span></div>
-      <div className="kv"><span className="k">Top prize</span><span>{view.top.kind === 'curated' ? 'Curated NFT' : view.top.label} · {view.top.multiple.toFixed(1)}×</span></div>
-      <div className="kv"><span className="k">Average prize</span><span>{(view.avgReturn * 100).toFixed(0)}% of the price</span></div>
+      {bases.length > 0 && <div className="kv"><span className="k">Win a curated NFT</span><span>{oneIn(view.curated)}{savedView && now(oneIn(savedView.curated), oneIn(view.curated))}</span></div>}
+      <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}{savedView && now(oneIn(savedView.winMore), oneIn(view.winMore))}</span></div>
+      <div className="kv"><span className="k">Top prize</span><span>{topText(view)}{savedView && now(topText(savedView), topText(view))}</span></div>
+      <div className="kv"><span className="k">Average prize</span><span>{avgText(view)}{savedView && now(avgText(savedView), avgText(view))}</span></div>
     </div>
   ) : null;
   const payBlock = (
@@ -692,6 +698,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       <div className="pay">{ev
         ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
         : <span className="figure ghost">—</span>}</div>
+      {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">Now {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
       {ev && pausesAt < MAX_BATCH && <p className="note">{pausesAt === 1
         ? 'With this mix, each purchase waits until the previous draw settles, usually about a minute. More small Shapes let more draws run at once.'
         : `With this mix, up to ${pausesAt - 1} draws can be settling at once; the next purchase waits until one settles, usually about a minute. More small Shapes raise the limit.`}</p>}
@@ -754,23 +761,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
-  const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
-  const savedView = savedEv ? playerView(savedEv) : undefined;
-  const compare = has && savedEv && savedView && view && ev ? (
-    <div className="result-block" style={{ paddingTop: 0 }}>
-      <span className="label">{configChanged ? 'Now → after saving' : 'Now'}</span>
-      {([
-        // Listed prizes keep their price: a markup change reaches the draw price as prizes are won and restocked.
-        ['Draw price', `${eth(savedView.cost, 5)} ETH`, `${eth(view.cost, 5)} ETH${markupBps !== d.markupBps ? ' as prizes restock' : ''}`],
-        ['Chance of one of your NFTs', pctOf(savedView.curated), pctOf(view.curated)],
-        ['Shapes', mixText(savedCounts), mixText(counts)],
-        ['Your markup on Shapes', `${d.markupBps / 100}%`, `${markup}%`],
-        ['Kept in the pool while open', `${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee }))} ETH`, `${eth(needed)} ETH`],
-      ] as const).map(([k, a, b]) => (
-        <div className="kv" key={k}><span className="k">{k}</span><span>{a === b || !configChanged ? a : <><span className="muted">{a} →</span> <b>{b}</b></>}</span></div>
-      ))}
-    </div>
-  ) : null;
   const run = async () => {
     if (!pub || !me) return;
     if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
@@ -978,7 +968,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       </section>
 
       <section className="sticky results">
-        {compare}
         <div className="desktop-only">{payBlock}</div>
         <div className="desktop-only">{gridBlock}</div>
         {playBlock && <div className="desktop-only">{playBlock}</div>}
@@ -987,7 +976,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <div><span>To create the pool</span>{figureEth(ev && deposit, 2)}</div>
           ) : (
             <>
-              <div><span>Kept in the pool while open</span>{figureEth(ev && needed)}</div>
+              <div><span>Kept in the pool while open{savedEv && now(`${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee }))} ETH`, `${eth(needed)} ETH`)}</span>{figureEth(ev && needed)}</div>
               <div><span>Available in the pool</span>{figureEth(have)}</div>
               {shortBy > 0n
                 ? <div><b>Deposited when you save</b>{figureEth(shortBy, 2)}</div>
@@ -1045,53 +1034,65 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   const odds = (l: Listing) => (d.totalWeight ? Number(l.weight) / Number(d.totalWeight) : 0);
   const name = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
   return (
-    <main className="page cols">
+    <main className="page cols design">
       <section>
-        <h2 className="title t2">Your NFTs</h2>
-        <p className="lead">Players can win these. A lower value is won more often.</p>
-        <div className="section">
-          {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
-          {curated.map((l) => (
-            <div className="nft" key={l.id.toString()}>
-              <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
-              <div>
-                <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
-                <div className="s">Your value {eth(l.base)} ETH</div>
-                <div className="s">Won about {oneIn(odds(l))} draws</div>
-                {edit?.id === l.id && (
-                  <div className="row" style={{ marginTop: 10 }}>
-                    <div className="field" style={{ width: 160 }}><input aria-label="New value" value={edit.value} onChange={(e) => setEdit({ id: l.id, value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-                    <button className="btn" disabled={!!tx.busy || !edit.value} onClick={() => tx.send('Change value', [() => tx.write({ ...B, functionName: 'updateCuratedPrice', args: [l.id, ethOr(edit.value, 0n)] })]).then((ok) => ok && setEdit(undefined))}>Save {edit.value || '0'} ETH</button>
+        <h2 className="title t2">NFTs</h2>
+        <div className="group">
+          <div className="group-head">
+            <span className="mk mk-nft" aria-hidden="true" />
+            <div><h2>Curated NFTs</h2><p className="desc">{curated.length === 1 ? 'One NFT' : `${word(curated.length)} NFTs`} players can win. The value is your asking price; a higher value makes it rarer.</p></div>
+          </div>
+          <div className="group-body nfts-list">
+            {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
+            {curated.map((l) => {
+              const editing = edit?.id === l.id;
+              return (
+                <div className="nft-row" key={l.id.toString()}>
+                  <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
+                  <div className="id">
+                    <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
+                    <div className="s">Won about {oneIn(odds(l))} draws</div>
                   </div>
-                )}
-              </div>
-              {isCreator && (
-                <div className="acts">
-                  <button className="link" onClick={() => setEdit(edit?.id === l.id ? undefined : { id: l.id, value: eth(l.base) })}>{edit?.id === l.id ? 'Cancel' : 'Change value'}</button>
-                  <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })])}>Withdraw</button>
+                  <div className="val">
+                    <span className="vl">Value</span>
+                    {editing
+                      ? <div className="field"><input className="big" aria-label={`New value of ${name(l)}`} value={edit.value} onChange={(e) => setEdit({ id: l.id, value: e.target.value })} inputMode="decimal" autoFocus /><span className="u">ETH</span></div>
+                      : <span className="big-v">{eth(l.base)} <small>ETH</small></span>}
+                  </div>
+                  {isCreator && (
+                    <div className="acts">
+                      {editing
+                        ? <>
+                            <button className="btn" disabled={!!tx.busy || !edit.value} onClick={() => tx.send('Change value', [() => tx.write({ ...B, functionName: 'updateCuratedPrice', args: [l.id, ethOr(edit.value, 0n)] })]).then((ok) => ok && setEdit(undefined))}>Save</button>
+                            <button className="link quiet" onClick={() => setEdit(undefined)}>Cancel</button>
+                          </>
+                        : <>
+                            <button className="link" onClick={() => setEdit({ id: l.id, value: eth(l.base) })}>Change value</button>
+                            <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })])}>Withdraw</button>
+                          </>}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-          {d.pending.map((l) => {
-            const refunded = l.fwaStatus === L_DELIVERY_REFUNDED;
-            return (
-              <div className="nft" key={l.id.toString()}>
-                <div className="thumb">{l.kind === 2 ? 'Shape' : 'NFT'}</div>
-                <div>
-                  <div className="t">{l.kind === 2 ? prizeLabel(l.denom) : name(l)}</div>
-                  <div className="s">{refunded ? 'Drawn. FWA refunded the buyer; you can take it back.' : 'Drawn. FWA could not deliver it. Anyone can retry for 7 days; after that the winner can take a refund, then you can take it back.'}</div>
+              );
+            })}
+            {d.pending.map((l) => {
+              const refunded = l.fwaStatus === L_DELIVERY_REFUNDED;
+              return (
+                <div className="nft-row" key={l.id.toString()}>
+                  <div className="thumb">{l.kind === 2 ? 'Shape' : 'NFT'}</div>
+                  <div className="id">
+                    <div className="t">{l.kind === 2 ? prizeLabel(l.denom) : name(l)}</div>
+                    <div className="s">{refunded ? 'Drawn. FWA refunded the buyer; you can take it back.' : 'Drawn. FWA could not deliver it. Anyone can retry for 7 days; after that the winner can take a refund, then you can take it back.'}</div>
+                  </div>
+                  {refunded && isCreator && <div className="acts"><button className="link" disabled={!!tx.busy} onClick={() => tx.send(l.kind === 1 ? 'Recover' : 'Recover and redeem', [() => tx.write({ ...B, functionName: 'recoverRefunded', args: [l.id, me] })])}>Recover</button></div>}
                 </div>
-                <div className="acts">
-                  {refunded && isCreator && <button className="link" disabled={!!tx.busy} onClick={() => tx.send(l.kind === 1 ? 'Recover' : 'Recover and redeem', [() => tx.write({ ...B, functionName: 'recoverRefunded', args: [l.id, me] })])}>Recover</button>}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </section>
       {isCreator && (
-        <section>
+        <section className="sticky results">
           <AddNft d={d} tx={tx} me={me} setTab={setTab} />
           <div className="section">
             <button className="disclose quiet" onClick={() => setStray({ ...stray, open: !stray.open })}>Return an NFT sent to the pool directly {stray.open ? '▴' : '▾'}</button>
@@ -1150,7 +1151,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   };
   return (
     <>
-      <h2 className="h3" style={{ fontSize: 22 }}>Add NFTs</h2>
+      <h2 className="ctl" style={{ fontSize: 22 }}>Add NFTs</h2>
       {picks.map((n, i) => (
         <div className="mixrow" key={keyOf(n)} style={i === 0 ? { marginTop: 12 } : undefined}>
           <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
@@ -1183,7 +1184,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
         </button>
       )}
-      <p className="note" style={{ marginTop: 8 }}>Listing closes purchases until upkeep runs; upkeep runs right after.</p>
+      {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>Purchases pause until the listing's upkeep runs, right after.</p>}
     </>
   );
 }
@@ -1408,7 +1409,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
   };
   const forwardOk = ens.forward?.toLowerCase() === d.balancer.toLowerCase();
   return (
-    <main className="page cols">
+    <main className="page design settings">
       <section>
         <h2 className="title t2">Settings</h2>
         <div className="section">
@@ -1455,10 +1456,15 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             <div><div style={{ fontWeight: 700 }}>{d.keepersRestricted ? 'Approved keepers only' : 'Anyone'}</div><p className="note">Who can run upkeep and earn its reward, set for all pools. You can always run it yourself.</p></div>
           </div>
         </div>
-      </section>
-      <section>
+        <div className="section">
         <h2 className="h3" style={{ fontSize: 22 }}>Close down</h2>
         <p className="note" style={{ margin: '8px 0 20px' }}>Get your ETH back or hand the pool to someone else. These steps affect players, so each one asks you to confirm.</p>
+        <div className="kv">
+          <div><div style={{ fontWeight: 700 }}>Purchases</div><p className="note">{d.enabled ? 'Open. Closing stops new draws; draws already bought still settle.' : 'Closed.'}</p></div>
+          {d.enabled
+            ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => tx.write({ ...B, functionName: 'close' })])}>Close purchases</button>
+            : <button className="link" disabled={!!tx.busy || d.target === 0n || d.retired} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>}
+        </div>
         <div className="kv">
           <div><div style={{ fontWeight: 700 }}>Unlist prizes</div><p className="note">{d.enabled ? 'Close purchases first.' : `Returns the ${eth(backing)} ETH held in prizes to the pool, 20 at a time.`}</p></div>
           <button className="link" disabled={!!tx.busy || d.enabled || backing === 0n} onClick={() => tx.send('Unlist prizes', [() => tx.write({ ...B, functionName: 'unlistShapes', args: [d.listings.filter((l) => l.kind === 2 && l.state === 1).slice(0, 20).map((l) => l.id)] })])}>Unlist</button>
@@ -1484,6 +1490,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             {d.enabled && <p className="note" style={{ width: '100%' }}>Close purchases first.</p>}
           </div>
         )}
+        </div>
       </section>
     </main>
   );
