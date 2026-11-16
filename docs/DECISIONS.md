@@ -658,3 +658,18 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
       owner re-signs the outcomes.
     - Left open: dashboard load at very large inventories (two reads per listing, unpaged lifetime logs) and reads
       not pinned to one block.
+93. **Confirmatory review of `1de59a2` acted on** (report `audit/rc-1de59a2/REPORT.md`, in the review's own worktree at
+    `2576f7c`). No execution code changed.
+    - S3: an evicted keeper transaction no longer strands a pool. When the node holds no transaction of the keeper's at
+      the pending nonce and none of its hashes, the keeper forgets the entry and re-prices and sends at the same nonce
+      (local fork: nonce 112 dropped from the pool, resent at 112 four blocks later, mined). A copy the node still knows,
+      including a lost-response send, keeps the entry.
+    - E3: R37, `SettingsLib.check`'s comment and `docs/SECURITY.md` now carry decision 90's same-settings exception: up to
+      14k gas per restock when restockFlat is 0.
+    - E4: R4's measured NFT-dominated range gains the current figure (up to 0.0371 ETH; O11 states up to 0.038 ETH).
+    - C1: comments corrected: what an extra call from splitting work earns (incentive, unused overhead allowance,
+      refunds); worst upkeep gas flat with prize count but growing with FWA's listing count under a hostile collection;
+      `_collect` splits by the listings tracked at collection, which differ from the priced set when it changed while a
+      draw was unsettled.
+    - Open, no change: on the largest board the creator ends ahead counting listed backing while the liquid fund is
+      48.37 ETH below its reserve need; claims of self-sustaining play hold for the launch board, not every board.

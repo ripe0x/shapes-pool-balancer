@@ -105,8 +105,9 @@ contract PoolBalancer is ReentrancyGuard {
     //   processed cannot be reconciled or paid for. Draws become ready or expire one block at a time, and FWA
     //   processing is permissionless, so a batch can be reconciled one draw per call: the bound is one paid call
     //   per processed draw, not per batch (about 0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most
-    //   maxKeeperReward() and needs a processed sequence (a paid draw) or a deficit (a won prize or a creator action),
-    //   so splitting work across calls gains a keeper at most the incentive per extra call.
+    //   maxKeeperReward() and needs a processed sequence (a paid draw) or a deficit (a won prize or a creator action).
+    //   An extra call from splitting work earns the keeper the incentive, the part of overheadGas above its actual
+    //   outside-span gas, and any gas the transaction's storage refunds return to it.
     // - Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + incentive + restockFlat, at
     //   the listing block: the creator's income for keeper pay, sized to the gas a listing call
     //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
@@ -896,10 +897,12 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && _missingUnits() != 0;
     }
 
-    /// @dev Collect FWA proceeds and split them by the listed prices. Callers collect before changing the tracked
-    ///      listings, so the split uses the set the collected draws were priced on. While the fund (this balance less
-    ///      unclaimed `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS becomes claimable `profit`
-    ///      and the fund keeps the rest; at or above it, everything over the reserve is claimable anyway.
+    /// @dev Collect FWA proceeds and split them by the listings tracked now. Callers collect before changing the tracked
+    ///      listings, so a draw is split by the set it was priced on unless that set changed while it was unsettled
+    ///      (upkeep restocked, or the creator changed the markup); then the current set's share applies. While the fund
+    ///      (this balance less unclaimed `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS
+    ///      becomes claimable `profit` and the fund keeps the rest; at or above it, everything over the reserve is
+    ///      claimable anyway.
     function _collect() internal returns (uint256 amount) {
         IFWAPool p = pool;
         if (p.ownerProceeds() == 0) return 0;

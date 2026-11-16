@@ -28,7 +28,8 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   creator's income, so this is the balance of two flows → **O11** (D12, "Yes, all four"): restocking fees repaid in won prizes
   cover keeper pay for play on the launch board at 0.1 to 5 gwei. Measured, 180 draws: +0.019 to +0.12 ETH; with the
   creator's own setup work counted, −0.020 ETH at 5 gwei (setup 0.14 ETH); NFT-dominated boards −0.025 to −0.035 ETH for play
-  (an NFT win brings no fee).
+  (an NFT win brings no fee). Since curated NFTs carry no markup (decision 86) the NFT-dominated figure measures up to
+  −0.0371 ETH; O11 states up to 0.038 ETH.
 - R5. The keeper list is "on the factory", "open at default", and no creator should have to update their pool
   individually → `test/KeeperList.t.sol` (open by default; restricted list; creator always allowed; admin reopens).
 - R10. Option B *(relayed)*: every useful upkeep (one that reconciles a draw or lists a prize) is paid from the
@@ -159,7 +160,8 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   adjust their own pool's keeper pay, and only within limits that keep the system working (decision 88).
 - R38. No limit on curated NFTs per pool ("if not, don't set one"; decision 89).
 - R37 holds through settings changes: an upkeep runs only under the settings its caller priced it on, and a prize's
-  restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing (decision 90).
+  restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing, less up to 14k
+  gas when the creator sets restockFlat to 0 (decision 90).
   Raising pay settings later costs the creator the difference on prizes listed before, until they are won and
   relisted (owner, 2026-11-16, accepting option A of the 67a9e1e review's E1; decision 92).
 

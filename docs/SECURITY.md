@@ -276,7 +276,7 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
   spent. Raising the caps also raises each pool's held reserve, so a pool funded at the old reserve stops admitting
   purchases until its creator deposits more or the admin restores the settings (at every limit, a pool needs 0.311 ETH
   per budgeted upkeep). A restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing
-  (restockGas >= overheadGas + 850k, plus the incentive). Listed fees never change, so raising pay settings costs each
+  (restockGas >= overheadGas + 850k, plus the incentive), less up to 14k gas when restockFlat is 0. Listed fees never change, so raising pay settings costs each
   pool the difference on prizes listed before, until they are won and relisted (decision 92; review of 67a9e1e E1:
   0.052 ETH on one restock after a 0.55 to 50 gwei change). A settings change never reaches an
   upkeep already priced: `performUpkeep` takes the `settingsHash()` the keeper read and reverts `StaleSettings` if it

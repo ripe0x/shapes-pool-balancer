@@ -296,6 +296,18 @@ export class Keeper {
       return false;
     }
     if (head - BigInt(p.sentBlock) < BigInt(this.c.replaceAfterBlocks)) return true;
+    // Evicted: the node holds no transaction of ours at this nonce (pending count not above it) and none of our hashes.
+    // Forget the entry; attempt() then re-reads settings, re-prices and sends at the same nonce, which it takes from
+    // the pending count. A copy still known to the node keeps the entry (lost-response sends included).
+    const pendingNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
+    if (pendingNonce <= p.nonce) {
+      const known = await Promise.all(p.hashes.map((h) => this.pub.getTransaction({ hash: h }).then(() => true, () => false)));
+      if (!known.some(Boolean)) {
+        this.log('evicted: resending at the same nonce', { balancer: b, nonce: p.nonce });
+        delete this.state.pending[b];
+        return false;
+      }
+    }
     if (p.replacements >= this.c.maxReplacements) return true;
     // Replace with the same nonce and +25% fees, only while the bid stays under the cap and profitable.
     const { cap } = this.fees(baseFee, settings.maxGasPrice);

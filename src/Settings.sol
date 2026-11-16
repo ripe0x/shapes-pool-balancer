@@ -20,8 +20,10 @@ struct Settings {
 library SettingsLib {
     error SettingOutOfRange();
 
-    /// @dev The factory's settings at deployment. Upkeep work is bounded per call, so the worst upkeep's gas does not
-    ///      grow with the number of prizes (measured the same at 200 and 1,000).
+    /// @dev The factory's settings at deployment. Upkeep work is bounded per call (reconciles, Shape units, sizes and
+    ///      processed draws), not by pool size: the worst upkeep measured 2,646,324 gas at 200 prizes and 2,646,369 at
+    ///      1,000. FWA's processing grows with its listing count; with a curated collection that spends every FWA gas
+    ///      allowance, billed gas measured 2.77M at 1,024 listings, 2.82M at 2,048 and 2.87M at 4,096.
     function defaults() internal pure returns (Settings memory) {
         return Settings(5 gwei, 0.05 gwei, 0.0001 ether, 0.0001 ether, 3_200_000, 50_000, 900_000, 1_000);
     }
@@ -31,7 +33,8 @@ library SettingsLib {
     ///      overheadGas its outside-span gas (measured 24k-46k); the
     ///      restocking fee's gas covers a restock-one upkeep and its overhead (restockGas >= overheadGas + 850k; the fee
     ///      also carries the incentive), so a prize's fee pays its own restock under the settings and gas price of its
-    ///      listing block. A listed fee never changes: if pay settings or gas rise later, restocking an older prize
+    ///      listing block, less up to 14k gas when restockFlat is 0 (restocks measured up to 864k gas against the 850k
+    ///      floor; the creator pays that part). A listed fee never changes: if pay settings or gas rise later, restocking an older prize
     ///      costs the creator the difference until it is won and relisted; a gas price cap of at least
     ///      1 gwei; at most 1,000 prizes. Upper limits bound what a keeper call can cost the creator:
     ///      (6M + 200k) x 50 gwei + 0.001 ETH = 0.311 ETH.
