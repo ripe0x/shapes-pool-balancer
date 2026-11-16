@@ -564,3 +564,7 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     0.5 ETH wins -0.167 to -0.276). O1's and O12's information figures are restated from this run, which needs a new
     signature. `test/audit/LaunchB.t.sol` `test_keeperAdminLocksOutKeepers` now relists a won NFT as the creator
     would: its fixed words began winning the NFT, which stopped sales for NO_CURATED instead of the missing keepers.
+    O10's information figures, measured by the step-B audit harness on `05e6b60`, are now rerun by
+    `test/audit/O10Ratios.t.sol` (ported from it). On `584d625`: launch board 1.466x, 100% markup 2.271x, 10% markup
+    1.305x, 20 NFTs at 50 ETH 2.068x, all unchanged; after 60 draws restocked at 5 gwei 1.714x (was 1.679x, prize
+    luck: the metric's NFT price cancels, since FWA's quote is the prize count over the summed weights). O10 restated.
