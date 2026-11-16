@@ -62,7 +62,7 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
     /// @dev The most Shapes any one prize holds.
     uint256 internal constant MAX_SHAPES_IN = 3;
-    uint256 internal constant MAX_SHAPES_PER_PLAN = 80;
+    uint256 internal constant MAX_SHAPES_PER_PLAN = 200;
     /// @dev Inventory work per upkeep, in Shape units: minting+listing or withdrawing+redeeming one Shape is 1; a pack
     ///      counts as the Shapes it holds (measured: ~425k gas per Shape with its listing, ~870k per three-Shape pack).
     ///      Six units with five reconciles measured 3.13M against KEEPER_MAX_GAS; five keeps a margin.

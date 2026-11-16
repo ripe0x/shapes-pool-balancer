@@ -568,7 +568,8 @@ contract BalancerTest is ForkBase {
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, 0); // empty
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, plan([uint256(81), 0, 0, 0, 0, 0, 0, 0, 0])); // > 80 Shapes
+        balancer.configure(1500, plan([uint256(201), 0, 0, 0, 0, 0, 0, 0, 0])); // > 200 prizes
+        balancer.configure(1500, plan([uint256(200), 0, 0, 0, 0, 0, 0, 0, 0])); // 200 is accepted
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, planA | (uint256(1) << 256 - 1)); // stray high bits above 16 counts
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);

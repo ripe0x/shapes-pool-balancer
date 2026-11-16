@@ -105,8 +105,9 @@ abstract contract ForkBase is Test {
     }
 
     /// @dev Run upkeep until it has nothing left to do (each call is bounded by MAX_OPS); returns the calls that worked.
+    ///      A 200-prize fill of three-Shape packs needs 120 calls.
     function fillUp() internal returns (uint256 calls) {
-        for (uint256 i; i < 40; ++i) {
+        for (uint256 i; i < 150; ++i) {
             vm.prank(keeper, keeper);
             try balancer.performUpkeep() {
                 ++calls;

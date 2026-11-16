@@ -168,7 +168,7 @@ measured on the rewrite** (the previous design's `test_reserveSizes` numbers do 
 
 | Constant | Value | Basis |
 | --- | --- | --- |
-| `MAX_SHAPES_PER_PLAN` | 80 prizes in the target | bounds the target's prize count; no listing-scan loop remains |
+| `MAX_SHAPES_PER_PLAN` | 200 prizes in the target (decision 87) | a product limit: upkeep work is bounded per call, not by pool size. Worst upkeep at 200 prizes and 20 NFTs: 2.78M gas used, against 2.73M at 56 prizes (`test_gas_worstCaseUpkeepFullUnits_200Prizes`) |
 | `MAX_RECONCILE` | 5 settled sequences reconciled per call | ~33k gas each; a drawn listing is read and cleared, never scanned again |
 | `MAX_RESTOCK_SIZES` | 4 prize sizes restocked per call | each size is its own mint call (~0.5M gas with its listing); 6 sizes measured 3.19M |
 | `MAX_OPS` | 5 Shape units restocked per call; a pack counts the Shapes it holds (2 or 3) | ~425k gas per Shape with its listing, ~870k per three-Shape pack; 6 units with 5 reconciles measured 3.13M |

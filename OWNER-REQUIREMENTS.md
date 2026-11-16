@@ -148,6 +148,10 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   percentage markup on top of that either": a curated NFT lists at the creator's value; the markup applies to Shape
   prizes only (decision 86).
 
+## Pool size (owner, 2026-11-16: "set max to 200")
+
+- R36. A plan holds 1 to 200 prizes (was 80; decision 87).
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

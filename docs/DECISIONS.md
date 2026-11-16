@@ -568,3 +568,11 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     `test/audit/O10Ratios.t.sol` (ported from it). On `584d625`: launch board 1.466x, 100% markup 2.271x, 10% markup
     1.305x, 20 NFTs at 50 ETH 2.068x, all unchanged; after 60 draws restocked at 5 gwei 1.714x (was 1.679x, prize
     luck: the metric's NFT price cancels, since FWA's quote is the prize count over the summed weights). O10 restated.
+87. **Plans hold up to 200 prizes** (owner, 2026-11-16: "set max to 200"). The 80 of decision 42 was sized to fill a
+    100-listing cap that existed because upkeep looped over every listing. The rewrite removed those loops: upkeep
+    works per prize size and each call is bounded by MAX_RECONCILE, MAX_OPS and MAX_RESTOCK_SIZES, and FWA picks a prize
+    through a 32-level segment tree. Measured: the worst upkeep (reconcile 5 draws, restock 5 Shapes in 4 sizes) uses
+    2,781,528 gas at 200 prizes and 20 curated NFTs against 2,727,810 at 56 prizes, under the 2.88M test limit (90% of
+    the 3.2M pay cap). Costs that grow with the pool: a first fill takes at least one paid upkeep per 5 Shapes (40 for
+    200 single Shapes), the reserve holds the larger target, and the dashboard reads every listing on load (about 440
+    calls at 220 listings). Test helper `fillUp` now allows 150 calls (was 40, enough only for 80 prizes).

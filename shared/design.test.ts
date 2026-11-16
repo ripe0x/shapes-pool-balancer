@@ -81,7 +81,7 @@ suite('pool size and styles', () => {
   });
 
   it('a style never pushes the pool past the Shape limit', () => {
-    for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+    for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80, 199]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 
   it('counts Shapes the switch would redeem as available', () => {
@@ -114,7 +114,7 @@ suite('balanced style (ape-Ball board)', () => {
     expect(counts(4)[3]).toBe(0);
     expect(counts(11)[3]).toBe(0);
     expect(counts(12)[3]).toBe(1);
-    for (const n of [1, 10, 24, 30, 38, 60, 78, 80]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+    for (const n of [1, 10, 24, 30, 38, 60, 78, 80, 150, 200]) expect(shapeCount(counts(n))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 });
 
