@@ -373,3 +373,5 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .settings > section { max-width: 820px; }
 .settings .kv { min-height: 56px; }
 @media (max-width: 640px) { .settings .section { padding: 20px; } }
+.earned { margin: 12px 0 8px; }
+.earned .note { margin-top: 4px; }

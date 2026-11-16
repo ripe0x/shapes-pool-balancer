@@ -20,6 +20,23 @@ const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'fun
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const CREATOR_TRANSFERRED = parseAbiItem('event CreatorTransferred(address indexed oldCreator, address indexed newCreator)');
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
+/** Events that move the creator's ETH, for the lifetime ledger on Overview. */
+const LEDGER = [
+  DRAWN,
+  parseAbiItem('event Deposited(address indexed from, uint256 amount)'),
+  parseAbiItem('event SurplusClaimed(address indexed to, uint256 amount)'),
+  parseAbiItem('event ProceedsCollected(uint256 amount)'),
+  parseAbiItem('event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed)'),
+  parseAbiItem('event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost)'),
+  parseAbiItem('event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price)'),
+  parseAbiItem('event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price)'),
+] as const;
+
+/** The creator's ETH since the pool was created, from its events. `held` is everything still theirs in the pool: its
+ *  balance, the backing of its prizes (listed, or drawn but not delivered) and sales FWA holds for it. Earned = taken
+ *  out + held - put in, which equals sales - prizes won - mint fees - keeper pay, plus ETH sent to the pool directly
+ *  (`other`). Curated NFTs won are counted apart: they are not ETH. */
+interface Ledger { putIn: bigint; takenOut: bigint; held: bigint; earned: bigint; sales: bigint; prizesWon: bigint; mintFees: bigint; keeperPay: bigint; other: bigint; nftsWon: number; nftValues: bigint }
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
 
@@ -85,10 +102,13 @@ function useBalancer(b?: Address) {
     const fees = await pub.estimateFeesPerGas();
     const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: creator, ...fees })
       .then(() => ({ needed: true }), () => ({ needed: false }));
-    // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
-    const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
+    // Drawn items whose FWA delivery failed are not scanned on chain; find them from events. The same scan feeds the
+    // lifetime ledger.
+    const events = await pub.getLogs({ address: b, events: LEDGER, fromBlock: FROM_BLOCK });
+    const drawn = events.filter((l) => l.eventName === 'ItemDrawn') as unknown as { args: { listingId?: bigint; kind?: number; denom?: number; delivered?: boolean } }[];
     // The keeper list is on the factory that deployed this Balancer.
-    const keepersRestricted = await pub.readContract({ address: await r<Address>('factory'), abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
+    const factoryAddr = await r<Address>('factory');
+    const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
     const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b), liveSettings(pub), r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
     const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee, vrfFee] = await Promise.all([
@@ -108,11 +128,29 @@ function useBalancer(b?: Address) {
     const names: Record<string, string> = Object.fromEntries(await Promise.all(collections.map(async (c) =>
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
+    const sum = (name: string, f: (a: Record<string, unknown>) => bigint) => events.filter((l) => l.eventName === name).reduce((t, l) => t + f(l.args as Record<string, unknown>), 0n);
+    const values = new Map<bigint, bigint>();
+    for (const l of events) if (l.eventName === 'CuratedListed' || l.eventName === 'CuratedRepriced') values.set((l.args as { listingId: bigint }).listingId, (l.args as { base: bigint }).base);
+    const nftWins = drawn.filter((l) => l.args.kind === 1 && l.args.delivered);
+    const backingOf = (ls: Listing[]) => ls.filter((l) => l.kind === 2).reduce((t, l) => t + DENOMS[l.denom], 0n);
+    const putIn = sum('Deposited', (a) => a.amount as bigint); // includes the deposit made at creation
+    const takenOut = sum('SurplusClaimed', (a) => a.amount as bigint);
+    const held = balance + backingOf(listings) + backingOf(pending) + proceeds;
+    const sales = sum('ProceedsCollected', (a) => a.amount as bigint) + proceeds;
+    const prizesWon = drawn.filter((l) => l.args.kind === 2 && l.args.delivered).reduce((t, l) => t + DENOMS[l.args.denom!], 0n);
+    const mintFees = sum('ShapesMinted', (a) => (a.cost as bigint) - (a.quantity as bigint) * DENOMS[Number(a.denom)]);
+    const keeperPay = sum('KeeperPaid', (a) => a.amount as bigint);
+    const earned = takenOut + held - putIn;
+    const ledger: Ledger = {
+      putIn, takenOut, held, earned, sales, prizesWon, mintFees, keeperPay,
+      other: earned - (sales - prizesWon - mintFees - keeperPay),
+      nftsWon: nftWins.length, nftValues: nftWins.reduce((t, l) => t + (values.get(l.args.listingId!) ?? 0n), 0n),
+    };
     return {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, vrfFee, listings, pending, names, ensName,
-      keepersRestricted, settings, defaults, overrideMask: Number(overrides[0]),
+      keepersRestricted, settings, defaults, overrideMask: Number(overrides[0]), ledger,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -1301,6 +1339,18 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 
         <div className="result-block">
           <h2 className="h3">Earnings</h2>
+          <div className="earned">
+            <span className="note">Earned so far</span>
+            <div><span className={`figure-s${d.ledger.earned < 0n ? ' error' : ''}`}>{d.ledger.earned < 0n ? '−' : '+'}{eth(d.ledger.earned < 0n ? -d.ledger.earned : d.ledger.earned, 5)}</span><span className="unit">ETH</span></div>
+            <p className="note">You put in {eth(d.ledger.putIn)} ETH and took out {eth(d.ledger.takenOut)} ETH; {eth(d.ledger.held)} ETH is yours in the pool.</p>
+          </div>
+          <div className="kv"><span className="k">Draw sales</span><span>+{eth(d.ledger.sales, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Prizes won by players</span><span>−{eth(d.ledger.prizesWon, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Shapes mint fees</span><span>−{eth(d.ledger.mintFees, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Keeper pay</span><span>−{eth(d.ledger.keeperPay, 5)} ETH</span></div>
+          {d.ledger.other !== 0n && <div className="kv"><span className="k">ETH sent to the pool directly</span><span>{d.ledger.other < 0n ? '−' : '+'}{eth(d.ledger.other < 0n ? -d.ledger.other : d.ledger.other, 5)} ETH</span></div>}
+          {d.ledger.nftsWon > 0 && <p className="note" style={{ marginTop: 10 }}>Players won {d.ledger.nftsWon === 1 ? 'one of your NFTs' : `${word(d.ledger.nftsWon)} of your NFTs`}, valued at {eth(d.ledger.nftValues)} ETH. NFTs are not counted above.</p>}
+          <h3 className="ctl" style={{ marginTop: 28 }}>Estimate</h3>
           {econ ? (
             <>
               <div className="row" style={{ gap: 40, marginTop: 12 }}>
