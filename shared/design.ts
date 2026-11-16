@@ -5,12 +5,12 @@ import {
 
 export interface DesignInputs extends PoolInputs {
   have: Counts; // prizes listed now
-  vrfFee?: bigint; // FWA's per-draw VRF service fee, paid by the player on top of the draw price
 }
 
 /** One draw from a player's side, at what each prize is worth (a Shape redeems for its backing). */
-export function playerView(ev: Evaluation, vrfFee: bigint) {
-  const cost = ev.drawPrice + vrfFee;
+/** The player's side of a draw, against the draw price (FWA's randomness fee and gas are not included). */
+export function playerView(ev: Evaluation) {
+  const cost = ev.drawPrice;
   const tiers = ev.tiers.map((t) => ({ ...t, odds: t.oddsPpm / 1e6, multiple: cost ? Number(t.value) / Number(cost) : 0 }));
   const top = tiers.reduce((a, b) => (b.value > a.value ? b : a), tiers[0]);
   return {
@@ -76,7 +76,7 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
     }
     return b;
   }
-  const view = (b: Counts) => playerView(evaluate(mixOf(small, b), d), d.vrfFee ?? 0n);
+  const view = (b: Counts) => playerView(evaluate(mixOf(small, b), d));
   let bonus = NONE;
   if (style === 'jackpot') {
     const target = Number(view(NONE).cost) * JACKPOT_MULTIPLE;

@@ -545,7 +545,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
     curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    vrfFee: d.vrfFee, have: d.activeShapes,
+    have: d.activeShapes,
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
@@ -585,7 +585,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const ev = ready ? evaluate(counts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
-  const view = ev ? playerView(ev, d.vrfFee ?? 0n) : undefined;
+  const view = ev ? playerView(ev) : undefined;
   const target = packPlan(counts);
   // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
   const pausesAt = pendingDrawsAdmitted(counts) + 1;
@@ -622,7 +622,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     if (g.nft) return `${verb} ${rows.length === 1 ? `your NFT, ${rows[0].name}` : 'one of your NFTs'}`;
     const v = Number(formatEther(g.value)) / Number(formatEther(view!.cost));
     const what = `${g.n === 1 && shapeGroups.length > 1 && g === shapeGroups[shapeGroups.length - 1] ? 'the' : 'a'} ${prizeLabel(g.i)}`;
-    return `${verb} ${what}${v < 1 ? ', less than they paid' : `, ${v.toFixed(1)}× what they paid`}`;
+    return `${verb} ${what}${v < 1 ? ', less than the draw price' : `, ${v.toFixed(1)}× the draw price`}`;
   };
 
   // Inventory: one square per item in the pool, each with its own chance per draw.
@@ -645,20 +645,17 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const playBlock = view ? (
     <div className="players">
       <h3 className="ctl">For players</h3>
-      <div className="kv"><span className="k">Win more than they paid</span><span>{oneIn(view.winMore)}</span></div>
+      <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}</span></div>
       <div className="kv"><span className="k">Top prize</span><span>{view.top.kind === 'curated' ? 'Curated NFT' : view.top.label} · {view.top.multiple.toFixed(1)}×</span></div>
       <div className="kv"><span className="k">Average prize</span><span>{(view.avgReturn * 100).toFixed(0)}% of the price</span></div>
     </div>
   ) : null;
   const payBlock = (
     <div>
-      <span className="soft" style={{ fontSize: 15 }}>{vrfKnown || !ev ? 'Players pay' : 'Draw price'}</span>
-      <div className="pay">{view && ev
-        ? <><span className="figure">{eth(vrfKnown ? view.cost : ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
+      <span className="soft" style={{ fontSize: 15 }}>Draw price</span>
+      <div className="pay">{ev
+        ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
         : <span className="figure ghost">—</span>}</div>
-      {ev && <p className="note">{vrfKnown
-        ? <>Includes FWA's {eth(d.vrfFee!, 5)} ETH randomness fee.</>
-        : <>FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>}
       {ev && pausesAt < MAX_BATCH && <p className="note">{pausesAt === 1
         ? 'With this mix, each purchase waits until the previous draw settles, usually about a minute. More small Shapes let more draws run at once.'
         : `With this mix, up to ${pausesAt - 1} draws can be settling at once; the next purchase waits until one settles, usually about a minute. More small Shapes raise the limit.`}</p>}
@@ -722,13 +719,13 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
   const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
-  const savedView = savedEv ? playerView(savedEv, d.vrfFee ?? 0n) : undefined;
+  const savedView = savedEv ? playerView(savedEv) : undefined;
   const compare = has && savedEv && savedView && view && ev ? (
     <div className="result-block" style={{ paddingTop: 0 }}>
       <span className="label">{configChanged ? 'Now → after saving' : 'Now'}</span>
       {([
         // Listed prizes keep their price: a markup change reaches the draw price as prizes are won and restocked.
-        [vrfKnown ? 'Players pay' : 'Draw price', `${eth(savedView.cost, 5)} ETH`, `${eth(view.cost, 5)} ETH${markupBps !== d.markupBps ? ' as prizes restock' : ''}`],
+        ['Draw price', `${eth(savedView.cost, 5)} ETH`, `${eth(view.cost, 5)} ETH${markupBps !== d.markupBps ? ' as prizes restock' : ''}`],
         ['Chance of one of your NFTs', pctOf(savedView.curated), pctOf(view.curated)],
         ['Shapes', mixText(savedCounts), mixText(counts)],
         ['Your markup on Shapes', `${d.markupBps / 100}%`, `${markup}%`],
@@ -976,10 +973,10 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                   {vrfKnown && <div className="kv"><span className="k">FWA's randomness fee, at today's gas</span><span>{eth(d.vrfFee!, 5)} ETH</span></div>}
                   {common && <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}×</span></div>}
                   {bases.length > 0 && <div className="kv"><span className="k">Wins a curated NFT</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>}
-                  <div className="kv"><span className="k">Wins more than they paid</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
+                  <div className="kv"><span className="k">Wins more than the draw price</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
                   <div className="kv"><span className="k">Wins 2× or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
                   <div className="kv"><span className="k">Top prize</span><span>{eth(view.top.value, 3).replace(/\.?0+$/, '')} ETH · {oneIn(view.top.odds)}</span></div>
-                  <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of cost</span></div>
+                  <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of the draw price</span></div>
                 </div>
                 <div className="kv-group">
                   <span className="label">For you</span>
@@ -1098,11 +1095,10 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const inputs: DesignInputs = {
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    vrfFee: d.vrfFee, shapePrices: livePrices, have: d.activeShapes,
+    shapePrices: livePrices, have: d.activeShapes,
   };
   const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
   const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
-  const cost = (ev: ReturnType<typeof evaluate>) => ev.drawPrice + (d.vrfFee ?? 0n);
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;
@@ -1138,7 +1134,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
       {after && (
         <div className="section">
           <span className="label">With {picks.length === 1 ? 'this NFT' : 'these NFTs'}</span>
-          <div className="kv"><span className="k">{d.vrfFee !== undefined ? 'Players pay' : 'Draw price'}</span><span>{before ? `${eth(cost(before), 5)} → ` : ''}{eth(cost(after), 5)} ETH</span></div>
+          <div className="kv"><span className="k">Draw price</span><span>{before ? `${eth(before.drawPrice, 5)} → ` : ''}{eth(after.drawPrice, 5)} ETH</span></div>
           <div className="kv"><span className="k">Chance of one of your NFTs</span><span>{before ? `${pctOf(before.curatedOddsPpm / 1e6)} → ` : ''}{pctOf(after.curatedOddsPpm / 1e6)}</span></div>
           {!after.feasible && <p className="note error" style={{ marginTop: 10 }}>With {picks.length === 1 ? 'this NFT' : 'these NFTs'} the saved mix breaks your limits: {after.reasons.join('; ').toLowerCase()}. Purchases stay closed until you change it on <button className="link" style={{ fontSize: 13 }} onClick={() => setTab('mix')}>Prices & mix</button>.</p>}
         </div>
@@ -1188,8 +1184,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
-  const vrfKnown = d.vrfFee !== undefined;
-  const cost = d.fee + (d.vrfFee ?? 0n); // what a player pays FWA per draw at today's gas; wallet gas is extra
+  const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
   const live = d.listings.filter((l) => l.weight > 0n);
   const tw = live.reduce((s, l) => s + l.weight, 0n);
   const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y));
@@ -1209,11 +1204,8 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
     <main className="page cols">
       <section>
         <div className="result-block" style={{ paddingTop: 0 }}>
-          <span className="soft" style={{ fontSize: 14 }}>{vrfKnown ? 'Players pay' : 'Draw price'}</span>
-          <div style={{ marginTop: 8 }}><span className="figure">{d.fee ? eth(cost, 5) : '–'}</span><span className="unit">ETH per draw</span></div>
-          {d.fee > 0n && <p className="note" style={{ marginTop: 10 }}>{vrfKnown
-            ? <>Draw price {eth(d.fee, 5)} ETH and FWA's randomness fee {eth(d.vrfFee!, 5)} ETH at today's gas. Gas is extra.</>
-            : <>Draw price only: FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>}
+          <span className="soft" style={{ fontSize: 14 }}>Draw price</span>
+          <div style={{ marginTop: 8 }}><span className="figure">{d.fee ? eth(d.fee, 5) : '–'}</span><span className="unit">ETH per draw</span></div>
         </div>
         <div className="result-block">
           <div className="section-head"><h2 className="h3">In the pool now</h2>{isCreator && <button className="link" onClick={() => setTab('mix')}>Change prices or mix</button>}</div>
@@ -1604,7 +1596,7 @@ function InventoryGrid({ items }: { items: InvItem[] }) {
           <div className="kvline"><span className="muted">Chance per draw</span><span>{oneIn(it.p)} · {pctOf(it.p)}</span></div>
           <div className="kvline"><span className="muted">{it.nft ? 'Your value' : 'Redeems for'}</span><span>{eth(it.value, 4)} ETH</span></div>
           <div className="kvline"><span className="muted">Price on FWA</span><span>{eth(it.price, 5)} ETH</span></div>
-          <div className="kvline"><span className="muted">Worth vs draw cost</span><span>{it.mult.toFixed(2)}×</span></div>
+          <div className="kvline"><span className="muted">Worth vs draw price</span><span>{it.mult.toFixed(2)}×</span></div>
         </div>
       )}
     </div>

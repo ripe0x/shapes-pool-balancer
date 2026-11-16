@@ -26,30 +26,30 @@ suite('playerView', () => {
   it('without per-Shape fees Shapes return their price less the markup and NFTs their whole price', () => {
     const noFees = { ...base, mintFee: 0n, restockFee: 0n };
     for (const counts of [mix({ 0: 10 }), mix({ 0: 2, 3: 1 }), mix({ 1: 5, 2: 2 })]) {
-      expect(playerView(evaluate(counts, noFees), 0n).avgReturn).toBeCloseTo(noFeeReturn(counts), 3);
+      expect(playerView(evaluate(counts, noFees)).avgReturn).toBeCloseTo(noFeeReturn(counts), 3);
     }
   });
 
   it('per-Shape mint and restocking fees cost players more on small prizes', () => {
-    const small = playerView(evaluate(mix({ 0: 10 }), base), 0n).avgReturn;
-    const large = playerView(evaluate(mix({ 1: 5, 2: 2 }), base), 0n).avgReturn;
+    const small = playerView(evaluate(mix({ 0: 10 }), base)).avgReturn;
+    const large = playerView(evaluate(mix({ 1: 5, 2: 2 }), base)).avgReturn;
     expect(small / noFeeReturn(mix({ 0: 10 }))).toBeLessThan(large / noFeeReturn(mix({ 1: 5, 2: 2 })));
     expect(large).toBeLessThan(noFeeReturn(mix({ 1: 5, 2: 2 })));
   });
 
-  it('counts only prizes worth more than the draw plus VRF fee as wins', () => {
+  it('counts only prizes worth more than the draw price as wins', () => {
     const ev = evaluate(mix({ 0: 10, 3: 1 }), base);
-    const v = playerView(ev, parseEther('0.002'));
-    const wins = v.tiers.filter((t) => t.value > v.cost);
+    const v = playerView(ev);
+    expect(v.cost).toBe(ev.drawPrice);
+    const wins = v.tiers.filter((t) => t.value > ev.drawPrice);
     expect(v.winMore).toBeCloseTo(wins.reduce((s, t) => s + t.odds, 0), 9);
-    expect(wins.every((t) => t.value > ev.drawPrice)).toBe(true);
     expect(v.top.value).toBe(parseEther('0.5'));
   });
 });
 
 suite('pool size and styles', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const at = (c: Counts) => { const ev = evaluate(c, one); return { odds: ev.curatedOddsPpm, price: ev.drawPrice, v: playerView(ev, 0n) }; };
+  const at = (c: Counts) => { const ev = evaluate(c, one); return { odds: ev.curatedOddsPpm, price: ev.drawPrice, v: playerView(ev) }; };
 
   it('more small Shapes make the NFT rarer and the draw cheaper', () => {
     const [few, many] = [at(mixOf(3)), at(mixOf(30))];

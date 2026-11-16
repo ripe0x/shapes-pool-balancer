@@ -16,7 +16,7 @@ type Out = { withdrawn: number[]; position: number[]; dryDraws: number[]; topOff
 
 function run(small: number, markupBps: number, sched: number[], d: Design, runs: number, seed0: number): Out {
   const nftValue = parseEther('0.2');
-  const din: DesignInputs = { curatedBases: [nftValue], markupBps, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n), have: Array(16).fill(0), vrfFee: 0n };
+  const din: DesignInputs = { curatedBases: [nftValue], markupBps, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n), have: Array(16).fill(0) };
   const target = mixOf(small, styleBonus('board', din, small));
   const sizes = target.map((_, i) => i).filter((i) => target[i] > 0);
   const price = sizes.map((i) => E(prizePrice(i, din)));

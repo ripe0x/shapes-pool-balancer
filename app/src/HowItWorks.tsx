@@ -21,7 +21,7 @@ const oneIn = (p: number) => `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.roun
 /** Groups of a mix, smallest value first, with shade, chance per draw and worth against the draw price. */
 function groups(counts: Counts) {
   const ev = evaluate(counts, EXAMPLE);
-  const view = playerView(ev, 0n);
+  const view = playerView(ev);
   const sizes = BY_VALUE.filter((i) => counts[i] > 0);
   const shade = (k: number): CSSProperties => ({ background: sizes.length > 1 && k === sizes.length - 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, k)] });
   const out = sizes.map((i, k) => {
@@ -93,7 +93,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <Bar parts={list.map((g) => ({ label: g.label, share: g.odds, style: g.style, note: `${g.multiple.toFixed(2)}× the price` }))} />
         <div className="hiw-stats">
           <div><span className="figure-s">{eth(ev.drawPrice, 4)}</span><span className="unit">ETH</span><p className="note">Draw price</p></div>
-          <div><span className="figure-s">{oneIn(view.winMore)}</span><p className="note">Win more than they paid</p></div>
+          <div><span className="figure-s">{oneIn(view.winMore)}</span><p className="note">Win more than the draw price</p></div>
           <div><span className="figure-s">{oneIn(view.curated)}</span><p className="note">Win your NFT</p></div>
         </div>
         <p className="note" style={{ marginTop: 10 }}>Players also pay FWA's randomness (VRF) fee and gas, which are set at draw time.</p>
