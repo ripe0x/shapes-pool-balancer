@@ -65,7 +65,7 @@ export const JACKPOT_MULTIPLE = 50;
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
   const room = MAX_SHAPES_PER_PLAN - small;
-  if (style === 'steady' || !d.curatedBases.length || room <= 0) return NONE;
+  if (style === 'steady' || room <= 0) return NONE;
   if (style === 'board') {
     const b = [...NONE];
     for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 ? 1 : 0, Math.round((small * per24) / 24));

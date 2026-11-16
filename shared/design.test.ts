@@ -89,6 +89,16 @@ suite('pool size and styles', () => {
   });
 });
 
+suite('styles without a curated NFT', () => {
+  it('pick the same kind of mix from the Shapes alone', () => {
+    const none = { ...base, curatedBases: [] };
+    expect(shapeCount(styleBonus('board', none, 10))).toBeGreaterThan(0);
+    expect(shapeCount(styleBonus('jackpot', none, 10))).toBe(1);
+    expect(shapeCount(styleBonus('balanced', none, 10))).toBeGreaterThan(0);
+    expect(styleBonus('steady', none, 10)).toEqual(mix({}));
+  });
+});
+
 suite('balanced style (ape-Ball board)', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
   const counts = (small: number) => mixOf(small, styleBonus('board', one, small));
