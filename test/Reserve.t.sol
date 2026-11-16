@@ -308,7 +308,7 @@ contract ReserveTest is ForkBase {
         uint256[] memory pending = buy(buyer, 1);
         vm.prank(creator);
         balancer.close();
-        uint256 held = balancer.MAX_KEEPER_REWARD();
+        uint256 held = balancer.maxKeeperReward();
         assertEq(balancer.requiredReserve(), held, "one unreconciled draw: one maximum reward held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
         _claimAll();

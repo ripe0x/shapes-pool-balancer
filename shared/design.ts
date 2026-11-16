@@ -1,5 +1,5 @@
 import {
-  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt, shapeCount,
+  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, maxKeeperReward, requiredReserveAt, shapeCount,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
@@ -31,7 +31,8 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
 }
 
 /** ETH that stays in the pool while open with `target`: PoolBalancer.requiredReserve() from the prizes listed now. */
-export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee'>) => requiredReserveAt(target, d.have, d.mintFee);
+export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings'>) =>
+  requiredReserveAt(target, d.have, d.mintFee, 0, maxKeeperReward(d.settings));
 
 const NONE: Counts = DENOMS.map(() => 0);
 
@@ -64,7 +65,7 @@ export const JACKPOT_MULTIPLE = 50;
  * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
-  const room = MAX_SHAPES_PER_PLAN - small;
+  const room = (d.settings?.maxPrizes ?? MAX_SHAPES_PER_PLAN) - small;
   if (style === 'steady' || room <= 0) return NONE;
   if (style === 'board') {
     const b = [...NONE];

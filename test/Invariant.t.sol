@@ -222,7 +222,7 @@ contract InvariantTest is ForkBase {
     /// Keepers are paid only for a call that reconciled a draw or listed a prize, at most MAX_KEEPER_REWARD each.
     function invariant_keeperPaidOnlyForWork() public view {
         assertEq(handler.paidWithoutWork(), 0);
-        assertLe(handler.maxReward(), balancer.MAX_KEEPER_REWARD());
+        assertLe(handler.maxReward(), balancer.maxKeeperReward());
     }
 
     function invariant_permanentOwnershipAndOperator() public view {

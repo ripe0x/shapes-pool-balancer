@@ -1,5 +1,4 @@
 import { BaseError, ContractFunctionRevertedError, decodeErrorResult, parseAbi } from 'viem';
-import { MAX_SHAPES_PER_PLAN } from '../../shared/planner';
 
 const FWA_ERRORS = parseAbi(['error WithdrawLocked()']);
 
@@ -11,10 +10,11 @@ const ERRORS: Record<string, string> = {
   InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
   Unauthorized: 'only the creator can do this',
   NotClosed: 'close purchases first',
-  InvalidPlan: `the mix needs 1 to ${MAX_SHAPES_PER_PLAN} prizes`,
+  InvalidPlan: 'the mix needs at least one prize and no more than this pool allows',
   ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
   ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
   InvalidItem: 'not available for this action (check its FWA status)',
+  SettingOutOfRange: 'a value is outside its allowed range',
 };
 
 export function explain(e: unknown): string {

@@ -154,7 +154,7 @@ contract PacksTest is ForkBase {
     function test_reserveHoldsLargestPrizeAndKeeperRewards() public view {
         uint256 fee = shapes.mintFee();
         uint256 largest = 0.25 ether + 3 * fee;
-        uint256 expected = largest + 2 * balancer.MAX_KEEPER_REWARD();
+        uint256 expected = largest + 2 * balancer.maxKeeperReward();
         assertEq(balancer.requiredReserve(), expected);
     }
 
@@ -183,7 +183,7 @@ contract PacksTest is ForkBase {
         configure(plan16(c));
         fillUp();
         uint256 fee = shapes.mintFee();
-        assertEq(balancer.requiredReserve(), (0.03 ether + 3 * fee) + 2 * balancer.MAX_KEEPER_REWARD(), "largest prize + 2 rewards");
+        assertEq(balancer.requiredReserve(), (0.03 ether + 3 * fee) + 2 * balancer.maxKeeperReward(), "largest prize + 2 rewards");
 
         // draw five 0.03 packs in one batch
         uint256[] memory ids = buy(buyer, 5);

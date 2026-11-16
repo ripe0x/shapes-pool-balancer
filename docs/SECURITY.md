@@ -267,9 +267,13 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
 
 - **FWA trust.** FWA's factory owner can pause purchases or VRF and set withdraw-only globally; the reviewed pool
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
-- **Keeper admin (DECISIONS 60).** The BalancerFactory's keeper admin can restrict upkeep on every pool to approved
-  keepers. It cannot touch settings, prizes, ETH or reward rules, and creators can always run their own upkeep; a
-  compromised or absent admin can at worst slow restocking, which pauses purchases at LOW_INVENTORY.
+- **Keeper admin (DECISIONS 60, 88).** The BalancerFactory's keeper admin can restrict upkeep on every pool to approved
+  keepers, and set the default keeper pay, restocking fee and prize limit within `SettingsLib.check`'s fixed limits.
+  It cannot touch prizes, their backing or the creator's markup, and creators can always run their own upkeep and
+  override the four keeper-pay values for their pool. A compromised admin can at worst slow restocking (purchases pause
+  at LOW_INVENTORY) or, for pools that follow its defaults, raise what keepers are paid from creators' ETH to the
+  limits: at most 0.311 ETH per paid upkeep, and only for upkeeps that reconcile a draw or list a prize, at gas actually
+  spent. Raising the caps also raises each pool's held reserve.
 - **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the
   target's (charging each unreconciled draw the heaviest possible prize) and admits more than one batch between upkeeps.
   Player protection against a draw that drifts the odds comes from FWA pricing each draw on live inventory and refunding

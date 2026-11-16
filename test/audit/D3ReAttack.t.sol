@@ -68,7 +68,7 @@ contract D3ReAttackTest is ForkBase {
     ///         five paid calls for five draws. The hold must pay every one.
     function test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() public {
         // Independent absolute check of the constant the hold is built from.
-        assertEq(balancer.MAX_KEEPER_REWARD(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01635 ETH at the cap");
+        assertEq(balancer.maxKeeperReward(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01635 ETH at the cap");
         assertEq(_independentMaxReward(), 0.01635 ether, "0.01635 ETH");
 
         // Five draws issued one per block, left pending (no VRF), then closed.

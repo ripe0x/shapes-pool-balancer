@@ -14,7 +14,7 @@ pool. As prizes are won, anyone may call `performUpkeep` to restock toward the t
 
 | Contract | Role |
 | --- | --- |
-| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list every clone reads; its keeper admin can only restrict upkeep to approved keepers or open it to anyone (the default). No other authority over clones, their pools or assets. |
+| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list and the default `Settings` every clone reads; its keeper admin can restrict upkeep to approved keepers or open it to anyone (the default), and set the defaults within `SettingsLib.check`'s limits (decision 88). No authority over prize backing, FWA pools or assets. |
 | `PoolBalancer` | Non-upgradeable logic shared by all clones. Immutables pin the FWA factory, the reviewed FWA implementation and its runtime code hash, Shapes, this system's Draw Packs instance and the ENS registry. |
 | `PoolPage` | External library (pure) that builds the FWA pool-page message digest; kept outside `PoolBalancer` for the 24 KB limit. |
 | Draw Packs | `ShapePacks` from ripe0x/shape-packs `draw-packs` at `3a463f7` (vendored, unmodified, the code ape-Ball deploys), deployed once per system by `script/Deploy.s.sol` with a 2-unit (0.02 ETH) minimum. An ERC-721 holding Shapes in custody; `redeem` pays exactly their backing. Its admin controls presentation only (renderer, description). |
@@ -30,7 +30,7 @@ for its Shapes and Draw Packs. Nothing can ever change the operator, enable toke
 | --- | --- |
 | Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer, always run its own pool's upkeep |
 | Pending creator | accept the creator role |
-| Keeper admin (factory) | restrict upkeep on every pool to approved keepers or open it to anyone, approve or remove keepers, start keeper-admin transfer (the pending admin accepts) |
+| Keeper admin (factory) | restrict upkeep on every pool to approved keepers or open it to anyone, approve or remove keepers, set the default settings within their limits (keeper pay, restocking fee, prize limit), start keeper-admin transfer (the pending admin accepts) |
 | Anyone (keeper) | `performUpkeep` (while the factory's list is open, the default; when restricted, approved keepers and each pool's creator), `collectProceeds`, `depositETH` |
 | FWA pool | calls `canPurchase` (view) |
 

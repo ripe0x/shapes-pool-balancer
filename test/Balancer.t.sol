@@ -320,7 +320,7 @@ contract BalancerTest is ForkBase {
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
         assertGe(reward, gasPaid * 5 gwei, "refund-safe gas at the capped price");
         assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0001 ether, "never above measured gas x cap + incentive");
-        assertLe(reward, balancer.MAX_KEEPER_REWARD());
+        assertLe(reward, balancer.maxKeeperReward());
     }
 
     function test_gateRefusesUnrefundablePurchasers() public {
@@ -368,7 +368,7 @@ contract BalancerTest is ForkBase {
         uint256 before = keeper.balance;
         upkeep();
         assertGe(keeper.balance - before, 0.0001 ether, "gas and the flat reward");
-        assertLe(keeper.balance - before, balancer.MAX_KEEPER_REWARD());
+        assertLe(keeper.balance - before, balancer.maxKeeperReward());
         assertTrue(balancer.canPurchase(buyer));
     }
 
@@ -451,7 +451,7 @@ contract BalancerTest is ForkBase {
     function test_reserveMath() public view {
         uint256 fee = shapes.mintFee();
         uint256 largest = 0.1 ether + fee;
-        uint256 expected = largest + 2 * balancer.MAX_KEEPER_REWARD();
+        uint256 expected = largest + 2 * balancer.maxKeeperReward();
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }

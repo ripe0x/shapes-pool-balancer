@@ -1,11 +1,11 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, formatUnits, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, shapeCount, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, settingsFrom, shapeCount, unpackPlan, type Counts, type KeeperSettings,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -39,8 +39,14 @@ const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
 /** PoolBalancer.restockFee() for a prize listed in the next block: per Shape, from the latest basefee. */
-const liveRestockFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>) =>
-  pub.getBlock().then((blk) => restockFeeAt(blk.baseFeePerGas ?? 0n));
+const liveRestockFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>, s: KeeperSettings) =>
+  pub.getBlock().then((blk) => restockFeeAt(blk.baseFeePerGas ?? 0n, s));
+/** Settings in force: a Balancer's `settings()` (its factory's defaults with its overrides), or the factory's defaults
+ *  for a pool not created yet. */
+const liveSettings = (pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer?: Address) =>
+  (balancer
+    ? pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settings' })
+    : pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'settings' })).then(settingsFrom);
 
 /** FWA's per-draw VRF service fee, paid by the player on top of the draw price: the service's own formula and live
  *  settings (serviceGasEstimate x gas price x (1 + serviceMarginBps) + serviceFlatWei) at the current gas price. */
@@ -84,12 +90,13 @@ function useBalancer(b?: Address) {
     // The keeper list is on the factory that deployed this Balancer.
     const keepersRestricted = await pub.readContract({ address: await r<Address>('factory'), abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
+    const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b), liveSettings(pub), r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
     const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee, vrfFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'), p<bigint>('lastIssuedSequence'),
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
-      liveRestockFee(pub), liveVrfFee(pub),
+      liveRestockFee(pub, settings), liveVrfFee(pub),
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
@@ -105,7 +112,7 @@ function useBalancer(b?: Address) {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, vrfFee, listings, pending, names, ensName,
-      keepersRestricted,
+      keepersRestricted, settings, defaults, overrideMask: Number(overrides[0]),
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -435,15 +442,15 @@ type Prereq = { creation: boolean; impl: boolean };
 function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onCreated: Create['onCreated'] }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
-  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; restockFee: bigint; vrfFee?: bigint }>();
+  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; restockFee: bigint; vrfFee?: bigint; settings: KeeperSettings }>();
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
-    Promise.all([
+    liveSettings(pub).then((settings) => Promise.all([
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
-      liveRestockFee(pub), liveVrfFee(pub),
-    ]).then(([edgeBps, mintFee, restockFee, vrfFee]) => setLive({ edgeBps, mintFee, restockFee, vrfFee }))
+      liveRestockFee(pub, settings), liveVrfFee(pub),
+    ]).then(([edgeBps, mintFee, restockFee, vrfFee]) => setLive({ edgeBps, mintFee, restockFee, vrfFee, settings })))
       .catch(() => undefined);
   }, [pub]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
@@ -470,6 +477,19 @@ async function refusedApprovals(pub: Pub, me: Address, balancer: Address, list: 
   return (await Promise.all(list.map((n) => pub.simulateContract({ address: n.collection!, abi: erc721Abi, functionName: 'approve', args: [balancer, BigInt(n.tokenId!)], account: me })
     .then(() => undefined, (e) => `${nftLabel(n)} (${explain(e)})`)))).filter(Boolean) as string[];
 }
+
+/** FWA lists at most 20 NFTs per transaction (MAX_INVENTORY_BATCH); a longer list is sent in batches. There is no
+ *  limit on the total. */
+const LIST_BATCH = 20;
+const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId: bigint; base: bigint }[]) => Promise<Hash | undefined>) => {
+  const steps: Step[] = [];
+  for (let k = 0; k < ns.length; k += LIST_BATCH) {
+    const batch = ns.slice(k, k + LIST_BATCH);
+    const label = ns.length <= LIST_BATCH ? `List ${ns.length === 1 ? 'your NFT' : `${word(ns.length)} NFTs`}` : `List NFTs ${k + 1} to ${k + batch.length} of ${ns.length}`;
+    steps.push([label, () => write(batch.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) })))]);
+  }
+  return steps;
+};
 
 /** One approval per NFT, skipped when the pool is already approved. */
 const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => list.map((n) => {
@@ -546,8 +566,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
     curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    have: d.activeShapes,
+    have: d.activeShapes, settings: d.settings,
   };
+  const maxPrizes = d.settings.maxPrizes;
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
   const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
@@ -555,16 +576,16 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   // Until a curated NFT is chosen, the design is priced on its Shapes alone.
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
+  const room = maxPrizes - shapeCount(bonus);
   const smallUsed = Math.max(1, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
   // Pool size: the Shape prize totals this style can make, smallest first, each with the number of 0.01 ETH Shapes that
   // makes it. A style keeps its proportions, so some totals are skipped; the slider steps through these.
   const poolSizes = useMemo(() => {
     const out: { small: number; total: number }[] = [];
-    for (let n = 1; n <= MAX_SHAPES_PER_PLAN; n++) {
+    for (let n = 1; n <= maxPrizes; n++) {
       const b = style ? styleBonus(style, base, n) : custom;
-      if (n > MAX_SHAPES_PER_PLAN - shapeCount(b)) break;
+      if (n > maxPrizes - shapeCount(b)) break;
       const total = n + b.reduce((a, x) => a + x, 0);
       if (!out.length || total > out[out.length - 1].total) out.push({ small: n, total });
     }
@@ -721,7 +742,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     willOpen && 'open purchases',
     (mode === 'new' || toList.length > 0 || configChanged) && (has ? 'run upkeep' : 'run the first upkeep'),
   ].filter(Boolean) as string[];
-  const confirmations = (mode === 'new' || shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + 1 : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (willOpen ? 1 : 0) + (actions.length ? 1 : 0);
+  const confirmations = (mode === 'new' || shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (willOpen ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
   const blocked = !ready ? undefined
@@ -765,7 +786,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     // Save the design before listing any NFT: the contract refuses a curated listing until the design is saved.
     if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
     steps.push(...approveSteps(pub, tx, me, balancer, toList));
-    if (toList.length) steps.push([`List ${nftWord(toList.length)}`, () => tx.write({ ...B, functionName: 'listCuratedBatch', args: [toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })]);
+    steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
     if (mode === 'pool' && shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 2)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
     if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra] })]);
     if (willOpen) steps.push(['Open purchases', () => tx.write({ ...B, functionName: 'open' })]);
@@ -803,7 +824,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // One row per NFT: listed ones are fixed; a chosen one takes a value; an unchosen one (or none yet) is a placeholder.
   const chooser = (i: number) => picking === i && me && (
-    <NftChooser me={me} limit={20 - listed.length - pending.length + (i < nfts.length ? 1 : 0)}
+    <NftChooser me={me}
       exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
       onPick={(xs) => {
         const at = nfts[i] ?? DEFAULT_NFT;
@@ -861,7 +882,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
           );
         })}
         {slots.filter((i) => i === nfts.length).map(placeholder)}
-        {!slots.length && listed.length + pending.length < 20 && (
+        {!slots.length && (
           <div>
             <button className="link" onClick={() => setPicking(picking === nfts.length ? undefined : nfts.length)}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
             {chooser(nfts.length)}
@@ -928,7 +949,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                         <div className="stepper end">
                           <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!bonus[i]} onClick={() => setBonusAt(i, bonus[i] - 1)}>−</button>
                           <output aria-live="polite">{bonus[i]}</output>
-                          <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= MAX_SHAPES_PER_PLAN} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
+                          <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= maxPrizes} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
                         </div>
                       </div>
                     );
@@ -1104,13 +1125,12 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const key = picks.map(keyOf).join();
   const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
   const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
-  const room = 20 - listed.length;
   const plan = d.target ? unpackPlan(d.target) : undefined;
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const inputs: DesignInputs = {
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    shapePrices: livePrices, have: d.activeShapes,
+    shapePrices: livePrices, have: d.activeShapes, settings: d.settings,
   };
   const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
   const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
@@ -1123,7 +1143,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     if (r.length) return;
     const ok = await tx.send('List NFTs', [
       ...approveSteps(pub, tx, me, d.balancer, picks),
-      [`List ${what}`, () => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [picks.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })],
+      ...listSteps(picks, (batch) => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [batch] })),
       upkeepStep(pub, tx, me, d.balancer),
     ]);
     if (ok) { setPicks([]); setChoosing(true); setRestricted(undefined); }
@@ -1143,9 +1163,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
         </div>
       ))}
       {choosing || !picks.length ? (
-        <NftChooser me={me} limit={room - picks.length} exclude={[...listed.map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
+        <NftChooser me={me} exclude={[...listed.map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
           onPick={(xs) => { setPicks([...picks, ...xs.map((x) => ({ value: '', ...x }))]); setChoosing(false); setRefused(undefined); }} />
-      ) : picks.length < room && <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
+      ) : <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
       {after && (
         <div className="section">
           <span className="label">With {picks.length === 1 ? 'this NFT' : 'these NFTs'}</span>
@@ -1183,7 +1203,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const econ = bases.length && plan.some(Boolean)
-    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices })
+    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices , settings: d.settings })
     : undefined;
   const month = econ ? econ.keptPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);
@@ -1316,6 +1336,42 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 const PROFILE_KEYS = ['avatarUrl', 'bannerUrl', 'description', 'websiteUrl', 'xUrl', 'discordUrl'] as const;
 const PROFILE_LABELS: Record<string, string> = { avatarUrl: 'Avatar URL', bannerUrl: 'Banner URL', websiteUrl: 'Website', xUrl: 'X', discordUrl: 'Discord' };
 
+/** The four keeper-pay settings a creator may set for their own pool (PoolBalancer.setOverrides). A value equal to the
+ *  factory's default is left to follow the factory. Limits match SettingsLib.check. */
+const PAY_FIELDS = [
+  { key: 'maxGasPrice', bit: 1, label: 'Gas price cap', unit: 'gwei', dec: 9, min: '1', max: '50' },
+  { key: 'priorityCap', bit: 2, label: 'Priority fee cap', unit: 'gwei', dec: 9, min: '0', max: '2' },
+  { key: 'incentive', bit: 4, label: 'Reward per keeper call', unit: 'ETH', dec: 18, min: '0', max: '0.001' },
+  { key: 'restockFlat', bit: 8, label: 'Flat restocking fee per Shape', unit: 'ETH', dec: 18, min: '0', max: '0.002' },
+] as const;
+
+function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
+  const fmt = (v: bigint, dec: number) => formatUnits(v, dec);
+  const [vals, setVals] = useState(() => Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.settings[f.key], f.dec)])) as Record<string, string>);
+  const parsed = PAY_FIELDS.map((f) => { try { return parseUnits(vals[f.key] || '0', f.dec); } catch { return -1n; } });
+  const bad = PAY_FIELDS.some((f, i) => parsed[i] < parseUnits(f.min, f.dec) || parsed[i] > parseUnits(f.max, f.dec));
+  const mask = PAY_FIELDS.reduce((m, f, i) => (parsed[i] !== d.defaults[f.key] ? m | f.bit : m), 0);
+  const changed = PAY_FIELDS.some((f, i) => parsed[i] !== d.settings[f.key]);
+  const save = () => tx.send('Save keeper pay', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setOverrides', args: [mask, parsed[0], parsed[1], parsed[2], parsed[3]] })]);
+  return (
+    <div className="section">
+      <h2 className="h3" style={{ fontSize: 22, marginBottom: 6 }}>Keeper pay</h2>
+      <p className="note" style={{ marginBottom: 12 }}>Paid from this pool's ETH. Keeper pay changes from the next upkeep; restocking fees from the next prizes listed.</p>
+      {PAY_FIELDS.map((f, i) => (
+        <div className="kv" key={f.key}>
+          <div><label htmlFor={`pay-${f.key}`} style={{ fontWeight: 700 }}>{f.label}</label><p className="note">{f.min} to {f.max} {f.unit} · default {fmt(d.defaults[f.key], f.dec)}{d.overrideMask & f.bit ? ' · yours' : ''}</p></div>
+          <div className="field" style={{ width: 170 }}><input id={`pay-${f.key}`} inputMode="decimal" value={vals[f.key]} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} aria-invalid={parsed[i] < 0n} /><span className="u">{f.unit.toUpperCase()}</span></div>
+        </div>
+      ))}
+      <div className="row" style={{ marginTop: 16, gap: 16 }}>
+        <button className="btn" disabled={!!tx.busy || bad || !changed} onClick={save}>Save keeper pay</button>
+        <button className="link quiet" disabled={!!tx.busy} onClick={() => setVals(Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.defaults[f.key], f.dec)])))}>Use the defaults</button>
+        {bad && <span className="note error">A value is outside its range.</span>}
+      </div>
+    </div>
+  );
+}
+
 function Settings({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
@@ -1392,6 +1448,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             </>
           )}
         </div>
+        <KeeperPay d={d} tx={tx} />
         <div className="section">
           <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
           <div className="kv">
@@ -1435,7 +1492,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
 const SHOWN = 120;
 
 /** Picks one NFT for a Design row: from the wallet scan, or by contract and token ID. */
-function NftChooser({ me, exclude, limit = 20, onPick }: { me: Address; exclude: string[]; limit?: number; onPick: (xs: Omit<DraftNft, 'value'>[]) => void }) {
+function NftChooser({ me, exclude, onPick }: { me: Address; exclude: string[]; onPick: (xs: Omit<DraftNft, 'value'>[]) => void }) {
   const pub = usePublicClient();
   const [manual, setManual] = useState(false);
   const [m, setM] = useState({ collection: '', tokenId: '' });
@@ -1451,7 +1508,7 @@ function NftChooser({ me, exclude, limit = 20, onPick }: { me: Address; exclude:
   };
   return (
     <div className="chooser">
-      <WalletPicker me={me} listed={exclude} limit={limit}
+      <WalletPicker me={me} listed={exclude}
         onPick={(ns, c) => onPick(ns.map((n) => ({ collection: n.collection, tokenId: n.tokenId.toString(), name: c.name, image: n.image, floor: c.floor, slug: c.slug })))} onEmpty={() => setManual(true)} />
       <button className="disclose quiet" style={{ marginTop: 14 }} onClick={() => setManual(!manual)}>Enter a contract and token ID instead {manual ? '▴' : '▾'}</button>
       {manual && (
@@ -1475,7 +1532,7 @@ const floorText = (f?: number) => (f === undefined ? undefined : f >= 1 ? `${f.t
  * Finding an NFT in a large wallet: collections first, most valuable (OpenSea floor) at the top, with collections that
  * have no recent price folded away; then the chosen collection's tokens with images.
  */
-function WalletPicker({ me, listed, limit, onPick, onEmpty }: { me: Address; listed: string[]; limit: number; onPick: (ns: WalletNft[], c: Collection) => void; onEmpty: () => void }) {
+function WalletPicker({ me, listed, onPick, onEmpty }: { me: Address; listed: string[]; onPick: (ns: WalletNft[], c: Collection) => void; onEmpty: () => void }) {
   const pub = usePublicClient();
   const [cols, setCols] = useState<Collection[]>();
   const [error, setError] = useState<string>();
@@ -1523,12 +1580,11 @@ function WalletPicker({ me, listed, limit, onPick, onEmpty }: { me: Address; lis
         <p className="note" style={{ margin: '2px 0 12px' }}>{col.floor ? `Floor ${floorText(col.floor)} on OpenSea` : 'No recent price on OpenSea'}</p>
         {!tokens && <p className="note">Loading your tokens…</p>}
         {tokens && !shown.length && <p className="note">No tokens left to choose in this collection.</p>}
-        {tokens && shown.length > 0 && <p className="note" style={{ marginBottom: 8 }}>Select one or more.{limit < shown.length ? ` Up to ${limit} more.` : ''}</p>}
+        {tokens && shown.length > 0 && <p className="note" style={{ marginBottom: 8 }}>Select one or more.</p>}
         <div className="picker" role="listbox" aria-multiselectable="true" aria-label={`Your ${col.name} tokens`}>
           {shown.slice(0, SHOWN).map((n) => (
             <button key={keyOf(n)} role="option" aria-selected={chosen.includes(keyOf(n))} title={`${n.name} #${n.tokenId}`}
-              disabled={!chosen.includes(keyOf(n)) && chosen.length >= limit}
-              onClick={() => setChosen((c) => (c.includes(keyOf(n)) ? c.filter((k) => k !== keyOf(n)) : c.length < limit ? [...c, keyOf(n)] : c))}>
+              onClick={() => setChosen((c) => (c.includes(keyOf(n)) ? c.filter((k) => k !== keyOf(n)) : [...c, keyOf(n)]))}>
               <Thumb n={n} />
               <span className="pid">#{n.tokenId.toString()}</span>
             </button>

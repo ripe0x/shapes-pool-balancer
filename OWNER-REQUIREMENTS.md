@@ -152,6 +152,12 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 
 - R36. A plan holds 1 to 200 prizes (was 80; decision 87).
 
+## Adjustable settings (owner, 2026-11-16)
+
+- R37. Keeper pay, the restocking fee and the prize limit are adjustable: the factory admin sets defaults, a creator may
+  adjust their own pool's keeper pay, and only within limits that keep the system working (decision 88).
+- R38. No limit on curated NFTs per pool ("if not, don't set one"; decision 89).
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

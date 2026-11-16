@@ -576,3 +576,23 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     the 3.2M pay cap). Costs that grow with the pool: a first fill takes at least one paid upkeep per 5 Shapes (40 for
     200 single Shapes), the reserve holds the larger target, and the dashboard reads every listing on load (about 440
     calls at 220 listings). Test helper `fillUp` now allows 150 calls (was 40, enough only for 80 prizes).
+88. **Keeper pay, restocking fee and prize limit are adjustable settings** (owner, 2026-11-16: "i'd prefer to have
+    them adjustable. on the factory by the admin, and then allow the owner adjust thier own if htey want. only on
+    things that wouldn't break the system"; spec approved: "Yes, build it"). `src/Settings.sol` holds eight values. The
+    factory's keeper admin sets the defaults (`setSettings`); a creator may override maxGasPrice, priorityCap,
+    incentive and restockFlat for their own pool (`setOverrides`, one mask bit each; a clear bit follows the factory).
+    Every field is checked alone against fixed limits, so any mix is in range: maxGasPrice 1 to 50 gwei, priorityCap 0
+    to 2 gwei, incentive 0 to 0.001 ETH, restockFlat 0 to 0.002 ETH, maxGas 3.2M to 6M, overheadGas 50k to 200k,
+    restockGas 500k to 2M, maxPrizes 1 to 1,000. The lower limits keep keepers paid at least the worst measured upkeep
+    (2.78M) and its outside-span overhead (24k-46k); the upper limits cap one call at 0.311 ETH of the creator's ETH.
+    Defaults are the previous constants, so the gate's regimes and the signed outcomes are unchanged. Kept constant: the
+    per-call work bounds (MAX_OPS, MAX_RECONCILE, MAX_RESTOCK_SIZES, MAX_PROCESS, PROCESS_STARVED_GAS), the markup
+    range, FILL_BPS and the prize sizes, since a wrong value there can stop upkeep or move a signed outcome.
+    Effects: keeper pay at the next upkeep; restocking fees on the next listings (listed prices keep theirs);
+    `requiredReserve` holds one `maxKeeperReward()` per budgeted call at the settings in force, so raising a cap raises
+    the reserve; maxPrizes at the next saved design. Settings never reach prize backing
+    (`test_backingUntouchedAtTheLimits`: at every limit, unlisting redeems each Shape for exactly its face value).
+    Tests: `test/Settings.t.sol`. Balancer runtime 20,502 to 22,874 bytes (1,702 under the limit).
+89. **No limit on the number of curated NFTs** (owner, 2026-11-16: "do we need to set a max for nfts? if not, don't
+    set one"). The dashboard's 20-NFT total came from decision 42's 100-listing cap, which no longer exists; the
+    contract has no total. The dashboard now lists any number, in transactions of 20 (FWA's MAX_INVENTORY_BATCH).

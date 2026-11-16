@@ -4,11 +4,13 @@ pragma solidity 0.8.28;
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PoolPage} from "./PoolPage.sol";
+import {Settings, SettingsLib} from "./Settings.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
-/// @dev The keeper list on the BalancerFactory that deployed a Balancer.
-interface IKeeperList {
+/// @dev The BalancerFactory that deployed a Balancer: its keeper list and default settings.
+interface IBalancerFactory {
     function canKeep(address keeper) external view returns (bool);
+    function settings() external view returns (Settings memory);
 }
 
 /// @title PoolBalancer
@@ -62,14 +64,13 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
     /// @dev The most Shapes any one prize holds.
     uint256 internal constant MAX_SHAPES_IN = 3;
-    uint256 internal constant MAX_SHAPES_PER_PLAN = 200;
     /// @dev Inventory work per upkeep, in Shape units: minting+listing or withdrawing+redeeming one Shape is 1; a pack
     ///      counts as the Shapes it holds (measured: ~425k gas per Shape with its listing, ~870k per three-Shape pack).
-    ///      Six units with five reconciles measured 3.13M against KEEPER_MAX_GAS; five keeps a margin.
+    ///      Six units with five reconciles measured 3.13M against the 3.2M pay cap (the lowest maxGas allowed); five keeps a margin.
     uint256 internal constant MAX_OPS = 5;
     /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
     uint256 internal constant MAX_RECONCILE = 5;
-    /// @dev FWA draws processed per upkeep: keeps the worst upkeep under KEEPER_MAX_GAS.
+    /// @dev FWA draws processed per upkeep: keeps the worst upkeep under the 3.2M pay cap (the lowest maxGas allowed).
     uint256 internal constant MAX_PROCESS = 2;
     /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
     ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
@@ -79,7 +80,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///      reservations (at most about 3.3M); re-measure if either changes.
     uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
-    ///      in one call measured 3.19M against KEEPER_MAX_GAS.
+    ///      in one call measured 3.19M against the 3.2M pay cap.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
     uint256 internal constant MAX_MARKUP_BPS = 10_000;
     /// @dev The game's share of every markup: the only profit in a prize's price, so the part that refills the reserve
@@ -91,10 +92,12 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev The heaviest prize in the fill gate: the smallest backing (0.01 ETH). See `_weight`.
     uint256 internal constant MAX_PRIZE_WEIGHT = INVERSE_WEIGHT_NUMERATOR / 0.01 ether;
 
-    // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents):
-    // - price = min(tx.gasprice, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE). Upkeep is permissionless, so
+    // Keeper compensation (docs/GAS.md; collection-games#23 for the exploit the price bound prevents). The values are
+    // `settings()` (decision 88): the factory's defaults with this pool's overrides. Defaults: maxGas 3.2M, priorityCap
+    // 0.05 gwei, maxGasPrice 5 gwei, overheadGas 50,000, incentive 0.0001 ETH, restockGas 900k, restockFlat 0.0002 ETH.
+    // - price = min(tx.gasprice, basefee + priorityCap, maxGasPrice). Upkeep is permissionless, so
     //   competing keepers bid whatever priority is reimbursed; the cap is what the pool pays above basefee.
-    // - reward = (measured gas, capped, + KEEPER_OVERHEAD_GAS) x price + KEEPER_INCENTIVE, for every call that
+    // - reward = (measured gas, capped at maxGas, + overheadGas) x price + incentive, for every call that
     //   reconciles a draw or lists a prize, from the creator's ETH here (the fund first; unclaimed profit only once
     //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
     //   outside the measured span (intrinsic gas, the keeper-list check, the reward transfer; measured 24k-46k), so
@@ -104,26 +107,21 @@ contract PoolBalancer is ReentrancyGuard {
     //   processed cannot be reconciled or paid for. Draws become ready or expire one block at a time, and FWA
     //   processing is permissionless, so a batch can be reconciled one draw per call: the bound is one paid call
     //   per processed draw, not per batch (about 0.000124 ETH extra per draw at 0.55 gwei, within the owner's budget).
-    //   Each paid call is at most MAX_KEEPER_REWARD and needs a processed
+    //   Each paid call is at most maxKeeperReward() and needs a processed
     //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
-    //   KEEPER_INCENTIVE per call.
-    // - Restocking fee per Shape = RESTOCK_FEE_GAS x min(basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE) +
-    //   RESTOCK_FEE_FLAT, at the listing block: the creator's income for keeper pay, sized to the gas a listing call
+    //   the incentive per call.
+    // - Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + restockFlat, at the
+    //   listing block: the creator's income for keeper pay, sized to the gas a listing call
     //   pays at any basefee up to the cap (above it keepers wait). It is not a limit on pay. The pool's ETH fronts
     //   the cost until a player wins that prize; draws that win an NFT or time out bring no fee, so reconciling them
     //   is the creator's cost, as are the fees of prizes unlisted or never drawn.
-    uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
-    uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
-    uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
-    /// @dev Owner-set: small against gas, about a fifth of one Shape restock at 0.5 gwei.
-    uint256 internal constant KEEPER_INCENTIVE = 0.0001 ether;
-    /// @dev Owner-set: see the reward rule above.
-    uint256 internal constant KEEPER_OVERHEAD_GAS = 50_000;
-    uint256 public constant MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
-    /// @dev With RESTOCK_FEE_FLAT, covers an upkeep that reconciles one draw and restocks one Shape (measured 763k-864k
-    ///      gas across pools and blocks; Shapes mint gas varies with the block) at any basefee up to the cap.
-    uint256 internal constant RESTOCK_FEE_GAS = 900_000;
-    uint256 internal constant RESTOCK_FEE_FLAT = 0.0002 ether;
+    //   The default restockGas, with restockFlat, covers an upkeep that reconciles one draw and restocks one Shape
+    //   (measured 763k-864k gas across pools and blocks; Shapes mint gas varies with the block).
+    /// @dev Override mask bits for `setOverrides`, one per creator-overridable setting.
+    uint8 internal constant OVR_MAX_GAS_PRICE = 1;
+    uint8 internal constant OVR_PRIORITY_CAP = 2;
+    uint8 internal constant OVR_INCENTIVE = 4;
+    uint8 internal constant OVR_RESTOCK_FLAT = 8;
 
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
     bytes4 internal constant ERC1271_MAGIC = 0x1626ba7e;
@@ -207,8 +205,20 @@ contract PoolBalancer is ReentrancyGuard {
     ///      change start a new epoch, so a former creator's approvals cannot be replayed.
     uint256 public pageEpoch;
     mapping(bytes32 digest => uint256) internal pageApprovedEpoch; // epoch + 1
-    /// @dev The factory that deployed this Balancer: its keeper list decides who besides the creator may run upkeep.
-    IKeeperList public factory;
+    /// @dev The factory that deployed this Balancer: its keeper list decides who besides the creator may run upkeep,
+    ///      and its settings are this pool's defaults.
+    IBalancerFactory public factory;
+
+    /// @dev The creator's overrides of the factory's keeper-pay defaults: a value applies when its mask bit is set.
+    struct Overrides {
+        uint8 mask;
+        uint56 maxGasPrice;
+        uint56 priorityCap;
+        uint56 incentive;
+        uint56 restockFlat;
+    }
+
+    Overrides public overrides;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -218,6 +228,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CreatorTransferStarted(address indexed creator, address indexed pendingCreator);
     event CreatorTransferred(address indexed oldCreator, address indexed newCreator);
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
+    event OverridesSet(uint8 mask, uint256 maxGasPrice, uint256 priorityCap, uint256 incentive, uint256 restockFlat);
     event PurchasesOpened();
     event PurchasesClosed();
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
@@ -292,7 +303,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (creator != address(0)) revert AlreadyInitialized();
         if (creator_ == address(0)) revert InvalidRecipient();
         creator = creator_;
-        factory = IKeeperList(msg.sender); // the BalancerFactory, in the same transaction as the clone
+        factory = IBalancerFactory(msg.sender); // the BalancerFactory, in the same transaction as the clone
 
         IFWAPoolFactory fwa = FWA_FACTORY;
         // A staging cap would make restocking while draws are unsettled revert (FWA StagingQueueFull), and with it upkeep.
@@ -345,13 +356,35 @@ contract PoolBalancer is ReentrancyGuard {
             prizes += n;
             w += n * _weight(d);
         }
-        if (prizes == 0 || prizes > MAX_SHAPES_PER_PLAN) revert InvalidPlan();
+        if (prizes == 0 || prizes > factory.settings().maxPrizes) revert InvalidPlan();
         markupBps = newMarkupBps;
         target = newTarget;
         targetWeight = w;
         mintFeeCap = fee;
         _creatorChanged();
         emit Configured(newMarkupBps, newTarget, fee);
+    }
+
+    /// @notice Override the factory's keeper-pay defaults for this pool: each value applies when its bit is set in
+    ///         `mask` (1 maxGasPrice, 2 priorityCap, 4 incentive, 8 restockFlat); a clear bit follows the factory.
+    ///         Keeper pay changes from the next upkeep, restocking fees from the next listings. Prices already listed
+    ///         keep their fees.
+    function setOverrides(uint8 mask, uint56 maxGasPrice, uint56 priorityCap, uint56 incentive, uint56 restockFlat)
+        external
+        onlyCreator
+        nonReentrant
+    {
+        if (mask > OVR_MAX_GAS_PRICE | OVR_PRIORITY_CAP | OVR_INCENTIVE | OVR_RESTOCK_FLAT) revert InvalidConfig();
+        Overrides memory o = Overrides(
+            mask,
+            mask & OVR_MAX_GAS_PRICE != 0 ? maxGasPrice : 0,
+            mask & OVR_PRIORITY_CAP != 0 ? priorityCap : 0,
+            mask & OVR_INCENTIVE != 0 ? incentive : 0,
+            mask & OVR_RESTOCK_FLAT != 0 ? restockFlat : 0
+        );
+        overrides = o;
+        SettingsLib.check(settings());
+        emit OverridesSet(mask, o.maxGasPrice, o.priorityCap, o.incentive, o.restockFlat);
     }
 
     /// @notice Allow purchases; they start once upkeep has restored the target. Needs `requiredReserve` in ETH, so a
@@ -615,6 +648,7 @@ contract PoolBalancer is ReentrancyGuard {
     function performUpkeep() external nonReentrant returns (uint256 reward) {
         if (msg.sender != creator && !factory.canKeep(msg.sender)) revert KeeperNotApproved();
         uint256 gasStart = gasleft();
+        Settings memory st = settings();
         IFWAPool p = pool;
 
         // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
@@ -654,20 +688,20 @@ contract PoolBalancer is ReentrancyGuard {
         if (reconciled) reconciledSequence = s;
 
         // 3. Restock while open, in a call that settled no draw: a draw that reserved FWA's maximum six listings costs
-        //    up to about 1.15M gas to process, so processing two and restocking in one call can pass KEEPER_MAX_GAS and
+        //    up to about 1.15M gas to process, so processing two and restocking in one call can pass the 3.2M pay cap and
         //    leave the keeper unpaid for the excess. The next call restocks.
         uint256 ops;
         bool wasSetup = creatorWork;
         if (!processed && enabled && !FWA_FACTORY.globalWithdrawOnly()) {
             uint256 fee = SHAPES.mintFee();
             if (fee <= mintFeeCap) {
-                ops = _fillDeficit(p, fee);
+                ops = _fillDeficit(p, fee, st);
                 if (wasSetup && _missingUnits() == 0) creatorWork = false;
             }
         }
 
         if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup) revert NoUpkeepNeeded();
-        if (ops != 0 || reconciled) reward = _payKeeper(gasStart);
+        if (ops != 0 || reconciled) reward = _payKeeper(gasStart, st);
         // Game first: restocking may spend unclaimed profit once the fund is empty.
         if (profit > address(this).balance) profit = uint128(address(this).balance);
     }
@@ -702,11 +736,11 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
     ///      left after this call's keeper reward, and list them at `_prizeBase` plus the restocking fees in one FWA
     ///      batch. FWA stages the batch while draws are unsettled. Returns Shape units used.
-    function _fillDeficit(IFWAPool p, uint256 fee) internal returns (uint256 used) {
+    function _fillDeficit(IFWAPool p, uint256 fee, Settings memory st) internal returns (uint256 used) {
         uint256 plan = target;
         uint256 markup = markupBps;
-        uint256 keep = _rewardBound(_rewardPrice(tx.gasprice));
-        uint256 restock = restockFee();
+        uint256 keep = (uint256(st.maxGas) + st.overheadGas) * SettingsLib.rewardPrice(st, tx.gasprice) + st.incentive;
+        uint256 restock = SettingsLib.restockFee(st);
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](MAX_OPS);
         uint8[] memory sizes = new uint8[](MAX_OPS);
         uint256 n;
@@ -763,10 +797,10 @@ contract PoolBalancer is ReentrancyGuard {
         prizeWeight += added;
     }
 
-    function _payKeeper(uint256 gasStart) internal returns (uint256 reward) {
+    function _payKeeper(uint256 gasStart, Settings memory st) internal returns (uint256 reward) {
         uint256 measured = gasStart - gasleft();
-        if (measured > KEEPER_MAX_GAS) measured = KEEPER_MAX_GAS;
-        reward = (measured + KEEPER_OVERHEAD_GAS) * _rewardPrice(tx.gasprice) + KEEPER_INCENTIVE;
+        if (measured > st.maxGas) measured = st.maxGas;
+        reward = (measured + st.overheadGas) * SettingsLib.rewardPrice(st, tx.gasprice) + st.incentive;
         if (reward > address(this).balance) reward = address(this).balance;
         if (reward == 0) return 0;
         SafeTransferLib.forceSafeTransferETH(msg.sender, reward);
@@ -795,10 +829,11 @@ contract PoolBalancer is ReentrancyGuard {
     ///         processing and reconciliation after closing is always paid. Closing stops purchases, so this only falls
     ///         as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {
+        uint256 maxReward = maxKeeperReward();
         if (!enabled) {
             // One maximum reward per MAX_PROCESS draws: each upkeep may need to process the draws it reconciles.
             uint256 owed = pool.lastIssuedSequence() - reconciledSequence;
-            return (owed + MAX_PROCESS - 1) / MAX_PROCESS * MAX_KEEPER_REWARD;
+            return (owed + MAX_PROCESS - 1) / MAX_PROCESS * maxReward;
         }
         uint256 plan = target;
         // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.
@@ -820,7 +855,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 draws = pool.lastIssuedSequence() - reconciledSequence + 1;
         r += draws * largest;
         units += draws * MAX_SHAPES_IN;
-        r += ((units + MAX_OPS - 1) / MAX_OPS + 1) * MAX_KEEPER_REWARD;
+        r += ((units + MAX_OPS - 1) / MAX_OPS + 1) * maxReward;
     }
 
     /// @notice A tracked listing: kind (1 curated, 2 Shape or pack), size, state, `base` and FWA price.
@@ -935,21 +970,24 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
-    /// @dev Reimbursed price: min(bid, basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE).
-    function _rewardPrice(uint256 bid) internal view returns (uint256 price) {
-        price = block.basefee + KEEPER_PRIORITY_CAP;
-        if (bid < price) price = bid;
-        if (price > KEEPER_MAX_GAS_PRICE) price = KEEPER_MAX_GAS_PRICE;
+    /// @notice The settings in force for this pool: the factory's defaults with this pool's overrides.
+    function settings() public view returns (Settings memory s) {
+        s = factory.settings();
+        Overrides memory o = overrides;
+        if (o.mask & OVR_MAX_GAS_PRICE != 0) s.maxGasPrice = o.maxGasPrice;
+        if (o.mask & OVR_PRIORITY_CAP != 0) s.priorityCap = o.priorityCap;
+        if (o.mask & OVR_INCENTIVE != 0) s.incentive = o.incentive;
+        if (o.mask & OVR_RESTOCK_FLAT != 0) s.restockFlat = o.restockFlat;
     }
 
-    /// @dev Upper bound of one call's reward at `price` (see the reward rule).
-    function _rewardBound(uint256 price) internal pure returns (uint256) {
-        return (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * price + KEEPER_INCENTIVE;
+    /// @notice The most one upkeep can pay under the settings in force.
+    function maxKeeperReward() public view returns (uint256) {
+        return SettingsLib.maxReward(settings());
     }
 
     /// @notice Restocking fee per Shape for a prize listed now, built into its price: all buyers fund it.
     function restockFee() public view returns (uint256) {
-        return RESTOCK_FEE_GAS * _rewardPrice(type(uint256).max) + RESTOCK_FEE_FLAT;
+        return SettingsLib.restockFee(settings());
     }
 
     /// @dev A prize's weight in the fill gate: 1 / its backing. Listed prices keep the markup and fees of their listing

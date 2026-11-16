@@ -12,14 +12,14 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { poolBalancerAbi } from '../shared/abi';
-import { KEEPER_INCENTIVE, KEEPER_MAX_GAS, KEEPER_MAX_GAS_PRICE, KEEPER_OVERHEAD_GAS, KEEPER_PRIORITY_CAP } from '../shared/planner';
+import { DEFAULT_SETTINGS, settingsFrom, type KeeperSettings } from '../shared/planner';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
  *  upkeep to keepers that do not include this one. */
 export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
-/** KEEPER_MAX_GAS caps the gas the reward pays for, not the call's gas. */
-export { KEEPER_MAX_GAS };
+/** The default maxGas: it caps the gas the reward pays for, not the call's gas. Each pool's own is `settings().maxGas`. */
+export const KEEPER_MAX_GAS = DEFAULT_SETTINGS.maxGas;
 /** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
  *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
  *  upkeeps measure under KEEPER_MAX_GAS on a fork: 5 reconciles + 5 Shape units in 4 sizes, and two processed draws that
@@ -46,11 +46,13 @@ export interface Policy {
   maxLossWei: bigint;
   /** The Balancer's ETH balance before the call, which caps the reward. Without it the cost is the estimate. */
   balance?: bigint;
+  /** The Balancer's `settings()`; the factory defaults when absent. */
+  settings?: KeeperSettings;
 }
 
 /** Send only when the contract's reward covers the expected cost (within `maxLossWei`). The cost is the gas the
  *  simulated reward pays for (the Balancer's measured gas plus its 50,000 overhead, which covers everything outside
- *  the measured span, so billed gas never exceeds it) unless that reward was cut by KEEPER_MAX_GAS or the Balancer's
+ *  the measured span, so billed gas never exceeds it) unless that reward was cut by the pool's maxGas or the Balancer's
  *  balance; then it is `eth_estimateGas`. The estimate is the least limit that succeeds, which for upkeeps that
  *  process FWA's queue is 0.37M-0.48M above the gas billed. One path breaks the premise: processing that fails for a
  *  reason other than gas, after which upkeep continues unpaid for it. FWA's code has no known trigger for it; if one
@@ -59,11 +61,12 @@ export interface Policy {
 export function decide(p: Policy): { send: boolean; reason: string } {
   const price = p.baseFee + p.priorityFee;
   let gas = p.gasEstimate;
-  if (p.balance !== undefined && p.expectedReward < p.balance && p.expectedReward > KEEPER_INCENTIVE) {
-    let reimbursed = price < p.baseFee + KEEPER_PRIORITY_CAP ? price : p.baseFee + KEEPER_PRIORITY_CAP;
-    if (reimbursed > KEEPER_MAX_GAS_PRICE) reimbursed = KEEPER_MAX_GAS_PRICE;
-    const paidGas = (p.expectedReward - KEEPER_INCENTIVE) / reimbursed;
-    if (paidGas < KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS && paidGas < gas) gas = paidGas;
+  const s = p.settings ?? DEFAULT_SETTINGS;
+  if (p.balance !== undefined && p.expectedReward < p.balance && p.expectedReward > s.incentive) {
+    let reimbursed = price < p.baseFee + s.priorityCap ? price : p.baseFee + s.priorityCap;
+    if (reimbursed > s.maxGasPrice) reimbursed = s.maxGasPrice;
+    const paidGas = (p.expectedReward - s.incentive) / reimbursed;
+    if (paidGas < s.maxGas + s.overheadGas && paidGas < gas) gas = paidGas;
   }
   if (p.expectedReward + p.maxLossWei < gas * price) return { send: false, reason: 'unprofitable at current gas' };
   return { send: true, reason: 'ok' };
@@ -76,8 +79,8 @@ export interface KeeperConfig {
   stateFile: string;
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
-  maxGasPriceGwei?: number; // never bid above this; the contract reimburses at most 5 gwei
-  priorityGwei?: number; // the contract reimburses at most 0.05 gwei over basefee
+  maxGasPriceGwei?: number; // never bid above this; a pool reimburses at most its settings().maxGasPrice (default 5 gwei)
+  priorityGwei?: number; // a pool reimburses at most its settings().priorityCap over basefee (default 0.05 gwei)
   maxLossWei?: bigint;
   replaceAfterBlocks?: number;
   maxReplacements?: number;
@@ -225,7 +228,8 @@ export class Keeper {
     }
     const gasEstimate = await this.pub.estimateContractGas(call as never);
     const balance = await this.pub.getBalance({ address: b });
-    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei, balance });
+    const settings = settingsFrom(await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }));
+    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei, balance, settings });
     if (!verdict.send) {
       this.state.stats.skippedUnprofitable++;
       this.log(`skip: ${verdict.reason}`, { balancer: b, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });
