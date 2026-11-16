@@ -520,7 +520,7 @@ type Mode = 'preview' | 'new' | 'pool';
 type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address, failure?: string) => void };
 
 /**
- * One Design page for every stage: a preview before connecting (NFTs are values only), a pool about to be created
+ * One Design page for every stage: a preview before connecting (no NFTs until a wallet is connected), a pool about to be created
  * (each NFT is chosen from the wallet), and an existing pool (listed NFTs are fixed; more can be added). The button
  * runs every transaction the design needs, in order.
  */
@@ -532,16 +532,15 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const listed = d.listings.filter((l) => l.kind === 1 && l.state === 1);
   const listedKeys = new Set(listed.map((l) => nftKey(l.collection, l.tokenId)));
   const nftName = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
-  const [nfts, setNfts] = useState<DraftNft[]>(() => draft?.nfts ?? draft?.values?.map((value) => ({ value })) ?? (mode === 'preview' ? [DEFAULT_NFT] : []));
+  const [nfts, setNfts] = useState<DraftNft[]>(() => draft?.nfts ?? draft?.values?.map((value) => ({ value })) ?? []);
   const [picking, setPicking] = useState<number>();
   // Rows already listed (a resumed draft) show as listed, not twice.
   const isListed = (n: DraftNft) => !!n.collection && listedKeys.has(nftKey(n.collection, n.tokenId!));
   const pending = nfts.map((n, i) => ({ n, i })).filter(({ n }) => !isListed(n));
-  const rowName = (n: DraftNft, k: number) => (n.collection ? `${n.name ?? short(n.collection)} #${n.tokenId}` : pending.length + listed.length === 1 ? 'Your NFT' : `NFT ${k + 1}`);
   // Every NFT the design counts: listed ones, then rows with a value. Once connected, only rows with a chosen token.
   const rows = [
     ...listed.map((l) => ({ key: `l${l.id}`, name: nftName(l), base: l.base })),
-    ...pending.filter(({ n }) => mode === 'preview' || n.collection).map(({ n, i }, k) => ({ key: `d${i}`, name: rowName(n, listed.length + k), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
+    ...pending.filter(({ n }) => n.collection).map(({ n, i }) => ({ key: `d${i}`, name: nftLabel(n), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
@@ -597,7 +596,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       return;
     }
     setMarkup(DEFAULT_MARKUP); setSmall(DEFAULT_SMALL); setStyle('board'); setCustom(ZERO);
-    setNfts(mode === 'preview' ? [DEFAULT_NFT] : []);
+    setNfts([]);
   };
   const total = counts.reduce((a, b) => a + b, 0);
   const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
@@ -796,8 +795,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   const save = mode === 'preview' ? (
     <div className="pin">
-      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" disabled={!ready} onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
-      <p className="note" style={{ marginTop: 10 }}>Next you choose which NFTs from your wallet, then create the pool. This design stays as it is.</p>
+      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
     </div>
   ) : (
     <div className="pin">
@@ -829,14 +827,16 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       <div className="nft-empty">
         <div className="slot" aria-hidden="true">+</div>
         <div className="id"><div className="t">No curated NFT yet</div><div className="s">Choose one from your wallet, then set its value.</div></div>
-        <button className="btn" onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : 'Choose from your wallet'}</button>
+        {mode === 'preview'
+          ? <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet</button>}</ConnectButton.Custom>
+          : <button className="btn" onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : 'Choose from your wallet'}</button>}
         {i < nfts.length && pending.length > 1 && <button className="link quiet rm" onClick={() => removeRow(i)}>Remove</button>}
       </div>
       {chooser(i)}
     </Fragment>
   );
-  const unchosenRows = mode === 'preview' ? [] : pending.filter(({ n }) => !n.collection).map(({ i }) => i);
-  const slots = listed.length + pending.length === 0 && mode !== 'preview' ? [nfts.length] : unchosenRows;
+  const unchosenRows = pending.filter(({ n }) => !n.collection).map(({ i }) => i);
+  const slots = listed.length + pending.length === 0 ? [nfts.length] : unchosenRows;
   const nftGroup = (
     <div className="group">
       <div className="group-head">
@@ -851,9 +851,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <div className="val"><span className="vl">Value</span><span className="big-v">{eth(l.base)} <small>ETH</small></span></div>
           </div>
         ))}
-        {pending.map(({ n, i }, k) => {
+        {pending.map(({ n, i }) => {
           if (unchosenRows.includes(i)) return placeholder(i);
-          const name = rowName(n, listed.length + k);
+          const name = nftLabel(n);
           const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorText(n.floor)}`].filter(Boolean).join(' · ');
           return (
             <div className="nft-row" key={i}>
@@ -866,17 +866,14 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
                 <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               </div>
-              <button className="link quiet rm" aria-label={`Remove ${name}`} disabled={mode === 'preview' && pending.length === 1} onClick={() => removeRow(i)}>Remove</button>
+              <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
           );
         })}
         {slots.filter((i) => i === nfts.length).map(placeholder)}
         {!slots.length && listed.length + pending.length < 20 && (
           <div>
-            <button className="link" onClick={() => {
-              if (mode === 'preview') { setNfts([...nfts, { value: DEFAULT_NFT.value }]); return; }
-              setPicking(picking === nfts.length ? undefined : nfts.length);
-            }}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
+            <button className="link" onClick={() => setPicking(picking === nfts.length ? undefined : nfts.length)}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
             {chooser(nfts.length)}
           </div>
         )}
