@@ -147,14 +147,14 @@ contract BalancerTest is ForkBase {
         assertTrue(balancer.canPurchase(buyer), "listing a curated NFT does not close the pool");
         (,,, uint112 base, uint112 price) = balancer.items(lids[0]);
         assertEq(base, 0.2 ether);
-        assertEq(price, 0.23 ether, "listed at base * (1 + markup)");
+        assertEq(price, 0.2 ether, "listed at its value, no markup");
         (,,,,, uint256 fwaPrice,,) = pool.listings(lids[0]);
-        assertEq(fwaPrice, 0.23 ether);
+        assertEq(fwaPrice, 0.2 ether);
 
         vm.prank(creator);
         balancer.updateCuratedPrice(lids[0], 0.4 ether);
         (,,,,, fwaPrice,,) = pool.listings(lids[0]);
-        assertEq(fwaPrice, 0.46 ether, "repriced at the current markup");
+        assertEq(fwaPrice, 0.4 ether, "repriced at the new value");
 
         vm.prank(creator);
         balancer.withdrawCurated(lids[1], creator);
@@ -490,9 +490,9 @@ contract BalancerTest is ForkBase {
 
     /// Markup applies at listing time: existing listings keep their price, restocked prizes use the new markup.
     function test_markupAppliesAtListingOnly() public {
-        // curatedA was listed at MARKUP (1500)
+        // curatedA is listed at its value: curated NFTs carry no markup
         (,,, uint112 baseA, uint112 priceA) = balancer.items(curatedA);
-        assertEq(priceA, uint256(baseA) * (10_000 + uint256(MARKUP)) / 10_000);
+        assertEq(priceA, baseA);
         // a listed 0.05 Shape is priced at its backing, mint fee and MARKUP, plus one restocking fee
         uint256 fee = shapes.mintFee();
         uint256 shape = _shapeOfDenom(1);

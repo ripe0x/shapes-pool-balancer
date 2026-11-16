@@ -43,8 +43,7 @@ Balancer by anyone, and NFTs sent to it directly, belong to the creator; there i
 `configure(markupBps, target)`:
 
 - `markupBps`: a fixed operating markup (10% to 100%), the creator's to keep. It is the only profit in a price, so it
-  is what refills the reserve after a big win. A curated NFT lists at its value ×
-  (1 + markup). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
+  is what refills the reserve after a big win. A curated NFT lists at its value, with no markup (decision 86). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
   markup + one restocking fee per Shape inside: players pay the mint fee and keepers on top of the markup. The
   restocking fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, at the basefee of the
   listing block; it pays the keeper call that lists the prize. Prices are set when a listing is made. Existing listings keep their prices; nothing is repriced.
@@ -222,9 +221,9 @@ The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
 
-`listCurated` / `listCuratedBatch` pull from the creator (approve the Balancer first) and list on FWA at
-`base × (1 + markup)`. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value;
-it is listed at that value plus the current markup, and FWA allows the change only while no draw is unsettled.
+`listCuratedBatch` pulls from the creator (approve the Balancer first) and lists on FWA at `base`, the creator's
+value, with no markup. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value,
+which is its FWA price; FWA allows the change only while no draw is unsettled.
 `withdrawCurated` withdraws an active NFT from FWA to a creator-chosen address, also only while no draw is unsettled.
 
 Failed deliveries follow FWA's rules; the Balancer adds none of its own (owner decision 2026-11-13: the Balancer is a

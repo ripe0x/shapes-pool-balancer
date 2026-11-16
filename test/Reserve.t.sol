@@ -372,7 +372,7 @@ contract ReserveTest is ForkBase {
         assertEq(d.length, 1, "a purchase goes through");
     }
 
-    /// Independent audit E3: a curated NFT listed before the first `configure` would carry no markup.
+    /// Independent audit E3: NFTs are listed only once the pool has a design, at their value (no markup).
     function test_nftsListOnlyAfterTheFirstConfigure() public {
         vm.prank(creator);
         PoolBalancer fresh = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(1)))));
@@ -385,7 +385,7 @@ contract ReserveTest is ForkBase {
         uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
         vm.stopPrank();
         (,,,, uint112 price) = fresh.items(lid);
-        assertEq(price, 0.3 ether * (10_000 + uint256(MARKUP)) / 10_000, "listed at the configured markup");
+        assertEq(price, 0.3 ether, "listed at its value");
     }
 
     /// Independent audit E5: `open` collects settled FWA proceeds into this contract before checking the reserve, so

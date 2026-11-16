@@ -547,3 +547,20 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     - S2 (`admissionStatus` ignores FWA's global withdraw-only switch): no change; FWA rejects the purchase itself.
     - The review record `audit/rc-8ec98cb/SOURCE_HASH` is filed: the source is unchanged since the audit and no
       finding needed a contract repair. The outcomes need a new signature (hash `e0e9684b…`).
+86. **Curated NFTs list at the creator's value, with no markup** (owner, 2026-11-16: "Yes, remove it"). The value a
+    creator enters is their asking price; a markup on top only did what typing a higher value does. `_priced` is gone:
+    a curated listing's FWA price is its `base`, its item records markup 0, and `updateCuratedPrice` sets the price to
+    the new value. The markup now applies to Shape prizes only, so a higher markup also moves the odds toward the NFTs.
+    Unchanged: the fund keeps all NFT sale money while it is short (curated NFTs already counted zero in the profit
+    split), the game's 10% (O8) is Shape markup, and the fill gate weighs prizes by backing. Decision 63 no longer
+    guards a price; `configure` stays guarded and the first-`configure` check (audit E3) stays so a pool holds NFTs
+    only once it has a design. Supersedes decision 1's curated half. Changes the audited source, so the review record
+    for `8ec98cb` no longer applies.
+    Measured on the launch board (one 0.2 ETH NFT, 25% markup; planner, checked against the fork): the NFT comes up 1
+    in 437 draws instead of 1 in 545, the draw price moves from 0.023110 to 0.023100 ETH, and the creator collects
+    about 0.02 ETH less per 180 draws (0.05 ETH less per NFT won). The gate passes all 22 regimes against the signed
+    limits (source `48feb775…`); against `283c9af` the per-regime creator totals move both ways by up to 0.5 ETH
+    because the changed odds change which prizes the fixed random words win (quiet 0.807 to 0.737 ETH ahead; forced
+    0.5 ETH wins -0.167 to -0.276). O1's and O12's information figures are restated from this run, which needs a new
+    signature. `test/audit/LaunchB.t.sol` `test_keeperAdminLocksOutKeepers` now relists a won NFT as the creator
+    would: its fixed words began winning the NFT, which stopped sales for NO_CURATED instead of the missing keepers.

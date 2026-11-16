@@ -752,7 +752,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     const B = { address: balancer, abi: poolBalancerAbi } as const;
     const steps: Step[] = [];
     if (mode === 'new') steps.push(['Create pool', () => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer', args: [salt], value: deposit })]);
-    // Save the design before listing any NFT: the contract refuses a curated listing until a markup is configured.
+    // Save the design before listing any NFT: the contract refuses a curated listing until the design is saved.
     if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
     steps.push(...approveSteps(pub, tx, me, balancer, toList));
     if (toList.length) steps.push([`List ${nftWord(toList.length)}`, () => tx.write({ ...B, functionName: 'listCuratedBatch', args: [toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })]);
@@ -814,13 +814,13 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
             <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
             <li>Your ETH buys the Shapes. When one is won, the pool replaces it with the same prize, paid from your ETH and the draw payments, so the mix stays as you set it.</li>
-            <li>Your markup is part of every draw price, and it is yours. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
+            <li>Your markup is added to each Shape prize's price, and it is yours. Your NFTs carry none. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
           </ol>
         )}
 
         {!has && <div className="step">
           <div className="step-head"><span className="n">1</span><h2 className="h3">Your NFTs</h2></div>
-          <p className="note" style={{ marginBottom: 10 }}>The value is your asking price: across the draws until it is won, players pay about that plus your markup. A higher value makes it rarer.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
+          <p className="note" style={{ marginBottom: 10 }}>The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
           {listed.map((l) => (
             <div className="mixrow" key={l.id.toString()}>
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} small />
@@ -906,7 +906,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         <div className="step">
           <div className="step-head"><span className="n">{has ? 3 : 4}</span><h2 className="h3">Your markup</h2></div>
           <div className="limit" style={{ marginTop: 0 }}>
-            <div className="top"><label htmlFor="markup">Added to every draw price, and yours; the first 10% refills the reserve while it is short</label><b>{markup}%</b></div>
+            <div className="top"><label htmlFor="markup">Added to each Shape prize's price, and yours; the first 10% refills the reserve while it is short</label><b>{markup}%</b></div>
             <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
             <p className="note">Higher markup raises the draw price.</p>
             <p className="note">Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
@@ -999,7 +999,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
               <div>
                 <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
-                <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
+                <div className="s">Your value {eth(l.base)} ETH</div>
                 <div className="s">Won about {oneIn(odds(l))} draws</div>
                 {edit?.id === l.id && (
                   <div className="row" style={{ marginTop: 10 }}>

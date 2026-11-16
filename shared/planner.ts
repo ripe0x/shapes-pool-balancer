@@ -71,13 +71,13 @@ export const prizeLabel = (d: number) => `${DENOM_LABELS[d]} ETH ${isPack(d) ? '
 export type Counts = number[]; // length 16, indexed like DENOMS
 
 export interface PoolInputs {
-  curatedBases: bigint[]; // creator-assigned values (wei), before markup
+  curatedBases: bigint[]; // creator-assigned values (wei): an unlisted NFT's FWA price (curated NFTs carry no markup)
   markupBps: number;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
   restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
-  /** FWA prices of curated NFTs already listed, matching the first entries of `curatedBases`. A listing keeps the
-   *  markup in force when it was made; entries without a price are new and priced at `markupBps`. */
+  /** FWA prices of curated NFTs already listed, matching the first entries of `curatedBases`; entries without a price
+   *  are new and priced at their value. */
   curatedPrices?: bigint[];
   /** FWA prices of Shape prizes already listed, by size index (0..15): each size's array holds the actual listed price
    *  of each active prize of that size, which keeps the markup and fees in force when it was listed. Prizes beyond the
@@ -99,7 +99,6 @@ export function unpackPlan(p: bigint): Counts {
   return DENOMS.map((_, d) => Number((p >> BigInt(16 * d)) & 0xffffn));
 }
 
-export const listPrice = (base: bigint, markupBps: number) => (base * (BPS + BigInt(markupBps))) / BPS;
 /** A prize's listed price less its restocking fees (PoolBalancer._prizeBase): cost plus the markup on its backing. */
 export const prizeBase = (d: number, mintFee: bigint, markupBps: number) => prizeCost(d, mintFee) + (DENOMS[d] * BigInt(markupBps)) / BPS;
 /** A prize's FWA listing price (PoolBalancer._fillDeficit). */
@@ -107,11 +106,11 @@ export const prizePrice = (d: number, i: Pick<PoolInputs, 'mintFee' | 'markupBps
   prizeBase(d, i.mintFee, i.markupBps) + BigInt(SHAPES_IN[d]) * i.restockFee;
 export const weightOf = (price: bigint) => NUM / price;
 
-/** A curated NFT's FWA price: its live listing price if listed, else its value at the current markup. */
-export const curatedPrice = (i: number, inputs: Pick<PoolInputs, 'curatedBases' | 'markupBps' | 'curatedPrices'>) =>
-  inputs.curatedPrices?.[i] ?? listPrice(inputs.curatedBases[i], inputs.markupBps);
+/** A curated NFT's FWA price: its live listing price if listed, else its value. */
+export const curatedPrice = (i: number, inputs: Pick<PoolInputs, 'curatedBases' | 'curatedPrices'>) =>
+  inputs.curatedPrices?.[i] ?? inputs.curatedBases[i];
 
-export function curatedTotals(inputs: Pick<PoolInputs, 'curatedBases' | 'markupBps' | 'curatedPrices'>) {
+export function curatedTotals(inputs: Pick<PoolInputs, 'curatedBases' | 'curatedPrices'>) {
   let w = 0n;
   let wp = 0n;
   for (let i = 0; i < inputs.curatedBases.length; i++) {

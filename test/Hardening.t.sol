@@ -320,11 +320,11 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and the creator's ETH pays the keeper
-    /// who reconciles its draw.
+    /// A curated NFT carries no restocking fee or markup: the creator's ETH pays the keeper who reconciles its draw.
     function test_curatedDrawReconcileIsPaid() public {
         (,,, uint112 base, uint112 price) = balancer.items(curatedA);
-        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%, all markup");
+        assertEq(price, base, "listed at its value");
+        assertEq(price, 0.3 ether);
         _drawListing(curatedA);
         vm.recordLogs();
         upkeep();

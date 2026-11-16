@@ -89,7 +89,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
 
       <section className="hiw-sec">
         <h2 className="h3">2. How a draw picks a prize</h2>
-        <p className="hiw-p">FWA gives each prize a chance in proportion to 1 ÷ its price. A 0.01 ETH Shape comes up 20 times as often as a 0.2 ETH NFT. So every prize carries the same expected value per draw, and a prize is rare exactly when it is worth many times the others.</p>
+        <p className="hiw-p">FWA gives each prize a chance in proportion to 1 ÷ its price: a prize priced 20 times higher comes up 20 times less often, so a prize is rare exactly when it costs many times the others.</p>
         <Bar parts={list.map((g) => ({ label: g.label, share: g.odds, style: g.style, note: `${g.multiple.toFixed(2)}× the price` }))} />
         <div className="hiw-stats">
           <div><span className="figure-s">{eth(ev.drawPrice, 4)}</span><span className="unit">ETH</span><p className="note">Draw price</p></div>
@@ -173,5 +173,5 @@ const FAQ: [string, string][] = [
   ['Do purchases pause after draws?', 'Usually not. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, when the Shapes mint fee rises above the one you accepted, and, for a mix with little prize weight, while a few draws are unsettled (the design page says how many).'],
   ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won, usually within a minute. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. Every pool also pauses while five draws are unsettled. The pause ends on its own as the draws settle.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
-  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to prizes listed after the change; prizes already listed keep their price."],
+  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];

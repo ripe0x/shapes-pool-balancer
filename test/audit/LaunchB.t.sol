@@ -289,6 +289,8 @@ contract AttackB is ForkBase {
         factory.setKeepersRestricted(true);
         uint256 sold;
         for (uint256 i; i < 30; ++i) {
+            // a won NFT is relisted as the creator would, so the stop below is the missing keepers, not NO_CURATED
+            if (balancer.admissionStatus() == 3) listCurated(3000 + i, 0.2 ether);
             if (balancer.admissionStatus() != 0) break;
             uint256[] memory r = buy(buyer, 1);
             fulfill(r[0], uint256(keccak256(abi.encode("lock", i))));
@@ -302,12 +304,13 @@ contract AttackB is ForkBase {
         console.log("draws sold with no keeper able to reconcile", sold);
         console.log("admission status then", balancer.admissionStatus());
         console.log("unreconciled draws", pool.lastIssuedSequence() - balancer.reconciledSequence());
-        assertTrue(balancer.admissionStatus() != 0, "sales stop without keepers");
+        assertTrue(balancer.admissionStatus() != 0 && balancer.admissionStatus() != 3, "sales stop without keepers");
         // the creator restores it
         for (uint256 i; i < 10; ++i) {
             vm.prank(creator, creator);
             try balancer.performUpkeep() {} catch { break; }
         }
+        if (balancer.admissionStatus() == 3) listCurated(4000, 0.2 ether);
         assertEq(balancer.admissionStatus(), 0, "creator upkeep reopens sales");
     }
 

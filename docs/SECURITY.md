@@ -84,7 +84,7 @@ Outcome per finding:
 | S1 | Medium (conditional) | A collection with public seizure can move a listed NFT out of FWA, leaving a ghost prize | Documented: creator's choice of collection |
 | S2 | Medium (conditional) | A collection freeze blocks withdrawing that NFT | Documented |
 | S3 | Low (conditional) | FWA's VRF router coverage can refuse a purchase the Balancer admits | Documented (OPERATIONS status 0 note) |
-| S4 | Low (conditional) | A creator-controlled collection could change markup during its pull | Fixed: priced after the pull (DECISIONS 63). `test_curatedPricedAfterCollectionCallback` |
+| S4 | Low (conditional) | A creator-controlled collection could change markup during its pull | Fixed: priced after the pull (DECISIONS 63). `test_curatedPricedAfterCollectionCallback`. Moot since DECISIONS 86: curated NFTs carry no markup |
 
 The repairs have not been independently re-audited.
 

@@ -13,19 +13,28 @@ const base: DesignInputs = {
 };
 const mix = (m: Record<number, number>): Counts => DENOMS.map((_, i) => m[i] ?? 0);
 
+// Without per-Shape fees: FWA picks prize i with odds 1/price_i over the sum, and the draw price is the prize count over
+// that sum, times 1.05. A Shape returns 1/1.15 of its price (15% markup), a curated NFT all of it (no markup), so a draw
+// returns (Shapes / 1.15 + NFTs) / (prizes x 1.05).
+const noFeeReturn = (counts: Counts) => {
+  const shapes = counts.reduce((a, b) => a + b, 0);
+  const nfts = base.curatedBases.length;
+  return (shapes / 1.15 + nfts) / ((shapes + nfts) * 1.05);
+};
+
 suite('playerView', () => {
-  it('without per-Shape fees the average return is the same for every mix', () => {
+  it('without per-Shape fees Shapes return their price less the markup and NFTs their whole price', () => {
     const noFees = { ...base, mintFee: 0n, restockFee: 0n };
     for (const counts of [mix({ 0: 10 }), mix({ 0: 2, 3: 1 }), mix({ 1: 5, 2: 2 })]) {
-      expect(playerView(evaluate(counts, noFees), 0n).avgReturn).toBeCloseTo(1 / (1.05 * 1.15), 3);
+      expect(playerView(evaluate(counts, noFees), 0n).avgReturn).toBeCloseTo(noFeeReturn(counts), 3);
     }
   });
 
   it('per-Shape mint and restocking fees cost players more on small prizes', () => {
     const small = playerView(evaluate(mix({ 0: 10 }), base), 0n).avgReturn;
     const large = playerView(evaluate(mix({ 1: 5, 2: 2 }), base), 0n).avgReturn;
-    expect(small).toBeLessThan(large);
-    expect(large).toBeLessThan(1 / (1.05 * 1.15));
+    expect(small / noFeeReturn(mix({ 0: 10 }))).toBeLessThan(large / noFeeReturn(mix({ 1: 5, 2: 2 })));
+    expect(large).toBeLessThan(noFeeReturn(mix({ 1: 5, 2: 2 })));
   });
 
   it('counts only prizes worth more than the draw plus VRF fee as wins', () => {

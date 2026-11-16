@@ -142,6 +142,12 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - R34. O13's conditions stated: settling needs an open keeper list or an active listed keeper; sales continuing needs
   the creator to relist curated NFTs, which the regimes do → **O13** restated. No contract change.
 
+## Curated NFT pricing (owner, 2026-11-16: "Yes, remove it")
+
+- R35. "when people add the NFTs themselves, they can choose the value for that NFT. So we shouldn't be adding like a
+  percentage markup on top of that either": a curated NFT lists at the creator's value; the markup applies to Shape
+  prizes only (decision 86).
+
 ## Decisions log (history, not requirements)
 
 - 2026-11-13. "Go ahead with the D3 repair. No push until it has been independently re-attacked."

@@ -26,6 +26,7 @@ interface IKeeperList {
 ///        wait for ETH: each prize's price covers replacing it, so after a big win uses the reserve's spare, sales
 ///        refill it from the first MIN_MARKUP_BPS of markup while the creator keeps the markup above it. `open` needs
 ///        the reserve in ETH.
+///      - A curated NFT is listed at the creator's value, with no markup. Shape prizes carry the markup.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. The fee is the creator's income for keeper pay: the pool's ETH pays the keeper who
@@ -165,7 +166,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint16 markupBps; // markup when listed: the creator's part of a Shape prize's price is its backing x this
+        uint16 markupBps; // Shape markup when listed (zero for curated): the creator's part of its price is its backing x this
         uint104 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
         uint104 price; // price listed on FWA
     }
@@ -386,7 +387,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice Pull up to 20 NFTs from the creator (approve this contract first) and list each on FWA at its `base`
-    ///         plus the markup.
+    ///         (its price; curated NFTs carry no markup).
     function listCuratedBatch(CuratedInput[] calldata inputs)
         external
         onlyCreator
@@ -407,18 +408,18 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
-    /// @notice Set a curated NFT's value; it is listed at that value plus the current markup.
+    /// @notice Set a curated NFT's value, which is its FWA price.
     ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
         Item storage it = _items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
-        uint256 price = _priced(newBase);
+        _checkValue(newBase);
         it.base = uint104(newBase);
-        if (price != it.price) {
-            pool.updatePrice(listingId, price);
-            it.price = uint104(price);
+        if (newBase != it.price) {
+            pool.updatePrice(listingId, newBase);
+            it.price = uint104(newBase);
         }
-        emit CuratedRepriced(listingId, newBase, price);
+        emit CuratedRepriced(listingId, newBase, newBase);
     }
 
     /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
@@ -872,23 +873,22 @@ contract PoolBalancer is ReentrancyGuard {
         if (fund < requiredReserve()) profit += uint128(mine);
     }
 
-    function _priced(uint256 base) internal view returns (uint256 price) {
-        price = base * (BPS + markupBps) / BPS;
-        if (base == 0 || price > type(uint104).max) revert ValueTooHigh();
+    function _checkValue(uint256 base) internal pure {
+        if (base == 0 || base > type(uint104).max) revert ValueTooHigh();
     }
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
-        if (markupBps == 0) revert InvalidConfig(); // configure first, so NFTs list at the creator's markup
+        if (markupBps == 0) revert InvalidConfig(); // configure first: a pool holds NFTs only once it has a design
         if (collection == address(SHAPES) || collection == address(PACKS)) revert ShapesNotCurated();
         IERC721Min(collection).transferFrom(msg.sender, address(this), tokenId);
         if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert InvalidItem();
         IERC721Min(collection).approve(address(pool), tokenId);
-        // `configure` is guarded, so a collection's calls cannot change the markup this listing (or batch) uses.
-        price = _priced(base);
+        _checkValue(base);
+        price = base;
     }
 
     function _recordCurated(uint256 lid, address collection, uint256 tokenId, uint256 base, uint256 price) internal {
-        _items[lid] = Item(CURATED, 0, ACTIVE, markupBps, uint104(base), uint104(price));
+        _items[lid] = Item(CURATED, 0, ACTIVE, 0, uint104(base), uint104(price));
         _addActive(lid);
         emit CuratedListed(lid, collection, tokenId, base, price);
     }

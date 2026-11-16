@@ -8,7 +8,7 @@
 // (DECISIONS 68: the first 10% of markup refills, the rest is profit), written s < 0 here.
 import { parseEther } from 'viem';
 import { mixOf, styleBonus, type DesignInputs } from '../shared/design';
-import { restockFeeAt, prizePrice, prizeCost, listPrice, SHAPES_IN, DENOMS } from '../shared/planner';
+import { restockFeeAt, prizePrice, prizeCost, SHAPES_IN, DENOMS } from '../shared/planner';
 
 const E = (x: bigint) => Number(x) / 1e18;
 type Design = { name: string; s: number; cushion: boolean };
@@ -24,7 +24,7 @@ function run(small: number, markupBps: number, sched: number[], d: Design, runs:
   const order = sizes.map((_, k) => k).sort((a, b) => cost[a] - cost[b]);
   const top = sizes.reduce((m, _, k) => (DENOMS[sizes[k]] > DENOMS[sizes[m]] ? k : m), 0);
   const T = cost[top];
-  const nftPrice = E(listPrice(nftValue, markupBps));
+  const nftPrice = E(nftValue); // curated NFTs list at their value
   const board = sizes.reduce((s, i, k) => s + target[i] * cost[k], 0);
   const deposit = board + (d.cushion ? T : 0);
   const o: Out = { withdrawn: [], position: [], dryDraws: [], topOff: [], topOffMax: [], short: [], deposit };
