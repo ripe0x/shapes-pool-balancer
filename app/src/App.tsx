@@ -166,6 +166,8 @@ const ZERO: Counts = Array(9).fill(0);
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 const eth = (wei: bigint | undefined, d = 3) => (wei === undefined ? '–' : Number(formatEther(wei)).toFixed(d));
 const signed = (x: number, d = 5) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}`;
+/** A per-draw amount: "0" when it rounds to nothing, else signed. */
+const perDraw = (x: number) => (Math.abs(x) < 5e-6 ? '0' : signed(x));
 const oneIn = (p: number) => (p <= 0 ? '–' : p >= 0.995 ? 'every draw' : `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.round(1 / p).toLocaleString()}`);
 const pctOf = (p: number) => `${(p * 100).toFixed(p < 0.01 ? 2 : 1)}%`;
 const ethOr = (s: string, fallback: bigint) => { try { return parseEther(s || '0'); } catch { return fallback; } };
@@ -967,8 +969,8 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 : <div><span>Not used</span>{figureEth(ev && have - needed)}</div>}
             </>
           )}
-          <div><span>Average per draw</span>{econ ? <span><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
-          <div><span>Per draw while the reserve refills</span>{econ ? <span><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><div><span>Your earnings per draw</span><p className="note">An average over many draws. You can withdraw it while the pool's reserve is full.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><div><span>After a big prize is won</span><p className="note">What you can withdraw per draw until sales refill the reserve, the ETH the pool keeps to replace prizes.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
         </div>
         {save}
         {view && ev && econ && (
@@ -1282,11 +1284,11 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {econ ? (
             <>
               <div className="row" style={{ gap: 40, marginTop: 12 }}>
-                <div><span className="note">Average per draw</span><div><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
-                <div><span className="note">Per draw while the reserve refills</span><div><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Per draw, on average</span><div><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Per draw after a big win</span><div><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
               </div>
-              <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
+              <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. After a big prize is won, sales refill the reserve first, so you can withdraw less until it is full. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
               {assume.open && (
                 <div className="row" style={{ marginTop: 10 }}>
                   <div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div>

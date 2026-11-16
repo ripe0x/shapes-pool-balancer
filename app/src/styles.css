@@ -356,7 +356,8 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .players .ctl { margin-bottom: 12px; }
 .players .kv:last-child { border-bottom: 0; }
 .totals { border-top: 1px solid var(--line); }
-.totals > div { min-height: 64px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.totals .note { margin-top: 4px; max-width: 30ch; }
+.totals > div { padding: 12px 0; min-height: 64px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); font-size: 15px; }
 .results .btn.lg { height: 60px; }
 .results .btn:disabled { opacity: 1; background: var(--line-soft); border-color: var(--line-soft); color: var(--ink-3); }
 .numbers .kv-group:first-child { margin-top: 16px; }
