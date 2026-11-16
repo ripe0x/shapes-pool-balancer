@@ -435,6 +435,7 @@ const INTENT_KEY = 'connect-from-preview';
 const markConnectIntent = () => { try { sessionStorage.setItem(INTENT_KEY, '1'); } catch { /* storage unavailable */ } };
 const takeConnectIntent = () => { try { const v = sessionStorage.getItem(INTENT_KEY); sessionStorage.removeItem(INTENT_KEY); return !!v; } catch { return false; } };
 const DEFAULT_NFT: DraftNft = { value: '0.050' };
+const SAMPLE_BASE = ethOr(DEFAULT_NFT.value, 0n);
 const DEFAULT_MARKUP = 25;
 const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
@@ -543,6 +544,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     ...pending.filter(({ n }) => n.collection).map(({ n, i }) => ({ key: `d${i}`, name: nftLabel(n), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
   ];
   const bases = rows.map((r) => r.base);
+  // Before connecting, the design is priced as if one curated NFT were worth the default value, so the settings can be
+  // tried out; once connected, only chosen NFTs count.
+  const priced = bases.length || mode !== 'preview' ? bases : [SAMPLE_BASE];
   const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
@@ -564,7 +568,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
-    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
+    curatedBases: priced, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
     vrfFee: d.vrfFee, have: d.activeShapes,
   };
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
@@ -572,7 +576,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
   const initial = useRef({ style, custom, small });
   // Until a curated NFT is chosen, a style's mix is sketched as if one were worth the default value; nothing is priced.
-  const bonus = useMemo(() => (style ? styleBonus(style, bases.length ? base : { ...base, curatedBases: [ethOr(DEFAULT_NFT.value, 0n)] }, small) : custom),
+  const bonus = useMemo(() => (style ? styleBonus(style, priced.length ? base : { ...base, curatedBases: [SAMPLE_BASE] }, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
   const room = MAX_SHAPES_PER_PLAN - shapeTotal(bonus);
   const smallUsed = Math.max(0, Math.min(small, room));
@@ -601,7 +605,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const total = counts.reduce((a, b) => a + b, 0);
   const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
-  const ready = bases.length > 0 && total > 0;
+  const ready = priced.length > 0 && total > 0;
   const ev = ready ? describe(counts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
@@ -699,7 +703,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       {view && showKey && (gridView === 'inventory' ? (
         <div className="legend">
           {ordered.map(({ g }) => (g.nft
-            ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{rows.length}</b> curated NFT{rows.length === 1 ? '' : 's'} · {oneIn(view.curated)} draws for any of them</span></div>
+            ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{priced.length}</b> curated NFT{priced.length === 1 ? '' : 's'} · {oneIn(view.curated)} draws for any of them</span></div>
             : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {prizeLabel(g.i)} · each {oneIn(g.p / g.n)}</span></div>))}
         </div>
       ) : (
@@ -826,7 +830,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     <Fragment key={`p${i}`}>
       <div className="nft-empty">
         <div className="slot" aria-hidden="true">+</div>
-        <div className="id"><div className="t">No curated NFT yet</div><div className="s">Choose one from your wallet, then set its value.</div></div>
+        <div className="id"><div className="t">No curated NFT yet</div><div className="s">{mode === 'preview' ? `Connect a wallet to choose one. Numbers assume one worth ${DEFAULT_NFT.value} ETH.` : 'Choose one from your wallet, then set its value.'}</div></div>
         {mode === 'preview'
           ? <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet</button>}</ConnectButton.Custom>
           : <button className="btn" onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : 'Choose from your wallet'}</button>}
@@ -924,7 +928,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               </div>
               <div className="row" style={{ marginTop: 14, gap: 16 }}>
                 <button className="disclose" aria-expanded={open.bonus} onClick={() => toggle('bonus')}>Adjust prizes by hand {open.bonus ? '▴' : '▾'}</button>
-                {bases.length > 0 && !ready ? <span className="note error">No mix reaches these odds.</span>
+                {priced.length > 0 && !ready ? <span className="note error">No mix reaches these odds.</span>
                   : !style && ready && <span className="note">Custom: {mixText(counts)}</span>}
               </div>
               {open.bonus && (
