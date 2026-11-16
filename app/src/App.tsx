@@ -1256,6 +1256,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const gone = plan.map((n, i) => (n > d.activeShapes[i] ? i : -1)).filter((i) => i >= 0);
   const goneLabel = missing === 1 ? `the ${eth(DENOMS[gone[0]], 3).replace(/\.?0+$/, '')} ETH prize` : 'the missing prizes';
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
+  // What the withdrawable ETH is, counting earnings first: the contract keeps one balance, so the split is a convention.
+  const earned = d.ledger.earned;
+  const withdrawSplit = d.surplus === 0n ? 'Nothing above what the pool keeps to run.'
+    : earned <= 0n ? 'Your deposit the pool does not need.'
+      : earned >= d.surplus ? `${eth(d.surplus)} ETH of the ${eth(earned)} ETH you have earned; the rest is held in the pool's prizes and reserve.`
+        : `${eth(earned)} ETH earned and ${eth(d.surplus - earned)} ETH of your deposit the pool does not need.`;
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
   const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
@@ -1305,7 +1311,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <h2 className="h3">Your ETH</h2>
           <div className="kv"><span className="k">In Shapes</span><span>{eth(backing)} ETH</span></div>
           <div className="kv"><span className="k">Kept for restocking</span><span>{eth(d.required)} ETH</span></div>
-          <div className="kv"><span className="k">Ready to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
+          <div className="kv"><span className="k">Available to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
           {short_ > 0n && <div className="kv"><span className="k error">Short of the reserve</span><span className="error">{eth(short_)} ETH</span></div>}
           {isCreator && d.enabled && short_ > 0n && missing > 0 && pub && (
             <div style={{ marginTop: 12 }}>
@@ -1322,16 +1328,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="row" style={{ marginTop: 16 }}>
             {d.proceeds > 0n && <button className="btn" disabled={!!tx.busy} onClick={() => tx.send('Collect from sales', [() => tx.write({ ...B, functionName: 'collectProceeds' })])}>Collect {eth(d.proceeds)} ETH</button>}
             <button className={mode === 'deposit' ? 'btn' : 'btn sec'} onClick={() => start('deposit')}>Deposit</button>
-            {isCreator && <button className={mode === 'claim' ? 'btn' : 'btn sec'} disabled={d.surplus === 0n} onClick={() => start('claim')}>Withdraw unused</button>}
           </div>
-          {isCreator && d.surplus < idle && <p className="note" style={{ marginTop: 8 }}>{eth(d.surplus)} ETH can be withdrawn now. The rest once pending draws settle.</p>}
-          {mode && (
+          {mode === 'deposit' && (
             <div className="row" style={{ marginTop: 12 }}>
-              <div className="field" style={{ width: 180 }}><input aria-label={mode === 'deposit' ? 'Deposit amount' : 'Withdraw amount'} className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
-              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send(mode === 'deposit' ? 'Deposit' : 'Withdraw', [() => tx.write(mode === 'deposit'
-                ? { ...B, functionName: 'depositETH', value: ethOr(amount, 0n) }
-                : { ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>
-                {mode === 'deposit' ? `Deposit ${amount || '0'} ETH` : `Withdraw ${amount || '0'} ETH to your wallet`}
+              <div className="field" style={{ width: 180 }}><input aria-label="Deposit amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Deposit', [() => tx.write({ ...B, functionName: 'depositETH', value: ethOr(amount, 0n) })]).then((ok) => ok && setMode(undefined))}>
+                Deposit {amount || '0'} ETH
               </button>
             </div>
           )}
@@ -1350,6 +1352,22 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="kv"><span className="k">Keeper pay</span><span>−{eth(d.ledger.keeperPay, 5)} ETH</span></div>
           {d.ledger.other !== 0n && <div className="kv"><span className="k">ETH sent to the pool directly</span><span>{d.ledger.other < 0n ? '−' : '+'}{eth(d.ledger.other < 0n ? -d.ledger.other : d.ledger.other, 5)} ETH</span></div>}
           {d.ledger.nftsWon > 0 && <p className="note" style={{ marginTop: 10 }}>Players won {d.ledger.nftsWon === 1 ? 'one of your NFTs' : `${word(d.ledger.nftsWon)} of your NFTs`}, valued at {eth(d.ledger.nftValues)} ETH. NFTs are not counted above.</p>}
+          {isCreator && (
+            <div className="withdraw">
+              <div className="kvline">
+                <div><div style={{ fontWeight: 700 }}>Available to withdraw</div><p className="note">{withdrawSplit}</p></div>
+                <div><span className="figure-s">{eth(d.surplus, 5)}</span><span className="unit">ETH</span></div>
+              </div>
+              <button className={mode === 'claim' ? 'btn' : 'btn sec'} disabled={d.surplus === 0n} onClick={() => start('claim')}>Withdraw</button>
+              {d.surplus < idle && <p className="note" style={{ marginTop: 8 }}>More becomes available as pending draws settle.</p>}
+              {mode === 'claim' && (
+                <div className="row" style={{ marginTop: 12 }}>
+                  <div className="field" style={{ width: 180 }}><input aria-label="Withdraw amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+                  <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH to your wallet</button>
+                </div>
+              )}
+            </div>
+          )}
           <h3 className="ctl" style={{ marginTop: 28 }}>Estimate</h3>
           {econ ? (
             <>
