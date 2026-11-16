@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IPacksView {
     function valueOf(uint256 packId) external view returns (uint256);

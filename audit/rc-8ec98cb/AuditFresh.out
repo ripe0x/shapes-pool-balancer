@@ -1,0 +1,111 @@
+No files changed, compilation skipped
+
+Ran 13 tests for test/AuditFresh.t.sol:AuditFreshTest
+[PASS] test_closedReserveSequentialExpiry() (gas: 34021395)
+Logs:
+  keeper reward 0 1077450000000000
+  keeper reward 1 906450000000000
+  keeper reward 2 906450000000000
+  keeper reward 3 906450000000000
+  keeper reward 4 860895000000000
+  held 49050000000000000
+  paid 4657695000000000
+  remaining 44392305000000000
+
+[PASS] test_compromisedCreatorCannotTakePendingPlayerRefund() (gas: 9930888)
+Logs:
+  player's protected price refund 15153291227069053
+  attacker closed and recovered curated NFT after expiry
+
+[PASS] test_emptyFundingThenTopUpAndRedeemRoundTrip() (gas: 6797218)
+Logs:
+  top-up to continue wei 199991000000000000000
+  backing redeemed wei 100000000000000000000
+  creator claimable after dropping top prize 199985732090000000000
+
+[PASS] test_globalWithdrawOnlyRoundTrip() (gas: 9366972)
+Logs:
+  global halt reverted despite admission 0; recovery draw 94782623901646048224103269094433485951264266060021871943327168528472285848174
+
+[PASS] test_keeperChosenGasLimitCannotEarnWithoutQueueProgress() (gas: 34464621)
+Logs:
+  gas limit reverted 200000
+  gas limit succeeded 300000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+  gas limit succeeded 400000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+  gas limit succeeded 600000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+  gas limit succeeded 1000000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+  gas limit succeeded 2000000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+  gas limit succeeded 4000000
+  reward 1222900000000000
+  billed gas plus intrinsic 228845
+  keeper margin wei 78675000000000
+
+[PASS] test_largestPrizeRoundTripAtCap() (gas: 9879896)
+Logs:
+  selected listing 2
+  acquisition status 2
+  shape count 1
+  buyer draw cost 535652143495266067
+  fund before draw 100994475585000000000
+  fund after draw 1488028266424062921
+  reserve shortfall 98545671733575937079
+  two-draw buyer cost 1071304286990532134
+  fund after second win 1985974757848125842
+  admission after second win 6
+  creator closeout claim 1985974757848125842
+  reopen reserve 100033700000000000000
+
+[PASS] test_launchBoardConfigChangeExceedsProfitDriftBound() (gas: 47802423)
+Logs:
+  old-board proceeds 22009891993130840
+  old-board creator share 2356853751692480
+  new-board profit booked 5116540560817814
+  one-draw overbooking 2759686809125334
+
+[PASS] test_noCreatorRelistStopsSales() (gas: 32994186)
+Logs:
+  one-draw price wei 40204552800516543
+  admission status 3
+
+[PASS] test_reentrantCuratedCallbacksDoNotDivertFunds() (gas: 10078194)
+Logs:
+  collection callback attempts 3
+  blocked during locked calls 2
+  other callbacks completed 1
+
+[PASS] test_repriceAndStageDuringDrawBooksOldSaleAsNewProfit() (gas: 6477865)
+Logs:
+  old-board owner proceeds 439121801902823009
+  profit booked from new-board share 65866393093220294
+  creator withdrew overbooked profit 65866393093220294
+
+[PASS] test_restrictedEmptyKeeperListStallsAndCreatorRestarts() (gas: 9343914)
+Logs:
+  unsettled after one day without authorized keeper 1
+
+[PASS] test_retirementAndAttemptedReopen() (gas: 10252936)
+Logs:
+  retired pool closeout claim 987001371200000000
+
+[PASS] test_settingsAndCuratedBatchHardBounds() (gas: 11024902)
+Logs:
+  80-prize plan and 20-NFT batch reached hard bounds
+
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 318.90ms (336.62ms CPU time)
+
+Ran 1 test suite in 324.91ms (318.90ms CPU time): 13 tests passed, 0 failed, 0 skipped (13 total tests)

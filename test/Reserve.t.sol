@@ -5,6 +5,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {ReconfiguringNFT} from "./utils/Mocks.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice Reserve rules on a mainnet fork with the real FWA pool, VRF service and Shapes: a pool opens only with its
 ///         reserve in ETH (E2), purchases continue while sales refill it after big wins (DECISIONS 66), closing
@@ -369,7 +372,7 @@ contract ReserveTest is ForkBase {
         assertEq(d.length, 1, "a purchase goes through");
     }
 
-    /// Independent audit E3: a curated NFT listed before the first `configure` would carry no markup.
+    /// Independent audit E3: NFTs are listed only once the pool has a design, at their value (no markup).
     function test_nftsListOnlyAfterTheFirstConfigure() public {
         vm.prank(creator);
         PoolBalancer fresh = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(1)))));
@@ -382,7 +385,7 @@ contract ReserveTest is ForkBase {
         uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
         vm.stopPrank();
         (,,,, uint112 price) = fresh.items(lid);
-        assertEq(price, 0.3 ether * (10_000 + uint256(MARKUP)) / 10_000, "listed at the configured markup");
+        assertEq(price, 0.3 ether, "listed at its value");
     }
 
     /// Independent audit E5: `open` collects settled FWA proceeds into this contract before checking the reserve, so

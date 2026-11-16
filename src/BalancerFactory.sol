@@ -12,7 +12,6 @@ import {PoolBalancer} from "./PoolBalancer.sol";
 contract BalancerFactory {
     address public immutable implementation;
 
-    address[] public allBalancers;
     mapping(address balancer => bool) public isBalancer;
 
     address public keeperAdmin;
@@ -77,7 +76,6 @@ contract BalancerFactory {
     function createBalancer(bytes32 salt) external payable returns (address balancer) {
         balancer = LibClone.cloneDeterministic(implementation, _salt(msg.sender, salt));
         isBalancer[balancer] = true;
-        allBalancers.push(balancer);
         PoolBalancer(payable(balancer)).initialize{value: msg.value}(msg.sender);
         emit BalancerCreated(msg.sender, balancer, address(PoolBalancer(payable(balancer)).pool()), salt);
     }
@@ -86,9 +84,6 @@ contract BalancerFactory {
         return LibClone.predictDeterministicAddress(implementation, _salt(creator, salt), address(this));
     }
 
-    function balancerCount() external view returns (uint256) {
-        return allBalancers.length;
-    }
 
     function _salt(address creator, bytes32 salt) internal pure returns (bytes32) {
         return keccak256(abi.encode(creator, salt));

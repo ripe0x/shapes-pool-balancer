@@ -36,8 +36,11 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
   never spent on keepers") → **O1**. The flat reward (0.0001 ETH) and overhead (50,000 gas) are final (D14, "Yes, all
   four").
 - R11. D2: "D2 yes: accept, limit 0.002 ETH per 180 draws": keepers keep storage refunds on top of gas → **O1**.
+  Superseded by R32 (D19): the limit is now in gas per draw.
 - R12. D4: "D4 yes: accept and budget one paid call per processed draw; fix the comment." → budgeted inside O11's net.
-- R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**.
+- R13. D3: "D3 yes: repair it. Hold back keeper pay owed for unreconciled draws while closed." → **O3**. Since D16
+  the hold is one maximum keeper reward per 2 such draws (was per 5): upkeep processes at most 2 draws per call, and
+  the per-5 hold left a keeper 0.0054 ETH short at 5 gwei (D16 re-attack F2).
 
 ## The game and the creator's money
 
@@ -101,6 +104,49 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 
 - R28. Final keeper constants (D14, "Yes, all four"): flat reward 0.0001 ETH and overhead allowance 50,000 gas
   (rehearsal receipts: 336 keeper transactions earned 0.000146 ETH each above their billed gas on average).
+
+## Corrections found by the launch audit (2026-11-13)
+
+- To R16 and O7: "then anyone processes the expired draw" names no one. Nothing in the system calls FWA's
+  `processAcquisitions`, and a draw whose request reserved a staged restock skips FWA's randomness fast path, so it and
+  every draw behind it wait until someone processes (launch audit B, S1; reproduced: 5 draws unsettled 10,000 blocks
+  later, sales stopped). FWA's own sponsored processor processed only 2 pools in the last 50,000 blocks. Decision D16 in
+  `docs/LAUNCH-AUDIT-TRIAGE.md`.
+
+## Launch-audit decisions (owner, 2026-11-13: "Yes, all three")
+
+- R29. D16: upkeep processes FWA's queue and is paid for it: before reconciling, `performUpkeep` calls
+  `processAcquisitions(2)` when draws are waiting, so any paid keeper unblocks a pool → **O13**: with only
+  players, randomness and keepers acting, no day ends with a draw unsettled (`no_processor` regime: 539 draws, 179 of
+  them lost FWA's fast path, none left unsettled). Corrects R16's "then anyone processes".
+- R30. D17: O10 is the launch board at steady normal gas; after a spike prices stay higher until the prizes listed during
+  it are won again, and a creator's own markup and NFT values can exceed 1.5×: information → **O10** (restated).
+- R31. D18: the game's first 10% of markup refills the reserve while the fund is below it; above the reserve the creator
+  may claim everything → **O8** (unchanged).
+- R32. D19 (owner, 2026-11-13: "O1: option 1. Restate in gas: refunds kept at most 80,000 gas per draw, as a gate
+  fact. No contract change."): processing FWA's queue clears storage, and the keeper keeps refunds the Balancer cannot
+  see → **O1**: at most 80,000 gas per draw, averaged over a run. Measured with only keepers processing: 67,660 gas per
+  draw at 0.55 gwei, 67,072 at the 5 gwei cap; worst single call 295,284 gas. At the 5 gwei cap, 0.181 ETH over 540
+  draws, 7.8% of the creator's net (`no_processor_5_gwei`): information. After the D16 re-attack repairs (DECISIONS 77):
+  30,404 gas per draw at the cap, worst single call 100,772 gas, 0.082 ETH over 540 draws, 4.1% of the creator's net.
+  With keeper transactions measured fully cold (DECISIONS 83) and after the simplification cuts (DECISIONS 84):
+  31,118 gas per draw at the cap (31,051 at 0.55 gwei), 0.084 ETH over 540 draws, 4.2% of the creator's net; in
+  bursts that leave five draws waiting (`burst`) 51,606 per draw, worst single call 183,010 gas. Measured with
+  Foundry 1.8.1, which CI and the gate now require.
+
+## Audit of 8ec98cb decisions (owner, 2026-11-15: "Accept, reword O9")
+
+- R33. E2 accepted: a creator who raises the markup while draws are unsettled can book profit from the new board for
+  a draw priced on the old one, taken from their own reserve (0.00276 ETH in one draw at launch scale; no player is
+  affected and every prize stays backed) → **O9** restated: the 0.001 ETH bound holds with the markup unchanged.
+- R34. O13's conditions stated: settling needs an open keeper list or an active listed keeper; sales continuing needs
+  the creator to relist curated NFTs, which the regimes do → **O13** restated. No contract change.
+
+## Curated NFT pricing (owner, 2026-11-16: "Yes, remove it")
+
+- R35. "when people add the NFTs themselves, they can choose the value for that NFT. So we shouldn't be adding like a
+  percentage markup on top of that either": a curated NFT lists at the creator's value; the markup applies to Shape
+  prizes only (decision 86).
 
 ## Decisions log (history, not requirements)
 

@@ -1,0 +1,36 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.61s
+Compiler run successful!
+
+Ran 2 tests for test/HostileCollection.t.sol:HostileCollectionTest
+[PASS] test_refuseDelivery_playerRefunded_creatorRecovers() (gas: 10604765)
+Logs:
+  refused, before the deadline
+    NFT owner: 0x39cceb4FC1CA099065Ca50ED6E8A2FaFff52E67f
+    FWA listing status: 6
+    player paid (draw + randomness fee): 0.017493291227069053
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.000000000000000000
+  after refund and recovery
+    NFT owner: 0x2190d584E30F4a2396C1487Aa784428f2068CBE8
+    FWA listing status: 3
+    player paid (draw + randomness fee): 0.017493291227069053
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.000000000000000000
+
+[PASS] test_seize_afterDelivery() (gas: 10078047)
+Logs:
+    proceeds credited to the Balancer for this draw: 0.014431705930541956
+  seized after delivery
+    NFT owner: 0x2190d584E30F4a2396C1487Aa784428f2068CBE8
+    FWA listing status: 4
+    player paid (draw + randomness fee): 0.017493291227069053
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.014431705930541956
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 322.72ms (19.74ms CPU time)
+
+Ran 1 test suite in 329.40ms (322.72ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

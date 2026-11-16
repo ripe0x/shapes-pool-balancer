@@ -1,15 +1,16 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, shapeCount, unpackPlan, type Counts,
 } from '../../shared/planner';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
@@ -34,7 +35,6 @@ export const STATUS: Record<number, string> = {
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
@@ -114,32 +114,6 @@ function useBalancer(b?: Address) {
   }, [load, b]);
   useEffect(() => { refresh(); const t = setInterval(refresh, 15_000); return () => clearInterval(t); }, [refresh]);
   return { data, error, refresh };
-}
-
-const ERRORS: Record<string, string> = {
-  NoUpkeepNeeded: 'nothing to do right now',
-  WithdrawLocked: 'draws are settling on FWA; try again in a minute',
-  InsufficientSurplus: 'amount exceeds claimable surplus',
-  ReserveNotFunded: 'deposit the reserve first',
-  InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
-  Unauthorized: 'only the creator can do this',
-  NotClosed: 'close purchases first',
-  InvalidPlan: `the mix needs 1 to ${MAX_SHAPES_PER_PLAN} prizes`,
-  ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
-  ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
-  InvalidItem: 'not available for this action (check its FWA status)',
-};
-
-function explain(e: unknown): string {
-  if (e instanceof BaseError) {
-    const reverted = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
-    const name = reverted?.data?.errorName;
-    // Error(string) reverts carry their message as the reason.
-    if (name === 'Error' && reverted?.reason) return reverted.reason;
-    if (name) return ERRORS[name] ?? name;
-    return e.shortMessage;
-  }
-  return (e as Error).message;
 }
 
 function useTx(onDone: () => void) {
@@ -244,6 +218,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<string>();
   // How it works lives at #how, so it can be linked to and the back button leaves it.
   const [help, setHelpState] = useState(() => location.hash === '#how');
@@ -275,7 +250,8 @@ export function App() {
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
-  useEffect(() => { setLoaded(false); setPage(undefined); loadMine().catch(() => undefined); }, [loadMine]);
+  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
+  useEffect(() => { setLoaded(false); setPage(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -318,10 +294,12 @@ export function App() {
           {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setPage('list')}>Back to your pools</button></span>}
         </div>
       )}
-      {isConnected && !loaded && <p className="txline">Loading your pools…</p>}
+      {isConnected && !loaded && (loadFailed
+        ? <p className="txline bad">Couldn't load your pools. <button className="link" onClick={reload}>Retry</button></p>
+        : <p className="txline">Loading your pools…</p>)}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b, failure) => { open(b); setNotice(failure); loadMine(); }} />
+          onCreated={(b, failure) => { open(b); setNotice(failure); reload(); }} />
       )}
       {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setNotice(undefined); setPage('new'); }} />}
       {isConnected && loaded && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} notice={notice} />}
@@ -578,7 +556,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   // Until a curated NFT is chosen, a style's mix is sketched as if one were worth the default value; nothing is priced.
   const bonus = useMemo(() => (style ? styleBonus(style, priced.length ? base : { ...base, curatedBases: [SAMPLE_BASE] }, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = MAX_SHAPES_PER_PLAN - shapeTotal(bonus);
+  const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
   const smallUsed = Math.max(0, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
   // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
@@ -606,7 +584,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
   const ready = priced.length > 0 && total > 0;
-  const ev = ready ? describe(counts, inputs) : undefined;
+  const ev = ready ? evaluate(counts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
   const view = ev ? playerView(ev, d.vrfFee ?? 0n) : undefined;
@@ -687,7 +665,9 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       {ev && <p className="note">{vrfKnown
         ? <>Includes FWA's {eth(d.vrfFee!, 5)} ETH randomness fee.</>
         : <>FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>}
-      {ev && pausesAt <= MAX_BATCH && <p className="note error">With this mix, purchases pause while {pausesAt === 1 ? 'a draw is' : `${pausesAt} draws are`} unsettled, until {pausesAt === 1 ? 'it settles' : 'they settle'}.</p>}
+      {ev && pausesAt < MAX_BATCH && <p className="note">{pausesAt === 1
+        ? 'With this mix, each purchase waits until the previous draw settles, usually about a minute. More small Shapes let more draws run at once.'
+        : `With this mix, up to ${pausesAt - 1} draws can be settling at once; the next purchase waits until one settles, usually about a minute. More small Shapes raise the limit.`}</p>}
     </div>
   );
   const gridBlock = (
@@ -747,7 +727,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
-  const savedEv = has && bases.length ? describe(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
+  const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
   const savedView = savedEv ? playerView(savedEv, d.vrfFee ?? 0n) : undefined;
   const compare = has && savedEv && savedView && view && ev ? (
     <div className="result-block" style={{ paddingTop: 0 }}>
@@ -776,7 +756,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     const B = { address: balancer, abi: poolBalancerAbi } as const;
     const steps: Step[] = [];
     if (mode === 'new') steps.push(['Create pool', () => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer', args: [salt], value: deposit })]);
-    // Save the design before listing any NFT: the contract refuses a curated listing until a markup is configured.
+    // Save the design before listing any NFT: the contract refuses a curated listing until the design is saved.
     if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
     steps.push(...approveSteps(pub, tx, me, balancer, toList));
     if (toList.length) steps.push([`List ${nftWord(toList.length)}`, () => tx.write({ ...B, functionName: 'listCuratedBatch', args: [toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })]);
@@ -904,7 +884,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
             <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
             <li>Your ETH buys the Shapes. When one is won, the pool replaces it with the same prize, paid from your ETH and the draw payments, so the mix stays as you set it.</li>
-            <li>Your markup is part of every draw price, and it is yours. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
+            <li>Your markup is added to each Shape prize's price, and it is yours. Your NFTs carry none. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
             <li><a className="link" href="#how">More in How it works</a></li>
           </ol>
         )}
@@ -952,24 +932,21 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="small">Pool size</label><span className="big-v">{smallUsed} <small>small Shapes</small></span></div>
-              <input id="small" type="range" min={shapeTotal(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
+              <input id="small" type="range" min={shapeCount(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
                 onChange={(e) => change(setSmall)(Number(e.target.value))} />
               <p className="note">More small Shapes make curated NFTs rarer and the draw cheaper.</p>
+            </div>
+            <div className="rule">
+              <div className="ctl-row"><label className="ctl" htmlFor="markup">Your markup</label><span className="big-v">{markup}%</span></div>
+              <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
+              <p className="note">Added to the price of every Shape prize. It is yours. While the reserve is short, the first 10% refills it.</p>
+              {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>
         </div>
 
         <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{gridBlock}{playBlock}</div>
 
-        <div className="group flat">
-          <div className="ctl-row">
-            <div><h2>Your markup</h2><p className="desc">Added to the price of every prize. It is yours.</p></div>
-            <span className="big-v">{markup}%</span>
-          </div>
-          <input id="markup" aria-label="Your markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
-          <p className="note">While the reserve is short, the first 10% refills it.</p>
-          {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to prizes listed after it. Listed prizes keep their price.</p>}
-        </div>
       </section>
 
       <section className="sticky results">
@@ -1051,7 +1028,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
               <div>
                 <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
-                <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
+                <div className="s">Your value {eth(l.base)} ETH</div>
                 <div className="s">Won about {oneIn(odds(l))} draws</div>
                 {edit?.id === l.id && (
                   <div className="row" style={{ marginTop: 10 }}>
@@ -1128,9 +1105,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
     vrfFee: d.vrfFee, shapePrices: livePrices, have: d.activeShapes,
   };
-  const before = plan && bases.length ? describe(plan, inputs) : undefined;
-  const after = plan && newBases.length ? describe(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
-  const cost = (ev: ReturnType<typeof describe>) => ev.drawPrice + (d.vrfFee ?? 0n);
+  const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
+  const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
+  const cost = (ev: ReturnType<typeof evaluate>) => ev.drawPrice + (d.vrfFee ?? 0n);
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;

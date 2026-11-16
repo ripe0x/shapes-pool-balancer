@@ -1,0 +1,69 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 51 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.12s
+Compiler run successful!
+
+Ran 10 tests for test/RCFresh.t.sol:RCFreshTest
+[PASS] test_callerChosenGasSweepCannotCollectWithoutProcessing() (gas: 34488529)
+Logs:
+  first successful gas limit: 175000
+
+[PASS] test_collectTimingWithReadyReservedDrawAndPriorProceeds() (gas: 35915978)
+Logs:
+  prior proceeds wei: 22270762396605470
+  fund before wei: 1514779237603394530
+  required reserve before wei: 1552050000000000000
+  profit direct wei: 0
+  profit precollect wei: 2384788163607204
+  claimable direct wei: 1016445718748297950
+  claimable precollect wei: 1016436313748297950
+
+[PASS] test_compromisedCreatorClaimsEverythingExceptHeldPayThenKeepersClearQueue() (gas: 32021897)
+Logs:
+  closed hold wei: 49050000000000000
+  closed queue keeper pay wei: 611954500000000
+
+[PASS] test_expiredQueueHasNoOutsideProcessorAndCatchesUp() (gas: 32073679)
+Logs:
+  three keeper calls wei: 611954500000000
+
+[PASS] test_factoryRestrictionThenOpenAccessOnWaitingQueue() (gas: 31614789)
+Logs:
+  open outsider reward wei: 183707800000000
+
+[PASS] test_hostileCuratedDeliveryDoesNotStopQueueRecovery() (gas: 32671599)
+Logs:
+  buyer paid wei: 22670501479520508
+
+[PASS] test_maxPlanAndLargestPrizeThenIdle() (gas: 47397218)
+Logs:
+  largest prize backing wei: 500000000000000000
+
+[PASS] test_playerRecoversDrawPriceAfterCreatorClosesAndRandomnessStalls() (gas: 30590223)
+Logs:
+  player randomness loss wei: 1287000000000000
+
+[PASS] test_recentBlockBuyerPaysAndKeeperExpiresWithoutOutsideProcessor() (gas: 37678762)
+Logs:
+  recent block buyer VRF loss wei: 1287000000000000
+
+[PASS] test_shippedForkBaseBuyMakesHarnessPayInsteadOfPlayer() (gas: 30344894)
+Logs:
+  draw paid by harness wei: 24397386592787382
+
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 729.80ms (781.99ms CPU time)
+
+Ran 1 test suite in 770.35ms (729.80ms CPU time): 10 tests passed, 0 failed, 0 skipped (10 total tests)

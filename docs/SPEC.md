@@ -43,8 +43,7 @@ Balancer by anyone, and NFTs sent to it directly, belong to the creator; there i
 `configure(markupBps, target)`:
 
 - `markupBps`: a fixed operating markup (10% to 100%), the creator's to keep. It is the only profit in a price, so it
-  is what refills the reserve after a big win. A curated NFT lists at its value ×
-  (1 + markup). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
+  is what refills the reserve after a big win. A curated NFT lists at its value, with no markup (decision 86). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
   markup + one restocking fee per Shape inside: players pay the mint fee and keepers on top of the markup. The
   restocking fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, at the basefee of the
   listing block; it pays the keeper call that lists the prize. Prices are set when a listing is made. Existing listings keep their prices; nothing is repriced.
@@ -128,8 +127,8 @@ Who can take value out:
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything except the keeper pay held for draws not yet
-  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 5 such draws (owner decision
-  D3, 2026-11-13). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
+  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 2 such draws (owner decision
+  D3, 2026-11-13; per 2 since upkeep processes at most 2 draws per call, D16). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
   everything is reconciled. Closing stops purchases, so the held amount only falls.
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
@@ -187,6 +186,13 @@ keepers it approves (`BalancerFactory.setKeepersRestricted`, `setKeeperApproved`
 pool's creator can always run its own. The reward rules are the same either way; while restricted, a pool whose approved
 keepers stop is restocked only when its creator runs upkeep.
 
+0. process FWA's queue, up to 2 draws per call, when draws are waiting (DECISIONS 75): a draw whose request reserved a
+   staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep, and
+   the gas it burned is not paid for; if it failed for want of gas (it handed back under 400,000 gas beyond the 1/64
+   kept by the caller: FWA's notifier refuses below 290,000, and an out-of-gas hands back nothing), the whole upkeep
+   reverts `InsufficientGas`, so no call succeeds with processing starved, at any pool size. A call that settled a draw skips step 3 (restock):
+   the worst such call measures 2.98M gas, up to 3.22M with 1,024 listings, and storage refunds keep its billed gas
+   under 2.75M, so its keeper is covered; the next call restocks.
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).
 2. collect FWA owner proceeds into the Balancer.
@@ -215,9 +221,9 @@ The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
 
-`listCurated` / `listCuratedBatch` pull from the creator (approve the Balancer first) and list on FWA at
-`base × (1 + markup)`. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value;
-it is listed at that value plus the current markup, and FWA allows the change only while no draw is unsettled.
+`listCuratedBatch` pulls from the creator (approve the Balancer first) and lists on FWA at `base`, the creator's
+value, with no markup. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value,
+which is its FWA price; FWA allows the change only while no draw is unsettled.
 `withdrawCurated` withdraws an active NFT from FWA to a creator-chosen address, also only while no draw is unsettled.
 
 Failed deliveries follow FWA's rules; the Balancer adds none of its own (owner decision 2026-11-13: the Balancer is a

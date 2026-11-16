@@ -1,0 +1,16 @@
+No files changed, compilation skipped
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 7916259)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 9688868)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 22154281)
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 22154413)
+[PASS] test_noWorkCallIsPaidNothing() (gas: 8802357)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 10142625)
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 9368028)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 11507610)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 341.61ms (185.85ms CPU time)
+
+Ran 1 test suite in 346.98ms (341.61ms CPU time): 8 tests passed, 0 failed, 0 skipped (8 total tests)

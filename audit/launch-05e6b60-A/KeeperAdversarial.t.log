@@ -1,0 +1,14 @@
+No files changed, compilation skipped
+
+Ran 8 tests for test/KeeperAdversarial.t.sol:KeeperAdversarialTest
+[PASS] test_callerRefundsDoNotChangePoolPayment() (gas: 12433241)
+[PASS] test_creatorActionDuringOutstandingBatchBound() (gas: 12695582)
+[PASS] test_depositDoesNotUnlockFullIncentive() (gas: 12454379)
+[PASS] test_inflatedBidOrGasLimitDoesNotRaiseReward() (gas: 11364917)
+[PASS] test_noPurchasesDuringCreatorWork() (gas: 10967339)
+[PASS] test_selfDealingDrainsOnlyCheapCurated() (gas: 9340387)
+[PASS] test_selfDealingRepeatedLowValuePurchases() (gas: 43672488)
+[PASS] test_selfDealingSingleDrawCheapPool() (gas: 10871248)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 2.37s (14.59s CPU time)
+
+Ran 1 test suite in 2.38s (2.37s CPU time): 8 tests passed, 0 failed, 0 skipped (8 total tests)

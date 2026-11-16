@@ -17,7 +17,7 @@ contract FeeWitness {
 }
 
 /// @notice D3 re-attack: while closed, `requiredReserve()` holds keeper pay for draws not yet reconciled
-///         (one MAX_KEEPER_REWARD per MAX_RECONCILE draws). The owner requires that this hold always pays every
+///         (one MAX_KEEPER_REWARD per MAX_PROCESS = 2 draws, since D16). The owner requires that this hold always pays every
 ///         useful post-close reconcile, that nothing stays held once all draws are reconciled, that the creator can
 ///         end a closeout with nothing left, and that the hold cannot be inflated or stranded. These tests run the
 ///         real FWA pool and VRF service at the reward rule's hard gas bounds: basefee 5 gwei, bid 10 gwei, so the
@@ -63,15 +63,16 @@ contract D3ReAttackTest is ForkBase {
     }
 
     /// @notice Core D3 requirement under the split-call pattern at the gas cap, with the owner's exact motivating case:
-    ///         draws that all expire (no proceeds), reconciled ONE PER CALL. FWA processing is permissionless, so a
-    ///         five-draw batch can be reconciled across five paid calls. The batch-sized hold must pay every one.
+    ///         draws that all expire (no proceeds), reconciled ONE PER CALL. Draws bought in successive blocks expire
+    ///         in successive blocks, so upkeep (which processes FWA's queue itself, D16) can meet them one at a time:
+    ///         five paid calls for five draws. The hold must pay every one.
     function test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() public {
         // Independent absolute check of the constant the hold is built from.
         assertEq(balancer.MAX_KEEPER_REWARD(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01635 ETH at the cap");
         assertEq(_independentMaxReward(), 0.01635 ether, "0.01635 ETH");
 
-        // Five draws issued in one batch, left pending (no VRF), then closed: the worst in-flight count for one batch.
-        uint256[] memory reqs = buy(buyer, 5);
+        // Five draws issued one per block, left pending (no VRF), then closed.
+        uint256 firstExpired = buyOnePerBlock(buyer, 5);
         assertEq(pool.lastIssuedSequence(), 5, "five sequences issued");
         assertEq(balancer.reconciledSequence(), 0, "none reconciled yet");
 
@@ -79,7 +80,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, _independentMaxReward(), "owed=5 -> ceil(5/5)=1 maximum reward held");
+        assertEq(held, 3 * _independentMaxReward(), "owed=5 -> ceil(5/2)=3 maximum rewards held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
 
         // Creator pulls everything claimable, leaving exactly the hold. This is the adversarial starting point:
@@ -88,13 +89,10 @@ contract D3ReAttackTest is ForkBase {
         assertEq(address(balancer).balance, held, "only the held pay remains");
         assertEq(pool.ownerProceeds(), 0, "expired draws bring no proceeds: the hold is the sole pay source");
 
-        // Expire the pending draws (deadline is selectionTimeoutBlocks ahead of issuance), then reconcile ONE per call.
-        vm.roll(block.number + 100); // past the 30-block selection timeout
-
+        // Each block expires one more draw; upkeep processes and reconciles exactly that one. Nobody else processes.
         uint256 totalPaid;
-        for (uint256 i; i < reqs.length; ++i) {
-            // Force-expire exactly one head sequence in FWA (permissionless), so the next upkeep reconciles just one.
-            pool.processAcquisitions(1);
+        for (uint256 i; i < 5; ++i) {
+            vm.roll(firstExpired + i);
             uint64 before = balancer.reconciledSequence();
             uint256 keeperBefore = keeper.balance;
             vm.prank(keeper, keeper);
@@ -109,9 +107,9 @@ contract D3ReAttackTest is ForkBase {
             assertEq(pool.ownerProceeds(), 0, "still no proceeds flowed in");
         }
 
-        // Every useful reconcile was paid, and the batch-sized hold covered all five with room to spare.
+        // Every useful reconcile was paid, and the hold covered all five with room to spare.
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "all draws reconciled");
-        assertLt(totalPaid, held, "the one-batch hold paid all five split reconciles");
+        assertLt(totalPaid, held, "the hold paid all five split reconciles");
         assertEq(balancer.requiredReserve(), 0, "nothing held once every draw is reconciled");
 
         // Closeout ends with nothing left: the leftover of the hold is now fully claimable.
@@ -136,7 +134,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, _independentMaxReward(), "owed=2 -> one maximum reward held");
+        assertEq(held, _independentMaxReward(), "owed=2 -> ceil(2/2)=1 maximum reward held");
 
         // owed cannot be inflated after close: purchases are refused, so lastIssuedSequence is frozen.
         assertFalse(balancer.canPurchase(buyer), "closed pool admits no purchase");

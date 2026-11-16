@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ERC721} from "solady/tokens/ERC721.sol";
+import {PoolBalancer} from "../../src/PoolBalancer.sol";
 
 contract MockNFT is ERC721 {
     function name() public pure override returns (string memory) {
@@ -147,7 +148,7 @@ contract NonRefundingBuyer {
 
 interface IBalancerCreator {
     function acceptCreator() external;
-    function listCurated(address, uint256, uint256) external returns (uint256);
+    function listCuratedBatch(PoolBalancer.CuratedInput[] calldata) external returns (uint256[] memory);
     function configure(uint16, uint256) external;
     function target() external view returns (uint256);
 }
@@ -166,7 +167,9 @@ contract ReconfiguringNFT is MockNFT {
         this.approve(b, id);
         armedBalancer = b;
         armedMarkup = markupDuringPull;
-        return IBalancerCreator(b).listCurated(address(this), id, base);
+        PoolBalancer.CuratedInput[] memory one = new PoolBalancer.CuratedInput[](1);
+        one[0] = PoolBalancer.CuratedInput(address(this), id, base);
+        return IBalancerCreator(b).listCuratedBatch(one)[0];
     }
 
     function _beforeTokenTransfer(address from, address, uint256) internal override {

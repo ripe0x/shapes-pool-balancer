@@ -26,6 +26,7 @@ interface IKeeperList {
 ///        wait for ETH: each prize's price covers replacing it, so after a big win uses the reserve's spare, sales
 ///        refill it from the first MIN_MARKUP_BPS of markup while the creator keeps the markup above it. `open` needs
 ///        the reserve in ETH.
+///      - A curated NFT is listed at the creator's value, with no markup. Shape prizes carry the markup.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
 ///        listed at its backing, its Shapes mint fees and the markup on its backing, plus a restocking fee per Shape
 ///        from the basefee then. The fee is the creator's income for keeper pay: the pool's ETH pays the keeper who
@@ -68,6 +69,15 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_OPS = 5;
     /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
     uint256 internal constant MAX_RECONCILE = 5;
+    /// @dev FWA draws processed per upkeep: keeps the worst upkeep under KEEPER_MAX_GAS.
+    uint256 internal constant MAX_PROCESS = 2;
+    /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
+    ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
+    ///      so a starved failure hands back at most about 343,000 (measured, 48 to 2,048 listings). A failure with more
+    ///      than this left was not for want of gas. The proxy's
+    ///      share grows with the gas processing needs: this holds for MAX_PROCESS = 2 and FWA's six-listing
+    ///      reservations (at most about 3.3M); re-measure if either changes.
+    uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against KEEPER_MAX_GAS.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -89,11 +99,12 @@ contract PoolBalancer is ReentrancyGuard {
     //   the fund is empty). A call that does neither is paid nothing. The overhead is the gas a transaction pays
     //   outside the measured span (intrinsic gas, the keeper-list check, the reward transfer; measured 24k-46k), so
     //   the incentive is the keeper's margin at any gas price up to the cap.
-    // - A call reconciles every sequence FWA has processed (up to MAX_RECONCILE) and restocks the whole deficit (up to
-    //   MAX_OPS), and a draw FWA has not processed cannot be reconciled or paid for. FWA processing is permissionless,
-    //   so anyone can process a ready batch one draw at a time and reconcile after each: the bound is one paid call
-    //   per processed draw, not per batch (audit rc-ec5259c finding 6, accepted and budgeted by the owner: about
-    //   0.000124 ETH extra per draw at 0.55 gwei). Each paid call is at most MAX_KEEPER_REWARD and needs a processed
+    // - A call processes up to MAX_PROCESS of FWA's draws, reconciles every sequence FWA has processed (up to
+    //   MAX_RECONCILE) and, when it processed none, restocks the whole deficit (up to MAX_OPS); a draw FWA has not
+    //   processed cannot be reconciled or paid for. Draws become ready or expire one block at a time, and FWA
+    //   processing is permissionless, so a batch can be reconciled one draw per call: the bound is one paid call
+    //   per processed draw, not per batch (about 0.000124 ETH extra per draw at 0.55 gwei, within the owner's budget).
+    //   Each paid call is at most MAX_KEEPER_REWARD and needs a processed
     //   sequence (a paid draw) or a deficit (a won prize or a creator action); the splitter's margin is
     //   KEEPER_INCENTIVE per call.
     // - Restocking fee per Shape = RESTOCK_FEE_GAS x min(basefee + KEEPER_PRIORITY_CAP, KEEPER_MAX_GAS_PRICE) +
@@ -104,9 +115,9 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant KEEPER_MAX_GAS = 3_200_000;
     uint256 internal constant KEEPER_PRIORITY_CAP = 0.05 gwei;
     uint256 internal constant KEEPER_MAX_GAS_PRICE = 5 gwei;
-    /// @dev Owner-approved (D14, 2026-11-13): small against gas, about a fifth of one Shape restock at 0.5 gwei.
+    /// @dev Owner-set: small against gas, about a fifth of one Shape restock at 0.5 gwei.
     uint256 internal constant KEEPER_INCENTIVE = 0.0001 ether;
-    /// @dev Owner-approved (D14, 2026-11-13): see the reward rule above.
+    /// @dev Owner-set: see the reward rule above.
     uint256 internal constant KEEPER_OVERHEAD_GAS = 50_000;
     uint256 public constant MAX_KEEPER_REWARD = (KEEPER_MAX_GAS + KEEPER_OVERHEAD_GAS) * KEEPER_MAX_GAS_PRICE + KEEPER_INCENTIVE;
     /// @dev With RESTOCK_FEE_FLAT, covers an upkeep that reconciles one draw and restocks one Shape (measured 763k-864k
@@ -143,7 +154,6 @@ contract PoolBalancer is ReentrancyGuard {
 
     IFWAPoolFactory public immutable FWA_FACTORY;
     address public immutable FWA_IMPLEMENTATION;
-    bytes32 public immutable FWA_IMPLEMENTATION_CODEHASH;
     IShapes public immutable SHAPES;
     IShapePacks public immutable PACKS;
     IENS public immutable ENS;
@@ -156,7 +166,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint16 markupBps; // markup when listed: the creator's part of a Shape prize's price is its backing x this
+        uint16 markupBps; // Shape markup when listed (zero for curated): the creator's part of its price is its backing x this
         uint104 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
         uint104 price; // price listed on FWA
     }
@@ -247,6 +257,7 @@ contract PoolBalancer is ReentrancyGuard {
     error InsufficientSurplus();
     error ReserveNotFunded();
     error NoUpkeepNeeded();
+    error InsufficientGas();
     error InvalidBatch();
     error ProtectedAsset();
 
@@ -257,7 +268,8 @@ contract PoolBalancer is ReentrancyGuard {
     constructor(address fwaFactory, address fwaImplementation, bytes32 fwaCodehash, address shapes, address packs, address ens) {
         FWA_FACTORY = IFWAPoolFactory(fwaFactory);
         FWA_IMPLEMENTATION = fwaImplementation;
-        FWA_IMPLEMENTATION_CODEHASH = fwaCodehash;
+        // Deployed code cannot change (EIP-6780), so one check covers every clone.
+        if (fwaImplementation.codehash != fwaCodehash) revert UnreviewedImplementation();
         SHAPES = IShapes(shapes);
         PACKS = IShapePacks(packs);
         ENS = IENS(ens);
@@ -283,14 +295,11 @@ contract PoolBalancer is ReentrancyGuard {
         factory = IKeeperList(msg.sender); // the BalancerFactory, in the same transaction as the clone
 
         IFWAPoolFactory fwa = FWA_FACTORY;
-        if (FWA_IMPLEMENTATION.codehash != FWA_IMPLEMENTATION_CODEHASH) revert UnreviewedImplementation();
         // A staging cap would make restocking while draws are unsettled revert (FWA StagingQueueFull), and with it upkeep.
         if (fwa.maxAcquisitionsPerTx() != MAX_BATCH || fwa.maxStagedListings() != 0) revert UnsupportedFWAConfig();
-        // Reverts inside FWA if the factory's implementation is not the reviewed one.
+        // FWA reverts unless its implementation is the reviewed one, clones exactly that, and initialises the pool
+        // with this contract as owner.
         address p = fwa.createPool(bytes32(0), FWA_IMPLEMENTATION);
-        if (fwa.poolImplementation(p) != FWA_IMPLEMENTATION || IFWAPool(p).owner() != address(this)) {
-            revert UnreviewedImplementation();
-        }
         pool = IFWAPool(p);
         IFWAPool(p).setPurchaseOperator(address(this));
         SHAPES.setApprovalForAll(p, true);
@@ -377,19 +386,8 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 base;
     }
 
-    /// @notice Pull an NFT from the creator (approve this contract first) and list it on FWA at `base` plus the markup.
-    function listCurated(address collection, uint256 tokenId, uint256 base)
-        external
-        onlyCreator
-        nonReentrant
-        returns (uint256 listingId)
-    {
-        _collect();
-        uint256 price = _pullCurated(collection, tokenId, base);
-        listingId = pool.listNFT(collection, tokenId, price);
-        _recordCurated(listingId, collection, tokenId, base, price);
-    }
-
+    /// @notice Pull up to 20 NFTs from the creator (approve this contract first) and list each on FWA at its `base`
+    ///         (its price; curated NFTs carry no markup).
     function listCuratedBatch(CuratedInput[] calldata inputs)
         external
         onlyCreator
@@ -410,18 +408,18 @@ contract PoolBalancer is ReentrancyGuard {
         }
     }
 
-    /// @notice Set a curated NFT's value; it is listed at that value plus the current markup.
+    /// @notice Set a curated NFT's value, which is its FWA price.
     ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
         Item storage it = _items[listingId];
         if (it.kind != CURATED || it.state != ACTIVE) revert InvalidItem();
-        uint256 price = _priced(newBase);
+        _checkValue(newBase);
         it.base = uint104(newBase);
-        if (price != it.price) {
-            pool.updatePrice(listingId, price);
-            it.price = uint104(price);
+        if (newBase != it.price) {
+            pool.updatePrice(listingId, newBase);
+            it.price = uint104(newBase);
         }
-        emit CuratedRepriced(listingId, newBase, price);
+        emit CuratedRepriced(listingId, newBase, newBase);
     }
 
     /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
@@ -500,13 +498,29 @@ contract PoolBalancer is ReentrancyGuard {
     function unlistShapes(uint256[] calldata listingIds) external onlyCreator nonReentrant {
         uint256 n = listingIds.length;
         if (n == 0 || n > 20) revert InvalidBatch();
-        uint256[] memory ids = listingIds;
-        for (uint256 i; i < n; ++i) {
-            Item storage it = _items[ids[i]];
-            if (it.kind != SHAPE || it.state != ACTIVE) revert InvalidItem();
-        }
         _collect();
-        emit ShapesUnlisted(n, _withdrawAndRedeem(pool, ids));
+        IFWAPool p = pool;
+        uint256[] memory lids = listingIds;
+        uint256[] memory tokenIds = new uint256[](n);
+        uint8[] memory sizes = new uint8[](n);
+        for (uint256 i; i < n; ++i) {
+            uint256 lid = lids[i];
+            Item storage it = _items[lid];
+            if (it.kind != SHAPE) revert InvalidItem();
+            _removeActive(lid); // reverts InvalidItem unless active, so a repeated id too
+            (,,, tokenIds[i],,,,) = p.listings(lid);
+            uint8 d = it.denom;
+            sizes[i] = d;
+            --activeShapes[d];
+            prizeWeight -= _weight(d);
+            delete _items[lid];
+        }
+        p.withdrawListingsTo(lids, address(this));
+        uint256 eth;
+        for (uint256 i; i < n; ++i) {
+            eth += _redeem(sizes[i], tokenIds[i]);
+        }
+        emit ShapesUnlisted(n, eth);
         _creatorChanged();
     }
 
@@ -603,6 +617,27 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 gasStart = gasleft();
         IFWAPool p = pool;
 
+        // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
+        //    also only ever takes the queue's head), and a ready draw never expires, so it and every draw behind it wait
+        //    for an explicit processAcquisitions that nobody else is bound to call. FWA stops at a draw still waiting for its randomness; a failure here never blocks the rest of upkeep.
+        //    The draws it settles are reconciled below in the same call, so the work is paid like any reconcile.
+        //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
+        //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing). Processing that
+        //    failed for want of gas reverts the whole upkeep instead, at any pool size: a call never succeeds with
+        //    processing starved, so a gas estimate is enough to process.
+        bool processed;
+        uint64 next = p.nextSequenceToProcess();
+        if (next <= p.lastIssuedSequence()) {
+            uint256 g = gasleft();
+            try p.processAcquisitions(MAX_PROCESS) {
+                processed = p.nextSequenceToProcess() != next;
+            } catch {
+                uint256 left = gasleft();
+                if (left < g / 64 + PROCESS_STARVED_GAS) revert InsufficientGas();
+                gasStart -= g - left;
+            }
+        }
+
         // 1. Collect settled proceeds before reconciling: each draw was priced on the listings still tracked, so the
         //    split must see them (reconciling first would drop the won listing and skew the share).
         bool collected = _collect() != 0;
@@ -618,10 +653,12 @@ contract PoolBalancer is ReentrancyGuard {
         bool reconciled = s != reconciledSequence;
         if (reconciled) reconciledSequence = s;
 
-        // 3. Restock while open.
+        // 3. Restock while open, in a call that settled no draw: a draw that reserved FWA's maximum six listings costs
+        //    up to about 1.15M gas to process, so processing two and restocking in one call can pass KEEPER_MAX_GAS and
+        //    leave the keeper unpaid for the excess. The next call restocks.
         uint256 ops;
         bool wasSetup = creatorWork;
-        if (enabled && !p.retired() && !FWA_FACTORY.globalWithdrawOnly()) {
+        if (!processed && enabled && !FWA_FACTORY.globalWithdrawOnly()) {
             uint256 fee = SHAPES.mintFee();
             if (fee <= mintFeeCap) {
                 ops = _fillDeficit(p, fee);
@@ -652,28 +689,6 @@ contract PoolBalancer is ReentrancyGuard {
             it.state = PENDING;
         }
         emit ItemDrawn(lid, kind, d, delivered);
-    }
-
-    /// @dev Stop tracking the given prize listings, withdraw them from FWA and redeem each here.
-    function _withdrawAndRedeem(IFWAPool p, uint256[] memory lids) internal returns (uint256 eth) {
-        uint256 n = lids.length;
-        uint256[] memory tokenIds = new uint256[](n);
-        uint8[] memory sizes = new uint8[](n);
-        for (uint256 i; i < n; ++i) {
-            uint256 lid = lids[i];
-            (,,, tokenIds[i],,,,) = p.listings(lid);
-            Item storage it = _items[lid];
-            uint8 d = it.denom;
-            sizes[i] = d;
-            --activeShapes[d];
-            prizeWeight -= _weight(d);
-            _removeActive(lid);
-            delete _items[lid];
-        }
-        p.withdrawListingsTo(lids, address(this));
-        for (uint256 i; i < n; ++i) {
-            eth += _redeem(sizes[i], tokenIds[i]);
-        }
     }
 
     /// @dev Redeem one prize token this contract holds for its exact backing. Shapes and Draw Packs share
@@ -774,13 +789,16 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice ETH that must stay here while open: restoring the target from tracked inventory, one largest prize for
     ///         each unreconciled draw and one spare (so a big win is restocked), and a maximum keeper reward for each
-    ///         upkeep call that work takes plus one. While closed: one maximum keeper reward per MAX_RECONCILE draws FWA
-    ///         issued that are not yet reconciled, so useful reconciliation after closing is always paid (audit
-    ///         rc-ec5259c finding 3). Closing stops purchases, so this only falls as keepers reconcile.
+    ///         upkeep call that work takes plus one (calls that only process FWA's queue are paid from the proceeds of
+    ///         the draws they settle or, for expired draws, from the unspent largest-prize allowance). While closed:
+    ///         one maximum keeper reward per MAX_PROCESS draws FWA issued that are not yet reconciled, so useful
+    ///         processing and reconciliation after closing is always paid. Closing stops purchases, so this only falls
+    ///         as keepers reconcile.
     function requiredReserve() public view returns (uint256 r) {
         if (!enabled) {
+            // One maximum reward per MAX_PROCESS draws: each upkeep may need to process the draws it reconciles.
             uint256 owed = pool.lastIssuedSequence() - reconciledSequence;
-            return (owed + MAX_RECONCILE - 1) / MAX_RECONCILE * MAX_KEEPER_REWARD;
+            return (owed + MAX_PROCESS - 1) / MAX_PROCESS * MAX_KEEPER_REWARD;
         }
         uint256 plan = target;
         // Restocking runs at any fee up to the accepted cap; above it, the live fee is the higher of the two.
@@ -855,23 +873,22 @@ contract PoolBalancer is ReentrancyGuard {
         if (fund < requiredReserve()) profit += uint128(mine);
     }
 
-    function _priced(uint256 base) internal view returns (uint256 price) {
-        price = base * (BPS + markupBps) / BPS;
-        if (base == 0 || price > type(uint104).max) revert ValueTooHigh();
+    function _checkValue(uint256 base) internal pure {
+        if (base == 0 || base > type(uint104).max) revert ValueTooHigh();
     }
 
     function _pullCurated(address collection, uint256 tokenId, uint256 base) internal returns (uint256 price) {
-        if (markupBps == 0) revert InvalidConfig(); // configure first, so NFTs list at the creator's markup
+        if (markupBps == 0) revert InvalidConfig(); // configure first: a pool holds NFTs only once it has a design
         if (collection == address(SHAPES) || collection == address(PACKS)) revert ShapesNotCurated();
         IERC721Min(collection).transferFrom(msg.sender, address(this), tokenId);
         if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert InvalidItem();
         IERC721Min(collection).approve(address(pool), tokenId);
-        // `configure` is guarded, so a collection's calls cannot change the markup this listing (or batch) uses.
-        price = _priced(base);
+        _checkValue(base);
+        price = base;
     }
 
     function _recordCurated(uint256 lid, address collection, uint256 tokenId, uint256 base, uint256 price) internal {
-        _items[lid] = Item(CURATED, 0, ACTIVE, markupBps, uint104(base), uint104(price));
+        _items[lid] = Item(CURATED, 0, ACTIVE, 0, uint104(base), uint104(price));
         _addActive(lid);
         emit CuratedListed(lid, collection, tokenId, base, price);
     }
@@ -935,15 +952,15 @@ contract PoolBalancer is ReentrancyGuard {
         return RESTOCK_FEE_GAS * _rewardPrice(type(uint256).max) + RESTOCK_FEE_FLAT;
     }
 
-    /// @dev A Shape prize's price before restocking fees: what it costs to create plus the markup on its backing.
     /// @dev A prize's weight in the fill gate: 1 / its backing. Listed prices keep the markup and fees of their listing
     ///      block, so weighing by price would let a lower markup or mint fee push a full board under the gate with
-    ///      nothing for upkeep to restock (independent audit E2). Backing is fixed per size, so the gate measures the
+    ///      nothing for upkeep to restock. Backing is fixed per size, so the gate measures the
     ///      mix, not prices.
     function _weight(uint256 d) internal pure returns (uint256) {
         return INVERSE_WEIGHT_NUMERATOR / _amount(d);
     }
 
+    /// @dev A Shape prize's price before restocking fees: what it costs to create plus the markup on its backing.
     function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
         return _cost(d, fee) + _amount(d) * markup / BPS;
     }

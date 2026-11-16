@@ -19,7 +19,6 @@ export const chain = chainId === 31337 ? localFork : mainnet;
 export const FACTORY = import.meta.env.VITE_FACTORY as Address;
 export const FROM_BLOCK = BigInt(import.meta.env.VITE_FROM_BLOCK ?? 0);
 export const FWA_POOL_URL = (pool: string) => `https://pools.fwa.fun/pools/${pool}`;
-export const ETHERSCAN = (a: string) => `https://etherscan.io/address/${a}`;
 
 // WalletConnect (mobile and QR wallets) is offered only when a project ID is configured; browser wallets need none.
 const wcProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined;

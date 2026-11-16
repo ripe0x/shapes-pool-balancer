@@ -1,0 +1,353 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+import {ForkBase} from "./utils/ForkBase.sol";
+import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {BalancerFactory} from "../src/BalancerFactory.sol";
+import {MockNFT} from "./utils/Mocks.sol";
+
+contract FeeContext {
+    uint256 public base;
+    uint256 public bid;
+    function capture() external { base = block.basefee; bid = tx.gasprice; }
+}
+
+// An untrusted curated collection that accepts custody in FWA, then refuses delivery from it.
+contract HostileCurated is MockNFT {
+    address public pool;
+    bool public armed;
+    function arm(address p) external { pool = p; armed = true; }
+    function _beforeTokenTransfer(address from, address, uint256) internal view override {
+        if (armed && from == pool) revert("delivery refused");
+    }
+}
+
+interface IRefunds { function withdrawAcquisitionRefund() external returns (uint256); }
+interface IReserved { function reservedListingCount(uint64 sequence) external view returns (uint256); }
+
+contract RCFreshTest is ForkBase {
+    FeeContext internal context;
+
+    function setUp() public {
+        setUpFork();
+        vm.fee(0.5 gwei);
+        vm.txGasPrice(0.55 gwei);
+        context = new FeeContext();
+    }
+
+    function _context() internal {
+        context.capture();
+        assertEq(context.base(), 0.5 gwei, "basefee in a state call");
+        assertEq(context.bid(), 0.55 gwei, "gas price in a state call");
+    }
+
+    function _launch() internal {
+        createBalancer(10 ether);
+        uint256[16] memory c;
+        (c[0], c[9], c[1], c[2], c[3]) = (24, 8, 12, 2, 1);
+        vm.prank(creator);
+        balancer.configure(2500, plan16(c));
+        listCurated(1, 0.2 ether);
+        vm.prank(creator);
+        balancer.open();
+        assertGt(fillUp(), 0, "setup reached");
+        assertEq(balancer.admissionStatus(), 0, "launch board open");
+    }
+
+    function _buyAs(address who, uint256 count) internal returns (uint256[] memory ids) {
+        uint256 version = pool.inventoryVersion();
+        (,, uint256 total) = pool.quoteAcquisitionPrice(count);
+        vm.prank(who, who);
+        ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, version, block.timestamp + 1);
+    }
+
+    function test_recentBlockBuyerPaysAndKeeperExpiresWithoutOutsideProcessor() public {
+        vm.createSelectFork("mainnet", 26_414_803);
+        vm.fee(0.5 gwei);
+        vm.txGasPrice(0.55 gwei);
+        context = new FeeContext();
+        address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
+        packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("recentPacksAdmin"), "Recent Packs", "RPACK", uint256(2)));
+        PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
+        factory = new BalancerFactory(address(impl), keeperAdmin);
+        nft = new MockNFT();
+        vm.deal(creator, 100 ether);
+        vm.deal(buyer, 100 ether);
+        vm.deal(keeper, 1 ether);
+        _context();
+        _launch();
+        (uint256 fee, uint256 vrf, uint256 total) = pool.quoteAcquisitionPrice(1);
+        uint256 before = buyer.balance;
+        _buyAs(buyer, 1);
+        assertEq(before - buyer.balance, total, "real buyer paid recent-block quote");
+        vm.roll(vm.getBlockNumber() + 40);
+        assertGt(_keeper(), 0, "keeper processes expiration");
+        vm.prank(buyer, buyer);
+        uint256 refund = IRefunds(address(pool)).withdrawAcquisitionRefund();
+        assertEq(refund, fee, "recent-block draw price refunded");
+        assertEq(before - buyer.balance, vrf, "recent-block buyer bears VRF fee");
+        emit log_named_uint("recent block buyer VRF loss wei", vrf);
+    }
+
+    function test_shippedForkBaseBuyMakesHarnessPayInsteadOfPlayer() public {
+        _context();
+        _launch();
+        (,, uint256 total) = pool.quoteAcquisitionPrice(1);
+        uint256 playerBefore = buyer.balance;
+        uint256 harnessBefore = address(this).balance;
+        buy(buyer, 1); // inherited shipped helper, deliberately demonstrated here
+        assertEq(buyer.balance, playerBefore, "buyer named in helper paid zero");
+        assertEq(harnessBefore - address(this).balance, total, "test harness paid the draw");
+        emit log_named_uint("draw paid by harness wei", total);
+    }
+
+    function _keeper() internal returns (uint256 reward) {
+        vm.prank(keeper, keeper);
+        reward = balancer.performUpkeep();
+    }
+
+    function test_expiredQueueHasNoOutsideProcessorAndCatchesUp() public {
+        _context();
+        _launch();
+        _buyAs(buyer, 5);
+        assertEq(pool.unsettledAcquisitionCount(), 5, "five pending real FWA draws");
+        vm.prank(keeper, keeper);
+        (bool early,) = address(balancer).call(abi.encodeCall(balancer.performUpkeep, ()));
+        assertFalse(early, "no paid work before randomness or deadline");
+        vm.roll(vm.getBlockNumber() + 40);
+        uint256 paid;
+        for (uint256 i; i < 3; ++i) {
+            uint256 before = pool.nextSequenceToProcess();
+            uint256 r = _keeper();
+            assertGt(r, 0, "keeper paid for processing");
+            assertEq(pool.nextSequenceToProcess() - before, i < 2 ? 2 : 1, "queue hard cap two per call");
+            paid += r;
+        }
+        assertEq(pool.unsettledAcquisitionCount(), 0, "all expired draws settled");
+        assertEq(balancer.reconciledSequence(), 5, "all draws reconciled");
+        emit log_named_uint("three keeper calls wei", paid);
+    }
+
+    function test_compromisedCreatorClaimsEverythingExceptHeldPayThenKeepersClearQueue() public {
+        _context();
+        _launch();
+        _buyAs(buyer, 5);
+        // Treat creator as compromised. It can close and take every claimable wei immediately.
+        vm.prank(creator);
+        balancer.close();
+        uint256 hold = balancer.requiredReserve();
+        assertEq(hold, 3 * balancer.MAX_KEEPER_REWARD(), "one maximum reward per two waiting draws");
+        uint256 claim = balancer.withdrawableSurplus();
+        vm.prank(creator);
+        balancer.claimSurplus(claim, creator);
+        assertEq(address(balancer).balance, hold, "empty surplus bucket, held pay remains");
+        vm.roll(vm.getBlockNumber() + 40);
+        uint256 paid;
+        for (uint256 i; i < 3; ++i) paid += _keeper();
+        assertEq(balancer.reconciledSequence(), 5, "keepers clear real FWA queue");
+        assertGt(paid, 0, "keeper received ETH");
+        assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "unused hold becomes claimable");
+        emit log_named_uint("closed hold wei", hold);
+        emit log_named_uint("closed queue keeper pay wei", paid);
+    }
+
+    function test_callerChosenGasSweepCannotCollectWithoutProcessing() public {
+        _context();
+        _launch();
+        _buyAs(buyer, 1);
+        vm.roll(vm.getBlockNumber() + 40);
+        uint64 next = pool.nextSequenceToProcess();
+        uint256 bal = address(balancer).balance;
+        uint256 snap = vm.snapshotState();
+        uint256 firstSuccess;
+        for (uint256 limit = 150_000; limit <= 800_000; limit += 25_000) {
+            vm.prank(keeper, keeper);
+            (bool ok,) = address(balancer).call{gas: limit}(abi.encodeCall(balancer.performUpkeep, ()));
+            if (ok) {
+                assertGt(pool.nextSequenceToProcess(), next, "paid call must process real queue");
+                if (firstSuccess == 0) firstSuccess = limit;
+            } else {
+                assertEq(pool.nextSequenceToProcess(), next, "failed call rolls back queue");
+                assertEq(address(balancer).balance, bal, "failed call draws no keeper pay");
+            }
+            vm.revertToState(snap);
+        }
+        assertGt(firstSuccess, 0, "some caller chosen limit can settle");
+        assertGt(_keeper(), 0, "adequate gas is paid");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "queue recovers");
+        emit log_named_uint("first successful gas limit", firstSuccess);
+    }
+
+    function test_playerRecoversDrawPriceAfterCreatorClosesAndRandomnessStalls() public {
+        _context();
+        _launch();
+        (uint256 fee, uint256 vrf, uint256 total) = pool.quoteAcquisitionPrice(1);
+        assertEq(total, fee + vrf, "absolute FWA quote components");
+        assertGt(vrf, 0.0005 ether, "nonzero real randomness cost");
+        uint256 before = buyer.balance;
+        _buyAs(buyer, 1);
+        assertEq(before - buyer.balance, total, "player paid real quote");
+        vm.prank(creator);
+        balancer.close();
+        vm.roll(vm.getBlockNumber() + 40);
+        assertGt(_keeper(), 0, "keeper expired draw despite closed pool");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "expired draw processed");
+        vm.prank(buyer, buyer);
+        uint256 refund = IRefunds(address(pool)).withdrawAcquisitionRefund();
+        assertEq(refund, fee, "buyer recovered the draw-price portion");
+        assertEq(before - buyer.balance, vrf, "buyer bears only the randomness fee");
+        emit log_named_uint("player randomness loss wei", vrf);
+    }
+
+    function test_factoryRestrictionThenOpenAccessOnWaitingQueue() public {
+        _context();
+        _launch();
+        _buyAs(buyer, 2);
+        vm.roll(vm.getBlockNumber() + 40);
+        vm.prank(keeperAdmin);
+        factory.setKeepersRestricted(true);
+        vm.prank(stranger, stranger);
+        (bool outsider,) = address(balancer).call(abi.encodeCall(balancer.performUpkeep, ()));
+        assertFalse(outsider, "unapproved outsider cannot take pay");
+        assertEq(pool.unsettledAcquisitionCount(), 2, "failed upkeep left queue waiting");
+        vm.prank(keeperAdmin);
+        factory.setKeeperApproved(keeper, true);
+        assertGt(_keeper(), 0, "approved keeper earns processing pay");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "approved keeper cleared queue");
+        vm.prank(keeperAdmin);
+        factory.setKeepersRestricted(false);
+        _buyAs(buyer, 1);
+        vm.roll(vm.getBlockNumber() + 40);
+        vm.prank(stranger, stranger);
+        uint256 reward = balancer.performUpkeep();
+        assertGt(reward, 0, "open access pays any useful caller");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "outsider cleared later queue");
+        emit log_named_uint("open outsider reward wei", reward);
+    }
+
+    function test_collectTimingWithReadyReservedDrawAndPriorProceeds() public {
+        _context();
+        _launch();
+        uint256 free = balancer.withdrawableSurplus();
+        vm.prank(creator);
+        balancer.claimSurplus(free, creator);
+        assertEq(balancer.withdrawableSurplus(), 0, "fund starts at reserve");
+        uint256[] memory active = balancer.getActiveIds();
+        uint256 shapeSlot;
+        for (uint256 i; i < active.length; ++i) {
+            (uint8 kind,,,,) = balancer.items(active[i]);
+            if (kind == 2) {
+                (,,,,,, shapeSlot,) = pool.listings(active[i]);
+                break;
+            }
+        }
+        assertGt(shapeSlot, 0, "Shape available");
+        uint256 c = _buyAs(buyer, 1)[0];
+        fulfill(c, wordForSlot(shapeSlot));
+        assertGt(pool.ownerProceeds(), 0, "first Shape sale accrued proceeds");
+        uint256 a = _buyAs(buyer, 1)[0];
+        assertGt(_keeper(), 0, "upkeep stages a replacement while a waits");
+        uint256 b = _buyAs(buyer, 1)[0];
+        uint64 bSeq = pool.lastIssuedSequence();
+        uint256 reserved = IReserved(address(pool)).reservedListingCount(bSeq);
+        assertGt(reserved, 0, "later draw reserved staged restock");
+        fulfill(a, 7);
+        assertGt(pool.ownerProceeds(), 0, "prior draw has proceeds before later draw processes");
+        fulfill(b, 11);
+        assertGt(pool.unsettledAcquisitionCount(), 0, "reserved draw awaits processing");
+        uint256 ownerBefore = pool.ownerProceeds();
+        uint256 profitBefore = balancer.profit();
+        uint256 reserveBefore = balancer.requiredReserve();
+        uint256 fundBefore = address(balancer).balance - profitBefore;
+        // Move the fund to the boundary where collecting only prior proceeds leaves it short,
+        // but collecting both draws together may put it above the reserve.
+        uint256 desiredShortfall = ownerBefore + 0.015 ether;
+        assertGt(reserveBefore - fundBefore, desiredShortfall, "can reach reserve boundary by real deposit");
+        vm.prank(creator);
+        balancer.depositETH{value: reserveBefore - fundBefore - desiredShortfall}();
+        fundBefore = address(balancer).balance - profitBefore;
+        assertEq(reserveBefore - fundBefore, desiredShortfall, "boundary reached");
+        uint256 snap = vm.snapshotState();
+        _keeper();
+        uint256 directProfit = balancer.profit() - profitBefore;
+        uint256 directClaimable = balancer.withdrawableSurplus();
+        uint256 directUnsettled = pool.unsettledAcquisitionCount();
+        vm.revertToState(snap);
+        balancer.collectProceeds(); // the gate's extra pre-collection path
+        _keeper();
+        uint256 precollectProfit = balancer.profit() - profitBefore;
+        uint256 precollectClaimable = balancer.withdrawableSurplus();
+        assertEq(directUnsettled, 0, "direct keeper processed draw");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "precollect path processed draw");
+        emit log_named_uint("prior proceeds wei", ownerBefore);
+        emit log_named_uint("fund before wei", fundBefore);
+        emit log_named_uint("required reserve before wei", reserveBefore);
+        emit log_named_uint("profit direct wei", directProfit);
+        emit log_named_uint("profit precollect wei", precollectProfit);
+        emit log_named_uint("claimable direct wei", directClaimable);
+        emit log_named_uint("claimable precollect wei", precollectClaimable);
+    }
+
+    function test_maxPlanAndLargestPrizeThenIdle() public {
+        _context();
+        createBalancer(10 ether);
+        uint256[16] memory c;
+        c[0] = 79;
+        c[3] = 1; // the largest prize on the launch board
+        vm.prank(creator);
+        balancer.configure(10_000, plan16(c));
+        listCurated(1, 0.2 ether);
+        vm.prank(creator);
+        balancer.open();
+        assertGt(fillUp(), 0, "80 prize hard bound reached");
+        assertEq(balancer.admissionStatus(), 0, "max plan sells");
+        uint256[] memory ids = _buyAs(buyer, 1);
+        uint256[] memory active = balancer.getActiveIds();
+        uint256 tokenId;
+        uint256 slot;
+        for (uint256 i; i < active.length; ++i) {
+            (uint8 kind, uint8 denom,,,) = balancer.items(active[i]);
+            if (kind == 2 && denom == 3) {
+                (,,, tokenId,,, slot,) = pool.listings(active[i]);
+                break;
+            }
+        }
+        assertGt(slot, 0, "largest listing reached");
+        fulfill(ids[0], wordForSlot(slot));
+        assertEq(shapes.ownerOf(tokenId), buyer, "0.5 ETH prize delivered");
+        // The keeper owns queue processing and restocking after this large win.
+        for (uint256 i; i < 4; ++i) {
+            vm.prank(keeper, keeper);
+            try balancer.performUpkeep() {} catch { break; }
+        }
+        assertEq(pool.unsettledAcquisitionCount(), 0, "draw settled");
+        assertEq(balancer.reconciledSequence(), 1, "draw reconciled");
+        emit log_named_uint("largest prize backing wei", shapes.backingOf(tokenId));
+    }
+
+    function test_hostileCuratedDeliveryDoesNotStopQueueRecovery() public {
+        _context();
+        createBalancer(10 ether);
+        uint256[16] memory c;
+        (c[0], c[9], c[1], c[2], c[3]) = (24, 8, 12, 2, 1);
+        vm.prank(creator);
+        balancer.configure(2500, plan16(c));
+        HostileCurated bad = new HostileCurated();
+        bad.mint(creator, 9);
+        vm.startPrank(creator);
+        bad.approve(address(balancer), 9);
+        uint256 lid = balancer.listCurated(address(bad), 9, 0.2 ether);
+        balancer.open();
+        vm.stopPrank();
+        fillUp();
+        (,,,,,, uint256 slot,) = pool.listings(lid);
+        assertGt(slot, 0, "hostile listing active");
+        bad.arm(address(pool));
+        uint256[] memory ids = _buyAs(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        for (uint256 i; i < 4 && pool.unsettledAcquisitionCount() != 0; ++i) _keeper();
+        assertEq(pool.unsettledAcquisitionCount(), 0, "failed delivery did not freeze FWA queue");
+        assertTrue(bad.ownerOf(9) != buyer, "hostile collection withheld NFT");
+        emit log_named_uint("buyer paid wei", pool.acquisitionFee());
+    }
+}

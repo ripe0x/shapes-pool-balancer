@@ -108,11 +108,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, word: big
     const fh = await wallet.writeContract({ address: VRF_SERVICE, abi: serviceAbi, functionName: 'rawFulfillRandomWords', args: [id as bigint, [BigInt(keccak256(toHex(word * 1000n + BigInt(s))))]], account: coord, chain: null, gas: 5_000_000n });
     await pub.waitForTransactionReceipt({ hash: fh });
   }
-  const unsettled = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'unsettledAcquisitionCount' });
-  if (unsettled) {
-    const ph = await wallet.writeContract({ address: pool, abi: fwaPoolAbi, functionName: 'processAcquisitions', args: [5n], account: ACCTS[0], chain: null });
-    await pub.waitForTransactionReceipt({ hash: ph });
-  }
+  // Nobody processes FWA's queue here: draws the randomness fast path skips wait for the keeper's upkeep (D16).
 }
 
 async function run() {
@@ -292,7 +288,7 @@ async function run() {
 
 /** Every reward stays within the per-call maximum; outside creator work the contract also caps it by the restocking fees of the prizes listed. */
 function checkAudit(k: Keeper) {
-  const rows = k.audit.map((a) => ({ fn: a.fn, gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
+  const rows = k.audit.map((a) => ({ gasUsed: Number(a.gasUsed), measuredGas: Number(a.measuredGas), rewardWei: a.reward.toString(), costWei: a.cost.toString() }));
   console.table(rows);
   for (const a of k.audit) assert.ok(a.reward <= MAX_KEEPER_REWARD, `reward ${a.reward} above the maximum (${a.hash})`);
   console.log('✓ rewards within MAX_KEEPER_REWARD for', k.audit.length, 'keeper txs');

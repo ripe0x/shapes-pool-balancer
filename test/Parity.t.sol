@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice Records real FWA prices, odds and reserves on a fork for the TypeScript planner parity
 ///         test (shared/planner.test.ts). Regenerate with: forge test --match-path test/Parity.t.sol

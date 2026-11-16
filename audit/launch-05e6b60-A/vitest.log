@@ -1,0 +1,14 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-launch-05e6b60-A
+
+ ✓ shared/planner.test.ts (17 tests) 4ms
+ ✓ shared/design.test.ts (12 tests) 5ms
+ ✓ app/src/wallet.test.ts (4 tests) 10ms
+ ✓ keeper/keeper.test.ts (12 tests) 2ms
+ ✓ app/src/tx.test.ts (6 tests) 6ms
+
+ Test Files  5 passed (5)
+      Tests  51 passed (51)
+   Start at  21:43:43
+   Duration  460ms (transform 172ms, setup 0ms, collect 681ms, tests 26ms, environment 1ms, prepare 246ms)
+

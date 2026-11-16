@@ -301,8 +301,6 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .group-head { display: flex; gap: 18px; align-items: flex-start; padding: 28px 32px; border-bottom: 1px solid var(--line); }
 .group-body { padding: 32px; display: flex; flex-direction: column; gap: 40px; }
 .group-body.nfts-list { gap: 16px; }
-.group.flat { padding: 28px 32px; }
-.group.flat input[type="range"] { margin-top: 18px; }
 .mk { flex: none; margin-top: 6px; display: flex; gap: 3px; }
 .mk-nft { width: 18px; height: 18px; border: 2px solid var(--ink); }
 .mk-shapes span { width: 8px; height: 18px; }
@@ -335,7 +333,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .design .rm { align-self: flex-end; padding-bottom: 14px; font-size: 14px; }
 .design .chooser { padding: 0 0 8px; }
 @media (max-width: 640px) {
-  .group-head, .group-body, .group.flat { padding: 20px; }
+  .group-head, .group-body { padding: 20px; }
   .tiles { grid-template-columns: 1fr; }
   .nft-empty, .nft-row { flex-wrap: wrap; }
   .nft-empty .btn { width: 100%; }

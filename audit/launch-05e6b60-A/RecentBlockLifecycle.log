@@ -1,0 +1,9 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.50s
+Compiler run successful!
+
+Ran 1 test for test/audit/launch-A/RecentBlockLifecycle.t.sol:RecentBlockLifecycleTest
+[PASS] test_recentBlockPurchaseExpiryCloseout() (gas: 6680091)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.28s (4.98s CPU time)
+
+Ran 1 test suite in 6.28s (6.28s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
