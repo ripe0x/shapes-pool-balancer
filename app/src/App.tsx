@@ -825,7 +825,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     <div className="group">
       <div className="group-head">
         <span className="mk mk-nft" aria-hidden="true" />
-        <div><h2>Curated NFTs</h2><p className="desc">The rare prizes, chosen from your wallet. A higher value makes one rarer.</p></div>
+        <div><h2>Curated NFTs</h2><p className="desc">The rare prizes, chosen from your wallet. The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.</p></div>
       </div>
       <div className="group-body nfts-list">
         {listed.map((l) => (
@@ -940,6 +940,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Your markup</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
               <p className="note">Added to the price of every Shape prize. It is yours. While the reserve is short, the first 10% refills it.</p>
+              <p className="note" style={{ marginTop: 6 }}>Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>

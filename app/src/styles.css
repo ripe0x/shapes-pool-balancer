@@ -347,8 +347,8 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .results .grid100 { margin: 16px 0; }
 @media (min-width: 641px) {
   .results .figure { font-size: 60px; }
-  .results .grid100 { grid-template-columns: repeat(10, 28px); }
-  .results .grid100 > span, .results .grid100 .cell { width: 28px; height: 28px; }
+  .results .grid100 { grid-template-columns: repeat(10, minmax(0, 28px)); }
+  .results .grid100 > span, .results .grid100 .cell { width: auto; height: auto; aspect-ratio: 1; }
 }
 .results .legend { margin-top: 14px; }
 .results .kv { min-height: 44px; }
