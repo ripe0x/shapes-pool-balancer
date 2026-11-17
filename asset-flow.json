@@ -9,7 +9,14 @@
     "test/scenario/FlowBreakdown.t.sol",
     "test/utils/FlowBreakdown.sol",
     "test/utils/ForkBase.sol",
-    "test/utils/ReceiptGas.sol"
+    "test/utils/ReceiptGas.sol",
+    "test/ReserveCapital.t.sol",
+    "test/ReserveEconomicReview.t.sol",
+    "test/ReserveSecurityReview.t.sol",
+    "test/ReserveCapitalMatrix.t.sol",
+    "test/fixtures/keeper-enforcement.json",
+    "test/fixtures/reserve-capital.json",
+    "keeper/reserve-economics.ts"
   ],
   "scorecard_dir": "docs/receipts/flow",
   "review_dir": "audit",
@@ -36,7 +43,9 @@
     "no_processor",
     "no_processor_5_gwei",
     "burst",
-    "policy_switch"
+    "policy_switch",
+    "minimum_capital",
+    "minimum_large_win"
   ],
   "drift_groups": [
     [
@@ -46,11 +55,11 @@
     ]
   ],
   "drift_threshold_bps": 500,
-  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'gas evidence needs Foundry 1.8.1 (CI pins it)'; exit 1; }; forge test --isolate --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
+  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'gas evidence needs Foundry 1.8.1 (CI pins it)'; exit 1; }; CANDIDATE_RUN=1 forge test --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --isolate --threads 8 --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
   "outcomes": [
     {
       "id": "O1",
-      "text": "Keepers receive the selected read-only policy quote for immutable verified progress, with atomic caller minimum payment, a cached policy maximum, a 0.311 ETH immutable per-call ceiling and a persistent per-pool burst/refill allowance. V1 reimburses bounded measured gas plus 50,000 overhead and 0.00002 ETH per finalized draw reconciled or Shape unit successfully listed. Splitting cannot duplicate service fees but retains overhead/refund surplus. Existing storage-refund allowance remains at most 80,000 gas per draw averaged over a run; candidate measurements are recorded separately.",
+      "text": "Keepers receive the selected read-only quote for immutable verified work, capped by the cached policy maximum, operation-sensitive measured-gas/service envelope, 0.311 ETH absolute maximum, real operating liquidity and persistent 0.622 ETH burst/floor(0.05 ETH per12seconds) allowance. Caller minimum is atomic. V1 quotes remain measured gas plus50k overhead and0.00002 ETH per finalized draw or Shape unit listed. Storage-refund allowance remains at most80,000 gas per draw averaged over each measured run; candidate amounts are recorded separately.",
       "metric": "facts.keeper_refund_gas_kept_per_draw",
       "max": 80000
     },
@@ -62,7 +71,7 @@
     },
     {
       "id": "O3",
-      "text": "After closing, all Balancer ETH is claimable except one cached selected maximum keeper payment per unreconciled draw. Unpaid upkeep releases the obligation without compensation. Player refund credits and FWA proceeds/edge retain their existing ownership.",
+      "text": "Closing releases missing inventory, setup and working-buffer requirements. While paid upkeep is enabled, only actual unreconciled draws times their current immutable reconciliation budget are retained. Disabling paid upkeep releases that hold; reenabling is delayed and funded. Buyer refunds and FWA edge remain in FWA. Completed paid work receives its atomic bounded quote; future work is not a keeper debt.",
       "metric": "facts.unclaimable_after_close_beyond_held_pay_wei",
       "max": 0,
       "regimes": [
@@ -80,8 +89,8 @@
     },
     {
       "id": "O5",
-      "text": "When prizes are missing for lack of ETH, the dashboard offers Add ETH and Continue without them; after either, no day ends with a prize missing from the design (D9). Without either action (large_win) prizes can stay missing: shown as information.",
-      "metric": "facts.days_ending_with_a_prize_missing",
+      "text": "Under the capital-efficient continuity guarantee, Add ETH or Continue without a missing top prize supports ongoing operation in the named response regimes: they finish with admission open. Later adverse wins may again leave target prizes missing; days of depletion and capital shortfalls remain reported. This supersedes the old immediate/full-target-restoration promise, not backing or purchaser refund rights.",
+      "metric": "facts.admission_status_at_end",
       "max": 0,
       "regimes": [
         "whatif_large_win_top_up",
@@ -99,9 +108,19 @@
     },
     {
       "id": "O7",
-      "text": "The fill gate never blocks the sales that refill prizes: with every draw reconciled, no draw is refused for low inventory while gas is within the 5 gwei cap. A board with less than 17 x 0.01 ETH Shapes' prize weight also pauses while draws are unsettled (top_heavy regime; the planner warns the creator) (D8).",
+      "text": "Ordinary funded launch-board operation admits reconciled purchases under the existing70% weight/curated/busy/mint-fee gate. Adverse low-capital depletion may pause and requires existing proceeds, Add ETH, a smaller target or closing; no automatic refill from refused demand is promised. The named ordinary regimes have zero low-inventory refusals within the5gwei V1 cap.",
       "metric": "facts.refused_low_inventory_within_gas_cap",
-      "max": 0
+      "max": 0,
+      "regimes": [
+        "quiet",
+        "normal_gas",
+        "gas_2_gwei",
+        "gas_5_gwei",
+        "no_processor",
+        "no_processor_5_gwei",
+        "burst",
+        "minimum_capital"
+      ]
     },
     {
       "id": "O8",
@@ -151,7 +170,7 @@
     },
     {
       "id": "O12",
-      "text": "(R8, D13) In quiet operation of the launch board the creator ends ahead after 180 draws, counting everything claimed or still theirs against everything deposited and NFTs given away, at 0.1, 0.5, 2 and 5 gwei. Prize luck (two forced 0.5 ETH wins: -0.28 ETH) and zero demand (-0.07 ETH of setup cost) are shown as information.",
+      "text": "In the named quiet launch-board regimes the creator ends ahead after180draws, counting claimed/currentassets againstdeposits/contributions at0.1,0.5,2and5gwei. Adverse large-prize outcomes andzero-demandcosts areinformation. The current large_win regime forces one real0.5ETHwin without assuming it can immediatelybe replaced forasecondwin; historicaltwo-wincomparisonis superseded.",
       "metric": "facts.creator_net_loss_wei",
       "max": 0,
       "regimes": [
@@ -163,7 +182,7 @@
     },
     {
       "id": "O13",
-      "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the most the Balancer admits; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.",
+      "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the tested burst size; FWA checks the operator once per batch and actual outstanding counts can exceed five; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.",
       "metric": "facts.unsettled_draws_at_day_end_max",
       "max": 0,
       "regimes": [
@@ -179,6 +198,26 @@
       "max": 0,
       "regimes": [
         "policy_switch"
+      ]
+    },
+    {
+      "id": "O15",
+      "text": "At basefee0.5gwei, mintfee0.001ETH and V1 enabled, twenty small Shapes actually open and finish paid setup with exactly0.2356ETH initial pool funding, then ordinary operation runs without creator ETH top-ups. Purchaser backing/refunds remain separately protected. This is the reached board/context, not a universal deposit or income guarantee.",
+      "metric": "facts.initial_opening_requirement_wei",
+      "min": 235600000000000000,
+      "max": 235600000000000000,
+      "regimes": [
+        "minimum_capital"
+      ]
+    },
+    {
+      "id": "O16",
+      "text": "The minimum-capital operating regimes add zero creator ETH after opening; depleted inventory and refusal/recovery statistics remain visible rather than hidden by automatic deposits. Curated NFT relisting, where performed, is separately counted.",
+      "metric": "facts.operating_topups_wei",
+      "max": 0,
+      "regimes": [
+        "minimum_capital",
+        "minimum_large_win"
       ]
     }
   ],

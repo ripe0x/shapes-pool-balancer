@@ -18,7 +18,7 @@ contract ChallengeTest is KeeperPayTest {
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 4 * balancer.maxKeeperReward()); // one maximum reward per owed draw
+        assertEq(held, 4 * _reconciliationBudget()); // one current bounded reconciliation per actual owed draw
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(claimable, creator);
@@ -208,7 +208,7 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         c[0] = 1; // continue with 0.01 ETH Shape
         vm.prank(creator);
         balancer.configure(2500, plan16(c));
-        assertEq(balancer.admissionStatus(), 2, "creator setup required");
+        assertEq(balancer.admissionStatus(), 6, "new empty target pauses at the inventory gate without restarting initial setup");
         bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         balancer.performUpkeep(uh3);

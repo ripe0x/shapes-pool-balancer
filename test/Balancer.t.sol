@@ -452,12 +452,10 @@ contract BalancerTest is ForkBase {
 
     /*////////////////////////////// reserve //////////////////////////////*/
 
-    /// Exact reserve while open and fully reconciled: the largest prize (0.1 Shape) for the implied draw plus a
-    /// spare, and the keeper rewards for 3 Shape units (ceil(3/6)+1 = 2 calls).
+    /// A fully stocked board needs a bounded working buffer, with no duplicate prize backing.
     function test_reserveMath() public view {
-        uint256 fee = shapes.mintFee();
-        uint256 largest = 0.1 ether + fee;
-        uint256 expected = largest + (4 + 2 * 10) * balancer.maxKeeperReward() - 10 * balancer.restockFee();
+        uint256 expected = _workingBuffer();
+        assertEq(expected, 0.00368 ether, "independent normal-gas working buffer");
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }
@@ -470,15 +468,20 @@ contract BalancerTest is ForkBase {
         vm.prank(creator);
         balancer.claimSurplus(s, creator);
         assertTrue(balancer.canPurchase(buyer));
-        // after a draw the reserve rises (an unreconciled draw assumed to take a largest prize), so surplus is 0
+        // A present deficit restricts withdrawals while paid maintenance may consume working capital.
         _drawOneShape();
         assertEq(balancer.withdrawableSurplus(), 0);
-        // and a creator claiming everything beforehand still leaves enough to restock the drawn prize
+        // No duplicate expensive backing is held. The backed prize is delivered; replenishment can wait.
         upkeep();
         uint16[16] memory have = balancer.getActiveShapes();
         assertEq(have[0], 5);
         assertEq(have[1], 3);
-        assertEq(have[2], 2, "drawn prize restocked from the held reserve");
+        assertEq(have[2], 1, "expensive deficit is not silently subsidized by a duplicate spare");
+        assertEq(balancer.admissionStatus(), 0, "remaining inventory still passes the actual weight gate");
+        uint256 needed = balancer.requiredReserve() - (address(balancer).balance - balancer.profit());
+        vm.prank(creator); balancer.depositETH{value: needed}();
+        fillUp();
+        assertEq(balancer.getActiveShapes()[2], 2, "explicit creator funding restores the expensive target");
     }
 
     /// claimSurplus no longer requires the pool to be idle, but cannot drop below the (raised) reserve.

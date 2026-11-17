@@ -100,6 +100,23 @@ abstract contract ForkBase is Test {
         balancer.configure(MARKUP, t);
     }
 
+    /// @dev Independent legacy-test arithmetic for the current immutable working-capital caps.
+    function _reconciliationBudget() internal view returns (uint256 cap) {
+        uint256 price = block.basefee + 0.1 gwei;
+        if (price > 50 gwei) price = 50 gwei;
+        cap = 2_250_000 * price + 0.00005 ether;
+        uint256 selected = balancer.maxKeeperReward();
+        if (cap > selected) cap = selected;
+    }
+
+    function _workingBuffer() internal view returns (uint256 cap) {
+        uint256 price = block.basefee + 0.1 gwei;
+        if (price > 50 gwei) price = 50 gwei;
+        cap = 5_300_000 * price + 0.0005 ether;
+        uint256 selected = balancer.maxKeeperReward();
+        if (cap > selected) cap = selected;
+    }
+
     function upkeep() internal {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);

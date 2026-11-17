@@ -9,6 +9,19 @@ import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 library KeeperPolicyCalls {
     uint256 internal constant GAS_LIMIT = 100_000;
     uint256 internal constant HARD_MAX_REWARD = 0.311 ether;
+    uint256 internal constant BURST = 0.622 ether;
+    uint256 internal constant REFILL_PER_SECOND = uint256(0.05 ether) / 12;
+    uint256 internal constant MAX_GAS = 6_000_000;
+    uint256 internal constant OVERHEAD_GAS = 100_000;
+    uint256 internal constant BASE_GAS = 200_000;
+    uint256 internal constant PROCESS_GAS = 1_800_000;
+    uint256 internal constant RECONCILE_GAS = 150_000;
+    uint256 internal constant SHAPE_GAS = 700_000;
+    uint256 internal constant PRIZE_GAS = 150_000;
+    uint256 internal constant PRIORITY_ALLOWANCE = 0.1 gwei;
+    uint256 internal constant GAS_PRICE_CEILING = 50 gwei;
+    uint256 internal constant WORK_FEE = 0.00005 ether;
+    uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
     error InvalidPolicy();
     error PolicyUnavailable();
 
@@ -28,8 +41,7 @@ library KeeperPolicyCalls {
         uint256 target;
         uint16[16] have;
         uint256 mintFee;
-        uint256 listedPrizes;
-        uint256 listedFees;
+        uint256 baseFee;
     }
     event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
     event KeeperPolicyCancelled(address indexed policy);
@@ -44,7 +56,7 @@ library KeeperPolicyCalls {
         s.policy = policy;
         s.maxReward = validate(policy);
         s.enabled = true;
-        s.allowance = 10 * HARD_MAX_REWARD;
+        s.allowance = BURST;
         s.allowanceTime = uint64(block.timestamp);
         emit KeeperPolicyChanged(address(0), policy);
     }
@@ -81,8 +93,8 @@ library KeeperPolicyCalls {
     }
     function available(State storage s) public view returns (uint256) {
         uint256 elapsed = block.timestamp - s.allowanceTime;
-        uint256 burst = 10 * HARD_MAX_REWARD;
-        uint256 refill = HARD_MAX_REWARD / 12;
+        uint256 burst = BURST;
+        uint256 refill = REFILL_PER_SECOND;
         if (elapsed >= burst / refill + 1) return burst;
         uint256 amount = s.allowance + elapsed * refill;
         return amount > burst ? burst : amount;
@@ -98,32 +110,84 @@ library KeeperPolicyCalls {
             emit KeeperPaid(msg.sender, amount, w.measuredGas);
         }
     }
+    /// @dev This is a withdrawal/activation working-capital target, not a debt to unperformed keeper work.
+    ///      Listed fees are future income and never offset the liquid requirement.
     function reserve(uint256 maxReward, Reserve memory r) public pure returns (uint256 need) {
-        if (!r.enabled) return r.owed * maxReward;
+        need = r.owed * paymentBound(maxReward, r.baseFee, 1, 1, 0, 0);
+        if (!r.enabled) return need;
+        uint256 operating = paymentBound(maxReward, r.baseFee, 0, 5, 5, 5);
+        uint256 process = paymentBound(maxReward, r.baseFee, 2, 5, 0, 0);
+        need += operating > process ? operating : process;
         uint256 units;
-        uint256 largest;
-        uint256 targetPrizes;
+        uint256 prizes;
+        uint256 sizes;
         uint256 amounts = 0x9c400fa00c800190014000300022710138803e801f400640032000a00050001;
-        for (uint256 d; d < 16; ++d) {
+        for (uint256 k; k < 16; ++k) {
+            uint256 d = (BY_VALUE >> (4 * k)) & 0xF;
             uint256 want = (r.target >> (16 * d)) & 0xFFFF;
-            if (want == 0) continue;
-            targetPrizes += want;
-            uint256 shapeUnits = (0x3323232111111111 >> (4 * d)) & 0xF;
-            uint256 cost = ((amounts >> (16 * d)) & 0xFFFF) * 0.01 ether + shapeUnits * r.mintFee;
-            if (cost > largest) largest = cost;
-            uint256 have = r.have[d];
-            if (want > have) {
-                need += (want - have) * cost;
-                units += (want - have) * shapeUnits;
+            if (want <= r.have[d]) continue;
+            uint256 missing = want - r.have[d];
+            uint256 w = (0x3323232111111111 >> (4 * d)) & 0xF;
+            uint256 cost = ((amounts >> (16 * d)) & 0xFFFF) * 0.01 ether + w * r.mintFee;
+            need += missing * cost;
+            while (missing != 0) {
+                // Compress all complete same-size batches except the last, which can share its remaining slots.
+                if (units == 0) {
+                    uint256 perBatch = 5 / w;
+                    uint256 batches = (missing - 1) / perBatch;
+                    if (batches != 0) {
+                        need += batches * paymentBound(maxReward, r.baseFee, 0, 0, perBatch * w, perBatch);
+                        missing -= batches * perBatch;
+                    }
+                }
+                uint256 take = (5 - units) / w;
+                if (take > missing) take = missing;
+                if (take != 0) {
+                    units += take * w;
+                    prizes += take;
+                    ++sizes;
+                    missing -= take;
+                }
+                if (missing != 0 || units == 5 || sizes == 4) {
+                    need += paymentBound(maxReward, r.baseFee, 0, 0, units, prizes);
+                    units = 0;
+                    prizes = 0;
+                    sizes = 0;
+                }
             }
         }
-        uint256 draws = r.owed + 1;
-        need += draws * largest;
-        units += draws * 3;
-        need += (units + draws) * maxReward;
-        uint256 prizes = targetPrizes > r.listedPrizes ? targetPrizes : r.listedPrizes;
-        uint256 cycleCost = 2 * prizes * maxReward;
-        if (cycleCost > r.listedFees) need += cycleCost - r.listedFees;
+        if (units != 0) need += paymentBound(maxReward, r.baseFee, 0, 0, units, prizes);
+    }
+
+    /// @dev Operation coefficients are immutable payment ceilings, not claims about actual execution gas.
+    function workGas(uint256 processed, uint256 draws, uint256 units, uint256 prizes) internal pure returns (uint256 gas) {
+        gas = BASE_GAS + processed * PROCESS_GAS + draws * RECONCILE_GAS + units * SHAPE_GAS + prizes * PRIZE_GAS;
+        if (gas > MAX_GAS) gas = MAX_GAS;
+    }
+
+    function referencePrice(uint256 baseFee) internal pure returns (uint256 price) {
+        price = baseFee + PRIORITY_ALLOWANCE;
+        if (price > GAS_PRICE_CEILING) price = GAS_PRICE_CEILING;
+    }
+
+    function paymentBound(uint256 maxReward, uint256 baseFee, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
+        public pure returns (uint256)
+    {
+        return _bound(maxReward, workGas(processed, draws, units, prizes), referencePrice(baseFee), draws + units);
+    }
+
+    function listingPaymentBound(uint256 maxReward, uint256 draws, uint256 units, uint256 prizes)
+        public view returns (uint256)
+    {
+        uint256 price = referencePrice(block.basefee);
+        if (price > tx.gasprice) price = tx.gasprice;
+        return _bound(maxReward, workGas(0, draws, units, prizes), price, draws + units);
+    }
+
+    function _bound(uint256 maxReward, uint256 measured, uint256 price, uint256 serviceUnits) internal pure returns (uint256 amount) {
+        amount = (measured + OVERHEAD_GAS) * price + serviceUnits * WORK_FEE;
+        if (amount > maxReward) amount = maxReward;
+        if (amount > HARD_MAX_REWARD) amount = HARD_MAX_REWARD;
     }
 
     function word(address policy, bytes memory input) internal view returns (bool ok, uint256 value) {
@@ -143,15 +207,12 @@ library KeeperPolicyCalls {
     function reward(address policy, uint256 maxReward, IKeeperPolicy.Work memory w) public view returns (uint256 amount) {
         (bool ok, uint256 quote) = word(policy, abi.encodeCall(IKeeperPolicy.quoteReward, (w)));
         if (!ok) revert PolicyUnavailable();
-        uint256 price = w.baseFee + 2 gwei;
+        uint256 price = referencePrice(w.baseFee);
         if (price > w.gasPrice) price = w.gasPrice;
-        if (price > 50 gwei) price = 50 gwei;
-        uint256 envelope = ((w.measuredGas > 6_000_000 ? 6_000_000 : w.measuredGas) + 200_000) * price
-            + (w.reconciledDraws + w.listedShapeUnits) * 0.001 ether;
-        amount = quote;
-        if (amount > envelope) amount = envelope;
-        if (amount > maxReward) amount = maxReward;
-        if (amount > HARD_MAX_REWARD) amount = HARD_MAX_REWARD;
+        uint256 measured = workGas(w.processedDraws, w.reconciledDraws, w.listedShapeUnits, w.listedPrizes);
+        if (measured > w.measuredGas) measured = w.measuredGas;
+        uint256 envelope = _bound(maxReward, measured, price, w.reconciledDraws + w.listedShapeUnits);
+        return quote < envelope ? quote : envelope;
     }
 
     function restock(address policy, uint8 d, uint256 units, bool paid, uint256 baseFee) public view returns (uint256) {

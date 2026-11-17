@@ -80,7 +80,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 5 * _independentMaxReward(), "owed=5 -> five maximum rewards held");
+        assertEq(held, 5 * _reconciliationBudget(), "owed=5 -> five bounded reconciliations held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
 
         // Creator pulls everything claimable, leaving exactly the hold. This is the adversarial starting point:
@@ -136,7 +136,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 2 * _independentMaxReward(), "owed=2 -> two maximum rewards held");
+        assertEq(held, 2 * _reconciliationBudget(), "owed=2 -> two bounded reconciliations held");
 
         // owed cannot be inflated after close: purchases are refused, so lastIssuedSequence is frozen.
         assertFalse(balancer.canPurchase(buyer), "closed pool admits no purchase");

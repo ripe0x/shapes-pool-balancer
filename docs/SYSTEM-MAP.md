@@ -22,7 +22,7 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Bucket | Where | Whose | Its own stated need |
 | --- | --- | --- | --- |
 | Creator profit (unclaimed) | Balancer ETH, `profit` | creator | none |
-| Creator reserve | Balancer ETH up to `requiredReserve()` | creator, locked while open | restore the board + one largest prize per unreconciled draw + one spare + worst split keeper work + board-cycle fee gap |
+| Creator reserve | Balancer ETH up to `requiredReserve()` | creator, locked while open | actual missing inventory and its canonical paid setup work + actual outstanding draw budgets + one working-call buffer; no duplicate backing or future-board cycle |
 | Fund above the reserve | Balancer ETH above `requiredReserve()` | creator, claimable | none |
 | Shape and Pack backing | Shapes contract, tokens held by the FWA pool | creator (redeemable only by unlisting) | the target board |
 | Owner proceeds | FWA pool, `ownerProceeds` | creator (anyone may collect into the Balancer) | none |
@@ -41,7 +41,7 @@ Keeper pay has no custodial bucket of its own: it spends the creator operating f
 | 4 | FWA pool escrow -> owner proceeds (price / 1.05) and FWA edge (5%) | the random word is delivered and the draw processed | no |
 | 5 | FWA pool -> winner: prize token | same | no (a failed delivery can be refunded after 7 days and recovered by the creator) |
 | 6 | Owner proceeds -> Balancer | anyone (`collectProceeds`), every upkeep and creator action | no |
-| 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection, only while the fund is below the reserve | spent first by the next claim; restocking may spend it when the fund is empty |
+| 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection while open, booked before reconciliation and paid inventory work | spent first by the next claim; restocking may spend it when the fund is empty |
 | 8 | Balancer -> Shapes / Packs: backing + mint fee, token listed on FWA | keeper upkeep while open, smallest prize first, at most 5 Shapes per call | backing yes (creator `unlistShapes`, only while no draw is unsettled); mint fee no |
 | 9 | Balancer -> keeper: selected read-only quote, bounded by immutable work, per-call and rate limits | successful paid upkeep with validated progress and caller minimum met | future purchases replenish the creator via listing-time fees; payments themselves do not reverse |
 | 10 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
@@ -59,14 +59,14 @@ Keeper pay has no custodial bucket of its own: it spends the creator operating f
 
 No asset changes custodian when a policy changes. Activation changes the selected quote address and cached maximum
 only, after the two-day delay and operating-capital check. Uncollected listing surcharges are tracked as future income
-and determine a conservative funding gap; they are never added to the ETH balance. A pending proposal reserves no
+but never offset the current liquid reserve or become ETH already collected. A pending proposal reserves no
 right to withdraw: funding is checked again when activated. Existing listing price and markup records stay fixed.
 
 Unpaid upkeep follows the same mint, listing, proceeds and reconciliation paths with zero keeper transfer, healthy active-policy listing surcharges and an immutable V1 recovery surcharge only when quoting fails. It is available even if the policy fails and paid eligibility is restricted.
-Closing releases future-board reserves, keeps one maximum payment per outstanding draw, and never moves player
+Closing releases inventory/setup/buffer requirements, keeps one current reconciliation budget per actual outstanding draw while paid upkeep is enabled, and never moves player
 refund credits or FWA edge to the Balancer. Retirement still requires the existing real settlement conditions.
 
 Ratchets: policy generation, finalized reconciliation sequence and cumulative keeper spending increase; generation
 prevents stale offers replaying, reconciliation prevents repeated service fees, and bucket time never resets on
 configuration/policy/ownership changes. The bucket itself refills only to its immutable burst ceiling. These are
-engineering decisions under the owner's autonomous-implementation request, subject to reported economic review.
+engineering decisions under the owner's autonomous-implementation request, subject to reported economic review. Disabling paid upkeep releases payment budgets; delayed reenabling rechecks candidate funding. See [RESERVES.md](RESERVES.md) for the current kernel.

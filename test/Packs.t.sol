@@ -150,13 +150,10 @@ contract PacksTest is ForkBase {
         new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, threeUnit, ENS);
     }
 
-    /// Reserve while open and fully reconciled: the single largest prize (0.25 pack = backing + 3 fees) for the
-    /// implied draw plus a spare, and the keeper rewards for restoring 3 Shape units (ceil(3/6)+1 = 2 calls).
-    function test_reserveHoldsLargestPrizeAndKeeperRewards() public view {
-        uint256 fee = shapes.mintFee();
-        uint256 largest = 0.25 ether + 3 * fee;
-        uint256 expected = largest + (4 + 2 * 10) * balancer.maxKeeperReward() - 19 * balancer.restockFee();
-        assertEq(balancer.requiredReserve(), expected);
+    /// Pack backing remains in the token; the liquid reserve does not duplicate it.
+    function test_reserveHoldsWorkingCapitalWithoutDuplicatePackBacking() public view {
+        assertEq(balancer.requiredReserve(), _workingBuffer());
+        assertEq(balancer.requiredReserve(), 0.00368 ether);
     }
 
     function test_everyPackSizeMintsAtExactValueWithItsShapes() public {
@@ -192,8 +189,7 @@ contract PacksTest is ForkBase {
             (uint8 kind,,, uint112 base, uint112 price) = balancer.items(listed[i]);
             if (kind == 2) { ++prizeCount; fees += price - base; }
         }
-        assertEq(balancer.requiredReserve(), (0.03 ether + 3 * fee) + (4 + 2 * prizeCount) * balancer.maxKeeperReward() - fees,
-            "largest prize, split-work allowance, existing board fee gap");
+        assertEq(balancer.requiredReserve(), _workingBuffer(), "existing excess inventory and future fees create no liquid keeper hold");
 
         // draw five 0.03 packs in one batch
         uint256[] memory ids = buy(buyer, 5);

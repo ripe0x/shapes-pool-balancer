@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// Bid comparisons use each call's measured span and billed expense because EVM gas changes can alter a few measured units.
+
 import {Vm} from "forge-std/Test.sol";
+import {ReceiptGas} from "./utils/ReceiptGas.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 
@@ -121,16 +124,31 @@ contract KeeperAdversarialTest is ForkBase {
         settle();
         vm.fee(1 gwei);
         uint256 snap = vm.snapshotState();
-        vm.txGasPrice(1.05 gwei); // honest: basefee + 0.05 gwei
-        bytes32 uh2 = balancer.settingsHash();
-        vm.prank(keeper, keeper);
-        uint256 honest = balancer.performUpkeep{gas: 5_000_000}(uh2);
+        (uint256 honest,uint256 honestBilled,uint256 honestMeasured,uint256 honestUnits)=_sample(5_000_000,1.05 gwei);
         vm.revertToState(snap);
-        vm.txGasPrice(40 gwei); // overbid and a huge gas limit
-        bytes32 uh3 = balancer.settingsHash();
-        vm.prank(keeper, keeper);
-        uint256 greedy = balancer.performUpkeep{gas: 30_000_000}(uh3);
-        assertEq(greedy, honest, "reward independent of bid above the priority cap and of the gas limit");
+        (uint256 greedy,uint256 greedyBilled,uint256 greedyMeasured,uint256 greedyUnits)=_sample(15_000_000,40 gwei);
+        assertEq(honestUnits,greedyUnits,"same objectively completed work");
+        assertEq(honest,(honestMeasured+50_000)*1.05 gwei+honestUnits*0.00002 ether);
+        assertEq(greedy,(greedyMeasured+50_000)*1.05 gwei+greedyUnits*0.00002 ether,"actual measured span uses identical capped reference");
+        assertLt(int256(greedy)-int256(greedyBilled*40 gwei),int256(honest)-int256(honestBilled*1.05 gwei),"overbidding cannot improve the caller's full economics");
+    }
+
+    function _sample(uint256 gasLimit,uint256 bid) internal returns(uint256 reward,uint256 billed,uint256 measured,uint256 units) {
+        vm.txGasPrice(bid);
+        bytes32 generation=balancer.settingsHash();
+        uint256 sequence=balancer.reconciledSequence();
+        vm.recordLogs();
+        vm.prank(keeper,keeper);reward=balancer.performUpkeep{gas:gasLimit}(generation);
+        billed=ReceiptGas.lastBilled();
+        Vm.Log[] memory logs=vm.getRecordedLogs();
+        units=balancer.reconciledSequence()-sequence;
+        for(uint256 i;i<logs.length;++i)if(logs[i].emitter==address(balancer)) {
+            if(logs[i].topics[0]==KEEPER_PAID)(,measured)=abi.decode(logs[i].data,(uint256,uint256));
+            if(logs[i].topics[0]==keccak256("ShapesMinted(uint8,uint256,uint256,uint256)")) {
+                (,uint256 quantity,)=abi.decode(logs[i].data,(uint256,uint256,uint256));units+=quantity;
+            }
+        }
+        assertLt(measured,3_200_000,"reached sample is below V1 measured cap");
     }
 
     /*////////////////////////////// 3. caller-side refunds //////////////////////////////*/
@@ -197,11 +215,11 @@ contract KeeperAdversarialTest is ForkBase {
         _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
         vm.prank(creator);
         balancer.configure(1000, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0])); // grow the target
-        assertTrue(balancer.creatorWork());
+        assertFalse(balancer.creatorWork(),"operating edits do not restart initial setup");
+        assertEq(balancer.admissionStatus(),6,"real missing weight blocks purchases");
         assertFalse(balancer.canPurchase(atk));
-        upkeep();
-        assertTrue(balancer.creatorWork() || balancer.canPurchase(atk));
-        if (balancer.creatorWork()) assertFalse(balancer.canPurchase(atk));
+        fillUp();
+        assertEq(balancer.admissionStatus(),0,"funded replacement restores actual admission weight");
     }
 
     /// A deposit changes nothing about pay: each of the attacker's upkeep calls gets measured gas at the reimbursed
@@ -258,7 +276,8 @@ contract KeeperAdversarialTest is ForkBase {
         // creator action that sets creator work: grow the target so restocking runs under the full incentive
         vm.prank(creator);
         balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
-        assertTrue(balancer.creatorWork());
+        assertFalse(balancer.creatorWork(),"ordinary target growth uses inventory admission, not initial setup");
+        assertEq(balancer.admissionStatus(),6,"grown target is genuinely below the70percent inventory threshold");
         bytes32 uh5 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(atk, atk);

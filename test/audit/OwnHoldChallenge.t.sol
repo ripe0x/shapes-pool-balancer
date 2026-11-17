@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// The closed hold follows actual owed operation bounds, without prefunding an unrelated full-call maximum.
+
 import {ForkBase} from "../utils/ForkBase.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 
@@ -24,7 +26,7 @@ contract OwnHoldChallenge is ForkBase {
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 5 * 0.01645 ether); // one maximum reward per owed draw
+        assertEq(held, 5 * _reconciliationBudget()); // one operation-sensitive current-price bound per owed draw
         uint256 available = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(available, creator);

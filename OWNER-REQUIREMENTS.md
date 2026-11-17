@@ -187,3 +187,17 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - R45. "Make necessary engineering decisions independently. Complete the work and report decisions that ordinarily would have required owner input." Implementation choices are recorded in `docs/KEEPER-POLICIES.md`; this authorization does not create an owner cryptographic signature over revised release outcomes.
 
 This request supersedes R10/R28's per-call incentive and R37's immediate mutable factory economics and creator overrides. Their historical decisions above remain intact. The new proposed economic numbers and test evidence need explicit review before launch; no previous outcome signature is represented as approval of new text.
+
+## Capital-efficient reserves (owner request, 2026-11-17)
+
+- R46. "We want creators to launch and operate FWA community pools with as little upfront ETH as reasonably possible." "Do not lock creator capital for hypothetical future keeper calls that have no present funding obligation."
+- R47. "Every listed shape or pack retains its actual redeemable backing." "FWA purchasers receive the prizes or refunds owed to them." Lower operating liquidity must not reach purchaser escrow, refund rights or someone else's assets.
+- R48. "Uncollected restocking fees are future income expectations. They are never liquid ETH." Preserve distinct markup and surcharge accounting, the first 10% funding priority and the creator's share above it.
+- R49. "Some temporary inventory depletion may be acceptable." "Do not silently degrade the experience or report the pool as fully funded when it is missing prizes." Define safe admission, partial restocking, actual funding shortfalls and recovery that may require Add ETH or a smaller target.
+- R50. "Keepers should receive their quoted compensation for successfully completed paid operations." Reserve current planned setup and outstanding work rather than an entire theoretical future maintenance cycle. Immutable work-sensitive enforcement and atomic caller floors remain authoritative.
+- R51. "Keep the two day delay, emergency payment disable, immutable payout safeguards, and public unpaid recovery path." A policy switch preserves old listing prices and rechecks genuinely required current working capital.
+- R52. "Calculate the total attacker economics for manufactured work, including the creator, buyer, and keeper under coordinated control." Close the previous low-gas hostile-policy measurement gap through actual dependency paths; distinguish coalition-wide costs from subsidies borne by creator capital.
+- R53. "Run the complete Foundry, TypeScript, keeper integration, economic simulation, and asset flow verification suites against the final candidate." Independent security and economic reviews must challenge rights, cash versus expectations, continuity and unrealistic automatic top-ups.
+- R54. "Make the best engineering decisions independently, implement them, and verify the outcome." "Do not deploy to mainnet or spend real funds."
+
+This request supersedes R26's duplicate-largest-prize and full-future-board insurance guarantee, and the corresponding reserve mechanism in decision 95. Existing price, custody, player refund, profit allocation and policy authority requirements remain. Changed numeric outcomes remain unsigned until the owner explicitly signs them for release; implementation authority grants no deployment authority.

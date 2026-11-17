@@ -36,6 +36,14 @@ Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`
 - `MAX_GAS_PRICE_GWEI` is the operator's bid cap, `PRIORITY_GWEI` the requested tip. V1 reimburses at most 5 gwei including its 0.05 gwei priority allowance. At basefee exactly 5 gwei a positive tip exceeds that ceiling; zero priority can execute at the ceiling if included. Inclusion and competition are not proven by fork tests.
 - Use an account that retains its received ETH. A forwarding EIP-7702 delegation can pass keeper rewards elsewhere. Fund the sender for its transaction's gas limit times maximum bid; simulation does not supply this ETH.
 
+## Working capital and depleted inventory
+
+[RESERVES.md](RESERVES.md) defines the current target: missing inventory and its current setup work, actual outstanding reconciliation and one maintenance buffer. No whole-board future payment cycle or duplicate largest prize is held. Unsold fees shown in the dashboard are future income, not deposit ETH.
+
+Paid work can consume the buffer, and partial targets may trade while the real weight gate permits. If admission is paused and no proceeds remain, further demand cannot restart it. Use Add ETH, reduce the target or close. A large missing prize may take an unknown number of actual purchases to replenish; do not assume automatic creator deposits or NFT replacement. The dashboard identifies missing prizes and actual withdrawable capital.
+
+Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Booked creator markup is excluded from paid mint/payment affordability.
+
 ## Adopt a policy
 
 1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and quotes, and `policyFunding(candidate)`.

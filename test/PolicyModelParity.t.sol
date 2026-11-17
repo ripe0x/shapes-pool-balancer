@@ -24,6 +24,7 @@ contract PolicyModelParity is ForkBase {
     string root;
     uint256 index;
     uint256 previousSequence;
+    uint256 previousProcessed;
     uint256 deliveredBacking;
     uint256 ownerAccrued;
 
@@ -78,6 +79,8 @@ contract PolicyModelParity is ForkBase {
         vm.serializeString(key, "measuredGas", vm.toString(measured));
         vm.serializeString(key, "shapeUnits", vm.toString(shapeUnits));
         vm.serializeString(key, "listedPrizes", vm.toString(listedPrizes));
+        uint256 processed = pool.nextSequenceToProcess()-1;
+        vm.serializeString(key,"processedDraws",vm.toString(processed-previousProcessed)); previousProcessed=processed;
         uint256 seq = balancer.reconciledSequence();
         vm.serializeString(key, "reconciledDraws", vm.toString(seq - previousSequence)); previousSequence = seq;
         vm.serializeString(key, "balance", vm.toString(address(balancer).balance));

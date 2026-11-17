@@ -6,7 +6,7 @@ bypass flag. `script/Deploy.s.sol` refuses chain id 1 unless `script/deploy.sh` 
 
 ## What the gate does
 
-1. Deletes the configured scorecards (23 regimes for the policy candidate) in `docs/receipts/flow/` and runs `test_command` from `asset-flow.json`
+1. Deletes the configured scorecards (25 regimes for the reserve candidate) in `docs/receipts/flow/` and runs `test_command` from `asset-flow.json`
    (`test/scenario/FlowBreakdown.t.sol`: real FWA, Shapes, Draw Packs and randomness service on the pinned fork, gas
    price asserted inside a transaction).
 2. Checks every regime wrote a fresh scorecard for the current sources, that inflows equal destinations to the wei,
@@ -39,3 +39,9 @@ CI (`.github/workflows/ci.yml`) and Git hooks do not run the gate. The source ha
 ## Policy candidate (2026-11-17)
 
 The work-based payment mechanism supersedes O1's flat-per-call wording. O3 now holds one selected maximum per outstanding draw, including split settlement. Their previous owner signature remains in Git history and is not copied onto changed outcomes. The current manifest is intentionally unsigned; the deployment gate must return INCOMPLETE until the owner signs the new outcomes and the exact reviewed candidate has valid evidence. This is a mainnet release blocker, not permission to bypass the gate for production. Local production-path rehearsals remain isolated on chain 31337 with test ETH.
+
+## Current-work reserve candidate
+
+The current 25 regimes include exact-minimum twenty-Shape operation and a minimally funded mixed-board large win. O5 now records open admission in the explicit creator-response regimes; the old zero-missing-days guarantee failed at 11/14 days and is explicitly superseded by the owner's partial-depletion request. Missing inventory remains in the measurement records. The final manifest stays unsigned: a matching source review and successful measurements do not grant owner approval or deployment authority.
+
+Foundry 1.8.1 discovery/list-only output can leave ABI-only artifacts for changed tests. A zero-test result is never accepted as verification; check a positive executed count. Preserve the failed discovery output and regenerate the affected current-source artifact without clearing caches.

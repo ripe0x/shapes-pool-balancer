@@ -87,19 +87,14 @@ the Draw Packs contract or the FWA pool (a draw delivered to them could never be
 | 6 | LOW_INVENTORY | listed prize weight (1 / backing per prize), less the unreconciled-draw allowance, is below 70% of the target's weight |
 
 FWA prices every draw on live inventory and refunds a draw whose price moved past the player's tolerance, so the gate does
-not need an exact inventory. It is not one batch per admission: several batches may be admitted between upkeeps, and FWA
-pauses the pool itself once 5 draws are unsettled. The fill check (code 6) uses tracked prize weight, which includes
+not need an exact inventory. It is not one batch per admission: several batches may be admitted between upkeeps, and the Balancer refuses a new request when at least five draws are already unsettled. FWA checks the operator once per batch, so a batch can take the actual count above five. The fill check (code 6) uses tracked prize weight, which includes
 staged restocks, because FWA calls the hook before it activates staged listings. The unreconciled-draw allowance charges
 each issued-but-unreconciled draw the weight of the smallest prize (0.01 ETH at zero markup), the heaviest weight any
 prize can have, so the check assumes every such draw removed the heaviest possible prize.
 
-Purchases do not wait for ETH (DECISIONS 66). Each prize's price covers replacing it, and the markup (at least 10%)
-is profit on top, so sales keep the pool funded on average. The reserve's spare restocks a big win at once; sales then
-refill the reserve while `claimSurplus` releases nothing. If prizes are won faster than the spare and sales cover
-(back-to-back big wins, or a batch of up to five), the missing prizes are restocked smallest first as sales add ETH,
-and purchases continue on what is listed; the fill check still pauses a pool whose board falls below 70%. `open()`
-reverts `ReserveNotFunded` unless ETH plus settled proceeds covers `requiredReserve()`, so a pool never opens, or
-reopens after its ETH was claimed, without the ETH to stock its target and restock a big win (round 8 E2).
+Purchases do not require the exact target to be restored after each win. The existing 70% inverse-backing-weight gate uses the tracked inventory and worst-case unreconciled removals. A missing expensive prize may leave trading open while proceeds accumulate. FWA prices the actual listed inventory; its price and odds change with inventory. Enough missing small prizes, the last curated NFT being won, busy state or an unaccepted mint-fee rise can pause sales. A paused pool cannot recover from hypothetical future demand alone: collect existing proceeds, add ETH, reduce the target or wind down.
+
+`open()` requires initial inventory, its current bounded listing work, actual outstanding reconciliation and one maintenance-call buffer, excluding booked profit. Initial setup completes the target before sales begin. Ordinary later configuration/depletion does not restart that initial-setup flag; the inventory gate remains authoritative. Reopening a closed incomplete design still requires its current opening funding.
 
 Status 0 means the Balancer admits a purchase. FWA can still refuse one on its own state (pause, cooldown, VRF service
 capacity). Within a batch, FWA can refund a draw's acquisition fee instead of delivering when earlier draws moved the
@@ -132,7 +127,7 @@ Who can take value out:
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything except the keeper pay held for draws not yet
-  reconciled: while closed, `requiredReserve` holds one selected cached maximum reward per outstanding draw. This budgets draws finalized separately, not only batched settlement. Unpaid upkeep can release the obligation without payment; any unused hold becomes claimable.
+  reconciled: while closed, `requiredReserve` holds a current operation-sensitive reconciliation budget per actual outstanding draw while payments are enabled. Unpaid upkeep can release the obligation without payment; any unused hold becomes claimable.
 
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
@@ -143,22 +138,15 @@ calls that reconcile them are the creator's cost, as are the fees of prizes neve
 delivery, or still listed at close). At any moment the fronted restocking fees are the sum of each listing's exact `price - base`. For V1 this is at most 0.0047 ETH per contained Shape; other policies retain the immutable surcharge bound.
 Backing is not one-way: a prize is redeemed for exactly its backing on unlisting, a target shrink, or refund recovery.
 
-The reserve is the creator's own ETH held inside the Balancer. The creator cannot withdraw it while the pool is open;
-upkeep draws on it to mint the prizes that restock won inventory, and player payments collected as proceeds refill it.
-It bounds withdrawals so upkeep can always restock what an admitted draw removes.
-
 ## Reserve
 
-While closed, the reserve is outstanding draws × cached selected maximum keeper reward. While open it holds:
+The reserve is a creator withdrawal/activation working-capital target. It does not hold purchaser entitlements and does not guarantee immediate full replacement of every win. [RESERVES.md](RESERVES.md) specifies every formula, coefficient, grouping rule and continuity tradeoff.
 
-- exact missing inventory backing and mint fees at the greater of the current mint fee and accepted cap;
-- (unreconciled draws + one spare) × largest target prize cost;
-- selected maximum payment × (missing Shape units + three units per outstanding draw and spare + outstanding draws + one);
-- the board-cycle funding gap: max(2 × selected maximum × max(target prize count, active Shape prize count) − exact aggregate listed surcharges, 0).
+While open, it includes actual missing target backing/mint expense, canonical paid listing budgets for those missing prizes, actual issued-but-unreconciled draw budgets and one bounded maintenance-call buffer. While closed, only actual unreconciled-draw budgets remain. Disabling paid upkeep makes all payment-related terms zero, retaining missing inventory expense while open. Candidate activation computes the paid budget because activation reenables payment.
 
-The final term explicitly capitalizes old fixed prices against a policy's worst permitted future compensation. Missing future listings contribute zero future fee. This is conservative and costly: a 1,000-prize board can hold roughly 33 ETH in this term alone under V1. It is a reserve of actual creator ETH; an unsold surcharge is never spendable income. No per-listing policy address is stored.
+The duplicate largest-prize/spare term, implied future draw, whole-board future keeper cycle and listed-fee bridge are removed. Unsold surcharge records never offset liquid requirements. Gas budgets use current basefee plus at most 0.1 gwei priority, capped at 50 gwei, then the selected cached maximum and immutable 0.311 ETH absolute maximum. Actual payments additionally respect measured gas, actual bid and completed operation classes.
 
-Policy activation checks `balance - profit >= requiredReserve(candidate)`, exposes its shortfall with `policyFunding(candidate)`, and snapshots the declared maximum after compatibility validation. Neither reserves nor withdrawals depend on external policy calls. Proposal-time withdrawals cannot bypass activation's final check. No activation reprices old listings or modifies recorded profit. Economic sustainability over unlimited future demand is not guaranteed by a finite reserve.
+Policy activation rechecks `balance - profit >= requiredReserve(candidate)` and exposes the shortfall. Neither the current reserve nor withdrawal calculation calls a selected policy. A current target can exceed operating liquidity after adverse wins, gas changes or paid maintenance; surplus claims cannot strip the remaining fund further. These are operating shortfalls, not missing prize backing or purchaser refund insolvency.
 
 **Profit and the fund (DECISIONS 67, 68).** The first 10% of markup (`MIN_MARKUP_BPS`) is the game's: it refills the
 reserve. The markup above it is the creator's profit. Each collected FWA payment is split by the listed prices. FWA
@@ -167,8 +155,7 @@ where `profitShareSum` adds, for every active Shape prize, the markup above 10% 
 listed at) divided by its price. Curated NFTs count zero: the split uses the listings at collection, so counting them
 would let a creator list NFTs just before a collection to move fund money into profit. A Shape's share is below
 markup / (1 + markup), at most 1/2, so the fund keeps at least half of every payment, NFT sale money included. The fund
-is the balance less unclaimed `profit`. While the fund is below `requiredReserve`, the creator's share is added to
-`profit` and the fund keeps the rest; at or above it, everything over the reserve is claimable. `withdrawableSurplus` is the larger of
+is the balance less unclaimed `profit`. The creator's calculated share is always booked to `profit` while open, before reconciliation or paid inventory work can consume operating funds. This preserves the allocation when a new deficit is recognized after collection. Everything above the reserve remains claimable. `withdrawableSurplus` is the larger of
 `profit` and `balance − requiredReserve`, and a claim spends `profit` first, so a claim never takes the fund below the
 reserve or below where it was. Paid upkeep preserves booked profit when sizing inventory and paying compensation. Unpaid maintenance retains the existing game-first ability to spend it on inventory (`profit` is clipped to the resulting balance). Closing zeroes `profit`: while closed, the whole balance is claimable except the keeper pay held for unreconciled draws.
 
@@ -206,7 +193,7 @@ Paid upkeep accepts `(settingsHash(), minimumFixed, minimumGas)` and enforces `r
 
 V1 pays `(min(measured, 3.2M) + 50,000) × min(tx.gasprice, basefee + 0.05 gwei, 5 gwei) + 0.00002 ETH × (draws reconciled + Shape units listed)`. Processing and reconciliation earn one service fee together. Splitting does not duplicate service fees, but can increase actual gas, excess overhead and refunds kept. The selected maximum is 0.01645 ETH for V1, with an immutable 0.311 ETH per-call ceiling and a separate immutable gas/work envelope.
 
-Each pool has a persistent 3.11 ETH burst allowance, refilling at floor(0.311 ETH / 12 seconds), independent of other pools. Every interval is bounded by burst plus refill over elapsed seconds. Policy switches, reconfiguration, reopening and ownership changes never reset spending. This is a generous bounded exposure, not an unrestricted-throughput promise. Paid execution reverts atomically on insufficient quote, minimum payment, allowance or operating funds; it never silently clips to liquidity. The recipient remains the caller and cannot redirect pool assets through a policy.
+Each pool has a persistent 0.622 ETH burst allowance, refilling at floor(0.05 ETH / 12 seconds), independent of other pools. Every interval is bounded by burst plus refill over elapsed seconds. Policy switches, reconfiguration, reopening and ownership changes never reset spending. This is a generous bounded exposure, not an unrestricted-throughput promise. Paid execution reverts atomically on insufficient quote, minimum payment, allowance or operating funds; it never silently clips to liquidity. The recipient remains the caller and cannot redirect pool assets through a policy.
 
 `performUpkeepUnpaid()` executes the same validated work with zero compensation. It retains valid bounded active-policy listing surcharges and falls back to immutable V1 pricing only if the quote fails or exceeds the immutable limit. It is public even when paid keepers are restricted. Creators disable payment and cancel the pending replacement immediately; reenabling requires proposal and activation after two days, including same-policy reenabling. Both paid and unpaid paths retain external FWA/Shapes restrictions.
 
@@ -282,12 +269,12 @@ FWA's server checks ERC-1271 (its client allows long contract signatures; server
 | Markup applied when a listing is made, never repriced | Listed prizes and NFTs keep their price, so a markup change costs no `updatePrice` gas (FWA has no batch update). |
 | One target mix, no fallback plans, ceiling or odds floor | The creator sets one mix; a smaller target is reached by unlisting extras. FWA prices and refunds each draw, so exact limits are not needed. |
 | Gate on prize weight, not an exact inventory | FWA keeps each draw near its design by pricing and refunding on live inventory; the gate only keeps prize weight at or above 70% of the target's, and admits more than one batch between upkeeps. |
-| Pause at 5 unsettled draws (MAX_BATCH) | Caps the draws FWA can refund for slippage in a burst (simulation: no cap refunded ~20% of draws in bursts). |
+| Refuse new requests when at least five draws are already unsettled | The operator is checked once per batch; actual outstanding counts can exceed five and reserves use the actual sequence count. |
 | Reconcile up to 5 settled sequences per call; restock while draws are unsettled | Upkeep keeps up with bursts, and FWA stages the restock until the draws settle. |
 | Redeem prizes for backing instead of keeping spares | Prizes never sit in the Balancer between transactions; one mint fee per Shape re-minted when the target grows again. |
 | Delivery failures resolved per item, never scanned | Upkeep gas cannot grow with refund history or hostile collections. |
 | Replaceable read-only work-based economics, adopted by each creator after two days (decision 95) | Draws that time out or win an NFT bring no restocking fee; paying their reconcile only from fees left them unreconciled until the fill gate closed (flow regime `randomness_not_delivered`: 55 draws refused before, 0 after). The restocking fee stays in each Shape prize's price as the creator's income toward keeper pay. Competing keepers bid the reimbursed priority, so a higher cap is a surcharge on every upkeep. |
-| Withdrawal reserve includes worst split work and the fixed-listing fee gap | Limits withdrawals and admits purchases only while held in ETH, so upkeep can always restock an admitted draw (simulation: without the spare, the top prize was missing half the time; round 8 E1, E2). |
+| Current-work reserve with a consumable maintenance buffer (decision 96) | Funds paid initial setup and limits withdrawals against present deficits; avoids a duplicate largest prize or lifetime keeper cycle. Later partial depletion can require creator action. |
 | Clone factory, `via_ir`, 50 optimizer runs | Cheap deployment per creator; runtime under EIP-170's 24,576 B limit, with permanently linked `PoolPage`, `PoolInventory` and `KeeperPolicyCalls` libraries. No linked execution address is replaceable. |
 | Hard-coded size table (packed constants), Shapes sizes checked against `Shapes.denominationAt` and the Packs instance checked to wrap the same Shapes with a minimum at most 0.02 ETH, at deployment | Avoids external calls in hot paths. |
 | A fixed menu of 16 prize sizes instead of arbitrary values | Keeps per-size counts, reserve and weight checks structurally simple; a 1-2-2.5-5 ladder lands within about 25% of any target value. |

@@ -1,0 +1,139 @@
+{
+  "base": "a8fb321265f50d1d322023c7b26d39d38022da8d",
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "fork_block": 26382349,
+  "recent_fork_block": 26437232,
+  "source_hash": "c498277954d66f3be2ac2cfbf7f36d8e8944e8815a3c48c0243214fc74e8f63b",
+  "review_manifest_sha256": "2291b07ab2278d26c5bc8b8e841956aa5298b05a8cbabeef53aeb6ee5ca9331a",
+  "final_pool_sha256": "e98890d6a5a3a495b988c9c812d4ca5b1b6d1f450a1d1d3d646d640d1651c8d5",
+  "full_command": "CANDIDATE_RUN=1 SOURCE_HASH=c498277954d66f3be2ac2cfbf7f36d8e8944e8815a3c48c0243214fc74e8f63b forge test --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --isolate --gas-limit 100000000000 --threads 8 -vv",
+  "records": [
+    {
+      "path": "/private/tmp/reserve-candidate-foundry-01.log",
+      "sha256": "1fdf31ed3613abcf6cb74d02c67d46ed6422d71a01e24582fb3e3b72d2a13eff",
+      "exit_status": 1,
+      "result": "482tests;467passed15failed;allfailuresretained"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-typescript.log",
+      "sha256": "d0bdc4f1374375d1bd8a35f1e73a47f381607e8de93fd022d714f1ff88235636",
+      "exit_status": 0,
+      "result": "120tests pass; combined runner with typecheck completedexit0"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-types.log",
+      "sha256": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c",
+      "exit_status": 0,
+      "result": "typecheckpass"
+    },
+    {
+      "path": "/private/tmp/reserve-legacy-repaired-05.log",
+      "sha256": "61b3cf97a4fdca1890a6edc2e586bfcdea1776ea037d30b61f9c597a7d6e7d09",
+      "exit_status": 0,
+      "result": "12actualcasespass incl11repairs+gasjumpscenario"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-asset-flow-final.log",
+      "sha256": "0ade93f7e71348f6ccc57968b6f7cad935e43766eef1ef3c58f1c0c13b65bc14",
+      "exit_status": 0,
+      "result": "NO TESTS: ABI-only artifact; NOT verification"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-asset-flow-final-02.log",
+      "sha256": "198890be5578aa80d5f893d9f41d30aab4df578e0bb88d19312f83a3719f3400",
+      "exit_status": 0,
+      "result": "25actualassetflowregimespass"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-asset-gate.log",
+      "sha256": "4bdd37ee9b633b46244909b6b1b61d4bbe06942e2c587cc6e4061757a763f798",
+      "exit_status": 2,
+      "result": "oldO5fails;unsignedandreviewrecordmissing"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-asset-gate-reviewed.log",
+      "sha256": "a194edb902af9ba481fdcac5a6ec8134cf5010178efb4decc78386fa99f4aca0",
+      "exit_status": 2,
+      "result": "currentoutcomespass;unsignedonly"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-keeper-e2e-01.log",
+      "sha256": "fcf9e858735f7700f287725a004a0b06483b410e8cc447b50ebd6850401da7ea",
+      "exit_status": 0,
+      "result": "full28transactioncanonicalreceiptproof"
+    },
+    {
+      "path": "/private/tmp/reserve-model-focused-05.log",
+      "sha256": "edae615fa35680d73ecae3bb0f13a2f285a8ca1230f0a6b125a5c8f390ed47bd",
+      "exit_status": 0,
+      "result": "50focusedplanner/modelchecks"
+    },
+    {
+      "path": "/private/tmp/reserve-model-sim-05.log",
+      "sha256": "73674e5d7c0b0eb8c9211c16627cf99aa68c93866565df8c5a4136312b649810",
+      "exit_status": 0,
+      "result": "53scenarios40capitalrows;model-onlyoperatingassumptions"
+    },
+    {
+      "path": "/private/tmp/reserve-capital-contract-02.log",
+      "sha256": "e776efbb8275eeb8041a5970f1f5d7b4b4cc62343d70cd976d7445dbe7921720",
+      "exit_status": 0,
+      "result": "40contractquotes+2edges"
+    },
+    {
+      "path": "/private/tmp/reserve-capital-ts-01.log",
+      "sha256": "aa2581931f2f8249833d7d447c39843f02536234397680f91b18383e00a45397",
+      "exit_status": 0,
+      "result": "42paritychecks"
+    },
+    {
+      "path": "/private/tmp/reserve-security-profits.log",
+      "sha256": "55bc18384256237e1a271d867dd1e7f2a81455a52cf85331fcafc29301ca78e7",
+      "exit_status": 0,
+      "result": "11independentsecurityprobes"
+    },
+    {
+      "path": "/private/tmp/reserve-economic-forge-complete.log",
+      "sha256": "5868e4843f4c4aa9987779fd741ffdcab29ec6359aa022fed68442109063286b",
+      "exit_status": 0,
+      "result": "5independenteconomicprobes"
+    },
+    {
+      "path": "/private/tmp/reserve-economic-receipts-final.log",
+      "sha256": "76f0136ee42ae71b10940526588dbac98e14775c08ee59b671ce369a30fa835b",
+      "exit_status": 0,
+      "result": "realreceiptlowgaslifecyclecases"
+    },
+    {
+      "path": "/private/tmp/reserve-ui-final-types.log",
+      "sha256": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c",
+      "exit_status": 0,
+      "result": "finalUItypecheck"
+    },
+    {
+      "path": "/private/tmp/reserve-ui-final-copy-build.log",
+      "sha256": "27234508f9c6a0dd0be7289f51e51e265e9497890d31d84665c91a38fd577569",
+      "exit_status": 0,
+      "result": "finalUIbuild"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-foundry-final.log",
+      "sha256": "ab12e65d8e6e92ec0119fccacc4c07d65ed6acff082aa38db4f4231ff520f051",
+      "exit_status": 0,
+      "result": "483 tests passed; 0 failed; 0 skipped; 62 suites; 397.84s wall; 2220.23s reported CPU"
+    },
+    {
+      "path": "/private/tmp/reserve-candidate-asset-gate-final.log",
+      "sha256": "d09cec4102d45444e7dcde4c3e231f7d407f258167e3aa7a849e4b7ef3a6cbe8",
+      "exit_status": 2,
+      "result": "Current outcome measurements and independent source review pass; INCOMPLETE solely because owner signature is absent"
+    }
+  ],
+  "limits": [
+    "No mainnet broadcasts/realfunds.",
+    "No professional audit or owner signature inferred.",
+    "Rawlocal log paths are not permanent hosted artifacts.",
+    "Zero-selected test runs are explicitly unaccepted.",
+    "Stochastic demand/gas/timing forecasts remain model-only."
+  ]
+}

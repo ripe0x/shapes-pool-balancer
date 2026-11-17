@@ -1,5 +1,6 @@
 # Gas benchmarks and keeper bounds
 
+> **Current reserve redesign:** [before/after evidence](reserve-redesign-results.md) and [RESERVES.md](RESERVES.md) supersede the `a8fb321` capital requirements below. Earlier reports remain historical; no deployment is authorized.
 > **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
 
 Measured with `forge test --match-contract GasBench --isolate -vv` on a mainnet fork at block 26,382,349 (real FWA
@@ -33,7 +34,7 @@ FWA listing dominates: each listing writes the listing struct and updates a 32-l
 with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin
 over the estimate. The margin is a limit only: the contract reimburses measured gas, never the limit.
 
-## Policy candidate measurements (2026-11-17)
+## Historical a8fb321 policy measurements (2026-11-17)
 
 See [current verification](keeper-policy-results.md). PoolBalancer runtime is 24,380 bytes, leaving 196 bytes under EIP-170. Permanently linked inventory/policy libraries preserve immutable execution while external economic quotes use a 100k-gas bounded staticcall. Equal inline-vs-bounded quote arithmetic adds 7,704 gas cold and 2,677 warm; this excludes transfers, transaction intrinsic and other pool accounting. Maximum reached local production-path deployment bills 5,387,856 gas; its maximum submitted transaction gas limit is 7,004,212. Keeper limits reject estimates with headroom over EIP-7825's 16,777,216 transaction gas cap.
 
@@ -158,7 +159,7 @@ None remains under DECISIONS 73: every call that reconciles a draw or lists a pr
 calls for refunded, timed-out or curated draws and upkeep after closing. A call that does neither is refused
 (`NoUpkeepNeeded`) or paid nothing.
 
-## Keeper reserve audit
+## Historical keeper reserve audit, superseded
 
 `requiredReserve()` bounds withdrawals and, since DECISIONS 61, admits purchases only while ETH plus settled proceeds covers it. Components, while open:
 

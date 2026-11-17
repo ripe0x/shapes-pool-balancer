@@ -147,7 +147,7 @@ contract PolicyLifecycleTest is ForkBase {
         _select(first);
         HostilePolicy broken = new HostilePolicy(2);
         (uint256 required, uint256 shortfall) = first.policyFunding(address(broken));
-        assertGt(required, first.requiredReserve());
+        assertEq(required, first.requiredReserve(), "a higher declaration above the immutable current-work cap adds no hypothetical liability");
         vm.prank(creator); first.depositETH{value: shortfall}();
         vm.prank(creator); first.proposeKeeperPolicy(address(broken));
         vm.warp(vm.getBlockTimestamp() + 2 days); first.activateKeeperPolicy();

@@ -1,5 +1,6 @@
 # Mainnet deployment readiness
 
+> **Current reserve redesign:** [before/after evidence](reserve-redesign-results.md) and [RESERVES.md](RESERVES.md) supersede the `a8fb321` capital requirements below. Earlier reports remain historical; no deployment is authorized.
 > **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
 
 **Not deployed. Mainnet deployment needs your explicit authorization.** This report does not establish that the contracts

@@ -9,6 +9,7 @@ const base: DesignInputs = {
   edgeBps: 500,
   mintFee: parseEther('0.0005'),
   restockFee: restockFeeAt(10n ** 9n),
+  baseFee: 10n ** 9n,
   have: Array(9).fill(0),
 };
 const mix = (m: Record<number, number>): Counts => DENOMS.map((_, i) => m[i] ?? 0);

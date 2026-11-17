@@ -1,5 +1,5 @@
 import { parseAbi, type Address, type PublicClient } from 'viem';
-import { DENOMS, SHAPES_IN, keeperWorkAt, settingsFrom } from '../../shared/planner';
+import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound, settingsFrom } from '../../shared/planner';
 
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
@@ -24,9 +24,12 @@ export async function policyEconomics(pub: PublicClient, policy: Address, cached
   if (settings) settings.maxPrizes = 1_000;
   // Metadata never defines a pool's reserve or payout. A future policy need not support the linear display capability.
   const gasPrice = baseFee + (settings?.priorityCap ?? 50_000_000n);
-  const quote = (d?: number) => pub.readContract({
-    ...at, abi: policyAbi, functionName: 'quoteReward', args: [keeperWorkAt(baseFee, gasPrice, d)],
-  }).then((r) => r < maxReward ? r : maxReward);
+  const quote = (d?: number) => {
+    const work = keeperWorkAt(baseFee, gasPrice, d);
+    const bound = paymentBound(work, maxReward);
+    return pub.readContract({ ...at, abi: policyAbi, functionName: 'quoteReward', args: [work] })
+      .then((reward) => reward < bound ? reward : bound);
+  };
   const [restockFees, keeperQuotes] = await Promise.all([
     Promise.all(DENOMS.map((_, d) => pub.readContract({ ...at, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] }))),
     Promise.all([quote(), ...DENOMS.map((_, d) => quote(d))]).

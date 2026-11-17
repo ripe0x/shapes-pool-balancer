@@ -18,7 +18,7 @@ contract LaunchAContext {
 }
 
 contract RecentBlockLifecycleTest is ForkBase {
-    uint256 internal constant RECENT_BLOCK = 26_436_099;
+    uint256 internal constant RECENT_BLOCK = 26_437_232;
 
     function setUp() public {
         vm.createSelectFork("mainnet", RECENT_BLOCK);

@@ -1,5 +1,6 @@
 # Keeper policy implementation and evidence
 
+> **Historical `a8fb321` evidence.** The capital-intensive reserve and related bounds below are superseded by [RESERVES.md](RESERVES.md) and the current reserve redesign results. Preserve these numbers as history; they do not describe the current implementation.
 2026-11-17. Based on current main `a29af3a`, branch `codex/replaceable-keeper-policies`. **Implemented locally; no mainnet deployment or real funds used.** This is an implementation verification record, not a professional audit or release approval. The final Git commit contains this record; source correspondence for the asset-flow evidence is recorded below.
 
 ## Contracts and authority

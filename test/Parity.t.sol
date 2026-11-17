@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ListOne} from "./utils/ListOne.sol";
@@ -11,7 +12,7 @@ using ListOne for PoolBalancer;
 ///         test (shared/planner.test.ts). Regenerate with: forge test --match-path test/Parity.t.sol
 ///         Each case records the target (packed counts), curated bases, markup, mint fee, restocking fee, the FWA draw
 ///         price and curated odds once the target is fully listed, and `requiredReserve()` while open and
-///         fully reconciled (no draws): deficit 0 + 1 largest prize + (ceil(3/6)+1)=2 keeper rewards.
+///         fully reconciled (no draws): one bounded maintenance call, with no future-board or spare-backing term.
 contract ParityFixture is ForkBase {
     string json;
     uint256 n;
@@ -70,6 +71,8 @@ contract ParityFixture is ForkBase {
         vm.serializeString(o, "target", vm.toString(target));
         vm.serializeString(o, "drawPrice", vm.toString(b.pool().acquisitionFee()));
         vm.serializeString(o, "curatedOddsBps", vm.toString(cW * 10_000 / b.pool().totalWeight()));
+        GasProbe probe = new GasProbe(); probe.record();
+        vm.serializeString(o, "baseFee", vm.toString(probe.baseFee()));
         vm.serializeString(o, "mintFee", vm.toString(shapes.mintFee()));
         // Every prize was listed in this block, so at this restocking fee.
         vm.serializeString(o, "restockFee", vm.toString(b.restockFee()));

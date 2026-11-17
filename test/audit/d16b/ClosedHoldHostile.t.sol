@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// Hostile settlement coverage is funded at the gas regime being exercised before the creator claims.
+
 import {Vm} from "forge-std/Vm.sol";
 import {D16bWorstUpkeepTest, ProbeHog} from "./WorstUpkeepB.t.sol";
 import {PoolBalancer} from "../../../src/PoolBalancer.sol";
@@ -61,6 +63,7 @@ contract D16bClosedHoldHostileTest is D16bWorstUpkeepTest {
             balancer.performUpkeep(uh1); // reconciles r0 (fast path); a restock stages behind the reserved draws
             assertEq(balancer.reconciledSequence() + 4, pool.lastIssuedSequence());
         }
+        _setGas(4.95 gwei,5 gwei); // fund actual cap-price work before claiming its current-price hold
         vm.prank(creator);
         balancer.close();
         uint256 hold = balancer.requiredReserve();

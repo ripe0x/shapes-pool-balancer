@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
-import { BY_VALUE, DENOMS, capitalOf, economics, evaluate, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
+import { BY_VALUE, DENOMS, MAX_KEEPER_REWARD, capitalOf, economics, evaluate, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 
-// One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee, 1 gwei gas.
+// One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
   curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n),
-  have: Array(16).fill(0),
+  have: Array(16).fill(0), baseFee: 10n ** 9n, gasPrice: 1_050_000_000n, v1Preview: true,
 };
 const SMALL = 20;
 const STYLES: { key: Style; label: string }[] = [
@@ -67,15 +67,14 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const valueShare = 1 - markupShare - feeShare - edgeShare;
   const inPrizes = capitalOf(counts);
   const needed = ethNeeded(counts, EXAMPLE);
-  // A deposit covering what the pool needs, rounded up to the next 0.5 ETH, plus 0.5 ETH left unused.
-  const half = parseEther('0.5');
-  const deposit = ((needed + half - 1n) / half + 1n) * half;
-  const reserve = needed - inPrizes;
-  const unused = deposit - needed;
+  const capital = reserveBreakdownAt(counts, EXAMPLE.have, EXAMPLE.mintFee, 0, MAX_KEEPER_REWARD, EXAMPLE.baseFee);
+  const deposit = needed;
+  const initialCosts = capital.inventoryCost - inPrizes + capital.listingBudget;
+  const reserve = capital.workingBuffer;
   return (
     <main className="page hiw">
       <h1 className="title">How it works</h1>
-      <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in your NFTs and ETH; the pool keeps itself stocked.</p>
+      <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in your NFTs and ETH; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
 
       <section className="hiw-sec">
@@ -101,14 +100,14 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
 
       <section className="hiw-sec">
         <h2 className="h3">3. Won prizes are restocked</h2>
-        <p className="hiw-p">You choose the mix once. When a prize is won, the pool replaces it with the same prize, so it keeps that mix draw after draw. Your NFTs are not replaced.</p>
+        <p className="hiw-p">You choose a target mix. When a prize is won, upkeep replenishes it when the pool has enough operating ETH. Prizes can be replaced in stages. Your NFTs are not replaced.</p>
         <ol className="hiw-cycle">
           <li><b>A player draws</b><span>and wins, say, a 0.05 ETH Shape.</span></li>
-          <li><b>Draws continue</b><span>Other players keep drawing from the prizes still listed.</span></li>
+          <li><b>Draws continue</b><span>Players draw from the current inventory while the admission gate permits purchases.</span></li>
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
-          <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
+          <li><b>Back to the mix</b><span>The target is restored when funding and upkeep are available.</span></li>
         </ol>
-        <p className="note">Keepers are paid from your pool's ETH for each upkeep that restocks prizes or records draws; the restocking fee in each prize's price is your income toward that pay. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid from your pool's ETH for each upkeep that restocks prizes or records draws; the restocking fee in each prize's price is your income toward that pay. V1 reimburses gas up to 5 gwei. Low inventory can pause purchases. If operating ETH is insufficient, lower gas alone may not restart the pool; add ETH or reduce the target.</p>
       </section>
 
       <section className="hiw-sec">
@@ -120,18 +119,18 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'pays mint fees and keepers', share: feeShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape today) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your markup is yours (while the reserve is short, its first 10% refills the reserve): about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Markup adds about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example. Its first 10% supports operating capital; the share above 10% is your earnings.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">5. Your ETH</h2>
-        <p className="hiw-p">Say you create this pool with {eth(deposit, 1)} ETH:</p>
+        <p className="hiw-p">At the example gas price, this target needs {eth(deposit, 6)} ETH:</p>
         <Bar parts={[
           { label: 'buys the prizes', share: Number(inPrizes) / Number(deposit), style: { background: '#b5b5b5' }, note: `${eth(inPrizes)} ETH` },
-          { label: 'is held as reserve', share: Number(reserve) / Number(deposit), style: { background: '#555' }, note: `${eth(reserve)} ETH` },
-          { label: 'is unused', share: Number(unused) / Number(deposit), style: { border: '1.5px solid #555' }, note: `${eth(unused)} ETH, withdraw any time` },
+          { label: 'funds minting and initial paid listing', share: Number(initialCosts) / Number(deposit), style: { background: '#555' }, note: `${eth(initialCosts, 6)} ETH` },
+          { label: 'is the maintenance buffer', share: Number(reserve) / Number(deposit), style: { border: '1.5px solid #555' }, note: `${eth(reserve, 6)} ETH` },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>The reserve covers mint fees, a spare top prize (so a big win is restocked straight away) and keeper rewards. While the pool is open it stays in the pool; it is still your money: when you close the pool and unlist the prizes, each is redeemed for its exact ETH and everything can be withdrawn.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>With paid upkeep enabled, the operating requirement covers missing inventory, its paid listing budget, outstanding draw reconciliation and a maintenance buffer. With payment disabled, only missing inventory needs pool ETH; an unpaid caller pays maintenance gas. It changes with gas and the work left. Keeper payments consume operating capital; successful sales replenish it. Fees inside unsold prizes are expected income, not ETH already collected. Closing releases unnecessary operating capital; outstanding work still affects withdrawals. Unlisted Shapes and Packs redeem for their exact backing.</p>
       </section>
 
       <section className="hiw-sec">
@@ -167,11 +166,12 @@ const FAQ: [string, string][] = [
   ['What is a Shape?', 'An NFT from the Shapes project that holds a fixed amount of ETH. Whoever owns it can redeem it for exactly that ETH at any time, or keep it.'],
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
-  ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Mint fees and restocking fees are built into prize prices, and all buyers fund them. Keepers are paid from your ETH in the pool, including for draws that win one of your NFTs or time out, which bring no restocking fee. The pool fronts the fees until prizes are won, so prizes still listed when you close keep theirs, and stocking the pool when you open it costs gas even if nobody buys. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['What happens when someone wins my NFT?', 'It goes to them. If other curated NFTs remain, purchases continue while the inventory gate permits them. If it was your last NFT, purchases stop until you add another.'],
+  ['Can I lose money?', 'Mint fees and restocking charges are built into prize prices. Successful purchases generate proceeds; refunded draws do not. Keepers are paid from your operating ETH, so low volume, large wins and gas costs can consume your capital. Fees in unsold prizes are not cash. Initial mint and keeper costs remain costs even if nobody buys. Shapes and Packs retain their redeemable backing.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
-  ['Do purchases pause after draws?', 'Usually not. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, when the Shapes mint fee rises above the one you accepted, and, for a mix with little prize weight, while a few draws are unsettled (the design page says how many).'],
-  ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won, usually within a minute. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. Every pool also pauses while five draws are unsettled. The pause ends on its own as the draws settle.'],
+  ['Do purchases pause after draws?', 'Purchases may continue with a partially stocked target. They pause when the inventory gate is below 70% of the target weight, at the busy threshold, after the last curated NFT is won, or when the Shapes mint fee rises above the accepted amount. The actual remaining inventory sets the current draw price and odds.'],
+  ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. A new purchase is also refused when at least five draws are unsettled; a batch can already be in flight. Settlement can release that busy condition, but an inventory or ETH shortage may still need creator action.'],
+  ['Can sales replenish every shortage?', 'Only while purchases remain available and players keep buying. If inventory is too low to admit purchases and no sales are waiting to be collected, add ETH, reduce the target mix, or close and recover the remaining assets. No refill time is guaranteed.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];

@@ -55,8 +55,8 @@ contract ReserveTest is ForkBase {
     }
 
     /// @dev Sell single draws that each win a 0.01 Shape, the creator claiming everything claimable after each, until
-    ///      the fund holds the reserve again. Every draw is admitted, every draw pays the creator something, and no
-    ///      claim takes the fund below the reserve or below where it was.
+    ///      the fund holds its working target again. Every admitted draw replenishes operating capital; creator
+    ///      claims never reduce an underfunded fund. Individual collections need not book a nonzero profit.
     function _sellUntilRefilled() internal returns (uint256 n, uint256 claimed) {
         while (_fund() < balancer.requiredReserve()) {
             assertEq(balancer.admissionStatus(), 0, "still selling while the reserve refills");
@@ -67,7 +67,6 @@ contract ReserveTest is ForkBase {
             uint256 f = _fund();
             uint256 need = balancer.requiredReserve();
             uint256 w = balancer.withdrawableSurplus();
-            assertGt(w, 0, "profit flows on every draw");
             vm.prank(creator);
             balancer.claimSurplus(w, creator);
             claimed += w;
@@ -107,8 +106,8 @@ contract ReserveTest is ForkBase {
         buy(buyer, 1);
     }
 
-    /// The reserve's spare restocks a big win at once; purchases continue and their markup refills the reserve.
-    /// The creator cannot withdraw until it is whole again.
+    /// An expensive win can remain missing while smaller-prize sales replenish its replacement cost.
+    /// There is no duplicate-backing spare, and operating withdrawals stay restricted meanwhile.
     function test_bigWinKeepsSellingWhileReserveRefills() public {
         _claimAll();
         uint256 need = balancer.requiredReserve();
@@ -116,8 +115,8 @@ contract ReserveTest is ForkBase {
         fulfill(r[0], _wordFor(3));
         settle();
         fillUp();
-        assertEq(balancer.getActiveShapes()[3], 1, "0.5 Shape restocked from the spare");
-        assertLt(_fund(), need, "spare spent");
+        assertEq(balancer.getActiveShapes()[3], 0, "expensive replacement is deferred without a duplicate backing reserve");
+        assertGt(balancer.requiredReserve(), need, "actual missing inventory raises the working target");
         assertEq(balancer.withdrawableSurplus(), balancer.profit(), "only profit is claimable while the fund is short");
         assertEq(balancer.admissionStatus(), 0, "purchases continue");
 
@@ -179,7 +178,7 @@ contract ReserveTest is ForkBase {
         uint256[] memory ids = balancer.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind, uint8 denom,,,) = balancer.items(ids[i]);
-            if (kind == SHAPE_KIND && denom == 3) one[0] = ids[i]; // the 0.5 Shape relisted after the win
+            if (kind == SHAPE_KIND && denom == 0) one[0] = ids[i]; // an actually active small prize
         }
         vm.prank(creator);
         balancer.unlistShapes(one);
@@ -227,9 +226,7 @@ contract ReserveTest is ForkBase {
             fillUp();
             require(++i < 400, "balance never reached 0.51");
         }
-        uint256[] memory b = buy(buyer, 1);
-        fulfill(b[0], _wordFor(3));
-        settle();
+        assertEq(balancer.getActiveShapes()[3],0,"the first expensive win is still awaiting funded replacement");
         balancer.collectProceeds();
         assertLt(_fund(), 0.5011 ether, "the fund alone cannot restock the 0.5 Shape");
         assertGt(address(balancer).balance, 0.506 ether, "fund and profit together can");
@@ -314,8 +311,8 @@ contract ReserveTest is ForkBase {
         uint256[] memory pending = buy(buyer, 1);
         vm.prank(creator);
         balancer.close();
-        uint256 held = balancer.maxKeeperReward();
-        assertEq(balancer.requiredReserve(), held, "one unreconciled draw: one maximum reward held");
+        uint256 held = _reconciliationBudget();
+        assertEq(balancer.requiredReserve(), held, "one unreconciled draw: its operation-sensitive cap held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
         _claimAll();
         assertEq(address(balancer).balance, held, "only the held pay is left");

@@ -1,3 +1,6 @@
+> **Historical a8fb321 reserve model.** These results retain the superseded full-board maintenance reserve and automatic curated-NFT replacement assumptions. Current results are in [reserve-redesign-simulation-results.md](reserve-redesign-simulation-results.md). The historical values below are unchanged.
+
+> **Historical `a8fb321` evidence.** The capital-intensive reserve and related bounds below are superseded by [RESERVES.md](RESERVES.md) and the current reserve redesign results. Preserve these numbers as history; they do not describe the current implementation.
 # Keeper policy economics scenarios
 
 Generated with `npm run sim`. **Model estimates, not release or fork parity evidence.** The model reads the V1 parameters exported by the Solidity policy fixture test.

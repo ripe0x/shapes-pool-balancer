@@ -221,7 +221,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertEq(pool.unsettledAcquisitionCount(), 1);
         vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertGt(shortfall, 0, "old-policy capital does not finance the increased obligations");
+        assertGt(shortfall, 0, "the current outstanding-draw funding target is explicitly met before activation");
         vm.prank(creator); balancer.depositETH{value: shortfall}();
         deposited += shortfall;
         vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
@@ -284,33 +284,31 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _done("zero_demand", a, x);
     }
 
-    /// @dev As quiet, with the 0.5 ETH Shape forced on draws 60 and 61 (it must be restocked in between).
+    /// @dev A real 0.5 ETH win can leave the target depleted; no hypothetical second copy is assumed.
     function test_breakdown_largeWin() public {
         Snap memory a = _launch();
-        (forceTopA, forceTopB) = (60, 61);
+        forceTopA = 60;
         for (uint256 i; i < DRAWS; ++i) _single(i);
-        assertGe(topWon, 2, "two top prizes were won");
+        assertGe(topWon, 1, "the actual large prize was delivered before deferred recovery or creator action");
         _done("large_win", a, _largeWinFacts());
     }
 
-    /// @dev E9 option "add ETH": large_win, and right after the second top prize is won the creator deposits what
-    ///      the reserve is short by.
+    /// @dev After the actual large win, the creator explicitly funds the missing target and current work.
     function test_whatIf_largeWinTopUp() public {
         Snap memory a = _launch();
-        (forceTopA, forceTopB, actAt, actTopUp) = (60, 61, 62, true);
+        (forceTopA, actAt, actTopUp) = (60, 61, true);
         for (uint256 i; i < DRAWS; ++i) _single(i);
-        assertGe(topWon, 2, "two top prizes were won");
+        assertGe(topWon, 1, "the actual large prize was delivered before deferred recovery or creator action");
         assertGt(toppedUp, 0, "the creator topped up");
         _done("whatif_large_win_top_up", a, _largeWinFacts());
     }
 
-    /// @dev E9 option "continue without the 0.5 ETH prize": large_win, and right after the second top prize is won
-    ///      the creator saves the same design without it.
+    /// @dev After the actual large win, the creator saves the design without that missing prize.
     function test_whatIf_largeWinDropTop() public {
         Snap memory a = _launch();
-        (forceTopA, forceTopB, actAt) = (60, 61, 62);
+        (forceTopA, actAt) = (60, 61);
         for (uint256 i; i < DRAWS; ++i) _single(i);
-        assertGe(topWon, 2, "two top prizes were won");
+        assertGe(topWon, 1, "the actual large prize was delivered before deferred recovery or creator action");
         assertEq((balancer.target() >> (16 * TOP)) & 0xFFFF, 0, "the design no longer has the top prize");
         _done("whatif_large_win_drop_top", a, _largeWinFacts());
     }
@@ -393,6 +391,34 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.deal(creator, 20_000 ether);
         vm.deal(buyer, 1_000_000 ether);
         _quietBoard("largest_board", c, 9_000 ether, 80);
+    }
+
+    function test_breakdown_minimumCapital() public {
+        uint256[16] memory c;
+        c[0] = 20;
+        Snap memory a = _launchWith(c, 0.2356 ether, 20);
+        assertEq(balancer.requiredReserve(), 0.00368 ether, "minimum default-paid funding actually stocked the board");
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertEq(deposited, 0.2356 ether, "no operating top-ups hidden in this regime");
+        Fact[] memory x = new Fact[](3);
+        x[0] = Fact("initial_opening_requirement_wei", 0.2356 ether);
+        x[1] = Fact("operating_topups_wei", 0);
+        x[2] = Fact("stocked_working_buffer_wei", 0.00368 ether);
+        _done("minimum_capital", a, x);
+    }
+
+    function test_breakdown_minimumLargeWin() public {
+        uint256[16] memory c;
+        (c[0], c[9], c[1], c[2], c[TOP]) = (24, 8, 12, 2, 1);
+        forceTopA = 0;
+        Snap memory a = _launchWith(c, 1.79092 ether, 55);
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertGt(topWon, 0, "the expensive-prize event was actually reached");
+        assertEq(deposited, 1.79092 ether, "no creator ETH added after opening");
+        Fact[] memory x = new Fact[](2);
+        x[0] = Fact("initial_opening_requirement_wei", 1.79092 ether);
+        x[1] = Fact("operating_topups_wei", 0);
+        _done("minimum_large_win", a, x);
     }
 
     function _quietBoard(string memory regime, uint256[16] memory c, uint256 deposit, uint256 units) internal {
@@ -680,17 +706,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertTrue(balancer.canPurchase(buyer), "open before the last batch");
         uint256[] memory ids = _buy(5);
         assertEq(pool.unsettledAcquisitionCount(), 5, "five draws pending at close");
-        Fact[] memory x = new Fact[](22);
+        Fact[] memory x = new Fact[](23);
         x[0] = Fact("draws_pending_at_close", 5);
         _collectNow();
         vm.prank(creator);
         balancer.close();
         uint256 heldAtClose = balancer.requiredReserve();
+        assertEq(heldAtClose, 5 * _reconciliationBudget(), "closed hold tracks the five actual draws at current gas");
         // D3: while closed, keeper pay for the unreconciled draws is held; nothing else may be withheld
-        x[1] = Fact(
-            "unclaimable_after_close_beyond_held_pay_wei",
-            address(balancer).balance - balancer.withdrawableSurplus() - balancer.requiredReserve()
-        );
+        uint256 unclaimable = address(balancer).balance - balancer.withdrawableSurplus();
+        x[1] = Fact("unclaimable_after_close_beyond_held_pay_wei", unclaimable > heldAtClose ? unclaimable - heldAtClose : 0);
+        x[22] = Fact("closed_reconciliation_target_shortfall_wei", heldAtClose > unclaimable ? heldAtClose - unclaimable : 0);
         // what the creator can take while the draws are still pending
         uint256[] memory first = _chunk(_ids(SHAPE_KIND), 0);
         x[2] = Fact("unlist_blocked_while_pending", _unlist(first) ? 0 : 1);

@@ -5,6 +5,7 @@ import {
 
 export interface DesignInputs extends PoolInputs {
   have: Counts; // prizes listed now
+  enabled?: boolean;
 }
 
 /** One draw from a player's side, at what each prize is worth (a Shape redeems for its backing). */
@@ -31,8 +32,8 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
 }
 
 /** ETH that stays in the pool while open with `target`: PoolBalancer.requiredReserve() from the prizes listed now. */
-export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings' | 'policyMaxReward' | 'listedRestockFees'>) =>
-  requiredReserveAt(target, d.have, d.mintFee, 0, d.policyMaxReward ?? MAX_KEEPER_REWARD, d.listedRestockFees ?? 0n);
+export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings' | 'policyMaxReward' | 'baseFee' | 'unreconciled' | 'enabled' | 'paidUpkeepEnabled'>) =>
+  requiredReserveAt(target, d.have, d.mintFee, d.unreconciled ?? 0, d.paidUpkeepEnabled === false ? 0n : d.policyMaxReward ?? MAX_KEEPER_REWARD, d.baseFee, d.enabled ?? true);
 
 const NONE: Counts = DENOMS.map(() => 0);
 

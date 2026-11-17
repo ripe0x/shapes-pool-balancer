@@ -1,6 +1,6 @@
 # Replaceable keeper policies
 
-Implementation is based on `origin/main` `a29af3a`, branch `codex/replaceable-keeper-policies`, 2026-11-17.
+Policy architecture began at `origin/main` `a29af3a`; current reserve redesign starts from `a8fb321`, branch `codex/replaceable-keeper-policies`, 2026-11-17.
 No mainnet deployment or real spending is authorized. Verification and independent review are recorded separately;
 this specification does not establish release readiness.
 
@@ -51,46 +51,17 @@ markup share and FWA listing prices never change merely because a policy changes
 
 ## Financial limits and operating capital
 
-The immutable 0.311 ETH per-call ceiling preserves current main's security ceiling (decision 88), rather than the
-older 0.01635 ETH default quoted in the request. Pool enforcement additionally limits proposed compensation to actual
-validated work and the fixed measured-gas envelope: at most 6M measured gas plus 200k overhead, at the lesser of the
-actual bid, basefee + 2 gwei, and 50 gwei, plus 0.001 ETH per verified draw or listed Shape unit. The selected policy's
-cached declared maximum is another cap, not a trusted quote. A policy cannot increase that cached maximum itself.
+The current reserve/payment kernel is specified in [RESERVES.md](RESERVES.md). It supersedes the capital-intensive `a8fb321` board-cycle bridge. The selected maximum remains cached, with an immutable 0.311 ETH per-call ceiling, but a tighter operation-sensitive gas/work envelope constrains actual proposals. Policy code still cannot change custody, useful-work validation, creator ownership or any enforcement bound.
 
-An immutable listing-surcharge ceiling of 0.102 ETH per contained Shape also bounds quoted prices.
+At 0.5 gwei basefee, twenty small Shapes need 0.2356 ETH to open for paid setup, including 0.22 ETH backing/mint expense, 0.01192 ETH bounded initial listing work and a 0.00368 ETH working buffer. Once stocked, only that buffer remains in the liquid reserve. There is no duplicate largest-prize backing and no full-board future keeper payment hold. Actual missing inventory and its current listing work, plus issued-but-unreconciled draws, restrict withdrawals as they arise. Expected surcharges inside unsold prizes are displayed but never treated as cash or subtracted from the new reserve.
 
-The per-pool token bucket starts at 3.11 ETH (ten hard maximum calls) and refills at floor(0.311 ETH / 12 seconds). Ten calls budget separate reconciliation and replacement for a five-draw burst; refill budgets one hard-maximum call per 12 seconds. Normal V1 calls consume much less, so the 1,000-prize initial fill and measured high-volume rehearsal remain below this allowance. This is a conservative exposure choice, not a measured optimal risk budget.
-Worst permitted expenditure is 2,242.3099999999999424 ETH in 24 hours and 817,311.109999999978976 ETH in 365 days, including the initial burst. These deliberately generous absolute bounds are further restricted by real work and creator-owned liquid funds. Over elapsed time T, expenditure is at most `3.11 ETH + T * refillPerSecond`, further bounded by completed work,
-liquid creator operating capital and the per-call caps. Inactivity saturates at the burst. Closing, reopening,
-reconfiguration, ownership transfer and policy replacement never reset it. This generous limit allows launch-scale
-and stressed traffic, but does not guarantee unrestricted future paid throughput. It bounds exposure, not profitability.
-Payments are atomic: insufficient allowance, available operating ETH, quote failure, or failure to satisfy the caller's
-minimum payment reverts all work. The three-argument paid entry point enforces `reward >= minimumFixed + minimumGas * tx.gasprice`, so the caller's expense floor follows the mined fee. The one- and two-argument compatibility entry points remain. Caller minimums and the policy-generation hash protect pending transactions.
+Reference price for security budgets is `min(basefee + 0.1 gwei, 50 gwei)`. Actual payout also respects the actual bid and measured work. The service envelope is 0.00005 ETH per verified draw/Shape unit. Operation coefficients and all remaining components are immutable and exported for planner parity. They are payment bounds, not universal execution-gas claims. V1's own quote and surcharge formulas above remain unchanged.
 
-Activation checks `balance - profit`, because already booked creator profit is withdrawable. Required reserves use
-cached bounds without calling a policy. Closing holds one maximum payment per unreconciled draw, including split work.
-Open reserves cover missing inventory, the largest prize per unreconciled draw plus a spare, and worst split work.
+The per-pool allowance has a 0.622 ETH burst and `floor(0.05 ETH / 12)` wei/second refill, never reset by policy/configuration/ownership/open-state changes. It is spending authority, not ETH that must be locked upfront. At most burst plus elapsed-time refill can be paid, additionally bounded by current validated work, the selected maximum and creator-owned operating liquidity. A popular pool uses its own allowance.
 
-An additional board-cycle reserve covers fixed old fee contributions:
+Activation checks `balance - bookedProfit >= candidateReserve` at the current gas/mint-fee context. A larger declared maximum only increases funding where it changes present enforced work budgets. Old listings remain fixed. Future higher gas or adverse wins may require additional capital; a finite current reserve does not promise unlimited self-funding. Paid operations may consume their working buffer while respecting booked profit. The caller's mined-price-indexed minimum remains atomic.
 
-```text
-boardCycleGap = max(
-    2 * max(targetPrizeCount, activeShapePrizeCount) * cachedPolicyMaximum
-    - sum(activeShapeListing.price - activeShapeListing.base), 0
-)
-```
-
-This holds actual ETH against a future income shortfall; the recorded unsold fees are never counted as received ETH.
-The aggregate fee sum updates on listing and removal using existing item records. No per-listing policy address or
-policy generation is needed. Missing future prizes count with zero fee, so initial setup cannot create an unfunded
-reserve increase. This deliberately conservative assumption budgets one separate reconcile and one restock per prize.
-At 1,000 single-Shape prizes it can hold nearly 32.9 ETH before fee offsets, a substantial capital cost. Closing
-releases this board-cycle hold while preserving unreconciled-draw obligations. Withdrawals retain the current reserve;
-withdrawals after proposing can increase the shortfall and cannot bypass activation's final funding check.
-
-No reserve can guarantee an arbitrary policy remains self-funding over unlimited draws. A higher payment schedule
-or lower future surcharge can consume creator capital. Purchasers' draw escrow, refunds, prize backing and FWA's
-entitlements remain in the real dependency contracts and are outside the keeper payout path.
+Disabling paid upkeep releases payment-related reserve terms, retaining actual missing inventory cost. Delayed reenabling still checks the candidate's positive paid budget. A creator can bootstrap twenty small Shapes unpaid with 0.22 ETH pool funding, paying execution gas separately. Purchaser escrow/refunds remain in FWA regardless of payment state.
 
 ## Recovery and clients
 

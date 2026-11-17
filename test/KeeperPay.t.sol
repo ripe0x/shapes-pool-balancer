@@ -211,8 +211,8 @@ contract KeeperPayTest is ForkBase {
         buy(buyer, 5);
         vm.prank(creator);
         balancer.close();
-        uint256 held = 5 * balancer.maxKeeperReward();
-        assertEq(balancer.requiredReserve(), held, "five unreconciled draws: one maximum reward each");
+        uint256 held = 5 * _reconciliationBudget();
+        assertEq(balancer.requiredReserve(), held, "five unreconciled draws: one bounded reconciliation each");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else is claimable");
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator);
@@ -249,7 +249,7 @@ contract KeeperPayTest is ForkBase {
         vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
         balancer.claimSurplus(all, creator);
         uint256 free = balancer.withdrawableSurplus();
-        assertEq(all - free, 5 * balancer.maxKeeperReward(), "exactly the held pay is refused");
+        assertEq(all - free, 5 * _reconciliationBudget(), "exactly the held pay is refused");
         vm.prank(creator);
         balancer.claimSurplus(free, creator);
     }

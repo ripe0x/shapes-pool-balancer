@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// A cached declaration is an additional ceiling; trivial work is first limited by immutable gas and service bounds.
+
+import {Vm} from "forge-std/Vm.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
@@ -97,9 +100,17 @@ contract PolicySecurityReviewTest is ForkBase {
         _expire();
         bytes32 hash = balancer.settingsHash();
         uint256 before = keeper.balance;
-        vm.prank(keeper, keeper); uint256 paid = balancer.performUpkeep(hash, 0.001 ether);
-        assertEq(paid, 0.001 ether, "cached declaration still binds even a maximum quote");
-        assertEq(keeper.balance - before, 0.001 ether);
+        vm.recordLogs();
+        vm.prank(keeper, keeper); uint256 paid = balancer.performUpkeep(hash, 1);
+        Vm.Log[] memory logs=vm.getRecordedLogs();
+        uint256 measured;
+        for(uint256 i;i<logs.length;++i)if(logs[i].emitter==address(balancer)&&logs[i].topics[0]==keccak256("KeeperPaid(address,uint256,uint256)"))
+            (,measured)=abi.decode(logs[i].data,(uint256,uint256));
+        assertGt(paid,0);
+        uint256 envelope=((measured>2_150_000?2_150_000:measured)+100_000)*0.55 gwei+0.00005 ether;
+        uint256 bounded=envelope<0.001 ether?envelope:0.001 ether;
+        assertEq(paid,bounded,"trivial work cannot obtain an unrelated full declared maximum");
+        assertEq(keeper.balance - before,paid);
         assertEq(balancer.policyMaxReward(), 0.001 ether);
         assertEq(balancer.requiredReserve(), reserve, "policy mutation cannot change reserve formula");
         assertEq(balancer.reconciledSequence(), 1);

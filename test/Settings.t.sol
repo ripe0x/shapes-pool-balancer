@@ -121,6 +121,11 @@ contract SettingsTest is ForkBase {
     function test_pendingWithdrawCannotDefeatActivationFunding() public {
         _open(5 ether);
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        // At normal gas both declarations exceed the immutable current-work bound; a higher declaration alone costs nothing.
+        (uint256 sameRequired, uint256 noShortfall) = balancer.policyFunding(address(v2));
+        assertEq(sameRequired,balancer.requiredReserve());
+        assertEq(noShortfall,0);
+        vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
         vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator); balancer.claimSurplus(claimable, creator);
@@ -227,8 +232,8 @@ contract SettingsTest is ForkBase {
         assertEq(balancer.availableKeeperAllowance(), balancer.KEEPER_BURST(), "idle refill saturates");
         uint256 dayBound = balancer.KEEPER_BURST() + 1 days * balancer.KEEPER_REFILL_PER_SECOND();
         uint256 yearBound = balancer.KEEPER_BURST() + 365 days * balancer.KEEPER_REFILL_PER_SECOND();
-        assertEq(dayBound, 2242.3099999999999424 ether);
-        assertEq(yearBound, 817311.109999999978976 ether);
+        assertEq(dayBound, 360.6219999999999424 ether);
+        assertEq(yearBound, 131400.621999999978976 ether);
     }
 
     function test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() public {

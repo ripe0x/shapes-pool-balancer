@@ -20,7 +20,7 @@ belongs to the creator.
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Status codes, keeper operation, recovery procedures |
 | [docs/READINESS.md](docs/READINESS.md) | Mainnet deployment readiness report |
 
-See [replaceable keeper policies](docs/KEEPER-POLICIES.md) for voluntary policy adoption, funding requirements and recovery, and [implementation evidence](docs/keeper-policy-results.md) for current measurements and launch blockers.
+See [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
 
 ## Layout
 

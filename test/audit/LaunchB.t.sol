@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// Repeated forced large wins below the initial working buffer require explicit creator capital between wins.
+
 import {ReceiptGas} from "../utils/ReceiptGas.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
@@ -213,6 +215,12 @@ contract AttackB is ForkBase {
             fillUp();
             uint256 w = balancer.withdrawableSurplus();
             if (w != 0) { vm.prank(creator); balancer.claimSurplus(w, creator); }
+            if(k==0) {
+                assertEq(balancer.getActiveShapes()[3],0,"first large win is a real deferred deficit");
+                vm.prank(creator);balancer.depositETH{value:1 ether}();
+                fillUp();
+                assertEq(balancer.getActiveShapes()[3],1,"explicit creator capital permits a second large win");
+            }
         }
         uint16[16] memory a = balancer.getActiveShapes();
         console.log("0.5 ETH Shapes listed after two wins (target 1)", a[3]);

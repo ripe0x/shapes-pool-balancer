@@ -30,6 +30,8 @@ library PoolInventory {
         uint256 plan;
         uint256 markup;
         uint256 keep;
+        uint256 maxReward;
+        uint256 draws;
         uint256 fee;
         address shapes;
         address packs;
@@ -148,8 +150,14 @@ library PoolInventory {
             if (need > (MAX_OPS - used) / w) need = (MAX_OPS - used) / w;
             uint256 each = _cost(d, fee);
             uint256 bal = address(this).balance;
-            uint256 affordable = bal > keep ? (bal - keep) / each : 0;
-            if (need > affordable) need = affordable;
+            // Only the candidate work's enforced bound is held, not the policy's unrelated full-call maximum.
+            while (need != 0) {
+                uint256 reward = f.paid
+                    ? KeeperPolicyCalls.listingPaymentBound(f.maxReward, f.draws, used + need * w, n + need)
+                    : 0;
+                if (bal >= keep + need * each + reward) break;
+                --need;
+            }
             if (need == 0) break; // stop at the first size not fully restocked, so restocking stays in value order
             uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(f.policy, uint8(d), w, f.paid, block.basefee);
             if (d < SHAPE_DENOMS) {
@@ -187,6 +195,14 @@ library PoolInventory {
             emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
         }
         listed = n;
+    }
+
+    function missingUnits(State storage s, uint256 plan) public view returns (uint256 units) {
+        for (uint256 d; d < DENOMS; ++d) {
+            uint256 want = _count(plan, d);
+            uint256 have = s.activeShapes[d];
+            if (want > have) units += (want - have) * _shapesIn(d);
+        }
     }
 
     function addActive(State storage s, uint256 lid) public {

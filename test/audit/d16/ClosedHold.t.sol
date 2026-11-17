@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+// Closed holds fund current-price work; a later fee jump may require unpaid recovery.
+
+import {PoolBalancer} from "../../../src/PoolBalancer.sol";
 import {D16WorstUpkeepTest, IFwaExtra, GasHogCollection} from "./WorstUpkeep.t.sol";
 
 /// @notice D16 re-attack F2 (D3): after closing, the creator may claim everything except the keeper pay held for
@@ -24,6 +27,7 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         for (uint256 i; i < 4; ++i) fulfill(r[i], uint256(keccak256(abi.encode("c", i))));
         assertEq(pool.unsettledAcquisitionCount(), 4, "four ready draws wait for processing");
 
+        _setGas(4.95 gwei,5 gwei); // funding target is priced at close, not insurance against a later fee jump
         vm.prank(creator);
         balancer.close();
         uint256 owed = pool.lastIssuedSequence() - balancer.reconciledSequence();
@@ -73,6 +77,7 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
             assertEq(IFwaExtra(address(pool)).reservedListingCount(s), 6, "each later draw reserved six listings");
         }
         vm.roll(block.number + ITimeoutX(address(pool)).selectionTimeoutBlocks() + 2);
+        _setGas(4.95 gwei,5 gwei); // funding target is priced at close, not insurance against a later fee jump
         vm.prank(creator);
         balancer.close();
         uint256 hold = balancer.requiredReserve();
@@ -124,6 +129,7 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         for (uint64 s = pool.lastIssuedSequence() - 3; s <= pool.lastIssuedSequence(); ++s) {
             assertEq(IFwaExtra(address(pool)).reservedListingCount(s), 6, "each later draw reserved six listings");
         }
+        _setGas(4.95 gwei,5 gwei); // funding target is priced at close, not insurance against a later fee jump
         vm.prank(creator);
         balancer.close();
         uint256 hold = balancer.requiredReserve();
@@ -154,8 +160,55 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         emit log_named_uint("hold left (wei)", address(balancer).balance);
         assertEq(paid, owedCost, "the hold paid every useful call in full");
     }
+    function test_lowGasClaimThenGasJumpNeedsUnpaidRefundRecovery() public {
+        _setGas(0.5 gwei,0.55 gwei);
+        _launchBoard();
+        hog=new GasHogCollection();
+        buy(buyer,1);
+        _listHogs(20,100);
+        _listHogs(4,200);
+        for(uint256 i;i<4;++i)buy(buyer,1);
+        uint256 expectedRefund;
+        for(uint64 seq=1;seq<=pool.lastIssuedSequence();++seq) {
+            (,,uint256 escrow,,,)=pool.acquisitions(pool.requestIdAtSequence(seq));
+            expectedRefund+=escrow;
+        }
+        vm.roll(vm.getBlockNumber()+ITimeoutX(address(pool)).selectionTimeoutBlocks()+2);
+        _setGas(0.001 gwei,0.001 gwei);
+        vm.prank(creator);balancer.close();
+        uint256 available=balancer.withdrawableSurplus();
+        vm.prank(creator);balancer.claimSurplus(available,creator);
+        uint256 held=address(balancer).balance;
+        uint64 cursor=balancer.reconciledSequence();
+        uint256 allowance=balancer.keeperAllowance();
+        bytes32 generation=balancer.settingsHash();
+        _setGas(4.95 gwei,5 gwei);
+        vm.prank(keeper,keeper);vm.expectRevert(PoolBalancer.PaymentUnavailable.selector);
+        balancer.performUpkeep(generation,1);
+        assertEq(balancer.reconciledSequence(),cursor,"unfunded paid work reverted atomically");
+        assertEq(address(balancer).balance,held);
+        assertEq(balancer.keeperAllowance(),allowance);
+        assertEq(IClosedRefund(address(pool)).acquisitionRefundCredit(buyer),0);
+        uint256 received=stranger.balance;
+        while(balancer.reconciledSequence()<pool.lastIssuedSequence()) {
+            vm.prank(stranger);balancer.performUpkeepUnpaid();
+        }
+        assertEq(stranger.balance,received,"recovery pays no compensation");
+        assertEq(IClosedRefund(address(pool)).acquisitionRefundCredit(buyer),expectedRefund);
+        uint256 before=buyer.balance;
+        vm.prank(buyer);IClosedRefund(address(pool)).withdrawAcquisitionRefund();
+        assertEq(buyer.balance-before,expectedRefund,"all real purchaser escrow is recoverable despite operating illiquidity");
+        assertEq(address(pool).balance,0);
+        assertEq(balancer.requiredReserve(),0);
+    }
+
 }
 
 interface ITimeoutX {
     function selectionTimeoutBlocks() external view returns (uint256);
+}
+
+interface IClosedRefund {
+    function acquisitionRefundCredit(address) external view returns(uint256);
+    function withdrawAcquisitionRefund() external returns(uint256);
 }

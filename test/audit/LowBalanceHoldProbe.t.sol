@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
+
+// A second25ETHPack win is exercised only after explicit creator recapitalization restores that prize.
 import {ForkBase} from "../utils/ForkBase.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 
@@ -39,7 +41,13 @@ contract LowBalanceHoldProbe is ForkBase {
                 bytes32 uh1 = balancer.settingsHash();
                 vm.prank(keeper, keeper);
                 balancer.performUpkeep(uh1);
-                emit log_named_decimal_uint("fund after first restock", address(balancer).balance, 18);
+                assertEq(balancer.getActiveShapes()[15],0,"first25ETH prize has no duplicated liquid backing");
+                assertEq(balancer.admissionStatus(),6,"one-prize target honestly pauses until capital or redesign");
+                emit log_named_decimal_uint("fund after deferred first replacement",address(balancer).balance,18);
+                vm.prank(creator);balancer.depositETH{value:25.1 ether}();
+                emit log_named_decimal_uint("explicit creator Add ETH",25.1 ether,18);
+                fillUp();
+                assertEq(balancer.getActiveShapes()[15],1,"explicit top-up funds the next real25ETHPack");
             }
         }
         vm.prank(creator);

@@ -212,17 +212,16 @@ contract HardeningTest is ForkBase {
         b.open();
         vm.stopPrank();
         uint256 fee = shapes.mintFee();
-        uint256 largest = 0.1 ether + fee;
-        // empty: restore the whole target + 1 largest prize + (ceil((10+3)/6)+1)=4 keeper rewards
+        // Two actual five-Shape setup calls plus one consumable working buffer.
         uint256 deficit = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
-        assertEq(b.requiredReserve(), deficit + largest + (10 + 3 + 1 + 2 * 10) * b.maxKeeperReward(), "empty-pool reserve");
-        // fully reconciled: deficit 0, 1 largest prize + 2 keeper rewards (ceil(3/6)+1)
+        assertEq(b.requiredReserve(), deficit + 0.00596 ether + 0.00368 ether, "empty-pool reserve");
+        // A stocked board retains only one bounded maintenance-call buffer.
         for (uint256 i; i < 10; ++i) {
             bytes32 uh2 = b.settingsHash();
             vm.prank(keeper, keeper);
             try b.performUpkeep(uh2) {} catch { break; }
         }
-        assertEq(b.requiredReserve(), largest + (3 + 1 + 2 * 10) * b.maxKeeperReward() - 10 * b.restockFee(), "reconciled-open reserve");
+        assertEq(b.requiredReserve(), 0.00368 ether, "reconciled-open reserve");
     }
 
     /*////////////////////////////// incentive accounting //////////////////////////////*/
