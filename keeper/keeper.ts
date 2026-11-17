@@ -267,6 +267,9 @@ export class Keeper {
 
   /** Returns true while a tx for `b` remains in flight. */
   private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint, settings: KeeperSettings, settingsHash: Hash): Promise<boolean> {
+    // The confirmed nonce is read before the receipts: a transaction mined between the two reads then still has its
+    // receipt found and counted, instead of the entry being dropped as consumed by a transaction we did not see.
+    const confirmedNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'latest' });
     for (const h of p.hashes) {
       const r = await this.pub.getTransactionReceipt({ hash: h }).catch(() => null);
       if (!r) continue;
@@ -289,7 +292,6 @@ export class Keeper {
       delete this.state.pending[b];
       return false;
     }
-    const confirmedNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'latest' });
     if (confirmedNonce > p.nonce) {
       // Nonce consumed by a tx we did not see (e.g. replaced outside this process): stop tracking.
       delete this.state.pending[b];

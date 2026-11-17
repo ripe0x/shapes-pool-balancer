@@ -673,3 +673,15 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
       draw was unsettled.
     - Open, no change: on the largest board the creator ends ahead counting listed backing while the liquid fund is
       48.37 ETH below its reserve need; claims of self-sustaining play hold for the launch board, not every board.
+94. **Confirmatory review of `031a338` acted on** (report `audit/rc-031a338/REPORT.md` in the review's own worktree).
+    No execution code changed in the contracts.
+    - E3: the 14k gas is a measurement, not a bound. `SettingsLib.check`'s comment, the PoolBalancer keeper comment,
+      R37 and `docs/SECURITY.md` now say so, apply it to restockFlat at 0 however it was set (creator override or
+      factory default), and put any shortfall on the creator's fund.
+    - C1: `_collect` and upkeep step 1 now say the split uses the listings tracked at collection; listings added
+      while a draw is unsettled (upkeep restocking, at the markup in force then) also count, and a markup change alone
+      moves no listed share.
+    - E4: R4 states the current NFT-dominated figure only (up to 0.0371 ETH; O11 up to 0.038 ETH).
+    - K1: the keeper reads its confirmed nonce before the receipts, so an upkeep mined between the two reads is
+      counted in its stats instead of being dropped as consumed by another transaction (local fork: 3 KeeperPaid
+      events, stats 12 to 15 mined).

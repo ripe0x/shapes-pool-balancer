@@ -115,8 +115,8 @@ contract PoolBalancer is ReentrancyGuard {
     //   is the creator's cost, as are the fees of prizes unlisted or never drawn.
     //   restockGas is at least overheadGas + 850k (SettingsLib.check), so with the incentive the fee covers an upkeep
     //   that reconciles one draw and restocks one Shape (measured 763k-864k gas across pools and blocks; Shapes mint gas
-    //   varies with the block) under the settings and price of its listing block, less at most 14k gas that the default
-    //   restockFlat covers. A listed fee is fixed: pay settings or gas raised later cost the creator the difference on
+    //   varies with the block) under the settings and price of its listing block; with restockFlat at 0 it measured up
+    //   to 14k gas short, and any shortfall is the creator's cost. A listed fee is fixed: pay settings or gas raised later cost the creator the difference on
     //   prizes listed before.
     /// @dev Override mask bits for `setOverrides`, one per creator-overridable setting.
     uint8 internal constant OVR_MAX_GAS_PRICE = 1;
@@ -679,8 +679,8 @@ contract PoolBalancer is ReentrancyGuard {
             }
         }
 
-        // 1. Collect settled proceeds before reconciling: each draw was priced on the listings still tracked, so the
-        //    split must see them (reconciling first would drop the won listing and skew the share).
+        // 1. Collect settled proceeds before reconciling, so the split still counts the listings the draws won
+        //    (reconciling first would drop them). Listings added since a draw was bought also count (see `_collect`).
         bool collected = _collect() != 0;
 
         // 2. Reconcile settled FWA sequences in order. Processed sequences are final: their listing is fixed.
@@ -897,9 +897,10 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && _missingUnits() != 0;
     }
 
-    /// @dev Collect FWA proceeds and split them by the listings tracked now. Callers collect before changing the tracked
-    ///      listings, so a draw is split by the set it was priced on unless that set changed while it was unsettled
-    ///      (upkeep restocked, or the creator changed the markup); then the current set's share applies. While the fund
+    /// @dev Collect FWA proceeds and split them by the listings tracked now (`activeIds`, `profitShareSum`). Callers
+    ///      collect before changing the tracked listings, so a draw is split by the set it was priced on unless listings
+    ///      were added or removed while it was unsettled (upkeep restocking, at the markup in force when it lists); then
+    ///      the current set's share applies. A markup change alone moves no listed share. While the fund
     ///      (this balance less unclaimed `profit`) is below `requiredReserve`, the Shapes' markup above MIN_MARKUP_BPS
     ///      becomes claimable `profit` and the fund keeps the rest; at or above it, everything over the reserve is
     ///      claimable anyway.
