@@ -8,7 +8,7 @@
 // (DECISIONS 68: the first 10% of markup refills, the rest is profit), written s < 0 here.
 import { parseEther } from 'viem';
 import { mixOf, styleBonus, type DesignInputs } from '../shared/design';
-import { restockFeeAt, prizePrice, prizeCost, listPrice, SHAPES_IN, DENOMS } from '../shared/planner';
+import { restockFeeAt, prizePrice, prizeCost, SHAPES_IN, DENOMS } from '../shared/planner';
 
 const E = (x: bigint) => Number(x) / 1e18;
 type Design = { name: string; s: number; cushion: boolean };
@@ -16,7 +16,7 @@ type Out = { withdrawn: number[]; position: number[]; dryDraws: number[]; topOff
 
 function run(small: number, markupBps: number, sched: number[], d: Design, runs: number, seed0: number): Out {
   const nftValue = parseEther('0.2');
-  const din: DesignInputs = { curatedBases: [nftValue], markupBps, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n), have: Array(16).fill(0), vrfFee: 0n };
+  const din: DesignInputs = { curatedBases: [nftValue], markupBps, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n), have: Array(16).fill(0) };
   const target = mixOf(small, styleBonus('board', din, small));
   const sizes = target.map((_, i) => i).filter((i) => target[i] > 0);
   const price = sizes.map((i) => E(prizePrice(i, din)));
@@ -24,7 +24,7 @@ function run(small: number, markupBps: number, sched: number[], d: Design, runs:
   const order = sizes.map((_, k) => k).sort((a, b) => cost[a] - cost[b]);
   const top = sizes.reduce((m, _, k) => (DENOMS[sizes[k]] > DENOMS[sizes[m]] ? k : m), 0);
   const T = cost[top];
-  const nftPrice = E(listPrice(nftValue, markupBps));
+  const nftPrice = E(nftValue); // curated NFTs list at their value
   const board = sizes.reduce((s, i, k) => s + target[i] * cost[k], 0);
   const deposit = board + (d.cushion ? T : 0);
   const o: Out = { withdrawn: [], position: [], dryDraws: [], topOff: [], topOffMax: [], short: [], deposit };

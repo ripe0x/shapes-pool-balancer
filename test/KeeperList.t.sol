@@ -5,6 +5,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {Vm} from "forge-std/Test.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice The factory's keeper list, on a mainnet fork (real FWA + Shapes).
 contract KeeperListTest is ForkBase {
@@ -33,9 +36,10 @@ contract KeeperListTest is ForkBase {
     }
 
     function _paidUpkeep(address who) internal returns (uint256 reward) {
+        bytes32 uh1 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(who, who);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -60,9 +64,10 @@ contract KeeperListTest is ForkBase {
         _drawOneShape();
         vm.prank(keeperAdmin);
         factory.setKeepersRestricted(true);
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(stranger, stranger);
         vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
         vm.prank(keeperAdmin);
         factory.setKeeperApproved(keeper, true);
         uint256 reward = _paidUpkeep(keeper);
@@ -71,11 +76,13 @@ contract KeeperListTest is ForkBase {
         _drawOneShape();
         vm.prank(keeperAdmin);
         factory.setKeeperApproved(keeper, false);
+        bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh3);
+        bytes32 uh4 = balancer.settingsHash();
         vm.prank(creator, creator);
-        balancer.performUpkeep(); // a pool's creator always can
+        balancer.performUpkeep(uh4); // a pool's creator always can
     }
 
     /// The keeper admin role moves only when the new admin accepts; the new admin can reopen upkeep to anyone.
@@ -96,8 +103,9 @@ contract KeeperListTest is ForkBase {
         _drawOneShape();
         vm.prank(stranger);
         factory.setKeepersRestricted(false);
+        bytes32 uh5 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(); // open again: anyone
+        balancer.performUpkeep(uh5); // open again: anyone
     }
 
     /// One switch on the factory restricts every pool it deployed: a second creator's pool follows the same list.
@@ -121,21 +129,25 @@ contract KeeperListTest is ForkBase {
         vm.prank(keeperAdmin);
         factory.setKeepersRestricted(true);
         _drawOneShape();
+        bytes32 uh6 = second.settingsHash();
         vm.prank(stranger, stranger);
         vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        second.performUpkeep();
+        second.performUpkeep(uh6);
         vm.prank(keeperAdmin);
         factory.setKeeperApproved(keeper, true);
+        bytes32 uh7 = second.settingsHash();
         vm.prank(keeper, keeper);
-        second.performUpkeep();
+        second.performUpkeep(uh7);
 
         balancer = first;
         pool = first.pool();
         _drawOneShape();
+        bytes32 uh8 = first.settingsHash();
         vm.prank(stranger, stranger);
         vm.expectRevert(PoolBalancer.KeeperNotApproved.selector);
-        first.performUpkeep();
+        first.performUpkeep(uh8);
+        bytes32 uh9 = first.settingsHash();
         vm.prank(keeper, keeper);
-        first.performUpkeep();
+        first.performUpkeep(uh9);
     }
 }

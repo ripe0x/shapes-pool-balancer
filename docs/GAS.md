@@ -40,7 +40,8 @@ reward    = (measured + 50,000) × price + 0.0001 ETH   (every call that reconci
             from the creator's ETH: the fund first, unclaimed profit only once the fund is empty
 MAX_KEEPER_REWARD = (3.2M + 50,000) × 5 gwei + 0.0001 ETH = 0.01635 ETH
 
-restockFee = 900k × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH   (per Shape in a prize, at the listing block)
+restockFee = 900k × min(basefee + 0.05 gwei, 5 gwei) + 0.0001 ETH incentive + 0.0001 ETH restockFlat   (per Shape in a prize,
+             at the listing block; restockGas ≥ overheadGas + 850k at any setting, audit rc-f5c81d6 F2)
 ```
 
 DECISIONS 73 and 74 (both constants owner-approved, D14). The 50,000 gas is what a transaction pays outside the measured span (21k
@@ -164,20 +165,24 @@ the cap spends held ETH, which sales refill before the creator can withdraw; `op
 (DECISIONS 66). Reserve sizes for representative inventories are **to be
 measured on the rewrite** (the previous design's `test_reserveSizes` numbers do not carry over).
 
-## Keeper bounds (constants in `PoolBalancer`)
+## Keeper bounds (constants in `PoolBalancer`; adjustable settings in `src/Settings.sol`)
+
+Rows marked *setting* are `Settings` (decision 88): the factory's keeper admin sets the default, a creator may override
+the four keeper-pay values for their own pool, and `SettingsLib.check` holds each inside the limits shown. The value
+column is the default.
 
 | Constant | Value | Basis |
 | --- | --- | --- |
-| `MAX_SHAPES_PER_PLAN` | 80 prizes in the target | bounds the target's prize count; no listing-scan loop remains |
+| `maxPrizes` *setting*, 1 to 1,000 (admin) | 1,000 prizes in the target (decision 91) | a product limit: upkeep work is bounded per call, not by pool size. Worst upkeep measures 2,646,324 gas at 200 prizes and 20 NFTs and 2,646,369 at 1,000 prizes and 100 NFTs (`test_gas_worstCaseUpkeepFullUnits_1000Prizes`). With a hostile curated collection, the keeper's billed gas grows about 50k per doubling of listings: 2.77M at 1,024, 2.82M at 2,048, 2.87M at 4,096, against 3.25M reimbursed (`test/audit/d16b/WorstUpkeepB.t.sol`) |
 | `MAX_RECONCILE` | 5 settled sequences reconciled per call | ~33k gas each; a drawn listing is read and cleared, never scanned again |
 | `MAX_RESTOCK_SIZES` | 4 prize sizes restocked per call | each size is its own mint call (~0.5M gas with its listing); 6 sizes measured 3.19M |
 | `MAX_OPS` | 5 Shape units restocked per call; a pack counts the Shapes it holds (2 or 3) | ~425k gas per Shape with its listing, ~870k per three-Shape pack; 6 units with 5 reconciles measured 3.13M |
-| `KEEPER_MAX_GAS` | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
-| `KEEPER_PRIORITY_CAP` | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
-| `KEEPER_MAX_GAS_PRICE` | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
-| `KEEPER_INCENTIVE` | 0.0001 ETH (owner-approved, D14) | the keeper's margin per paid call |
-| `KEEPER_OVERHEAD_GAS` | 50,000 (owner-approved, D14) | gas outside the measured span (measured 24k-46k) |
-| `MAX_KEEPER_REWARD` | 0.01635 ETH | `(3.2M + 50,000) × 5 gwei + 0.0001`; `requiredReserve` holds one per restocking call plus one |
+| `maxGas` *setting*, 3.2M to 6M (admin) | 3,200,000 | worst measured upkeep plus headroom for mint-seed variance |
+| `priorityCap` *setting*, 0 to 2 gwei (admin, creator) | 0.05 gwei over basefee | a keeper's priority bid above this is its own cost (collection-games#23) |
+| `maxGasPrice` *setting*, 1 to 50 gwei (admin, creator) | 5 gwei | covers ~99% of measured blocks; above it keepers wait and new purchases pause (longest measured episode ~42 min) |
+| `incentive` *setting*, 0 to 0.001 ETH (admin, creator) | 0.0001 ETH (owner-approved, D14) | the keeper's margin per paid call |
+| `overheadGas` *setting*, 50k to 200k (admin) | 50,000 (owner-approved, D14) | gas outside the measured span (measured 24k-46k) |
+| `maxKeeperReward()` | 0.01635 ETH at the defaults, at most 0.311 ETH at every limit | `(maxGas + overheadGas) × maxGasPrice + incentive`; `requiredReserve` holds one per restocking call plus one |
 
 The reserve cost of the 5 gwei cap is idle capital, not spending; see the reserve audit above.
 

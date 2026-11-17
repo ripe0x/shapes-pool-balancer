@@ -13,7 +13,9 @@ import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/Exte
 ///         Also deploys this system's own Draw Packs instance (lib/shape-packs, ripe0x/shape-packs `draw-packs` at
 ///         3a463f7), from its own build artifacts, for prizes between the Shapes denominations. PACKS_ADMIN (env) is
 ///         its presentation admin: renderer and description text only, no path into custody. KEEPER_ADMIN (env) holds
-///         the factory's keeper list (open to anyone at deploy); it has no path into custody or pool settings.
+///         the factory's keeper list (open to anyone at deploy) and its default settings for every pool (keeper pay,
+///         restocking fee, prize limit), within SettingsLib.check's limits; it has no path into custody or prize
+///         backing.
 ///
 ///   Rehearsal: PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender <addr> --broadcast
 ///   Mainnet:   PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> script/deploy.sh --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify

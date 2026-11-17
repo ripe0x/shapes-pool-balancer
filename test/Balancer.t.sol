@@ -8,6 +8,9 @@ import {
 import {Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {LibString} from "solady/utils/LibString.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IShapesAdmin {
     function setMintFee(uint256) external;
@@ -57,7 +60,7 @@ contract BalancerTest is ForkBase {
         assertTrue(address(b2.pool()) != address(pool));
         assertEq(b2.pool().owner(), address(b2));
         assertEq(b2.creator(), other);
-        assertEq(factory.balancerCount(), 2);
+        assertTrue(factory.isBalancer(address(b2)) && factory.isBalancer(address(balancer)), "both are this factory's");
         vm.prank(creator);
         PoolBalancer b3 = PoolBalancer(payable(factory.createBalancer(bytes32(uint256(1)))));
         assertEq(b3.pool().owner(), address(b3));
@@ -144,14 +147,14 @@ contract BalancerTest is ForkBase {
         assertTrue(balancer.canPurchase(buyer), "listing a curated NFT does not close the pool");
         (,,, uint112 base, uint112 price) = balancer.items(lids[0]);
         assertEq(base, 0.2 ether);
-        assertEq(price, 0.23 ether, "listed at base * (1 + markup)");
+        assertEq(price, 0.2 ether, "listed at its value, no markup");
         (,,,,, uint256 fwaPrice,,) = pool.listings(lids[0]);
-        assertEq(fwaPrice, 0.23 ether);
+        assertEq(fwaPrice, 0.2 ether);
 
         vm.prank(creator);
         balancer.updateCuratedPrice(lids[0], 0.4 ether);
         (,,,,, fwaPrice,,) = pool.listings(lids[0]);
-        assertEq(fwaPrice, 0.46 ether, "repriced at the current markup");
+        assertEq(fwaPrice, 0.4 ether, "repriced at the new value");
 
         vm.prank(creator);
         balancer.withdrawCurated(lids[1], creator);
@@ -198,9 +201,10 @@ contract BalancerTest is ForkBase {
         vm.stopPrank();
         assertTrue(staged != 0);
         // upkeep does not revert PoolBusy: nothing settled yet
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
 
         fulfill(ids[0], wordForSlot(slot));
         settle();
@@ -243,9 +247,10 @@ contract BalancerTest is ForkBase {
         pool.refundFailedDelivery(lid);
         frozen.setFrozen(false);
 
+        bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
         vm.prank(creator);
         balancer.recoverRefunded(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
@@ -276,9 +281,10 @@ contract BalancerTest is ForkBase {
     }
 
     function _paidUpkeep(address who) internal returns (uint256 reward, uint256 gasPaid) {
+        bytes32 uh3 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(who, who);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh3);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -317,7 +323,7 @@ contract BalancerTest is ForkBase {
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
         assertGe(reward, gasPaid * 5 gwei, "refund-safe gas at the capped price");
         assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0001 ether, "never above measured gas x cap + incentive");
-        assertLe(reward, balancer.MAX_KEEPER_REWARD());
+        assertLe(reward, balancer.maxKeeperReward());
     }
 
     function test_gateRefusesUnrefundablePurchasers() public {
@@ -338,23 +344,26 @@ contract BalancerTest is ForkBase {
     }
 
     function test_noRewardForUnnecessaryWork() public {
+        bytes32 uh4 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh4);
 
         // re-configuring the same target leaves no work
         configure(planA);
+        bytes32 uh5 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh5);
         assertTrue(balancer.canPurchase(buyer));
 
         // a second keeper racing the same work finds nothing left
         _drawOneShape();
         upkeep();
+        bytes32 uh6 = balancer.settingsHash();
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh6);
     }
 
     /// A refunded draw brings no restocking fee; reconciling it is still paid, from the creator's ETH.
@@ -365,7 +374,7 @@ contract BalancerTest is ForkBase {
         uint256 before = keeper.balance;
         upkeep();
         assertGe(keeper.balance - before, 0.0001 ether, "gas and the flat reward");
-        assertLe(keeper.balance - before, balancer.MAX_KEEPER_REWARD());
+        assertLe(keeper.balance - before, balancer.maxKeeperReward());
         assertTrue(balancer.canPurchase(buyer));
     }
 
@@ -448,7 +457,7 @@ contract BalancerTest is ForkBase {
     function test_reserveMath() public view {
         uint256 fee = shapes.mintFee();
         uint256 largest = 0.1 ether + fee;
-        uint256 expected = largest + 2 * balancer.MAX_KEEPER_REWARD();
+        uint256 expected = largest + 2 * balancer.maxKeeperReward();
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }
@@ -487,9 +496,9 @@ contract BalancerTest is ForkBase {
 
     /// Markup applies at listing time: existing listings keep their price, restocked prizes use the new markup.
     function test_markupAppliesAtListingOnly() public {
-        // curatedA was listed at MARKUP (1500)
+        // curatedA is listed at its value: curated NFTs carry no markup
         (,,, uint112 baseA, uint112 priceA) = balancer.items(curatedA);
-        assertEq(priceA, uint256(baseA) * (10_000 + uint256(MARKUP)) / 10_000);
+        assertEq(priceA, baseA);
         // a listed 0.05 Shape is priced at its backing, mint fee and MARKUP, plus one restocking fee
         uint256 fee = shapes.mintFee();
         uint256 shape = _shapeOfDenom(1);
@@ -565,7 +574,8 @@ contract BalancerTest is ForkBase {
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, 0); // empty
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, plan([uint256(81), 0, 0, 0, 0, 0, 0, 0, 0])); // > 80 Shapes
+        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0])); // > 1,000 prizes
+        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0])); // 1,000 is accepted
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
         balancer.configure(1500, planA | (uint256(1) << 256 - 1)); // stray high bits above 16 counts
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
@@ -760,9 +770,10 @@ contract BalancerTest is ForkBase {
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(buyer);
         pool.refundFailedDelivery(lid);
+        bytes32 uh7 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh7);
         _drawOneShape();
         uint256 g = gasleft();
         upkeep();

@@ -1,0 +1,31 @@
+No files changed, compilation skipped
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 23 tests for test/Gas.t.sol:GasBench
+[PASS] test_breakEven_fillStep() (gas: 20882231)
+[PASS] test_breakEven_gasJumpAfterListing() (gas: 13111613)
+[PASS] test_breakEven_steadyGas_oneDraw() (gas: 61620935)
+[PASS] test_breakEven_steadyGas_threeDraws() (gas: 85443198)
+[PASS] test_gas_canPurchase() (gas: 5262924)
+[PASS] test_gas_createBalancer() (gas: 844790)
+[PASS] test_gas_curatedOnlyReconcile() (gas: 6397378)
+[PASS] test_gas_initialFill() (gas: 20716023)
+[PASS] test_gas_packFillStep() (gas: 16059753)
+[PASS] test_gas_purchaseWithOperator() (gas: 6874046)
+[PASS] test_gas_refundOnlyBatch() (gas: 6017714)
+[PASS] test_gas_replaceFive() (gas: 13018061)
+[PASS] test_gas_replaceFiveMixed() (gas: 13782104)
+[PASS] test_gas_replaceFivePacks() (gas: 19966156)
+[PASS] test_gas_replaceOne() (gas: 7700964)
+[PASS] test_gas_unlistShapes20() (gas: 12460710)
+[PASS] test_gas_worstCaseUpkeep() (gas: 68806305)
+[PASS] test_gas_worstCaseUpkeepFullUnits() (gas: 64413434)
+[PASS] test_gas_worstCaseUpkeepShapes() (gas: 59544772)
+[PASS] test_gas_worstCaseUpkeepSixSizes() (gas: 66327272)
+[PASS] test_profitAtCap_curatedReconcilePaid() (gas: 7499198)
+[PASS] test_profitAtCap_fillSteps() (gas: 20766255)
+[PASS] test_profitAtCap_replaceFiveMixed() (gas: 13783790)
+Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 1.08s (2.07s CPU time)
+
+Ran 1 test suite in 1.09s (1.08s CPU time): 23 tests passed, 0 failed, 0 skipped (23 total tests)

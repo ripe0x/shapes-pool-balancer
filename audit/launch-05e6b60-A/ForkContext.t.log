@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+
+Ran 2 tests for test/ForkContext.t.sol:ForkContextTest
+[PASS] test_callsSeeTheConfiguredBasefeeAndGasPrice() (gas: 200604)
+[PASS] test_listedFeesMatchAnIndependentCalculation() (gas: 3527205)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 356.60ms (5.71ms CPU time)
+
+Ran 1 test suite in 364.85ms (356.60ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

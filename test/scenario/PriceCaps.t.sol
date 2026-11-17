@@ -5,6 +5,10 @@ import {console2} from "forge-std/Test.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {GasProbe} from "../utils/FlowBreakdown.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
+import {PoolBalancer} from "../../src/PoolBalancer.sol";
+import {ListOne} from "../utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice D6 measurement (no code change): the launch board listed fresh at basefee 0.5, 2 and 4.95 gwei (gas price
 ///         +0.05 gwei), on the pinned mainnet fork with the real FWA pool, randomness service and Shapes. Logs every
@@ -86,8 +90,9 @@ contract PriceCapsMeasure is ForkBase {
         settle();
         (,,,,,,, uint8 st) = pool.listings(lid);
         assertEq(st, 4, "reached: the chosen prize was won");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep();
+        reward = balancer.performUpkeep(uh1);
     }
 
     function _listNft() internal returns (uint256 lid) {

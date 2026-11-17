@@ -1,0 +1,422 @@
+'forge clean' running (wd: /private/tmp/fwa-launch-05e6b60-A)
+'forge config --json' running
+'forge build --build-info --skip ./test/** ./script/** --force' running (wd: /private/tmp/fwa-launch-05e6b60-A)
+
+Detector: reentrancy-eth
+Reentrancy in PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749):
+	External calls:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	- lids = p.listNFTs(batch) (src/PoolBalancer.sol#737)
+	External calls sending eth:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	State variables written after the call(s):
+	- ++ activeShapes[d_scope_1] (src/PoolBalancer.sol#744)
+	PoolBalancer.activeShapes (src/PoolBalancer.sol#195) can be used in cross function reentrancies:
+	- PoolBalancer._listedShapes() (src/PoolBalancer.sol#904-909)
+	- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#818-820)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806)
+Reentrancy in PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636):
+	External calls:
+	- collected = _collect() != 0 (src/PoolBalancer.sol#608)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#627)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+		- lids = p.listNFTs(batch) (src/PoolBalancer.sol#737)
+	External calls sending eth:
+	- ops = _fillDeficit(p,fee) (src/PoolBalancer.sol#627)
+		- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+		- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	State variables written after the call(s):
+	- creatorWork = false (src/PoolBalancer.sol#628)
+	PoolBalancer.creatorWork (src/PoolBalancer.sol#173) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.creatorWork (src/PoolBalancer.sol#173)
+	- profit = uint128(address(this).balance) (src/PoolBalancer.sol#635)
+	PoolBalancer.profit (src/PoolBalancer.sol#177) can be used in cross function reentrancies:
+	- PoolBalancer.profit (src/PoolBalancer.sol#177)
+	- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#767-773)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+
+Detector: divide-before-multiply
+PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806) performs a multiplication on the result of a division:
+	- (owed + MAX_RECONCILE - 1) / MAX_RECONCILE * MAX_KEEPER_REWARD (src/PoolBalancer.sol#783)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+
+Detector: incorrect-equality
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749) uses a dangerous strict equality:
+	- need == 0 (src/PoolBalancer.sol#711)
+PoolBalancer._payKeeper(uint256) (src/PoolBalancer.sol#751-759) uses a dangerous strict equality:
+	- reward == 0 (src/PoolBalancer.sol#756)
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636) uses a dangerous strict equality:
+	- ! reconciled && ops == 0 && ! collected && creatorWork == wasSetup (src/PoolBalancer.sol#632)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+
+Detector: reentrancy-no-eth
+Reentrancy in PoolBalancer.claimSurplus(uint256,address) (src/PoolBalancer.sol#487-495):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#489)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- profit = uint128(mine - amount) (src/PoolBalancer.sol#492)
+	PoolBalancer.profit (src/PoolBalancer.sol#177) can be used in cross function reentrancies:
+	- PoolBalancer.profit (src/PoolBalancer.sol#177)
+	- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#767-773)
+	- profit = 0 (src/PoolBalancer.sol#492)
+	PoolBalancer.profit (src/PoolBalancer.sol#177) can be used in cross function reentrancies:
+	- PoolBalancer.profit (src/PoolBalancer.sol#177)
+	- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#767-773)
+Reentrancy in PoolBalancer.listCurated(address,uint256,uint256) (src/PoolBalancer.sol#381-391):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#387)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- price = _pullCurated(collection,tokenId,base) (src/PoolBalancer.sol#388)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#866)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#868)
+	- listingId = pool.listNFT(collection,tokenId,price) (src/PoolBalancer.sol#389)
+	State variables written after the call(s):
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#390)
+		- activeIds.push(lid) (src/PoolBalancer.sol#880)
+	PoolBalancer.activeIds (src/PoolBalancer.sol#193) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#814-816)
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#390)
+		- profitShareSum += _share(lid) (src/PoolBalancer.sol#882)
+	PoolBalancer.profitShareSum (src/PoolBalancer.sol#192) can be used in cross function reentrancies:
+	- PoolBalancer.profitShareSum (src/PoolBalancer.sol#192)
+Reentrancy in PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[]) (src/PoolBalancer.sol#393-411):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#401)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- batch[i] = IFWAPool.ListingInput(c.collection,c.tokenId,_pullCurated(c.collection,c.tokenId,c.base)) (src/PoolBalancer.sol#405)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#866)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#868)
+	- listingIds = pool.listNFTs(batch) (src/PoolBalancer.sol#407)
+	State variables written after the call(s):
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#409)
+		- activeIds.push(lid) (src/PoolBalancer.sol#880)
+	PoolBalancer.activeIds (src/PoolBalancer.sol#193) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#814-816)
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#409)
+		- profitShareSum += _share(lid) (src/PoolBalancer.sol#882)
+	PoolBalancer.profitShareSum (src/PoolBalancer.sol#192) can be used in cross function reentrancies:
+	- PoolBalancer.profitShareSum (src/PoolBalancer.sol#192)
+Reentrancy in PoolBalancer.open() (src/PoolBalancer.sol#350-358):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#352)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- enabled = true (src/PoolBalancer.sol#353)
+	PoolBalancer.enabled (src/PoolBalancer.sol#171) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.enabled (src/PoolBalancer.sol#171)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806)
+Reentrancy in PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636):
+	External calls:
+	- collected = _collect() != 0 (src/PoolBalancer.sol#608)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- activeIds[idx - 1] = lastId (src/PoolBalancer.sol#898)
+		- activeIds.pop() (src/PoolBalancer.sol#900)
+	PoolBalancer.activeIds (src/PoolBalancer.sol#193) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#814-816)
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- -- activeShapes[d] (src/PoolBalancer.sol#646)
+	PoolBalancer.activeShapes (src/PoolBalancer.sol#195) can be used in cross function reentrancies:
+	- PoolBalancer._listedShapes() (src/PoolBalancer.sol#904-909)
+	- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#818-820)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806)
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- profitShareSum -= _share(lid) (src/PoolBalancer.sol#896)
+	PoolBalancer.profitShareSum (src/PoolBalancer.sol#192) can be used in cross function reentrancies:
+	- PoolBalancer.profitShareSum (src/PoolBalancer.sol#192)
+	- reconciledSequence = s (src/PoolBalancer.sol#619)
+	PoolBalancer.reconciledSequence (src/PoolBalancer.sol#174) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.reconciledSequence (src/PoolBalancer.sol#174)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806)
+Reentrancy in PoolBalancer.unlistShapes(uint256[]) (src/PoolBalancer.sol#500-511):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#508)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- IShapePacks(address(SHAPES)).redeem(tokenId) (src/PoolBalancer.sol#683)
+		- IShapePacks(address(PACKS)).redeem(tokenId) (src/PoolBalancer.sol#683)
+		- p.withdrawListingsTo(lids,address(this)) (src/PoolBalancer.sol#673)
+	State variables written after the call(s):
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- delete _items[lid] (src/PoolBalancer.sol#671)
+	PoolBalancer._items (src/PoolBalancer.sol#185) can be used in cross function reentrancies:
+	- PoolBalancer.items(uint256) (src/PoolBalancer.sol#809-812)
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- activeIds[idx - 1] = lastId (src/PoolBalancer.sol#898)
+		- activeIds.pop() (src/PoolBalancer.sol#900)
+	PoolBalancer.activeIds (src/PoolBalancer.sol#193) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#814-816)
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- -- activeShapes[d] (src/PoolBalancer.sol#668)
+	PoolBalancer.activeShapes (src/PoolBalancer.sol#195) can be used in cross function reentrancies:
+	- PoolBalancer._listedShapes() (src/PoolBalancer.sol#904-909)
+	- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#818-820)
+	- PoolBalancer.requiredReserve() (src/PoolBalancer.sol#780-806)
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- profitShareSum -= _share(lid) (src/PoolBalancer.sol#896)
+	PoolBalancer.profitShareSum (src/PoolBalancer.sol#192) can be used in cross function reentrancies:
+	- PoolBalancer.profitShareSum (src/PoolBalancer.sol#192)
+Reentrancy in PoolBalancer.updateCuratedPrice(uint256,uint256) (src/PoolBalancer.sol#415-425):
+	External calls:
+	- pool.updatePrice(listingId,price) (src/PoolBalancer.sol#421)
+	State variables written after the call(s):
+	- it.price = uint104(price) (src/PoolBalancer.sol#422)
+	PoolBalancer._items (src/PoolBalancer.sol#185) can be used in cross function reentrancies:
+	- PoolBalancer.items(uint256) (src/PoolBalancer.sol#809-812)
+Reentrancy in PoolBalancer.withdrawCurated(uint256,address) (src/PoolBalancer.sol#429-438):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#433)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- delete _items[listingId] (src/PoolBalancer.sol#435)
+	PoolBalancer._items (src/PoolBalancer.sol#185) can be used in cross function reentrancies:
+	- PoolBalancer.items(uint256) (src/PoolBalancer.sol#809-812)
+	- _removeActive(listingId) (src/PoolBalancer.sol#434)
+		- activeIds[idx - 1] = lastId (src/PoolBalancer.sol#898)
+		- activeIds.pop() (src/PoolBalancer.sol#900)
+	PoolBalancer.activeIds (src/PoolBalancer.sol#193) can be used in cross function reentrancies:
+	- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#581-592)
+	- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#814-816)
+	- _removeActive(listingId) (src/PoolBalancer.sol#434)
+		- profitShareSum -= _share(lid) (src/PoolBalancer.sol#896)
+	PoolBalancer.profitShareSum (src/PoolBalancer.sol#192) can be used in cross function reentrancies:
+	- PoolBalancer.profitShareSum (src/PoolBalancer.sol#192)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+
+Detector: uninitialized-local
+PoolBalancer.configure(uint16,uint256).prizes (src/PoolBalancer.sol#331) is a local variable never initialized
+PoolBalancer.requiredReserve().units (src/PoolBalancer.sol#789) is a local variable never initialized
+PoolBalancer.requiredReserve().largest (src/PoolBalancer.sol#790) is a local variable never initialized
+PoolBalancer.performUpkeep().ops (src/PoolBalancer.sol#622) is a local variable never initialized
+PoolBalancer.configure(uint16,uint256).w (src/PoolBalancer.sol#332) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+
+Detector: unused-return
+PoolBalancer.recoverRefunded(uint256,address) (src/PoolBalancer.sol#443-455) ignores return value by (collection,None,None,tokenId,None,None,None,status) = pool.listings(listingId) (src/PoolBalancer.sol#446)
+PoolBalancer.setENSName(string) (src/PoolBalancer.sol#525-528) ignores return value by IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name) (src/PoolBalancer.sol#526)
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636) ignores return value by (None,None,None,lid,aStatus,None) = p.acquisitions(p.requestIdAtSequence(++ s)) (src/PoolBalancer.sol#615)
+PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]) (src/PoolBalancer.sol#658-677) ignores return value by (None,None,None,tokenIds[i],None,None,None,None) = p.listings(lid) (src/PoolBalancer.sol#664)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+Detector: missing-zero-check
+BalancerFactory.constructor(address,address).implementation_ (src/BalancerFactory.sol#37) lacks a zero-check on :
+		- implementation = implementation_ (src/BalancerFactory.sol#39)
+BalancerFactory.transferKeeperAdmin(address).next (src/BalancerFactory.sol#63) lacks a zero-check on :
+		- pendingKeeperAdmin = next (src/BalancerFactory.sol#64)
+PoolBalancer.constructor(address,address,bytes32,address,address,address).fwaImplementation (src/PoolBalancer.sol#257) lacks a zero-check on :
+		- FWA_IMPLEMENTATION = fwaImplementation (src/PoolBalancer.sol#259)
+PoolBalancer.transferCreator(address).newCreator (src/PoolBalancer.sol#312) lacks a zero-check on :
+		- pendingCreator = newCreator (src/PoolBalancer.sol#313)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+
+Detector: calls-loop
+PoolBalancer.constructor(address,address,bytes32,address,address,address) (src/PoolBalancer.sol#257-275) has external calls inside a loop: IShapes(shapes).denominationAt(uint8(d)) != _amount(d) (src/PoolBalancer.sol#269)
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#863-871) has external calls inside a loop: IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#866)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#863-871) has external calls inside a loop: IERC721Min(collection).ownerOf(tokenId) != address(this) (src/PoolBalancer.sol#867)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._pullCurated(address,uint256,uint256) (src/PoolBalancer.sol#863-871) has external calls inside a loop: IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#868)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[]) (src/PoolBalancer.sol#658-677) has external calls inside a loop: (None,None,None,tokenIds[i],None,None,None,None) = p.listings(lid) (src/PoolBalancer.sol#664)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+PoolBalancer._redeem(uint8,uint256) (src/PoolBalancer.sol#681-685) has external calls inside a loop: IShapePacks(address(SHAPES)).redeem(tokenId) (src/PoolBalancer.sol#683)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+		PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])
+PoolBalancer._redeem(uint8,uint256) (src/PoolBalancer.sol#681-685) has external calls inside a loop: IShapePacks(address(PACKS)).redeem(tokenId) (src/PoolBalancer.sol#683)
+	Calls stack containing the loop:
+		PoolBalancer.unlistShapes(uint256[])
+		PoolBalancer._withdrawAndRedeem(IFWAPool,uint256[])
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636) has external calls inside a loop: (None,None,None,lid,aStatus,None) = p.acquisitions(p.requestIdAtSequence(++ s)) (src/PoolBalancer.sol#615)
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749) has external calls inside a loop: first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749) has external calls inside a loop: id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+
+Detector: reentrancy-benign
+Reentrancy in PoolBalancer._collect() (src/PoolBalancer.sol#844-856):
+	External calls:
+	- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- profit += uint128(mine) (src/PoolBalancer.sol#855)
+Reentrancy in PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749):
+	External calls:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	- lids = p.listNFTs(batch) (src/PoolBalancer.sol#737)
+	External calls sending eth:
+	- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolBalancer.sol#714)
+	- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolBalancer.sol#724)
+	State variables written after the call(s):
+	- _items[lids[i]] = Item(SHAPE,d_scope_1,ACTIVE,uint16(markup),uint104(base),uint104(batch[i].price)) (src/PoolBalancer.sol#742)
+	- _addActive(lids[i]) (src/PoolBalancer.sol#743)
+		- activeIds.push(lid) (src/PoolBalancer.sol#880)
+	- _addActive(lids[i]) (src/PoolBalancer.sol#743)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#881)
+	- prizeWeight += added (src/PoolBalancer.sol#748)
+	- _addActive(lids[i]) (src/PoolBalancer.sol#743)
+		- profitShareSum += _share(lid) (src/PoolBalancer.sol#882)
+Reentrancy in PoolBalancer.initialize(address) (src/PoolBalancer.sol#279-301):
+	External calls:
+	- p = fwa.createPool(bytes32(0),FWA_IMPLEMENTATION) (src/PoolBalancer.sol#290)
+	State variables written after the call(s):
+	- pool = IFWAPool(p) (src/PoolBalancer.sol#294)
+Reentrancy in PoolBalancer.listCurated(address,uint256,uint256) (src/PoolBalancer.sol#381-391):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#387)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- price = _pullCurated(collection,tokenId,base) (src/PoolBalancer.sol#388)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#866)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#868)
+	- listingId = pool.listNFT(collection,tokenId,price) (src/PoolBalancer.sol#389)
+	State variables written after the call(s):
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#390)
+		- _items[lid] = Item(CURATED,0,ACTIVE,markupBps,uint104(base),uint104(price)) (src/PoolBalancer.sol#874)
+	- _recordCurated(listingId,collection,tokenId,base,price) (src/PoolBalancer.sol#390)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#881)
+Reentrancy in PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[]) (src/PoolBalancer.sol#393-411):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#401)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- batch[i] = IFWAPool.ListingInput(c.collection,c.tokenId,_pullCurated(c.collection,c.tokenId,c.base)) (src/PoolBalancer.sol#405)
+		- IERC721Min(collection).transferFrom(msg.sender,address(this),tokenId) (src/PoolBalancer.sol#866)
+		- IERC721Min(collection).approve(address(pool),tokenId) (src/PoolBalancer.sol#868)
+	- listingIds = pool.listNFTs(batch) (src/PoolBalancer.sol#407)
+	State variables written after the call(s):
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#409)
+		- _items[lid] = Item(CURATED,0,ACTIVE,markupBps,uint104(base),uint104(price)) (src/PoolBalancer.sol#874)
+	- _recordCurated(listingIds[i_scope_0],batch[i_scope_0].collection,batch[i_scope_0].tokenId,inputs[i_scope_0].base,batch[i_scope_0].price) (src/PoolBalancer.sol#409)
+		- activeIndexPlusOne[lid] = activeIds.length (src/PoolBalancer.sol#881)
+Reentrancy in PoolBalancer.open() (src/PoolBalancer.sol#350-358):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#352)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- _creatorChanged() (src/PoolBalancer.sol#354)
+		- creatorWork = enabled && _missingUnits() != 0 (src/PoolBalancer.sol#837)
+Reentrancy in PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636):
+	External calls:
+	- collected = _collect() != 0 (src/PoolBalancer.sol#608)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- delete _items[lid] (src/PoolBalancer.sol#650)
+		- it.state = PENDING (src/PoolBalancer.sol#652)
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- activeIndexPlusOne[lastId] = idx (src/PoolBalancer.sol#899)
+		- delete activeIndexPlusOne[lid] (src/PoolBalancer.sol#901)
+	- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#616)
+		- prizeWeight -= _weight(d) (src/PoolBalancer.sol#647)
+Reentrancy in PoolBalancer.unlistShapes(uint256[]) (src/PoolBalancer.sol#500-511):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#508)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	- ShapesUnlisted(n,_withdrawAndRedeem(pool,ids)) (src/PoolBalancer.sol#509)
+		- IShapePacks(address(SHAPES)).redeem(tokenId) (src/PoolBalancer.sol#683)
+		- IShapePacks(address(PACKS)).redeem(tokenId) (src/PoolBalancer.sol#683)
+		- p.withdrawListingsTo(lids,address(this)) (src/PoolBalancer.sol#673)
+	State variables written after the call(s):
+	- _creatorChanged() (src/PoolBalancer.sol#510)
+		- creatorWork = enabled && _missingUnits() != 0 (src/PoolBalancer.sol#837)
+Reentrancy in PoolBalancer.withdrawCurated(uint256,address) (src/PoolBalancer.sol#429-438):
+	External calls:
+	- _collect() (src/PoolBalancer.sol#433)
+		- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#847)
+	State variables written after the call(s):
+	- _removeActive(listingId) (src/PoolBalancer.sol#434)
+		- activeIndexPlusOne[lastId] = idx (src/PoolBalancer.sol#899)
+		- delete activeIndexPlusOne[lid] (src/PoolBalancer.sol#901)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+
+Detector: reentrancy-events
+Reentrancy in BalancerFactory.createBalancer(bytes32) (src/BalancerFactory.sol#77-83):
+	External calls:
+	- PoolBalancer(address(balancer)).initialize{value: msg.value}(msg.sender) (src/BalancerFactory.sol#81)
+	Event emitted after the call(s):
+	- BalancerCreated(msg.sender,balancer,address(PoolBalancer(address(balancer)).pool()),salt) (src/BalancerFactory.sol#82)
+Reentrancy in PoolBalancer.initialize(address) (src/PoolBalancer.sol#279-301):
+	External calls:
+	- p = fwa.createPool(bytes32(0),FWA_IMPLEMENTATION) (src/PoolBalancer.sol#290)
+	- IFWAPool(p).setPurchaseOperator(address(this)) (src/PoolBalancer.sol#295)
+	- SHAPES.setApprovalForAll(p,true) (src/PoolBalancer.sol#296)
+	- PACKS.setApprovalForAll(p,true) (src/PoolBalancer.sol#297)
+	Event emitted after the call(s):
+	- Deposited(msg.sender,msg.value) (src/PoolBalancer.sol#300)
+	- Initialized(creator_,p) (src/PoolBalancer.sol#299)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4
+
+Detector: assembly
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749) uses assembly
+	- INLINE ASM (src/PoolBalancer.sol#734-736)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+Detector: costly-loop
+PoolBalancer._addActive(uint256) (src/PoolBalancer.sol#879-883) has costly operations inside a loop:
+	- profitShareSum += _share(lid) (src/PoolBalancer.sol#882)
+	Calls stack containing the loop:
+		PoolBalancer.listCuratedBatch(PoolBalancer.CuratedInput[])
+		PoolBalancer._recordCurated(uint256,address,uint256,uint256,uint256)
+PoolBalancer._removeActive(uint256) (src/PoolBalancer.sol#893-902) has costly operations inside a loop:
+	- profitShareSum -= _share(lid) (src/PoolBalancer.sol#896)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+		PoolBalancer._onDrawn(uint256,bool)
+PoolBalancer._removeActive(uint256) (src/PoolBalancer.sol#893-902) has costly operations inside a loop:
+	- activeIds.pop() (src/PoolBalancer.sol#900)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+		PoolBalancer._onDrawn(uint256,bool)
+PoolBalancer._removeActive(uint256) (src/PoolBalancer.sol#893-902) has costly operations inside a loop:
+	- delete activeIndexPlusOne[lid] (src/PoolBalancer.sol#901)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+		PoolBalancer._onDrawn(uint256,bool)
+PoolBalancer._onDrawn(uint256,bool) (src/PoolBalancer.sol#638-655) has costly operations inside a loop:
+	- prizeWeight -= _weight(d) (src/PoolBalancer.sol#647)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+PoolBalancer._onDrawn(uint256,bool) (src/PoolBalancer.sol#638-655) has costly operations inside a loop:
+	- delete _items[lid] (src/PoolBalancer.sol#650)
+	Calls stack containing the loop:
+		PoolBalancer.performUpkeep()
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop
+
+Detector: cyclomatic-complexity
+PoolBalancer.performUpkeep() (src/PoolBalancer.sol#601-636) has a high cyclomatic complexity (12).
+PoolBalancer._fillDeficit(IFWAPool,uint256) (src/PoolBalancer.sol#690-749) has a high cyclomatic complexity (13).
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#cyclomatic-complexity
+
+Detector: missing-inheritance
+BalancerFactory (src/BalancerFactory.sol#12-96) should inherit from IKeeperList (src/PoolBalancer.sol#10-12)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+
+Detector: naming-convention
+Variable PoolBalancer.FWA_FACTORY (src/PoolBalancer.sol#144) is not in mixedCase
+Variable PoolBalancer.FWA_IMPLEMENTATION (src/PoolBalancer.sol#145) is not in mixedCase
+Variable PoolBalancer.FWA_IMPLEMENTATION_CODEHASH (src/PoolBalancer.sol#146) is not in mixedCase
+Variable PoolBalancer.SHAPES (src/PoolBalancer.sol#147) is not in mixedCase
+Variable PoolBalancer.PACKS (src/PoolBalancer.sol#148) is not in mixedCase
+Variable PoolBalancer.ENS (src/PoolBalancer.sol#149) is not in mixedCase
+Function IShapePacks.MIN_PACK_VALUE() (src/interfaces/External.sol#151) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+. analyzed (52 contracts with 101 detectors), 65 result(s) found

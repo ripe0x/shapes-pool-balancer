@@ -8,7 +8,7 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 /// @notice Builds the digest of FWA's "Publish FWA Pools page" message for one pool. An external library (called by
 ///         DELEGATECALL, pure) so this rarely used code sits outside PoolBalancer's 24 KB limit.
 library PoolPage {
-    /// @dev Same signature as PoolBalancer.InvalidConfig, so callers see the error they always did.
+    /// @dev Same signature as PoolBalancer.InvalidConfig, so callers of `approvePoolPage` see PoolBalancer's error.
     error InvalidConfig();
 
     /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
@@ -16,7 +16,7 @@ library PoolPage {
 
     /// @notice personal_sign digest of the exact message pools.fwa.fun asks a pool owner to sign. `issuedAt` is the
     ///         ISO-8601 time the site will submit (24 chars, e.g. 2026-11-10T12:34:56.789Z); `metadataHash` is
-    ///         keccak256 of the page JSON. Format verified against pools.fwa.fun's client code 2026-11-10.
+    ///         keccak256 of the page JSON.
     function digest(address fwaFactory, address pool, string calldata issuedAt, bytes32 metadataHash)
         external
         pure

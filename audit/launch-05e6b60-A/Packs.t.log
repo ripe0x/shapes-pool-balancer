@@ -1,0 +1,15 @@
+No files changed, compilation skipped
+
+Ran 9 tests for test/Packs.t.sol:PacksTest
+[PASS] test_constructorRejectsPacksThatCannotMakeTheSmallestPack() (gas: 6467390)
+[PASS] test_drawnPackGoesToWinnerRedeemsExactlyAndIsReplaced() (gas: 3052051)
+[PASS] test_everyPackSizeMintsAtExactValueWithItsShapes() (gas: 6052494)
+[PASS] test_packsContractRefusedAsPurchaserAndAsCurated() (gas: 69305)
+[PASS] test_packsListedAtExactValueWithFewestShapes() (gas: 610450)
+[PASS] test_reserveHoldsLargestPrizeAndKeeperRewards() (gas: 53975)
+[PASS] test_smallerTargetThenUnlistSurplus() (gas: 748332)
+[PASS] test_unlistRedeemsPacksAndShapesForExactBacking() (gas: 1817297)
+[PASS] test_worstPackBatchRebuilds() (gas: 17699109)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 796.03ms (1.04s CPU time)
+
+Ran 1 test suite in 808.99ms (796.03ms CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

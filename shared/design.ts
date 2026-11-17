@@ -1,20 +1,17 @@
 import {
-  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, requiredReserveAt,
+  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, maxKeeperReward, requiredReserveAt, shapeCount,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
 export interface DesignInputs extends PoolInputs {
   have: Counts; // prizes listed now
-  vrfFee?: bigint; // FWA's per-draw VRF service fee, paid by the player on top of the draw price
 }
 
 /** One draw from a player's side, at what each prize is worth (a Shape redeems for its backing). */
-export function playerView(ev: Evaluation, vrfFee: bigint) {
-  const cost = ev.drawPrice + vrfFee;
-  const tiers = ev.tiers.map((t) => {
-    const value = t.value;
-    return { ...t, odds: t.oddsPpm / 1e6, multiple: cost ? Number(value) / Number(cost) : 0 };
-  });
+/** The player's side of a draw, against the draw price (FWA's randomness fee and gas are not included). */
+export function playerView(ev: Evaluation) {
+  const cost = ev.drawPrice;
+  const tiers = ev.tiers.map((t) => ({ ...t, odds: t.oddsPpm / 1e6, multiple: cost ? Number(t.value) / Number(cost) : 0 }));
   const top = tiers.reduce((a, b) => (b.value > a.value ? b : a), tiers[0]);
   return {
     cost,
@@ -34,10 +31,10 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
 }
 
 /** ETH that stays in the pool while open with `target`: PoolBalancer.requiredReserve() from the prizes listed now. */
-export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee'>) => requiredReserveAt(target, d.have, d.mintFee);
+export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings'>) =>
+  requiredReserveAt(target, d.have, d.mintFee, 0, maxKeeperReward(d.settings));
 
 const NONE: Counts = DENOMS.map(() => 0);
-export const shapeTotal = (c: Counts) => c.reduce((a, b) => a + b, 0);
 
 /**
  * The pool's mix: `small` 0.01 ETH Shapes plus `bonus` Shapes. Each listing is drawn in inverse proportion to its price,
@@ -68,26 +65,26 @@ export const JACKPOT_MULTIPLE = 50;
  * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
-  const room = MAX_SHAPES_PER_PLAN - small;
-  if (style === 'steady' || !d.curatedBases.length || room <= 0) return NONE;
+  const room = (d.settings?.maxPrizes ?? MAX_SHAPES_PER_PLAN) - small;
+  if (style === 'steady' || room <= 0) return NONE;
   if (style === 'board') {
     const b = [...NONE];
     for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 ? 1 : 0, Math.round((small * per24) / 24));
-    while (shapeTotal(b) > room) {
+    while (shapeCount(b) > room) {
       const i = BOARD.map(([j]) => j).reduce((m, j) => (b[j] > b[m] ? j : m));
       if (b[i] === 0) break;
       b[i]--;
     }
     return b;
   }
-  const view = (b: Counts) => playerView(describe(mixOf(small, b), d), d.vrfFee ?? 0n);
+  const view = (b: Counts) => playerView(evaluate(mixOf(small, b), d));
   let bonus = NONE;
   if (style === 'jackpot') {
     const target = Number(view(NONE).cost) * JACKPOT_MULTIPLE;
     const i = DENOMS.reduce((b, v, j) => (Math.abs(Math.log(Number(v) / target)) < Math.abs(Math.log(Number(DENOMS[b]) / target)) ? j : b), 0);
     return NONE.map((_, j) => (j === i ? 1 : 0));
   }
-  while (shapeTotal(bonus) < room) {
+  while (shapeCount(bonus) < room) {
     const v = view(bonus);
     if (v.win2x >= BIG_WIN_SHARE) break;
     const i = BY_VALUE.find((j) => DENOMS[j] >= 2n * v.cost) ?? -1; // the smallest size worth 2x the draw
@@ -97,5 +94,3 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   return bonus;
 }
 
-/** Evaluate a mix for display. */
-export const describe = (counts: Counts, d: DesignInputs) => evaluate(counts, d);

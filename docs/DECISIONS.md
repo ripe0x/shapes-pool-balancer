@@ -435,3 +435,253 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
     creator ends ahead in quiet operation at 0.1 to 5 gwei; prize luck and zero demand as information). D14: the keeper
     constants of DECISIONS 73 are final: 0.0001 ETH flat reward and 50,000-gas overhead (rehearsal receipts: 0.000146 ETH
     per call above billed gas over 336 mined calls). D15: no contract caps; the canary is the owner's own small first pool.
+75. **Launch-audit decisions D16 to D18** (owner, 2026-11-13: "Yes, all three"; `docs/LAUNCH-AUDIT-TRIAGE.md`). D16:
+    `performUpkeep` first calls FWA's `processAcquisitions(MAX_PROCESS = 2)` in a try/catch when draws are waiting: a
+    draw whose request reserved a staged restock skips FWA's randomness fast path and, before this, waited for a processor
+    nothing in the system ran (launch audit B, S1). The settled draws are reconciled in the same call, so the keeper is
+    paid under the usual rule. `test/ProcessQueue.t.sol` fails on the previous contract; regime `no_processor` and the
+    keeper e2e run without the harness processing. D17: O10 restated to the launch board at steady normal gas. D18: the
+    game's 10% stays as built.
+76. **O1 in gas per draw** (owner decision D19, 2026-11-13). With upkeep processing FWA's queue, keepers keep the storage
+    refunds FWA's processing releases; the Balancer measures gas before refunds and cannot see them. O1 is now at most
+    80,000 gas per draw averaged over a run (was 0.002 ETH per 180 draws, D2), so the bound does not move with gas
+    price. No contract change: deducting an estimate would underpay keepers whenever the real refund is smaller, the
+    stall D16 fixed. Measured: 67,660 gas per draw at 0.55 gwei, 67,072 at the 5 gwei cap (new required regime
+    `no_processor_5_gwei`), worst single call 295,284 gas; 0.181 ETH over 540 draws at the cap, 7.8% of the creator's net.
+77. **D16 re-attack repairs** (independent re-attack of `af1075c`; `docs/LAUNCH-AUDIT-TRIAGE.md`). F1: a draw that
+    reserved FWA's maximum six listings costs up to about 1.15M gas to process, so processing two and restocking in one
+    call passed KEEPER_MAX_GAS and a keeper sending only covered calls stalled the pool. A call that settles a draw now
+    skips restocking (worst measured 2.98M; split calls add keeper pay of 0.016 ETH per 180 draws at 0.55 gwei, 0.105
+    at 5 gwei, still inside the restocking fees). F2: while closed the hold is one maximum reward per MAX_PROCESS (2)
+    unreconciled draws, so it pays every useful post-close call (the D3 rule; per 5 it was 0.0054 ETH short at 5
+    gwei). F3: gas burned by processing that reverted is not paid for (a chosen gas limit made FWA revert on purpose
+    and the creator paid 1.42M gas for one reconcile). Requirement tests in `test/audit/d16/` fail on `af1075c`.
+    With these, O1's refunds fell to 30,404 gas per draw (worst call 100,772).
+78. **Second D16 re-attack** (independent, of `4a83c47`). F2 held in every order tried. Finding 1: F3 made a call
+    succeed with processing starved and unpaid, so a keeper sending a node's raw gas estimate lost about 0.011 ETH at
+    5 gwei; processing that fails with under MIN_PROCESS_GAS (3,000,000) left now reverts the whole upkeep
+    (`InsufficientGas`), so every successful call has processed and estimates land above the band. Finding 2: the
+    worst upkeep measures up to 3.22M with 1,024 listings (2.98M was the launch-board case); keepers stay covered
+    because about 530k gas is refunded, so the requirement tests assert keeper cover, not "measured < 3.2M".
+79. **Third D16 re-attack** (independent, of `1dcddf2`). Finding 1: MIN_PROCESS_GAS (3,000,000) was sized on the gas
+    processing uses, not the gas it needs before FWA's fixed stipends (notifier `call(300000)`, refused below 290,000);
+    with 512 or more listings and a hostile collection a starved call still succeeded above it and the estimate landed
+    there (0.0134 ETH lost per raw-estimate call at 5 gwei). The threshold is replaced by what the failed call handed
+    back: under 400,000 gas beyond the caller's 1/64 means it was starved (FWA's one deliberate gas refusal is the
+    notifier's, and an out-of-gas hands back nothing), at any pool size. Finding 3: keeper.ts priced every call at its
+    gas estimate, 0.37M-0.48M above the billed gas for calls that process, and skipped profitable processing from about
+    1.45 gwei; it now prices at the gas the simulated reward pays for unless that reward was cut by the cap or the
+    balance. Finding 2 (a gas-dependent collection left DeliveryPending at some low limits) is FWA's: any caller of
+    `processAcquisitions` picks the gas; the app's and keeper's limits deliver; information and a curation risk.
+80. **Fourth D16 re-attack** (independent, of `b6b1a33`): no starved success at any limit or pool size (48 to 2,048
+    listings, open and closed, sweeps at 2k and 50-gas steps); the keeper's 4M floor covers the worst upkeep with 0.68M
+    to spare and nets +0.0024 ETH at 5 gwei. Correction: the FWA pool is a proxy keeping 1/64 of what it forwards, so
+    a starved failure hands back up to 343,090 gas; the margin under 400,000 is about 57k, not 105k, and is tied to
+    MAX_PROCESS = 2 (crossing it needs about 6.7M of processing). Comment corrected; `test/audit/d16d/CatchMargin.t.sol`
+    asserts it. Known gap, no trigger found: if processing ever fails for a reason other than gas, upkeep continues
+    unpaid for it and the keeper's reward-based pricing would not see the loss (up to 0.0056 ETH per call at 5 gwei).
+81. **MAX_PROCESS = 2 checked against the backlog it meets** (information; no contract change). The flow breakdown now
+    records, at every upkeep, how many draws FWA's queue held ready to process (`fwa_queue_ready_max`,
+    `upkeeps_with_fwa_queue_ready`, `upkeeps_with_fwa_queue_ready_over_2`). Across the 21 regimes: 0 in 17; 1 in both
+    no_processor regimes (179 and 180 calls); more than 2 only where draws expired: closeout_pending 3 (1 call),
+    randomness_not_delivered 5 (2 calls). Expired draws need no prize transfer or notifier, so the cap costs only an
+    extra call there. Limit: the harness runs keepers after every randomness delivery, so it cannot show a burst of
+    words landing behind a draw that lost FWA's fast path within one keeper poll (12 s); that needs three or more
+    draws settled in about one block behind such a draw. Mainnet shows it does happen: ape-Ball's FWA pool
+    (`0xAACB…78F7`, 161 draws, blocks 26,365,113 to 26,403,463) settled 105 on the randomness fast path; its own
+    manager contract's paid `upkeep` (`0xb338…7ab6`) processed 47 in 23 transactions (1, 2, 3, 4 and 6 draws per call;
+    8 calls above 2, all fulfilled draws, not expiries) and FWA's sponsored processor 9. At 2 per call such a
+    queue takes up to 3 calls (one block each) instead of 1, costing about 0.00014 ETH per extra call at 0.55 gwei
+    and delaying the restock those calls skip. 2 stays: a latency and cost matter, not a stall.
+82. **Upkeep's processing stays as built** (owner, 2026-11-14: "Keep as built"). Weighed and declined: lifting
+    MAX_PROCESS above 2 (ape-Ball has no per-call pay cap, its calls ran to 5.0M gas; for us it saves about 0.002 ETH
+    per 161 draws and breaks the starved-gas margin above about 6.7M of processing), and removing the try/catch with
+    its starved-gas check (fail-closed upkeep; no non-gas processing failure is known, and a stuck queue blocks sales
+    and reconciling either way). No contract change.
+83. **Burst regime and fully cold keeper measurement** (owner, 2026-11-14: "Add burst first"). New required regime
+    `burst`: ape-Ball's opening days (6, 6, 8 and 3 rounds of seven draws, 156 bought, 5 refused), each round built so
+    five draws wait in FWA's queue at one keeper call, the most the Balancer admits (MAX_BATCH = 5; ape-Ball's own
+    manager reached 6 because it has no such limit). Reached 5 (asserted); 44 calls found more than 2 waiting; 22 draws
+    lost the fast path. Every outcome holds: 0 draws unsettled at day end (O13), no keeper loss on play (O11), refunds
+    kept 51,591 gas per draw (O1, limit 80,000), worst single call 182,980 gas. Also: the harness now cools the code
+    the Balancer and FWA's pool run (both Solady clones) before each measured upkeep, as a real keeper transaction
+    starts; it had stayed warm from the harness's own reads. O1 moved from 30,404 to 31,105 gas per draw at the cap
+    (31,039 at 0.55 gwei; 0.084 ETH over 540 draws, 4.2% of the creator's net); O11's NFT-heavy figure stays 0.036 ETH.
+    The queue read runs in its own call frame; it leaves the Balancer's reward unchanged, and the keeper's cost measured
+    from outside moves about 29 gas per call (the test frame's memory).
+84. **Audit of `e36e9ba` and two simplification reviews acted on in one pass** (owner, 2026-11-14: "do those and the
+    simplifications in one pass"). Reports kept in `audit/rc-e36e9ba/` (release-candidate audit; its raw Slither
+    JSON is left out, the log is kept) and `audit/simplify-e36e9ba/` (two independent reviewers).
+    - Audit S1 (test-only, reproduced): `ForkBase.buy` evaluated `pool.inventoryVersion()` after `vm.prank`, so the
+      test contract paid every draw. Fixed; the helper asserts the named player paid; `stranger` is now funded. No
+      shipped test's conclusion depended on the payer (FWA takes the purchaser as an argument; nothing reads
+      `tx.origin`). S2 is decision 82's accepted gap; E1 and E2 are signed costs.
+    - Contract cuts, the six both reviewers found and the second ran on a fork: C1 (FWA's `createPool(salt,
+      expected)` already enforces the implementation and owner), C2 (implementation codehash checked once in the
+      constructor), C5 (one loop in `unlistShapes`; `_removeActive` rejects anything not active), C6 (single
+      `listCurated` removed; tests use `test/utils/ListOne.sol`), C9 (`retired()` check in upkeep: an open Balancer
+      is never retired), F1 (factory's `allBalancers`/`balancerCount`). Runtime 21,315 to 20,555 bytes; factory 2,117
+      to 1,898. Not taken: event cuts (the audit trail and canary alerts need them), deriving `prizeWeight` (moves gas
+      into the purchase hook), `activeIds`, `collectProceeds`, and the reviewers' smaller cuts.
+    - Off-chain: keeper `fn`/`args` plumbing and duplicate constants removed (one source in `shared/planner.ts`);
+      keeper `audit` list capped at 1,000 entries (it grew for the life of the process); the dashboard now names
+      FWA's `WithdrawLocked` (`app/src/errors.ts`, tested); dead planner/design/app code removed. Source comments
+      state rules instead of audit history.
+    - Evidence: CI pins Foundry v1.8.1 and runs every TypeScript test; the gate's test command refuses any other
+      Foundry version (on 1.5.1 the refunds-kept fact reads 0). O4 and O6 count listed backing from FWA's listings,
+      not the Balancer's list.
+    - Every outcome holds in all 22 regimes; O1 now 31,118 gas per draw at the cap (31,051 at 0.55 gwei), 51,606 in
+      bursts, worst call 183,010. The contract changed after the audit, so `audit/rc-e36e9ba/SOURCE_HASH` no longer
+      matches: the cuts need their own audit pass and the outcomes a new signature.
+85. **Uninformed audit of `8ec98cb` triaged; no contract change** (owner, 2026-11-15: "Accept, reword O9").
+    Report in `audit/rc-8ec98cb/`; every executed witness reproduced here with the same numbers.
+    - E2 (creator profit split uses today's board for a draw priced on an earlier one): real, and decision 69's
+      residual measured only with the markup fixed. Accepted: no math error (credited profit never exceeds ETH held),
+      no player affected, every prize keeps its backing; the excess comes from the creator's own reserve and only a
+      creator's markup raise while draws are unsettled makes it large. O9 restated (R33).
+    - E3: O13 overstated who acts. Settling needs an open keeper list or an active listed keeper; continued sales need
+      the creator to relist won curated NFTs (the regimes' harness does). O13 restated (R34).
+    - E1 (a 100 ETH prize board can lose about 199 ETH of the creator's deposit to forced wins): accepted design, D15
+      and R26; every winner paid, sales stop on a missing prize.
+    - S1 (dashboard stuck on "Loading your pools…" when the factory log query fails): fixed, error with Retry.
+    - S2 (`admissionStatus` ignores FWA's global withdraw-only switch): no change; FWA rejects the purchase itself.
+    - The review record `audit/rc-8ec98cb/SOURCE_HASH` is filed: the source is unchanged since the audit and no
+      finding needed a contract repair. The outcomes need a new signature (hash `e0e9684b…`).
+86. **Curated NFTs list at the creator's value, with no markup** (owner, 2026-11-16: "Yes, remove it"). The value a
+    creator enters is their asking price; a markup on top only did what typing a higher value does. `_priced` is gone:
+    a curated listing's FWA price is its `base`, its item records markup 0, and `updateCuratedPrice` sets the price to
+    the new value. The markup now applies to Shape prizes only, so a higher markup also moves the odds toward the NFTs.
+    Unchanged: the fund keeps all NFT sale money while it is short (curated NFTs already counted zero in the profit
+    split), the game's 10% (O8) is Shape markup, and the fill gate weighs prizes by backing. Decision 63 no longer
+    guards a price; `configure` stays guarded and the first-`configure` check (audit E3) stays so a pool holds NFTs
+    only once it has a design. Supersedes decision 1's curated half. Changes the audited source, so the review record
+    for `8ec98cb` no longer applies.
+    Measured on the launch board (one 0.2 ETH NFT, 25% markup; planner, checked against the fork): the NFT comes up 1
+    in 437 draws instead of 1 in 545, the draw price moves from 0.023110 to 0.023100 ETH, and the creator collects
+    about 0.02 ETH less per 180 draws (0.05 ETH less per NFT won). The gate passes all 22 regimes against the signed
+    limits (source `48feb775…`); against `283c9af` the per-regime creator totals move both ways by up to 0.5 ETH
+    because the changed odds change which prizes the fixed random words win (quiet 0.807 to 0.737 ETH ahead; forced
+    0.5 ETH wins -0.167 to -0.276). O1's and O12's information figures are restated from this run, which needs a new
+    signature. `test/audit/LaunchB.t.sol` `test_keeperAdminLocksOutKeepers` now relists a won NFT as the creator
+    would: its fixed words began winning the NFT, which stopped sales for NO_CURATED instead of the missing keepers.
+    O10's information figures, measured by the step-B audit harness on `05e6b60`, are now rerun by
+    `test/audit/O10Ratios.t.sol` (ported from it). On `584d625`: launch board 1.466x, 100% markup 2.271x, 10% markup
+    1.305x, 20 NFTs at 50 ETH 2.068x, all unchanged; after 60 draws restocked at 5 gwei 1.714x (was 1.679x, prize
+    luck: the metric's NFT price cancels, since FWA's quote is the prize count over the summed weights). O10 restated.
+87. **Plans hold up to 200 prizes** (owner, 2026-11-16: "set max to 200"). The 80 of decision 42 was sized to fill a
+    100-listing cap that existed because upkeep looped over every listing. The rewrite removed those loops: upkeep
+    works per prize size and each call is bounded by MAX_RECONCILE, MAX_OPS and MAX_RESTOCK_SIZES, and FWA picks a prize
+    through a 32-level segment tree. Measured: the worst upkeep (reconcile 5 draws, restock 5 Shapes in 4 sizes) uses
+    2,781,528 gas at 200 prizes and 20 curated NFTs against 2,727,810 at 56 prizes, under the 2.88M test limit (90% of
+    the 3.2M pay cap). Costs that grow with the pool: a first fill takes at least one paid upkeep per 5 Shapes (40 for
+    200 single Shapes), the reserve holds the larger target, and the dashboard reads every listing on load (about 440
+    calls at 220 listings). Test helper `fillUp` now allows 150 calls (was 40, enough only for 80 prizes).
+88. **Keeper pay, restocking fee and prize limit are adjustable settings** (owner, 2026-11-16: "i'd prefer to have
+    them adjustable. on the factory by the admin, and then allow the owner adjust thier own if htey want. only on
+    things that wouldn't break the system"; spec approved: "Yes, build it"). `src/Settings.sol` holds eight values. The
+    factory's keeper admin sets the defaults (`setSettings`); a creator may override maxGasPrice, priorityCap,
+    incentive and restockFlat for their own pool (`setOverrides`, one mask bit each; a clear bit follows the factory).
+    Every field is checked alone against fixed limits, so any mix is in range: maxGasPrice 1 to 50 gwei, priorityCap 0
+    to 2 gwei, incentive 0 to 0.001 ETH, restockFlat 0 to 0.002 ETH, maxGas 3.2M to 6M, overheadGas 50k to 200k,
+    restockGas 500k to 2M, maxPrizes 1 to 1,000. The lower limits keep keepers paid at least the worst measured upkeep
+    (2.78M) and its outside-span overhead (24k-46k); the upper limits cap one call at 0.311 ETH of the creator's ETH.
+    Defaults are the previous constants, so the gate's regimes and the signed outcomes are unchanged. Kept constant: the
+    per-call work bounds (MAX_OPS, MAX_RECONCILE, MAX_RESTOCK_SIZES, MAX_PROCESS, PROCESS_STARVED_GAS), the markup
+    range, FILL_BPS and the prize sizes, since a wrong value there can stop upkeep or move a signed outcome.
+    Effects: keeper pay at the next upkeep; restocking fees on the next listings (listed prices keep theirs);
+    `requiredReserve` holds one `maxKeeperReward()` per budgeted call at the settings in force, so raising a cap raises
+    the reserve; maxPrizes at the next saved design. Settings never reach prize backing
+    (`test_backingUntouchedAtTheLimits`: at every limit, unlisting redeems each Shape for exactly its face value).
+    Tests: `test/Settings.t.sol`. Balancer runtime 20,502 to 22,874 bytes (1,702 under the limit).
+89. **No limit on the number of curated NFTs** (owner, 2026-11-16: "do we need to set a max for nfts? if not, don't
+    set one"). The dashboard's 20-NFT total came from decision 42's 100-listing cap, which no longer exists; the
+    contract has no total. The dashboard now lists any number, in transactions of 20 (FWA's MAX_INVENTORY_BATCH).
+90. **Review of `f5c81d6` repaired** (owner, 2026-11-16: "read my notes and then do your recs on the others";
+    report `audit/rc-f5c81d6/REPORT.md`).
+    - F1: `performUpkeep(bytes32 expected)` takes the `settingsHash()` the caller read (keccak256 of the ABI-encoded
+      `settings()`) and reverts `StaleSettings` at its start if the settings changed since. A creator override or an
+      admin default between a keeper's simulation and inclusion can no longer cut its pay below its gas (the review's
+      witness: 0.00247 ETH lost at 4 gwei); a stale call now costs the keeper only the gas up to the check. The keeper
+      reads the hash with the settings it prices on and keeps it for replacements; the dashboard reads it at send time.
+    - F2: the restocking fee is restockGas x price + incentive + restockFlat, and `SettingsLib.check` requires
+      restockGas >= overheadGas + 850k. The fee then carries a restock-one upkeep's pay at the settings of its listing
+      (decision 92 for prizes listed before a change)
+      (`test_lowestRestockFeeCoversItsRestock`: at the lowest fee and highest incentive, 0.0055 ETH carried against
+      0.005422 ETH paid for 834,418 measured gas at 5 gwei). The default restockFlat falls from 0.0002 to 0.0001 ETH, so
+      the default fee is unchanged (900k x price + 0.0002 ETH) and so are the gate's regimes and signed outcomes.
+      restockFlat is the creator's margin, 0 or more; a creator who sets it to 0 accepts up to 14k gas per restock
+      (the measured 864k high against the 850k floor) as their own cost.
+    - F4: the dashboard's Settings form compares overrides against the pool's own factory's defaults.
+    - F5: the keeper's bid cap per pool is the lower of the pool's `maxGasPrice` and `MAX_GAS_PRICE_GWEI` (default
+      50, was 5), so a pool that raises its cap is served above 5 gwei.
+    - F6 and the ledger: a prize the Balancer still tracks whose FWA listing is no longer listed (1), awaiting
+      delivery retry or refund (6) or refunded (7) was delivered to its player; Overview counts it as won, not held,
+      including a failed delivery that FWA later retried.
+    - Withdraw split: from the contract's `profit`, which withdrawals spend first, not from lifetime earnings.
+    - The pool list shows only Balancers this dashboard's factory deployed (`isBalancer`); any contract can emit
+      `CreatorTransferred`.
+    - The gate's draw regimes impersonate the Chainlink coordinator, since a fork cannot get real VRF delivery: the
+      owner accepts this as an exception to the no-mocks rule ("this is an ok exception"). Real delivery is covered by
+      the real-transaction rehearsal and the canary.
+    - Not changed: a creator may still set a 1 gwei cap or a zero incentive for their own pool (keepers then skip it
+      above that gas price, and the creator can run upkeep themselves), and the admin's raising the caps raises every
+      pool's reserve (`docs/SECURITY.md`).
+91. **Pools hold up to 1,000 prizes by default** (owner, 2026-11-16: "i'd rather measure now and set it higher"; review
+    of `f5c81d6` F3 found R36's 200 and decision 88's 1,000 limit in conflict). `maxPrizes` defaults to 1,000, its
+    highest allowed value. Measured on the pinned fork: the worst upkeep (reconcile 5 draws, restock 5 Shapes in 4
+    sizes) is 2,646,369 gas at 1,000 prizes and 100 curated NFTs against 2,646,324 at 200 and 20, so pool size does not
+    raise upkeep gas. Decision 89's unlimited curated NFTs, measured with a hostile collection that burns every FWA
+    stipend: the keeper's billed gas grows about 50k per doubling of listings (2.77M at 1,024, 2.82M at 2,048, 2.87M
+    at 4,096; FWA's `processAcquisitions(2)` 2.51M, 2.57M, 2.61M), and the measured span reaches the 3.2M pay cap from
+    1,024 listings; pay covers 3.25M gas, so billed gas stays covered to about 2^7 times more listings than measured.
+    Costs that grow with the pool: a first fill takes one paid upkeep per 5 Shapes (200 for 1,000 single Shapes,
+    about 0.3 ETH of keeper pay at 0.5 gwei basefee: 200 x (2.5M + 50k gas) x 0.55 gwei + 200 x 0.0001 ETH), the reserve holds the larger target, and the dashboard reads two values
+    per listing on load (now batched into multicalls). Test helper `fillUp` allows 400 calls.
+92. **Review of `67a9e1e` acted on** (owner, 2026-11-16: "Yes, build them"; report `audit/rc-67a9e1e/REPORT.md`, in
+    the review's own worktree at `2323ade`).
+    - E1, accepted as the creator's cost (option A): a listed restocking fee never changes, so raising pay settings
+      (or gas within the cap) after a prize is listed costs the creator the difference when that prize is restocked,
+      until it is won and relisted. The review's witness: a fee listed at 0.55 gwei (0.000695 ETH) against 0.052435 ETH
+      of keeper pay after the cap went to 50 gwei with the highest incentive and overhead. Rejected: capping pay per old
+      prize (keepers would skip those restocks) and repricing old listings on a settings change (one FWA price update
+      per listing, beyond one transaction at 1,000 prizes). R37's addition, `src/Settings.sol`, `src/PoolBalancer.sol`
+      (comments only) and `docs/SECURITY.md` now say "under the settings and gas price of its listing". The dashboard's
+      Keeper pay section already states that restocking fees change from the next prizes listed.
+    - S1: the keeper computes the hash from the one `settings()` read it prices on (`settingsHash` in
+      `shared/planner.ts`, checked against the contract's value and `cast`), so the hash it sends always names the
+      settings it priced.
+    - S2: a replacement is priced on the current settings read and carries the current hash, at the same nonce. A
+      pending entry saved before `settingsHash` existed, or one whose settings changed, is replaced instead of waiting
+      forever (local fork: a legacy entry at nonce 111 was replaced and mined).
+    - E2: O11's information figure was 0.036 ETH from decision 83; decision 86 (no markup on curated NFTs) moved
+      `extreme_top_heavy` to 0.0371 ETH and O11 was not restated then. Now "up to 0.038 ETH (measured 0.0371)"; the
+      owner re-signs the outcomes.
+    - Left open: dashboard load at very large inventories (two reads per listing, unpaged lifetime logs) and reads
+      not pinned to one block.
+93. **Confirmatory review of `1de59a2` acted on** (report `audit/rc-1de59a2/REPORT.md`, in the review's own worktree at
+    `2576f7c`). No execution code changed.
+    - S3: an evicted keeper transaction no longer strands a pool. When the node holds no transaction of the keeper's at
+      the pending nonce and none of its hashes, the keeper forgets the entry and re-prices and sends at the same nonce
+      (local fork: nonce 112 dropped from the pool, resent at 112 four blocks later, mined). A copy the node still knows,
+      including a lost-response send, keeps the entry.
+    - E3: R37, `SettingsLib.check`'s comment and `docs/SECURITY.md` now carry decision 90's same-settings exception: up to
+      14k gas per restock when restockFlat is 0.
+    - E4: R4's measured NFT-dominated range gains the current figure (up to 0.0371 ETH; O11 states up to 0.038 ETH).
+    - C1: comments corrected: what an extra call from splitting work earns (incentive, unused overhead allowance,
+      refunds); worst upkeep gas flat with prize count but growing with FWA's listing count under a hostile collection;
+      `_collect` splits by the listings tracked at collection, which differ from the priced set when it changed while a
+      draw was unsettled.
+    - Open, no change: on the largest board the creator ends ahead counting listed backing while the liquid fund is
+      48.37 ETH below its reserve need; claims of self-sustaining play hold for the launch board, not every board.
+94. **Confirmatory review of `031a338` acted on** (report `audit/rc-031a338/REPORT.md` in the review's own worktree).
+    No execution code changed in the contracts.
+    - E3: the 14k gas is a measurement, not a bound. `SettingsLib.check`'s comment, the PoolBalancer keeper comment,
+      R37 and `docs/SECURITY.md` now say so, apply it to restockFlat at 0 however it was set (creator override or
+      factory default), and put any shortfall on the creator's fund.
+    - C1: `_collect` and upkeep step 1 now say the split uses the listings tracked at collection; listings added
+      while a draw is unsettled (upkeep restocking, at the markup in force then) also count, and a markup change alone
+      moves no listed share.
+    - E4: R4 states the current NFT-dominated figure only (up to 0.0371 ETH; O11 up to 0.038 ETH).
+    - K1: the keeper reads its confirmed nonce before the receipts, so an upkeep mined between the two reads is
+      counted in its stats instead of being dropped as consumed by another transaction (local fork: 3 KeeperPaid
+      events, stats 12 to 15 mined).

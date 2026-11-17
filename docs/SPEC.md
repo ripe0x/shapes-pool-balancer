@@ -14,7 +14,7 @@ pool. As prizes are won, anyone may call `performUpkeep` to restock toward the t
 
 | Contract | Role |
 | --- | --- |
-| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list every clone reads; its keeper admin can only restrict upkeep to approved keepers or open it to anyone (the default). No other authority over clones, their pools or assets. |
+| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list and the default `Settings` every clone reads; its keeper admin can restrict upkeep to approved keepers or open it to anyone (the default), and set the defaults within `SettingsLib.check`'s limits (decision 88). No authority over prize backing, FWA pools or assets. |
 | `PoolBalancer` | Non-upgradeable logic shared by all clones. Immutables pin the FWA factory, the reviewed FWA implementation and its runtime code hash, Shapes, this system's Draw Packs instance and the ENS registry. |
 | `PoolPage` | External library (pure) that builds the FWA pool-page message digest; kept outside `PoolBalancer` for the 24 KB limit. |
 | Draw Packs | `ShapePacks` from ripe0x/shape-packs `draw-packs` at `3a463f7` (vendored, unmodified, the code ape-Ball deploys), deployed once per system by `script/Deploy.s.sol` with a 2-unit (0.02 ETH) minimum. An ERC-721 holding Shapes in custody; `redeem` pays exactly their backing. Its admin controls presentation only (renderer, description). |
@@ -30,7 +30,7 @@ for its Shapes and Draw Packs. Nothing can ever change the operator, enable toke
 | --- | --- |
 | Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer, always run its own pool's upkeep |
 | Pending creator | accept the creator role |
-| Keeper admin (factory) | restrict upkeep on every pool to approved keepers or open it to anyone, approve or remove keepers, start keeper-admin transfer (the pending admin accepts) |
+| Keeper admin (factory) | restrict upkeep on every pool to approved keepers or open it to anyone, approve or remove keepers, set the default settings within their limits (keeper pay, restocking fee, prize limit), start keeper-admin transfer (the pending admin accepts) |
 | Anyone (keeper) | `performUpkeep` (while the factory's list is open, the default; when restricted, approved keepers and each pool's creator), `collectProceeds`, `depositETH` |
 | FWA pool | calls `canPurchase` (view) |
 
@@ -43,12 +43,12 @@ Balancer by anyone, and NFTs sent to it directly, belong to the creator; there i
 `configure(markupBps, target)`:
 
 - `markupBps`: a fixed operating markup (10% to 100%), the creator's to keep. It is the only profit in a price, so it
-  is what refills the reserve after a big win. A curated NFT lists at its value ×
-  (1 + markup). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
+  is what refills the reserve after a big win. A curated NFT lists at its value, with no markup (decision 86). A prize (Shape or Draw Pack) lists at its backing + one Shapes mint fee per Shape inside + backing ×
   markup + one restocking fee per Shape inside: players pay the mint fee and keepers on top of the markup. The
-  restocking fee is `restockFee()` = 900k gas × min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH, at the basefee of the
+  restocking fee is `restockFee()` = restockGas (900k) × min(basefee + priorityCap, maxGasPrice) + incentive (0.0001 ETH) +
+  restockFlat (0.0001 ETH), defaults in brackets, at the basefee of the
   listing block; it pays the keeper call that lists the prize. Prices are set when a listing is made. Existing listings keep their prices; nothing is repriced.
-- `target`: the prize mix, sixteen 16-bit counts packed into one uint256, 1 to 80 prizes in total. Sizes 0 to 8 are the
+- `target`: the prize mix, sixteen 16-bit counts packed into one uint256, 1 to `settings().maxPrizes` prizes in total (default and highest 1,000; decision 91). Sizes 0 to 8 are the
   Shapes denominations (0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100 ETH), each prize one Shape. Sizes 9 to 15 are 0.02, 0.03,
   0.2, 0.25, 2, 2.5 and 25 ETH, each prize one Draw Pack holding the fewest Shapes that sum to it (2 or 3; e.g.
   0.25 = 2×0.1 + 0.05). A target set with only the first nine sizes decodes unchanged.
@@ -128,8 +128,8 @@ Who can take value out:
 - while open, the creator can withdraw with `claimSurplus` everything above `requiredReserve`, or, while the fund is
   below it, their unclaimed `profit` (see Reserve);
 - after closing and unlisting, the creator can withdraw everything except the keeper pay held for draws not yet
-  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 5 such draws (owner decision
-  D3, 2026-11-13). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
+  reconciled: while closed, `requiredReserve` is one `MAX_KEEPER_REWARD` (0.01635 ETH) per 2 such draws (owner decision
+  D3, 2026-11-13; per 2 since upkeep processes at most 2 draws per call, D16). Upkeep that reconciles those draws is paid from it, and what it does not spend becomes claimable once
   everything is reconciled. Closing stops purchases, so the held amount only falls.
 
 One-way transfers (value that leaves and never returns): the Shapes mint fee, FWA's edge, the VRF fee and keeper rewards.
@@ -187,6 +187,13 @@ keepers it approves (`BalancerFactory.setKeepersRestricted`, `setKeeperApproved`
 pool's creator can always run its own. The reward rules are the same either way; while restricted, a pool whose approved
 keepers stop is restocked only when its creator runs upkeep.
 
+0. process FWA's queue, up to 2 draws per call, when draws are waiting (DECISIONS 75): a draw whose request reserved a
+   staged restock skips FWA's randomness fast path and is settled here; a failure never blocks the rest of upkeep, and
+   the gas it burned is not paid for; if it failed for want of gas (it handed back under 400,000 gas beyond the 1/64
+   kept by the caller: FWA's notifier refuses below 290,000, and an out-of-gas hands back nothing), the whole upkeep
+   reverts `InsufficientGas`, so no call succeeds with processing starved, at any pool size. A call that settled a draw skips step 3 (restock):
+   the worst such call measures 2.98M gas, up to 3.22M with 1,024 listings, and storage refunds keep its billed gas
+   under 2.75M, so its keeper is covered; the next call restocks.
 1. reconcile settled FWA sequences in order, up to 5 per call: a drawn listing leaves the tracked set; a failed delivery
    marks the item `PENDING` (never scanned again by upkeep).
 2. collect FWA owner proceeds into the Balancer.
@@ -215,9 +222,9 @@ The reward is force-sent, so a reverting keeper cannot block upkeep.
 
 ## Curated NFTs
 
-`listCurated` / `listCuratedBatch` pull from the creator (approve the Balancer first) and list on FWA at
-`base × (1 + markup)`. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value;
-it is listed at that value plus the current markup, and FWA allows the change only while no draw is unsettled.
+`listCuratedBatch` pulls from the creator (approve the Balancer first) and lists on FWA at `base`, the creator's
+value, with no markup. Shapes and Draw Packs cannot be listed as curated NFTs. `updateCuratedPrice` sets an NFT's value,
+which is its FWA price; FWA allows the change only while no draw is unsettled.
 `withdrawCurated` withdraws an active NFT from FWA to a creator-chosen address, also only while no draw is unsettled.
 
 Failed deliveries follow FWA's rules; the Balancer adds none of its own (owner decision 2026-11-13: the Balancer is a

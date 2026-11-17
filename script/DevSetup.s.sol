@@ -37,11 +37,13 @@ contract DevSetup is Script {
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 3 ether}(salt)));
         address creator = b.creator();
         b.configure(1500, 5 | (3 << 16) | (2 << 32)); // 15% markup; 5 x 0.01, 3 x 0.05, 2 x 0.1 (before listing NFTs)
+        PoolBalancer.CuratedInput[] memory nfts = new PoolBalancer.CuratedInput[](2);
         for (uint256 i = 1; i <= 2; ++i) {
             nft.mint(creator, i);
             nft.approve(address(b), i);
-            b.listCurated(address(nft), i, i * 0.25 ether);
+            nfts[i - 1] = PoolBalancer.CuratedInput(address(nft), i, i * 0.25 ether);
         }
+        b.listCuratedBatch(nfts);
         b.open();
         vm.stopBroadcast();
         console.log("Balancer", address(b));

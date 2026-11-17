@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
-import { BY_VALUE, DENOMS, capitalOf, economics, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
-import { describe, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BY_VALUE, DENOMS, capitalOf, economics, evaluate, prizeLabel, restockFeeAt, type Counts } from '../../shared/planner';
+import { ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 
 // One worked example used by every visual: a 0.2 ETH NFT, 20 small Shapes, 15% markup, today's mint fee, 1 gwei gas.
 const EXAMPLE: DesignInputs = {
@@ -20,8 +20,8 @@ const oneIn = (p: number) => `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.roun
 
 /** Groups of a mix, smallest value first, with shade, chance per draw and worth against the draw price. */
 function groups(counts: Counts) {
-  const ev = describe(counts, EXAMPLE);
-  const view = playerView(ev, 0n);
+  const ev = evaluate(counts, EXAMPLE);
+  const view = playerView(ev);
   const sizes = BY_VALUE.filter((i) => counts[i] > 0);
   const shade = (k: number): CSSProperties => ({ background: sizes.length > 1 && k === sizes.length - 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, k)] });
   const out = sizes.map((i, k) => {
@@ -89,11 +89,11 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
 
       <section className="hiw-sec">
         <h2 className="h3">2. How a draw picks a prize</h2>
-        <p className="hiw-p">FWA gives each prize a chance in proportion to 1 ÷ its price. A 0.01 ETH Shape comes up 20 times as often as a 0.2 ETH NFT. So every prize carries the same expected value per draw, and a prize is rare exactly when it is worth many times the others.</p>
+        <p className="hiw-p">FWA gives each prize a chance in proportion to 1 ÷ its price: a prize priced 20 times higher comes up 20 times less often, so a prize is rare exactly when it costs many times the others.</p>
         <Bar parts={list.map((g) => ({ label: g.label, share: g.odds, style: g.style, note: `${g.multiple.toFixed(2)}× the price` }))} />
         <div className="hiw-stats">
           <div><span className="figure-s">{eth(ev.drawPrice, 4)}</span><span className="unit">ETH</span><p className="note">Draw price</p></div>
-          <div><span className="figure-s">{oneIn(view.winMore)}</span><p className="note">Win more than they paid</p></div>
+          <div><span className="figure-s">{oneIn(view.winMore)}</span><p className="note">Win more than the draw price</p></div>
           <div><span className="figure-s">{oneIn(view.curated)}</span><p className="note">Win your NFT</p></div>
         </div>
         <p className="note" style={{ marginTop: 10 }}>Players also pay FWA's randomness (VRF) fee and gas, which are set at draw time.</p>
@@ -108,7 +108,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           <li><b>Upkeep restocks</b><span>Anyone can run it; keepers do. It mints a new 0.05 ETH Shape from the pool's ETH and lists it.</span></li>
           <li><b>Back to the mix</b><span>Same prizes, same odds, usually within a block or two.</span></li>
         </ol>
-        <p className="note">Keepers are paid only from the restocking fees of the prizes they list, priced at the gas of the moment. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
+        <p className="note">Keepers are paid from your pool's ETH for each upkeep that restocks prizes or records draws; the restocking fee in each prize's price is your income toward that pay. Above 5 gwei keepers wait; if the prizes left fall under 70% of your mix, purchases pause until gas comes down.</p>
       </section>
 
       <section className="hiw-sec">
@@ -135,8 +135,8 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
       </section>
 
       <section className="hiw-sec">
-        <h2 className="h3">6. Game styles</h2>
-        <p className="hiw-p">A style decides which prizes sit next to your NFTs. The pool size slider sets how many small Shapes there are.</p>
+        <h2 className="h3">6. Shape styles</h2>
+        <p className="hiw-p">A Shape style decides which Shapes sit next to your NFTs. The Shape pool size slider sets how many Shape prizes there are, in the style's proportions.</p>
         <div className="hiw-styles">
           {STYLES.map((s) => {
             const c = mixOf(SMALL, styleBonus(s.key, EXAMPLE, SMALL));
@@ -168,9 +168,10 @@ const FAQ: [string, string][] = [
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If you have other NFTs listed, the pool keeps running with the same prizes. If it was your last NFT, purchases stop until you add another.'],
-  ['Can I lose money?', 'Mint fees and keepers are paid from fees in prize prices, never from your markup. The pool fronts those fees until each prize is won, so prizes still listed when you close keep their mint and restocking fees; stocking the pool when you open it costs gas, repaid as those first prizes are won. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
+  ['Can I lose money?', 'Mint fees and restocking fees are built into prize prices, and all buyers fund them. Keepers are paid from your ETH in the pool, including for draws that win one of your NFTs or time out, which bring no restocking fee. The pool fronts the fees until prizes are won, so prizes still listed when you close keep theirs, and stocking the pool when you open it costs gas even if nobody buys. Single draws and short runs vary either way. Prizes always redeem for their exact ETH.'],
   ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
-  ['Do purchases pause after draws?', 'No. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause only when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, or when the Shapes mint fee rises above the one you accepted.'],
+  ['Do purchases pause after draws?', 'Usually not. Players can keep drawing while upkeep restocks won prizes, usually within a block or two. Purchases pause when restocking falls far behind (the prizes left are under 70% of your design), when five draws are still settling, when the Shapes mint fee rises above the one you accepted, and, for a mix with little prize weight, while a few draws are unsettled (the design page says how many).'],
+  ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won, usually within a minute. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. Every pool also pauses while five draws are unsettled. The pause ends on its own as the draws settle.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
-  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to prizes listed after the change; prizes already listed keep their price."],
+  ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];

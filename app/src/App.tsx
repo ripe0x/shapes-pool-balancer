@@ -1,15 +1,16 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { BaseError, ContractFunctionRevertedError, formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, formatUnits, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, MAX_SHAPES_PER_PLAN, capitalOf, economics, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, settingsFrom, shapeCount, unpackPlan, type Counts, type KeeperSettings,
 } from '../../shared/planner';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, describe, ethNeeded, mixOf, playerView, shapeTotal, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
@@ -19,6 +20,24 @@ const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'fun
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const CREATOR_TRANSFERRED = parseAbiItem('event CreatorTransferred(address indexed oldCreator, address indexed newCreator)');
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
+/** Events that move the creator's ETH, for the lifetime ledger on Overview. */
+const LEDGER = [
+  DRAWN,
+  parseAbiItem('event Deposited(address indexed from, uint256 amount)'),
+  parseAbiItem('event SurplusClaimed(address indexed to, uint256 amount)'),
+  parseAbiItem('event ProceedsCollected(uint256 amount)'),
+  parseAbiItem('event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed)'),
+  parseAbiItem('event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost)'),
+  parseAbiItem('event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price)'),
+  parseAbiItem('event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price)'),
+] as const;
+
+/** The creator's ETH since the pool was created, from its events. `held` is everything still theirs in the pool: its
+ *  balance, the backing of its prizes (listed, or drawn but not delivered) and sales FWA holds for it. Earned = taken
+ *  out + held - put in, which equals sales - prizes won - mint fees - keeper pay, plus ETH sent to the pool directly
+ *  (`other`). Curated NFTs won are counted apart: they are not ETH. */
+interface Ledger { putIn: bigint; takenOut: bigint; held: bigint; earned: bigint; sales: bigint; prizesWon: bigint; mintFees: bigint; keeperPay: bigint; other: bigint; nftsWon: number; nftValues: bigint }
+const L_DELIVERY_PENDING = 6;
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
 
@@ -34,13 +53,18 @@ export const STATUS: Record<number, string> = {
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
 /** PoolBalancer.restockFee() for a prize listed in the next block: per Shape, from the latest basefee. */
-const liveRestockFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>) =>
-  pub.getBlock().then((blk) => restockFeeAt(blk.baseFeePerGas ?? 0n));
+const liveRestockFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>, s: KeeperSettings) =>
+  pub.getBlock().then((blk) => restockFeeAt(blk.baseFeePerGas ?? 0n, s));
+/** Settings in force: a Balancer's `settings()` (its factory's defaults with its overrides), or the factory's defaults
+ *  for a pool not created yet. */
+const liveSettings = (pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer?: Address) =>
+  (balancer
+    ? pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settings' })
+    : pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'settings' })).then(settingsFrom);
 
 /** FWA's per-draw VRF service fee, paid by the player on top of the draw price: the service's own formula and live
  *  settings (serviceGasEstimate x gas price x (1 + serviceMarginBps) + serviceFlatWei) at the current gas price. */
@@ -77,19 +101,26 @@ function useBalancer(b?: Address) {
     // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
     // current fees (the reward bound it must leave unspent grows with the gas price).
     const fees = await pub.estimateFeesPerGas();
-    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', account: creator, ...fees })
+    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [await r<Hash>('settingsHash')], account: creator, ...fees })
       .then(() => ({ needed: true }), () => ({ needed: false }));
-    // Drawn items whose FWA delivery failed are not scanned on chain; find them from events.
-    const drawn = await pub.getLogs({ address: b, event: DRAWN, fromBlock: FROM_BLOCK });
+    // Drawn items whose FWA delivery failed are not scanned on chain; find them from events. The same scan feeds the
+    // lifetime ledger.
+    const events = await pub.getLogs({ address: b, events: LEDGER, fromBlock: FROM_BLOCK });
+    const drawn = events.filter((l) => l.eventName === 'ItemDrawn') as unknown as { args: { listingId?: bigint; kind?: number; denom?: number; delivered?: boolean } }[];
     // The keeper list is on the factory that deployed this Balancer.
-    const keepersRestricted = await pub.readContract({ address: await r<Address>('factory'), abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
+    const factoryAddr = await r<Address>('factory');
+    const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
+    // Defaults come from this pool's own factory, which may not be the one this dashboard creates pools with.
+    const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b),
+      pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'settings' }).then(settingsFrom),
+      r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
     const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee, vrfFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'), p<bigint>('lastIssuedSequence'),
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
-      liveRestockFee(pub), liveVrfFee(pub),
+      liveRestockFee(pub, settings), liveVrfFee(pub),
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
@@ -101,11 +132,37 @@ function useBalancer(b?: Address) {
     const names: Record<string, string> = Object.fromEntries(await Promise.all(collections.map(async (c) =>
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
+    const sum = (name: string, f: (a: Record<string, unknown>) => bigint) => events.filter((l) => l.eventName === name).reduce((t, l) => t + f(l.args as Record<string, unknown>), 0n);
+    const values = new Map<bigint, bigint>();
+    for (const l of events) if (l.eventName === 'CuratedListed' || l.eventName === 'CuratedRepriced') values.set((l.args as { listingId: bigint }).listingId, (l.args as { base: bigint }).base);
+    const nftWins = drawn.filter((l) => l.args.kind === 1 && l.args.delivered);
+    const backingOf = (ls: Listing[]) => ls.filter((l) => l.kind === 2).reduce((t, l) => t + DENOMS[l.denom], 0n);
+    const putIn = sum('Deposited', (a) => a.amount as bigint); // includes the deposit made at creation
+    const takenOut = sum('SurplusClaimed', (a) => a.amount as bigint);
+    // FWA status 1 is listed, 6 a failed delivery awaiting retry or refund, 7 refunded (the creator recovers it). Any
+    // other status on a prize the Balancer still tracks means FWA delivered it: before upkeep reconciled the draw, or
+    // on a retry after a failed delivery (which the Balancer never revisits).
+    const tracked = [...listings, ...pending];
+    const stillHeld = (l: Listing) => l.fwaStatus === 1 || l.fwaStatus === L_DELIVERY_PENDING || l.fwaStatus === L_DELIVERY_REFUNDED;
+    const delivered = tracked.filter((l) => !stillHeld(l));
+    const deliveredNfts = delivered.filter((l) => l.kind === 1);
+    const held = balance + backingOf(tracked.filter(stillHeld)) + proceeds;
+    const sales = sum('ProceedsCollected', (a) => a.amount as bigint) + proceeds;
+    const prizesWon = drawn.filter((l) => l.args.kind === 2 && l.args.delivered).reduce((t, l) => t + DENOMS[l.args.denom!], 0n) + backingOf(delivered);
+    const mintFees = sum('ShapesMinted', (a) => (a.cost as bigint) - (a.quantity as bigint) * DENOMS[Number(a.denom)]);
+    const keeperPay = sum('KeeperPaid', (a) => a.amount as bigint);
+    const earned = takenOut + held - putIn;
+    const ledger: Ledger = {
+      putIn, takenOut, held, earned, sales, prizesWon, mintFees, keeperPay,
+      other: earned - (sales - prizesWon - mintFees - keeperPay),
+      nftsWon: nftWins.length + deliveredNfts.length,
+      nftValues: nftWins.reduce((t, l) => t + (values.get(l.args.listingId!) ?? 0n), 0n) + deliveredNfts.reduce((t, l) => t + l.base, 0n),
+    };
     return {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, vrfFee, listings, pending, names, ensName,
-      keepersRestricted,
+      keepersRestricted, settings, defaults, overrideMask: Number(overrides[0]), ledger,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -114,32 +171,6 @@ function useBalancer(b?: Address) {
   }, [load, b]);
   useEffect(() => { refresh(); const t = setInterval(refresh, 15_000); return () => clearInterval(t); }, [refresh]);
   return { data, error, refresh };
-}
-
-const ERRORS: Record<string, string> = {
-  NoUpkeepNeeded: 'nothing to do right now',
-  WithdrawLocked: 'draws are settling on FWA; try again in a minute',
-  InsufficientSurplus: 'amount exceeds claimable surplus',
-  ReserveNotFunded: 'deposit the reserve first',
-  InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
-  Unauthorized: 'only the creator can do this',
-  NotClosed: 'close purchases first',
-  InvalidPlan: `the mix needs 1 to ${MAX_SHAPES_PER_PLAN} prizes`,
-  ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
-  ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
-  InvalidItem: 'not available for this action (check its FWA status)',
-};
-
-function explain(e: unknown): string {
-  if (e instanceof BaseError) {
-    const reverted = e.walk((x) => x instanceof ContractFunctionRevertedError) as ContractFunctionRevertedError | null;
-    const name = reverted?.data?.errorName;
-    // Error(string) reverts carry their message as the reason.
-    if (name === 'Error' && reverted?.reason) return reverted.reason;
-    if (name) return ERRORS[name] ?? name;
-    return e.shortMessage;
-  }
-  return (e as Error).message;
 }
 
 function useTx(onDone: () => void) {
@@ -192,6 +223,8 @@ const ZERO: Counts = Array(9).fill(0);
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 const eth = (wei: bigint | undefined, d = 3) => (wei === undefined ? '–' : Number(formatEther(wei)).toFixed(d));
 const signed = (x: number, d = 5) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}`;
+/** A per-draw amount: "0" when it rounds to nothing, else signed. */
+const perDraw = (x: number) => (Math.abs(x) < 5e-6 ? '0' : signed(x));
 const oneIn = (p: number) => (p <= 0 ? '–' : p >= 0.995 ? 'every draw' : `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.round(1 / p).toLocaleString()}`);
 const pctOf = (p: number) => `${(p * 100).toFixed(p < 0.01 ? 2 : 1)}%`;
 const ethOr = (s: string, fallback: bigint) => { try { return parseEther(s || '0'); } catch { return fallback; } };
@@ -244,6 +277,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<string>();
   // How it works lives at #how, so it can be linked to and the back button leaves it.
   const [help, setHelpState] = useState(() => location.hash === '#how');
@@ -260,9 +294,14 @@ export function App() {
       pub.getLogs({ event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: FROM_BLOCK }).catch(() => []),
     ]);
     const candidates = [...new Set([...created.map((l) => l.args.balancer!), ...received.map((l) => l.address as Address)])];
-    const owned = await Promise.all(candidates.map((b) =>
-      (pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'creator' }) as Promise<Address>)
-        .then((c) => (c.toLowerCase() === address.toLowerCase() ? b : undefined)).catch(() => undefined)));
+    // Any contract can emit CreatorTransferred: only Balancers this dashboard's factory deployed are listed.
+    const owned = await Promise.all(candidates.map(async (b) => {
+      const [ours, c] = await Promise.all([
+        pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [b] }) as Promise<boolean>,
+        pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'creator' }) as Promise<Address>,
+      ]).catch(() => [false, undefined] as const);
+      return ours && c?.toLowerCase() === address.toLowerCase() ? b : undefined;
+    }));
     const list = owned.filter(Boolean) as Address[];
     setMine(list);
     // Keep the selection only if it belongs to the connected account (it changes when the wallet switches accounts).
@@ -275,7 +314,8 @@ export function App() {
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
-  useEffect(() => { setLoaded(false); setPage(undefined); loadMine().catch(() => undefined); }, [loadMine]);
+  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
+  useEffect(() => { setLoaded(false); setPage(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -318,10 +358,12 @@ export function App() {
           {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setPage('list')}>Back to your pools</button></span>}
         </div>
       )}
-      {isConnected && !loaded && <p className="txline">Loading your pools…</p>}
+      {isConnected && !loaded && (loadFailed
+        ? <p className="txline bad">Couldn't load your pools. <button className="link" onClick={reload}>Retry</button></p>
+        : <p className="txline">Loading your pools…</p>)}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b, failure) => { open(b); setNotice(failure); loadMine(); }} />
+          onCreated={(b, failure) => { open(b); setNotice(failure); reload(); }} />
       )}
       {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setNotice(undefined); setPage('new'); }} />}
       {isConnected && loaded && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} notice={notice} />}
@@ -368,6 +410,7 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
 
 function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; notice?: string }) {
   const { data: d, error, refresh } = useBalancer(balancer);
+  const pub = usePublicClient();
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
   if (!d) return <p className="txline">Loading…</p>;
@@ -377,7 +420,8 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
   // A pool created but never configured continues in the designer.
   const setup = d.target === 0n && isCreator && !d.retired;
   const tabs: Tab[] = setup ? ['overview', 'nfts', 'settings'] : ['overview', 'nfts', 'mix', 'settings'];
-  const upkeep = () => tx.send('Run upkeep', [() => tx.write({ ...B, functionName: 'performUpkeep' })]);
+  const upkeep = () => tx.send('Run upkeep', [async () => tx.write({ ...B, functionName: 'performUpkeep',
+    args: [await pub!.readContract({ ...B, functionName: 'settingsHash' })] })]);
   const action = st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>
     : st.act === 'open' && isCreator ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>
       : st.act && st.act !== tab && st.act !== 'open' ? <button className="link" onClick={() => setTab(st.act as Tab)}>{st.label}</button>
@@ -405,8 +449,6 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
         <span className="actions">
           {action}
           {d.upkeep.needed && st.act !== 'upkeep' && <button className="link quiet" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>}
-          {isCreator && d.enabled && <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => tx.write({ ...B, functionName: 'close' })])}>Close purchases</button>}
-          {isCreator && !d.enabled && st.act !== 'open' && d.target !== 0n && !d.retired && <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>}
         </span>
       </div>
       {(tx.busy || tx.msg) && <p className={`txline${tx.msg && !tx.msg.ok ? ' bad' : ''}`} aria-live="polite">{tx.busy ? `${tx.busy}…` : tx.msg!.text}</p>}
@@ -439,10 +481,10 @@ const DEFAULT_MARKUP = 25;
 const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
 const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
-  { key: 'steady', label: 'Low draw price', hint: 'Cheap draws. Most draws win a small Shape; your NFT is the big prize.' },
-  { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps: 0.01, 0.02, 0.05 and 0.1 ETH, plus a 0.5 ETH prize from 12 small Shapes, in ape-Ball\'s proportions.' },
-  { key: 'balanced', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price or more.` },
-  { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the draw price.` },
+  { key: 'steady', label: 'Low draw price', hint: 'Cheapest draws. Curated NFTs are the big prizes.' },
+  { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps, 0.01 to 0.1 ETH.' },
+  { key: 'balanced', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price.` },
+  { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the price.` },
 ];
 /** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
  *  picked. */
@@ -455,15 +497,15 @@ type Prereq = { creation: boolean; impl: boolean };
 function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onCreated: Create['onCreated'] }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
-  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; restockFee: bigint; vrfFee?: bigint }>();
+  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; restockFee: bigint; vrfFee?: bigint; settings: KeeperSettings }>();
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
-    Promise.all([
+    liveSettings(pub).then((settings) => Promise.all([
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
-      liveRestockFee(pub), liveVrfFee(pub),
-    ]).then(([edgeBps, mintFee, restockFee, vrfFee]) => setLive({ edgeBps, mintFee, restockFee, vrfFee }))
+      liveRestockFee(pub, settings), liveVrfFee(pub),
+    ]).then(([edgeBps, mintFee, restockFee, vrfFee]) => setLive({ edgeBps, mintFee, restockFee, vrfFee, settings })))
       .catch(() => undefined);
   }, [pub]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
@@ -491,6 +533,19 @@ async function refusedApprovals(pub: Pub, me: Address, balancer: Address, list: 
     .then(() => undefined, (e) => `${nftLabel(n)} (${explain(e)})`)))).filter(Boolean) as string[];
 }
 
+/** FWA lists at most 20 NFTs per transaction (MAX_INVENTORY_BATCH); a longer list is sent in batches. There is no
+ *  limit on the total. */
+const LIST_BATCH = 20;
+const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId: bigint; base: bigint }[]) => Promise<Hash | undefined>) => {
+  const steps: Step[] = [];
+  for (let k = 0; k < ns.length; k += LIST_BATCH) {
+    const batch = ns.slice(k, k + LIST_BATCH);
+    const label = ns.length <= LIST_BATCH ? `List ${ns.length === 1 ? 'your NFT' : `${word(ns.length)} NFTs`}` : `List NFTs ${k + 1} to ${k + batch.length} of ${ns.length}`;
+    steps.push([label, () => write(batch.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) })))]);
+  }
+  return steps;
+};
+
 /** One approval per NFT, skipped when the pool is already approved. */
 const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => list.map((n) => {
   const id = BigInt(n.tokenId!);
@@ -508,7 +563,8 @@ const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: Dr
  *  simulates exactly as the send will (EIP-1559 fees from the node, the creator account), so NoUpkeepNeeded is not
  *  misjudged at gas price 0, where upkeep's reward bound is lower than at inclusion. */
 const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => ['Run upkeep', async () => {
-  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep' as const };
+  const args = [await pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settingsHash' })] as const;
+  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep' as const, args };
   const needed = await prepareWrite(pub, me, call).then(() => true, () => false);
   return needed ? tx.write(call) : undefined;
 }];
@@ -520,7 +576,7 @@ type Mode = 'preview' | 'new' | 'pool';
 type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address, failure?: string) => void };
 
 /**
- * One Design page for every stage: a preview before connecting (NFTs are values only), a pool about to be created
+ * One Design page for every stage: a preview before connecting (no NFTs until a wallet is connected), a pool about to be created
  * (each NFT is chosen from the wallet), and an existing pool (listed NFTs are fixed; more can be added). The button
  * runs every transaction the design needs, in order.
  */
@@ -532,30 +588,31 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const listed = d.listings.filter((l) => l.kind === 1 && l.state === 1);
   const listedKeys = new Set(listed.map((l) => nftKey(l.collection, l.tokenId)));
   const nftName = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
-  const [nfts, setNfts] = useState<DraftNft[]>(() => draft?.nfts ?? draft?.values?.map((value) => ({ value })) ?? (fresh || !listed.length ? [DEFAULT_NFT] : []));
+  const [nfts, setNfts] = useState<DraftNft[]>(() => draft?.nfts ?? draft?.values?.map((value) => ({ value })) ?? []);
   const [picking, setPicking] = useState<number>();
   // Rows already listed (a resumed draft) show as listed, not twice.
   const isListed = (n: DraftNft) => !!n.collection && listedKeys.has(nftKey(n.collection, n.tokenId!));
   const pending = nfts.map((n, i) => ({ n, i })).filter(({ n }) => !isListed(n));
-  const rowName = (n: DraftNft, k: number) => (n.collection ? `${n.name ?? short(n.collection)} #${n.tokenId}` : pending.length + listed.length === 1 ? 'Your NFT' : `NFT ${k + 1}`);
-  // Every NFT the design counts: listed ones, then rows with a value.
+  // Every NFT the design counts: listed ones, then rows with a value. Once connected, only rows with a chosen token.
   const rows = [
     ...listed.map((l) => ({ key: `l${l.id}`, name: nftName(l), base: l.base })),
-    ...pending.map(({ n, i }, k) => ({ key: `d${i}`, name: rowName(n, listed.length + k), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
+    ...pending.filter(({ n }) => n.collection).map(({ n, i }) => ({ key: `d${i}`, name: nftLabel(n), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
-  // Pool size: how many 0.01 ETH Shapes. More of them make the NFTs rarer and the draw cheaper.
-  const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
+  // The number of 0.01 ETH Shapes; a style scales its other Shapes with it. At least one, so a style never collapses
+  // to a one-prize pool.
+  const [small, setSmall] = useState(Math.max(1, has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL));
   // A saved pool shows its saved mix until something changes.
   const [edited, setEdited] = useState(!has);
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const [open, setOpen] = useState({ bonus: false, numbers: false });
   const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
-  const [how, setHow] = useState(fresh);
+  const [how, setHow] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const salt = useMemo(() => `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as `0x${string}`, []);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
   const markupBps = Math.round(markup * 100);
@@ -565,17 +622,33 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
     curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    vrfFee: d.vrfFee, have: d.activeShapes,
+    have: d.activeShapes, settings: d.settings,
   };
+  const maxPrizes = d.settings.maxPrizes;
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
   const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
   const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
   const initial = useRef({ style, custom, small });
+  // Until a curated NFT is chosen, the design is priced on its Shapes alone.
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = MAX_SHAPES_PER_PLAN - shapeTotal(bonus);
-  const smallUsed = Math.max(0, Math.min(small, room));
+  const room = maxPrizes - shapeCount(bonus);
+  const smallUsed = Math.max(1, Math.min(small, room));
   const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
+  // Pool size: the Shape prize totals this style can make, smallest first, each with the number of 0.01 ETH Shapes that
+  // makes it. A style keeps its proportions, so some totals are skipped; the slider steps through these.
+  const poolSizes = useMemo(() => {
+    const out: { small: number; total: number }[] = [];
+    for (let n = 1; n <= maxPrizes; n++) {
+      const b = style ? styleBonus(style, base, n) : custom;
+      if (n > maxPrizes - shapeCount(b)) break;
+      const total = n + b.reduce((a, x) => a + x, 0);
+      if (!out.length || total > out[out.length - 1].total) out.push({ small: n, total });
+    }
+    return out;
+  }, [style, custom.join(), bases.join(), markupBps, d.mintFee]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sizeAt = Math.max(0, poolSizes.filter((x) => x.small <= smallUsed).length - 1);
+  const prizes = counts.reduce((a, x) => a + x, 0);
   // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
   // design prices the new Shapes at the current markup instead.
   const inputs: DesignInputs = has && !edited ? { ...base, shapePrices: livePrices } : base;
@@ -595,16 +668,16 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
       return;
     }
     setMarkup(DEFAULT_MARKUP); setSmall(DEFAULT_SMALL); setStyle('board'); setCustom(ZERO);
-    setNfts(fresh || !listed.length ? [DEFAULT_NFT] : []);
+    setNfts([]);
   };
   const total = counts.reduce((a, b) => a + b, 0);
   const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
-  const ready = bases.length > 0 && total > 0;
-  const ev = ready ? describe(counts, inputs) : undefined;
+  const ready = total > 0;
+  const ev = ready ? evaluate(counts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
-  const view = ev ? playerView(ev, d.vrfFee ?? 0n) : undefined;
+  const view = ev ? playerView(ev) : undefined;
   const target = packPlan(counts);
   // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
   const pausesAt = pendingDrawsAdmitted(counts) + 1;
@@ -615,6 +688,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const savedReserveFee = d.mintFee > d.mintFeeCap ? d.mintFee : d.mintFeeCap;
   const reserveMintFee = configChanged ? d.mintFee : savedReserveFee;
   const needed = ready ? ethNeeded(counts, { ...inputs, mintFee: reserveMintFee }) : 0n;
+  // An existing pool being edited: each figure shows its value after saving, with the value now beside it.
+  const savedEv = has && bases.length ? evaluate(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
+  const savedView = savedEv ? playerView(savedEv) : undefined;
+  const editing = has && configChanged && !!savedEv;
+  const now = (before: string, after: string) => (editing && before !== after ? <span className="was">now {before}</span> : null);
   // A new pool is created with what it needs, rounded up to 0.01 ETH. A saved pool counts the prizes unlisting would redeem.
   const deposit = fresh ? ((needed + 10n ** 16n - 1n) / 10n ** 16n) * 10n ** 16n : 0n;
   const have = fresh ? deposit : available(d.balance, d.activeShapes, counts);
@@ -631,25 +709,25 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   const whole = raw.map(Math.floor);
   raw.map((r, i) => [r - Math.floor(r), i] as const).sort((a, b) => b[0] - a[0]).slice(0, 100 - whole.reduce((a, b) => a + b, 0)).forEach(([, i]) => whole[i]++);
   const shapeGroups = groups.filter((g) => !g.nft);
-  const shade = (g: (typeof groups)[number]) => (g.nft ? 'nft' : g === shapeGroups[shapeGroups.length - 1] && shapeGroups.length > 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, shapeGroups.indexOf(g))]);
+  const sizes = BY_VALUE.filter((i) => counts[i] > 0);
+  const shadeOf = (i: number) => (i === sizes[sizes.length - 1] && sizes.length > 1 ? '#fff' : SHADES[Math.min(SHADES.length - 1, sizes.indexOf(i))]);
   const ordered = groups.map((g, k) => ({ g, n: whole[k] })).sort((a, b) => b.n - a.n);
   const cells = ordered.flatMap(({ g, n }) => Array(n).fill(g) as (typeof groups)[number][]);
-  const sw = (g: (typeof groups)[number]) => (shade(g) === 'nft' ? { border: '1.5px solid #fff' } : { background: shade(g) });
+  const sw = (g: (typeof groups)[number]) => (g.nft ? { border: '2px solid #fff' } : { background: shadeOf(g.i) });
   const legend = (g: (typeof groups)[number], n: number) => {
     const verb = n <= 1 ? 'wins' : 'win';
     if (g.nft) return `${verb} ${rows.length === 1 ? `your NFT, ${rows[0].name}` : 'one of your NFTs'}`;
     const v = Number(formatEther(g.value)) / Number(formatEther(view!.cost));
     const what = `${g.n === 1 && shapeGroups.length > 1 && g === shapeGroups[shapeGroups.length - 1] ? 'the' : 'a'} ${prizeLabel(g.i)}`;
-    return `${verb} ${what}${v < 1 ? ', less than they paid' : `, ${v.toFixed(1)}× what they paid`}`;
+    return `${verb} ${what}${v < 1 ? ', less than the draw price' : `, ${v.toFixed(1)}× the draw price`}`;
   };
 
   // Inventory: one square per item in the pool, each with its own chance per draw.
-  const nftGroup = groups.find((g) => g.nft);
   // Same group order as the 100-draw view (most frequent first), so the two views line up.
   const curatedTiers = view?.tiers.filter((t) => t.kind === 'curated') ?? [];
   const items: InvItem[] = view ? ordered.flatMap(({ g }): InvItem[] => {
     if (g.nft) return curatedTiers.map((t, k) => ({
-      key: `n${k}`, label: rows[k]?.name ?? `Your NFT ${k + 1}`, nft: true, value: t.value, price: t.listPrice, p: t.odds, mult: t.multiple, style: sw(g),
+      key: `n${k}`, label: rows[k]?.name ?? `Curated NFT ${k + 1}`, nft: true, value: t.value, price: t.listPrice, p: t.odds, mult: t.multiple, style: sw(g),
     }));
     const t = tierOf(g.i);
     return t ? Array.from({ length: g.n }, (_, j) => ({
@@ -657,66 +735,64 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     })) : [];
   }) : [];
   // Each NFT's chance per draw, a result of its value and the rest of the pool.
-  const oddsOf = (key: string) => { const k = rows.findIndex((r) => r.key === key); return k < 0 ? undefined : view?.tiers.filter((t) => t.kind === 'curated')[k]?.odds; };
+  const oddsOf = (key: string) => { const k = rows.findIndex((r) => r.key === key); return k < 0 ? undefined : curatedTiers[k]?.odds; };
   const oddsLine = (key: string) => { const p = oddsOf(key); return p ? `Won about ${oneIn(p)} draws` : undefined; };
-  // The player's side of one draw: the usual result, the chances of beating the price, the top prize and the average.
   const common = view?.tiers.reduce((a, t) => (t.odds > a.odds ? t : a), view.tiers[0]);
-  const prize = (t: NonNullable<typeof common>) => (t.kind === 'curated' ? (rows.length > 1 ? 'One of your NFTs' : 'Your NFT') : `A ${t.label}`);
-  const playBlock = view && common ? (
-    <div className="result-block">
-      <h2 className="h3">What a player gets</h2>
-      <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}× the price</span></div>
-      <div className="kv"><span className="k">Win more than they paid</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
-      <div className="kv"><span className="k">Win 2× the price or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
-      <div className="kv"><span className="k">Top prize</span><span>{prize(view.top)} · {view.top.multiple.toFixed(1)}× · {oneIn(view.top.odds)}</span></div>
-      {view.top.kind !== 'curated' && <div className="kv"><span className="k">{rows.length > 1 ? 'One of your NFTs' : 'Your NFT'}</span><span>{oneIn(view.curated)}</span></div>}
-      <div className="kv"><span className="k">Average prize</span><span>{(view.avgReturn * 100).toFixed(0)}% of the price</span></div>
+  const prize = (t: NonNullable<typeof common>) => (t.kind === 'curated' ? 'A curated NFT' : `A ${t.label}`);
+  const topText = (v: NonNullable<typeof view>) => `${v.top.kind === 'curated' ? 'Curated NFT' : v.top.label} · ${v.top.multiple.toFixed(1)}×`;
+  const avgText = (v: NonNullable<typeof view>) => `${(v.avgReturn * 100).toFixed(0)}% of the price`;
+  const playBlock = view ? (
+    <div className="players">
+      <h3 className="ctl">For players</h3>
+      {bases.length > 0 && <div className="kv"><span className="k">Win a curated NFT</span><span>{oneIn(view.curated)}{savedView && now(oneIn(savedView.curated), oneIn(view.curated))}</span></div>}
+      <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}{savedView && now(oneIn(savedView.winMore), oneIn(view.winMore))}</span></div>
+      <div className="kv"><span className="k">Top prize</span><span>{topText(view)}{savedView && now(topText(savedView), topText(view))}</span></div>
+      <div className="kv"><span className="k">Average prize</span><span>{avgText(view)}{savedView && now(avgText(savedView), avgText(view))}</span></div>
     </div>
   ) : null;
-  const payBlock = view && ev ? (
-    <div className="result-block">
-      <span className="soft" style={{ fontSize: 14 }}>{vrfKnown ? 'Players pay' : 'Draw price'}</span>
-      <div style={{ marginTop: 8 }}><span className="figure">{eth(vrfKnown ? view.cost : ev.drawPrice, 5)}</span><span className="unit">ETH per draw</span></div>
-      <p className="note" style={{ marginTop: 10 }}>{vrfKnown
-        ? <>Draw price {eth(ev.drawPrice, 5)} ETH and FWA's randomness fee {eth(d.vrfFee!, 5)} ETH at today's gas. Gas is extra.</>
-        : <>FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>
-      {pausesAt <= MAX_BATCH && <p className="note error" style={{ marginTop: 8 }}>With this mix, purchases pause while {pausesAt === 1 ? 'a draw is' : `${pausesAt} draws are`} unsettled, until {pausesAt === 1 ? 'it settles' : 'they settle'}.</p>}
+  const payBlock = (
+    <div>
+      <span className="soft" style={{ fontSize: 15 }}>Draw price</span>
+      <div className="pay">{ev
+        ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
+        : <span className="figure ghost">—</span>}</div>
+      {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">Now {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
+      {ev && pausesAt < MAX_BATCH && <p className="note">{pausesAt === 1
+        ? 'With this mix, each purchase waits until the previous draw settles, usually about a minute. More small Shapes let more draws run at once.'
+        : `With this mix, up to ${pausesAt - 1} draws can be settling at once; the next purchase waits until one settles, usually about a minute. More small Shapes raise the limit.`}</p>}
     </div>
-  ) : null;
-  const gridBlock = view ? (
-        <div className="result-block">
-          <div className="seg" role="group" aria-label="View">
-            <button aria-pressed={gridView === 'inventory'} onClick={() => setGridView('inventory')}>Inventory</button>
-            <button aria-pressed={gridView === 'draws'} onClick={() => setGridView('draws')}>Out of 100 draws</button>
-          </div>
-          {gridView === 'inventory' ? (
-            <>
-              <InventoryGrid items={items} />
-              <div className="legend">
-                {ordered.map(({ g }) => (g.nft
-                  ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{rows.length}</b> of your NFTs · {oneIn(view.curated)} draws for any of them</span></div>
-                  : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {prizeLabel(g.i)} · each {oneIn(g.p / g.n)}</span></div>))}
-              </div>
-              <p className="note" style={{ marginTop: 14 }}>Each square is one item in the pool. Hover or tap a square for its chance and value. Cheaper items come up more often.</p>
-              <p className="note" style={{ marginTop: 6 }}>Won prizes are restocked automatically, so the pool stays at this mix.</p>
-            </>
-          ) : (
-            <>
-          <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>
-          <div className="legend">
-            {ordered.map(({ g, n }) => (
-              <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{n === 0 ? '<1' : n}</b> {legend(g, n)}{g.p < 0.05 && <span className="muted"> ({oneIn(g.p)})</span>}</span></div>
-            ))}
-          </div>
-          <p className="note" style={{ marginTop: 14 }}>Rounded to whole draws. On average a prize is worth {(view.avgReturn * 100).toFixed(0)}% of what the player paid.</p>
-            </>
-          )}
+  );
+  const gridBlock = (
+    <div>
+      <div className="seg" role="group" aria-label="View">
+        <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
+        <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+      </div>
+      {!view ? null
+        : gridView === 'inventory' ? <InventoryGrid items={items} />
+          : <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>}
+      {view && <button className="disclose" style={{ fontSize: 14 }} aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>{showKey ? 'Hide key ▴' : 'Show key ▾'}</button>}
+      {view && showKey && (gridView === 'inventory' ? (
+        <div className="legend">
+          {ordered.map(({ g }) => (g.nft
+            ? <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{bases.length}</b> curated NFT{bases.length === 1 ? '' : 's'} · {oneIn(view.curated)} draws for any of them</span></div>
+            : <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{g.n}</b> × {prizeLabel(g.i)} · each {oneIn(g.p / g.n)}</span></div>))}
         </div>
-  ) : null;
-
+      ) : (
+        <div className="legend">
+          {ordered.map(({ g, n }) => (
+            <div key={g.key}><span className="sw" style={sw(g)} /><span><b>{n === 0 ? '<1' : n}</b> {legend(g, n)}{g.p < 0.05 && <span className="muted"> ({oneIn(g.p)})</span>}</span></div>
+          ))}
+          <p className="note">Rounded to whole draws.</p>
+        </div>
+      ))}
+    </div>
+  );
+  const figureEth = (v: bigint | undefined, dp = 3) => (v === undefined
+    ? <span className="figure-s muted">—</span>
+    : <span><span className="figure-s">{eth(v, dp)}</span><span className="unit">ETH</span></span>);
   // What saving does, in order. A new pool is created first; its address is known in advance from the salt.
   const toList = pending.filter(({ n }) => n.collection && ethOr(n.value, 0n) > 0n).map(({ n }) => n);
-  const unchosen = mode !== 'preview' && pending.some(({ n }) => !n.collection);
   const willOpen = !has && !d.enabled;
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const left = [...d.activeShapes];
@@ -731,12 +807,11 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     willOpen && 'open purchases',
     (mode === 'new' || toList.length > 0 || configChanged) && (has ? 'run upkeep' : 'run the first upkeep'),
   ].filter(Boolean) as string[];
-  const confirmations = (mode === 'new' || shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + 1 : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (willOpen ? 1 : 0) + (actions.length ? 1 : 0);
+  const confirmations = (mode === 'new' || shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (willOpen ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
   const blocked = !ready ? undefined
-    : unchosen ? 'Choose which NFT each row is, or remove the row.'
-      : !ev?.feasible ? undefined
+    : !ev?.feasible ? undefined
         : mode === 'new' && create?.prereq && !(create.prereq.creation && create.prereq.impl) ? 'Pool creation is not available right now.'
             : (mode === 'new' ? deposit : shortBy) > (wallet ?? 2n ** 255n) ? `Your wallet has ${eth(wallet)} ETH.`
               : !actions.length ? 'Saved. Nothing has changed.' : undefined;
@@ -744,23 +819,6 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
-  const savedEv = has && bases.length ? describe(savedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
-  const savedView = savedEv ? playerView(savedEv, d.vrfFee ?? 0n) : undefined;
-  const compare = has && savedEv && savedView && view && ev ? (
-    <div className="result-block" style={{ paddingTop: 0 }}>
-      <span className="label">{configChanged ? 'Now → after saving' : 'Now'}</span>
-      {([
-        // Listed prizes keep their price: a markup change reaches the draw price as prizes are won and restocked.
-        [vrfKnown ? 'Players pay' : 'Draw price', `${eth(savedView.cost, 5)} ETH`, `${eth(view.cost, 5)} ETH${markupBps !== d.markupBps ? ' as prizes restock' : ''}`],
-        ['Chance of one of your NFTs', pctOf(savedView.curated), pctOf(view.curated)],
-        ['Shapes', mixText(savedCounts), mixText(counts)],
-        ['Your markup', `${d.markupBps / 100}%`, `${markup}%`],
-        ['Kept in the pool while open', `${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee }))} ETH`, `${eth(needed)} ETH`],
-      ] as const).map(([k, a, b]) => (
-        <div className="kv" key={k}><span className="k">{k}</span><span>{a === b || !configChanged ? a : <><span className="muted">{a} →</span> <b>{b}</b></>}</span></div>
-      ))}
-    </div>
-  ) : null;
   const run = async () => {
     if (!pub || !me) return;
     if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
@@ -773,10 +831,10 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
     const B = { address: balancer, abi: poolBalancerAbi } as const;
     const steps: Step[] = [];
     if (mode === 'new') steps.push(['Create pool', () => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer', args: [salt], value: deposit })]);
-    // Save the design before listing any NFT: the contract refuses a curated listing until a markup is configured.
+    // Save the design before listing any NFT: the contract refuses a curated listing until the design is saved.
     if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
     steps.push(...approveSteps(pub, tx, me, balancer, toList));
-    if (toList.length) steps.push([`List ${nftWord(toList.length)}`, () => tx.write({ ...B, functionName: 'listCuratedBatch', args: [toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })]);
+    steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
     if (mode === 'pool' && shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 2)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
     if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra] })]);
     if (willOpen) steps.push(['Open purchases', () => tx.write({ ...B, functionName: 'open' })]);
@@ -796,8 +854,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
 
   const save = mode === 'preview' ? (
     <div className="pin">
-      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" disabled={!ready} onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
-      <p className="note" style={{ marginTop: 10 }}>Next you choose which NFTs from your wallet, then create the pool. This design stays as it is.</p>
+      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
     </div>
   ) : (
     <div className="pin">
@@ -805,29 +862,96 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
         <p className="note error" style={{ marginBottom: 12 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
       <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible} onClick={run}>
-        {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : has ? 'Save changes' : 'Save and open'}
+        {tx.busy ? `${tx.busy}…` : !bases.length ? 'Add a curated NFT to continue' : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : has ? 'Save changes' : 'Save and open'}
       </button>
       {blocked && <p className="note" style={{ marginTop: 10 }}>{blocked}</p>}
       {refused && <p className="note error" style={{ marginTop: 10 }}>{refused}</p>}
-      {!blocked && ev?.feasible && actions.length > 0 && <p className="note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
-      {mode === 'new' && wallet !== undefined && !blocked && <p className="note" style={{ marginTop: 6 }}>You have {eth(wallet)} ETH in this wallet.</p>}
       {fresh && tx.msg && !tx.msg.ok && <p className="note error" style={{ marginTop: 10 }}>{tx.msg.text}</p>}
     </div>
   );
 
+  // One row per NFT: listed ones are fixed; a chosen one takes a value; an unchosen one (or none yet) is a placeholder.
+  const chooser = (i: number) => picking === i && me && (
+    <NftChooser me={me}
+      exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
+      onPick={(xs) => {
+        const at = nfts[i] ?? DEFAULT_NFT;
+        setEdited(true); setPicking(undefined);
+        setNfts([...nfts.slice(0, i), { ...at, ...xs[0] }, ...nfts.slice(i + 1), ...xs.slice(1).map((x) => ({ value: at.value, ...x }))]);
+      }} />
+  );
+  const removeRow = (i: number) => { setPicking(undefined); setNfts(nfts.filter((_, j) => j !== i)); };
+  const placeholder = (i: number) => (
+    <Fragment key={`p${i}`}>
+      <div className="nft-empty">
+        <div className="slot" aria-hidden="true">+</div>
+        <div className="id"><div className="t">No curated NFT yet</div><div className="s">{mode === 'preview' ? 'Connect a wallet to choose one. Until then, the numbers count Shapes only.' : 'Choose one from your wallet, then set its value. Until then, the numbers count Shapes only.'}</div></div>
+        {mode === 'preview'
+          ? <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet</button>}</ConnectButton.Custom>
+          : <button className="btn" onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : 'Choose from your wallet'}</button>}
+        {i < nfts.length && pending.length > 1 && <button className="link quiet rm" onClick={() => removeRow(i)}>Remove</button>}
+      </div>
+      {chooser(i)}
+    </Fragment>
+  );
+  const unchosenRows = pending.filter(({ n }) => !n.collection).map(({ i }) => i);
+  const slots = listed.length + pending.length === 0 ? [nfts.length] : unchosenRows;
+  const nftGroup = (
+    <div className="group">
+      <div className="group-head">
+        <span className="mk mk-nft" aria-hidden="true" />
+        <div><h2>Curated NFTs</h2><p className="desc">The rare prizes, chosen from your wallet. The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.</p></div>
+      </div>
+      <div className="group-body nfts-list">
+        {listed.map((l) => (
+          <div className="nft-row" key={l.id.toString()}>
+            <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
+            <div className="id"><div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftName(l)}</a></div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`}</div></div>
+            <div className="val"><span className="vl">Value</span><span className="big-v">{eth(l.base)} <small>ETH</small></span></div>
+          </div>
+        ))}
+        {pending.map(({ n, i }) => {
+          if (unchosenRows.includes(i)) return placeholder(i);
+          const name = nftLabel(n);
+          const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorText(n.floor)}`].filter(Boolean).join(' · ');
+          return (
+            <div className="nft-row" key={i}>
+              {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} />}
+              <div className="id">
+                <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{name}</a> : name}</div>
+                {sub && <div className="s">{sub}</div>}
+              </div>
+              <div className="val">
+                <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
+                <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
+              </div>
+              <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
+            </div>
+          );
+        })}
+        {slots.filter((i) => i === nfts.length).map(placeholder)}
+        {!slots.length && (
+          <div>
+            <button className="link" onClick={() => setPicking(picking === nfts.length ? undefined : nfts.length)}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
+            {chooser(nfts.length)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <main className="page cols">
+    <main className="page cols design">
       <section>
         {mode === 'pool'
           ? <h2 className="title t2">{has ? 'Prices & mix' : 'Finish setting up your pool'}</h2>
           : <h1 className="title">Design your pool</h1>}
         <p className="lead">{has
           ? `What players pay and which Shapes the pool keeps. Your ${rows.length === 1 ? 'NFT stays' : `${rows.length} NFTs stay`} as listed; change ${rows.length === 1 ? 'it' : 'them'} on the NFTs tab.`
-          : 'Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: your NFTs, and Shapes you fund with ETH.'}</p>
+          : 'Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: curated NFTs from your wallet, and Shapes you fund with ETH.'}</p>
         <div className="row" style={{ marginTop: 14, gap: 24 }}>
-          {!has && <button className="disclose quiet" onClick={() => setHow(!how)}>How a pool works {how ? '▴' : '▾'}</button>}
-          {!has && <a className="link quiet" style={{ fontSize: 14 }} href="#how">More in How it works</a>}
-          <button className="link quiet" style={{ fontSize: 14 }} onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
+          {!has && <button className="disclose" aria-expanded={how} onClick={() => setHow(!how)}>How a pool works {how ? '▴' : '▾'}</button>}
+          <button className="link quiet" onClick={reset}>{has ? 'Reset to saved' : 'Reset to defaults'}</button>
         </div>
         {how && !has && (
           <ol className="how">
@@ -835,167 +959,126 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
             <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
             <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
             <li>Your ETH buys the Shapes. When one is won, the pool replaces it with the same prize, paid from your ETH and the draw payments, so the mix stays as you set it.</li>
-            <li>Your markup is part of every draw price, and it is yours. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
+            <li>Your markup is added to each Shape prize's price, and it is yours. Your NFTs carry none. While the pool's reserve is short, the first 10% of it refills the reserve. You can withdraw ETH the pool does not need.</li>
+            <li><a className="link" href="#how">More in How it works</a></li>
           </ol>
         )}
 
-        {!has && <div className="step">
-          <div className="step-head"><span className="n">1</span><h2 className="h3">Your NFTs</h2></div>
-          <p className="note" style={{ marginBottom: 10 }}>The value is your asking price: across the draws until it is won, players pay about that plus your markup. A higher value makes it rarer.{mode === 'preview' && ' You choose which NFTs after connecting a wallet.'}</p>
-          {listed.map((l) => (
-            <div className="mixrow" key={l.id.toString()}>
-              <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} small />
-              <div><div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftName(l)}</a></div><div className="s">Listed{oddsLine(`l${l.id}`) && ` · ${oddsLine(`l${l.id}`)}`}</div></div>
-              <span className="end mono">{eth(l.base)} ETH</span>
-            </div>
-          ))}
-          {pending.map(({ n, i }, k) => (
-            <Fragment key={i}>
-              <div className="mixrow">
-                {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} small />}
-                <div style={{ minWidth: 0 }}>
-                  <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{rowName(n, listed.length + k)}</a> : rowName(n, listed.length + k)}</div>
-                  {(oddsLine(`d${i}`) || n.floor) && <div className="s">{[oddsLine(`d${i}`), n.floor && `collection floor ${floorText(n.floor)}`].filter(Boolean).join(' · ')}</div>}
-                  {mode !== 'preview' && <button className="link" style={{ fontSize: 13 }} onClick={() => setPicking(picking === i ? undefined : i)}>{picking === i ? 'Cancel' : n.collection ? 'Change' : 'Choose from your wallet'}</button>}
-                </div>
-                <div className="field end" style={{ width: 150 }}><input aria-label={`Value of ${rowName(n, listed.length + k)}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-                <button className="link quiet" aria-label={`Remove ${rowName(n, listed.length + k)}`} disabled={!listed.length && pending.length === 1} onClick={() => { setPicking(undefined); setNfts(nfts.filter((_, j) => j !== i)); }}>×</button>
+        {!has && nftGroup}
+
+        <div className="group">
+          <div className="group-head">
+            <span className="mk mk-shapes" aria-hidden="true"><span style={{ background: '#333' }} /><span style={{ background: '#7a7a7a' }} /><span style={{ background: '#fff' }} /></span>
+            <div><h2>Shapes</h2><p className="desc">ETH-backed prizes that make up most draws. Won Shapes are restocked automatically.</p></div>
+          </div>
+          <div className="group-body">
+            <div>
+              <h3 className="ctl" id="style-label">Shape style</h3>
+              <div className="tiles" role="group" aria-labelledby="style-label">
+                {GAME_STYLES.map((g) => (
+                  <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
+                    <span className="t">{g.label}</span><span className="s">{g.hint}</span>
+                  </button>
+                ))}
               </div>
-              {picking === i && me && (
-                <NftChooser me={me} limit={20 - listed.length - pending.length + 1} exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
-                  onPick={(xs) => {
-                    setEdited(true); setPicking(undefined);
-                    setNfts([...nfts.slice(0, i), { ...nfts[i], ...xs[0] }, ...nfts.slice(i + 1), ...xs.slice(1).map((x) => ({ value: nfts[i].value, ...x }))]);
-                  }} />
+              <div className="row" style={{ marginTop: 14, gap: 16 }}>
+                <button className="disclose" aria-expanded={open.bonus} onClick={() => toggle('bonus')}>Adjust prizes by hand {open.bonus ? '▴' : '▾'}</button>
+                {bases.length > 0 && !ready ? <span className="note error">No mix reaches these odds.</span>
+                  : !style && ready && <span className="note">Custom: {mixText(counts)}</span>}
+              </div>
+              {open.bonus && (
+                <div style={{ marginTop: 14 }}>
+                  <p className="note" style={{ marginBottom: 6 }}>Prizes on top of the small Shapes. The small Shapes adjust to keep your NFT odds. Bigger prizes raise the draw price and the ETH needed.</p>
+                  {[...new Set([...BONUS, ...bonus.flatMap((n, i) => (n ? [i] : []))])].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y)).map((i) => {
+                    const t = bonus[i] ? tierOf(i) : undefined;
+                    return (
+                      <div className="mixrow" key={i}>
+                        <div><div className="t">{prizeLabel(i)}</div>{t && <div className="s">Each {oneIn(t.odds / counts[i])} draws · {t.multiple.toFixed(1)}× the draw</div>}</div>
+                        <div className="stepper end">
+                          <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!bonus[i]} onClick={() => setBonusAt(i, bonus[i] - 1)}>−</button>
+                          <output aria-live="polite">{bonus[i]}</output>
+                          <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= maxPrizes} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-            </Fragment>
-          ))}
-          {listed.length + pending.length < 20 && <button className="disclose" style={{ marginTop: 12 }} onClick={() => { setNfts([...nfts, { value: pending[pending.length - 1]?.n.value || DEFAULT_NFT.value }]); if (mode !== 'preview') setPicking(nfts.length); }}>+ Add an NFT</button>}
-        </div>}
-
-        <div className="step">
-          <div className="step-head"><span className="n">{has ? 1 : 2}</span><h2 className="h3">Game style</h2></div>
-          <div className="options" role="group" aria-label="Game style">
-            {GAME_STYLES.map((g) => (
-              <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
-                <span><span className="t">{g.label}</span><span className="s">{g.hint}</span></span>
-                {style === g.key && <span className="sel">SELECTED</span>}
-              </button>
-            ))}
-          </div>
-          <div className="summary">
-            <span>{ready ? <>{style ? '' : 'Custom: '}{mixText(counts)}</> : bases.length ? 'No mix reaches these odds.' : 'Add an NFT with a value.'}</span>
-            <button className="disclose" onClick={() => toggle('bonus')}>{open.bonus ? 'Close ▴' : 'Adjust prizes ▾'}</button>
-          </div>
-          {open.bonus && (
-            <>
-              <p className="note" style={{ margin: '10px 0 6px' }}>Prizes on top of the small Shapes. The small Shapes adjust to keep your NFT odds. Bigger prizes raise the draw price and the ETH needed.</p>
-              {[...new Set([...BONUS, ...bonus.flatMap((n, i) => (n ? [i] : []))])].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y)).map((i) => {
-                const t = bonus[i] ? tierOf(i) : undefined;
-                return (
-                  <div className="mixrow" key={i}>
-                    <div><div className="t">{prizeLabel(i)}</div>{t && <div className="s">Each {oneIn(t.odds / counts[i])} draws · {t.multiple.toFixed(1)}× the draw</div>}</div>
-                    <div className="stepper end">
-                      <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!bonus[i]} onClick={() => setBonusAt(i, bonus[i] - 1)}>−</button>
-                      <output aria-live="polite">{bonus[i]}</output>
-                      <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= MAX_SHAPES_PER_PLAN} onClick={() => setBonusAt(i, bonus[i] + 1)}>+</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-        {view && <div className="mobile-only" style={{ marginTop: 32 }}>{payBlock}{gridBlock}{playBlock}</div>}
-
-        <div className="step">
-          <div className="step-head"><span className="n">{has ? 2 : 3}</span><h2 className="h3">Pool size</h2></div>
-          <div className="limit" style={{ marginTop: 0 }}>
-            <div className="top"><label htmlFor="small">Small prizes (0.01 ETH Shapes)</label><b>{smallUsed}</b></div>
-            <input id="small" type="range" min={shapeTotal(bonus) ? 0 : 1} max={room} step={1} value={smallUsed}
-              onChange={(e) => change(setSmall)(Number(e.target.value))} />
-            <p className="note">More small prizes make your NFTs rarer and the draw cheaper. A pool holds up to {MAX_SHAPES_PER_PLAN} Shapes.</p>
-            <p className="note" style={{ marginTop: 6 }}>The pool keeps this mix: each prize that is won is replaced with the same prize, paid from the pool's ETH. Your NFTs are not replaced.</p>
-          </div>
-          {ready && view && (
-            <div className="summary">
-              <span>{rows.length > 1 ? 'An NFT' : 'Your NFT'} {oneIn(view.curated)} draws <span className="muted">· players pay {eth(view.cost, 5)} ETH</span></span>
             </div>
-          )}
-        </div>
-
-        <div className="step">
-          <div className="step-head"><span className="n">{has ? 3 : 4}</span><h2 className="h3">Your markup</h2></div>
-          <div className="limit" style={{ marginTop: 0 }}>
-            <div className="top"><label htmlFor="markup">Added to every draw price, and yours; the first 10% refills the reserve while it is short</label><b>{markup}%</b></div>
-            <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
-            <p className="note">Higher markup raises the draw price.</p>
-            <p className="note">Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
-            <p className="note">Players pay includes FWA's randomness fee at today's gas. Gas is extra.</p>
+            <div className="rule">
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{prizes} <small>prize{prizes === 1 ? '' : 's'}</small></span></div>
+              <input id="small" type="range" min={0} max={Math.max(0, poolSizes.length - 1)} step={1} value={sizeAt} aria-valuetext={`${prizes} prizes`}
+                onChange={(e) => change(setSmall)(poolSizes[Number(e.target.value)]?.small ?? smallUsed)} />
+              <p className="note">More prizes make curated NFTs rarer and the draw cheaper.</p>
+            </div>
+            <div className="rule">
+              <div className="ctl-row"><label className="ctl" htmlFor="markup">Your markup on Shapes</label><span className="big-v">{markup}%</span></div>
+              <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
+              <p className="note">Added to the price of every Shape prize. It is yours. While the reserve is short, the first 10% refills it.</p>
+              <p className="note" style={{ marginTop: 6 }}>Each Shape prize's price also includes the Shapes mint fee and a {eth(d.restockFee, 5)} ETH restocking fee at today's gas.</p>
+              {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
+            </div>
           </div>
         </div>
 
-        <div style={{ marginTop: 32 }}>{save}</div>
-        {has && <p className="note" style={{ marginTop: 14 }}>A markup change applies to prizes listed after it. Listed prizes keep their price.</p>}
+        <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{gridBlock}{playBlock}</div>
+
       </section>
 
-      <section className="sticky">
-        {view && ev && econ ? (
-          <>
-            {compare}
-            <div className="desktop-only">{payBlock}</div>
-            {!open.numbers ? (
-              <>
-                <div className="desktop-only">{gridBlock}</div>
-                {fresh ? (
-                  <div className="result-block">
-                    <div className="kvline"><div><div>ETH to create the pool</div><p className="note">Deposited when you create it</p></div><div><span className="figure-s">{eth(deposit, 2)}</span><span className="unit">ETH</span></div></div>
-                    <div className="kv"><span className="k">In Shapes</span><span>{eth(capitalOf(counts))} ETH</span></div>
-                    <div className="kv"><span className="k">Mint fees, a spare top prize and upkeep</span><span>{eth(needed - capitalOf(counts))} ETH</span></div>
-                    {deposit > needed && <div className="kv"><span className="k">Rounded up</span><span>{eth(deposit - needed)} ETH</span></div>}
-                  </div>
-                ) : (
-                  <div className="result-block">
-                    <div className="kv"><span className="k">Kept in the pool while open</span><span>{eth(needed)} ETH</span></div>
-                    <div className="kv"><span className="k">Available in the pool</span><span>{eth(have)} ETH</span></div>
-                    {shortBy > 0n
-                      ? <div className="kv"><span className="k"><b>Deposited when you save</b></span><span><b>{eth(shortBy, 2)} ETH</b></span></div>
-                      : <div className="kv"><span className="k">Not used</span><span>{eth(have - needed)} ETH</span></div>}
-                  </div>
-                )}
-                <div className="result-block kvline">
-                  <div><div>You keep, per draw</div><p className="note">On average</p></div>
-                  <div><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></div>
-                </div>
-                <div className="result-block"><button className="disclose" onClick={() => toggle('numbers')}>All numbers ▾</button></div>
-                <div className="desktop-only">{playBlock}</div>
-              </>
-            ) : (
-              <div className="result-block">
-                <div className="section-head"><h2 className="h3">All numbers</h2><button className="disclose" onClick={() => toggle('numbers')}>Close ▴</button></div>
+      <section className="sticky results">
+        <div className="desktop-only">{payBlock}</div>
+        <div className="desktop-only">{gridBlock}</div>
+        {playBlock && <div className="desktop-only">{playBlock}</div>}
+        <div className="totals">
+          {fresh ? (
+            <div><span>To create the pool</span>{figureEth(ev && deposit, 2)}</div>
+          ) : (
+            <>
+              <div><span>Kept in the pool while open{savedEv && now(`${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee }))} ETH`, `${eth(needed)} ETH`)}</span>{figureEth(ev && needed)}</div>
+              <div><span>Available in the pool</span>{figureEth(have)}</div>
+              {shortBy > 0n
+                ? <div><b>Deposited when you save</b>{figureEth(shortBy, 2)}</div>
+                : <div><span>Not used</span>{figureEth(ev && have - needed)}</div>}
+            </>
+          )}
+          <div><div><span>Your earnings per draw</span><p className="note">An average over many draws. You can withdraw it while the pool's reserve is full.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><div><span>After a big prize is won</span><p className="note">What you can withdraw per draw until sales refill the reserve, the ETH the pool keeps to replace prizes.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+        </div>
+        {save}
+        {view && ev && econ && (
+          <div>
+            <button className="disclose" aria-expanded={open.numbers} onClick={() => toggle('numbers')}>All numbers {open.numbers ? '▴' : '▾'}</button>
+            {open.numbers && (
+              <div className="numbers">
                 <div className="kv-group">
                   <span className="label">For players</span>
                   <div className="kv"><span className="k">Draw price</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
-                  <div className="kv"><span className="k">Wins one of your NFTs</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>
-                  <div className="kv"><span className="k">Wins more than they paid</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
+                  {vrfKnown && <div className="kv"><span className="k">FWA's randomness fee, at today's gas</span><span>{eth(d.vrfFee!, 5)} ETH</span></div>}
+                  {common && <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}×</span></div>}
+                  {bases.length > 0 && <div className="kv"><span className="k">Wins a curated NFT</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>}
+                  <div className="kv"><span className="k">Wins more than the draw price</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
                   <div className="kv"><span className="k">Wins 2× or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
                   <div className="kv"><span className="k">Top prize</span><span>{eth(view.top.value, 3).replace(/\.?0+$/, '')} ETH · {oneIn(view.top.odds)}</span></div>
-                  <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of cost</span></div>
+                  <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of the draw price</span></div>
                 </div>
                 <div className="kv-group">
                   <span className="label">For you</span>
+                  {fresh && <>
+                    <div className="kv"><span className="k">Mint fees, a spare top prize and upkeep</span><span>{eth(needed - capitalOf(counts))} ETH</span></div>
+                    {deposit > needed && <div className="kv"><span className="k">Rounded up</span><span>{eth(deposit - needed)} ETH</span></div>}
+                  </>}
                   <div className="kv"><span className="k">ETH held in Shapes</span><span>{eth(ev.capital)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Kept in the pool while open'}</span><span>{eth(needed)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
-                  <div className="kv"><span className="k">You keep per draw</span><span>{signed(econ.keptPerDraw)} ETH</span></div>
                   <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Per draw while the reserve refills</span><span>{signed(econ.claimablePerDraw)} ETH</span></div>
                   <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Restocking fee per Shape, at today's gas</span><span>{eth(d.restockFee, 5)} ETH</span></div>
                 </div>
+                {mode !== 'preview' && !blocked && ev.feasible && actions.length > 0 && <p className="note" style={{ marginTop: 14 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
               </div>
             )}
-          </>
-        ) : <p className="lead">{bases.length ? 'Pick a style or add Shapes to see what players get.' : 'Add an NFT with a value to see what players get.'}</p>}
+          </div>
+        )}
       </section>
     </main>
   );
@@ -1009,53 +1092,65 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   const odds = (l: Listing) => (d.totalWeight ? Number(l.weight) / Number(d.totalWeight) : 0);
   const name = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
   return (
-    <main className="page cols">
+    <main className="page cols design">
       <section>
-        <h2 className="title t2">Your NFTs</h2>
-        <p className="lead">Players can win these. A lower value is won more often.</p>
-        <div className="section">
-          {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
-          {curated.map((l) => (
-            <div className="nft" key={l.id.toString()}>
-              <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
-              <div>
-                <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
-                <div className="s">Your value {eth(l.base)} ETH · price on FWA {eth(l.price, 5)} ETH</div>
-                <div className="s">Won about {oneIn(odds(l))} draws</div>
-                {edit?.id === l.id && (
-                  <div className="row" style={{ marginTop: 10 }}>
-                    <div className="field" style={{ width: 160 }}><input aria-label="New value" value={edit.value} onChange={(e) => setEdit({ id: l.id, value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-                    <button className="btn" disabled={!!tx.busy || !edit.value} onClick={() => tx.send('Change value', [() => tx.write({ ...B, functionName: 'updateCuratedPrice', args: [l.id, ethOr(edit.value, 0n)] })]).then((ok) => ok && setEdit(undefined))}>Save {edit.value || '0'} ETH</button>
+        <h2 className="title t2">NFTs</h2>
+        <div className="group">
+          <div className="group-head">
+            <span className="mk mk-nft" aria-hidden="true" />
+            <div><h2>Curated NFTs</h2><p className="desc">{curated.length === 1 ? 'One NFT' : `${word(curated.length)} NFTs`} players can win. The value is your asking price; a higher value makes it rarer.</p></div>
+          </div>
+          <div className="group-body nfts-list">
+            {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
+            {curated.map((l) => {
+              const editing = edit?.id === l.id;
+              return (
+                <div className="nft-row" key={l.id.toString()}>
+                  <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
+                  <div className="id">
+                    <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
+                    <div className="s">Won about {oneIn(odds(l))} draws</div>
                   </div>
-                )}
-              </div>
-              {isCreator && (
-                <div className="acts">
-                  <button className="link" onClick={() => setEdit(edit?.id === l.id ? undefined : { id: l.id, value: eth(l.base) })}>{edit?.id === l.id ? 'Cancel' : 'Change value'}</button>
-                  <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })])}>Withdraw</button>
+                  <div className="val">
+                    <span className="vl">Value</span>
+                    {editing
+                      ? <div className="field"><input className="big" aria-label={`New value of ${name(l)}`} value={edit.value} onChange={(e) => setEdit({ id: l.id, value: e.target.value })} inputMode="decimal" autoFocus /><span className="u">ETH</span></div>
+                      : <span className="big-v">{eth(l.base)} <small>ETH</small></span>}
+                  </div>
+                  {isCreator && (
+                    <div className="acts">
+                      {editing
+                        ? <>
+                            <button className="btn" disabled={!!tx.busy || !edit.value} onClick={() => tx.send('Change value', [() => tx.write({ ...B, functionName: 'updateCuratedPrice', args: [l.id, ethOr(edit.value, 0n)] })]).then((ok) => ok && setEdit(undefined))}>Save</button>
+                            <button className="link quiet" onClick={() => setEdit(undefined)}>Cancel</button>
+                          </>
+                        : <>
+                            <button className="link" onClick={() => setEdit({ id: l.id, value: eth(l.base) })}>Change value</button>
+                            <button className="link quiet" disabled={!!tx.busy} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })])}>Withdraw</button>
+                          </>}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-          {d.pending.map((l) => {
-            const refunded = l.fwaStatus === L_DELIVERY_REFUNDED;
-            return (
-              <div className="nft" key={l.id.toString()}>
-                <div className="thumb">{l.kind === 2 ? 'Shape' : 'NFT'}</div>
-                <div>
-                  <div className="t">{l.kind === 2 ? prizeLabel(l.denom) : name(l)}</div>
-                  <div className="s">{refunded ? 'Drawn. FWA refunded the buyer; you can take it back.' : 'Drawn. FWA could not deliver it. Anyone can retry for 7 days; after that the winner can take a refund, then you can take it back.'}</div>
+              );
+            })}
+            {d.pending.map((l) => {
+              const refunded = l.fwaStatus === L_DELIVERY_REFUNDED;
+              return (
+                <div className="nft-row" key={l.id.toString()}>
+                  <div className="thumb">{l.kind === 2 ? 'Shape' : 'NFT'}</div>
+                  <div className="id">
+                    <div className="t">{l.kind === 2 ? prizeLabel(l.denom) : name(l)}</div>
+                    <div className="s">{refunded ? 'Drawn. FWA refunded the buyer; you can take it back.' : 'Drawn. FWA could not deliver it. Anyone can retry for 7 days; after that the winner can take a refund, then you can take it back.'}</div>
+                  </div>
+                  {refunded && isCreator && <div className="acts"><button className="link" disabled={!!tx.busy} onClick={() => tx.send(l.kind === 1 ? 'Recover' : 'Recover and redeem', [() => tx.write({ ...B, functionName: 'recoverRefunded', args: [l.id, me] })])}>Recover</button></div>}
                 </div>
-                <div className="acts">
-                  {refunded && isCreator && <button className="link" disabled={!!tx.busy} onClick={() => tx.send(l.kind === 1 ? 'Recover' : 'Recover and redeem', [() => tx.write({ ...B, functionName: 'recoverRefunded', args: [l.id, me] })])}>Recover</button>}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </section>
       {isCreator && (
-        <section>
+        <section className="sticky results">
           <AddNft d={d} tx={tx} me={me} setTab={setTab} />
           <div className="section">
             <button className="disclose quiet" onClick={() => setStray({ ...stray, open: !stray.open })}>Return an NFT sent to the pool directly {stray.open ? '▴' : '▾'}</button>
@@ -1089,17 +1184,15 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const key = picks.map(keyOf).join();
   const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
   const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
-  const room = 20 - listed.length;
   const plan = d.target ? unpackPlan(d.target) : undefined;
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const inputs: DesignInputs = {
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    vrfFee: d.vrfFee, shapePrices: livePrices, have: d.activeShapes,
+    shapePrices: livePrices, have: d.activeShapes, settings: d.settings,
   };
-  const before = plan && bases.length ? describe(plan, inputs) : undefined;
-  const after = plan && newBases.length ? describe(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
-  const cost = (ev: ReturnType<typeof describe>) => ev.drawPrice + (d.vrfFee ?? 0n);
+  const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
+  const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;
@@ -1109,14 +1202,14 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     if (r.length) return;
     const ok = await tx.send('List NFTs', [
       ...approveSteps(pub, tx, me, d.balancer, picks),
-      [`List ${what}`, () => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [picks.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))] })],
+      ...listSteps(picks, (batch) => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [batch] })),
       upkeepStep(pub, tx, me, d.balancer),
     ]);
     if (ok) { setPicks([]); setChoosing(true); setRestricted(undefined); }
   };
   return (
     <>
-      <h2 className="h3" style={{ fontSize: 22 }}>Add NFTs</h2>
+      <h2 className="ctl" style={{ fontSize: 22 }}>Add NFTs</h2>
       {picks.map((n, i) => (
         <div className="mixrow" key={keyOf(n)} style={i === 0 ? { marginTop: 12 } : undefined}>
           <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
@@ -1129,13 +1222,13 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
         </div>
       ))}
       {choosing || !picks.length ? (
-        <NftChooser me={me} limit={room - picks.length} exclude={[...listed.map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
+        <NftChooser me={me} exclude={[...listed.map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
           onPick={(xs) => { setPicks([...picks, ...xs.map((x) => ({ value: '', ...x }))]); setChoosing(false); setRefused(undefined); }} />
-      ) : picks.length < room && <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
+      ) : <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
       {after && (
         <div className="section">
           <span className="label">With {picks.length === 1 ? 'this NFT' : 'these NFTs'}</span>
-          <div className="kv"><span className="k">{d.vrfFee !== undefined ? 'Players pay' : 'Draw price'}</span><span>{before ? `${eth(cost(before), 5)} → ` : ''}{eth(cost(after), 5)} ETH</span></div>
+          <div className="kv"><span className="k">Draw price</span><span>{before ? `${eth(before.drawPrice, 5)} → ` : ''}{eth(after.drawPrice, 5)} ETH</span></div>
           <div className="kv"><span className="k">Chance of one of your NFTs</span><span>{before ? `${pctOf(before.curatedOddsPpm / 1e6)} → ` : ''}{pctOf(after.curatedOddsPpm / 1e6)}</span></div>
           {!after.feasible && <p className="note error" style={{ marginTop: 10 }}>With {picks.length === 1 ? 'this NFT' : 'these NFTs'} the saved mix breaks your limits: {after.reasons.join('; ').toLowerCase()}. Purchases stay closed until you change it on <button className="link" style={{ fontSize: 13 }} onClick={() => setTab('mix')}>Prices & mix</button>.</p>}
         </div>
@@ -1149,7 +1242,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
         </button>
       )}
-      <p className="note" style={{ marginTop: 8 }}>Listing closes purchases until upkeep runs; upkeep runs right after.</p>
+      {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>Purchases pause until the listing's upkeep runs, right after.</p>}
     </>
   );
 }
@@ -1169,7 +1262,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const econ = bases.length && plan.some(Boolean)
-    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices })
+    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices , settings: d.settings })
     : undefined;
   const month = econ ? econ.keptPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);
@@ -1183,10 +1276,14 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const gone = plan.map((n, i) => (n > d.activeShapes[i] ? i : -1)).filter((i) => i >= 0);
   const goneLabel = missing === 1 ? `the ${eth(DENOMS[gone[0]], 3).replace(/\.?0+$/, '')} ETH prize` : 'the missing prizes';
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus, 6) : '0.100'); };
+  // What the withdrawable ETH is, as the contract counts it: withdrawals spend unclaimed profit first.
+  const withdrawSplit = d.surplus === 0n ? 'Nothing above what the pool keeps to run.'
+    : d.profit === 0n ? 'Your deposit the pool does not need.'
+      : d.profit >= d.surplus ? 'Your earnings.'
+        : `${eth(d.profit)} ETH of earnings and ${eth(d.surplus - d.profit)} ETH of your deposit the pool does not need.`;
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
-  const vrfKnown = d.vrfFee !== undefined;
-  const cost = d.fee + (d.vrfFee ?? 0n); // what a player pays FWA per draw at today's gas; wallet gas is extra
+  const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
   const live = d.listings.filter((l) => l.weight > 0n);
   const tw = live.reduce((s, l) => s + l.weight, 0n);
   const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y));
@@ -1206,11 +1303,8 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
     <main className="page cols">
       <section>
         <div className="result-block" style={{ paddingTop: 0 }}>
-          <span className="soft" style={{ fontSize: 14 }}>{vrfKnown ? 'Players pay' : 'Draw price'}</span>
-          <div style={{ marginTop: 8 }}><span className="figure">{d.fee ? eth(cost, 5) : '–'}</span><span className="unit">ETH per draw</span></div>
-          {d.fee > 0n && <p className="note" style={{ marginTop: 10 }}>{vrfKnown
-            ? <>Draw price {eth(d.fee, 5)} ETH and FWA's randomness fee {eth(d.vrfFee!, 5)} ETH at today's gas. Gas is extra.</>
-            : <>Draw price only: FWA's randomness fee could not be read; it is added at draw time. Gas is extra.</>}</p>}
+          <span className="soft" style={{ fontSize: 14 }}>Draw price</span>
+          <div style={{ marginTop: 8 }}><span className="figure">{d.fee ? eth(d.fee, 5) : '–'}</span><span className="unit">ETH per draw</span></div>
         </div>
         <div className="result-block">
           <div className="section-head"><h2 className="h3">In the pool now</h2>{isCreator && <button className="link" onClick={() => setTab('mix')}>Change prices or mix</button>}</div>
@@ -1236,7 +1330,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <h2 className="h3">Your ETH</h2>
           <div className="kv"><span className="k">In Shapes</span><span>{eth(backing)} ETH</span></div>
           <div className="kv"><span className="k">Kept for restocking</span><span>{eth(d.required)} ETH</span></div>
-          <div className="kv"><span className="k">Ready to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
+          <div className="kv"><span className="k">Available to withdraw</span><span>{eth(d.surplus)} ETH</span></div>
           {short_ > 0n && <div className="kv"><span className="k error">Short of the reserve</span><span className="error">{eth(short_)} ETH</span></div>}
           {isCreator && d.enabled && short_ > 0n && missing > 0 && pub && (
             <div style={{ marginTop: 12 }}>
@@ -1253,16 +1347,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="row" style={{ marginTop: 16 }}>
             {d.proceeds > 0n && <button className="btn" disabled={!!tx.busy} onClick={() => tx.send('Collect from sales', [() => tx.write({ ...B, functionName: 'collectProceeds' })])}>Collect {eth(d.proceeds)} ETH</button>}
             <button className={mode === 'deposit' ? 'btn' : 'btn sec'} onClick={() => start('deposit')}>Deposit</button>
-            {isCreator && <button className={mode === 'claim' ? 'btn' : 'btn sec'} disabled={d.surplus === 0n} onClick={() => start('claim')}>Withdraw unused</button>}
           </div>
-          {isCreator && d.surplus < idle && <p className="note" style={{ marginTop: 8 }}>{eth(d.surplus)} ETH can be withdrawn now. The rest once pending draws settle.</p>}
-          {mode && (
+          {mode === 'deposit' && (
             <div className="row" style={{ marginTop: 12 }}>
-              <div className="field" style={{ width: 180 }}><input aria-label={mode === 'deposit' ? 'Deposit amount' : 'Withdraw amount'} className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
-              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send(mode === 'deposit' ? 'Deposit' : 'Withdraw', [() => tx.write(mode === 'deposit'
-                ? { ...B, functionName: 'depositETH', value: ethOr(amount, 0n) }
-                : { ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>
-                {mode === 'deposit' ? `Deposit ${amount || '0'} ETH` : `Withdraw ${amount || '0'} ETH to your wallet`}
+              <div className="field" style={{ width: 180 }}><input aria-label="Deposit amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Deposit', [() => tx.write({ ...B, functionName: 'depositETH', value: ethOr(amount, 0n) })]).then((ok) => ok && setMode(undefined))}>
+                Deposit {amount || '0'} ETH
               </button>
             </div>
           )}
@@ -1270,14 +1360,42 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 
         <div className="result-block">
           <h2 className="h3">Earnings</h2>
+          <div className="earned">
+            <span className="note">Earned so far</span>
+            <div><span className={`figure-s${d.ledger.earned < 0n ? ' error' : ''}`}>{d.ledger.earned < 0n ? '−' : '+'}{eth(d.ledger.earned < 0n ? -d.ledger.earned : d.ledger.earned, 5)}</span><span className="unit">ETH</span></div>
+            <p className="note">You put in {eth(d.ledger.putIn)} ETH and took out {eth(d.ledger.takenOut)} ETH; {eth(d.ledger.held)} ETH is yours in the pool.</p>
+          </div>
+          <div className="kv"><span className="k">Draw sales</span><span>+{eth(d.ledger.sales, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Prizes won by players</span><span>−{eth(d.ledger.prizesWon, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Shapes mint fees</span><span>−{eth(d.ledger.mintFees, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Keeper pay</span><span>−{eth(d.ledger.keeperPay, 5)} ETH</span></div>
+          {d.ledger.other !== 0n && <div className="kv"><span className="k">ETH sent to the pool directly</span><span>{d.ledger.other < 0n ? '−' : '+'}{eth(d.ledger.other < 0n ? -d.ledger.other : d.ledger.other, 5)} ETH</span></div>}
+          {d.ledger.nftsWon > 0 && <p className="note" style={{ marginTop: 10 }}>Players won {d.ledger.nftsWon === 1 ? 'one of your NFTs' : `${word(d.ledger.nftsWon)} of your NFTs`}, valued at {eth(d.ledger.nftValues)} ETH. NFTs are not counted above.</p>}
+          {isCreator && (
+            <div className="withdraw">
+              <div className="kvline">
+                <div><div style={{ fontWeight: 700 }}>Available to withdraw</div><p className="note">{withdrawSplit}</p></div>
+                <div><span className="figure-s">{eth(d.surplus, 5)}</span><span className="unit">ETH</span></div>
+              </div>
+              <button className={mode === 'claim' ? 'btn' : 'btn sec'} disabled={d.surplus === 0n} onClick={() => start('claim')}>Withdraw</button>
+              {d.surplus < idle && <p className="note" style={{ marginTop: 8 }}>More becomes available as pending draws settle.</p>}
+              {mode === 'claim' && (
+                <div className="row" style={{ marginTop: 12 }}>
+                  <div className="field" style={{ width: 180 }}><input aria-label="Withdraw amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+                  <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH to your wallet</button>
+                </div>
+              )}
+            </div>
+          )}
+          <h3 className="ctl" style={{ marginTop: 28 }}>Estimate</h3>
           {econ ? (
             <>
               <div className="row" style={{ gap: 40, marginTop: 12 }}>
-                <div><span className="note">Per draw</span><div><span className="figure-s">{signed(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
-                <div><span className="note">Per draw while the reserve refills</span><div><span className="figure-s">{signed(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Per draw, on average</span><div><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Per draw after a big win</span><div><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
               </div>
-              <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
+              <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. After a big prize is won, sales refill the reserve first, so you can withdraw less until it is full. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
               {assume.open && (
                 <div className="row" style={{ marginTop: 10 }}>
                   <div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div>
@@ -1287,7 +1405,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               {how && (
                 <div style={{ marginTop: 12 }}>
                   <div className="kv"><span className="k">Average prize value on FWA</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Your markup</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Your markup on Shapes</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Shapes mint fees, paid by players</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking fees, paid by players</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Keeper pay, from your ETH</span><span>−{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
@@ -1305,6 +1423,42 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 /** FWA's pool-page profile, in its schema's key order (the hash covers JSON.stringify of exactly this). */
 const PROFILE_KEYS = ['avatarUrl', 'bannerUrl', 'description', 'websiteUrl', 'xUrl', 'discordUrl'] as const;
 const PROFILE_LABELS: Record<string, string> = { avatarUrl: 'Avatar URL', bannerUrl: 'Banner URL', websiteUrl: 'Website', xUrl: 'X', discordUrl: 'Discord' };
+
+/** The four keeper-pay settings a creator may set for their own pool (PoolBalancer.setOverrides). A value equal to the
+ *  factory's default is left to follow the factory. Limits match SettingsLib.check. */
+const PAY_FIELDS = [
+  { key: 'maxGasPrice', bit: 1, label: 'Gas price cap', unit: 'gwei', dec: 9, min: '1', max: '50' },
+  { key: 'priorityCap', bit: 2, label: 'Priority fee cap', unit: 'gwei', dec: 9, min: '0', max: '2' },
+  { key: 'incentive', bit: 4, label: 'Reward per keeper call', unit: 'ETH', dec: 18, min: '0', max: '0.001' },
+  { key: 'restockFlat', bit: 8, label: 'Extra restocking fee per Shape, on top of gas and the reward', unit: 'ETH', dec: 18, min: '0', max: '0.002' },
+] as const;
+
+function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
+  const fmt = (v: bigint, dec: number) => formatUnits(v, dec);
+  const [vals, setVals] = useState(() => Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.settings[f.key], f.dec)])) as Record<string, string>);
+  const parsed = PAY_FIELDS.map((f) => { try { return parseUnits(vals[f.key] || '0', f.dec); } catch { return -1n; } });
+  const bad = PAY_FIELDS.some((f, i) => parsed[i] < parseUnits(f.min, f.dec) || parsed[i] > parseUnits(f.max, f.dec));
+  const mask = PAY_FIELDS.reduce((m, f, i) => (parsed[i] !== d.defaults[f.key] ? m | f.bit : m), 0);
+  const changed = PAY_FIELDS.some((f, i) => parsed[i] !== d.settings[f.key]);
+  const save = () => tx.send('Save keeper pay', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setOverrides', args: [mask, parsed[0], parsed[1], parsed[2], parsed[3]] })]);
+  return (
+    <div className="section">
+      <h2 className="h3" style={{ fontSize: 22, marginBottom: 6 }}>Keeper pay</h2>
+      <p className="note" style={{ marginBottom: 12 }}>Paid from this pool's ETH. Keeper pay changes from the next upkeep; restocking fees from the next prizes listed.</p>
+      {PAY_FIELDS.map((f, i) => (
+        <div className="kv" key={f.key}>
+          <div><label htmlFor={`pay-${f.key}`} style={{ fontWeight: 700 }}>{f.label}</label><p className="note">{f.min} to {f.max} {f.unit} · default {fmt(d.defaults[f.key], f.dec)}{d.overrideMask & f.bit ? ' · yours' : ''}</p></div>
+          <div className="field" style={{ width: 170 }}><input id={`pay-${f.key}`} inputMode="decimal" value={vals[f.key]} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} aria-invalid={parsed[i] < 0n} /><span className="u">{f.unit.toUpperCase()}</span></div>
+        </div>
+      ))}
+      <div className="row" style={{ marginTop: 16, gap: 16 }}>
+        <button className="btn" disabled={!!tx.busy || bad || !changed} onClick={save}>Save keeper pay</button>
+        <button className="link quiet" disabled={!!tx.busy} onClick={() => setVals(Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.defaults[f.key], f.dec)])))}>Use the defaults</button>
+        {bad && <span className="note error">A value is outside its range.</span>}
+      </div>
+    </div>
+  );
+}
 
 function Settings({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
@@ -1342,7 +1496,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
   };
   const forwardOk = ens.forward?.toLowerCase() === d.balancer.toLowerCase();
   return (
-    <main className="page cols">
+    <main className="page design settings">
       <section>
         <h2 className="title t2">Settings</h2>
         <div className="section">
@@ -1382,16 +1536,22 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             </>
           )}
         </div>
+        <KeeperPay d={d} tx={tx} />
         <div className="section">
           <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
           <div className="kv">
             <div><div style={{ fontWeight: 700 }}>{d.keepersRestricted ? 'Approved keepers only' : 'Anyone'}</div><p className="note">Who can run upkeep and earn its reward, set for all pools. You can always run it yourself.</p></div>
           </div>
         </div>
-      </section>
-      <section>
+        <div className="section">
         <h2 className="h3" style={{ fontSize: 22 }}>Close down</h2>
         <p className="note" style={{ margin: '8px 0 20px' }}>Get your ETH back or hand the pool to someone else. These steps affect players, so each one asks you to confirm.</p>
+        <div className="kv">
+          <div><div style={{ fontWeight: 700 }}>Purchases</div><p className="note">{d.enabled ? 'Open. Closing stops new draws; draws already bought still settle.' : 'Closed.'}</p></div>
+          {d.enabled
+            ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => tx.write({ ...B, functionName: 'close' })])}>Close purchases</button>
+            : <button className="link" disabled={!!tx.busy || d.target === 0n || d.retired} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>}
+        </div>
         <div className="kv">
           <div><div style={{ fontWeight: 700 }}>Unlist prizes</div><p className="note">{d.enabled ? 'Close purchases first.' : `Returns the ${eth(backing)} ETH held in prizes to the pool, 20 at a time.`}</p></div>
           <button className="link" disabled={!!tx.busy || d.enabled || backing === 0n} onClick={() => tx.send('Unlist prizes', [() => tx.write({ ...B, functionName: 'unlistShapes', args: [d.listings.filter((l) => l.kind === 2 && l.state === 1).slice(0, 20).map((l) => l.id)] })])}>Unlist</button>
@@ -1417,6 +1577,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             {d.enabled && <p className="note" style={{ width: '100%' }}>Close purchases first.</p>}
           </div>
         )}
+        </div>
       </section>
     </main>
   );
@@ -1425,7 +1586,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
 const SHOWN = 120;
 
 /** Picks one NFT for a Design row: from the wallet scan, or by contract and token ID. */
-function NftChooser({ me, exclude, limit = 20, onPick }: { me: Address; exclude: string[]; limit?: number; onPick: (xs: Omit<DraftNft, 'value'>[]) => void }) {
+function NftChooser({ me, exclude, onPick }: { me: Address; exclude: string[]; onPick: (xs: Omit<DraftNft, 'value'>[]) => void }) {
   const pub = usePublicClient();
   const [manual, setManual] = useState(false);
   const [m, setM] = useState({ collection: '', tokenId: '' });
@@ -1441,7 +1602,7 @@ function NftChooser({ me, exclude, limit = 20, onPick }: { me: Address; exclude:
   };
   return (
     <div className="chooser">
-      <WalletPicker me={me} listed={exclude} limit={limit}
+      <WalletPicker me={me} listed={exclude}
         onPick={(ns, c) => onPick(ns.map((n) => ({ collection: n.collection, tokenId: n.tokenId.toString(), name: c.name, image: n.image, floor: c.floor, slug: c.slug })))} onEmpty={() => setManual(true)} />
       <button className="disclose quiet" style={{ marginTop: 14 }} onClick={() => setManual(!manual)}>Enter a contract and token ID instead {manual ? '▴' : '▾'}</button>
       {manual && (
@@ -1465,7 +1626,7 @@ const floorText = (f?: number) => (f === undefined ? undefined : f >= 1 ? `${f.t
  * Finding an NFT in a large wallet: collections first, most valuable (OpenSea floor) at the top, with collections that
  * have no recent price folded away; then the chosen collection's tokens with images.
  */
-function WalletPicker({ me, listed, limit, onPick, onEmpty }: { me: Address; listed: string[]; limit: number; onPick: (ns: WalletNft[], c: Collection) => void; onEmpty: () => void }) {
+function WalletPicker({ me, listed, onPick, onEmpty }: { me: Address; listed: string[]; onPick: (ns: WalletNft[], c: Collection) => void; onEmpty: () => void }) {
   const pub = usePublicClient();
   const [cols, setCols] = useState<Collection[]>();
   const [error, setError] = useState<string>();
@@ -1513,12 +1674,11 @@ function WalletPicker({ me, listed, limit, onPick, onEmpty }: { me: Address; lis
         <p className="note" style={{ margin: '2px 0 12px' }}>{col.floor ? `Floor ${floorText(col.floor)} on OpenSea` : 'No recent price on OpenSea'}</p>
         {!tokens && <p className="note">Loading your tokens…</p>}
         {tokens && !shown.length && <p className="note">No tokens left to choose in this collection.</p>}
-        {tokens && shown.length > 0 && <p className="note" style={{ marginBottom: 8 }}>Select one or more.{limit < shown.length ? ` Up to ${limit} more.` : ''}</p>}
+        {tokens && shown.length > 0 && <p className="note" style={{ marginBottom: 8 }}>Select one or more.</p>}
         <div className="picker" role="listbox" aria-multiselectable="true" aria-label={`Your ${col.name} tokens`}>
           {shown.slice(0, SHOWN).map((n) => (
             <button key={keyOf(n)} role="option" aria-selected={chosen.includes(keyOf(n))} title={`${n.name} #${n.tokenId}`}
-              disabled={!chosen.includes(keyOf(n)) && chosen.length >= limit}
-              onClick={() => setChosen((c) => (c.includes(keyOf(n)) ? c.filter((k) => k !== keyOf(n)) : c.length < limit ? [...c, keyOf(n)] : c))}>
+              onClick={() => setChosen((c) => (c.includes(keyOf(n)) ? c.filter((k) => k !== keyOf(n)) : [...c, keyOf(n)]))}>
               <Thumb n={n} />
               <span className="pid">#{n.tokenId.toString()}</span>
             </button>
@@ -1601,7 +1761,7 @@ function InventoryGrid({ items }: { items: InvItem[] }) {
           <div className="kvline"><span className="muted">Chance per draw</span><span>{oneIn(it.p)} · {pctOf(it.p)}</span></div>
           <div className="kvline"><span className="muted">{it.nft ? 'Your value' : 'Redeems for'}</span><span>{eth(it.value, 4)} ETH</span></div>
           <div className="kvline"><span className="muted">Price on FWA</span><span>{eth(it.price, 5)} ETH</span></div>
-          <div className="kvline"><span className="muted">Worth vs draw cost</span><span>{it.mult.toFixed(2)}×</span></div>
+          <div className="kvline"><span className="muted">Worth vs draw price</span><span>{it.mult.toFixed(2)}×</span></div>
         </div>
       )}
     </div>

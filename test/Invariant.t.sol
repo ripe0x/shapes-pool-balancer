@@ -88,7 +88,7 @@ contract Handler is Test {
             if (before[i] > last) last = before[i];
         }
         uint64 seq = b.reconciledSequence();
-        try b.performUpkeep() returns (uint256 reward) {
+        try b.performUpkeep(b.settingsHash()) returns (uint256 reward) {
             if (reward == 0) return;
             paidFromFees += reward;
             if (reward > maxReward) maxReward = reward;
@@ -123,7 +123,9 @@ contract Handler is Test {
         nft.mint(creator, id);
         vm.startPrank(creator);
         nft.approve(address(b), id);
-        try b.listCurated(address(nft), id, base) {} catch {}
+        PoolBalancer.CuratedInput[] memory one = new PoolBalancer.CuratedInput[](1);
+        one[0] = PoolBalancer.CuratedInput(address(nft), id, base);
+        try b.listCuratedBatch(one) {} catch {}
         vm.stopPrank();
     }
 
@@ -220,7 +222,7 @@ contract InvariantTest is ForkBase {
     /// Keepers are paid only for a call that reconciled a draw or listed a prize, at most MAX_KEEPER_REWARD each.
     function invariant_keeperPaidOnlyForWork() public view {
         assertEq(handler.paidWithoutWork(), 0);
-        assertLe(handler.maxReward(), balancer.MAX_KEEPER_REWARD());
+        assertLe(handler.maxReward(), balancer.maxKeeperReward());
     }
 
     function invariant_permanentOwnershipAndOperator() public view {

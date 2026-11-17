@@ -1,0 +1,57 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.41s
+Compiler run successful!
+
+Ran 7 tests for test/RCFresh.t.sol:RCFreshTest
+[PASS] test_callerChosenGasSweepCannotCollectWithoutProcessing() (gas: 34491813)
+Logs:
+  first successful gas limit: 175000
+
+[PASS] test_compromisedCreatorClaimsEverythingExceptHeldPayThenKeepersClearQueue() (gas: 32024321)
+Logs:
+  closed hold wei: 49050000000000000
+  closed queue keeper pay wei: 611954500000000
+
+[PASS] test_expiredQueueHasNoOutsideProcessorAndCatchesUp() (gas: 32075258)
+Logs:
+  three keeper calls wei: 611954500000000
+
+[PASS] test_factoryRestrictionThenOpenAccessOnWaitingQueue() (gas: 31623637)
+Logs:
+  open outsider reward wei: 183707800000000
+
+[PASS] test_hostileCuratedDeliveryDoesNotStopQueueRecovery() (gas: 32673469)
+Logs:
+  buyer paid wei: 22670501479520508
+
+[PASS] test_maxPlanAndLargestPrizeThenIdle() (gas: 47392648)
+Logs:
+  largest prize backing wei: 500000000000000000
+
+[FAIL: player paid real quote: 0 != 24397386592787382] test_playerRecoversDrawPriceAfterCreatorClosesAndRandomnessStalls() (block: 26382349) (gas: 30858674)
+Suite result: FAILED. 6 passed; 1 failed; 0 skipped; finished in 375.77ms (309.01ms CPU time)
+
+Ran 1 test suite in 410.13ms (375.77ms CPU time): 6 tests passed, 1 failed, 0 skipped (7 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/RCFresh.t.sol:RCFreshTest
+[FAIL: player paid real quote: 0 != 24397386592787382] test_playerRecoversDrawPriceAfterCreatorClosesAndRandomnessStalls() (block: 26382349) (gas: 30858674)
+
+Encountered a total of 1 failing tests, 6 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

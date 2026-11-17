@@ -1,0 +1,10 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.52s
+Compiler run successful!
+
+Ran 2 tests for test/audit/launch-A/AdmissionBoundary.t.sol:AdmissionBoundaryTest
+[PASS] test_fourSmallShapesAdmitFirstPurchase() (gas: 5380108)
+[PASS] test_threeSmallShapesPauseWhileDrawUnsettledThenReopen() (gas: 5471930)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 481.89ms (21.71ms CPU time)
+
+Ran 1 test suite in 489.34ms (481.89ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

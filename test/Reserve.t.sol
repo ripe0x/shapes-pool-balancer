@@ -5,6 +5,9 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {ReconfiguringNFT} from "./utils/Mocks.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 /// @notice Reserve rules on a mainnet fork with the real FWA pool, VRF service and Shapes: a pool opens only with its
 ///         reserve in ETH (E2), purchases continue while sales refill it after big wins (DECISIONS 66), closing
@@ -305,7 +308,7 @@ contract ReserveTest is ForkBase {
         uint256[] memory pending = buy(buyer, 1);
         vm.prank(creator);
         balancer.close();
-        uint256 held = balancer.MAX_KEEPER_REWARD();
+        uint256 held = balancer.maxKeeperReward();
         assertEq(balancer.requiredReserve(), held, "one unreconciled draw: one maximum reward held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
         _claimAll();
@@ -327,9 +330,10 @@ contract ReserveTest is ForkBase {
         assertEq(address(balancer).balance, held + 0.001 ether + proceeds - paid, "nothing else left");
         assertEq(balancer.requiredReserve(), 0, "nothing held once reconciled");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance, "and all of it claimable");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
     }
 
     /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is
@@ -369,7 +373,7 @@ contract ReserveTest is ForkBase {
         assertEq(d.length, 1, "a purchase goes through");
     }
 
-    /// Independent audit E3: a curated NFT listed before the first `configure` would carry no markup.
+    /// Independent audit E3: NFTs are listed only once the pool has a design, at their value (no markup).
     function test_nftsListOnlyAfterTheFirstConfigure() public {
         vm.prank(creator);
         PoolBalancer fresh = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(1)))));
@@ -382,7 +386,7 @@ contract ReserveTest is ForkBase {
         uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
         vm.stopPrank();
         (,,,, uint112 price) = fresh.items(lid);
-        assertEq(price, 0.3 ether * (10_000 + uint256(MARKUP)) / 10_000, "listed at the configured markup");
+        assertEq(price, 0.3 ether, "listed at its value");
     }
 
     /// Independent audit E5: `open` collects settled FWA proceeds into this contract before checking the reserve, so
@@ -435,7 +439,7 @@ contract CreatorKeeper {
     }
 
     function upkeep() external returns (uint256) {
-        return b.performUpkeep();
+        return b.performUpkeep(b.settingsHash());
     }
 
     receive() external payable {

@@ -84,7 +84,7 @@ Outcome per finding:
 | S1 | Medium (conditional) | A collection with public seizure can move a listed NFT out of FWA, leaving a ghost prize | Documented: creator's choice of collection |
 | S2 | Medium (conditional) | A collection freeze blocks withdrawing that NFT | Documented |
 | S3 | Low (conditional) | FWA's VRF router coverage can refuse a purchase the Balancer admits | Documented (OPERATIONS status 0 note) |
-| S4 | Low (conditional) | A creator-controlled collection could change markup during its pull | Fixed: priced after the pull (DECISIONS 63). `test_curatedPricedAfterCollectionCallback` |
+| S4 | Low (conditional) | A creator-controlled collection could change markup during its pull | Fixed: priced after the pull (DECISIONS 63). `test_curatedPricedAfterCollectionCallback`. Moot since DECISIONS 86: curated NFTs carry no markup |
 
 The repairs have not been independently re-audited.
 
@@ -267,9 +267,21 @@ matches GAS.md; `canPurchase` 52–57k gas; exact `requiredReserve()` funding op
 
 - **FWA trust.** FWA's factory owner can pause purchases or VRF and set withdraw-only globally; the reviewed pool
   implementation is pinned, but FWA infrastructure (VRF service, fee router, off-chain site) is trusted.
-- **Keeper admin (DECISIONS 60).** The BalancerFactory's keeper admin can restrict upkeep on every pool to approved
-  keepers. It cannot touch settings, prizes, ETH or reward rules, and creators can always run their own upkeep; a
-  compromised or absent admin can at worst slow restocking, which pauses purchases at LOW_INVENTORY.
+- **Keeper admin (DECISIONS 60, 88).** The BalancerFactory's keeper admin can restrict upkeep on every pool to approved
+  keepers, and set the default keeper pay, restocking fee and prize limit within `SettingsLib.check`'s fixed limits.
+  It cannot touch prizes, their backing or the creator's markup, and creators can always run their own upkeep and
+  override the four keeper-pay values for their pool. A compromised admin can at worst slow restocking (purchases pause
+  at LOW_INVENTORY) or, for pools that follow its defaults, raise what keepers are paid from creators' ETH to the
+  limits: at most 0.311 ETH per paid upkeep, and only for upkeeps that reconcile a draw or list a prize, at gas actually
+  spent. Raising the caps also raises each pool's held reserve, so a pool funded at the old reserve stops admitting
+  purchases until its creator deposits more or the admin restores the settings (at every limit, a pool needs 0.311 ETH
+  per budgeted upkeep). A restocking fee carries a restock-one upkeep's pay under the settings and gas price of its listing
+  (restockGas >= overheadGas + 850k, plus the incentive); with restockFlat at 0 in force it measured up to 14k gas
+  short, which is not a bound, and the creator's fund pays any shortfall. Listed fees never change, so raising pay settings costs each
+  pool the difference on prizes listed before, until they are won and relisted (decision 92; review of 67a9e1e E1:
+  0.052 ETH on one restock after a 0.55 to 50 gwei change). A settings change never reaches an
+  upkeep already priced: `performUpkeep` takes the `settingsHash()` the keeper read and reverts `StaleSettings` if it
+  changed (audit rc-f5c81d6 F1).
 - **Approximate gate.** The gate no longer guarantees exact odds. It keeps listed prize weight at or above 70% of the
   target's (charging each unreconciled draw the heaviest possible prize) and admits more than one batch between upkeeps.
   Player protection against a draw that drifts the odds comes from FWA pricing each draw on live inventory and refunding

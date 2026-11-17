@@ -36,8 +36,9 @@ contract LowBalanceHoldProbe is ForkBase {
             (,,,,,,, uint8 st) = pool.listings(topLid);
             assertEq(st, 4, "top won");
             if (win == 0) {
+                bytes32 uh1 = balancer.settingsHash();
                 vm.prank(keeper, keeper);
-                balancer.performUpkeep();
+                balancer.performUpkeep(uh1);
                 emit log_named_decimal_uint("fund after first restock", address(balancer).balance, 18);
             }
         }
@@ -49,9 +50,10 @@ contract LowBalanceHoldProbe is ForkBase {
         available = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(available, creator);
+        bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh2);
         emit log_named_decimal_uint("keeper paid after close", keeper.balance - before, 18);
         assertGt(keeper.balance - before, 0.0001 ether);
         assertEq(balancer.requiredReserve(), 0);

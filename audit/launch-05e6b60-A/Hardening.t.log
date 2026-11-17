@@ -1,0 +1,19 @@
+No files changed, compilation skipped
+
+Ran 13 tests for test/Hardening.t.sol:HardeningTest
+[PASS] test_cannotRecoverProtectedAssets() (gas: 4168169)
+[PASS] test_creatorTopUpWhileOpenSetsNoCreatorWork() (gas: 183518)
+[PASS] test_creatorWorkPaysFullAndRefusesPurchases() (gas: 5032879)
+[PASS] test_curatedDrawReconcileIsPaid() (gas: 1560409)
+[PASS] test_gasJumpRestockPaidByTheNewListingsFee() (gas: 10552487)
+[PASS] test_griefingBoundForRestrictedCurated() (gas: 3486566)
+[PASS] test_griefingThinPoolIsCheap() (gas: 4181876)
+[PASS] test_historicalRefundsDoNotGrowUpkeepGas() (gas: 995505723)
+[PASS] test_minimumMarkupStillFundsKeepers() (gas: 10194330)
+[PASS] test_poolPageApprovalIsNarrow() (gas: 556449)
+[PASS] test_reconcileBoundPerCall() (gas: 55997946)
+[PASS] test_recoverUntrackedNFTs() (gas: 1257620)
+[PASS] test_reserveExactFormula() (gas: 7638914)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 7.92s (14.52s CPU time)
+
+Ran 1 test suite in 7.92s (7.92s CPU time): 13 tests passed, 0 failed, 0 skipped (13 total tests)

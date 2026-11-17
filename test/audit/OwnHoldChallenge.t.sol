@@ -18,13 +18,13 @@ contract OwnHoldChallenge is ForkBase {
     }
 
     function test_holdAfterCloseReopenRetireAndUnprocessedDraws() public {
-        buy(buyer, 5);
+        uint256 firstExpired = buyOnePerBlock(buyer, 5);
         assertEq(pool.lastIssuedSequence(), 5);
         assertEq(pool.nextSequenceToProcess(), 1);
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 0.01635 ether);
+        assertEq(held, 3 * 0.01635 ether); // ceil(5 owed / 2) maximum rewards
         uint256 available = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(available, creator);
@@ -51,12 +51,13 @@ contract OwnHoldChallenge is ForkBase {
         vm.prank(creator);
         balancer.retire();
         assertTrue(pool.retired());
-        vm.roll(block.number + 100);
+        // One draw expires per block; upkeep processes and reconciles each (D16), nobody else touches FWA's queue.
         for (uint256 i; i < 5; ++i) {
-            pool.processAcquisitions(1);
+            vm.roll(firstExpired + i);
+            bytes32 uh1 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
-            balancer.performUpkeep();
+            balancer.performUpkeep(uh1);
             assertGt(keeper.balance - before, 0.0001 ether);
         }
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());

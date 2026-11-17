@@ -75,6 +75,29 @@ describe('keeper profitability policy across gas prices', () => {
     expect(decide({ gasEstimate: 3_281_532n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n }).send).toBe(true);
   });
 
+  // D16 re-attack 3, finding 3 (fork numbers, test/audit/d16c/EstimatePolicy.t.sol): an upkeep that processes FWA's
+  // queue estimates 0.37M-0.48M above the gas billed. Priced at the estimate it was skipped from about 1.45 gwei
+  // although its reward covered it; priced at the gas the reward pays for, it is sent.
+  it('sends a processing upkeep whose reward covers its billed gas, though the estimate does not', () => {
+    const bf = 2n * GWEI;
+    const prio = GWEI / 20n;
+    const r = reward(2_450_000n, bf, bf + prio);
+    const call = { gasEstimate: 2_830_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n };
+    expect(decide(call).send).toBe(false); // without the balance: the estimate
+    expect(decide({ ...call, balance: 10n ** 18n }).send).toBe(true);
+    expect(r).toBeGreaterThanOrEqual(2_200_000n * (bf + prio)); // the billed gas is covered
+  });
+
+  it('falls back to the estimate when the reward was cut by the balance or by KEEPER_MAX_GAS', () => {
+    const bf = 2n * GWEI;
+    const prio = GWEI / 20n;
+    const r = reward(2_450_000n, bf, bf + prio);
+    const call = { gasEstimate: 2_830_000n, expectedReward: r, baseFee: bf, priorityFee: prio, maxLossWei: 0n };
+    expect(decide({ ...call, balance: r }).send).toBe(false); // the whole balance: possibly cut
+    const capped = reward(KEEPER_MAX_GAS, bf, bf + prio);
+    expect(decide({ ...call, gasEstimate: 3_600_000n, expectedReward: capped, balance: 10n ** 18n }).send).toBe(false);
+  });
+
   it('gas limit covers a draw that settles before inclusion', () => {
     // Round 8 E8: estimated 674,278 with one draw pending; billed 1,210,546 once it settled in the same block.
     expect(gasLimitFor(674_278n)).toBeGreaterThan(1_210_546n);

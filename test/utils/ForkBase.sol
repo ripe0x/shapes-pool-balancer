@@ -6,10 +6,17 @@ import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
 import {MockNFT} from "./Mocks.sol";
+import {ListOne} from "./ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IVRFService {
     function coordinator() external view returns (address);
     function rawFulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) external;
+}
+
+interface ITimeout {
+    function selectionTimeoutBlocks() external view returns (uint256);
 }
 
 /// @dev Mainnet fork against the deployed FWA PoolFactory, StandardPoolBuyback and Shapes.
@@ -52,6 +59,7 @@ abstract contract ForkBase is Test {
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
+        vm.deal(stranger, 1_000 ether);
         vm.deal(keeper, 1 ether);
     }
 
@@ -92,15 +100,18 @@ abstract contract ForkBase is Test {
     }
 
     function upkeep() internal {
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
     }
 
     /// @dev Run upkeep until it has nothing left to do (each call is bounded by MAX_OPS); returns the calls that worked.
+    ///      A 200-prize fill of three-Shape packs needs 120 calls.
     function fillUp() internal returns (uint256 calls) {
-        for (uint256 i; i < 40; ++i) {
+        for (uint256 i; i < 400; ++i) {
+            bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep() {
+            try balancer.performUpkeep(uh2) {
                 ++calls;
             } catch {
                 return calls;
@@ -111,13 +122,30 @@ abstract contract ForkBase is Test {
 
     function buy(address who, uint256 count) internal returns (uint256[] memory ids) {
         (,, uint256 total) = pool.quoteAcquisitionPrice(count);
+        // read before the prank: an argument's external call would otherwise take it, and the harness would pay
+        uint256 version = pool.inventoryVersion();
+        uint256 before = who.balance;
         vm.prank(who, who);
-        ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, pool.inventoryVersion(), block.timestamp + 1);
+        ids = pool.acquireBatch{value: total}(who, count, 0, 0, 10_000, version, block.timestamp + 1);
+        assertEq(before - who.balance, total, "the named player paid the quote");
+    }
+
+    /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has
+    ///      expired; each later block expires exactly one more. Upkeep processes FWA's queue itself (D16) and stops at
+    ///      a head that is neither ready nor expired, so rolling to `firstExpired + i` lets call i reconcile exactly
+    ///      one draw: the most calls, and so the most keeper pay, a batch can cost.
+    function buyOnePerBlock(address who, uint256 n) internal returns (uint256 firstExpired) {
+        uint256 timeout = ITimeout(address(pool)).selectionTimeoutBlocks();
+        firstExpired = vm.getBlockNumber() + timeout + 1;
+        for (uint256 i; i < n; ++i) {
+            if (i != 0) vm.roll(vm.getBlockNumber() + 1);
+            buy(who, 1);
+        }
     }
 
     /// @dev Deliver `word` through the real VRF service, then process the canonical queue.
     function fulfill(uint256 requestId, uint256 word) internal {
-        vm.roll(block.number + 3);
+        vm.roll(vm.getBlockNumber() + 3);
         uint256[] memory words = new uint256[](1);
         words[0] = word;
         vm.prank(IVRFService(VRF_SERVICE).coordinator());

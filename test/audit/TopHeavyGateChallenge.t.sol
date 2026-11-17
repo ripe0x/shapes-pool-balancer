@@ -5,24 +5,27 @@ import {KeeperPayTest} from "../KeeperPay.t.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {GasProbe} from "../utils/FlowBreakdown.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
+import {PoolBalancer} from "../../src/PoolBalancer.sol";
+import {ListOne} from "../utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 contract ChallengeTest is KeeperPayTest {
     function test_closedSplitAtMaxGas() public {
         _open(4.95 gwei);
         fillUp();
-        buy(buyer, 5);
+        uint256 firstExpired = buyOnePerBlock(buyer, 4); // the fill gate admits four single draws on this board
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, balancer.MAX_KEEPER_REWARD());
+        assertEq(held, 2 * balancer.maxKeeperReward()); // ceil(4 owed / 2)
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(claimable, creator);
         assertEq(address(balancer).balance, held);
-        vm.roll(block.number + 40);
         uint256 paid;
-        for (uint256 i; i < 5; ++i) {
-            pool.processAcquisitions(1);
+        for (uint256 i; i < 4; ++i) {
+            vm.roll(firstExpired + i); // one more draw expired; upkeep processes and reconciles it (D16)
             (uint256 reward,, int256 pnl) = _paid();
             paid += reward;
             emit log_named_decimal_uint("paid", reward, 18);
@@ -30,7 +33,7 @@ contract ChallengeTest is KeeperPayTest {
             assertGt(reward, 0);
             assertGe(pnl, 0);
         }
-        assertEq(balancer.reconciledSequence(), 5);
+        assertEq(balancer.reconciledSequence(), 4);
         emit log_named_decimal_uint("held", held, 18);
         emit log_named_decimal_uint("total paid", paid, 18);
     }
@@ -144,8 +147,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         emit log_named_uint("prize weight", balancer.prizeWeight());
         vm.roll(block.number + 40);
         assertEq(pool.processAcquisitions(1), 1, "expired draw processed");
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
         assertEq(balancer.admissionStatus(), 0, "sales resume after reconciliation");
     }
 
@@ -191,8 +195,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
             assertEq(status, 4, "top prize won");
             assertEq(IERC721Min(packs).ownerOf(tokenId), buyer, "buyer owns 25 ETH pack");
             if (win == 0) {
+                bytes32 uh2 = balancer.settingsHash();
                 vm.prank(keeper, keeper);
-                balancer.performUpkeep();
+                balancer.performUpkeep(uh2);
                 assertEq(balancer.admissionStatus(), 0, "sales resumed after first restock");
                 emit log_named_decimal_uint("fund after first top win and restock", address(balancer).balance, 18);
             }
@@ -204,8 +209,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         vm.prank(creator);
         balancer.configure(2500, plan16(c));
         assertEq(balancer.admissionStatus(), 2, "creator setup required");
+        bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh3);
         assertEq(balancer.getActiveShapes()[15], 0, "top omitted");
         assertEq(balancer.getActiveShapes()[0], 1, "small prize listed");
         assertEq(balancer.admissionStatus(), 0, "sales resumed after pivot");

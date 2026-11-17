@@ -1,0 +1,82 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-audit-e36e9ba/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+No files changed, compilation skipped
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 7931812)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 9704433)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 22188758)
+Logs:
+  setup fill
+    reward: 0.012875460000000000
+    reward less gas: 0.000143985000000000
+  setup fill
+    reward: 0.012779920000000000
+    reward less gas: 0.000143985000000000
+  reconcile 1 timed-out draw
+    reward: 0.000715200000000000
+    reward less gas: 0.000016455000000000
+  reconcile 1 NFT win
+    reward: 0.001045500000000000
+    reward less gas: 0.000126455000000000
+  reconcile and replace 1 Shape
+    reward: 0.004502635000000000
+    reward less gas: 0.000309985000000000
+  reconcile and replace 5 Shapes
+    reward: 0.013342225000000000
+    reward less gas: 0.000597985000000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.001338850000000000
+
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 22188890)
+Logs:
+  setup fill
+    reward: 0.001505300600000000
+    reward less gas: 0.000104838350000000
+  setup fill
+    reward: 0.001494791200000000
+    reward less gas: 0.000104838350000000
+  reconcile 1 timed-out draw
+    reward: 0.000167672000000000
+    reward less gas: 0.000090810050000000
+  reconcile 1 NFT win
+    reward: 0.000204005000000000
+    reward less gas: 0.000102910050000000
+  reconcile and replace 1 Shape
+    reward: 0.000584289850000000
+    reward less gas: 0.000123098350000000
+  reconcile and replace 5 Shapes
+    reward: 0.001556644750000000
+    reward less gas: 0.000154778350000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.000681273500000000
+
+[PASS] test_noWorkCallIsPaidNothing() (gas: 8897649)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 10163380)
+Logs:
+  held at close: 0.049050000000000000
+  paid to the keeper: 0.000188921250000000
+
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 9393955)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 11657462)
+Logs:
+  paid for two batched calls: 0.000428246700000000
+  paid for four split calls: 0.000768674350000000
+
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 363.79ms (163.16ms CPU time)
+
+Ran 1 test suite in 399.53ms (363.79ms CPU time): 8 tests passed, 0 failed, 0 skipped (8 total tests)

@@ -53,9 +53,10 @@ contract ForkScenarioTest is ForkBase {
         assertTrue(balancer.canPurchase(buyer));
         assertEq(balancer.prizeWeight(), balancer.targetWeight(), "fully listed");
         // second call has nothing to do
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
     }
 
     function test_canPurchaseFitsStipend() public {

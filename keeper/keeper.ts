@@ -11,19 +11,22 @@ import {
   type Account, type Address, type Hash, type PublicClient, type WalletClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { poolBalancerAbi } from '../shared/abi';
+import { DEFAULT_SETTINGS, settingsFrom, settingsHash as hashOf, type KeeperSettings } from '../shared/planner';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
-const GWEI = 10n ** 9n;
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
  *  upkeep to keepers that do not include this one. */
-export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved']);
-/** Contract constants (src/PoolBalancer.sol). KEEPER_MAX_GAS caps the gas the reward pays for, not the call's gas. */
-export const KEEPER_MAX_GAS = 3_200_000n;
+export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved', 'StaleSettings']);
+/** The default maxGas: it caps the gas the reward pays for, not the call's gas. Each pool's own is `settings().maxGas`. */
+export const KEEPER_MAX_GAS = DEFAULT_SETTINGS.maxGas;
 /** Least gas limit for any upkeep. A draw that settles between the estimate and inclusion adds its reconcile and
  *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
- *  upkeep (5 reconciles + 5 Shape units in 4 sizes) measures under KEEPER_MAX_GAS on a fork (test/Gas.t.sol); this
- *  floor adds 25% for Shapes mint gas varying by block. Only gas used is billed. */
+ *  upkeeps measure under KEEPER_MAX_GAS on a fork: 5 reconciles + 5 Shape units in 4 sizes, and two processed draws that
+ *  each reserved FWA's maximum six listings + 5 reconciles, 2.98M to 3.22M (a call that processes skips restocking).
+ *  Processing that fails
+ *  for want of gas reverts the whole upkeep (InsufficientGas), so a limit too small to process never succeeds; this
+ *  floor adds headroom for Shapes mint gas varying by block. Only gas used is billed. */
 export const UPKEEP_GAS_FLOOR = 4_000_000n;
 
 /** Gas limit for an upkeep estimated at `estimate`: 30% headroom, never below UPKEEP_GAS_FLOOR. */
@@ -31,7 +34,6 @@ export const gasLimitFor = (estimate: bigint) => {
   const g = (estimate * 13n) / 10n;
   return g > UPKEEP_GAS_FLOOR ? g : UPKEEP_GAS_FLOOR;
 };
-type Fn = 'performUpkeep';
 
 export interface Policy {
   /** Gas units from `eth_estimateGas` (pre-refund execution gas: an upper bound on the billed gas). */
@@ -42,13 +44,31 @@ export interface Policy {
   priorityFee: bigint;
   /** Loss the operator accepts per call (e.g. gas-only reconciliations that keep pools open). */
   maxLossWei: bigint;
+  /** The Balancer's ETH balance before the call, which caps the reward. Without it the cost is the estimate. */
+  balance?: bigint;
+  /** The Balancer's `settings()`; the factory defaults when absent. */
+  settings?: KeeperSettings;
 }
 
-/** Send only when the contract's reward covers the estimated cost (within `maxLossWei`). The reward pays for at most
- *  KEEPER_MAX_GAS, so a larger estimate simply costs more than it earns unless the reward still covers it. */
+/** Send only when the contract's reward covers the expected cost (within `maxLossWei`). The cost is the gas the
+ *  simulated reward pays for (the Balancer's measured gas plus its 50,000 overhead, which covers everything outside
+ *  the measured span, so billed gas never exceeds it) unless that reward was cut by the pool's maxGas or the Balancer's
+ *  balance; then it is `eth_estimateGas`. The estimate is the least limit that succeeds, which for upkeeps that
+ *  process FWA's queue is 0.37M-0.48M above the gas billed. One path breaks the premise: processing that fails for a
+ *  reason other than gas, after which upkeep continues unpaid for it. FWA's code has no known trigger for it; if one
+ *  appears, a keeper loses up to about 0.0056 ETH per call at
+ *  5 gwei. */
 export function decide(p: Policy): { send: boolean; reason: string } {
-  const cost = p.gasEstimate * (p.baseFee + p.priorityFee);
-  if (p.expectedReward + p.maxLossWei < cost) return { send: false, reason: 'unprofitable at current gas' };
+  const price = p.baseFee + p.priorityFee;
+  let gas = p.gasEstimate;
+  const s = p.settings ?? DEFAULT_SETTINGS;
+  if (p.balance !== undefined && p.expectedReward < p.balance && p.expectedReward > s.incentive) {
+    let reimbursed = price < p.baseFee + s.priorityCap ? price : p.baseFee + s.priorityCap;
+    if (reimbursed > s.maxGasPrice) reimbursed = s.maxGasPrice;
+    const paidGas = (p.expectedReward - s.incentive) / reimbursed;
+    if (paidGas < s.maxGas + s.overheadGas && paidGas < gas) gas = paidGas;
+  }
+  if (p.expectedReward + p.maxLossWei < gas * price) return { send: false, reason: 'unprofitable at current gas' };
   return { send: true, reason: 'ok' };
 }
 
@@ -59,8 +79,8 @@ export interface KeeperConfig {
   stateFile: string;
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
-  maxGasPriceGwei?: number; // never bid above this; the contract reimburses at most 5 gwei
-  priorityGwei?: number; // the contract reimburses at most 0.05 gwei over basefee
+  maxGasPriceGwei?: number; // never bid above this, nor above a pool's settings().maxGasPrice, the most it reimburses (default 50 gwei, the highest a pool may set)
+  priorityGwei?: number; // a pool reimburses at most its settings().priorityCap over basefee (default 0.05 gwei)
   maxLossWei?: bigint;
   replaceAfterBlocks?: number;
   maxReplacements?: number;
@@ -68,15 +88,17 @@ export interface KeeperConfig {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
-interface Pending { fn: Fn; args: string[]; hashes: Hash[]; nonce: number; gas: string; estimate?: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
+interface Pending { hashes: Hash[]; nonce: number; settingsHash?: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface State {
   lastScanned: string;
   balancers: Address[];
-  /** Shape listing ids whose FWA delivery failed, per Balancer, until recovered or settled. */
+  /** The upkeep transaction in flight per Balancer, until mined or its nonce is used. */
   pending: Record<string, Pending>;
   stats: { sent: number; mined: number; reverted: number; replaced: number; skippedUnprofitable: number; spentWei: string; earnedWei: string };
 }
-export interface AuditEntry { balancer: Address; fn: Fn; hash: Hash; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint }
+/** Mined upkeeps kept in memory for inspection (the e2e run reads them); older entries are dropped. */
+const AUDIT_KEEP = 1_000;
+export interface AuditEntry { balancer: Address; hash: Hash; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint }
 
 export class Keeper {
   readonly pub: PublicClient;
@@ -89,7 +111,7 @@ export class Keeper {
   private readonly c: Required<Omit<KeeperConfig, 'log'>> & Pick<KeeperConfig, 'log'>;
 
   constructor(cfg: KeeperConfig) {
-    this.c = { reorgWindow: 64, maxGasPriceGwei: 5, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
     const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
@@ -175,28 +197,34 @@ export class Keeper {
     this.save();
   }
 
-  private fees(baseFee: bigint) {
+  /** Bid limits for one pool: never above the operator's cap or the pool's reimbursed cap. */
+  private fees(baseFee: bigint, poolCap: bigint) {
     const priority = this.gwei(this.c.priorityGwei);
-    const cap = this.gwei(this.c.maxGasPriceGwei);
+    const own = this.gwei(this.c.maxGasPriceGwei);
+    const cap = poolCap < own ? poolCap : own;
     const max = baseFee * 2n + priority > cap ? cap : baseFee * 2n + priority;
     return { priority, max, cap };
   }
 
   private async service(b: Address, head: bigint, baseFee: bigint) {
     const p = this.state.pending[b];
-    if (p && (await this.resolvePending(b, p, head, baseFee))) return; // still in flight
-    const { priority, max, cap } = this.fees(baseFee);
+    // One settings read prices the call and names the hash performUpkeep checks: if the settings change before
+    // inclusion, the call reverts StaleSettings at its start instead of paying by settings it was not priced on.
+    const settings = settingsFrom(await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settings' }));
+    const settingsHash = hashOf(settings);
+    if (p && (await this.resolvePending(b, p, head, baseFee, settings, settingsHash))) return; // still in flight
+    const { priority, max, cap } = this.fees(baseFee, settings.maxGasPrice);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
       return;
     }
-    await this.attempt(b, 'performUpkeep', [], head, baseFee, max, priority);
+    await this.attempt(b, head, baseFee, max, priority, settings, settingsHash);
   }
 
   /** Simulate, apply the profitability policy and send. Returns true if a tx was sent. */
-  private async attempt(b: Address, fn: Fn, args: string[], head: bigint, baseFee: bigint, maxFeePerGas: bigint, priority: bigint): Promise<boolean> {
-    const callArgs = args.map(BigInt);
-    const call = { address: b, abi: poolBalancerAbi, functionName: fn, args: callArgs, account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority } as const;
+  private async attempt(b: Address, head: bigint, baseFee: bigint, maxFeePerGas: bigint, priority: bigint, settings: KeeperSettings, settingsHash: Hash): Promise<boolean> {
+    // The pool pays by the settings this hash names, or the call reverts at its start (StaleSettings).
+    const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority } as const;
     let reward: bigint;
     try {
       reward = (await this.pub.simulateContract(call as never)).result as bigint;
@@ -206,10 +234,11 @@ export class Keeper {
       throw e; // unexpected: surface as a pool error
     }
     const gasEstimate = await this.pub.estimateContractGas(call as never);
-    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei });
+    const balance = await this.pub.getBalance({ address: b });
+    const verdict = decide({ gasEstimate, expectedReward: reward, baseFee, priorityFee: priority, maxLossWei: this.c.maxLossWei, balance, settings });
     if (!verdict.send) {
       this.state.stats.skippedUnprofitable++;
-      this.log(`skip: ${verdict.reason}`, { balancer: b, fn, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });
+      this.log(`skip: ${verdict.reason}`, { balancer: b, gasEstimate: gasEstimate.toString(), rewardWei: reward.toString() });
       return false;
     }
     // The contract reimburses measured gas, never the limit; only gas used is billed.
@@ -217,27 +246,30 @@ export class Keeper {
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
     // Saved before broadcasting: a restart after the broadcast finds this nonce in flight and waits for or replaces
     // it, instead of sending a second upkeep at the next nonce.
-    this.state.pending[b] = { fn, args, hashes: [], nonce, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
+    this.state.pending[b] = { hashes: [], nonce, settingsHash, gas: gas.toString(), estimate: gasEstimate.toString(), maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.save();
     // An error here may still have broadcast (lost response): keep the nonce pending, so the next ticks wait for it or
     // replace it at the same nonce rather than sending a second upkeep at the next one.
-    const hash = await this.send(b, fn, callArgs, nonce, maxFeePerGas, priority, gas);
+    const hash = await this.send(b, nonce, maxFeePerGas, priority, gas, settingsHash);
     this.state.pending[b].hashes.push(hash);
     this.save();
     this.state.stats.sent++;
-    this.log(`sent ${fn}`, { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
+    this.log('sent performUpkeep', { balancer: b, hash, nonce, gasEstimate: gasEstimate.toString(), expectedRewardWei: reward.toString() });
     return true;
   }
 
-  private async send(b: Address, fn: Fn, args: bigint[], nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint) {
+  private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint, settingsHash: Hash) {
     return this.wallet.writeContract({
-      address: b, abi: poolBalancerAbi, functionName: fn, args, account: this.c.account, chain: null,
+      address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.c.account, chain: null,
       nonce, maxFeePerGas, maxPriorityFeePerGas, gas,
     } as never);
   }
 
   /** Returns true while a tx for `b` remains in flight. */
-  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint): Promise<boolean> {
+  private async resolvePending(b: Address, p: Pending, head: bigint, baseFee: bigint, settings: KeeperSettings, settingsHash: Hash): Promise<boolean> {
+    // The confirmed nonce is read before the receipts: a transaction mined between the two reads then still has its
+    // receipt found and counted, instead of the entry being dropped as consumed by a transaction we did not see.
+    const confirmedNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'latest' });
     for (const h of p.hashes) {
       const r = await this.pub.getTransactionReceipt({ hash: h }).catch(() => null);
       if (!r) continue;
@@ -254,21 +286,33 @@ export class Keeper {
       }
       this.state.stats.spentWei = (BigInt(this.state.stats.spentWei) + cost).toString();
       this.state.stats.earnedWei = (BigInt(this.state.stats.earnedWei) + reward).toString();
-      this.audit.push({ balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed, measuredGas, reward, cost });
-      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, fn: p.fn, hash: h, gasUsed: r.gasUsed.toString(), gasLimit: p.gas, measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
+      this.audit.push({ balancer: b, hash: h, gasUsed: r.gasUsed, measuredGas, reward, cost });
+      if (this.audit.length > AUDIT_KEEP) this.audit.splice(0, this.audit.length - AUDIT_KEEP);
+      this.log(r.status === 'success' ? 'mined' : 'reverted', { balancer: b, hash: h, gasUsed: r.gasUsed.toString(), gasLimit: p.gas, measuredGas: measuredGas.toString(), rewardWei: reward.toString(), costWei: cost.toString() });
       delete this.state.pending[b];
       return false;
     }
-    const confirmedNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'latest' });
     if (confirmedNonce > p.nonce) {
       // Nonce consumed by a tx we did not see (e.g. replaced outside this process): stop tracking.
       delete this.state.pending[b];
       return false;
     }
     if (head - BigInt(p.sentBlock) < BigInt(this.c.replaceAfterBlocks)) return true;
+    // Evicted: the node holds no transaction of ours at this nonce (pending count not above it) and none of our hashes.
+    // Forget the entry; attempt() then re-reads settings, re-prices and sends at the same nonce, which it takes from
+    // the pending count. A copy still known to the node keeps the entry (lost-response sends included).
+    const pendingNonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
+    if (pendingNonce <= p.nonce) {
+      const known = await Promise.all(p.hashes.map((h) => this.pub.getTransaction({ hash: h }).then(() => true, () => false)));
+      if (!known.some(Boolean)) {
+        this.log('evicted: resending at the same nonce', { balancer: b, nonce: p.nonce });
+        delete this.state.pending[b];
+        return false;
+      }
+    }
     if (p.replacements >= this.c.maxReplacements) return true;
     // Replace with the same nonce and +25% fees, only while the bid stays under the cap and profitable.
-    const { cap } = this.fees(baseFee);
+    const { cap } = this.fees(baseFee, settings.maxGasPrice);
     const prio = (BigInt(p.maxPriorityFeePerGas) * 125n) / 100n + 1n;
     let max = (BigInt(p.maxFeePerGas) * 125n) / 100n + 1n;
     if (max < baseFee + prio) max = baseFee + prio;
@@ -277,15 +321,19 @@ export class Keeper {
       return true;
     }
     try {
-      const call = { address: b, abi: poolBalancerAbi, functionName: p.fn, args: p.args.map(BigInt), account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
+      // A replacement is priced on this tick's settings read, at the same nonce: if the settings changed since the
+      // original was sent, or the entry predates settingsHash, the replacement carries the current hash and the
+      // original (if it is still mined first) reverts StaleSettings at its start.
+      const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash], account: this.address, maxFeePerGas: max, maxPriorityFeePerGas: prio } as const;
       const reward = (await this.pub.simulateContract(call as never)).result as bigint;
-      const verdict = decide({ gasEstimate: p.estimate ? BigInt(p.estimate) : BigInt(p.gas) * 10n / 13n, expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei });
+      const verdict = decide({ gasEstimate: BigInt(p.estimate), expectedReward: reward, baseFee, priorityFee: prio, maxLossWei: this.c.maxLossWei, settings });
       if (!verdict.send) {
         this.log(`waiting: replacement ${verdict.reason}`, { balancer: b });
         return true;
       }
-      const hash = await this.send(b, p.fn, p.args.map(BigInt), p.nonce, max, prio, BigInt(p.gas));
+      const hash = await this.send(b, p.nonce, max, prio, BigInt(p.gas), settingsHash);
       p.hashes.push(hash);
+      p.settingsHash = settingsHash;
       p.maxFeePerGas = max.toString();
       p.maxPriorityFeePerGas = prio.toString();
       p.sentBlock = head.toString();
@@ -355,7 +403,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     fromBlock: BigInt(env('FROM_BLOCK')),
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
-    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '5')),
+    maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '50')),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
     // Default covers gas-only paid calls (reconcile-only upkeep) to ~1.3 gwei, with estimates ~78k gas above
     // billed; set 0 for a strictly profitable keeper.
@@ -367,4 +415,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   k.runForever(Number(env('POLL_MS', '12000')));
 }
 
-export { GWEI };

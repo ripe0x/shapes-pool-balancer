@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { BPS, economics, pendingDrawsAdmitted, evaluate, listPrice, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan } from './planner';
+import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, settingsHash, unpackPlan, DEFAULT_SETTINGS } from './planner';
 
 const EDGE = 500;
 
@@ -21,16 +21,15 @@ describe('planner', () => {
   const E = 10n ** 18n;
   const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n) };
 
-  it('prices listed curated NFTs at their live FWA price after a markup change', () => {
-    // Round 8 E4: listed at 0.02 ETH, then the markup changed to 10%; FWA keeps the listing at 0.02.
+  it('prices curated NFTs at their value, at any markup, and listed ones at their live FWA price', () => {
     const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
-    const at = { ...inputs, curatedBases: [E / 50n], markupBps: 1000 };
-    const live = evaluate(counts, { ...at, curatedPrices: [E / 50n] });
-    expect(live.tiers[0].listPrice).toBe(E / 50n);
-    expect(live.drawPrice).toBeLessThan(evaluate(counts, at).drawPrice);
-    // A new NFT added after the listed one is priced at the current markup.
-    const added = evaluate(counts, { ...at, curatedBases: [E / 50n, E / 10n], curatedPrices: [E / 50n] });
-    expect(added.tiers[1].listPrice).toBe((E / 10n) * 11n / 10n);
+    for (const markupBps of [1000, 3000]) {
+      expect(evaluate(counts, { ...inputs, curatedBases: [E / 50n], markupBps }).tiers[0].listPrice).toBe(E / 50n);
+    }
+    // Round 8 E4: the live FWA price is used for a listed NFT; a new NFT added after it is priced at its value.
+    const added = evaluate(counts, { ...inputs, curatedBases: [E / 50n, E / 10n], curatedPrices: [E / 40n] });
+    expect(added.tiers[0].listPrice).toBe(E / 40n);
+    expect(added.tiers[1].listPrice).toBe(E / 10n);
   });
 
   it('prices listed Shapes at their live FWA price, so a historical board matches FWA\'s fee formula (E8)', () => {
@@ -39,7 +38,7 @@ describe('planner', () => {
     // Four 0.01 Shapes listed earlier at 10% markup, before the creator raised it to 20%; FWA keeps their old price.
     const listedPrice = prizePrice(0, { ...at, markupBps: 1000 });
     const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
-    const curatedPrices = [listPrice(E / 2n, at.markupBps)];
+    const curatedPrices = [E / 2n];
     const live = evaluate(counts, { ...at, curatedPrices, shapePrices: [[listedPrice, listedPrice, listedPrice, listedPrice]] });
 
     // Independent of evaluate: FWA's acquisitionFee is the inverse-weight average of the actual listed prices x (1 + edge).
@@ -125,5 +124,16 @@ describe('planner', () => {
     expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
     // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
     expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
+  });
+});
+
+describe('settingsHash', () => {
+  it('matches PoolBalancer.settingsHash() at the defaults (read from a local fork deployment of 67a9e1e)', () => {
+    expect(settingsHash(DEFAULT_SETTINGS)).toBe('0x45d0100b7eaa1034f0173ddd16e7859f5701e0ffed30f0a72a6a82d11c8d9f7c');
+  });
+  it('matches cast keccak of the ABI encoding at other values', () => {
+    // cast keccak $(cast abi-encode "f(uint64,uint64,uint64,uint64,uint32,uint32,uint32,uint32)" 50000000000 2000000000 1000000000000000 0 6000000 200000 1050000 7)
+    const s = { maxGasPrice: 50n * 10n ** 9n, priorityCap: 2n * 10n ** 9n, incentive: 10n ** 15n, restockFlat: 0n, maxGas: 6_000_000n, overheadGas: 200_000n, restockGas: 1_050_000n, maxPrizes: 7 };
+    expect(settingsHash(s)).toBe('0x3b999d8f727c0630ebdfa97aab6b29436735e206c81d546f6c4677b4ff06288d');
   });
 });

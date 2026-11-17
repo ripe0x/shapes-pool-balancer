@@ -1,0 +1,15 @@
+No files changed, compilation skipped
+
+Ran 1 test for test/HostileCollection.t.sol:AllowlistCheckCost
+[PASS] test_coldFactoryListCheckGas() (gas: 7987927)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 361.04ms (360.57ms CPU time)
+
+Ran 5 tests for test/HostileCollection.t.sol:HostileCollectionTest
+[PASS] test_paused_thenRetried() (gas: 10268712)
+[PASS] test_refuseAll_nftStuck() (gas: 10352018)
+[PASS] test_refuseDelivery_playerNeverRefunds() (gas: 10232547)
+[PASS] test_refuseDelivery_playerRefunded_creatorRecovers() (gas: 10604765)
+[PASS] test_seize_afterDelivery() (gas: 10078047)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 456.19ms (745.43ms CPU time)
+
+Ran 2 test suites in 463.43ms (817.23ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)

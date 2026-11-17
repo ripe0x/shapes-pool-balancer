@@ -5,6 +5,9 @@ import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {MockNFT, FreezableNFT, LyingNFT, ContractBlockingNFT, NonRefundingBuyer} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {ListOne} from "./utils/ListOne.sol";
+
+using ListOne for PoolBalancer;
 
 interface IShapesMint {
     function mintBatch(uint256 amountWei, uint256 quantity) external payable returns (uint256 firstTokenId);
@@ -178,9 +181,10 @@ contract HardeningTest is ForkBase {
             vm.prank(buyer);
             pool.refundFailedDelivery(failed[i]);
         }
+        bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep();
+        balancer.performUpkeep(uh1);
         uint256 after_ = _shapeUpkeepGas();
         emit log_named_uint("shape upkeep gas before", baseline);
         emit log_named_uint("shape upkeep gas after 200 refunds", after_);
@@ -211,13 +215,14 @@ contract HardeningTest is ForkBase {
         uint256 largest = 0.1 ether + fee;
         // empty: restore the whole target + 1 largest prize + (ceil((10+3)/6)+1)=4 keeper rewards
         uint256 deficit = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
-        assertEq(b.requiredReserve(), deficit + largest + 4 * b.MAX_KEEPER_REWARD(), "empty-pool reserve");
+        assertEq(b.requiredReserve(), deficit + largest + 4 * b.maxKeeperReward(), "empty-pool reserve");
         // fully reconciled: deficit 0, 1 largest prize + 2 keeper rewards (ceil(3/6)+1)
         for (uint256 i; i < 10; ++i) {
+            bytes32 uh2 = b.settingsHash();
             vm.prank(keeper, keeper);
-            try b.performUpkeep() {} catch { break; }
+            try b.performUpkeep(uh2) {} catch { break; }
         }
-        assertEq(b.requiredReserve(), largest + 2 * b.MAX_KEEPER_REWARD(), "reconciled-open reserve");
+        assertEq(b.requiredReserve(), largest + 2 * b.maxKeeperReward(), "reconciled-open reserve");
     }
 
     /*////////////////////////////// incentive accounting //////////////////////////////*/
@@ -239,9 +244,10 @@ contract HardeningTest is ForkBase {
         assertEq(b.admissionStatus(), 2, "SETTING_UP");
         assertFalse(b.canPurchase(buyer), "purchases refused while creator work is pending");
 
+        bytes32 uh3 = b.settingsHash();
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        b.performUpkeep();
+        b.performUpkeep(uh3);
         (uint256 reward, uint256 gasPaid) = _fromLogs();
         // from the creator's ETH: measured gas plus the 50,000 overhead at the reimbursed price, plus the flat 0.0001
         assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "full reward");
@@ -317,11 +323,11 @@ contract HardeningTest is ForkBase {
         }
     }
 
-    /// A curated NFT carries no restocking fee: its whole markup is the creator's, and the creator's ETH pays the keeper
-    /// who reconciles its draw.
+    /// A curated NFT carries no restocking fee or markup: the creator's ETH pays the keeper who reconciles its draw.
     function test_curatedDrawReconcileIsPaid() public {
         (,,, uint112 base, uint112 price) = balancer.items(curatedA);
-        assertEq(price - base, 0.045 ether, "0.3 ETH at 15%, all markup");
+        assertEq(price, base, "listed at its value");
+        assertEq(price, 0.3 ether);
         _drawListing(curatedA);
         vm.recordLogs();
         upkeep();
