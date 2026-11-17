@@ -1,12 +1,38 @@
 # Mainnet deployment readiness
 
-> **Current reserve redesign:** [before/after evidence](reserve-redesign-results.md) and [RESERVES.md](RESERVES.md) supersede the `a8fb321` capital requirements below. Earlier reports remain historical; no deployment is authorized.
-> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+## Current candidate: reserve redesign (`55c094f`, 2026-11-17)
 
-**Not deployed. Mainnet deployment needs your explicit authorization.** This report does not establish that the contracts
-are safe.
+**Not deployed. Implementation verification is recorded; mainnet deployment is not authorized.**
+The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md) and
+[RESERVES.md](RESERVES.md). Exact economics, scope and limitations are in
+[reserve-redesign-results.md](reserve-redesign-results.md), with command/log digests in
+[verification.json](../audit/reserve-redesign/verification.json).
 
-## Current policy candidate (2026-11-17)
+### Evidence already obtained
+
+- Final candidate: 483 Foundry tests passed, zero failures; 120 TypeScript tests passed; typechecking and dashboard build passed.
+- Keeper integration: 28 canonical transactions, 27 successes and one intentional stale-policy revert; nonce/replacement/reorg recovery and receipt accounting exercised.
+- All 25 real-dependency asset-flow regimes executed. Current numeric outcome checks and source-review records pass; the gate remains **INCOMPLETE because revised outcomes are unsigned**.
+- Independent focused reserve security and economic reviews ran. Actual low-gas hostile-policy round trips close the earlier measurement gap for their executed cases.
+- PoolBalancer runtime is 24,449 bytes (127 bytes below EIP-170). Actual deployment submitted gas limits and individual setup receipts remain below EIP-7825.
+- Real local-fork dashboard interactions exercised surplus withdrawal, partial inventory disclosure and Add ETH recovery. This does not substitute for a real browser-wallet extension test.
+
+### Remaining before mainnet
+
+1. Consolidated whole-candidate security and economic audit, including policy replacement, reserve/withdrawal accounting, FWA integration, Packs and off-chain callers. The focused reviews above are not that audit. Human technical review is absent.
+2. Owner approval/signature of revised asset-flow outcomes. Temporary inventory depletion replaces immediate full-restoration insurance; prior zero-missing-days claims are explicitly superseded, not passed. No measurement is an owner signature.
+3. Final-candidate current-block production-path rehearsal with the keeper and dashboard, signed local transactions, actual fee fields and live outcome readbacks. Earlier rehearsals remain scoped to their revisions and assumptions.
+4. Real-wallet extension writes and the FWA pool-page answer for an ERC-1271 contract owner; external application compatibility remains unverified.
+5. Confirm launch values and roles: keeper eligibility admin, distinct policy-default admin, Draw Packs presentation admin/name/symbol and final dependencies. No live addresses are inferred from local test deployments.
+6. Review the canary plan, caps that can and cannot be enforced, exit and monitoring; separately authorize any mainnet deployment/canary. No mainnet broadcast or real spending is authorized by this checklist.
+
+The design intentionally permits delayed replenishment and exposes actual inventory. A last curated NFT win or insufficient admission weight can pause sales and require creator action; future demand cannot fund a paused pool. Public unpaid recovery retains the existing game-first ability to consume booked creator profit. These are disclosed operating rules, not audit findings by themselves.
+
+## Historical readiness records
+
+Everything below is retained history for its named revision. References to "current", "open" or "resolved" below do not override the checklist above. Valid evidence is reused only while its code, dependencies, configuration and assumptions remain unchanged.
+
+## Historical policy candidate (`a8fb321`, 2026-11-17)
 
 Implementation evidence is in [keeper-policy-results.md](keeper-policy-results.md). Real-dependency V1→V2 lifecycles, affected Foundry tests, 70 TypeScript tests, a 300-round local keeper rehearsal, dashboard interactions and two focused independent reviews were exercised. The initial broad Foundry command had 67 failures; repaired affected runs pass, with the full failure history retained. This does not imply a clean full-suite command or comprehensive audit.
 
