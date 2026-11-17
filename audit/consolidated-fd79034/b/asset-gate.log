@@ -1,0 +1,56 @@
+ASSET FLOW GATE: INCOMPLETE   regimes quiet, limits_at_max, max_then_idle, zero_demand, large_win, gas_spike, randomness_not_delivered, closeout_pending, restock_in_flight, top_heavy, whatif_large_win_top_up, whatif_large_win_drop_top, normal_gas, gas_2_gwei, gas_5_gwei, extreme_top_heavy, extreme_bottom_heavy, smallest_board, largest_board, no_processor, no_processor_5_gwei, burst, policy_switch, minimum_capital, minimum_large_win
+export SOURCE_HASH=4e8ea5806e516d7ecb23626bca37dcb8855c6a1166400b6cb1b96e161f172bfa
+review: none recorded for the current source
+approval hash: 7f75fee903715d28f96f27f4f73cc6394e6c0333dafb1cf46d2805d50179d70c
+owner signs it (2 commands), pastes /tmp/af.txt.sig into approval.signature:
+  printf %s 7f75fee903715d28f96f27f4f73cc6394e6c0333dafb1cf46d2805d50179d70c > /tmp/af.txt
+  ssh-keygen -Y sign -f <your-key> -n asset-flow /tmp/af.txt
+AGENT: before asking the owner to sign, show a table: the decision, each option, its tradeoffs, the measured numbers, your recommendation and why.
+allowed_signers entry, one line: owner <public key>   (e.g. owner ssh-ed25519 AAAA...)
+
+OUTCOMES (each must hold in every regime listed for it)
+  O1: Keepers receive the selected read-only quote for immutable verified work, capped by the cached policy maximum, operation-sensitive measured-gas/service envelope, 0.311 ETH absolute maximum, real operating liquidity and persistent 0.622 ETH burst/floor(0.05 ETH per12seconds) allowance. Caller minimum is atomic. V1 quotes remain measured gas plus50k overhead and0.00002 ETH per finalized draw or Shape unit listed. Storage-refund allowance remains at most80,000 gas per draw averaged over each measured run; candidate amounts are recorded separately.  [at most 80000]
+      worst 62216 in burst   OK
+  O2: All buyers fund restocking fees: the fee is built into every draw price (about 0.001 ETH per draw at 0.5 gwei on the launch board); the creator fronts the fees of prizes still listed, never more than one board at the 5 gwei cap (55 Shapes x 0.0047 ETH).  [at most 260000000000000000]
+      worst 253800000000000000 in gas_5_gwei   OK
+  O3: Closing releases missing inventory, setup and working-buffer requirements. While paid upkeep is enabled, only actual unreconciled draws times their current immutable reconciliation budget are retained. Disabling paid upkeep releases that hold; reenabling is delayed and funded. Buyer refunds and FWA edge remain in FWA. Completed paid work receives its atomic bounded quote; future work is not a keeper debt.  [at most 0; only in closeout_pending]
+      worst 0 in closeout_pending   OK
+  O4: Exact redeemable backing: every prize unlisted redeems for exactly its backing.  [at most 0; only in closeout_pending]
+      worst 0 in closeout_pending   OK
+  O5: Under the capital-efficient continuity guarantee, Add ETH or Continue without a missing top prize supports ongoing operation in the named response regimes: they finish with admission open. Later adverse wins may again leave target prizes missing; days of depletion and capital shortfalls remain reported. This supersedes the old immediate/full-target-restoration promise, not backing or purchaser refund rights.  [at most 0; only in whatif_large_win_top_up, whatif_large_win_drop_top]
+      worst 0 in whatif_large_win_top_up   OK
+  O6: Closeout returns everything: after the closeout the Balancer, its listed backing and its FWA proceeds hold nothing. Exception, under FWA's rules: an NFT whose delivery failed stays at FWA until its winner takes the refund.  [at most 0; only in closeout_pending]
+      worst 0 in closeout_pending   OK
+  O7: Ordinary funded launch-board operation admits reconciled purchases under the existing70% weight/curated/busy/mint-fee gate. Adverse low-capital depletion may pause and requires existing proceeds, Add ETH, a smaller target or closing; no automatic refill from refused demand is promised. The named ordinary regimes have zero low-inventory refusals within the5gwei V1 cap.  [at most 0; only in quiet, normal_gas, gas_2_gwei, gas_5_gwei, no_processor, no_processor_5_gwei, burst, minimum_capital]
+      worst 0 in quiet   OK
+  O8: The first 10% of Shape markup goes to the game: profit credited to the creator stays under the markup above 10% (at a 25% markup, 12% of proceeds).  [at most 1200]
+      worst 1184 in largest_board   OK
+  O9: The creator's profit follows the board each draw was priced on: with restocks listed while draws are in flight and the markup unchanged, profit booked beyond that split stays under 0.001 ETH per 180 draws. A creator who raises the markup while draws are unsettled books more, taken from their own reserve (audit of 8ec98cb: 0.00276 ETH in one draw at launch scale): accepted, shown as information.  [at most 1000000000000000; only in restock_in_flight]
+      worst 27004958979084 in restock_in_flight   OK
+  O10: On the launch board at steady normal gas (basefee 0.1 gwei), a player pays at most 1.5x the expected Shape backing of a draw: FWA's all-in quote (draw price and randomness fee) against the backing weighted as FWA weighs draws, checked before every draw (R19, D17). After a gas spike, prices stay higher until the prizes listed during it are won again (1.71x after 60 draws restocked at 5 gwei); a creator's own markup and NFT values can exceed it (2.27x at 100% markup): shown as information.  [at most 15000; only in normal_gas]
+      worst 14717 in normal_gas   OK
+  O11: (R4, D12) On the launch board the restocking fees repaid inside won prizes cover keeper pay for play (upkeep after draws; the creator's own setup work excluded): no loss over 180 draws at 0.1 to 5 gwei, through a gas spike, a randomness outage and bursts of five waiting draws. NFT-dominated boards (extreme_top_heavy, largest_board) lose up to 0.038 ETH per 180 draws on play (measured 0.0371 since curated NFTs carry no markup, decision 86): shown as information.  [at most 0; only in quiet, limits_at_max, max_then_idle, large_win, gas_spike, randomness_not_delivered, closeout_pending, restock_in_flight, normal_gas, gas_2_gwei, gas_5_gwei, whatif_large_win_top_up, whatif_large_win_drop_top, burst]
+      worst 0 in quiet   OK
+  O12: In the named quiet launch-board regimes the creator ends ahead after180draws, counting claimed/currentassets againstdeposits/contributions at0.1,0.5,2and5gwei. Adverse large-prize outcomes andzero-demandcosts areinformation. The current large_win regime forces one real0.5ETHwin without assuming it can immediatelybe replaced forasecondwin; historicaltwo-wincomparisonis superseded.  [at most 0; only in quiet, normal_gas, gas_2_gwei, gas_5_gwei]
+      worst 0 in quiet   OK
+  O13: (D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the tested burst size; FWA checks the operator once per batch and actual outstanding counts can exceed five; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.  [at most 0; only in no_processor, no_processor_5_gwei, burst]
+      worst 0 in no_processor   OK
+  O14: Delayed policy replacement with outstanding draws changes only the selected economic policy, preserves all existing listing prices, funds the exposed operating shortfall before activation, and reconciles through closeout without moving assets to another pool.  [at most 0; only in policy_switch]
+      worst 0 in policy_switch   OK
+  O15: At basefee0.5gwei, mintfee0.001ETH and V1 enabled, twenty small Shapes actually open and finish paid setup with exactly0.2356ETH initial pool funding, then ordinary operation runs without creator ETH top-ups. Purchaser backing/refunds remain separately protected. This is the reached board/context, not a universal deposit or income guarantee.  [235600000000000000 to 235600000000000000; only in minimum_capital]
+      worst 235600000000000000 in minimum_capital   OK
+  O16: The minimum-capital operating regimes add zero creator ETH after opening; depleted inventory and refusal/recovery statistics remain visible rather than hidden by automatic deposits. Curated NFT relisting, where performed, is separately counted.  [at most 0; only in minimum_capital, minimum_large_win]
+      worst 0 in minimum_capital   OK
+
+DESTINATIONS (% of inflow; largest 7 rows; only the like-for-like regimes: quiet, limits_at_max, max_then_idle)
+  name                                                     quiet limits_at_max max_then_idle
+  claimed by the creator                                   45.1%         45.2%         45.2%
+  prize backing delivered to winners (Shapes and P         28.1%         28.6%         28.6%
+  held in Shape and Pack backing listed on FWA (ch         18.1%         17.6%         17.6%
+  Shapes mint fees                                          2.8%          2.6%          2.6%
+  randomness fees paid to FWA's service                     2.5%          2.5%          2.5%
+  held in held by FWA: pending draws, player refun          2.1%          2.1%          2.1%
+  paid to keepers                                           1.2%          0.9%          0.9%
+
+GAPS AND FAILURES
+  INCOMPLETE: approval: hash absent or does not match the approved settings

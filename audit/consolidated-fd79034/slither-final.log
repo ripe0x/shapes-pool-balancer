@@ -1,0 +1,40 @@
+--ignore-compile used, if something goes wrong, consider removing the ignore compile flag
+Traceback (most recent call last):
+  File "/opt/homebrew/bin/slither", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/slither/__main__.py", line 760, in main
+    main_impl(all_detector_classes=detectors, all_printer_classes=printers)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/slither/__main__.py", line 865, in main_impl
+    ) = process_all(filename, args, detector_classes, printer_classes)
+        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/slither/__main__.py", line 95, in process_all
+    compilations = compile_all(target, **vars(args))
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/crytic_compile.py", line 722, in compile_all
+    compilations.append(CryticCompile(target, **kwargs))
+                        ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/crytic_compile.py", line 211, in __init__
+    self._compile(**kwargs)
+    ~~~~~~~~~~~~~^^^^^^^^^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/crytic_compile.py", line 633, in _compile
+    self._platform.compile(self, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/platform/foundry.py", line 102, in compile
+    hardhat_like_parsing(
+    ~~~~~~~~~~~~~~~~~~~~^
+        crytic_compile, str(self._target), build_directory, str(self._project_root)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/platform/hardhat.py", line 98, in hardhat_like_parsing
+    path = convert_filename(
+        path,
+    ...<2 lines>...
+        working_dir=working_dir,
+    )
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/utils/naming.py", line 169, in convert_filename
+    filename = _verify_filename_existence(filename, cwd)
+  File "/opt/homebrew/Cellar/slither-analyzer/0.11.5_5/libexec/lib/python3.14/site-packages/crytic_compile/utils/naming.py", line 119, in _verify_filename_existence
+    raise InvalidCompilation(f"Unknown file: {filename}")
+crytic_compile.platform.exceptions.InvalidCompilation: Unknown file: foundry-pp/DeployHelper43.sol

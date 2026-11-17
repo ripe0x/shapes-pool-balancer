@@ -1,0 +1,22 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+No files changed, compilation skipped
+
+Ran 2 tests for test/IndependentNeutralB.t.sol:IndependentNeutralB
+[PASS] testFuzzNeutral(uint128) (runs: 256, μ: 201, ~: 201)
+[PASS] testNeutralFork() (gas: 3211)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 275.69ms (276.20ms CPU time)
+
+Ran 1 test suite in 310.55ms (275.69ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

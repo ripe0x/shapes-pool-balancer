@@ -1,0 +1,47 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.61s
+Compiler run successful!
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 4 tests for test/IndependentLaunchB.t.sol:IndependentLaunchB
+[PASS] testB_callerFloorAndPolicyAuthorityTransfer() (gas: 7911010)
+[PASS] testB_economicAllSixteenDenominationsMinimumIdleExit() (gas: 17777614)
+Logs:
+  all16 backing: 196.660000000000000000
+  all16 mintfees: 0.027000000000000000
+  all16 initial minimum: 196.799620000000000000
+  all16 setup paid: 0.065896640000000000
+  all16 liquid after setup: 0.046723360000000000
+
+[PASS] testB_lowGasManufacturedWorkCoalitionAndCreatorSubsidy() (gas: 17992732)
+Logs:
+  lowgas creator subsidy: 0.000250000001534636
+  lowgas five randomness fees: 0.000000000023400000
+  lowgas coalition total external cost: 0.000000000024582886
+  lowgas buyer keeper net: 0.000249999976951750
+  one draw principal: 0.014006733546227430
+
+[PASS] testB_policyFailureRefundCloseDisableRecoveryRoundtrip() (gas: 18395606)
+Logs:
+  initial20: 0.235600000000000000
+  principal refunded: 0.072498283786359740
+  closed hold before disabling: 0.007000000000000000
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 825.64ms (555.15ms CPU time)
+
+Ran 1 test suite in 851.27ms (825.64ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

@@ -1,0 +1,36 @@
+Missing dependencies found. Installing now...
+Submodule 'lib/forge-std' (https://github.com/foundry-rs/forge-std) registered for path 'lib/forge-std'
+Submodule 'lib/shape-packs' (https://github.com/ripe0x/shape-packs) registered for path 'lib/shape-packs'
+Submodule 'lib/solady' (https://github.com/Vectorized/solady) registered for path 'lib/solady'
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/b/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 627.98ms
+Compiler run successful!
+
+Ran 2 tests for test/IndependentNeutralB.t.sol:IndependentNeutralB
+[PASS] testFuzzNeutral(uint128) (runs: 256, μ: 201, ~: 201)
+[FAIL: vm.createSelectFork: could not instantiate forked environment with provider mainnet.gateway.tenderly.co; failed to retrieve chain ID from fork endpoint; MPP HTTP request to https://mainnet.gateway.tenderly.co/ failed: HTTP request failed: error sending request: error sending request: client error (Connect): dns error: failed to lookup address information: nodename nor servname provided, or not known] testNeutralFork() (gas: 3081)
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 2.42ms (3.01ms CPU time)
+
+Ran 1 test suite in 3.24ms (2.42ms CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/IndependentNeutralB.t.sol:IndependentNeutralB
+[FAIL: vm.createSelectFork: could not instantiate forked environment with provider mainnet.gateway.tenderly.co; failed to retrieve chain ID from fork endpoint; MPP HTTP request to https://mainnet.gateway.tenderly.co/ failed: HTTP request failed: error sending request: error sending request: client error (Connect): dns error: failed to lookup address information: nodename nor servname provided, or not known] testNeutralFork() (gas: 3081)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

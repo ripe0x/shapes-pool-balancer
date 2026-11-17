@@ -1,0 +1,215 @@
+{
+  "target": "fd7903476a63e1c8e912b3b6f4dc1441aeccab11",
+  "capture_utc": "2026-11-17T21:59:10.833454+00:00",
+  "records": [
+    {
+      "path": "REPORT.md",
+      "sha256": "ad103b3b5a55c2e6783a96354260df00021e78982f08e8e22eebc30a12a30773"
+    },
+    {
+      "path": "a/AuditACandidate.t.sol",
+      "sha256": "b84ef06400bcc56f8cf665645f20b3d29fbeea341d2d23f5345562626d960a16"
+    },
+    {
+      "path": "a/AuditANeutralSentinel.t.sol",
+      "sha256": "c453ec7a02193928bb744d978e4d081cc31be0b6630c292953cec6d802fdc032"
+    },
+    {
+      "path": "a/attacks1.log",
+      "sha256": "48b7914da5191a461e812fb45ac72c6009b5cad9d60ec7af14539501595c536a"
+    },
+    {
+      "path": "a/attacks2.log",
+      "sha256": "ad8c4fbfb624ad03c36a6a2f6cacce5e8f945eeefddcb6e08bd282ea3b9a06c8"
+    },
+    {
+      "path": "a/discovery-map.md",
+      "sha256": "14c3e25cbcf5bb2afd8b68ab41bc3236d21722e69c7d6657370e1ac1de8ae8aa"
+    },
+    {
+      "path": "a/preflight-escalated.log",
+      "sha256": "9221b80c7a1ca570275cf34605c25bc6787098e9efe22d653f1add45460a7278"
+    },
+    {
+      "path": "a/preflight.log",
+      "sha256": "6e86bf6cbc32eed55567f4c70df9368e47009a902e53453fd0a9b78ce8b95964"
+    },
+    {
+      "path": "b/IndependentLaunchB.t.sol",
+      "sha256": "407fa27cd20baf40c970c81c1fe035be269dca3c56d917a3bbfa59353751f71f"
+    },
+    {
+      "path": "b/IndependentNeutralB.t.sol",
+      "sha256": "c8de6790baa0d1c8b7e1db1760eb106288b8cb2d09d6c9132177bf0a0f309141"
+    },
+    {
+      "path": "b/REPORT.md",
+      "sha256": "798bcb90458b06d68b9ba85af670f0b3bc0283b9285ceb5cca6e9c322afe3d61"
+    },
+    {
+      "path": "b/asset-gate.log",
+      "sha256": "805fa222a3df116a9dd9c4a910adc0ac60b546772fb7accb26182c906be5da57"
+    },
+    {
+      "path": "b/derived-map.md",
+      "sha256": "f7e87efde8089f05a15dfcd6ad004d7ae63ca6a0b0df385b203b744edf85e5a6"
+    },
+    {
+      "path": "b/discovery-seal.json",
+      "sha256": "26a3f2807b8fbaca9056e997b50fbe5326c8d1e7bd860ec62dc45192a4605ee5"
+    },
+    {
+      "path": "b/independent-initial.log",
+      "sha256": "62d615f4f9cc490452d4e8f6096c0d0a414e542cc5fa8778fd6f029c90a6dbf1"
+    },
+    {
+      "path": "b/independent-v2.log",
+      "sha256": "f511f8dd400d62a1aabb5aa25d660169b4726bbab241528b5e5a2dac8d96c190"
+    },
+    {
+      "path": "b/preflight-outside.log",
+      "sha256": "ba59fd43af0216b881616b8c236663814c9121d539b8ec21f729a0cd90b64a35"
+    },
+    {
+      "path": "b/preflight.log",
+      "sha256": "ea227b617f2982f2f866a81c9211f465060af587c6b913a46feac0ff6595779f"
+    },
+    {
+      "path": "b/removed-paths.json",
+      "sha256": "c30b01ca9b52c40985e873d4a60f0538afc797151cce572fddcd761342277e30"
+    },
+    {
+      "path": "b/scorecards/burst.json",
+      "sha256": "2d15807943086c85ae6bc3b9f19a702aeff5e03d214768c7c74966cb633c6bbc"
+    },
+    {
+      "path": "b/scorecards/closeout_pending.json",
+      "sha256": "e10c12251871404bf49b895bfd8b2cfa970fa081255408eff2b867b32f5b680f"
+    },
+    {
+      "path": "b/scorecards/extreme_bottom_heavy.json",
+      "sha256": "3fb95b1906eab38f243913ff1cf365bf47a49b8eb02e964e0998941d7a748663"
+    },
+    {
+      "path": "b/scorecards/extreme_top_heavy.json",
+      "sha256": "0e216aa5d32427b90706dc60a2458563f02dc336f8e7c726aea83da0a6443429"
+    },
+    {
+      "path": "b/scorecards/gas_2_gwei.json",
+      "sha256": "33f2025515d8d32c34d27587782cbdccfb0c76d43593c5f09ccce121321bd2dd"
+    },
+    {
+      "path": "b/scorecards/gas_5_gwei.json",
+      "sha256": "8d2a93c4f45e1fd1349b544e81f4cf63bcbeae8fcb6f59975fba3e7c8aeaa905"
+    },
+    {
+      "path": "b/scorecards/gas_spike.json",
+      "sha256": "50a27893fda1defb8c6db43ec5344c0f407acbc8485129304c8856678075fb07"
+    },
+    {
+      "path": "b/scorecards/large_win.json",
+      "sha256": "5883fa9ddd32424ad4f12f6b3934e02a5588ec687176e96f6f311d9535cd191a"
+    },
+    {
+      "path": "b/scorecards/largest_board.json",
+      "sha256": "987c9e9ee19c7687c2dbf2e1c7ae77d737e57374cbcbc6a5b0070ca3483fff99"
+    },
+    {
+      "path": "b/scorecards/limits_at_max.json",
+      "sha256": "c2eb816600f7d9fc1057d631c2d01afb2c25f72369e75d3d12b9fa72d317fdf3"
+    },
+    {
+      "path": "b/scorecards/max_then_idle.json",
+      "sha256": "d08cc3c1005626e4739a79f02deea37207b650838257381351e24729b07ed21e"
+    },
+    {
+      "path": "b/scorecards/minimum_capital.json",
+      "sha256": "c5efde2425f2c521a80cc1f0f2dc0f277c625c71b4c4e47b568747b2e8d13b85"
+    },
+    {
+      "path": "b/scorecards/minimum_large_win.json",
+      "sha256": "b1c9233b9a8bd89991e70429db88600f8816fe0a27ef024cc74e7b335ab5dab2"
+    },
+    {
+      "path": "b/scorecards/no_processor.json",
+      "sha256": "62eeb159269cb0e74ba7ce568908d1fb28d0b35d8d3f4b692493aec5862b5116"
+    },
+    {
+      "path": "b/scorecards/no_processor_5_gwei.json",
+      "sha256": "ebd1a58cb03e61b3fba026c259545cf7394ed0b9bd279736e7a303287bb1b2c9"
+    },
+    {
+      "path": "b/scorecards/normal_gas.json",
+      "sha256": "b3174898a3db8bfe4c22d5e8bf7f916dd3d2be39aeda728cd8596585c11185b4"
+    },
+    {
+      "path": "b/scorecards/policy_switch.json",
+      "sha256": "5bfbdeee041114e78f3a371414ab8b8d32cf23d025b997321dee87bcb96f3f07"
+    },
+    {
+      "path": "b/scorecards/quiet.json",
+      "sha256": "ad11643ca05702ee2ecf932e7bd1008731e0a5b87ce0caa35c30697a8c093989"
+    },
+    {
+      "path": "b/scorecards/randomness_not_delivered.json",
+      "sha256": "f3bc249754d89ca3e614369efb39032acdc96ab533c201aea5a8607ca27a35d6"
+    },
+    {
+      "path": "b/scorecards/restock_in_flight.json",
+      "sha256": "c9469c2ca1870af100c11e7244441bd42ef437b04f16c72ac21e39db3a9b270f"
+    },
+    {
+      "path": "b/scorecards/smallest_board.json",
+      "sha256": "aa11b96952c83d26ca1271e262d7ce5c741f338decafab9b803f6f2a2ebc6922"
+    },
+    {
+      "path": "b/scorecards/top_heavy.json",
+      "sha256": "5dc70018c32737eb0a8b61e83f9b27da39b9423ad24f57ad6c114dd9ff3b1825"
+    },
+    {
+      "path": "b/scorecards/whatif_large_win_drop_top.json",
+      "sha256": "c4ebe5bec8082bde7ffb5fb12ff1d0154287651d343f154a5a8899d799e0265d"
+    },
+    {
+      "path": "b/scorecards/whatif_large_win_top_up.json",
+      "sha256": "98ee457b9b500c741fb38a0ce8a6f6d92bdb9f4ebe44fdd12994a0661b8d5828"
+    },
+    {
+      "path": "b/scorecards/zero_demand.json",
+      "sha256": "d1d64a701a845a44cfa4e907f28e59beab0d17a8c3dad5092b4fa945cd14fe6e"
+    },
+    {
+      "path": "challenge.md",
+      "sha256": "969d9e87335ecf3c98403116630c30c4365550ba244066d2e9a54077fbd00f84"
+    },
+    {
+      "path": "current-chain.json",
+      "sha256": "7ba0132b85df3aba750443c11ff8b5a22fbe844bfef7ba9ade651a34a230cec2"
+    },
+    {
+      "path": "run-record.md",
+      "sha256": "5fa6a99e60f89584ab62a12b6a817b0aaa0ba3a39792f03f7b2a81e673a07cfc"
+    },
+    {
+      "path": "slither-final.log",
+      "sha256": "6565287ab96bdc1a72e97250466d5da33feb79a548590c8ee25126eb42d2c461"
+    },
+    {
+      "path": "slither-materialized.log",
+      "sha256": "b422ffa5d9b616a5b69398255923fc0f81c9f2ad5681b89cb7604770c41bff0f"
+    },
+    {
+      "path": "slither.log",
+      "sha256": "2d2cb49c6f2b09e824632f3b9dace5dd473224ad9c5e5382ed5843035b6b911d"
+    },
+    {
+      "path": "static-build.log",
+      "sha256": "17c442cb36dc2f78f12b93dc12523975a081f1ed7b7f9f1ed9e33bb2fe83b8b0"
+    },
+    {
+      "path": "static-triage.json",
+      "sha256": "c865feb5ceca3064ec323c5e489899718b02de3f35ce02a0701b32336ccd785c"
+    }
+  ],
+  "limits": "Final identity digests only; not immutable protection, sign-off or proof of audit completion. C checked initial49records before reporting corrections, not this regenerated manifest. Raw scorecards retain E1 encumbered-capital labels."
+}

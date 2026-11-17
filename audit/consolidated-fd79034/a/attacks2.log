@@ -1,0 +1,49 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/pool-audit-fd79034-v30pczr5/a/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.87s
+Compiler run successful!
+
+Ran 6 tests for test/AuditACandidate.t.sol:AuditACandidate
+[PASS] testAll16BackingRoundTrips() (gas: 18393206)
+Logs:
+  all16 backing 196660000000000000000
+  all16 mint fees 27000000000000000
+  all16 keeper pay 7728900400000000
+
+[PASS] testClosedPendingExpiryPreservesBuyerRefund() (gas: 17031658)
+Logs:
+  expired buyer draw refund 15638887799384385
+  expired buyer VRF loss 2340000000000000
+  closed real hold 1400000000000000
+
+[PASS] testFrozenCuratedRefundRecoveryRight() (gas: 15320575)
+Logs:
+  failed delivery refund 14082926947325112
+  failed delivery VRF cost 2340000000000000
+
+[PASS] testLowGasManufacturedExpiryCoalition() (gas: 14193327)
+Logs:
+  zero-gas manufactured keeper subsidy 50000000000000
+  zero-gas coalition cost 0
+
+[PASS] testMinimumCapitalExactAndPaidAtomicFloor() (gas: 15741220)
+Logs:
+  minimum setup keeper pay 6080531450000000
+
+[PASS] testPolicyFailureEmergencyAndUnpaidRecovery() (gas: 15237298)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 312.03ms (117.66ms CPU time)
+
+Ran 1 test suite in 335.50ms (312.03ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)

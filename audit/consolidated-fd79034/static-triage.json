@@ -1,0 +1,226 @@
+{
+  "target": "fd7903476a63e1c8e912b3b6f4dc1441aeccab11",
+  "tool": "slither0.11.5",
+  "analysis_success": true,
+  "process_exit": 255,
+  "result_count": 82,
+  "high_medium": [
+    {
+      "id": "7863302fc4733b40b28bcd3a580217c18aed3d522006348d0ca1bd9243f3aa6c",
+      "check": "arbitrary-send-eth",
+      "impact": "High",
+      "description": "PoolInventory.fill(PoolInventory.State,PoolInventory.Fill) (src/PoolInventory.sol#131-198) sends eth to arbitrary user\n\tDangerous calls:\n\t- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolInventory.sol#164)\n\t- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolInventory.sol#174)\n",
+      "disposition": "Reasoned disposition: Fill addresses originate in immutable PoolBalancer.SHAPES/PACKS; externally calling the state-changing library is guarded by Solidity library dispatch. Amount is actual backing plus real mint fee. Not caller-selected arbitrary ETH delivery from the pool.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "1abf07163f13d0459fe20777ea8edb358fb9bfa40e62cc61ce8e24a535596146",
+      "check": "reentrancy-eth",
+      "impact": "High",
+      "description": "Reentrancy in PoolBalancer._performUpkeep(bytes32,uint256,bool) (src/PoolBalancer.sol#602-670):\n\tExternal calls:\n\t- p.processAcquisitions(MAX_PROCESS) (src/PoolBalancer.sol#624-630)\n\t- collected = _collect() != 0 (src/PoolBalancer.sol#635)\n\t\t- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#788)\n\t- (ops,listed) = _fillDeficit(p,fee,paid,draws) (src/PoolBalancer.sol#658)\n\t\t- (used,listed,added) = PoolInventory.fill(_inventory,PoolInventory.Fill(target,markupBps,profit,_keeper.maxReward,draws,fee,address(SHAPES),address(PACKS),address(p),_keeper.policy,paid)) (src/PoolBalancer.sol#704-707)\n\t\t- (used,listed,added) = PoolInventory.fill(_inventory,PoolInventory.Fill(target,markupBps,0,_keeper.maxReward,draws,fee,address(SHAPES),address(PACKS),address(p),_keeper.policy,paid)) (src/PoolBalancer.sol#704-707)\n\t\t- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolInventory.sol#164)\n\t\t- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolInventory.sol#174)\n\t\t- lids = p.listNFTs(batch) (src/PoolInventory.sol#187)\n\tExternal calls sending eth:\n\t- (ops,listed) = _fillDeficit(p,fee,paid,draws) (src/PoolBalancer.sol#658)\n\t\t- first = SHAPES.mintBatch{value: need * each}(_amount(d),need) (src/PoolInventory.sol#164)\n\t\t- id = PACKS.createPackTo{value: each}(new uint256[](0),makeup,address(this)) (src/PoolInventory.sol#174)\n\tState variables written after the call(s):\n\t- creatorWork = false (src/PoolBalancer.sol#659)\n\tPoolBalancer.creatorWork (src/PoolBalancer.sol#150) can be used in cross function reentrancies:\n\t- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#562-573)\n\t- PoolBalancer.creatorWork (src/PoolBalancer.sol#150)\n\t- profit = uint128(address(this).balance) (src/PoolBalancer.sol#669)\n\tPoolBalancer.profit (src/PoolBalancer.sol#154) can be used in cross function reentrancies:\n\t- PoolBalancer.policyFunding(address) (src/PoolBalancer.sol#351-355)\n\t- PoolBalancer.profit (src/PoolBalancer.sol#154)\n\t- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#727-733)\n",
+      "disposition": "Reasoned disposition: all three paid overloads and public unpaid entry are nonReentrant; all creator accounting/custody mutators share the same guard. Policy calls use staticcall. Read-only views and depositETH remain reachable; FWA acquisition callbacks require separate real-path examination, not a blanket family-wide exclusion.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "884d259583b57f304d7785a4d1ecf421c6e65db0ef0b93f64d7f69b0f13b2c80",
+      "check": "divide-before-multiply",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve) (src/KeeperPolicyCalls.sol#115-160) performs a multiplication on the result of a division:\n\t- batches = (missing - 1) / perBatch (src/KeeperPolicyCalls.sol#137)\n\t- need += batches * paymentBound(maxReward,r.baseFee,0,0,perBatch * w,perBatch) (src/KeeperPolicyCalls.sol#139)\n",
+      "disposition": "Reasoned disposition: divisions intentionally count complete indivisible Shape-unit batches/slots. Leftover items remain in the loop; there is no monetary fractional quotient discarded. Independent boundary testing still needed for batch/reserve equality.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "b3ce2ad07c527f0b8b5a50e3ba970416dc654630e07924174dbf257714806e7c",
+      "check": "divide-before-multiply",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve) (src/KeeperPolicyCalls.sol#115-160) performs a multiplication on the result of a division:\n\t- take = (5 - units) / w (src/KeeperPolicyCalls.sol#143)\n\t- units += take * w (src/KeeperPolicyCalls.sol#146)\n",
+      "disposition": "Reasoned disposition: divisions intentionally count complete indivisible Shape-unit batches/slots. Leftover items remain in the loop; there is no monetary fractional quotient discarded. Independent boundary testing still needed for batch/reserve equality.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "f4680f94534deca6690a934f081b98778bb5aeacb89b1a1ccb5158e3e0113e4c",
+      "check": "divide-before-multiply",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve) (src/KeeperPolicyCalls.sol#115-160) performs a multiplication on the result of a division:\n\t- perBatch = 5 / w (src/KeeperPolicyCalls.sol#136)\n\t- batches = (missing - 1) / perBatch (src/KeeperPolicyCalls.sol#137)\n\t- missing -= batches * perBatch (src/KeeperPolicyCalls.sol#140)\n",
+      "disposition": "Reasoned disposition: divisions intentionally count complete indivisible Shape-unit batches/slots. Leftover items remain in the loop; there is no monetary fractional quotient discarded. Independent boundary testing still needed for batch/reserve equality.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "68c969b636adf6849aeed2ff6be6723fc34b376a862c564c6b5bbcec095d6e1a",
+      "check": "incorrect-equality",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool) (src/PoolBalancer.sol#602-670) uses a dangerous strict equality:\n\t- ! reconciled && ops == 0 && ! collected && creatorWork == wasSetup (src/PoolBalancer.sol#663)\n",
+      "disposition": "Reasoned disposition: equality compares a progress flag with its entry snapshot to reject no-progress work; it is not an ETH-balance equality vulnerable to forced donations.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "558ad3ca2a4532f7d89445a76d15586fbe14d87b2de2798e9e948664bdd8ba47",
+      "check": "reentrancy-no-eth",
+      "impact": "Medium",
+      "description": "Reentrancy in PoolBalancer.open() (src/PoolBalancer.sol#359-367):\n\tExternal calls:\n\t- _collect() (src/PoolBalancer.sol#361)\n\t\t- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#788)\n\tState variables written after the call(s):\n\t- enabled = true (src/PoolBalancer.sol#363)\n\tPoolBalancer.enabled (src/PoolBalancer.sol#148) can be used in cross function reentrancies:\n\t- PoolBalancer._reserveInput() (src/PoolBalancer.sol#742-747)\n\t- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#562-573)\n\t- PoolBalancer.enabled (src/PoolBalancer.sol#148)\n",
+      "disposition": "Reasoned disposition: named entry point has nonReentrant; guarded cross-entry writes reject callbacks. Views can observe intermediate state, so this triage alone does not close read-only reentrancy through external FWA routes.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "896ad6cd7dae0920ce9e3b55ab0d3635bd377c9b94c15546ec8744d8d6676f79",
+      "check": "reentrancy-no-eth",
+      "impact": "Medium",
+      "description": "Reentrancy in PoolBalancer._performUpkeep(bytes32,uint256,bool) (src/PoolBalancer.sol#602-670):\n\tExternal calls:\n\t- p.processAcquisitions(MAX_PROCESS) (src/PoolBalancer.sol#624-630)\n\t- collected = _collect() != 0 (src/PoolBalancer.sol#635)\n\t\t- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#788)\n\tState variables written after the call(s):\n\t- _onDrawn(lid,aStatus == A_FULFILLED) (src/PoolBalancer.sol#643)\n\t\t- -- _inventory.activeShapes[d] (src/PoolBalancer.sol#680)\n\t\t- delete _inventory.items[lid] (src/PoolBalancer.sol#684)\n\t\t- it.state = PENDING (src/PoolBalancer.sol#686)\n\tPoolBalancer._inventory (src/PoolBalancer.sol#162) can be used in cross function reentrancies:\n\t- PoolBalancer._listedShapes() (src/PoolBalancer.sol#804)\n\t- PoolBalancer._reserveInput() (src/PoolBalancer.sol#742-747)\n\t- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#562-573)\n\t- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#755-757)\n\t- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#759-761)\n\t- PoolBalancer.items(uint256) (src/PoolBalancer.sol#750-753)\n\t- PoolBalancer.listedRestockFees() (src/PoolBalancer.sol#801)\n\t- PoolBalancer.listedShapePrizes() (src/PoolBalancer.sol#802)\n\t- PoolBalancer.profitShareSum() (src/PoolBalancer.sol#800)\n",
+      "disposition": "Reasoned disposition: named entry point has nonReentrant; guarded cross-entry writes reject callbacks. Views can observe intermediate state, so this triage alone does not close read-only reentrancy through external FWA routes.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "897a53e2a3959f30b71b1f38126bc3e622f076b3f3389e2f11e2b48e0c583427",
+      "check": "reentrancy-no-eth",
+      "impact": "Medium",
+      "description": "Reentrancy in PoolBalancer.unlistShapes(uint256[]) (src/PoolBalancer.sol#465-492):\n\tExternal calls:\n\t- _collect() (src/PoolBalancer.sol#468)\n\t\t- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#788)\n\tState variables written after the call(s):\n\t- -- _inventory.activeShapes[d] (src/PoolBalancer.sol#481)\n\tPoolBalancer._inventory (src/PoolBalancer.sol#162) can be used in cross function reentrancies:\n\t- PoolBalancer._listedShapes() (src/PoolBalancer.sol#804)\n\t- PoolBalancer._reserveInput() (src/PoolBalancer.sol#742-747)\n\t- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#562-573)\n\t- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#755-757)\n\t- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#759-761)\n\t- PoolBalancer.items(uint256) (src/PoolBalancer.sol#750-753)\n\t- PoolBalancer.listedRestockFees() (src/PoolBalancer.sol#801)\n\t- PoolBalancer.listedShapePrizes() (src/PoolBalancer.sol#802)\n\t- PoolBalancer.profitShareSum() (src/PoolBalancer.sol#800)\n\t- delete _inventory.items[lid] (src/PoolBalancer.sol#483)\n\tPoolBalancer._inventory (src/PoolBalancer.sol#162) can be used in cross function reentrancies:\n\t- PoolBalancer._listedShapes() (src/PoolBalancer.sol#804)\n\t- PoolBalancer._reserveInput() (src/PoolBalancer.sol#742-747)\n\t- PoolBalancer.admissionStatus() (src/PoolBalancer.sol#562-573)\n\t- PoolBalancer.getActiveIds() (src/PoolBalancer.sol#755-757)\n\t- PoolBalancer.getActiveShapes() (src/PoolBalancer.sol#759-761)\n\t- PoolBalancer.items(uint256) (src/PoolBalancer.sol#750-753)\n\t- PoolBalancer.listedRestockFees() (src/PoolBalancer.sol#801)\n\t- PoolBalancer.listedShapePrizes() (src/PoolBalancer.sol#802)\n\t- PoolBalancer.profitShareSum() (src/PoolBalancer.sol#800)\n",
+      "disposition": "Reasoned disposition: named entry point has nonReentrant; guarded cross-entry writes reject callbacks. Views can observe intermediate state, so this triage alone does not close read-only reentrancy through external FWA routes.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "f41b9c830e8aa00e89ce5de7b9e141c46a642295df5683da45ef0f11ccb8ee11",
+      "check": "reentrancy-no-eth",
+      "impact": "Medium",
+      "description": "Reentrancy in PoolBalancer.claimSurplus(uint256,address) (src/PoolBalancer.sol#452-460):\n\tExternal calls:\n\t- _collect() (src/PoolBalancer.sol#454)\n\t\t- amount = p.withdrawOwnerProceeds() (src/PoolBalancer.sol#788)\n\tState variables written after the call(s):\n\t- profit = uint128(mine - amount) (src/PoolBalancer.sol#457)\n\tPoolBalancer.profit (src/PoolBalancer.sol#154) can be used in cross function reentrancies:\n\t- PoolBalancer.policyFunding(address) (src/PoolBalancer.sol#351-355)\n\t- PoolBalancer.profit (src/PoolBalancer.sol#154)\n\t- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#727-733)\n\t- profit = 0 (src/PoolBalancer.sol#457)\n\tPoolBalancer.profit (src/PoolBalancer.sol#154) can be used in cross function reentrancies:\n\t- PoolBalancer.policyFunding(address) (src/PoolBalancer.sol#351-355)\n\t- PoolBalancer.profit (src/PoolBalancer.sol#154)\n\t- PoolBalancer.withdrawableSurplus() (src/PoolBalancer.sol#727-733)\n",
+      "disposition": "Reasoned disposition: named entry point has nonReentrant; guarded cross-entry writes reject callbacks. Views can observe intermediate state, so this triage alone does not close read-only reentrancy through external FWA routes.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "171b527c3b7016e92f485c9bde110fa61809cab000f71e4aadf4642462095b95",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool).listed (src/PoolBalancer.sol#653) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "1cd5f43085774237fc823ba6b3eb40cc7073fbf1b620df4efb6eec2789a5ea36",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer.configure(uint16,uint256).prizes (src/PoolBalancer.sol#313) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "5a0b2e33af4b831b88b7f44edf1324a6fa98edd2c8b616b1b5144227a119bc98",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer.unlistShapes(uint256[]).eth (src/PoolBalancer.sol#486) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "9865e5f5412251ba7cb2a42479869a87595e23465d2ae21aec65aac3ed4eb04c",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve).sizes (src/KeeperPolicyCalls.sol#123) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "a79fe5305c645b96a68b86af0dc0aa7b5faa40220c3115c46831e6a6ee8f1f56",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool).processed (src/PoolBalancer.sol#620) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "ae1d39a623f3b65cb339d8470962dcb092cd7bdd340c501267dde93b3094aa0d",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool).ops (src/PoolBalancer.sol#652) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "c205846d5dfa45a821891c8d7aa6b670f67884ff899153bed58a05f4ac5bd9dc",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve).prizes (src/KeeperPolicyCalls.sol#122) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "e5c2b16bb2d357526e4a404240870db66e01fe35daa8f600075d923ff83797ff",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "PoolBalancer.configure(uint16,uint256).w (src/PoolBalancer.sol#314) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "fd705fad126186b1c84a28e0031638f1ccead6544a31db68ad8e11304ef5525d",
+      "check": "uninitialized-local",
+      "impact": "Medium",
+      "description": "KeeperPolicyCalls.reserve(uint256,KeeperPolicyCalls.Reserve).units (src/KeeperPolicyCalls.sol#121) is a local variable never initialized\n",
+      "disposition": "Reasoned disposition: Solidity initializes local uint values to zero. The named accumulators/progress counters intentionally begin at zero.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "02f4112c56207a1addf44d72ef452292d48e5644985d119c99ed4afddf137a7a",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "PoolBalancer.unlistShapes(uint256[]) (src/PoolBalancer.sol#465-492) ignores return value by (None,None,None,tokenIds[i],None,None,None,None) = p.listings(lid) (src/PoolBalancer.sol#478)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "08055a9470cdedeea455fbeb22525f805429f5414d320e44c39435ace350f0df",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "BalancerFactory.activateDefaultKeeperPolicy() (src/BalancerFactory.sol#78-86) ignores return value by KeeperPolicyCalls.validate(next) (src/BalancerFactory.sol#81)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "140adfa9d0479cd9657111981e653451d3ccd76ccbc8453b147d012f18d75895",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "BalancerFactory.proposeDefaultKeeperPolicy(address) (src/BalancerFactory.sol#63-69) ignores return value by KeeperPolicyCalls.validate(policy) (src/BalancerFactory.sol#65)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "1c9c1abc97d2f208effe601f30a7ba30b448fca6dcfc9dee7e666c040852e421",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool) (src/PoolBalancer.sol#602-670) ignores return value by p.processAcquisitions(MAX_PROCESS) (src/PoolBalancer.sol#624-630)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "425e02bf856e20f616af1577ed3161b77c326da43e938d6fa74e73cd89b8a9c0",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "BalancerFactory.constructor(address,address,address,address) (src/BalancerFactory.sol#48-58) ignores return value by KeeperPolicyCalls.validate(policy_) (src/BalancerFactory.sol#50)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "c89f649b3a542c7da4a532a41022bf770677beef5729f0c8a0385deb8a03c197",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "PoolBalancer._performUpkeep(bytes32,uint256,bool) (src/PoolBalancer.sol#602-670) ignores return value by (None,None,None,lid,aStatus,None) = p.acquisitions(p.requestIdAtSequence(++ s)) (src/PoolBalancer.sol#642)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "da9f094df8c4a644c9b7f729e4fccf6915ae744c13b2627eec767ee82f276da1",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "PoolInventory.recoverRefunded(PoolInventory.State,IFWAPool,address,address,uint256,address) (src/PoolInventory.sol#108-126) ignores return value by (collection,None,None,tokenId,None,None,None,status) = pool.listings(lid) (src/PoolInventory.sol#113)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    },
+    {
+      "id": "fad2fe57010d2d2bbf455d0b2d2da51629662964a9d2a16a50181ee70729431b",
+      "check": "unused-return",
+      "impact": "Medium",
+      "description": "PoolBalancer.setENSName(string) (src/PoolBalancer.sol#506-509) ignores return value by IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name) (src/PoolBalancer.sol#507)\n",
+      "disposition": "Reasoned disposition: named tuple destructuring intentionally selects exact listing/request fields; validation reverts on invalid policy and its numeric maximum is not needed by the factory; processing progress is computed from nextSequenceToProcess rather than trusting a return. ENS setName return is informational; ENS is creator-only and not asset accounting.",
+      "evidence_kind": "code review; not an executed exploit rejection"
+    }
+  ],
+  "limits": "Filtered src detectors; 105 analyzer contracts is not behavioral coverage. Earlier parser failures retained. No detector result alone establishes safety."
+}

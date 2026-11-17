@@ -1,0 +1,9 @@
+{
+  "number": "0x19367cc",
+  "hash": "0x378445a0bec688ebad076855f74fbbe4ef766461d50a130dd70c555a339df5a0",
+  "timestamp": "0x6afcccd3",
+  "baseFeePerGas": "0x7bf7e40",
+  "gasLimit": "0x3938700",
+  "number_decimal": 26437580,
+  "rpc": "https://mainnet.gateway.tenderly.co"
+}

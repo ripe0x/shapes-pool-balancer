@@ -1,0 +1,16 @@
+{
+  "sealed_at": "2026-11-17T21:56:05.938397+00:00",
+  "stage": "uninformed discovery, partial, controller-directed stop",
+  "target": "fd7903476a63e1c8e912b3b6f4dc1441aeccab11",
+  "files": {
+    "REPORT.md": "798bcb90458b06d68b9ba85af670f0b3bc0283b9285ceb5cca6e9c322afe3d61",
+    "derived-map.md": "f7e87efde8089f05a15dfcd6ad004d7ae63ca6a0b0df385b203b744edf85e5a6",
+    "IndependentLaunchB.t.sol": "407fa27cd20baf40c970c81c1fe035be269dca3c56d917a3bbfa59353751f71f",
+    "IndependentNeutralB.t.sol": "c8de6790baa0d1c8b7e1db1760eb106288b8cb2d09d6c9132177bf0a0f309141",
+    "asset-gate.log": "805fa222a3df116a9dd9c4a910adc0ac60b546772fb7accb26182c906be5da57",
+    "independent-v2.log": "f511f8dd400d62a1aabb5aa25d660169b4726bbab241528b5e5a2dac8d96c190",
+    "independent-initial.log": "62d615f4f9cc490452d4e8f6096c0d0a414e542cc5fa8778fd6f029c90a6dbf1",
+    "preflight.log": "ea227b617f2982f2f866a81c9211f465060af587c6b913a46feac0ff6595779f",
+    "preflight-outside.log": "ba59fd43af0216b881616b8c236663814c9121d539b8ec21f729a0cd90b64a35"
+  }
+}

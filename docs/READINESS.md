@@ -19,12 +19,12 @@ The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md
 
 ### Remaining before mainnet
 
-1. Consolidated whole-candidate security and economic audit, including policy replacement, reserve/withdrawal accounting, FWA integration, Packs and off-chain callers. The focused reviews above are not that audit. Human technical review is absent.
+1. Finish the consolidated whole-candidate security and economic audit. The [new audit attempt](../audit/consolidated-fd79034/REPORT.md) is **partial**: both independent agents were interrupted by tool safety controls. Ten focused cases and a static scan produced bounded evidence, not full coverage. One confirmed flow-report labelling defect remains: encumbered backing/escrow with unknown need is labelled above need. Integration correspondence and independent off-chain examination remain gaps. Human technical review is absent.
 2. Owner approval/signature of revised asset-flow outcomes. Temporary inventory depletion replaces immediate full-restoration insurance; prior zero-missing-days claims are explicitly superseded, not passed. No measurement is an owner signature.
 3. Final-candidate current-block production-path rehearsal with the keeper and dashboard, signed local transactions, actual fee fields and live outcome readbacks. Earlier rehearsals remain scoped to their revisions and assumptions.
 4. Real-wallet extension writes and the FWA pool-page answer for an ERC-1271 contract owner; external application compatibility remains unverified.
 5. Confirm launch values and roles: keeper eligibility admin, distinct policy-default admin, Draw Packs presentation admin/name/symbol and final dependencies. No live addresses are inferred from local test deployments.
-6. Review the canary plan, caps that can and cannot be enforced, exit and monitoring; separately authorize any mainnet deployment/canary. No mainnet broadcast or real spending is authorized by this checklist.
+6. Review the [proposed canary plan](CANARY-PLAN.md), caps that can and cannot be enforced, exit and monitoring; separately authorize any mainnet deployment/canary. No mainnet broadcast or real spending is authorized by this checklist.
 
 The design intentionally permits delayed replenishment and exposes actual inventory. A last curated NFT win or insufficient admission weight can pause sales and require creator action; future demand cannot fund a paused pool. Public unpaid recovery retains the existing game-first ability to consume booked creator profit. These are disclosed operating rules, not audit findings by themselves.
 
