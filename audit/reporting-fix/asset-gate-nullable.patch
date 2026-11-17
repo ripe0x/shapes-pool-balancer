@@ -1,0 +1,31 @@
+--- asset_gate.py
++++ asset_gate.py
+@@ -62,13 +62,15 @@
+     m = {}
+     for kind in ("destinations", "buckets", "flows"):
+         for x in j.get(kind, []):
+-            m[f"{kind}.{x['name']}"] = x["bps"]
++            if x.get("bps") is not None and (kind != "buckets" or x.get("above_need") is not None):
++                m[f"{kind}.{x['name']}"] = x["bps"]
+     return m
+ 
+ 
+ def weis(j):
+     return {f"{k}.{x['name']}": int(x["above_need"] if k == "buckets" else x["wei"])
+-            for k in ("destinations", "buckets", "flows") for x in j.get(k, [])}
++            for k in ("destinations", "buckets", "flows") for x in j.get(k, [])
++            if k != "buckets" or x.get("above_need") is not None}
+ 
+ 
+ def bounds(o):
+@@ -146,6 +148,10 @@
+             inc.append(f"regime {r}: inflow_base is not positive")
+         for kind in ("destinations", "buckets", "flows"):
+             for x in j.get(kind, []):
++                if kind == "buckets" and (x.get("above_need") is None or x.get("bps") is None):
++                    if x.get("need") is not None or x.get("above_need") is not None or x.get("bps") is not None:
++                        inc.append(f"regime {r}: buckets.{x['name']} has inconsistent unknown need/excess")
++                    continue
+                 wei = int(x["above_need"] if kind == "buckets" else x["wei"])
+                 if base > 0 and abs(wei * 10000 // base - x["bps"]) > 1:
+                     inc.append(f"regime {r}: {kind}.{x['name']} share does not match its amount")

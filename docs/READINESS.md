@@ -10,6 +10,8 @@ The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md
 
 ### Evidence already obtained
 
+- Reporting correction after the frozen audit: unknown need/excess is null, known backing and purchaser obligations are encumbered, and the existing reader fails closed for outcomes requiring unknown metrics. Production contracts and withdrawal calculations are unchanged.
+
 - Final candidate: 483 Foundry tests passed, zero failures; 120 TypeScript tests passed; typechecking and dashboard build passed.
 - Keeper integration: 28 canonical transactions, 27 successes and one intentional stale-policy revert; nonce/replacement/reorg recovery and receipt accounting exercised.
 - All 25 real-dependency asset-flow regimes executed. Current numeric outcome checks and source-review records pass; the gate remains **INCOMPLETE because revised outcomes are unsigned**.
@@ -19,7 +21,7 @@ The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md
 
 ### Remaining before mainnet
 
-1. Finish the consolidated whole-candidate security and economic audit. The [new audit attempt](../audit/consolidated-fd79034/REPORT.md) is **partial**: both independent agents were interrupted by tool safety controls. Ten focused cases and a static scan produced bounded evidence, not full coverage. One confirmed flow-report labelling defect remains: encumbered backing/escrow with unknown need is labelled above need. Integration correspondence and independent off-chain examination remain gaps. Human technical review is absent.
+1. Finish the consolidated whole-candidate security and economic audit. The [new audit attempt](../audit/consolidated-fd79034/REPORT.md) is **partial**: both independent agents were interrupted by tool safety controls. Ten focused cases and a static scan produced bounded evidence, not full coverage. The confirmed flow-report labelling defect is corrected in the [reporting-fix evidence](../audit/reporting-fix/REPORT.md); encumbered backing/escrow is no longer labelled excess. The old audit report remains historical. Integration correspondence and independent off-chain examination remain gaps. Human technical review is absent.
 2. Owner approval/signature of revised asset-flow outcomes. Temporary inventory depletion replaces immediate full-restoration insurance; prior zero-missing-days claims are explicitly superseded, not passed. No measurement is an owner signature.
 3. Final-candidate current-block production-path rehearsal with the keeper and dashboard, signed local transactions, actual fee fields and live outcome readbacks. Earlier rehearsals remain scoped to their revisions and assumptions.
 4. Real-wallet extension writes and the FWA pool-page answer for an ERC-1271 contract owner; external application compatibility remains unverified.

@@ -115,12 +115,17 @@ abstract contract FlowBreakdown is Test {
                 fbRow("  counters imply", int256(k.implied), r.base);
                 fbGap(string.concat(k.name, ": held - counters"), int256(k.held) - int256(k.implied), r);
             }
-            uint256 above = k.hasNeed ? (k.held > k.need ? k.held - k.need : 0) : k.held;
-            if (k.hasNeed) fbRow("  stated need", int256(k.need), r.base);
-            fbRow(k.hasNeed ? "  ABOVE its need" : "  ABOVE (states no need)", int256(above), r.base);
+            uint256 above = k.held > k.need ? k.held - k.need : 0;
+            if (k.hasNeed) {
+                fbRow("  stated need", int256(k.need), r.base);
+                fbRow("  ABOVE its need", int256(above), r.base);
+            } else {
+                fbLog("  stated need / above need: not determined");
+            }
             r.bk = fbAdd(r.bk, string.concat(
                 '{"name":"', k.name, '","held":"', vm.toString(k.held), '","need":', k.hasNeed ? string.concat('"', vm.toString(k.need), '"') : "null",
-                ',"above_need":"', vm.toString(above), '","bps":', vm.toString(fbBps(int256(above), r.base)), "}"
+                ',"above_need":', k.hasNeed ? string.concat('"', vm.toString(above), '"') : "null",
+                ',"bps":', k.hasNeed ? vm.toString(fbBps(int256(above), r.base)) : "null", "}"
             ));
         }
     }

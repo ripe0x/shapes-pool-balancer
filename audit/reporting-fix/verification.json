@@ -1,0 +1,50 @@
+{
+  "base": "f63f8d29b4b604fe5f8d81a3f798aea8f8236f9b",
+  "source_hash": "24ebb94a1f05a5c9bc39814426eced47a1cd5e9ffd1b4acbce806062cbdfab33",
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "fork_block": 26382349,
+  "records": [
+    {
+      "path": "reporting-fix-focused.log",
+      "sha256": "cbe398d5d214dc48dbace91d6f78c2004667c332da39b837854e7a629c78c677",
+      "exit_status": 0,
+      "result": "initialFocused:1pass"
+    },
+    {
+      "path": "reporting-fix-reader-tests.log",
+      "sha256": "0f57cfcec40abd89bd7a02c4d37a9f3eda206d120e6af8806da860ed60f4248a",
+      "exit_status": 0,
+      "result": "initialReader:7pass"
+    },
+    {
+      "path": "reporting-fix-asset-gate.log",
+      "sha256": "95e63359bc4e0aba9b9b3a53175e0629f171f24d5e90df3cffa53e248f291030",
+      "exit_status": 2,
+      "result": "initial25regimesnumericpass;unsigned/newreviewabsent"
+    },
+    {
+      "path": "reporting-fix-focused-final.log",
+      "sha256": "b5a574995fccc9d3bff3d32fbf394de63d9de73340473ff9d3bf550874ae089b",
+      "exit_status": 0,
+      "result": "finalFocused:1pass;explicitnonemptySOURCE_HASHnormalization"
+    },
+    {
+      "path": "reporting-fix-reader-tests-final.log",
+      "sha256": "8ac4b5edcb97eebb68bbb01303c1213b608b9b4bcb4cad111dfbbf6f09852de2",
+      "exit_status": 0,
+      "result": "finalReader:7pass"
+    },
+    {
+      "path": "reporting-fix-asset-gate-final.log",
+      "sha256": "d69aedc9dd19ceff4047d9da7742b17c5cc8f3b9ee5c7f8c8ab29aa9b9544ddf",
+      "exit_status": 2,
+      "result": "final25regimesnumericpass;unsigned/newreviewabsent"
+    }
+  ],
+  "limits": [
+    "Reporting and reader changes only; no production contract/configuration change.",
+    "Old focused/full-suite evidence reused within its unchanged-code scope.",
+    "Gate remains INCOMPLETE; no owner signature or independent review record supplied.",
+    "Shared kit signing selftests were not run because they generate private-key files; seven focused no-key tests cover this parser change."
+  ]
+}

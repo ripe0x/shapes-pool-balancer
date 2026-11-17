@@ -1,0 +1,37 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 1.66s
+Compiler run successful!
+
+Ran 1 test for test/FlowReporting.t.sol:FlowReportingTest
+[PASS] testUnknownNeedIsNullAndKnownObligationsRemainEncumbered() (gas: 1044784)
+Logs:
+  
+  FLOW BREAKDOWN  flow-reporting   gas 550000000 / basefee 500000000 wei, fork block 0
+  TABLE 1  Where the inflows went
+    in: report input                                                              1.9260   100.00%
+    held in unknown (change)                                                      0.2000    10.38%
+    held in backing (change)                                                      1.7000    88.26%
+    held in withdrawable (change)                                                 0.0100     0.51%
+    held in shortfall (change)                                                    0.0010     0.05%
+    held in known excess (change)                                                 0.0150     0.77%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    unknown: held                                                                 0.2000    10.38%
+    stated need / above need: not determined
+    backing: held                                                                 1.7000    88.26%
+      stated need                                                                 1.7000    88.26%
+      ABOVE its need                                                              0.0000     0.00%
+    withdrawable: held                                                            0.0100     0.51%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0100     0.51%
+    shortfall: held                                                               0.0010     0.05%
+      stated need                                                                 0.0200     1.03%
+      ABOVE its need                                                              0.0000     0.00%
+    known excess: held                                                            0.0150     0.77%
+      stated need                                                                 0.0050     0.25%
+      ABOVE its need                                                              0.0100     0.51%
+  TABLE 3  One-way flows (amount | return)
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.92ms (5.56ms CPU time)
+
+Ran 1 test suite in 6.36ms (5.92ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

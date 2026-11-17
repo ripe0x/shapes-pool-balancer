@@ -1570,6 +1570,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 implied;
         uint256 proceeds;
         uint256 fwaOther;
+        uint256 fwaNeed;
         if (address(balancer) != address(0)) {
             bal = address(balancer).balance;
             profit = balancer.profit();
@@ -1579,15 +1580,19 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             for (uint256 d; d < 16; ++d) implied += uint256(have[d]) * balancer.denominationAmount(d);
             proceeds = pool.ownerProceeds();
             fwaOther = address(pool).balance - proceeds;
+            IPoolMore m = IPoolMore(address(pool));
+            fwaNeed = m.acquisitionEscrowTotal() + m.deliveryEscrowTotal()
+                + m.acquisitionRefundCreditTotal() + m.accruedProtocolFees();
         }
         uint256 rest = bal - profit;
         uint256 reserve = rest < need ? rest : need;
-        k[0] = Bucket("creator profit (unclaimed)", profit, false, 0, false, 0);
+        k[0] = Bucket("creator profit (unclaimed)", profit, false, 0, true, profit);
         k[1] = Bucket("creator reserve", reserve, false, 0, true, need);
-        k[2] = Bucket("fund above the reserve", rest - reserve, false, 0, false, 0);
-        k[3] = Bucket("Shape and Pack backing listed on FWA", _backingListed(), true, implied, false, 0);
-        k[4] = Bucket("held by FWA: owner proceeds not yet collected", proceeds, false, 0, false, 0);
-        k[5] = Bucket("held by FWA: pending draws, player refund credit and FWA's edge", fwaOther, false, 0, false, 0);
+        k[2] = Bucket("fund above the reserve", rest - reserve, false, 0, true, 0);
+        uint256 backing = _backingListed();
+        k[3] = Bucket("Shape and Pack backing listed on FWA", backing, true, implied, true, backing);
+        k[4] = Bucket("held by FWA: owner proceeds not yet collected", proceeds, false, 0, true, proceeds);
+        k[5] = Bucket("held by FWA: pending draws, player refund credit and FWA's edge", fwaOther, false, 0, true, fwaNeed);
     }
 
     function flowFlows() internal view override returns (Flow[] memory f) {

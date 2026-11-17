@@ -1,0 +1,127 @@
+[
+  {
+    "regime": "burst",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "closeout_pending",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "extreme_bottom_heavy",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "extreme_top_heavy",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "gas_2_gwei",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "gas_5_gwei",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "gas_spike",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "large_win",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "largest_board",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "limits_at_max",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "max_then_idle",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "minimum_capital",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "minimum_large_win",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "no_processor",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "no_processor_5_gwei",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "normal_gas",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "policy_switch",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "quiet",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "randomness_not_delivered",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "restock_in_flight",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "smallest_board",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "top_heavy",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "whatif_large_win_drop_top",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "whatif_large_win_top_up",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  },
+  {
+    "regime": "zero_demand",
+    "facts_destinations_flows_unchanged": true,
+    "encumbered_backing_and_fwa_excess_wei": "0"
+  }
+]

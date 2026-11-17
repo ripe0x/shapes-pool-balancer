@@ -1,0 +1,75 @@
+{
+  "regime": "flow-reporting",
+  "source_hash": "",
+  "gas_price": 550000000,
+  "base_fee": 500000000,
+  "fork_block": 0,
+  "reached": {},
+  "inflow_base": "1926000000000000000",
+  "destinations": [
+    {
+      "name": "held in unknown (change)",
+      "wei": "200000000000000000",
+      "bps": 1038
+    },
+    {
+      "name": "held in backing (change)",
+      "wei": "1700000000000000000",
+      "bps": 8826
+    },
+    {
+      "name": "held in withdrawable (change)",
+      "wei": "10000000000000000",
+      "bps": 51
+    },
+    {
+      "name": "held in shortfall (change)",
+      "wei": "1000000000000000",
+      "bps": 5
+    },
+    {
+      "name": "held in known excess (change)",
+      "wei": "15000000000000000",
+      "bps": 77
+    }
+  ],
+  "buckets": [
+    {
+      "name": "unknown",
+      "held": "200000000000000000",
+      "need": null,
+      "above_need": null,
+      "bps": null
+    },
+    {
+      "name": "backing",
+      "held": "1700000000000000000",
+      "need": "1700000000000000000",
+      "above_need": "0",
+      "bps": 0
+    },
+    {
+      "name": "withdrawable",
+      "held": "10000000000000000",
+      "need": "0",
+      "above_need": "10000000000000000",
+      "bps": 51
+    },
+    {
+      "name": "shortfall",
+      "held": "1000000000000000",
+      "need": "20000000000000000",
+      "above_need": "0",
+      "bps": 0
+    },
+    {
+      "name": "known excess",
+      "held": "15000000000000000",
+      "need": "5000000000000000",
+      "above_need": "10000000000000000",
+      "bps": 51
+    }
+  ],
+  "flows": [],
+  "mismatches": []
+}

@@ -1,0 +1,6 @@
+{
+  "reader": "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py",
+  "before_sha256": "d6f7c94579c1658b8228293316add590b6c7df388643b26feffe9760073aa1a7",
+  "after_sha256": "c9c202056960ea00e1f7f1a7e2626c831b74d3526f7722977a322daccb4607c0",
+  "scope": "Nullable report consumption only; existing numeric report behavior, signatures, limits and deploy entry point unchanged."
+}

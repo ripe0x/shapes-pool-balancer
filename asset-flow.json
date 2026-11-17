@@ -16,7 +16,11 @@
     "test/ReserveCapitalMatrix.t.sol",
     "test/fixtures/keeper-enforcement.json",
     "test/fixtures/reserve-capital.json",
-    "keeper/reserve-economics.ts"
+    "keeper/reserve-economics.ts",
+    "test/FlowReporting.t.sol",
+    "test/fixtures/flow-reporting.json",
+    "scripts/test-flow-reporting.py",
+    "audit/reporting-fix/asset-gate-nullable.patch"
   ],
   "scorecard_dir": "docs/receipts/flow",
   "review_dir": "audit",
