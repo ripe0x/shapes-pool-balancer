@@ -1,0 +1,49 @@
+{
+  "rpc": "http://127.0.0.1:18554",
+  "chainId": 31337,
+  "accounts": [
+    {
+      "label": "deployer",
+      "address": "0x000000000000000000000000000000000001D001",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "packsAdmin",
+      "address": "0x000000000000000000000000000000000001d002",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "keeperAdmin",
+      "address": "0x000000000000000000000000000000000001d003",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "policyAdmin",
+      "address": "0x000000000000000000000000000000000001D004",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "creatorA",
+      "address": "0x000000000000000000000000000000000001d005",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "creatorB",
+      "address": "0x000000000000000000000000000000000001d006",
+      "code": "0x",
+      "nonce": 0
+    },
+    {
+      "label": "buyer",
+      "address": "0x000000000000000000000000000000000001d007",
+      "code": "0x",
+      "nonce": 0
+    }
+  ],
+  "keeper": "0x00000000000000000000000000000000000ce3e5"
+}

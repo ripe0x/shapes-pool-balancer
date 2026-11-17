@@ -1,6 +1,6 @@
 # Mainnet deployment readiness
 
-## Current candidate: reserve redesign (`55c094f`, 2026-11-17)
+## Candidate under independent audit: `9b45f91` (2026-11-17)
 
 **Not deployed. Implementation verification is recorded; mainnet deployment is not authorized.**
 The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md) and
@@ -8,23 +8,25 @@ The current architecture is described in [KEEPER-POLICIES.md](KEEPER-POLICIES.md
 [reserve-redesign-results.md](reserve-redesign-results.md), with command/log digests in
 [verification.json](../audit/reserve-redesign/verification.json).
 
+The owner reports an independent audit is running against `9b45f91`; no result has been received. Parallel [launch preparation](LAUNCH-PREPARATION.md) lives on a separate branch/worktree and changes documentation/evidence only. Production contracts remain those of `55c094f`.
+
 ### Evidence already obtained
 
 - Reporting correction after the frozen audit: unknown need/excess is null, known backing and purchaser obligations are encumbered, and the existing reader fails closed for outcomes requiring unknown metrics. Production contracts and withdrawal calculations are unchanged.
 
 - Final candidate: 483 Foundry tests passed, zero failures; 120 TypeScript tests passed; typechecking and dashboard build passed.
 - Keeper integration: 28 canonical transactions, 27 successes and one intentional stale-policy revert; nonce/replacement/reorg recovery and receipt accounting exercised.
-- All 25 real-dependency asset-flow regimes executed. Current numeric outcome checks and source-review records pass; the gate remains **INCOMPLETE because revised outcomes are unsigned**.
+- All25 real-dependency asset-flow regimes were regenerated after the reporting fix; numeric outcome checks pass. The gate remains **INCOMPLETE because revised outcomes are unsigned and the corrected evidence lacks a fresh independent review record**.
 - Independent focused reserve security and economic reviews ran. Actual low-gas hostile-policy round trips close the earlier measurement gap for their executed cases.
 - PoolBalancer runtime is 24,449 bytes (127 bytes below EIP-170). Actual deployment submitted gas limits and individual setup receipts remain below EIP-7825.
 - Real local-fork dashboard interactions exercised surplus withdrawal, partial inventory disclosure and Add ETH recovery. This does not substitute for a real browser-wallet extension test.
 
 ### Remaining before mainnet
 
-1. Finish the consolidated whole-candidate security and economic audit. The [new audit attempt](../audit/consolidated-fd79034/REPORT.md) is **partial**: both independent agents were interrupted by tool safety controls. Ten focused cases and a static scan produced bounded evidence, not full coverage. The confirmed flow-report labelling defect is corrected in the [reporting-fix evidence](../audit/reporting-fix/REPORT.md); encumbered backing/escrow is no longer labelled excess. The old audit report remains historical. Integration correspondence and independent off-chain examination remain gaps. Human technical review is absent.
-2. Owner approval/signature of revised asset-flow outcomes. Temporary inventory depletion replaces immediate full-restoration insurance; prior zero-missing-days claims are explicitly superseded, not passed. No measurement is an owner signature.
-3. Final-candidate current-block production-path rehearsal with the keeper and dashboard, signed local transactions, actual fee fields and live outcome readbacks. Earlier rehearsals remain scoped to their revisions and assumptions.
-4. Real-wallet extension writes and the FWA pool-page answer for an ERC-1271 contract owner; external application compatibility remains unverified.
+1. Receive and assess the independent whole-candidate security and economic audit now running against9b45f91. The [new audit attempt](../audit/consolidated-fd79034/REPORT.md) is **partial**: both independent agents were interrupted by tool safety controls. Ten focused cases and a static scan produced bounded evidence, not full coverage. The confirmed flow-report labelling defect is corrected in the [reporting-fix evidence](../audit/reporting-fix/REPORT.md); encumbered backing/escrow is no longer labelled excess. The old audit report remains historical. Integration correspondence and independent off-chain examination remain gaps. Human technical review is absent.
+2. Owner approval/signature of revised asset-flow outcomes after audit reconciliation. The [review packet](OUTCOME-APPROVAL.md) groups all16 unchanged outcomes, measured numbers and tradeoffs. Temporary inventory depletion replaces immediate full-restoration insurance; prior zero-missing-days claims are explicitly superseded, not passed. No measurement is an owner signature.
+3. Final-candidate current-block production-path rehearsal with the keeper and dashboard, signed local transactions, actual fee fields and live outcome readbacks. The production deployment script has passed simulation at block26,437,802 (eight transactions, no broadcast); the bounded local batch is prepared in LAUNCH-PREPARATION.md. It has not run and does not close this item. Earlier rehearsals remain scoped to their revisions and assumptions.
+4. Real-wallet extension writes and the FWA pool-page answer for an ERC-1271 contract owner. The [current read-only investigation](FWA-PAGE-COMPATIBILITY.md) confirms client format only; server acceptance remains unverified. Local wallet actions are specified in the preparation checklist, not reported passed.
 5. Confirm launch values and roles: keeper eligibility admin, distinct policy-default admin, Draw Packs presentation admin/name/symbol and final dependencies. No live addresses are inferred from local test deployments.
 6. Review the [proposed canary plan](CANARY-PLAN.md), caps that can and cannot be enforced, exit and monitoring; separately authorize any mainnet deployment/canary. No mainnet broadcast or real spending is authorized by this checklist.
 

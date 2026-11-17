@@ -1,0 +1,4 @@
+Error: failed to retrieve chain ID from fork endpoint
+
+Context:
+- MPP HTTP request to http://127.0.0.1:18554/ failed: HTTP request failed: error sending request: error sending request: client error (Connect): tcp connect error: Operation not permitted (os error 1)

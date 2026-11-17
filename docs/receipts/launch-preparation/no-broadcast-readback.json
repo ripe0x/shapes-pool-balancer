@@ -1,0 +1,10 @@
+{
+  "rpc": "http://127.0.0.1:18554",
+  "deployer": "0x000000000000000000000000000000000001D001",
+  "nonce": 0,
+  "balanceWei": "10000000000000000000",
+  "predictedFactory": "0xb69fc6ce7e4960df41ccae80838feeafb6f37a43",
+  "factoryCode": "0x",
+  "block": "26437802",
+  "result": "simulation only; no deployment transaction mined"
+}

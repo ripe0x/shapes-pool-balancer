@@ -1,0 +1,50 @@
+{
+  "target": "9b45f915fcaa27bc24d6125cf4a0062117ef576c",
+  "branch": "codex/launch-preparation",
+  "fork_block": 26437802,
+  "rpc": "http://127.0.0.1:18554",
+  "upstream": "https://mainnet.gateway.tenderly.co",
+  "simulation_only": true,
+  "runtime_bytes": 24449,
+  "transactions_planned": 8,
+  "max_individual_gas_limit": 7023660,
+  "estimated_total_gas": 21648362,
+  "estimated_fee_wei": "6045247092538202",
+  "records": [
+    {
+      "file": "launch-preparation-deploy-simulation.log",
+      "sha256": "090611a66c03f3225128cfbc3abfc8f022f9e888dedd04af3bde1ebb74b1e853",
+      "exit_status": 1,
+      "result": "sandbox loopback EPERM; no transaction"
+    },
+    {
+      "file": "launch-preparation-deploy-simulation-final.log",
+      "sha256": "2d4e14fda9d220b9fe82aa8fd1f5f069d901dcf14a8dc39f88ef807510fc7e09",
+      "exit_status": 1,
+      "result": "warm ABI-only Deploy artifact; no target/no transaction"
+    },
+    {
+      "file": "launch-preparation-deploy-simulation-rebuilt.log",
+      "sha256": "d7a4abefccec981d4b1242c9c5f5c125d0330858dbd1294837a7aac9c15022d5",
+      "exit_status": 0,
+      "result": "unchanged production Deploy simulation passed; no broadcast"
+    },
+    {
+      "file": "local-preflight.json",
+      "sha256": "47d23b8c374caa008588ac8453aac1845e670cc6e161dbf303e65b1777efb7cf",
+      "result": "verified owned Anvil/fork/codehash and actor delegation state"
+    },
+    {
+      "file": "no-broadcast-readback.json",
+      "sha256": "0b0aac7e473d9ab8b4c966e273feaa84d7587b92c217d1351f10cdf656fff191",
+      "result": "fresh deployer nonce0/balance10testETH unchanged and predictedfactory code absent after simulation"
+    }
+  ],
+  "limits": [
+    "No transaction broadcast, actual deployment, billed receipts or current-block lifecycle claimed.",
+    "Initial Node preflight tool session98632 failed EPERM exit1; approved retry passed.",
+    "No current independent audit result, owner signature, real-wallet acceptance or FWA publication inferred.",
+    "No production secret or key provided; only synthetic external-actor setup."
+  ],
+  "pending": "Explicit local-only broadcast batch approval; no receipt-based rehearsal or real-wallet pass yet."
+}

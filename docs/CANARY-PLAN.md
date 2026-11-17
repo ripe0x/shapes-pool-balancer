@@ -1,7 +1,7 @@
 # Proposed mainnet canary plan
 
 **Planning only. No deployment, broadcast, real spending or outcome approval is authorized.**
-Target: consolidated audit candidate `fd79034`, whose production code matches `55c094f`; any contract repair requires a new target and affected verification. An agent audit is not a human audit or launch approval.
+Target: independent-audit candidate `9b45f91`, whose production code matches `55c094f`; any contract repair requires a new target and affected verification. An agent audit is not a human audit or launch approval.
 
 ## Preconditions
 

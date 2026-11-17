@@ -1,0 +1,23 @@
+{
+  "arguments": [
+    "forge",
+    "script",
+    "script/Deploy.s.sol",
+    "--rpc-url",
+    "http://127.0.0.1:18554",
+    "--unlocked",
+    "--sender",
+    "0x000000000000000000000000000000000001D001",
+    "--slow",
+    "--out",
+    "/private/tmp/launch-prep-deploy-9hvd2spp/out",
+    "--cache-path",
+    "/private/tmp/launch-prep-deploy-9hvd2spp/cache"
+  ],
+  "environment": {
+    "PACKS_ADMIN": "0x000000000000000000000000000000000001d002",
+    "KEEPER_ADMIN": "0x000000000000000000000000000000000001d003",
+    "POLICY_ADMIN": "0x000000000000000000000000000000000001D004"
+  },
+  "broadcast": false
+}

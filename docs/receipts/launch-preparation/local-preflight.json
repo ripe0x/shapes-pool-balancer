@@ -1,0 +1,50 @@
+{
+  "rpc": "http://127.0.0.1:18554",
+  "chain": 31337,
+  "version": "anvil/v1.8.1",
+  "nodeInfo": {
+    "currentBlockNumber": "0x19368aa",
+    "currentBlockTimestamp": 1794955067,
+    "currentBlockHash": "0x37f8bdf22d14892ebe9634fa5c020e4c4b0d90b38067760868002d4713e03e4f",
+    "hardFork": "Bpo2",
+    "transactionOrder": "fees",
+    "environment": {
+      "baseFee": "0x7d3ba13",
+      "chainId": 31337,
+      "gasLimit": "0x392a220",
+      "gasPrice": "0x436e8413"
+    },
+    "forkConfig": {
+      "forkUrl": "https://mainnet.gateway.tenderly.co",
+      "forkBlockNumber": 26437802,
+      "forkRetryBackoff": 1000
+    },
+    "network": "ethereum"
+  },
+  "forkBlock": 26437802,
+  "forkHash": "0x37f8bdf22d14892ebe9634fa5c020e4c4b0d90b38067760868002d4713e03e4f",
+  "implementation": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+  "codehash": "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+  "actors": [
+    {
+      "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "hasCode": true,
+      "nonce": 11660
+    },
+    {
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "hasCode": true,
+      "nonce": 5486
+    },
+    {
+      "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "hasCode": true,
+      "nonce": 2961
+    },
+    {
+      "address": "0x00000000000000000000000000000000000ce3e5",
+      "hasCode": false,
+      "nonce": 0
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "rpc": "http://127.0.0.1:18554",
+  "chainId": 31337,
+  "address": "0x000000000000000000000000000000000001D001",
+  "setupBalanceWei": "10000000000000000000",
+  "purpose": "External test actor setup for simulation; no transaction broadcast"
+}
