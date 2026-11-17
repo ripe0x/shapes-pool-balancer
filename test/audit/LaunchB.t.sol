@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {ReceiptGas} from "../utils/ReceiptGas.sol";
 import {ForkBase} from "../utils/ForkBase.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {console} from "forge-std/console.sol";
@@ -387,7 +388,7 @@ contract AttackB is ForkBase {
             uint256 g = gasleft();
             vm.prank(keeper, keeper);
             uint256 reward = balancer.performUpkeep(uh5);
-            uint256 cost = (g - gasleft() + 21_000) * 5 gwei;
+            uint256 cost = ReceiptGas.lastBilled() * 5 gwei;
             console.log("reward", reward, "cost", cost);
             if (reward < cost) short += cost - reward;
         }

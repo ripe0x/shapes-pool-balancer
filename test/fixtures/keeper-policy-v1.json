@@ -1,0 +1,12 @@
+{
+  "drawFee": "20000000000000",
+  "maxGas": "3200000",
+  "maxGasPrice": "5000000000",
+  "maxPrizes": "1000",
+  "maxReward": "16450000000000000",
+  "overheadGas": "50000",
+  "priorityCap": "50000000",
+  "restockFlat": "200000000000000",
+  "restockGas": "900000",
+  "shapeFee": "20000000000000"
+}

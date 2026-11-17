@@ -128,7 +128,7 @@ async function main() {
   try {
     for (let i = 0; i < 300; i++) { try { await pub.getBlockNumber(); break; } catch { await sleep(200); } }
     assert.equal(await pub.getCode({ address: KEEPER, blockNumber: FORK_BLOCK }), undefined, 'keeper has no code or delegation at the fork block');
-    sh(`PACKS_ADMIN=${DEPLOYER} KEEPER_ADMIN=${DEPLOYER} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${DEPLOYER} --broadcast`);
+    sh(`PACKS_ADMIN=${DEPLOYER} KEEPER_ADMIN=${DEPLOYER} POLICY_ADMIN=${DEPLOYER} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${DEPLOYER} --broadcast`);
     const factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory as Address;
     const balancers: Address[] = [];
     const demo: Address[] = [];
@@ -149,7 +149,7 @@ async function main() {
     const dir = mkdtempSync(join(tmpdir(), 'rehearsal-'));
     const startKeeper = () => {
       const k = spawn('npx', ['tsx', 'keeper/keeper.ts'], {
-        env: { ...process.env, RPC_URL: RPC, FACTORY: factory, FROM_BLOCK: FORK_BLOCK.toString(), KEEPER_ADDRESS: KEEPER, STATE_FILE: join(dir, 'state.json'), POLL_MS: '800', HEALTH_PORT: String(HEALTH) },
+        env: { ...process.env, RPC_URL: RPC, FACTORY: factory, FROM_BLOCK: FORK_BLOCK.toString(), KEEPER_PRIVATE_KEY: '', KEEPER_ADDRESS: KEEPER, STATE_FILE: join(dir, 'state.json'), POLL_MS: '800', HEALTH_PORT: String(HEALTH) },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       k.stdout!.on('data', (d) => keeperLog.push(...d.toString().trim().split('\n')));
@@ -320,17 +320,18 @@ async function main() {
       }
     }
     // eth_estimateGas vs billed gas for every keeper send: the gap a keeper's cost estimate adds over real cost.
-    const sent = new Map<string, number>();
     const gaps: number[] = [];
+    const traceGaps: number[] = [];
     for (const line of keeperLog) {
       try {
         const e = JSON.parse(line);
-        if (String(e.msg).startsWith('sent ') && e.gasEstimate) sent.set(e.hash, Number(e.gasEstimate));
-        if (e.msg === 'mined' && sent.has(e.hash)) gaps.push(sent.get(e.hash)! - Number(e.gasUsed));
+        if (e.msg === 'mined' && e.gasEstimate) gaps.push(Number(e.gasEstimate) - Number(e.gasUsed));
+        if (e.msg === 'mined' && e.expenseSource === 'trace') traceGaps.push(Number(e.expenseGas) - Number(e.gasUsed));
       } catch {}
     }
     gaps.sort((a, b) => a - b);
-    console.log(JSON.stringify({ estimateMinusBilled: { n: gaps.length, min: gaps[0], median: gaps[Math.floor(gaps.length / 2)], max: gaps.at(-1) } }));
+    traceGaps.sort((a, b) => a - b);
+    console.log(JSON.stringify({ estimateMinusBilled: { n: gaps.length, min: gaps[0], median: gaps[Math.floor(gaps.length / 2)], max: gaps.at(-1) }, traceExpenseMinusBilled: { n: traceGaps.length, min: traceGaps[0], median: traceGaps[Math.floor(traceGaps.length / 2)], max: traceGaps.at(-1) } }));
     const recon = { balanceDelta: (kb1 - kb0).toString(), rewards: rewards.toString(), rewardEvents, gasPaid: gasPaid.toString(), keeperTxs, valueIn: valueIn.toString(), valueOut: valueOut.toString() };
     console.log(JSON.stringify(recon));
     assert.equal(kb1 - kb0, rewards - gasPaid + valueIn - valueOut, 'keeper balance reconciles to the wei');

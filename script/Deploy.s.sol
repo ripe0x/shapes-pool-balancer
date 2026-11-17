@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/External.sol";
 
@@ -12,14 +13,9 @@ import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/Exte
 ///
 ///         Also deploys this system's own Draw Packs instance (lib/shape-packs, ripe0x/shape-packs `draw-packs` at
 ///         3a463f7), from its own build artifacts, for prizes between the Shapes denominations. PACKS_ADMIN (env) is
-///         its presentation admin: renderer and description text only, no path into custody. KEEPER_ADMIN (env) holds
-///         the factory's keeper list (open to anyone at deploy) and its default settings for every pool (keeper pay,
-///         restocking fee, prize limit), within SettingsLib.check's limits; it has no path into custody or prize
-///         backing.
-///
-///   Rehearsal: PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender <addr> --broadcast
-///   Mainnet:   PACKS_ADMIN=<addr> KEEPER_ADMIN=<addr> script/deploy.sh --rpc-url https://mainnet.gateway.tenderly.co --account <keystore> --broadcast --verify
-///              (script/deploy.sh runs the asset-flow gate first; this script refuses chain id 1 without it)
+///         its presentation admin: renderer and description only. KEEPER_ADMIN controls eligibility; POLICY_ADMIN
+///         separately proposes the default policy for future pools after two days. Existing pools never follow it.
+///         All three admin addresses are supplied as environment values, never secrets.
 contract Deploy is Script {
     address constant FWA_FACTORY = 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C;
     address constant FWA_IMPL = 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7;
@@ -35,6 +31,8 @@ contract Deploy is Script {
         require(packsAdmin != address(0), "PACKS_ADMIN");
         address keeperAdmin = vm.envAddress("KEEPER_ADMIN");
         require(keeperAdmin != address(0), "KEEPER_ADMIN");
+        address policyAdmin = vm.envAddress("POLICY_ADMIN");
+        require(policyAdmin != address(0), "POLICY_ADMIN");
         // script/deploy.sh sets this after the asset-flow gate passes (docs/ASSET-FLOW-GATE.md). A hand-set variable
         // defeats it; a local chain (31337) is not asked.
         require(
@@ -54,12 +52,14 @@ contract Deploy is Script {
             abi.encode(SHAPES, renderer, packsAdmin, PACKS_NAME, PACKS_SYMBOL, PACK_MIN_UNITS)
         );
         impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin);
+        KeeperPolicyV1 policy = new KeeperPolicyV1();
+        factory = new BalancerFactory(address(impl), keeperAdmin, policyAdmin, address(policy));
         vm.stopBroadcast();
 
         // Postflight readbacks.
         require(factory.implementation() == address(impl), "factory wiring");
         require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
+        require(factory.policyAdmin() == policyAdmin && factory.defaultKeeperPolicy() == address(policy), "policy wiring");
         require(impl.creator() == address(1), "implementation not locked");
         require(address(impl.FWA_FACTORY()) == FWA_FACTORY && impl.FWA_IMPLEMENTATION() == FWA_IMPL, "impl wiring");
         require(address(impl.SHAPES()) == SHAPES && address(impl.ENS()) == ENS, "impl wiring");
@@ -72,6 +72,8 @@ contract Deploy is Script {
         vm.serializeUint(o, "block", block.number);
         vm.serializeAddress(o, "poolBalancerImplementation", address(impl));
         vm.serializeAddress(o, "packs", packs);
+        vm.serializeAddress(o, "keeperPolicy", address(policy));
+        vm.serializeAddress(o, "policyAdmin", policyAdmin);
         string memory json = vm.serializeAddress(o, "balancerFactory", address(factory));
         vm.createDir("./deployments", true); // not tracked in git: a fresh clone has no such folder
         vm.writeJson(json, string.concat("./deployments/", vm.toString(block.chainid), ".json"));

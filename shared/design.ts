@@ -1,5 +1,5 @@
 import {
-  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, maxKeeperReward, requiredReserveAt, shapeCount,
+  BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, MAX_KEEPER_REWARD, requiredReserveAt, shapeCount,
   type Counts, type Evaluation, type PoolInputs,
 } from './planner';
 
@@ -31,8 +31,8 @@ export function available(balance: bigint, have: Counts, target: Counts): bigint
 }
 
 /** ETH that stays in the pool while open with `target`: PoolBalancer.requiredReserve() from the prizes listed now. */
-export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings'>) =>
-  requiredReserveAt(target, d.have, d.mintFee, 0, maxKeeperReward(d.settings));
+export const ethNeeded = (target: Counts, d: Pick<DesignInputs, 'have' | 'mintFee' | 'settings' | 'policyMaxReward' | 'listedRestockFees'>) =>
+  requiredReserveAt(target, d.have, d.mintFee, 0, d.policyMaxReward ?? MAX_KEEPER_REWARD, d.listedRestockFees ?? 0n);
 
 const NONE: Counts = DENOMS.map(() => 0);
 

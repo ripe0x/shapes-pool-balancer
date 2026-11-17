@@ -237,7 +237,7 @@ contract KeeperAdversarialTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) {
                 (uint256 r, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
-                assertEq(r, (g + 50_000) * BASEFEE + 0.0001 ether, "measured gas and overhead at the reimbursed price, one flat reward");
+                assertEq(r, (g + 50_000) * BASEFEE + 2 * 0.00002 ether, "measured gas and one draw plus one listed Shape unit");
                 ++calls;
             }
         }

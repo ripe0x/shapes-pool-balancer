@@ -1,5 +1,7 @@
 # Keeper funding: which rule keeps the pool open without costing the creator
 
+> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+
 > **Superseded (2026-11-13, DECISIONS 71):** `sim/flows.ts` was removed. It fixed the VRF fee at 0.0003 ETH and had
 > no creator-profit bucket (round 8 E3). Current evidence: `sim/fund.ts` and the fork matrix in
 > `docs/fork-economics.md`. Kept as history.

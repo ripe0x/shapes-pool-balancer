@@ -27,7 +27,7 @@ contract D16StallTest is D16WorstUpkeepTest {
             (bool ok, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
             require(ok);
             (, uint64 used,,,) = abi.decode(rr, (uint64, uint64, uint64, int64, uint64));
-            billed = uint256(used) + 21_000;
+            billed = uint256(used);
         } catch {}
         measured = 0;
     }

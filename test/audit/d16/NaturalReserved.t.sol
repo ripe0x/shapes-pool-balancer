@@ -55,7 +55,7 @@ contract D16NaturalReservedTest is D16WorstUpkeepTest {
         (uint256 reward, uint256 billed, uint256 measured) = _measure(0.5 gwei, 0.55 gwei);
         assertEq(pool.unsettledAcquisitionCount(), 0, "upkeep processed both");
         emit log_named_uint("measured inside performUpkeep (capped at 3.2M)", measured);
-        emit log_named_uint("billed gas incl. 21000", billed);
+        emit log_named_uint("receipt billed gas", billed);
         emit log_named_int("keeper margin at 0.55 gwei (wei)", int256(reward) - int256(billed * 0.55 gwei));
     }
 }

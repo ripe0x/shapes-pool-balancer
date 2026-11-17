@@ -73,6 +73,8 @@ contract ParityFixture is ForkBase {
         vm.serializeString(o, "mintFee", vm.toString(shapes.mintFee()));
         // Every prize was listed in this block, so at this restocking fee.
         vm.serializeString(o, "restockFee", vm.toString(b.restockFee()));
+        vm.serializeString(o, "maxReward", vm.toString(b.maxKeeperReward()));
+        vm.serializeString(o, "listedRestockFees", vm.toString(b.listedRestockFees()));
         string memory out = vm.serializeString(o, "reserve", vm.toString(b.requiredReserve()));
         json = vm.serializeString("root", key, out);
         ++n;

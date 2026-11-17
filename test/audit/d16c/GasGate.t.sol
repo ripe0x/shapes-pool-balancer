@@ -236,10 +236,10 @@ contract D16cGasGateTest is D16bWorstUpkeepTest {
         bytes32 uh3 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh3)));
+        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh3));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        cost = (uint256(used) + 21_000) * 0.55 gwei;
+        cost = (uint256(used)) * 0.55 gwei;
         paid = keeper.balance - before;
         processed = pool.unsettledAcquisitionCount() == 0;
         (, s4) = _winner(r4);

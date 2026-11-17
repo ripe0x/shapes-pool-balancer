@@ -18,7 +18,7 @@ contract ChallengeTest is KeeperPayTest {
         vm.prank(creator);
         balancer.close();
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 2 * balancer.maxKeeperReward()); // ceil(4 owed / 2)
+        assertEq(held, 4 * balancer.maxKeeperReward()); // one maximum reward per owed draw
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(claimable, creator);

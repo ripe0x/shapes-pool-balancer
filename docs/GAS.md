@@ -1,5 +1,7 @@
 # Gas benchmarks and keeper bounds
 
+> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+
 Measured with `forge test --match-contract GasBench --isolate -vv` on a mainnet fork at block 26,382,349 (real FWA
 StandardPoolBuyback and Shapes). `--isolate` runs each call as its own transaction: cold storage, intrinsic gas, and
 EIP-3529 refunds applied, so "billed" is what the sender pays for. Every keeper benchmark asserts reimbursed gas ≤ billed
@@ -30,6 +32,12 @@ hostile collections (`test_historicalRefundsDoNotGrowUpkeepGas`: 200 refunded de
 FWA listing dominates: each listing writes the listing struct and updates a 32-level segment tree. Shapes mint gas varies
 with each block's seed, so the keeper sends upkeep, and the dashboard sends every transaction, with a 30% gas-limit margin
 over the estimate. The margin is a limit only: the contract reimburses measured gas, never the limit.
+
+## Policy candidate measurements (2026-11-17)
+
+See [current verification](keeper-policy-results.md). PoolBalancer runtime is 24,380 bytes, leaving 196 bytes under EIP-170. Permanently linked inventory/policy libraries preserve immutable execution while external economic quotes use a 100k-gas bounded staticcall. Equal inline-vs-bounded quote arithmetic adds 7,704 gas cold and 2,677 warm; this excludes transfers, transaction intrinsic and other pool accounting. Maximum reached local production-path deployment bills 5,387,856 gas; its maximum submitted transaction gas limit is 7,004,212. Keeper limits reject estimates with headroom over EIP-7825's 16,777,216 transaction gas cap.
+
+Foundry 1.8.1's five-field raw `lastCallGas().used` is already billed gas, including intrinsic and applied refunds. A real storage-clear transaction matches an Anvil receipt at 22,503 gas; the 4,800 refund gives 27,303 gross. Current isolated tests use this interpretation. Earlier gas tables below belong to their stated revisions and must not be mixed with current measurements.
 
 ## Keeper reward
 

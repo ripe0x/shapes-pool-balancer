@@ -373,7 +373,7 @@ contract BalancerTest is ForkBase {
         pool.processAcquisitions(1);
         uint256 before = keeper.balance;
         upkeep();
-        assertGe(keeper.balance - before, 0.0001 ether, "gas and the flat reward");
+        assertGe(keeper.balance - before, 0.00002 ether, "gas and a verified draw fee");
         assertLe(keeper.balance - before, balancer.maxKeeperReward());
         assertTrue(balancer.canPurchase(buyer));
     }
@@ -457,7 +457,7 @@ contract BalancerTest is ForkBase {
     function test_reserveMath() public view {
         uint256 fee = shapes.mintFee();
         uint256 largest = 0.1 ether + fee;
-        uint256 expected = largest + 2 * balancer.maxKeeperReward();
+        uint256 expected = largest + (4 + 2 * 10) * balancer.maxKeeperReward() - 10 * balancer.restockFee();
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }

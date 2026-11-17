@@ -212,7 +212,7 @@ contract D16WorstUpkeepTest is ForkBase {
         (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        billed = uint256(used) + 21_000;
+        billed = uint256(used); // pinned five-field 1.8.1: intrinsic and applied refund are already included
         assertEq(keeper.balance - before, reward, "paid");
     }
 
@@ -238,7 +238,7 @@ contract D16WorstUpkeepTest is ForkBase {
             emit log_named_uint("  draw won kind*100+size (0 = deleted after delivery)", uint256(kind) * 100 + d);
         }
         emit log_named_uint("measured inside performUpkeep (capped at 3.2M)", measured);
-        emit log_named_uint("keeper's billed gas incl. 21000", billed);
+        emit log_named_uint("keeper's receipt billed gas", billed);
         emit log_named_uint("reward (wei)", reward);
         emit log_named_uint("keeper cost (wei)", billed * price);
         emit log_named_int("keeper margin (wei)", int256(reward) - int256(billed * price));

@@ -4,6 +4,10 @@ pragma solidity 0.8.28;
 import {Vm} from "forge-std/Vm.sol";
 import {ForkBase, IVRFService} from "../utils/ForkBase.sol";
 import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
+import {ReceiptGas} from "../utils/ReceiptGas.sol";
+import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
+import {PoolInventory} from "../../src/PoolInventory.sol";
+import {KeeperPolicyV2} from "../Settings.t.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
 import {ListOne} from "../utils/ListOne.sol";
@@ -191,6 +195,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal maxUnsettledAtDayEnd;
     uint256[] internal openIds;
     // gas-level regimes and the player's price (O10)
+    bool internal alternativePolicy;
     uint256 internal baseFeeRegime; // 0: BASEFEE
     bool internal trackPrice;
     uint256 internal maxPriceToBackingBps;
@@ -202,6 +207,47 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     // ------------------------------------------------------------------ regimes
+
+    function test_breakdown_policySwitch() public {
+        Snap memory a = _launch();
+        for (uint256 i; i < 6; ++i) _single(i);
+        uint256[] memory listed = balancer.getActiveIds();
+        uint256[] memory prices = new uint256[](listed.length);
+        // FWA listing tuple is collection, depositor, winner, tokenId, weight, price, slot, status.
+        for (uint256 i; i < listed.length; ++i) (,,,,, prices[i],,) = pool.listings(listed[i]);
+        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        uint256[] memory pending = _buy(1);
+        assertEq(pending.length, 1);
+        assertEq(pool.unsettledAcquisitionCount(), 1);
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
+        assertGt(shortfall, 0, "old-policy capital does not finance the increased obligations");
+        vm.prank(creator); balancer.depositETH{value: shortfall}();
+        deposited += shortfall;
+        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        vm.prank(stranger); balancer.activateKeeperPolicy();
+        assertEq(balancer.keeperPolicy(), address(v2));
+        alternativePolicy = true;
+        assertGe(address(balancer).balance - balancer.profit(), required);
+        uint256 repriced;
+        for (uint256 i; i < listed.length; ++i) {
+            (,,,,, uint256 price,,) = pool.listings(listed[i]);
+            if (price != prices[i]) ++repriced;
+        }
+        assertEq(repriced, 0, "policy replacement cannot alter an existing FWA price");
+        _deliver(pending[0], _word(50));
+        _service();
+        _account(pending);
+        for (uint256 i = 6; i < 18; ++i) _single(i);
+        Fact[] memory x = new Fact[](5);
+        x[0] = Fact("policy_switches", 1);
+        x[1] = Fact("policy_repriced_listings", repriced);
+        x[2] = Fact("policy_transition_deposit_wei", shortfall);
+        x[3] = Fact("policy_transition_required_wei", required);
+        x[4] = Fact("policy_switch_outstanding_draws", 1);
+        _done("policy_switch", a, x);
+    }
 
     function test_breakdown_quiet() public {
         Snap memory a = _launch();
@@ -845,11 +891,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 snap = vm.snapshotState();
         for (; calls < 40; ++calls) {
             _coolKeeperTx();
-            bytes32 uh1 = balancer.settingsHash();
-            uint256 g = gasleft();
             vm.prank(creator, creator);
-            try balancer.performUpkeep(uh1) returns (uint256 reward) {
-                uint256 cost = (g - gasleft() + 21_000) * gasNow;
+            try balancer.performUpkeepUnpaid() returns (uint256 reward) {
+                uint256 cost = ReceiptGas.lastBilled() * gasNow;
                 cost = cost > reward ? cost - reward : 0;
                 if (cost > maxCost) maxCost = cost;
             } catch {
@@ -1164,13 +1208,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         bool setupWork = balancer.creatorWork();
         uint256 who0 = who.balance;
         // a keeper transaction starts with every account and slot cold
-        _coolKeeperTx();
         bytes32 uh2 = balancer.settingsHash();
-        uint256 g = gasleft();
+        _coolKeeperTx();
         vm.prank(who, who);
         vm.recordLogs();
         try balancer.performUpkeep(uh2) returns (uint256 reward) {
-            uint256 cost = (g - gasleft() + 21_000) * gasNow;
+            uint256 cost = ReceiptGas.lastBilled() * gasNow;
             // proceeds this call collected, from the Balancer's own event (read after the gas is measured): upkeep may
             // settle draws first (D16), so more than was waiting before the call can arrive
             op0 = _collectedIn(vm.getRecordedLogs());
@@ -1189,16 +1232,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 if (setupWork) keeperPaidSetup += reward;
                 else keeperPaidPlay += reward;
                 keeperGasCost += cost;
-                // the rule: this transaction's gas (here measured from outside, plus intrinsic gas and the Balancer's
-                // 50,000 overhead allowance) at min(bid, basefee + 0.05 gwei, 5 gwei), plus one flat 0.0001 ETH.
-                // The Balancer measures gas before storage refunds, so calls that clear storage come out above it.
-                uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
-                uint256 most = (cost / gasNow + 50_000) * price + 0.0001 ether;
-                if (reward > most) {
-                    paidBeyondGasAndReward += reward - most;
-                    paidBeyondGas += (reward - most) / price;
-                    if ((reward - most) / price > paidBeyondGasWorstCall) paidBeyondGasWorstCall = (reward - most) / price;
-                }
+
             } else {
                 claimed += reward;
             }
@@ -1209,8 +1243,27 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
+            uint256 nextBefore = nextLid;
             uint256 units = _scanListings();
             if (units > maxUnits) maxUnits = units;
+            if (who == keeper) {
+                uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
+                uint256 service = (rec + units) * 0.00002 ether;
+                uint256 overhead = 50_000;
+                if (alternativePolicy) {
+                    price = feeNow + 0.02 gwei;
+                    if (price > gasNow) price = gasNow;
+                    if (price > 8 gwei) price = 8 gwei;
+                    service = rec * 0.00001 ether + (nextLid - nextBefore) * 0.00004 ether;
+                    overhead = 70_000;
+                }
+                uint256 most = (cost / gasNow + overhead) * price + service;
+                if (reward > most) {
+                    paidBeyondGasAndReward += reward - most;
+                    paidBeyondGas += (reward - most) / price;
+                    if ((reward - most) / price > paidBeyondGasWorstCall) paidBeyondGasWorstCall = (reward - most) / price;
+                }
+            }
             // what left the Balancer other than the reward went to Shapes and Draw Packs
             mintFees += bal0 + op0 - reward - address(balancer).balance - (backingMinted - minted0);
             if (pool.unsettledAcquisitionCount() != 0) {
@@ -1234,10 +1287,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     /// @dev A keeper transaction starts with every account and slot cold, including the code a clone or proxy runs:
     ///      the harness's own reads (bookkeeping, the FWA queue count) would otherwise leave it warm.
     function _coolKeeperTx() internal {
-        address[4] memory xs = [address(balancer), address(pool), SHAPES, packs];
-        for (uint256 i; i < 4; ++i) {
-            vm.cool(xs[i]);
+        address selectedPolicy = balancer.keeperPolicy();
+        address[8] memory xs = [address(balancer), address(pool), SHAPES, packs, address(factory), selectedPolicy,
+            address(KeeperPolicyCalls), address(PoolInventory)];
+        for (uint256 i; i < xs.length; ++i) {
             address impl = _implementation(xs[i]);
+            vm.cool(xs[i]);
             if (impl != address(0)) vm.cool(impl);
         }
     }

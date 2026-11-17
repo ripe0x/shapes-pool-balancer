@@ -174,3 +174,16 @@ with R24 to R28). D12 to D15 (O11, O12, the keeper constants, no caps) were deci
 - 2026-11-13. Restructured version confirmed: "Yes, confirm it".
 - 2026-11-13. D12 to D15 decided: "Yes, all four" (O11, O12, keeper constants final, no contract caps; canary is the
   owner's own small first pool).
+
+
+## Replaceable keeper policies (owner request, 2026-11-17)
+
+- R39. "Keeper payment policies can be changed after mainnet launch without redeploying existing PoolBalancer contracts or migrating creator assets." This applies to pools deployed with the new implementation; older immutable deployments cannot acquire new entry points.
+- R40. "Each pool must remain immutable in its asset handling, FWA integration, accounting, work validation, and security limits." Economic quotes alone are replaceable and read-only.
+- R41. "The factory should provide a default policy for new pools, but changing that default must not automatically change existing pools." Creator replacement and factory-default changes take two days; eligibility and policy administration have separate roles.
+- R42. "A creator should be able to cancel a pending change and disable paid keeper compensation immediately as an emergency action." Policy failure must preserve complete unpaid maintenance and recovery.
+- R43. "Do not silently subsidize an increased keeper policy by consuming funds that the system has already committed elsewhere." Activation uses operating capital excluding booked profit and exposes the shortfall. Existing listing prices remain fixed.
+- R44. "Implement the architecture completely, including Solidity, keeper service, creator dashboard, planner, simulations, deployment scripts, tests, and documentation. Do not deploy to mainnet or spend real funds."
+- R45. "Make necessary engineering decisions independently. Complete the work and report decisions that ordinarily would have required owner input." Implementation choices are recorded in `docs/KEEPER-POLICIES.md`; this authorization does not create an owner cryptographic signature over revised release outcomes.
+
+This request supersedes R10/R28's per-call incentive and R37's immediate mutable factory economics and creator overrides. Their historical decisions above remain intact. The new proposed economic numbers and test evidence need explicit review before launch; no previous outcome signature is represented as approval of new text.

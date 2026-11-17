@@ -1,27 +1,186 @@
 {
-  "source_paths": ["src", "script", "foundry.toml", ".gitmodules"],
-  "evidence_paths": ["test/scenario/FlowBreakdown.t.sol", "test/utils/FlowBreakdown.sol", "test/utils/ForkBase.sol"],
+  "source_paths": [
+    "src",
+    "script",
+    "foundry.toml",
+    ".gitmodules"
+  ],
+  "evidence_paths": [
+    "test/scenario/FlowBreakdown.t.sol",
+    "test/utils/FlowBreakdown.sol",
+    "test/utils/ForkBase.sol",
+    "test/utils/ReceiptGas.sol"
+  ],
   "scorecard_dir": "docs/receipts/flow",
   "review_dir": "audit",
-  "required_regimes": ["quiet", "limits_at_max", "max_then_idle", "zero_demand", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending", "restock_in_flight", "top_heavy", "whatif_large_win_top_up", "whatif_large_win_drop_top", "normal_gas", "gas_2_gwei", "gas_5_gwei", "extreme_top_heavy", "extreme_bottom_heavy", "smallest_board", "largest_board", "no_processor", "no_processor_5_gwei", "burst"],
-  "drift_groups": [["quiet", "limits_at_max", "max_then_idle"]],
-  "drift_threshold_bps": 500,
-  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'gas evidence needs Foundry 1.8.1 (CI pins it)'; exit 1; }; forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
-  "outcomes": [
-    {"id": "O1", "text": "Keepers are paid their gas, a 50,000-gas overhead allowance and 0.0001 ETH per useful call (owner-approved, D14); the storage refunds they also keep add at most 80,000 gas per draw, averaged over the run (D19). With only keepers processing FWA's queue: 30,884 gas per draw at the 5 gwei cap (31,153 at 0.55 gwei); with bursts that leave five draws waiting at once, 52,674; worst single call 181,707 gas (burst). At the cap that is 0.083 ETH over 539 draws, 4.4% of the creator's net there: shown as information.", "metric": "facts.keeper_refund_gas_kept_per_draw", "max": 80000},
-    {"id": "O2", "text": "All buyers fund restocking fees: the fee is built into every draw price (about 0.001 ETH per draw at 0.5 gwei on the launch board); the creator fronts the fees of prizes still listed, never more than one board at the 5 gwei cap (55 Shapes x 0.0047 ETH).", "metric": "facts.restock_fees_outstanding_wei", "max": 260000000000000000},
-    {"id": "O3", "text": "Unused restocking fees go to the creator: right after closing, every wei in the Balancer is claimable except the keeper pay held for draws not yet reconciled (D3).", "metric": "facts.unclaimable_after_close_beyond_held_pay_wei", "max": 0, "regimes": ["closeout_pending"]},
-    {"id": "O4", "text": "Exact redeemable backing: every prize unlisted redeems for exactly its backing.", "metric": "facts.redeem_gap_wei", "max": 0, "regimes": ["closeout_pending"]},
-    {"id": "O5", "text": "When prizes are missing for lack of ETH, the dashboard offers Add ETH and Continue without them; after either, no day ends with a prize missing from the design (D9). Without either action (large_win) prizes can stay missing: shown as information.", "metric": "facts.days_ending_with_a_prize_missing", "max": 0, "regimes": ["whatif_large_win_top_up", "whatif_large_win_drop_top"]},
-    {"id": "O6", "text": "Closeout returns everything: after the closeout the Balancer, its listed backing and its FWA proceeds hold nothing. Exception, under FWA's rules: an NFT whose delivery failed stays at FWA until its winner takes the refund.", "metric": "facts.creator_assets_left_wei", "max": 0, "regimes": ["closeout_pending"]},
-    {"id": "O7", "text": "The fill gate never blocks the sales that refill prizes: with every draw reconciled, no draw is refused for low inventory while gas is within the 5 gwei cap. A board with less than 17 x 0.01 ETH Shapes' prize weight also pauses while draws are unsettled (top_heavy regime; the planner warns the creator) (D8).", "metric": "facts.refused_low_inventory_within_gas_cap", "max": 0},
-    {"id": "O8", "text": "The first 10% of Shape markup goes to the game: profit credited to the creator stays under the markup above 10% (at a 25% markup, 12% of proceeds).", "metric": "facts.profit_share_of_proceeds_bps", "max": 1200},
-    {"id": "O9", "text": "The creator's profit follows the board each draw was priced on: with restocks listed while draws are in flight and the markup unchanged, profit booked beyond that split stays under 0.001 ETH per 180 draws. A creator who raises the markup while draws are unsettled books more, taken from their own reserve (audit of 8ec98cb: 0.00276 ETH in one draw at launch scale): accepted, shown as information.", "metric": "facts.split_overbooked_wei", "max": 1000000000000000, "regimes": ["restock_in_flight"]},
-    {"id": "O10", "text": "On the launch board at steady normal gas (basefee 0.1 gwei), a player pays at most 1.5x the expected Shape backing of a draw: FWA's all-in quote (draw price and randomness fee) against the backing weighted as FWA weighs draws, checked before every draw (R19, D17). After a gas spike, prices stay higher until the prizes listed during it are won again (1.71x after 60 draws restocked at 5 gwei); a creator's own markup and NFT values can exceed it (2.27x at 100% markup): shown as information.", "metric": "facts.player_price_to_backing_bps_max", "max": 15000, "regimes": ["normal_gas"]},
-    {"id": "O11", "text": "(R4, D12) On the launch board the restocking fees repaid inside won prizes cover keeper pay for play (upkeep after draws; the creator's own setup work excluded): no loss over 180 draws at 0.1 to 5 gwei, through a gas spike, a randomness outage and bursts of five waiting draws. NFT-dominated boards (extreme_top_heavy, largest_board) lose up to 0.038 ETH per 180 draws on play (measured 0.0371 since curated NFTs carry no markup, decision 86): shown as information.", "metric": "facts.creator_keeper_play_net_loss_wei", "max": 0, "regimes": ["quiet", "limits_at_max", "max_then_idle", "large_win", "gas_spike", "randomness_not_delivered", "closeout_pending", "restock_in_flight", "normal_gas", "gas_2_gwei", "gas_5_gwei", "whatif_large_win_top_up", "whatif_large_win_drop_top", "burst"]},
-    {"id": "O12", "text": "(R8, D13) In quiet operation of the launch board the creator ends ahead after 180 draws, counting everything claimed or still theirs against everything deposited and NFTs given away, at 0.1, 0.5, 2 and 5 gwei. Prize luck (two forced 0.5 ETH wins: -0.28 ETH) and zero demand (-0.07 ETH of setup cost) are shown as information.", "metric": "facts.creator_net_loss_wei", "max": 0, "regimes": ["quiet", "normal_gas", "gas_2_gwei", "gas_5_gwei"]},
-    {"id": "O13", "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the most the Balancer admits; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.", "metric": "facts.unsettled_draws_at_day_end_max", "max": 0, "regimes": ["no_processor", "no_processor_5_gwei", "burst"]}
+  "required_regimes": [
+    "quiet",
+    "limits_at_max",
+    "max_then_idle",
+    "zero_demand",
+    "large_win",
+    "gas_spike",
+    "randomness_not_delivered",
+    "closeout_pending",
+    "restock_in_flight",
+    "top_heavy",
+    "whatif_large_win_top_up",
+    "whatif_large_win_drop_top",
+    "normal_gas",
+    "gas_2_gwei",
+    "gas_5_gwei",
+    "extreme_top_heavy",
+    "extreme_bottom_heavy",
+    "smallest_board",
+    "largest_board",
+    "no_processor",
+    "no_processor_5_gwei",
+    "burst",
+    "policy_switch"
   ],
-  "explained": [],
-  "approval": {"outcomes_sha256": "4aee96a2f5b5b9e5322afb0526d0ce36e57781a8d5732089ce7af8d897626469", "date": "2026-11-16", "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgT10UwBigHu/hL3vKFUPPNoDIN6\n6Wsrnx17avHqp4qC8AAAAKYXNzZXQtZmxvdwAAAAAAAAAGc2hhNTEyAAAAUwAAAAtzc2gt\nZWQyNTUxOQAAAEAVFsM2Uad0JBhLzRPcaC2g4WSmbXq2OgN92KMiE82RWaTdz4AJuMSHdu\nuXW9uWlytBNl/OjrCfLy0fX0IGA3IE\n-----END SSH SIGNATURE-----\n"}
+  "drift_groups": [
+    [
+      "quiet",
+      "limits_at_max",
+      "max_then_idle"
+    ]
+  ],
+  "drift_threshold_bps": 500,
+  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'gas evidence needs Foundry 1.8.1 (CI pins it)'; exit 1; }; forge test --isolate --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000",
+  "outcomes": [
+    {
+      "id": "O1",
+      "text": "Keepers receive the selected read-only policy quote for immutable verified progress, with atomic caller minimum payment, a cached policy maximum, a 0.311 ETH immutable per-call ceiling and a persistent per-pool burst/refill allowance. V1 reimburses bounded measured gas plus 50,000 overhead and 0.00002 ETH per finalized draw reconciled or Shape unit successfully listed. Splitting cannot duplicate service fees but retains overhead/refund surplus. Existing storage-refund allowance remains at most 80,000 gas per draw averaged over a run; candidate measurements are recorded separately.",
+      "metric": "facts.keeper_refund_gas_kept_per_draw",
+      "max": 80000
+    },
+    {
+      "id": "O2",
+      "text": "All buyers fund restocking fees: the fee is built into every draw price (about 0.001 ETH per draw at 0.5 gwei on the launch board); the creator fronts the fees of prizes still listed, never more than one board at the 5 gwei cap (55 Shapes x 0.0047 ETH).",
+      "metric": "facts.restock_fees_outstanding_wei",
+      "max": 260000000000000000
+    },
+    {
+      "id": "O3",
+      "text": "After closing, all Balancer ETH is claimable except one cached selected maximum keeper payment per unreconciled draw. Unpaid upkeep releases the obligation without compensation. Player refund credits and FWA proceeds/edge retain their existing ownership.",
+      "metric": "facts.unclaimable_after_close_beyond_held_pay_wei",
+      "max": 0,
+      "regimes": [
+        "closeout_pending"
+      ]
+    },
+    {
+      "id": "O4",
+      "text": "Exact redeemable backing: every prize unlisted redeems for exactly its backing.",
+      "metric": "facts.redeem_gap_wei",
+      "max": 0,
+      "regimes": [
+        "closeout_pending"
+      ]
+    },
+    {
+      "id": "O5",
+      "text": "When prizes are missing for lack of ETH, the dashboard offers Add ETH and Continue without them; after either, no day ends with a prize missing from the design (D9). Without either action (large_win) prizes can stay missing: shown as information.",
+      "metric": "facts.days_ending_with_a_prize_missing",
+      "max": 0,
+      "regimes": [
+        "whatif_large_win_top_up",
+        "whatif_large_win_drop_top"
+      ]
+    },
+    {
+      "id": "O6",
+      "text": "Closeout returns everything: after the closeout the Balancer, its listed backing and its FWA proceeds hold nothing. Exception, under FWA's rules: an NFT whose delivery failed stays at FWA until its winner takes the refund.",
+      "metric": "facts.creator_assets_left_wei",
+      "max": 0,
+      "regimes": [
+        "closeout_pending"
+      ]
+    },
+    {
+      "id": "O7",
+      "text": "The fill gate never blocks the sales that refill prizes: with every draw reconciled, no draw is refused for low inventory while gas is within the 5 gwei cap. A board with less than 17 x 0.01 ETH Shapes' prize weight also pauses while draws are unsettled (top_heavy regime; the planner warns the creator) (D8).",
+      "metric": "facts.refused_low_inventory_within_gas_cap",
+      "max": 0
+    },
+    {
+      "id": "O8",
+      "text": "The first 10% of Shape markup goes to the game: profit credited to the creator stays under the markup above 10% (at a 25% markup, 12% of proceeds).",
+      "metric": "facts.profit_share_of_proceeds_bps",
+      "max": 1200
+    },
+    {
+      "id": "O9",
+      "text": "The creator's profit follows the board each draw was priced on: with restocks listed while draws are in flight and the markup unchanged, profit booked beyond that split stays under 0.001 ETH per 180 draws. A creator who raises the markup while draws are unsettled books more, taken from their own reserve (audit of 8ec98cb: 0.00276 ETH in one draw at launch scale): accepted, shown as information.",
+      "metric": "facts.split_overbooked_wei",
+      "max": 1000000000000000,
+      "regimes": [
+        "restock_in_flight"
+      ]
+    },
+    {
+      "id": "O10",
+      "text": "On the launch board at steady normal gas (basefee 0.1 gwei), a player pays at most 1.5x the expected Shape backing of a draw: FWA's all-in quote (draw price and randomness fee) against the backing weighted as FWA weighs draws, checked before every draw (R19, D17). After a gas spike, prices stay higher until the prizes listed during it are won again (1.71x after 60 draws restocked at 5 gwei); a creator's own markup and NFT values can exceed it (2.27x at 100% markup): shown as information.",
+      "metric": "facts.player_price_to_backing_bps_max",
+      "max": 15000,
+      "regimes": [
+        "normal_gas"
+      ]
+    },
+    {
+      "id": "O11",
+      "text": "(R4, D12) On the launch board the restocking fees repaid inside won prizes cover keeper pay for play (upkeep after draws; the creator's own setup work excluded): no loss over 180 draws at 0.1 to 5 gwei, through a gas spike, a randomness outage and bursts of five waiting draws. NFT-dominated boards (extreme_top_heavy, largest_board) lose up to 0.038 ETH per 180 draws on play (measured 0.0371 since curated NFTs carry no markup, decision 86): shown as information.",
+      "metric": "facts.creator_keeper_play_net_loss_wei",
+      "max": 0,
+      "regimes": [
+        "quiet",
+        "limits_at_max",
+        "max_then_idle",
+        "large_win",
+        "gas_spike",
+        "randomness_not_delivered",
+        "closeout_pending",
+        "restock_in_flight",
+        "normal_gas",
+        "gas_2_gwei",
+        "gas_5_gwei",
+        "whatif_large_win_top_up",
+        "whatif_large_win_drop_top",
+        "burst"
+      ]
+    },
+    {
+      "id": "O12",
+      "text": "(R8, D13) In quiet operation of the launch board the creator ends ahead after 180 draws, counting everything claimed or still theirs against everything deposited and NFTs given away, at 0.1, 0.5, 2 and 5 gwei. Prize luck (two forced 0.5 ETH wins: -0.28 ETH) and zero demand (-0.07 ETH of setup cost) are shown as information.",
+      "metric": "facts.creator_net_loss_wei",
+      "max": 0,
+      "regimes": [
+        "quiet",
+        "normal_gas",
+        "gas_2_gwei",
+        "gas_5_gwei"
+      ]
+    },
+    {
+      "id": "O13",
+      "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the most the Balancer admits; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.",
+      "metric": "facts.unsettled_draws_at_day_end_max",
+      "max": 0,
+      "regimes": [
+        "no_processor",
+        "no_processor_5_gwei",
+        "burst"
+      ]
+    },
+    {
+      "id": "O14",
+      "text": "Delayed policy replacement with outstanding draws changes only the selected economic policy, preserves all existing listing prices, funds the exposed operating shortfall before activation, and reconciles through closeout without moving assets to another pool.",
+      "metric": "facts.policy_repriced_listings",
+      "max": 0,
+      "regimes": [
+        "policy_switch"
+      ]
+    }
+  ],
+  "explained": []
 }

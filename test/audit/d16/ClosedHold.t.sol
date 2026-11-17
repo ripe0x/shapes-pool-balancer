@@ -41,8 +41,10 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         uint256 paid;
         uint256 owedCost;
         for (uint256 k; k < 6 && balancer.reconciledSequence() < pool.lastIssuedSequence(); ++k) {
+            uint256 sequenceBefore = balancer.reconciledSequence();
             (uint256 reward, uint256 billed, uint256 measured) = _measure(4.95 gwei, 5 gwei);
-            uint256 full = (measured + 50_000) * 5 gwei + 0.0001 ether;
+            uint256 full = ((measured > 3_200_000 ? 3_200_000 : measured) + 50_000) * 5 gwei
+                + (balancer.reconciledSequence() - sequenceBefore) * 0.00002 ether;
             emit log_named_uint("call", k + 1);
             emit log_named_uint("  measured", measured);
             emit log_named_uint("  billed gas", billed);
@@ -86,8 +88,10 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         uint256 paid;
         uint256 owedCost;
         for (uint256 k; k < 6 && balancer.reconciledSequence() < pool.lastIssuedSequence(); ++k) {
+            uint256 sequenceBefore = balancer.reconciledSequence();
             (uint256 reward, uint256 billed, uint256 measured) = _measure(4.95 gwei, 5 gwei);
-            uint256 full = (measured + 50_000) * 5 gwei + 0.0001 ether;
+            uint256 full = ((measured > 3_200_000 ? 3_200_000 : measured) + 50_000) * 5 gwei
+                + (balancer.reconciledSequence() - sequenceBefore) * 0.00002 ether;
             emit log_named_uint("call", k + 1);
             emit log_named_uint("  measured", measured);
             emit log_named_uint("  billed gas", billed);
@@ -136,9 +140,11 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         for (uint256 k; k < 5; ++k) {
             vm.roll(first + k);
             uint64 before = balancer.reconciledSequence();
+            uint256 sequenceBefore = balancer.reconciledSequence();
             (uint256 reward,, uint256 measured) = _measure(4.95 gwei, 5 gwei);
             assertEq(balancer.reconciledSequence(), before + 1, "one draw processed and reconciled per call");
-            uint256 full = (measured + 50_000) * 5 gwei + 0.0001 ether;
+            uint256 full = ((measured > 3_200_000 ? 3_200_000 : measured) + 50_000) * 5 gwei
+                + (balancer.reconciledSequence() - sequenceBefore) * 0.00002 ether;
             emit log_named_uint("  measured", measured);
             emit log_named_uint("  reward paid (wei)", reward);
             paid += reward;

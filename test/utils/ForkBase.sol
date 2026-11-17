@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
+import {KeeperPolicyV1} from "../../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
 import {MockNFT} from "./Mocks.sol";
@@ -55,7 +56,7 @@ abstract contract ForkBase is Test {
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin);
+        factory = new BalancerFactory(address(impl), keeperAdmin, address(this), address(new KeeperPolicyV1()));
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);

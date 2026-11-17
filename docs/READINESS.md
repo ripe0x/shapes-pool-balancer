@@ -1,7 +1,15 @@
 # Mainnet deployment readiness
 
+> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+
 **Not deployed. Mainnet deployment needs your explicit authorization.** This report does not establish that the contracts
 are safe.
+
+## Current policy candidate (2026-11-17)
+
+Implementation evidence is in [keeper-policy-results.md](keeper-policy-results.md). Real-dependency V1→V2 lifecycles, affected Foundry tests, 70 TypeScript tests, a 300-round local keeper rehearsal, dashboard interactions and two focused independent reviews were exercised. The initial broad Foundry command had 67 failures; repaired affected runs pass, with the full failure history retained. This does not imply a clean full-suite command or comprehensive audit.
+
+The 23-regime asset-flow run meets its numeric bounds and has a matching review source record, but **the gate returns INCOMPLETE because changed outcomes are unsigned**. The old owner signature was not reused. The new conservative reserves, generous immutable spending exposure and remaining low-gas hostile-policy profitability gap need owner consideration. Historical open items below are not closed merely by this refactor. There is no mainnet deployment authority, live-transaction rehearsal or canary evidence here.
 
 ## Rewrite status (2026-11-11)
 

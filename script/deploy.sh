@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The deploy entry point for mainnet and for rehearsal.
-# Usage: PACKS_ADMIN=0x.. KEEPER_ADMIN=0x.. script/deploy.sh --rpc-url <url> <signer flags> [--broadcast] [--verify]
+# Usage: PACKS_ADMIN=0x.. KEEPER_ADMIN=0x.. POLICY_ADMIN=0x.. script/deploy.sh --rpc-url <url> <signer flags> [--broadcast] [--verify]
 # Every argument goes to `forge script script/Deploy.s.sol`. Signer: --account <keystore>, --ledger, or --unlocked on a
 # local fork. Never pass a private key.
 set -euo pipefail

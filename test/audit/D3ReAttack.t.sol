@@ -59,7 +59,7 @@ contract D3ReAttackTest is ForkBase {
 
     /// MAX_KEEPER_REWARD, computed here from the published rule, not read from the contract's own constant.
     function _independentMaxReward() internal pure returns (uint256) {
-        return (3_200_000 + 50_000) * _hardPrice() + 0.0001 ether; // 0.01635 ETH
+        return (3_200_000 + 50_000) * _hardPrice() + 10 * 0.00002 ether; // 0.01645 ETH
     }
 
     /// @notice Core D3 requirement under the split-call pattern at the gas cap, with the owner's exact motivating case:
@@ -68,8 +68,8 @@ contract D3ReAttackTest is ForkBase {
     ///         five paid calls for five draws. The hold must pay every one.
     function test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() public {
         // Independent absolute check of the constant the hold is built from.
-        assertEq(balancer.maxKeeperReward(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01635 ETH at the cap");
-        assertEq(_independentMaxReward(), 0.01635 ether, "0.01635 ETH");
+        assertEq(balancer.maxKeeperReward(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01645 ETH at the cap");
+        assertEq(_independentMaxReward(), 0.01645 ether, "0.01645 ETH");
 
         // Five draws issued one per block, left pending (no VRF), then closed.
         uint256 firstExpired = buyOnePerBlock(buyer, 5);
@@ -80,7 +80,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, 3 * _independentMaxReward(), "owed=5 -> ceil(5/2)=3 maximum rewards held");
+        assertEq(held, 5 * _independentMaxReward(), "owed=5 -> five maximum rewards held");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else claimable");
 
         // Creator pulls everything claimable, leaving exactly the hold. This is the adversarial starting point:
@@ -136,7 +136,7 @@ contract D3ReAttackTest is ForkBase {
         balancer.close();
 
         uint256 held = balancer.requiredReserve();
-        assertEq(held, _independentMaxReward(), "owed=2 -> ceil(2/2)=1 maximum reward held");
+        assertEq(held, 2 * _independentMaxReward(), "owed=2 -> two maximum rewards held");
 
         // owed cannot be inflated after close: purchases are refused, so lastIssuedSequence is frozen.
         assertFalse(balancer.canPurchase(buyer), "closed pool admits no purchase");

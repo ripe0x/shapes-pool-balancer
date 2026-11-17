@@ -54,7 +54,7 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
             uint256 snap = vm.snapshotState();
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeCall(balancer.performUpkeep, (uh1)));
+            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
             vm.revertToState(snap);
             if (ok) hi = mid;
             else lo = mid;
@@ -83,14 +83,14 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
         bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeCall(balancer.performUpkeep, (uh2)));
+        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeWithSignature("performUpkeep(bytes32)", uh2));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         assertTrue(ok, "4M succeeds");
         assertEq(IProcess(address(pool)).unsettledAcquisitionCount(), 0, "processed both");
         uint256 paid = keeper.balance - before;
-        // Billed: execution gas after refunds + intrinsic 21,000 + 4 calldata bytes (64).
-        uint256 billed = uint256(used) + 21_064;
+        // Pinned five-field 1.8.1 already includes intrinsic, calldata and the applied refund.
+        uint256 billed = uint256(used);
         uint256 cost = billed * bid;
         emit log_named_int("refunded", refunded);
         emit log_named_uint("billed gas", billed);
@@ -164,7 +164,7 @@ contract D16dOpenSweepTest is D16dCatchMarginTest {
             uint256 snap = vm.snapshotState();
             bytes32 uh3 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh3)));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh3));
             bool done = IProcess(address(pool)).unsettledAcquisitionCount() == 0;
             vm.revertToState(snap);
             if (ok) ++oks;

@@ -189,9 +189,9 @@ contract D16bWorstUpkeepTest is ForkBase {
         (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok);
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        billed = uint256(used) + 21_000;
+        billed = uint256(used); // pinned five-field 1.8.1: intrinsic and applied refund are already included
         emit log_named_int("refunded", refunded);
-        emit log_named_uint("execution gas before refund (used+refunded)", uint256(used) + uint256(int256(refunded)));
+        emit log_named_uint("execution gas before refund", uint256(used) + uint256(int256(refunded)));
         assertEq(keeper.balance - before, reward, "paid");
     }
 
@@ -218,7 +218,7 @@ contract D16bWorstUpkeepTest is ForkBase {
         (address c5, uint8 s5) = _winner(req[4]);
         assertTrue(c4 == address(hog) && c5 == address(hog) && s4 == 2 && s5 == 2, "reached: both delivered a hog");
         emit log_named_uint("measured inside performUpkeep", measured);
-        emit log_named_uint("billed incl 21000", billed);
+        emit log_named_uint("receipt billed gas", billed);
         emit log_named_uint("reward wei", reward);
         emit log_named_int("headroom under 3.2M", int256(3_200_000) - int256(measured));
         // Requirement (D16 re-attack 2, finding 2): the measured gas may pass KEEPER_MAX_GAS here (storage refunds
@@ -226,7 +226,7 @@ contract D16bWorstUpkeepTest is ForkBase {
         uint256[3] memory prices = [uint256(0.15 gwei), 0.55 gwei, 5 gwei];
         uint256 m = measured < 3_200_000 ? measured : 3_200_000;
         for (uint256 k; k < 3; ++k) {
-            assertGe((m + 50_000) * prices[k] + 0.0001 ether, billed * prices[k], "the keeper's billed gas is covered");
+            assertGe((m + 50_000) * prices[k] + 5 * 0.00002 ether, billed * prices[k], "the keeper's billed gas is covered");
         }
     }
 

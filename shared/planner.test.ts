@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, settingsHash, unpackPlan, DEFAULT_SETTINGS } from './planner';
+import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan, DEFAULT_SETTINGS, quoteV1, keeperWorkAt, policyBridgeAt, prizeRestockFee } from './planner';
 
 const EDGE = 500;
 
@@ -8,7 +8,7 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
   for (const [k, c] of Object.entries(fixture as Record<string, any>)) {
     it(`case ${k}`, () => {
       const counts = unpackPlan(BigInt(c.target ?? c.plan));
-      const inputs = { curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee), restockFee: BigInt(c.restockFee) };
+      const inputs = { curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee), restockFee: BigInt(c.restockFee), policyMaxReward: BigInt(c.maxReward ?? MAX_KEEPER_REWARD), listedRestockFees: c.listedRestockFees === undefined ? undefined : BigInt(c.listedRestockFees) };
       const ev = evaluate(counts, inputs);
       expect(ev.drawPrice).toBe(BigInt(c.drawPrice));
       expect(ev.curatedOddsBps).toBe(Number(c.curatedOddsBps));
@@ -19,7 +19,7 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
 
 describe('planner', () => {
   const E = 10n ** 18n;
-  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n) };
+  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n), baseFee: 10n ** 9n };
 
   it('prices curated NFTs at their value, at any markup, and listed ones at their live FWA price', () => {
     const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
@@ -77,7 +77,7 @@ describe('planner', () => {
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
-    expect(MAX_KEEPER_REWARD).toBe(16_350_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 0.0001
+    expect(MAX_KEEPER_REWARD).toBe(16_450_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 10 work units * 0.00002
   });
 
   it('predicts the unsettled draws the fill gate admits (test/TopHeavyGate.t.sol on the fork)', () => {
@@ -91,12 +91,12 @@ describe('planner', () => {
     expect(pendingDrawsAdmitted(counts([[0, 17]]))).toBe(5);
   });
 
-  it('creator earnings are net of keeper pay, which matches the fork measurement per Shape replaced', () => {
+  it('creator estimates use explicit V1 gas context and work-based fees', () => {
     // all 0.01 Shapes: every draw wins one Shape, so keeper pay per draw is one replacement call
-    const e = economics([10, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [], restockFee: restockFeeAt(5n * 10n ** 8n) });
-    // test/scenario/PriceCaps.t.sol: one draw reconciled and one 0.01 Shape restocked paid 0.00057346805 ETH at
-    // basefee 0.5 gwei, gas price 0.55 gwei
-    expect(e.keeperPayPerDraw).toBeCloseTo(0.00057346805, 6);
+    const e = economics([10, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [], restockFee: restockFeeAt(5n * 10n ** 8n), baseFee: 5n * 10n ** 8n });
+    // Assumption: 864k measured span plus 50k overhead, 0.55 gwei bid, one draw and one listed Shape unit.
+    expect(e.keeperCostKnown).toBe(true);
+    expect(e.keeperPayPerDraw).toBeCloseTo(0.0005427, 12);
     expect(e.keptPerDraw).toBeCloseTo(e.markupPerDraw + e.restockFeesPerDraw - e.keeperPayPerDraw, 12);
   });
 
@@ -114,26 +114,62 @@ describe('planner', () => {
     expect(priced).toBeCloseTo(e.ownerProceeds, 5);
   });
 
-  it('required reserve: restock the target, one largest prize per unreconciled draw plus a spare, and keeper rewards', () => {
+  it('reserves all split progress and a whole-board bridge without treating listing fees as ETH', () => {
     const ten = [10, 0, 0, 0, 0, 0, 0, 0, 0];
     const fee = E / 1000n;
     const r = MAX_KEEPER_REWARD;
     const shape = E / 100n + fee;
-    expect(requiredReserveAt(ten, Array(9).fill(0), fee)).toBe(10n * shape + shape + 4n * r); // ceil((10 + 3) / 5) + 1 calls
-    expect(requiredReserveAt(ten, ten, fee)).toBe(shape + 2n * r);
-    expect(requiredReserveAt(ten, ten, fee, 2)).toBe(3n * shape + 3n * r); // ceil(9 / 5) + 1
-    // the largest prize is a three-Shape 0.25 pack: backing + 3 fees
-    expect(requiredReserveAt([4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], Array(16).fill(0), fee)).toBe(4n * shape + 2n * (E / 4n + 3n * fee) + 3n * r); // 10 units: ceil(10 / 5) + 1
+    const listed = 10n * inputs.restockFee;
+    expect(requiredReserveAt(ten, Array(9).fill(0), fee)).toBe(11n * shape + 34n * r);
+    expect(requiredReserveAt(ten, ten, fee, 0, r, listed)).toBe(shape + 24n * r - listed);
+    expect(requiredReserveAt(ten, ten, fee, 2, r, listed)).toBe(3n * shape + 32n * r - listed);
+    expect(policyBridgeAt(ten, ten, r, listed)).toBe(20n * r - listed);
+    // A target expansion cannot book a fee from a prize that has not been listed or sold.
+    expect(policyBridgeAt([...ten].map((n) => 2 * n), ten, r, listed)).toBe(40n * r - listed);
   });
+
+  it('quotes different pack surcharges and the selected policy maximum without a V1 fee inversion', () => {
+    const counts = unpackPlan(packPlan([3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]));
+    const fees = Array(16).fill(123n); fees[10] = 999n;
+    const custom = { ...inputs, policyMaxReward: E / 10n, restockFees: fees,
+      keeperQuotes: { reconcile: E / 100n, replace: Array(16).fill(E / 50n) } };
+    expect(prizeRestockFee(10, custom)).toBe(999n);
+    expect(prizePrice(10, custom)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 999n);
+    const ev = evaluate(counts, custom);
+    expect(ev.requiredReserve).toBe(requiredReserveAt(counts, counts, inputs.mintFee, 0, E / 10n, 3n * 123n + 999n));
+    const econ = economics(counts, custom);
+    expect(econ.keeperCostKnown).toBe(true);
+    expect(econ.keeperPayPerDraw).toBeGreaterThan(0.01);
+  });
+
+  it('does not manufacture a keeper quote from restocking income', () => {
+    const counts = [10, 0, 0, 0, 0, 0, 0, 0, 0];
+    const { baseFee: _, ...unknown } = inputs;
+    expect(economics(counts, unknown).keeperCostKnown).toBe(false);
+    expect(economics(counts, { ...unknown, restockFee: E }).keeperCostKnown).toBe(false);
+  });
+
+  it('keeps the recorded surcharge contribution of old listings after a policy replacement', () => {
+    const counts = [2, 0, 0, 0, 0, 0, 0, 0, 0];
+    const oldFee = E / 1000n;
+    const oldPrice = E / 50n;
+    const econ = economics(counts, { ...inputs, curatedBases: [], restockFee: E,
+      shapePrices: [[oldPrice, oldPrice]], shapeRestockFees: [[oldFee, oldFee]] });
+    expect(econ.restockFeesPerDraw).toBeCloseTo(0.001, 12);
+  });
+
 });
 
-describe('settingsHash', () => {
-  it('matches PoolBalancer.settingsHash() at the defaults (read from a local fork deployment of 67a9e1e)', () => {
-    expect(settingsHash(DEFAULT_SETTINGS)).toBe('0x45d0100b7eaa1034f0173ddd16e7859f5701e0ffed30f0a72a6a82d11c8d9f7c');
+describe('V1 quote arithmetic from exported Solidity parameters', () => {
+  it('matches the independent absolute policy quote exercised by Solidity', () => {
+    const work = { measuredGas: 800_000n, gasPrice: 550_000_000n, baseFee: 500_000_000n,
+      reconciledDraws: 1n, listedShapeUnits: 1n, listedPrizes: 1n, processedDraws: 0n };
+    expect(quoteV1(work)).toBe(507_500_000_000_000n);
+    expect(quoteV1({ ...work, gasPrice: 1n })).toBe(40_000_000_850_000n);
   });
-  it('matches cast keccak of the ABI encoding at other values', () => {
-    // cast keccak $(cast abi-encode "f(uint64,uint64,uint64,uint64,uint32,uint32,uint32,uint32)" 50000000000 2000000000 1000000000000000 0 6000000 200000 1050000 7)
-    const s = { maxGasPrice: 50n * 10n ** 9n, priorityCap: 2n * 10n ** 9n, incentive: 10n ** 15n, restockFlat: 0n, maxGas: 6_000_000n, overheadGas: 200_000n, restockGas: 1_050_000n, maxPrizes: 7 };
-    expect(settingsHash(s)).toBe('0x3b999d8f727c0630ebdfa97aab6b29436735e206c81d546f6c4677b4ff06288d');
+  it('caps measured gas and gas price while retaining verified-unit service fees', () => {
+    const work = keeperWorkAt(100_000_000_000n, 200_000_000_000n, 0);
+    expect(quoteV1({ ...work, measuredGas: 100_000_000n, reconciledDraws: 5n, listedShapeUnits: 5n }))
+      .toBe(MAX_KEEPER_REWARD);
   });
 });

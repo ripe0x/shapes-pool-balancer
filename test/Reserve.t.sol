@@ -233,9 +233,15 @@ contract ReserveTest is ForkBase {
         balancer.collectProceeds();
         assertLt(_fund(), 0.5011 ether, "the fund alone cannot restock the 0.5 Shape");
         assertGt(address(balancer).balance, 0.506 ether, "fund and profit together can");
+        uint256 booked = balancer.profit();
         fillUp();
-        assertEq(balancer.getActiveShapes()[3], 1, "0.5 Shape restocked");
-        assertEq(balancer.profit(), address(balancer).balance, "paid partly from unclaimed profit: none of the fund is left");
+        assertEq(balancer.getActiveShapes()[3], 0, "paid upkeep cannot use already booked creator profit");
+        assertEq(balancer.profit(), booked, "payment and its capital hold preserve the creator's booked share");
+        vm.prank(creator);
+        balancer.performUpkeepUnpaid();
+        assertEq(balancer.getActiveShapes()[3], 1, "unpaid recovery preserves game-first asset maintenance");
+        assertLt(balancer.profit(), booked, "only real inventory spending consumed profit");
+        assertEq(balancer.profit(), address(balancer).balance, "unpaid inventory spending clips profit to remaining ETH");
     }
 
     /// The worst batch at the minimum reserve (the 0.5, both 0.1 and two 0.01 Shapes) costs more to restock than the

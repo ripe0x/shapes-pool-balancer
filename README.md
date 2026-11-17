@@ -20,6 +20,8 @@ belongs to the creator.
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Status codes, keeper operation, recovery procedures |
 | [docs/READINESS.md](docs/READINESS.md) | Mainnet deployment readiness report |
 
+See [replaceable keeper policies](docs/KEEPER-POLICIES.md) for voluntary policy adoption, funding requirements and recovery, and [implementation evidence](docs/keeper-policy-results.md) for current measurements and launch blockers.
+
 ## Layout
 
 ```

@@ -1,63 +1,54 @@
 # Operations and recovery
 
+> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+
 Status codes come from `admissionStatus()`; the dashboard shows them as text.
 
 | Code | Name | Meaning | Action |
 | --- | --- | --- | --- |
 | 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | CLOSED | Closed by creator | `open()` |
-| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeep(settingsHash())` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
+| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
 | 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
-| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeep(settingsHash())` to restock; if it stays at 6, `depositETH()` and upkeep again |
+| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeepUnpaid()` to restock; if it stays at 6, `depositETH()` and upkeep again |
 
 ## Keeper down
 
 New purchases pause once prize weight falls below 70% of the target (status 6) or 5 draws are unsettled (status 4).
-Outstanding draws, refunds and NFT claims are unaffected: FWA settles them itself. Anyone, including the creator from the
-dashboard, can call `performUpkeep(settingsHash())`. Run a second keeper with the same factory address; duplicate submissions just
+Outstanding draws, refunds and NFT claims retain FWA's rules. Ready or expired draws can require explicit processing; upkeep processes the queue. Anyone, including the creator from the dashboard, can call `performUpkeepUnpaid()`, even if the factory restricts paid keepers. Run a second keeper with the same factory address; duplicate submissions just
 revert `NoUpkeepNeeded` in simulation and are never sent.
 
 ## Keeper service
 
-```bash
-FACTORY=<factory> FROM_BLOCK=<deploy block> KEEPER_PRIVATE_KEY=<from your secret store> \
-RPC_URL=https://mainnet.gateway.tenderly.co STATE_FILE=keeper/state.json MAX_LOSS_WEI=200000000000000 npm run keeper
-```
+Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`, `STATE_FILE`, and the keeper's signing identity through the existing environment/secret store, then run `npm run keeper`. Never place a private key in a command literal, file, or log. `KEEPER_ADDRESS` selects an unlocked account for isolated local forks only.
 
-- Each tick the keeper simulates `performUpkeep` for every Balancer at the price it would bid (basefee + 0.05 gwei,
-  `PRIORITY_GWEI`). The simulation returns the contract's reward. `NoUpkeepNeeded` means nothing to do, and
-  `KeeperNotApproved` that the factory's keeper admin has restricted upkeep to other keepers; both are skipped quietly. Any
-  other revert is reported as that pool's error. It sends only when reward + `MAX_LOSS_WEI` ≥ estimated gas × price. An estimate above the
-  3.2M gas the reward pays for is sent when the capped reward still covers it (a five-Shape opening stockup estimates
-  about 3.28M).
-- Gas limit: 30% over the estimate and never below 4M, because draws that settle between estimate and inclusion add
-  their work to the call (one such draw added 536k gas on a fork; a 30% limit ran out of gas). Only gas used is billed,
-  but the keeper address must hold the limit × max fee (0.02 ETH at 5 gwei) to send.
-- `MAX_LOSS_WEI` (default 0.0002 ETH) is the subsidy the operator accepts per call, measured against the gas estimate
-  at the current basefee. A receipt can cost more if basefee rises before inclusion.
-  A pool pays every call that reconciles a draw or lists a prize: (measured gas + 50,000) x the reimbursed price +
-  0.0001 ETH (owner-approved constants, `docs/DECISIONS.md` 73-74), from the creator's ETH. The gas estimate runs about 80k
-  above the measured span, so above roughly 3.3 gwei the allowance is what sends a call. Set 0 for a keeper that
-  never sends below its estimate.
-- Refunded NFTs and prizes are recovered by the creator with `recoverRefunded(listingId, to)`, not by the keeper.
+- Each tick discovers all pools created by the factory and reads each pool's selected policy, payment state, and generation hash. It simulates the actual offered reward with fee fields and the same executable gas limit it would send. Core-compatible new policies need no keeper code change. Optional linear metadata only informs bidding caps; unknown policies use the operator's cap.
+- The send condition budgets execution expense, `OPERATING_COST_WEI`, and the configured `MAX_LOSS_WEI` (default 0.0002 ETH per attempted successful call). Setting the loss allowance to zero requests no modeled loss; it does not guarantee inclusion or profit. Failed attempts remain operator costs and are included in receipt stats.
+- `eth_estimateGas` sets the executable limit with 30% headroom and a 4M floor, bounded by EIP-7825's 16,777,216. It is not the gas ultimately billed. An optional top-level `debug_traceCall` estimates billed expense; receipt comparisons report its calibration. If tracing is unavailable, estimation is conservative and may skip profitable work. No formula is recovered by dividing compensation or listing fees.
+- Paid calls use `performUpkeep(settingsHash, minimumFixed, minimumGas)`: minimumFixed budgets operating costs, while minimumGas budgets traced/estimated billed gas less a conservative conversion of the configured loss allowance. The atomic floor follows the transaction's actual included gas price, avoiding false fixed-wei reverts when basefee falls. Quote failure, stale policy generation, disabled payments, insufficient operating funds/allowance, or reward below the minimum reverts all work. Another caller can change work between simulation and inclusion, so atomic checks protect the minimum, not the operator's spent gas.
+- Pending nonce state is saved before broadcast. Every replacement refreshes policy/hash, simulation, expense and gas limit, raises fees by 25%, and uses the same nonce only while the offer remains acceptable. Each hash keeps its own offered policy/payment for receipt attribution. Lost responses and node eviction recover without allocating a duplicate nonce. Do not delete pending state as a normal recovery step.
+- Health: `GET http://localhost:8787/health`; per-pool errors do not stop unrelated pools. Discovery rescans a 64-block window and drops creations absent after a reorg. Receipt stats reconcile actual gas costs and received compensation.
+- The persisted receipt journal covers 64 blocks and at most 1,000 entries. Recent orphaned receipts reverse their gas/reward counters; pending accounting survives a pool disappearing from discovery. Lost response hashes are recovered by the sender nonce using historical account reads and the actual canonical transaction. Historical-RPC failure retains the accounting entry and exposes an error. Reward events must originate from the tracked pool and name this keeper.
+- `health.accounting` reports retry nonces, errors, coverage and `journalPrunedThrough`. `legacy-unverified` means pre-journal counters were not reconstructed; `history-unverified` means pruned/deep history requires external reconciliation. A normal `journal` status does not promise unbounded historical finality. If a genuinely different operator transaction consumes a tracked nonce, that external transaction is outside service financial totals. A later reorg of that external cancellation followed by original-upkeep reinclusion requires manual canonical reconciliation; there is no retained external-consumption tombstone. Do not clear state to conceal these limits.
+- The accounting retry queue never broadcasts. If a reorg removes a pool and the node does not reinsert its orphaned transaction, an unconsumed nonce can block later sends. After the grace period health reports operator rebroadcast/cancellation required and `ok=false`. Inspect the chain, nonce and original decoded transaction before authorized recovery; no automatic cancellation spend is assumed. A node or peer may reinsert it, but that is not guaranteed service behavior.
+- `MAX_GAS_PRICE_GWEI` is the operator's bid cap, `PRIORITY_GWEI` the requested tip. V1 reimburses at most 5 gwei including its 0.05 gwei priority allowance. At basefee exactly 5 gwei a positive tip exceeds that ceiling; zero priority can execute at the ceiling if included. Inclusion and competition are not proven by fork tests.
+- Use an account that retains its received ETH. A forwarding EIP-7702 delegation can pass keeper rewards elsewhere. Fund the sender for its transaction's gas limit times maximum bid; simulation does not supply this ETH.
 
-- Health: `GET http://localhost:8787/health` (503 if no tick for 2 minutes). Per-pool errors are listed and do not stop
-  other pools.
-- State: `STATE_FILE` holds discovered Balancers, the last scanned block and in-flight transactions. Deleting it is safe:
-  the keeper rescans from `FROM_BLOCK`.
-- Stuck transaction: the keeper replaces it after 3 blocks with +25% fees, up to 5 times, only while the bid stays under
-  the pool's `settings().maxGasPrice` (its reimbursement cap, 5 gwei by default) and `MAX_GAS_PRICE_GWEI` (the operator's
-  own limit, default 50, the highest a pool may set), and the simulated reward still covers the cost. A replacement
-  keeps the settings hash it was priced on: if the pool's settings changed, it reverts `StaleSettings` at a small cost
-  instead of running at pay the keeper did not price.
-  Otherwise it waits. During a basefee spike above 5 gwei (~0.9% of blocks over the last 90 days; longest measured
-  episode ~42 min) pools pause new purchases until gas falls; existing draws are unaffected. A creator can always run upkeep from the dashboard and pay the gas themself.
-- Reorgs: the last 64 blocks are rescanned every tick; Balancers whose creation was reorged out are dropped.
-- Fund the keeper address with ETH for gas; rewards come back from each pool to the address that sent the call. Use
-  a plain account: an account with code that forwards incoming ETH (for example an EIP-7702 delegation to a sweeper,
-  as the public Hardhat test keys carry on mainnet) passes rewards on instead of keeping them.
+## Adopt a policy
+
+1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and quotes, and `policyFunding(candidate)`.
+2. Creator: `proposeKeeperPolicy(candidate)`. Observe `KeeperPolicyProposed` and `policyActivationTime`.
+3. Deposit any shortfall with `depositETH()`. Old prices never change. The fund excludes booked creator profit.
+4. After two days, anyone: `activateKeeperPolicy()`. Funding and compatibility are checked again atomically.
+5. Creator may `cancelKeeperPolicy()` or `setPaidUpkeepEnabled(false)` immediately. Reenabling requires delayed activation, even with the same policy. Ownership acceptance cancels the former creator's proposal.
+
+Only the separate policy admin may propose/cancel a factory default. `proposeDefaultKeeperPolicy`, a two-day delay and permissionless `activateDefaultKeeperPolicy` affect future pools only. The keeper admin cannot select any pool's policy or change keeper economics.
+
+## Broken policy or unavailable payment
+
+Use `performUpkeepUnpaid()`. It pays zero and retains valid bounded active-policy listing quotes. If a price quote reverts, burns its stipend, is malformed, or exceeds the immutable limit, it uses the immutable V1 recovery surcharge. It remains public under keeper restrictions and pays zero. No assets migrate. Existing listings retain their original prices. Inventory still needs capital, and dependencies' own pause/settlement restrictions remain effective.
 
 ## Failed NFT delivery
 
@@ -93,11 +84,11 @@ show when a fee makes the configuration uneconomic.
 ## Recover all capital
 
 1. `close()`.
-2. Wait for FWA to settle any unsettled draws, then run `performUpkeep(settingsHash())` once to reconcile them.
+2. Allow randomness or expiry, then run `performUpkeepUnpaid()` until outstanding draws are processed and reconciled.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
-5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except 0.01635 ETH per 2 draws not yet
+5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except the selected cached maximum per draw not yet
    reconciled, held to pay the keeper who processes and reconciles them. Run upkeep (or wait for a keeper), then claim the rest.
 6. Optional and permanent: `retire()`.
 

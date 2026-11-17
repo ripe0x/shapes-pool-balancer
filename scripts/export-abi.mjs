@@ -4,6 +4,8 @@ const pick = (file, name = file) => JSON.parse(readFileSync(`out/${file}.sol/${n
 const entries = {
   poolBalancerAbi: pick('PoolBalancer'),
   balancerFactoryAbi: pick('BalancerFactory'),
+  keeperPolicyAbi: pick('IKeeperPolicy'),
+  keeperPolicyV1Abi: pick('KeeperPolicyV1'),
   fwaPoolAbi: pick('External', 'IFWAPool'),
   shapesAbi: pick('External', 'IShapes'),
   erc721Abi: pick('External', 'IERC721Min'),

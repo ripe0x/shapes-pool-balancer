@@ -1,343 +1,330 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {BalancerFactory} from "../src/BalancerFactory.sol";
-import {Settings, SettingsLib} from "../src/Settings.sol";
+import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
+import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 
-/// @notice Adjustable settings (decision 88): the factory admin's defaults, a creator's overrides, the fixed limits, and
-///         what each setting reaches. Numbers below are written out, not read from the contracts' own defaults.
+/// @notice Real alternative economic policy accepted by the stable core protocol.
+contract KeeperPolicyV2 is IKeeperPolicy {
+    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function version() external pure returns (uint256) { return 2; }
+    function maxReward() external pure returns (uint256) { return 0.03 ether; }
+    function quoteReward(Work calldata w) external pure returns (uint256) {
+        uint256 price = w.baseFee + 0.02 gwei;
+        if (price > w.gasPrice) price = w.gasPrice;
+        if (price > 8 gwei) price = 8 gwei;
+        return ((w.measuredGas > 3_200_000 ? 3_200_000 : w.measuredGas) + 70_000) * price
+            + w.reconciledDraws * 0.00001 ether + w.listedPrizes * 0.00004 ether;
+    }
+    function quoteRestock(uint8 d, uint256 units, uint256 baseFee) external pure returns (uint256) {
+        uint256 price = baseFee + 0.02 gwei;
+        if (price > 8 gwei) price = 8 gwei;
+        return (d < 9 ? 950_000 : 1_100_000) * price + units * 0.00025 ether;
+    }
+}
+
+contract HostilePolicy is IKeeperPolicy {
+    uint256 immutable mode;
+    constructor(uint256 m) { mode = m; }
+    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function version() external pure returns (uint256) { return 99; }
+    function maxReward() external pure returns (uint256) { return 0.311 ether; }
+    function quoteReward(Work calldata) external view returns (uint256) { return _hostile(); }
+    function quoteRestock(uint8, uint256, uint256) external view returns (uint256) { return _hostile(); }
+    function _hostile() internal view returns (uint256) {
+        uint256 m = mode;
+        if (m == 0) return type(uint256).max;
+        if (m == 1) assembly ("memory-safe") { mstore(0, 1) return(0, 1) }
+        if (m == 2) revert("policy unavailable");
+        if (m == 3) {
+            // A policy's static context propagates through this call, so state-changing reentry cannot succeed.
+            (bool ok,) = msg.sender.staticcall(abi.encodeWithSignature("performUpkeepUnpaid()"));
+            require(!ok, "reentry succeeded");
+            return 0.00001 ether;
+        }
+        if (m == 4) { while (gasleft() > 100) {} revert("gas exhausted"); }
+        if (m == 5) assembly ("memory-safe") { return(0, 65536) }
+        return 0;
+    }
+}
+
+/// @dev Environment witness, not a protocol counterparty. Clearing an existing slot creates a known 4,800 refund.
+contract GasAccountingWitness {
+    uint256 public value = 1;
+    event Cleared(uint256 grossStorageSpan);
+    function clear() external returns (uint256 span) {
+        uint256 g = gasleft();
+        value = 0;
+        span = g - gasleft();
+        emit Cleared(span);
+    }
+}
+
 contract SettingsTest is ForkBase {
-    bytes32 internal constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
+    function setUp() public { setUpFork(); }
 
-    function setUp() public {
-        setUpFork();
-        createBalancer(20 ether);
-        configure(plan([uint256(10), 2, 1, 0, 0, 0, 0, 0, 0]));
-        listCurated(1, 0.3 ether);
-        vm.prank(creator);
-        balancer.open();
+    function _open(uint256 deposit) internal {
+        createBalancer(deposit);
+        configure(plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        listCurated(1, 0.2 ether);
+        vm.prank(creator); balancer.open();
+        fillUp();
+        assertEq(balancer.getActiveShapes()[0], 20);
     }
 
-    function _defaults() internal pure returns (Settings memory) {
-        return Settings(5 gwei, 0.05 gwei, 0.0001 ether, 0.0001 ether, 3_200_000, 50_000, 900_000, 1_000);
+    function _switch(address policy) internal {
+        vm.prank(creator); balancer.proposeKeeperPolicy(policy);
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        balancer.activateKeeperPolicy();
     }
 
-    function _setDefaults(Settings memory s) internal {
-        vm.prank(keeperAdmin);
-        factory.setSettings(s);
+    function test_policyV1FormulaAbsoluteAndFixture() public {
+        KeeperPolicyV1 policy = new KeeperPolicyV1();
+        IKeeperPolicy.Work memory w = IKeeperPolicy.Work(800_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
+        assertEq(policy.quoteReward(w), 0.0005075 ether);
+        assertEq(policy.quoteRestock(0, 1, 0.5 gwei), 0.000695 ether);
+        assertEq(policy.maxReward(), 0.01645 ether);
+        string memory key = "keeperPolicyV1";
+        vm.serializeString(key, "maxGasPrice", "5000000000");
+        vm.serializeString(key, "priorityCap", "50000000");
+        vm.serializeString(key, "drawFee", vm.toString(policy.WORK_FEE()));
+        vm.serializeString(key, "shapeFee", vm.toString(policy.WORK_FEE()));
+        vm.serializeString(key, "restockFlat", vm.toString(policy.RESTOCK_FLAT()));
+        vm.serializeString(key, "maxGas", vm.toString(policy.MAX_GAS()));
+        vm.serializeString(key, "overheadGas", vm.toString(policy.OVERHEAD_GAS()));
+        vm.serializeString(key, "restockGas", vm.toString(policy.RESTOCK_GAS()));
+        vm.serializeString(key, "maxPrizes", "1000");
+        string memory json = vm.serializeString(key, "maxReward", vm.toString(policy.maxReward()));
+        vm.writeJson(json, "./test/fixtures/keeper-policy-v1.json");
     }
 
-    function _eq(Settings memory a, Settings memory b) internal pure {
-        assertEq(abi.encode(a), abi.encode(b), "settings");
+    function test_defaultAndPoolTimelocksAreSeparate() public {
+        _open(5 ether);
+        address initial = balancer.keeperPolicy();
+        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        vm.prank(keeperAdmin); vm.expectRevert(); factory.proposeDefaultKeeperPolicy(address(v2));
+        factory.proposeDefaultKeeperPolicy(address(v2));
+        vm.expectRevert(); factory.activateDefaultKeeperPolicy();
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        vm.prank(stranger); factory.activateDefaultKeeperPolicy();
+        assertEq(balancer.keeperPolicy(), initial);
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        vm.prank(stranger); balancer.activateKeeperPolicy();
+        assertEq(balancer.keeperPolicy(), address(v2));
     }
 
-    // ------------------------------------------------------------------ defaults and the admin
-
-    function test_defaults() public view {
-        _eq(factory.settings(), _defaults());
-        _eq(balancer.settings(), _defaults());
-        assertEq(balancer.maxKeeperReward(), 0.01635 ether, "(3.2M + 50k) x 5 gwei + 0.0001");
+    function test_pendingWithdrawCannotDefeatActivationFunding() public {
+        _open(5 ether);
+        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        uint256 claimable = balancer.withdrawableSurplus();
+        vm.prank(creator); balancer.claimSurplus(claimable, creator);
+        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
+        assertGt(shortfall, 0);
+        assertGt(required, address(balancer).balance - balancer.profit());
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.depositETH{value: shortfall}();
+        balancer.activateKeeperPolicy();
+        assertEq(balancer.keeperPolicy(), address(v2));
     }
 
-    function test_onlyTheAdminSetsDefaults() public {
-        vm.prank(stranger);
-        vm.expectRevert(BalancerFactory.Unauthorized.selector);
-        factory.setSettings(_defaults());
-        vm.prank(creator);
-        vm.expectRevert(BalancerFactory.Unauthorized.selector);
-        factory.setSettings(_defaults());
+    function test_emergencyDisableCannotBeInstantlyReenabled() public {
+        _open(5 ether);
+        bytes32 old = balancer.settingsHash();
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
+        assertFalse(balancer.paidUpkeepEnabled());
+        assertTrue(old != balancer.settingsHash());
+        vm.prank(creator); vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.setPaidUpkeepEnabled(true);
+        _switch(balancer.keeperPolicy());
+        assertTrue(balancer.paidUpkeepEnabled());
     }
 
-    /// Every field is refused one step outside its limits and accepted at them.
-    function test_adminDefaultsStayWithinLimits() public {
-        Settings memory lo = Settings(1 gwei, 0, 0, 0, 3_200_000, 50_000, 900_000, 1);
-        Settings memory hi = Settings(50 gwei, 2 gwei, 0.001 ether, 0.002 ether, 6_000_000, 200_000, 2_000_000, 1_000);
-        _setDefaults(lo);
-        _eq(factory.settings(), lo);
-        _setDefaults(hi);
-        _eq(factory.settings(), hi);
+    function test_minimumPaymentRevertsWorkAtomically() public {
+        _open(5 ether);
+        uint256 id = balancer.getActiveIds()[1];
+        uint256[] memory ids = new uint256[](1); ids[0] = id;
+        vm.prank(creator); balancer.unlistShapes(ids);
+        uint256 beforeIds = lastListingId();
+        bytes32 expected = balancer.settingsHash();
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
+        balancer.performUpkeep(expected, 1 ether);
+        assertEq(lastListingId(), beforeIds);
+        vm.prank(keeper); assertGt(balancer.performUpkeep(expected, 1), 0);
+    }
 
-        Settings[14] memory bad;
-        for (uint256 i; i < 14; ++i) bad[i] = _defaults();
-        bad[0].maxGasPrice = 1 gwei - 1;
-        bad[1].maxGasPrice = 50 gwei + 1;
-        bad[2].priorityCap = 2 gwei + 1;
-        bad[3].incentive = 0.001 ether + 1;
-        bad[4].restockFlat = 0.002 ether + 1;
-        bad[5].maxGas = 3_200_000 - 1;
-        bad[6].maxGas = 6_000_000 + 1;
-        bad[7].overheadGas = 50_000 - 1;
-        bad[8].overheadGas = 200_000 + 1;
-        bad[9].restockGas = 900_000 - 1; // overheadGas 50k + 850k
-        bad[10].restockGas = 2_000_000 + 1;
-        bad[11].maxPrizes = 0;
-        bad[12].maxPrizes = 1_001;
-        bad[13].overheadGas = 50_001; // more overhead paid than the restocking fee's 900k gas covers
-        for (uint256 i; i < 14; ++i) {
-            vm.prank(keeperAdmin);
-            vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-            factory.setSettings(bad[i]);
+    function test_policyFailureUnpaidWholePathAndRestrictedKeeper() public {
+        for (uint256 mode = 1; mode <= 5; ++mode) {
+            if (mode == 3) continue;
+            uint256 snap = vm.snapshotState();
+            _open(100 ether);
+            _switch(address(new HostilePolicy(mode)));
+            uint256 id = balancer.getActiveIds()[1];
+            uint256[] memory ids = new uint256[](1); ids[0] = id;
+            vm.prank(creator); balancer.unlistShapes(ids);
+            vm.prank(keeperAdmin); factory.setKeepersRestricted(true);
+            uint256 count = balancer.listedShapePrizes();
+            uint256 received = stranger.balance;
+            vm.prank(stranger); balancer.performUpkeepUnpaid();
+            assertEq(balancer.listedShapePrizes(), count + 1);
+            assertEq(stranger.balance, received);
+            vm.prank(creator); balancer.close();
+            uint256[] memory all = balancer.getActiveIds();
+            uint256[] memory shapeIds = new uint256[](20);
+            uint256 n;
+            for (uint256 k; k < all.length; ++k) {
+                (uint8 kind,,,,) = balancer.items(all[k]);
+                if (kind == 2) shapeIds[n++] = all[k];
+                else { vm.prank(creator); balancer.withdrawCurated(all[k], creator); }
+            }
+            assertEq(n, 20);
+            vm.prank(creator); balancer.unlistShapes(shapeIds);
+            vm.prank(creator); balancer.retire();
+            uint256 surplus = balancer.withdrawableSurplus();
+            vm.prank(creator); balancer.claimSurplus(surplus, creator);
+            assertEq(address(balancer).balance, 0);
+            assertEq(balancer.listedRestockFees(), 0);
+            vm.revertToState(snap);
         }
     }
 
-    // ------------------------------------------------------------------ the creator's overrides
-
-    function test_onlyTheCreatorOverrides() public {
-        vm.prank(stranger);
-        vm.expectRevert(PoolBalancer.Unauthorized.selector);
-        balancer.setOverrides(1, 10 gwei, 0, 0, 0);
-        vm.prank(keeperAdmin);
-        vm.expectRevert(PoolBalancer.Unauthorized.selector);
-        balancer.setOverrides(1, 10 gwei, 0, 0, 0);
+    function test_cancelAndCreatorTransferInvalidateProposals() public {
+        _open(5 ether);
+        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        vm.prank(creator); balancer.cancelKeeperPolicy();
+        assertEq(balancer.pendingKeeperPolicy(), address(0));
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        vm.prank(creator); balancer.transferCreator(stranger);
+        vm.prank(stranger); balancer.acceptCreator();
+        assertEq(balancer.pendingKeeperPolicy(), address(0));
+    }
+    function test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() public {
+        _open(100 ether);
+        _switch(address(new HostilePolicy(0)));
+        buy(buyer, 1);
+        vm.roll(vm.getBlockNumber() + 40);
+        uint256 before = balancer.availableKeeperAllowance();
+        bytes32 expected = balancer.settingsHash();
+        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1);
+        assertGt(reward, 0);
+        assertLe(reward, balancer.HARD_MAX_KEEPER_REWARD());
+        assertEq(balancer.keeperAllowance(), before - reward);
+        uint256 stored = balancer.keeperAllowance();
+        uint256 stamp = balancer.keeperAllowanceTime();
+        vm.prank(creator); balancer.close();
+        vm.prank(creator); balancer.open();
+        assertEq(balancer.keeperAllowance(), stored, "reopening never resets spend history");
+        assertEq(balancer.keeperAllowanceTime(), stamp);
+        _switch(balancer.keeperPolicy());
+        assertEq(balancer.keeperAllowance(), stored, "policy activation never resets spend history");
+        assertEq(balancer.keeperAllowanceTime(), stamp);
+        assertEq(balancer.availableKeeperAllowance(), balancer.KEEPER_BURST(), "idle refill saturates");
+        uint256 dayBound = balancer.KEEPER_BURST() + 1 days * balancer.KEEPER_REFILL_PER_SECOND();
+        uint256 yearBound = balancer.KEEPER_BURST() + 365 days * balancer.KEEPER_REFILL_PER_SECOND();
+        assertEq(dayBound, 2242.3099999999999424 ether);
+        assertEq(yearBound, 817311.109999999978976 ether);
     }
 
-    function test_overridesStayWithinLimits() public {
-        vm.startPrank(creator);
-        vm.expectRevert(PoolBalancer.InvalidConfig.selector);
-        balancer.setOverrides(16, 0, 0, 0, 0);
-        vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-        balancer.setOverrides(1, 50 gwei + 1, 0, 0, 0);
-        vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-        balancer.setOverrides(1, 1 gwei - 1, 0, 0, 0);
-        vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-        balancer.setOverrides(2, 0, 2 gwei + 1, 0, 0);
-        vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-        balancer.setOverrides(4, 0, 0, 0.001 ether + 1, 0);
-        vm.expectRevert(SettingsLib.SettingOutOfRange.selector);
-        balancer.setOverrides(8, 0, 0, 0, 0.002 ether + 1);
-        balancer.setOverrides(15, 50 gwei, 2 gwei, 0.001 ether, 0.002 ether);
-        vm.stopPrank();
-        Settings memory s = balancer.settings();
-        assertEq(s.maxGasPrice, 50 gwei);
-        assertEq(s.priorityCap, 2 gwei);
-        assertEq(s.incentive, 0.001 ether);
-        assertEq(s.restockFlat, 0.002 ether);
+    function test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() public {
+        _open(100 ether);
+        _switch(address(new HostilePolicy(3)));
+        buy(buyer, 1);
+        vm.roll(vm.getBlockNumber() + 40);
+        bytes32 expected = balancer.settingsHash();
+        uint256 before = keeper.balance;
+        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1);
+        assertEq(reward, 0.00001 ether);
+        assertEq(keeper.balance - before, 0.00001 ether);
+        assertEq(balancer.reconciledSequence(), 1);
+        assertEq(balancer.listedShapePrizes(), 20);
+        assertEq(balancer.creator(), creator);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(expected, 0);
     }
 
-    /// An override wins over the factory; a clear bit follows the factory, including later admin changes.
-    function test_overridesAndDefaultsCombine() public {
-        vm.prank(creator);
-        balancer.setOverrides(4, 0, 0, 0.0005 ether, 0); // incentive only
-        Settings memory d = _defaults();
-        d.priorityCap = 1 gwei;
-        d.incentive = 0.0003 ether;
-        _setDefaults(d);
-        Settings memory s = balancer.settings();
-        assertEq(s.incentive, 0.0005 ether, "the creator's incentive");
-        assertEq(s.priorityCap, 1 gwei, "the admin's new priority cap reaches the pool");
-        vm.prank(creator);
-        balancer.setOverrides(0, 0, 0, 0, 0);
-        assertEq(balancer.settings().incentive, 0.0003 ether, "cleared: back to the factory");
-        // Other pools of the factory follow the admin and not this creator.
-        vm.prank(stranger);
-        PoolBalancer other = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(7)))));
-        assertEq(other.settings().incentive, 0.0003 ether);
-    }
-
-    // ------------------------------------------------------------------ what each setting reaches
-
-    /// Reward = (measured gas + overheadGas) x min(bid, basefee + priorityCap, maxGasPrice) + incentive.
-    function test_upkeepPaysUnderTheSettingsInForce() public {
-        vm.prank(creator);
-        balancer.setOverrides(2 | 4, 0, 1 gwei, 0.0005 ether, 0);
-        Settings memory d = _defaults();
-        d.overheadGas = 120_000;
-        d.restockGas = 970_000; // the restocking fee's gas stays at least overheadGas + 850k
-        _setDefaults(d);
-        vm.fee(0.5 gwei);
-        vm.txGasPrice(2 gwei); // bid above basefee + priority cap: reimbursed at 1.5 gwei
-        bytes32 uh1 = balancer.settingsHash();
-        vm.recordLogs();
-        vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep(uh1);
-        (uint256 paid, uint256 measured) = _paid();
-        assertEq(paid, reward);
-        assertGt(measured, 0);
-        assertEq(paid, (measured + 120_000) * 1.5 gwei + 0.0005 ether, "pay follows overhead, priority cap and incentive");
-        assertLe(paid, balancer.maxKeeperReward());
-    }
-
-    function test_maxGasCapsMeasuredGas() public {
-        // A first stocking upkeep measures more than 1M gas; with the lowest cap it is paid in full under 3.2M.
-        vm.recordLogs();
-        upkeep();
-        (, uint256 measured) = _paid();
-        assertLe(measured, 3_200_000);
-        assertEq(balancer.maxKeeperReward(), (3_200_000 + 50_000) * 5 gwei + 0.0001 ether);
-        Settings memory d = _defaults();
-        d.maxGas = 6_000_000;
-        _setDefaults(d);
-        assertEq(balancer.maxKeeperReward(), (6_000_000 + 50_000) * 5 gwei + 0.0001 ether, "the cap raises the bound");
-    }
-
-    /// Restocking fee per Shape = restockGas x min(basefee + priorityCap, maxGasPrice) + incentive + restockFlat, at
-    /// listing.
-    function test_restockFeeFollowsTheSettings() public {
-        vm.fee(20 gwei);
-        assertEq(balancer.restockFee(), 900_000 * 5 gwei + 0.0002 ether, "default: capped at 5 gwei, unchanged");
-        vm.prank(creator);
-        balancer.setOverrides(1 | 8, 30 gwei, 0, 0, 0.001 ether);
-        assertEq(balancer.restockFee(), 900_000 * 20.05 gwei + 0.0001 ether + 0.001 ether, "creator's cap and flat fee");
-        Settings memory d = _defaults();
-        d.restockGas = 1_200_000;
-        _setDefaults(d);
-        uint256 fee = 1_200_000 * 20.05 gwei + 0.0001 ether + 0.001 ether;
-        assertEq(balancer.restockFee(), fee, "admin's gas with the creator's overrides");
-        // The next prize listed carries exactly that fee per Shape on top of its base.
-        vm.txGasPrice(20.05 gwei);
-        upkeep();
-        uint256[] memory ids = balancer.getActiveIds();
-        (uint8 kind,,, uint112 base, uint112 price) = balancer.items(ids[ids.length - 1]);
-        assertEq(kind, 2);
-        assertEq(uint256(price) - base, fee, "listed at base plus this fee");
-    }
-
-    /// The reserve holds one maximum reward per upkeep its work needs (plus one), at the settings in force.
-    function test_reserveFollowsTheMaxReward() public {
-        uint256 before = balancer.requiredReserve();
-        uint256 r0 = (3_200_000 + 50_000) * 5 gwei + 0.0001 ether;
-        Settings memory d = _defaults();
-        d.maxGasPrice = 10 gwei;
-        _setDefaults(d);
-        uint256 r1 = (3_200_000 + 50_000) * 10 gwei + 0.0001 ether;
-        uint256 rewards = (balancer.requiredReserve() - before) / (r1 - r0);
-        assertEq(balancer.requiredReserve() - before, rewards * (r1 - r0), "only the reward part moved");
-        assertGt(rewards, 0);
-    }
-
-    /// The prize limit applies when a design is saved; a saved design above a lowered limit stays as it is.
-    function test_maxPrizesAppliesAtConfigure() public {
-        uint256 t = balancer.target();
-        Settings memory d = _defaults();
-        d.maxPrizes = 10;
-        _setDefaults(d);
-        assertEq(balancer.target(), t, "saved design untouched");
-        vm.startPrank(creator);
-        vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(MARKUP, plan([uint256(11), 0, 0, 0, 0, 0, 0, 0, 0]));
-        balancer.configure(MARKUP, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
-        vm.stopPrank();
-        d.maxPrizes = 1_000;
-        _setDefaults(d);
-        vm.prank(creator);
-        balancer.configure(MARKUP, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0]));
-    }
-
-    /// With every setting at its maximum, prizes keep their exact backing: settings reach keeper pay and restocking
-    /// fees only. Unlisting redeems each Shape for its face value, and every reward stays within the bound.
-    function test_backingUntouchedAtTheLimits() public {
-        _setDefaults(Settings(50 gwei, 2 gwei, 0.001 ether, 0.002 ether, 6_000_000, 200_000, 2_000_000, 1_000));
-        vm.prank(creator);
-        balancer.setOverrides(15, 50 gwei, 2 gwei, 0.001 ether, 0.002 ether);
-        vm.deal(creator, 100 ether);
-        vm.prank(creator);
-        balancer.depositETH{value: 50 ether}();
-        vm.fee(40 gwei);
-        vm.txGasPrice(42 gwei);
-        uint256 maxReward = balancer.maxKeeperReward();
-        assertEq(maxReward, (6_000_000 + 200_000) * 50 gwei + 0.001 ether, "0.311 ETH");
-        for (uint256 i; i < 10; ++i) {
-            bytes32 uh2 = balancer.settingsHash();
-            vm.recordLogs();
-            vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh2) returns (uint256 reward) {
-                assertLe(reward, maxReward);
-            } catch {
-                break;
+    function test_writePolicyQuoteFixture() public {
+        IKeeperPolicy[2] memory policies = [IKeeperPolicy(address(new KeeperPolicyV1())), IKeeperPolicy(address(new KeeperPolicyV2()))];
+        uint256[5] memory bases = [uint256(0.15 gwei), 0.5 gwei, 5 gwei, 80 gwei, 0.5 gwei];
+        string memory root;
+        for (uint256 v; v < 2; ++v) {
+            for (uint256 k; k < 5; ++k) {
+                uint256 units = k == 4 ? 3 : 1;
+                uint256 draws = k == 3 ? 5 : 1;
+                IKeeperPolicy.Work memory w = IKeeperPolicy.Work(k == 3 ? 6_000_000 : 864_000,
+                    bases[k] + 0.05 gwei, bases[k], draws, k == 3 ? 5 : units, 1, 0);
+                string memory o = string.concat("quote", vm.toString(v * 5 + k));
+                vm.serializeUint(o, "version", v + 1);
+                vm.serializeString(o, "measuredGas", vm.toString(w.measuredGas));
+                vm.serializeString(o, "gasPrice", vm.toString(w.gasPrice));
+                vm.serializeString(o, "baseFee", vm.toString(w.baseFee));
+                vm.serializeString(o, "reconciledDraws", vm.toString(w.reconciledDraws));
+                vm.serializeString(o, "listedShapeUnits", vm.toString(w.listedShapeUnits));
+                vm.serializeString(o, "listedPrizes", vm.toString(w.listedPrizes));
+                vm.serializeString(o, "processedDraws", vm.toString(w.processedDraws));
+                vm.serializeString(o, "reward", vm.toString(policies[v].quoteReward(w)));
+                vm.serializeUint(o, "denomination", k == 4 ? 10 : 0);
+                vm.serializeString(o, "shapeUnits", vm.toString(units));
+                string memory row = vm.serializeString(o, "surcharge", vm.toString(policies[v].quoteRestock(k == 4 ? 10 : 0, units, bases[k])));
+                root = vm.serializeString("policyQuotes", vm.toString(v * 5 + k), row);
             }
         }
-        // Unlist every listed Shape: the balance rises by exactly their face values.
-        uint256[] memory ids = balancer.getActiveIds();
-        uint256[] memory shapeIds = new uint256[](ids.length);
-        uint256 n;
-        uint256 face;
-        for (uint256 i; i < ids.length; ++i) {
-            (uint8 kind, uint8 d,,,) = balancer.items(ids[i]);
-            if (kind != 2) continue;
-            shapeIds[n++] = ids[i];
-            face += balancer.denominationAmount(d);
-        }
-        assembly ("memory-safe") {
-            mstore(shapeIds, n)
-        }
-        assertGt(n, 0);
-        uint256 before = address(balancer).balance;
-        vm.prank(creator);
-        balancer.unlistShapes(shapeIds);
-        assertEq(address(balancer).balance - before, face, "each Shape redeemed for its exact backing");
+        vm.writeJson(root, "./test/fixtures/keeper-policy-quotes.json");
     }
 
-    // ------------------------------------------------------------------ audit rc-f5c81d6 F1 and F2
-
-    /// F1: a keeper's upkeep priced on one set of settings does not run under another. Lowering the cap between the
-    /// keeper's read and its call reverts the call at its start instead of paying below its gas.
-    function test_upkeepRefusesSettingsChangedSinceTheKeeperRead() public {
-        bytes32 priced = balancer.settingsHash();
-        assertEq(priced, keccak256(abi.encode(balancer.settings())));
-        vm.prank(creator);
-        balancer.setOverrides(1, 1 gwei, 0, 0, 0);
-        vm.fee(4 gwei);
-        vm.txGasPrice(4 gwei);
-        vm.prank(keeper, keeper);
-        vm.expectRevert(PoolBalancer.StaleSettings.selector);
-        balancer.performUpkeep(priced);
-        // A change by the admin is caught the same way.
-        priced = balancer.settingsHash();
-        Settings memory d = _defaults();
-        d.incentive = 0;
-        _setDefaults(d);
-        vm.prank(keeper, keeper);
-        vm.expectRevert(PoolBalancer.StaleSettings.selector);
-        balancer.performUpkeep(priced);
-        // Read again, the call runs.
-        bytes32 uh3 = balancer.settingsHash();
-        vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh3);
+    function test_boundedPolicyQuoteGasOverhead() public {
+        KeeperPolicyV1 first = new KeeperPolicyV1();
+        KeeperPolicyV1 second = new KeeperPolicyV1();
+        IKeeperPolicy.Work memory w = IKeeperPolicy.Work(864_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
+        vm.cool(address(first)); vm.cool(address(second));
+        uint256 g = gasleft();
+        uint256 direct = first.quoteReward(w);
+        uint256 directGas = g - gasleft();
+        g = gasleft();
+        uint256 bounded = KeeperPolicyCalls.reward(address(second), 0.01645 ether, w);
+        uint256 boundedGas = g - gasleft();
+        assertEq(direct, bounded);
+        assertLt(boundedGas, 25_000, "read-only boundary overhead is bounded independently of work");
+        emit log_named_uint("direct cold reward quote gas", directGas);
+        emit log_named_uint("bounded cold reward quote plus immutable envelope gas", boundedGas);
     }
 
-    /// F2: at the lowest restocking fee the limits allow (restockGas = overheadGas + 850k, no flat fee) and the
-    /// highest incentive, the fee carried by a won Shape still covers the upkeep that reconciles that draw and
-    /// restocks it, paid at the same gas price.
-    function test_lowestRestockFeeCoversItsRestock() public {
-        Settings memory d = _defaults();
-        d.overheadGas = 50_000;
-        d.restockGas = 900_000;
-        d.restockFlat = 0;
-        d.incentive = 0.001 ether;
-        _setDefaults(d);
-        vm.fee(5 gwei);
-        vm.txGasPrice(5 gwei);
-        vm.startPrank(creator);
-        balancer.configure(MARKUP, plan([uint256(30), 0, 0, 0, 0, 0, 0, 0, 0]));
-        vm.stopPrank();
-        fillUp();
-        // Draw one 0.01 Shape listed under these settings.
-        uint256 lid = lastListingId();
-        (, , , uint112 base, uint112 price) = balancer.items(lid);
-        uint256 fee = 900_000 * 5 gwei + 0.001 ether;
-        assertGe(uint256(price) - base, fee, "listed with the floor fee");
-        (,,,,,, uint256 slot,) = pool.listings(lid);
-        uint256[] memory ids = buy(buyer, 1);
-        fulfill(ids[0], wordForSlot(slot));
-        settle();
-        bytes32 uh4 = balancer.settingsHash();
-        vm.recordLogs();
-        vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh4);
-        (uint256 paid, uint256 measured) = _paid();
-        emit log_named_uint("reconcile + restock one Shape, measured gas", measured);
-        emit log_named_uint("keeper paid (wei)", paid);
-        emit log_named_uint("restocking fee in the won Shape (wei)", fee);
-        assertGe(fee, paid, "the won Shape's fee covers its restock");
+    function test_priceScaledMinimumSurvivesFallingBasefee() public {
+        _open(5 ether);
+        uint256[] memory one = new uint256[](1);
+        one[0] = balancer.getActiveIds()[1];
+        vm.prank(creator); balancer.unlistShapes(one);
+        bytes32 expected = balancer.settingsHash();
+        uint256 quotedMinimum = 700_000 * 0.55 gwei;
+        vm.fee(0.15 gwei); vm.txGasPrice(0.2 gwei);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
+        balancer.performUpkeep(expected, quotedMinimum);
+        assertEq(balancer.listedShapePrizes(), 19, "the fixed old quote reverted atomically despite falling expense");
+        vm.prank(keeper);
+        (bool ok, bytes memory out) = address(balancer).call(abi.encodeWithSignature(
+            "performUpkeep(bytes32,uint256,uint256)", expected, uint256(0), uint256(700_000)));
+        assertTrue(ok, "price-scaled minimum accepts the lower-cost upkeep");
+        assertGe(abi.decode(out, (uint256)), 700_000 * 0.2 gwei);
+        assertEq(balancer.listedShapePrizes(), 20);
     }
 
-    function _paid() internal returns (uint256 amount, uint256 measured) {
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; ++i) {
-            if (logs[i].topics[0] == KEEPER_PAID) (amount, measured) = abi.decode(logs[i].data, (uint256, uint256));
-        }
+    function test_pinnedFoundryGasCounterIsAlreadyBilled() public {
+        GasAccountingWitness witness = new GasAccountingWitness();
+        uint256 span = witness.clear();
+        (bool ok, bytes memory data) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        require(ok);
+        (, uint64 used,, int64 refunded,) = abi.decode(data, (uint64, uint64, uint64, int64, uint64));
+        assertGt(refunded, 0, "real CALL cleared a previously nonzero slot");
+        assertGe(uint256(used) + uint256(uint64(refunded)), span + 21_000,
+            "billed plus refund covers the executed storage span and intrinsic");
+        assertLt(used, span + 21_000, "used already contains the refund; subtracting it again is wrong");
+        emit log_named_uint("storage span before refund", span);
+        emit log_named_uint("five-field raw used (billed)", used);
+        emit log_named_int("five-field refund counter", refunded);
     }
+
 }

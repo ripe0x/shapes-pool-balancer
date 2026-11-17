@@ -215,14 +215,14 @@ contract HardeningTest is ForkBase {
         uint256 largest = 0.1 ether + fee;
         // empty: restore the whole target + 1 largest prize + (ceil((10+3)/6)+1)=4 keeper rewards
         uint256 deficit = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
-        assertEq(b.requiredReserve(), deficit + largest + 4 * b.maxKeeperReward(), "empty-pool reserve");
+        assertEq(b.requiredReserve(), deficit + largest + (10 + 3 + 1 + 2 * 10) * b.maxKeeperReward(), "empty-pool reserve");
         // fully reconciled: deficit 0, 1 largest prize + 2 keeper rewards (ceil(3/6)+1)
         for (uint256 i; i < 10; ++i) {
             bytes32 uh2 = b.settingsHash();
             vm.prank(keeper, keeper);
             try b.performUpkeep(uh2) {} catch { break; }
         }
-        assertEq(b.requiredReserve(), largest + 2 * b.maxKeeperReward(), "reconciled-open reserve");
+        assertEq(b.requiredReserve(), largest + (3 + 1 + 2 * 10) * b.maxKeeperReward() - 10 * b.restockFee(), "reconciled-open reserve");
     }
 
     /*////////////////////////////// incentive accounting //////////////////////////////*/
@@ -332,7 +332,7 @@ contract HardeningTest is ForkBase {
         vm.recordLogs();
         upkeep();
         (uint256 reward, uint256 gasPaid) = _fromLogs();
-        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "measured gas, overhead and the flat reward");
+        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.00002 ether, "measured gas, overhead and one verified draw");
         assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
     }
 

@@ -15,10 +15,10 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
         bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh1)));
+        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        billed = uint256(used) + 21_000;
+        billed = uint256(used);
         processed = pool.nextSequenceToProcess() != next;
         paid = keeper.balance - before;
         vm.revertToState(snap);
@@ -57,14 +57,14 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
         uint256 snap = vm.snapshotState();
         bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeCall(balancer.performUpkeep, (uh2)));
+        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeWithSignature("performUpkeep(bytes32)", uh2));
         (, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 usedHi,, int64 refHi,) = abi.decode(rr, (uint64, uint64, uint64, int64, uint64));
         vm.revertToState(snap);
         assertTrue(okHi);
         uint256 peak = uint256(usedHi) + uint256(int256(refHi));
         emit log_named_uint("used at 30M (after refund)", usedHi);
-        emit log_named_uint("peak used at 30M (before refund)", peak);
+        emit log_named_uint("receipt billed gas at 30M limit", peak);
         uint256[4] memory Gs = [uint256(usedHi), peak, peak * 64 / 63, (uint256(usedHi) * 13) / 10];
         for (uint256 k; k < 4; ++k) {
             (bool ok, bool processed, uint256 paid, uint256 billed) = _try(Gs[k]);

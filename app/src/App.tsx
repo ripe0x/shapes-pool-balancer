@@ -1,17 +1,18 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatEther, formatUnits, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, settingsFrom, shapeCount, unpackPlan, type Counts, type KeeperSettings,
+  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, pendingDrawsAdmitted, prizeLabel, restockFeeAt, SHAPES_IN, settingsFrom, shapeCount, unpackPlan, type Counts, type KeeperSettings,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
+import { policyAbi, policyEconomics } from './policy';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
@@ -41,6 +42,12 @@ const L_DELIVERY_PENDING = 6;
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
 
+const listingFees = (listings: Listing[]) => {
+  const fees: bigint[][] = [];
+  for (const l of listings) if (l.kind === 2 && l.state === 1) (fees[l.denom] ??= []).push(l.price - l.base);
+  return fees;
+};
+
 /** PoolBalancer.admissionStatus codes. */
 export const STATUS: Record<number, string> = {
   0: 'Open',
@@ -55,16 +62,6 @@ export const STATUS: Record<number, string> = {
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
-
-/** PoolBalancer.restockFee() for a prize listed in the next block: per Shape, from the latest basefee. */
-const liveRestockFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>, s: KeeperSettings) =>
-  pub.getBlock().then((blk) => restockFeeAt(blk.baseFeePerGas ?? 0n, s));
-/** Settings in force: a Balancer's `settings()` (its factory's defaults with its overrides), or the factory's defaults
- *  for a pool not created yet. */
-const liveSettings = (pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer?: Address) =>
-  (balancer
-    ? pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settings' })
-    : pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'settings' })).then(settingsFrom);
 
 /** FWA's per-draw VRF service fee, paid by the player on top of the draw price: the service's own formula and live
  *  settings (serviceGasEstimate x gas price x (1 + serviceMarginBps) + serviceFlatWei) at the current gas price. */
@@ -101,7 +98,7 @@ function useBalancer(b?: Address) {
     // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
     // current fees (the reward bound it must leave unspent grows with the gas price).
     const fees = await pub.estimateFeesPerGas();
-    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [await r<Hash>('settingsHash')], account: creator, ...fees })
+    const upkeep = await pub.simulateContract({ address: b, abi: poolBalancerAbi, functionName: 'performUpkeepUnpaid', account: creator, ...fees })
       .then(() => ({ needed: true }), () => ({ needed: false }));
     // Drawn items whose FWA delivery failed are not scanned on chain; find them from events. The same scan feeds the
     // lifetime ledger.
@@ -111,16 +108,24 @@ function useBalancer(b?: Address) {
     const factoryAddr = await r<Address>('factory');
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
-    // Defaults come from this pool's own factory, which may not be the one this dashboard creates pools with.
-    const [settings, defaults, overrides] = await Promise.all([liveSettings(pub, b),
-      pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'settings' }).then(settingsFrom),
-      r<readonly [number, bigint, bigint, bigint, bigint]>('overrides')]);
-    const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, restockFee, vrfFee] = await Promise.all([
+    const [settings, keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, policyMaxReward, listedRestockFees, recommendedPolicy] = await Promise.all([
+      r<Parameters<typeof settingsFrom>[0]>('settings').then(settingsFrom), r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'),
+      r<Address>('pendingKeeperPolicy'), r<bigint>('policyActivationTime'), r<bigint>('policyMaxReward'), r<bigint>('listedRestockFees'),
+      pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy' }),
+    ]);
+    const policyCosts = await policyEconomics(pub, keeperPolicy, policyMaxReward).catch(async () => {
+      const block = await pub.getBlock();
+      const fee = restockFeeAt(block.baseFeePerGas ?? 0n);
+      const restockFees = SHAPES_IN.map((units) => BigInt(units) * fee);
+      return { version: undefined, baseFee: undefined, gasPrice: undefined, settings: undefined, keeperQuotes: undefined,
+        policyMaxReward, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, policyUnavailable: true };
+    });
+    const [fee, proceeds, totalWeight, retired, unsettled, lastIssued, mintFee, edgeBps, vrfFee] = await Promise.all([
       p<bigint>('acquisitionFee'), p<bigint>('ownerProceeds'), p<bigint>('totalWeight'), p<boolean>('retired'),
       p<bigint>('unsettledAcquisitionCount'), p<bigint>('lastIssuedSequence'),
       pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
       pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
-      liveRestockFee(pub, settings), liveVrfFee(pub),
+      liveVrfFee(pub),
     ]);
     const listing = async (id: bigint): Promise<Listing> => {
       const [it, l] = await Promise.all([r<readonly [number, number, number, bigint, bigint]>('items', [id]), p<readonly [Address, Address, Address, bigint, bigint, bigint, bigint, number]>('listings', [id])]);
@@ -161,8 +166,8 @@ function useBalancer(b?: Address) {
     return {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, profit, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
-      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, restockFee, vrfFee, listings, pending, names, ensName,
-      keepersRestricted, settings, defaults, overrideMask: Number(overrides[0]), ledger,
+      fee, proceeds, totalWeight, retired, unsettled, mintFee, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, pending, names, ensName,
+      keepersRestricted, settings, keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, listedRestockFees, recommendedPolicy, factoryAddr, ledger,
     };
   }, [pub, b]);
   const refresh = useCallback(() => {
@@ -410,7 +415,6 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
 
 function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; notice?: string }) {
   const { data: d, error, refresh } = useBalancer(balancer);
-  const pub = usePublicClient();
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
   if (!d) return <p className="txline">Loading…</p>;
@@ -420,9 +424,8 @@ function PoolView({ balancer, me, tab, setTab, onBack, notice }: { balancer: Add
   // A pool created but never configured continues in the designer.
   const setup = d.target === 0n && isCreator && !d.retired;
   const tabs: Tab[] = setup ? ['overview', 'nfts', 'settings'] : ['overview', 'nfts', 'mix', 'settings'];
-  const upkeep = () => tx.send('Run upkeep', [async () => tx.write({ ...B, functionName: 'performUpkeep',
-    args: [await pub!.readContract({ ...B, functionName: 'settingsHash' })] })]);
-  const action = st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>
+  const upkeep = () => tx.send('Run unpaid maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  const action = st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run unpaid maintenance</button>
     : st.act === 'open' && isCreator ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>
       : st.act && st.act !== tab && st.act !== 'open' ? <button className="link" onClick={() => setTab(st.act as Tab)}>{st.label}</button>
         : null;
@@ -497,21 +500,28 @@ type Prereq = { creation: boolean; impl: boolean };
 function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onCreated: Create['onCreated'] }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
-  const [live, setLive] = useState<{ edgeBps: number; mintFee: bigint; restockFee: bigint; vrfFee?: bigint; settings: KeeperSettings }>();
+  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; settings: KeeperSettings }>();
+  const [loadError, setLoadError] = useState<string>();
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
-    liveSettings(pub).then((settings) => Promise.all([
-      pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }) as Promise<number>,
-      pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }) as Promise<bigint>,
-      liveRestockFee(pub, settings), liveVrfFee(pub),
-    ]).then(([edgeBps, mintFee, restockFee, vrfFee]) => setLive({ edgeBps, mintFee, restockFee, vrfFee, settings })))
-      .catch(() => undefined);
+    (async () => {
+      const policy = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy' });
+      const [costs, edgeBps, mintFee, vrfFee] = await Promise.all([
+        policyEconomics(pub, policy),
+        pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
+        pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }), liveVrfFee(pub),
+      ]);
+      // The prize limit is immutable; optional metadata supplies only display values for unfamiliar policies.
+      const settings = costs.settings ?? settingsFrom(await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'settings' }));
+      setLive({ ...costs, settings, edgeBps, mintFee, vrfFee });
+      setLoadError(undefined);
+    })().catch((e) => setLoadError(explain(e)));
   }, [pub]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
-  if (!live) return <main className="page"><p className="lead">Loading current fees…</p></main>;
+  if (!live) return <main className="page"><p className="lead">{loadError ?? 'Loading current fees…'}</p></main>;
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
-  const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, ...live } as unknown as D;
+  const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, activeShapes: ZERO, listedRestockFees: 0n, names: {}, balancer: ZERO_ADDR, enabled: false, ...live } as unknown as D;
   return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated }} />;
 }
 
@@ -563,8 +573,7 @@ const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: Dr
  *  simulates exactly as the send will (EIP-1559 fees from the node, the creator account), so NoUpkeepNeeded is not
  *  misjudged at gas price 0, where upkeep's reward bound is lower than at inclusion. */
 const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => ['Run upkeep', async () => {
-  const args = [await pub.readContract({ address: balancer, abi: poolBalancerAbi, functionName: 'settingsHash' })] as const;
-  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeep' as const, args };
+  const call = { address: balancer, abi: poolBalancerAbi, functionName: 'performUpkeepUnpaid' as const };
   const needed = await prepareWrite(pub, me, call).then(() => true, () => false);
   return needed ? tx.write(call) : undefined;
 }];
@@ -622,7 +631,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
     curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    have: d.activeShapes, settings: d.settings,
+    shapeRestockFees: listingFees(d.listings), have: d.activeShapes, settings: d.settings, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes, listedRestockFees: d.listedRestockFees,
   };
   const maxPrizes = d.settings.maxPrizes;
   // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
@@ -1041,7 +1050,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                 : <div><span>Not used</span>{figureEth(ev && have - needed)}</div>}
             </>
           )}
-          <div><div><span>Your earnings per draw</span><p className="note">An average over many draws. You can withdraw it while the pool's reserve is full.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
+          <div><div><span>Your earnings per draw</span><p className="note">An average over many draws. You can withdraw it while the pool's reserve is full.</p></div>{econ?.keeperCostKnown ? <span><span className="figure-s">{econ.keeperCostKnown ? perDraw(econ.keptPerDraw) : '—'}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
           <div><div><span>After a big prize is won</span><p className="note">What you can withdraw per draw until sales refill the reserve, the ETH the pool keeps to replace prizes.</p></div>{econ ? <span><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></span> : <span className="figure-s muted">—</span>}</div>
         </div>
         {save}
@@ -1070,7 +1079,7 @@ function Design({ d, tx, mode, me, create }: { d: D; tx: Tx; mode: Mode; me?: Ad
                   <div className="kv"><span className="k">ETH held in Shapes</span><span>{eth(ev.capital)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Kept in the pool while open'}</span><span>{eth(needed)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
-                  <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
                   <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking fee per Shape, at today's gas</span><span>{eth(d.restockFee, 5)} ETH</span></div>
                 </div>
@@ -1189,7 +1198,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const inputs: DesignInputs = {
     curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee,
-    shapePrices: livePrices, have: d.activeShapes, settings: d.settings,
+    shapePrices: livePrices, shapeRestockFees: listingFees(d.listings), have: d.activeShapes, settings: d.settings, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes, listedRestockFees: d.listedRestockFees,
   };
   const before = plan && bases.length ? evaluate(plan, inputs) : undefined;
   const after = plan && newBases.length ? evaluate(plan, { ...inputs, curatedBases: [...bases, ...newBases] }) : undefined;
@@ -1262,9 +1271,9 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && l.state === 1) (livePrices[l.denom] ??= []).push(l.price);
   const econ = bases.length && plan.some(Boolean)
-    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices , settings: d.settings })
+    ? economics(plan, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, shapePrices: livePrices, shapeRestockFees: listingFees(d.listings), settings: d.settings, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes, listedRestockFees: d.listedRestockFees })
     : undefined;
-  const month = econ ? econ.keptPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
+  const month = econ?.keeperCostKnown ? econ.keptPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((s, n, i) => s + Math.max(0, n - d.activeShapes[i]), 0);
   const planned = plan.reduce((a, b) => a + b, 0);
   const idle = d.balance > d.required ? d.balance - d.required : 0n;
@@ -1391,9 +1400,9 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {econ ? (
             <>
               <div className="row" style={{ gap: 40, marginTop: 12 }}>
-                <div><span className="note">Per draw, on average</span><div><span className="figure-s">{perDraw(econ.keptPerDraw)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Per draw, on average</span><div><span className="figure-s">{econ.keeperCostKnown ? perDraw(econ.keptPerDraw) : '—'}</span><span className="unit">ETH</span></div></div>
                 <div><span className="note">Per draw after a big win</span><div><span className="figure-s">{perDraw(econ.claimablePerDraw)}</span><span className="unit">ETH</span></div></div>
-                <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{signed(month)}</span><span className="unit">ETH</span></div></div>
+                <div><span className="note">Every 30 days</span><div><span className={`figure-s${month < 0 ? ' error' : ''}`}>{econ.keeperCostKnown ? signed(month) : '—'}</span><span className="unit">ETH</span></div></div>
               </div>
               <p className="note" style={{ marginTop: 10 }}>An estimate at today's {d.markupBps / 100}% markup; prizes listed before a markup change keep their earlier markup until they restock. After a big prize is won, sales refill the reserve first, so you can withdraw less until it is full. Assumes {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button></p>
               {assume.open && (
@@ -1408,7 +1417,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                   <div className="kv"><span className="k">Your markup on Shapes</span><span>{econ.markupPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Shapes mint fees, paid by players</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking fees, paid by players</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Keeper pay, from your ETH</span><span>−{econ.keeperPayPerDraw.toFixed(5)} ETH</span></div>
+                  <div className="kv"><span className="k">Keeper pay, from your ETH</span><span>−{econ.keeperCostKnown ? `${econ.keeperPayPerDraw.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
                   <p className="note" style={{ marginTop: 10 }}>An estimate from the current mix. Single draws vary; short runs can lose money either way.</p>
                 </div>
               )}
@@ -1424,40 +1433,71 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 const PROFILE_KEYS = ['avatarUrl', 'bannerUrl', 'description', 'websiteUrl', 'xUrl', 'discordUrl'] as const;
 const PROFILE_LABELS: Record<string, string> = { avatarUrl: 'Avatar URL', bannerUrl: 'Banner URL', websiteUrl: 'Website', xUrl: 'X', discordUrl: 'Discord' };
 
-/** The four keeper-pay settings a creator may set for their own pool (PoolBalancer.setOverrides). A value equal to the
- *  factory's default is left to follow the factory. Limits match SettingsLib.check. */
-const PAY_FIELDS = [
-  { key: 'maxGasPrice', bit: 1, label: 'Gas price cap', unit: 'gwei', dec: 9, min: '1', max: '50' },
-  { key: 'priorityCap', bit: 2, label: 'Priority fee cap', unit: 'gwei', dec: 9, min: '0', max: '2' },
-  { key: 'incentive', bit: 4, label: 'Reward per keeper call', unit: 'ETH', dec: 18, min: '0', max: '0.001' },
-  { key: 'restockFlat', bit: 8, label: 'Extra restocking fee per Shape, on top of gas and the reward', unit: 'ETH', dec: 18, min: '0', max: '0.002' },
-] as const;
-
 function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
-  const fmt = (v: bigint, dec: number) => formatUnits(v, dec);
-  const [vals, setVals] = useState(() => Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.settings[f.key], f.dec)])) as Record<string, string>);
-  const parsed = PAY_FIELDS.map((f) => { try { return parseUnits(vals[f.key] || '0', f.dec); } catch { return -1n; } });
-  const bad = PAY_FIELDS.some((f, i) => parsed[i] < parseUnits(f.min, f.dec) || parsed[i] > parseUnits(f.max, f.dec));
-  const mask = PAY_FIELDS.reduce((m, f, i) => (parsed[i] !== d.defaults[f.key] ? m | f.bit : m), 0);
-  const changed = PAY_FIELDS.some((f, i) => parsed[i] !== d.settings[f.key]);
-  const save = () => tx.send('Save keeper pay', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setOverrides', args: [mask, parsed[0], parsed[1], parsed[2], parsed[3]] })]);
-  return (
-    <div className="section">
-      <h2 className="h3" style={{ fontSize: 22, marginBottom: 6 }}>Keeper pay</h2>
-      <p className="note" style={{ marginBottom: 12 }}>Paid from this pool's ETH. Keeper pay changes from the next upkeep; restocking fees from the next prizes listed.</p>
-      {PAY_FIELDS.map((f, i) => (
-        <div className="kv" key={f.key}>
-          <div><label htmlFor={`pay-${f.key}`} style={{ fontWeight: 700 }}>{f.label}</label><p className="note">{f.min} to {f.max} {f.unit} · default {fmt(d.defaults[f.key], f.dec)}{d.overrideMask & f.bit ? ' · yours' : ''}</p></div>
-          <div className="field" style={{ width: 170 }}><input id={`pay-${f.key}`} inputMode="decimal" value={vals[f.key]} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} aria-invalid={parsed[i] < 0n} /><span className="u">{f.unit.toUpperCase()}</span></div>
-        </div>
-      ))}
-      <div className="row" style={{ marginTop: 16, gap: 16 }}>
-        <button className="btn" disabled={!!tx.busy || bad || !changed} onClick={save}>Save keeper pay</button>
-        <button className="link quiet" disabled={!!tx.busy} onClick={() => setVals(Object.fromEntries(PAY_FIELDS.map((f) => [f.key, fmt(d.defaults[f.key], f.dec)])))}>Use the defaults</button>
-        {bad && <span className="note error">A value is outside its range.</span>}
-      </div>
+  const pub = usePublicClient();
+  const [candidate, setCandidate] = useState<Address>(d.pendingKeeperPolicy !== ZERO_ADDR ? d.pendingKeeperPolicy : d.recommendedPolicy);
+  const [quote, setQuote] = useState<{ required: bigint; shortfall: bigint; version?: bigint; maxReward: bigint; fee: bigint; costIncrease: boolean }>();
+  const [error, setError] = useState<string>();
+  const [availablePolicies, setAvailablePolicies] = useState<Address[]>([]);
+  const valid = /^0x[0-9a-fA-F]{40}$/.test(candidate);
+  useEffect(() => {
+    if (!pub) return;
+    let current = true;
+    pub.getLogs({ address: d.factoryAddr, event: parseAbiItem('event DefaultPolicyChanged(address indexed previousPolicy,address indexed newPolicy)'), fromBlock: FROM_BLOCK })
+      .then((logs) => { if (current) setAvailablePolicies([...new Set(logs.map((l) => l.args.newPolicy!))]); }).catch(() => undefined);
+    return () => { current = false; };
+  }, [pub, d.factoryAddr, d.recommendedPolicy]);
+  useEffect(() => {
+    setQuote(undefined);
+    setError(undefined);
+    if (!pub || !valid) return;
+    let current = true;
+    Promise.all([
+      pub.readContract({ address: d.balancer, abi: poolBalancerAbi, functionName: 'policyFunding', args: [candidate] }),
+      policyEconomics(pub, candidate),
+    ]).then(([funding, costs]) => { if (current) setQuote({ required: funding[0], shortfall: funding[1], version: costs.version, maxReward: costs.policyMaxReward, fee: costs.restockFee, costIncrease: costs.restockFees.some((fee, i) => fee > d.restockFees[i]) || (!!costs.keeperQuotes && !!d.keeperQuotes && (costs.keeperQuotes.reconcile > d.keeperQuotes.reconcile || costs.keeperQuotes.replace.some((r, i) => r > d.keeperQuotes!.replace[i]))) }); })
+      .catch(() => { if (current) setError('Unable to read policy quotes. Check the address and connection.'); });
+    return () => { current = false; };
+  }, [pub, candidate, valid, d.balancer, d.balance, d.required, d.profit]);
+  const pending = d.pendingKeeperPolicy !== ZERO_ADDR;
+  const mature = d.chainTimestamp >= d.policyActivationTime;
+  const write = (label: string, functionName: string, args: unknown[] = []) => tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: functionName as never, args: args as never })]);
+  return <div className="section">
+    <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keeper payment policy</h2>
+    <div className="kv"><span className="k">Active policy</span><span title={d.keeperPolicy}>{short(d.keeperPolicy)} · {d.version === undefined ? 'Version unavailable' : `V${d.version}`}</span></div>
+    <div className="kv"><span className="k">Factory recommendation</span><button className="link" onClick={() => setCandidate(d.recommendedPolicy)}>{short(d.recommendedPolicy)}</button></div>
+    {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable. Recovery fallback estimate shown.</p>}
+    <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : 'Disabled'}</span></div>
+    <div className="kv"><span className="k">Maximum payment per call</span><span>{eth(d.policyMaxReward, 5)} ETH</span></div>
+    <div className="kv"><span className="k">Restocking charge per Shape</span><span>{eth(d.restockFee, 6)} ETH</span></div>
+    <div className="row" style={{ gap: 16, marginTop: 16 }}>
+      {d.paidUpkeepEnabled && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>}
+      <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
     </div>
-  );
+    <label htmlFor="keeper-policy" className="ctl" style={{ display: 'block', marginTop: 24 }}>Replacement policy address</label>
+    <input id="keeper-policy" className="input" list="known-policies" value={candidate} onChange={(e) => setCandidate(e.target.value as Address)} spellCheck={false} autoComplete="off" style={{ width: '100%' }} />
+    <datalist id="known-policies">{availablePolicies.map((p) => <option key={p} value={p} />)}</datalist>
+    {quote && <>
+      <div className="kv"><span className="k">Candidate version</span><span>{quote.version === undefined ? 'Unavailable' : `V${quote.version}`}</span></div>
+      <div className="kv"><span className="k">Candidate maximum payment</span><span>{eth(quote.maxReward, 5)} ETH</span></div>
+      <div className="kv"><span className="k">Candidate restocking charge</span><span>{eth(quote.fee, 6)} ETH</span></div>
+      <div className="kv"><span className="k">Required operating capital</span><span>{eth(quote.required, 5)} ETH</span></div>
+      <div className="kv"><span className="k">Additional ETH required</span><span className={quote.shortfall > 0n ? 'error' : ''}>{eth(quote.shortfall, 5)} ETH</span></div>
+      {(quote.costIncrease || quote.maxReward > d.policyMaxReward || quote.fee > d.restockFee) && <p className="note error">This policy has a higher payment ceiling or quoted cost.</p>}
+      {quote.shortfall > 0n && <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Fund policy reserve', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'depositETH', value: quote.shortfall })])}>Deposit {eth(quote.shortfall, 5)} ETH</button>}
+    </>}
+    {error && <p className="note error" role="alert">{error}</p>}
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !valid || !quote} onClick={() => write('Propose keeper policy', 'proposeKeeperPolicy', [candidate])}>Propose policy · 2 day delay</button>
+    {pending && <div style={{ marginTop: 20 }}>
+      <div className="kv"><span className="k">Pending policy</span><span title={d.pendingKeeperPolicy}>{short(d.pendingKeeperPolicy)}</span></div>
+      <div className="kv"><span className="k">Activation time</span><time dateTime={new Date(Number(d.policyActivationTime) * 1000).toISOString()}>{new Date(Number(d.policyActivationTime) * 1000).toLocaleString()}</time></div>
+      <div className="row" style={{ gap: 16, marginTop: 12 }}>
+        <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Cancel keeper policy', 'cancelKeeperPolicy')}>Cancel proposal</button>
+        <button className="btn" disabled={!!tx.busy || !mature} onClick={() => write('Activate keeper policy', 'activateKeeperPolicy')}>Activate policy</button>
+      </div>
+    </div>}
+    <p className="note" style={{ marginTop: 12 }}>Existing listings keep their prices. Re-enabling paid upkeep requires a delayed policy activation.</p>
+  </div>;
 }
 
 function Settings({ d, tx }: { d: D; tx: Tx }) {

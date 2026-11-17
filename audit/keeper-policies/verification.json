@@ -1,0 +1,174 @@
+{
+  "base": "a29af3a",
+  "branch": "codex/replaceable-keeper-policies",
+  "fork_rpc": "https://mainnet.gateway.tenderly.co",
+  "fork_block": 26382349,
+  "asset_flow_source_hash": "eefd64a9600fc70701db718b521a9dd83a5ced0a2ca11ddee00e828fe47ec524",
+  "evidence_scope": "Combined valid unaffected candidate checks and affected repairs; raw local logs are not permanent hosted artifacts. Final keeper changes use focused E2E10/unit/typecheck; no second300-roundrun.",
+  "broad_command": "CANDIDATE_RUN=1 forge test --isolate --no-match-path test/scenario/FlowBreakdown.t.sol -vv",
+  "affected_command": "CANDIDATE_RUN=1 forge test --isolate --gas-limit 100000000000 --match-test '(test_closeClaimThenSplitReconcileAtCap|test_closedHold_expiredOnePerBlock_5gwei|test_closedHold_expiredReservedDraws_5gwei|test_closedHold_reservedDraws_5gwei|test_closedHostile_failedDelivery_owed4|test_closedHostile_failedDelivery_owed4_pad464|test_closedHostile_onePerCall_base1gwei|test_closedHostile_onePerCall_pad464_base1gwei|test_closedSplitAtMaxGas|test_curatedDrawReconcileIsPaid|test_fine_hostile|test_gateLean_floor100k|test_gateLean_floor120k|test_gateOne_floor100k|test_gateOne_floor120k|test_holdAfterCloseReopenRetireAndUnprocessedDraws|test_holdCannotGrowAfterCloseAndNeverStrandsOnPendingDraws|test_margin_pad0_5gwei|test_margin_pad2000_5gwei|test_margin_pad976_055gwei|test_margin_pad976_5gwei|test_open_pad2000|test_probeHog_pad2000|test_probeHog_pad4048|test_reserveExactFormula|test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold|test_starveAbove_pad0_5gwei|test_starveAbove_pad464_5gwei|test_starveAbove_pad976_5gwei|test_which_pad0)' -vv",
+  "records": [
+    {
+      "path": "/private/tmp/keeper-policy-candidate-foundry.log",
+      "sha256": "8585823ac26774601aafaa7ae41799afb56bfec4df42bb1df29ca57fd4e3c4c0",
+      "exit_status": 1,
+      "result": "423 attempted;356 passed;67 failed; failures retained"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-candidate-affected.log",
+      "sha256": "50c1592c0d045041b84c2978bac9b54c75667d697672eb54cd70553f7ca3cecd",
+      "exit_status": 0,
+      "result": "67 affected cases passed"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-final-pay-emergency.log",
+      "sha256": "a1c792a4b3185750c23c98d10ab400fe6f5f3f01bee4bd80790307e3226f52a4",
+      "exit_status": 0,
+      "result": "25 focused final tests passed"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-candidate-typescript-tests.log",
+      "sha256": "a7c0d24ff06352190f860182f5af56238d003faabc1c48af057c422be6f62bab",
+      "exit_status": 0,
+      "result": "70 tests passed before accounting repair"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-candidate-app-final-ui-build.log",
+      "sha256": "7bc5a3fe7d67ca3a3e9d26d7c3fdc1184786bc7e7e270473313ab7d2a08c5945",
+      "exit_status": 0,
+      "result": "final UI production build"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-07.log",
+      "sha256": "58c16e8f2292d02e50eea3fcd2cdd75b305e7631ca3d1dbf808c0250565176be",
+      "exit_status": 0,
+      "result": "pre-journal mixed-policy E2E"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-08.log",
+      "sha256": "ff5b4e1995c14b277508a98d270134d73060ac612aef605f4d19e9d8856af6a5",
+      "exit_status": 1,
+      "result": "harness incorrectly assumed automatic orphan reinsertion"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-09.log",
+      "sha256": "260c4e3f6f53af1bef5bc13f3072729dea3ba418b19060a3efabc706402cc3f4",
+      "exit_status": 0,
+      "result": "canonical receipt recovery"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-10.log",
+      "sha256": "ddca0a8fe2889d0e10da5a92096f7bce9bd3c61aee2dd0b6418bf7047ac46fb2",
+      "exit_status": 0,
+      "result": "final canonical receipt recovery and explicit operator-action boundary"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-rehearsal-300-01.log",
+      "sha256": "1ab2e635ce6230cd5f87df35072ef0ed4a7c5f16f91298189d7735d30a3f9b61",
+      "exit_status": 0,
+      "result": "832draws;361actualkeepertransactions;chainreconciled;oldhealthmissedeightentries"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-inline-overhead.log",
+      "sha256": "c1dc4e6ad80ff7295beaead24851767a7aa762cf3d453430104d7b2867b78256",
+      "exit_status": 0,
+      "result": "inline/static boundary gas comparison"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-gas-counter-calibration.log",
+      "sha256": "2fbbd132441514abfa57c69e937a4a591f7e2ebc95af2a474fd5b500c0bc8e90",
+      "exit_status": 0,
+      "result": "Foundry billed gas interpretation witness"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-economic-review-final.log",
+      "sha256": "668e9db261ec532426999d97dd1815c226c3e24d3061baf3c5c81eb1276eec6c",
+      "exit_status": 0,
+      "result": "four independent economic regressions"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-security-review-final.log",
+      "sha256": "b937ef91467a2bf711ffd0e1055d6c113e8425e629b570a19926735daec497e9",
+      "exit_status": 0,
+      "result": "independent security regressions"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-candidate-asset-gate.log",
+      "sha256": "6bb057d54592976fea2b938289812110a033b866b7872e8244478843493a2119",
+      "exit_status": 2,
+      "result": "23regimes/outcomespass;missingapproval/reviewrecordatthattime"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-candidate-asset-gate-recorded.log",
+      "sha256": "31f561df26a75544aeedf1662bc7dd9a043a3fea9dc56c179695bdb1845e140b",
+      "exit_status": 2,
+      "result": "existing23regimesreevaluated;reviewrecordpresent;unsignedoutcomesonly"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-01.log",
+      "sha256": "baa71c1695b84cb8e067c4e5e2f69839c81180935ba59ab5f0d8f21b9e93ae01",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-02.log",
+      "sha256": "132ba55249bc109477dbe5ed6b1ae5a069af685129d4b67af944e8bb1262790e",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-03.log",
+      "sha256": "45ff5b991943e163e6daea4733a45f731bf2b5a55995b5e822d3b7a4bc65779b",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-04.log",
+      "sha256": "5cc18aa983fae5236acd15b110ccc5d3b1db0c39f1e7f3788bc3f90de91400da",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-05.log",
+      "sha256": "872bbc39577be8ffeae8e20d3f76a8b02711a65f4b923154c90d331cc1aa15d2",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-e2e-06.log",
+      "sha256": "d5a97bbe4411c885d40b3a29273b2972fcaca2a8236926a8398e89f608c6823f",
+      "exit_status": null,
+      "result": "earlier failed E2E attempt, superseded by repaired focused runs; raw failure preserved",
+      "limitation": "Original process exit status not recovered in this final manifest; failure output remains retained."
+    },
+    {
+      "path": "/private/tmp/keeper-policy-eviction-before.log",
+      "sha256": "21684053c355ec6920e55e46f841b256b5651ab3ccc432e11dc9d8fe5a42fd16",
+      "exit_status": 1,
+      "result": "real peer mined at eviction boundary; old implementation failed retained-accounting assertion"
+    },
+    {
+      "path": "/private/tmp/keeper-policy-eviction-after.log",
+      "sha256": "4492a0e5330619625b206ee5cee7e3ccbfb66deb6013edf2a947e1263773e808",
+      "exit_status": 0,
+      "result": "same real peer-mining race passed with exact once-only accounting"
+    }
+  ],
+  "final_keeper_sha256": "08f9d954fee5b3aada21af81134b44972d261b437978f4e4de4655d8663f7431",
+  "final_keeper_focused_command": "E2E_PORT=18550 E2E_RECOVERY_ONLY=1 CANDIDATE_RUN=1 npm run keeper:e2e",
+  "final_keeper_unit_command": "node_modules/.bin/vitest run keeper/keeper.test.ts",
+  "final_keeper_unit_result": "exit0;15of15passed",
+  "final_typecheck_command": "node_modules/.bin/tsc --noEmit -p tsconfig.json",
+  "final_typecheck_exit_status": 0,
+  "deployment_gas_limit_evidence": {
+    "path": "broadcast/Deploy.s.sol/31337/run-latest.json",
+    "sha256": "8f143c1cfcb1483327dc01cd8d67c33d3ffc37f007c49d6c37d39e1682cfcd54",
+    "transactions": 8,
+    "maximum_gas_limit": 7004212
+  }
+}

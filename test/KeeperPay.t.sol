@@ -10,25 +10,37 @@ import {ListOne} from "./utils/ListOne.sol";
 
 using ListOne for PoolBalancer;
 
-/// @notice Keeper pay: every upkeep that reconciles a draw or lists a prize is paid its gas plus a flat reward from the
+/// @notice Keeper pay: every upkeep that reconciles a draw or lists a prize is paid its gas plus verified work fees from the
 ///         creator's ETH; a call that does neither is paid nothing. Mainnet fork, real FWA pool, randomness service,
 ///         Shapes and BAYC tokens. Run with --isolate for real transaction gas (intrinsic gas, cold storage, refunds):
 ///         forge test --match-path test/KeeperPay.t.sol --isolate -vv
+contract BillingWitness {
+    function noop() external returns (uint256) { return 42; }
+}
+
 contract KeeperPayTest is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     address constant BAYC = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D;
     uint256 constant OVERHEAD = 50_000; // PoolBalancer.KEEPER_OVERHEAD_GAS
-    uint256 constant FLAT = 0.0001 ether; // PoolBalancer.KEEPER_INCENTIVE
+    uint256 constant WORK_FEE = 0.00002 ether; // KeeperPolicyV1 fee per completed draw or listed Shape unit
     uint256 constant VRF_GAS = 2_340_000; // FWA's randomness charge per draw
 
     GasProbe probe;
     uint256 gasPrice;
     uint256 nextNft = 200;
     uint256 nftListing;
+    bool isolated;
 
     function setUp() public {
         setUpFork();
         probe = new GasProbe();
+        BillingWitness witness = new BillingWitness();
+        witness.noop();
+        (, bytes memory usage) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        (, uint64 used,,,) = abi.decode(usage, (uint64, uint64, uint64, int64, uint64));
+        // This non-view CALL costs far below 1k execution gas: >=21k independently detects included intrinsic gas.
+        assertTrue(used < 1_000 || used >= 21_000, "unrecognized Foundry billing mode");
+        isolated = used >= 21_000;
     }
 
     /// @dev Sets the gas context, proves it inside a transaction, and opens a pool of ten 0.01 Shapes and one NFT.
@@ -61,23 +73,30 @@ contract KeeperPayTest is ForkBase {
         vm.stopPrank();
     }
 
-    /// @dev One keeper call. `pnl` is the reward less this call's gas at the gas price, plus 21,000 in case the run is
-    ///      not isolated (isolated runs already bill intrinsic gas, so the cost is then overstated).
+    /// @dev The pinned five-field Foundry response already includes intrinsic and applied refunds in isolation.
+    ///      Its semantics are guarded by SettingsTest's storage-clear CALL and compared with real Anvil receipts.
     function _paid() internal returns (uint256 reward, uint256 measured, int256 pnl) {
         bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
         reward = balancer.performUpkeep(uh1);
-        (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        (bool ok, bytes memory usage) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
-        (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
+        (, uint64 used,,,) = abi.decode(usage, (uint64, uint64, uint64, int64, uint64));
+        uint256 billed = used;
+        if (!isolated) {
+            billed += 21_000;
+            bytes memory data = abi.encodeWithSignature("performUpkeep(bytes32)", uh1);
+            for (uint256 i; i < data.length; ++i) billed += data[i] == 0 ? 4 : 16;
+        }
+        // Pinned 1.8.1's five-field `used` already includes the applied transaction refund.
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) (, measured) = abi.decode(logs[i].data, (uint256, uint256));
         }
         assertEq(keeper.balance - before, reward, "the keeper received the reward");
-        pnl = int256(reward) - int256((uint256(used) + 21_000) * gasPrice);
+        pnl = int256(reward) - int256(billed * gasPrice);
     }
 
     function _noWork() internal {
@@ -111,7 +130,7 @@ contract KeeperPayTest is ForkBase {
     }
 
     /// A draw that timed out lists nothing and brings no restocking fee. Reconciling it is paid measured gas plus the
-    /// overhead allowance at the reimbursed price, plus the flat reward.
+    /// overhead allowance at the reimbursed price, plus the work fee.
     function test_reconcileOnlyCallIsPaid() public {
         _open(0.5 gwei);
         fillUp();
@@ -122,8 +141,8 @@ contract KeeperPayTest is ForkBase {
         (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "reconciled");
         assertEq(lastListingId(), listings, "nothing listed");
-        assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + FLAT, "gas at basefee + 0.05 gwei, plus the flat reward");
-        assertGt(reward, FLAT + 0.00005 ether, "more than the flat reward");
+        assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + WORK_FEE, "gas at basefee + 0.05 gwei, plus the work fee");
+        assertGt(reward, WORK_FEE + 0.00005 ether, "more than the flat reward");
         assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
         assertEq(fund - address(balancer).balance, reward, "paid from the Balancer's ETH, nothing else moved");
         _noWork();
@@ -151,9 +170,11 @@ contract KeeperPayTest is ForkBase {
         // Fewest calls: all four expired at once. Upkeep processes at most MAX_PROCESS (2) per call: 2, 2.
         vm.roll(firstExpired + 3);
         uint256 batched;
+        int256 batchedPnl;
         for (uint256 i; i < 2; ++i) {
-            (uint256 reward,,) = _paid();
+            (uint256 reward,, int256 pnl) = _paid();
             batched += reward;
+            batchedPnl += pnl;
         }
         assertEq(balancer.reconciledSequence(), 4, "two calls reconcile all four");
         _noWork();
@@ -161,13 +182,15 @@ contract KeeperPayTest is ForkBase {
 
         // Most calls: one draw expires per block, so each call processes and reconciles exactly one.
         uint256 split;
+        int256 splitPnl;
         for (uint256 i; i < 4; ++i) {
             vm.roll(firstExpired + i - 1);
             _noWork(); // the head is neither ready nor expired: nothing to be paid for
             vm.roll(firstExpired + i);
-            (uint256 reward, uint256 measured,) = _paid();
+            (uint256 reward, uint256 measured, int256 pnl) = _paid();
+            splitPnl += pnl;
             assertEq(balancer.reconciledSequence(), i + 1, "each paid call advances reconciliation");
-            assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + FLAT);
+            assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + WORK_FEE);
             assertLt(reward, 0.0003 ether);
             split += reward;
         }
@@ -175,18 +198,21 @@ contract KeeperPayTest is ForkBase {
         assertLt(split - batched, 2 * 0.0003 ether, "splitting costs the creator at most one small reward per extra call");
         emit log_named_decimal_uint("paid for two batched calls", batched, 18);
         emit log_named_decimal_uint("paid for four split calls", split, 18);
+        emit log_named_decimal_int("keeper net from batched upkeep", batchedPnl, 18);
+        emit log_named_decimal_int("keeper net from split upkeep", splitPnl, 18);
+        assertEq(4 * WORK_FEE, 0.00008 ether, "same service fees in both schedules");
     }
 
     /// Audit rc-ec5259c finding 3, repaired (owner decision D3): while closed, `requiredReserve` holds one maximum keeper
-    /// reward per five unreconciled draws, so the creator cannot claim it and a later useful reconcile is paid.
+    /// reward per unreconciled draw, including deliberately split settlement, so the creator cannot claim it before reconciliation.
     function test_postCloseReconcileIsPaidFromHeldAmount() public {
         _open(0.5 gwei);
         fillUp();
         buy(buyer, 5);
         vm.prank(creator);
         balancer.close();
-        uint256 held = 3 * balancer.maxKeeperReward();
-        assertEq(balancer.requiredReserve(), held, "five unreconciled draws: ceil(5/2) = 3 maximum rewards held");
+        uint256 held = 5 * balancer.maxKeeperReward();
+        assertEq(balancer.requiredReserve(), held, "five unreconciled draws: one maximum reward each");
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else is claimable");
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator);
@@ -199,7 +225,7 @@ contract KeeperPayTest is ForkBase {
         assertEq(balancer.reconciledSequence(), 0, "reached: five processed draws await reconciliation");
         (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), 5, "the call did useful work");
-        assertEq(reward, (measured + OVERHEAD) * gasPrice + FLAT, "and was paid by the rule");
+        assertEq(reward, (measured + OVERHEAD) * gasPrice + 5 * WORK_FEE, "five completed draw sequences");
         assertEq(balancer.requiredReserve(), 0, "nothing owed once reconciled");
         uint256 rest = address(balancer).balance;
         assertEq(rest, held - reward, "the unspent hold stays in the pool");
@@ -223,7 +249,7 @@ contract KeeperPayTest is ForkBase {
         vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
         balancer.claimSurplus(all, creator);
         uint256 free = balancer.withdrawableSurplus();
-        assertEq(all - free, 3 * balancer.maxKeeperReward(), "exactly the held pay is refused");
+        assertEq(all - free, 5 * balancer.maxKeeperReward(), "exactly the held pay is refused");
         vm.prank(creator);
         balancer.claimSurplus(free, creator);
     }

@@ -1,5 +1,7 @@
 # Security review
 
+> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+
 **No external professional audit has been performed.** This report records internal adversarial review by AI agents
 and automated tooling. It is bounded evidence, not a statement that the contracts are safe.
 

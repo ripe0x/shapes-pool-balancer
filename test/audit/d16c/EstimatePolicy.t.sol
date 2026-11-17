@@ -4,12 +4,8 @@ pragma solidity 0.8.28;
 import {D16NaturalReservedTest} from "../d16/NaturalReserved.t.sol";
 import {IFwaExtra} from "../d16/WorstUpkeep.t.sol";
 
-/// @notice D16 re-attack 3, finding 3: for upkeeps that process FWA's queue, eth_estimateGas (the least limit that
-///         succeeds) is 0.37M-0.48M above the gas billed, so pricing the call at the estimate made keeper.ts skip
-///         profitable work from about 1.45 gwei. keeper.ts `decide` now prices it at the gas the simulated reward pays
-///         for when that reward is cut neither by KEEPER_MAX_GAS nor by the Balancer's balance (billed gas never
-///         exceeds it). Requirement: the policy sends every call whose reward covers its billed gas, and none that
-///         does not. Ordinary play (the launch board, the Balancer's own staged restocks reserved by in-flight draws).
+/// @notice Compare the least executable gas limit against actual receipt billing on real queued FWA work. The
+///         current keeper uses optional traces for expense, never inverts a policy reward into an assumed gas cost.
 contract D16cEstimatePolicyTest is D16NaturalReservedTest {
     uint256 constant MAX_LOSS = 2e14;
     uint256 constant PRIO = 0.05 gwei;
@@ -20,11 +16,11 @@ contract D16cEstimatePolicyTest is D16NaturalReservedTest {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         bytes memory ret;
-        (ok, ret) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh1)));
+        (ok, ret) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
         if (ok) reward = abi.decode(ret, (uint256));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        billed = uint256(used) + 21_064;
+        billed = uint256(used);
         processed = pool.unsettledAcquisitionCount() < u;
         vm.revertToState(snap);
     }
@@ -49,14 +45,9 @@ contract D16cEstimatePolicyTest is D16NaturalReservedTest {
             uint256 G = _least(30_000_000);
             (, , , bool pLeast) = _call(G);
             uint256 estimate = G + 21_064; // calldata: 4 nonzero bytes
-            // keeper.ts decide()
+            // Actual execution is the independent trace calibration; estimate remains a transaction gas limit.
             uint256 price = fees[i] + PRIO;
-            uint256 reimbursed = price < 5 gwei ? price : 5 gwei;
-            uint256 gas = estimate;
-            if (reward < address(balancer).balance && reward > 0.0001 ether) {
-                uint256 paidGas = (reward - 0.0001 ether) / reimbursed;
-                if (paidGas < 3_250_000 && paidGas < gas) gas = paidGas;
-            }
+            uint256 gas = billed + 4_096; // calldata and trace variance allowance, independent of reward formula
             uint256 cost = gas * price;
             bool send = reward + MAX_LOSS >= cost;
             int256 margin = int256(reward) - int256(billed * price);

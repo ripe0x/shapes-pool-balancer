@@ -1,6 +1,6 @@
 // Prize-mix planner. Prices, odds and the reserve use the same integer arithmetic as PoolBalancer and FWA
 // StandardPool, so the numbers shown match the chain for the same curated set, markup, edge and mint fee.
-import { encodeAbiParameters, keccak256, type Hash } from 'viem';
+import policyV1 from '../test/fixtures/keeper-policy-v1.json';
 
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
@@ -9,7 +9,7 @@ export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
 export const MIN_MARKUP_BPS = 1_000n;
 export const MAX_BATCH = 5;
 export const MAX_OPS = 5; // PoolBalancer.MAX_OPS: Shape units restocked per upkeep call
-/** PoolBalancer.settings() (src/Settings.sol, decision 88): the factory's defaults with a pool's overrides. */
+/** Optional informational policy metadata. It cannot describe an arbitrary future policy formula. */
 export interface KeeperSettings {
   maxGasPrice: bigint;
   priorityCap: bigint;
@@ -20,16 +20,16 @@ export interface KeeperSettings {
   restockGas: bigint;
   maxPrizes: number;
 }
-/** The factory's defaults at deployment (SettingsLib.defaults); read the live values from the chain where possible. */
+/** Generated from KeeperPolicyV1 by the Solidity policy fixture test; live policy quotes take precedence. */
 export const DEFAULT_SETTINGS: KeeperSettings = {
-  maxGasPrice: 5n * 10n ** 9n,
-  priorityCap: 5n * 10n ** 7n,
-  incentive: 10n ** 14n,
-  restockFlat: 10n ** 14n,
-  maxGas: 3_200_000n,
-  overheadGas: 50_000n,
-  restockGas: 900_000n,
-  maxPrizes: 1_000,
+  maxGasPrice: BigInt(policyV1.maxGasPrice),
+  priorityCap: BigInt(policyV1.priorityCap),
+  incentive: BigInt(policyV1.drawFee),
+  restockFlat: BigInt(policyV1.restockFlat),
+  maxGas: BigInt(policyV1.maxGas),
+  overheadGas: BigInt(policyV1.overheadGas),
+  restockGas: BigInt(policyV1.restockGas),
+  maxPrizes: Number(policyV1.maxPrizes),
 };
 /** A `settings()` read from the chain: viem decodes the uint32 fields as numbers and the uint64 ones as bigints. */
 export const settingsFrom = (r: Record<keyof KeeperSettings, bigint | number>): KeeperSettings => ({
@@ -42,29 +42,48 @@ export const settingsFrom = (r: Record<keyof KeeperSettings, bigint | number>): 
   restockGas: BigInt(r.restockGas),
   maxPrizes: Number(r.maxPrizes),
 });
-/** PoolBalancer.settingsHash(): keccak256 of the ABI-encoded Settings struct (eight static fields, one word each). A
- *  keeper computes it from the same `settings()` read it prices a call on, so the hash it sends always names those
- *  settings (two separate reads could straddle a change and back). */
-export const settingsHash = (s: KeeperSettings): Hash => keccak256(encodeAbiParameters(
-  [{ type: 'uint64' }, { type: 'uint64' }, { type: 'uint64' }, { type: 'uint64' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint32' }, { type: 'uint32' }],
-  [s.maxGasPrice, s.priorityCap, s.incentive, s.restockFlat, Number(s.maxGas), Number(s.overheadGas), Number(s.restockGas), s.maxPrizes],
-));
-/** The plan size the factory allows by default; a pool's live limit is `settings.maxPrizes`. */
+/** The immutable plan-size limit. */
 export const MAX_SHAPES_PER_PLAN = DEFAULT_SETTINGS.maxPrizes;
-/** Reward = (measured gas, at most maxGas, + overheadGas) x min(bid, basefee + priorityCap, maxGasPrice) + incentive,
- *  for every call that reconciles a draw or lists a prize, from the creator's ETH. This is its upper bound. */
-export const maxKeeperReward = (s: KeeperSettings = DEFAULT_SETTINGS) => (s.maxGas + s.overheadGas) * s.maxGasPrice + s.incentive;
-export const MAX_KEEPER_REWARD = maxKeeperReward();
-/** Price an honest keeper is reimbursed at: min(basefee + priorityCap, maxGasPrice). */
+/** V1 preview only. Existing pools must supply their cached policy maximum. */
+export const maxKeeperReward = (s: KeeperSettings = DEFAULT_SETTINGS) =>
+  (s.maxGas + s.overheadGas) * s.maxGasPrice + 10n * s.incentive;
+export const MAX_KEEPER_REWARD = BigInt(policyV1.maxReward);
 export const rewardPrice = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) =>
   (baseFee + s.priorityCap > s.maxGasPrice ? s.maxGasPrice : baseFee + s.priorityCap);
-/** PoolBalancer.restockFee(): per Shape in a prize listed at `baseFee`; built into the draw price, the creator's income toward keeper pay. */
-export const restockFeeAt = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) => s.restockGas * rewardPrice(baseFee, s) + s.incentive + s.restockFlat;
-/** PoolBalancer.requiredReserve() while open: restoring `target` from `have`, one largest prize for each unreconciled
- *  draw and one spare, and a maximum keeper reward for each upkeep call that work takes plus one. */
-export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, unreconciled = 0, maxReward = MAX_KEEPER_REWARD): bigint {
+/** V1 preview only; metadata's restockFlat is the total flat charge, independent of its work fee. */
+export const restockFeeAt = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) =>
+  s.restockGas * rewardPrice(baseFee, s) + s.restockFlat;
+
+export interface KeeperWork {
+  measuredGas: bigint;
+  gasPrice: bigint;
+  baseFee: bigint;
+  reconciledDraws: bigint;
+  listedShapeUnits: bigint;
+  listedPrizes: bigint;
+  processedDraws: bigint;
+}
+/** Exact V1 arithmetic for previews and simulations; arbitrary policies are consumed through absolute quotes. */
+export function quoteV1(work: KeeperWork, s: KeeperSettings = DEFAULT_SETTINGS): bigint {
+  let price = rewardPrice(work.baseFee, s);
+  if (work.gasPrice < price) price = work.gasPrice;
+  const measured = work.measuredGas > s.maxGas ? s.maxGas : work.measuredGas;
+  return (measured + s.overheadGas) * price
+    + work.reconciledDraws * BigInt(policyV1.drawFee)
+    + work.listedShapeUnits * BigInt(policyV1.shapeFee);
+}
+
+/** Conservative reserve for an entire board's bounded keeper exposure; listed fees remain future income. */
+export function policyBridgeAt(target: Counts, have: Counts, maxReward: bigint, listedRestockFees: bigint): bigint {
+  const count = Math.max(shapeCount(target), shapeCount(have));
+  const exposure = 2n * maxReward * BigInt(count);
+  return exposure > listedRestockFees ? exposure - listedRestockFees : 0n;
+}
+/** PoolBalancer open reserve. Each missing Shape unit and unreconciled draw can require separate paid progress. */
+export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint, unreconciled = 0,
+  maxReward = MAX_KEEPER_REWARD, listedRestockFees = 0n): bigint {
   let r = 0n;
-  let units = 0; // Shape units: upkeep steps are budgeted in Shapes minted, a pack counting its Shapes
+  let units = 0;
   let largest = 0n;
   target.forEach((n, d) => {
     if (!n) return;
@@ -79,7 +98,8 @@ export function requiredReserveAt(target: Counts, have: Counts, mintFee: bigint,
   const draws = unreconciled + 1;
   r += BigInt(draws) * largest;
   units += draws * MAX_SHAPES_IN;
-  return r + BigInt(Math.ceil(units / MAX_OPS) + 1) * maxReward;
+  return r + BigInt(units + unreconciled + 1) * maxReward
+    + policyBridgeAt(target, have, maxReward, listedRestockFees);
 }
 
 const E = 10n ** 18n;
@@ -120,8 +140,21 @@ export interface PoolInputs {
    *  of each active prize of that size, which keeps the markup and fees in force when it was listed. Prizes beyond the
    *  listed count (new ones the plan adds) are priced at the current markup and fees. Parallels `curatedPrices`. */
   shapePrices?: bigint[][];
+  /** Recorded surcharge (Item.price - Item.base) beside each historical Shape/Pack listing price. */
+  shapeRestockFees?: bigint[][];
   /** The pool's settings (keeper pay, restocking fee); the factory defaults when absent. */
   settings?: KeeperSettings;
+  /** Cached immutable-enforced maximum read from the selected pool/policy. */
+  policyMaxReward?: bigint;
+  /** Exact surcharge per new prize, indexed by denomination. Supports pack-specific future policies. */
+  restockFees?: readonly bigint[];
+  /** Exact aggregate Item.price - Item.base for listed Shape/Pack prizes. Never a liquid balance. */
+  listedRestockFees?: bigint;
+  /** On-chain quotes for representative work. The workload assumptions are exported below. */
+  keeperQuotes?: { replace: readonly bigint[]; reconcile: bigint; setup?: bigint };
+  /** Explicit V1 preview context; omit it for unsupported policies. Never inferred from listing fees. */
+  baseFee?: bigint;
+  gasPrice?: bigint;
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -141,8 +174,10 @@ export function unpackPlan(p: bigint): Counts {
 /** A prize's listed price less its restocking fees (PoolBalancer._prizeBase): cost plus the markup on its backing. */
 export const prizeBase = (d: number, mintFee: bigint, markupBps: number) => prizeCost(d, mintFee) + (DENOMS[d] * BigInt(markupBps)) / BPS;
 /** A prize's FWA listing price (PoolBalancer._fillDeficit). */
-export const prizePrice = (d: number, i: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee'>) =>
-  prizeBase(d, i.mintFee, i.markupBps) + BigInt(SHAPES_IN[d]) * i.restockFee;
+export const prizeRestockFee = (d: number, i: Pick<PoolInputs, 'restockFee' | 'restockFees'>) =>
+  i.restockFees?.[d] ?? BigInt(SHAPES_IN[d]) * i.restockFee;
+export const prizePrice = (d: number, i: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee' | 'restockFees'>) =>
+  prizeBase(d, i.mintFee, i.markupBps) + prizeRestockFee(d, i);
 export const weightOf = (price: bigint) => NUM / price;
 
 /** A curated NFT's FWA price: its live listing price if listed, else its value. */
@@ -163,7 +198,7 @@ export function curatedTotals(inputs: Pick<PoolInputs, 'curatedBases' | 'curated
 
 /** The FWA price of the k-th listed prize of size `d`: the price it was listed at if it is already listed, else the
  *  price a new prize of that size takes at the current markup and fees. */
-export const shapePriceAt = (d: number, k: number, inputs: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee' | 'shapePrices'>) =>
+export const shapePriceAt = (d: number, k: number, inputs: Pick<PoolInputs, 'mintFee' | 'markupBps' | 'restockFee' | 'restockFees' | 'shapePrices'>) =>
   inputs.shapePrices?.[d]?.[k] ?? prizePrice(d, inputs);
 
 export function shapeTotals(counts: Counts, inputs: PoolInputs) {
@@ -254,25 +289,31 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
     tiers,
     capital,
     shapes,
-    requiredReserve: requiredReserveAt(counts, counts, inputs.mintFee),
+    requiredReserve: requiredReserveAt(counts, counts, inputs.mintFee, 0,
+      inputs.policyMaxReward ?? MAX_KEEPER_REWARD,
+      inputs.listedRestockFees ?? counts.reduce((sum, n, d) => sum + BigInt(n) * prizeRestockFee(d, inputs), 0n)),
     ownerProceedsPerDraw: ev,
   };
 }
 
 const toEth = (x: bigint) => Number(x) / 1e18;
 
-/** Keeper pay inputs (PoolBalancer, DECISIONS 73; mainnet fork, test/scenario/PriceCaps.t.sol): reward =
- *  (measured gas + overheadGas) x price + incentive. One draw reconciled and one 0.01 Shape restocked measured about
- *  811k gas, an NFT-win reconcile about 137k, both inside the measured span. */
-const KEEPER_GAS_PER_SHAPE = 811_000n;
-const KEEPER_GAS_RECONCILE = 137_000n;
+/** Historical measured-span estimates, not policy parameters or receipt measurements of this candidate.
+ *  A replacement quote includes one reconcile plus mint/list; larger packs use their own operation estimate. */
+export const RECONCILE_GAS_ESTIMATE = 137_000n;
+export const REPLACEMENT_GAS_ESTIMATE = DENOMS.map((_, d) =>
+  d < SHAPE_SIZES ? 864_000n : SHAPES_IN[d] === 2 ? 1_000_000n : 1_100_000n);
+export function keeperWorkAt(baseFee: bigint, gasPrice: bigint, d?: number): KeeperWork {
+  return {
+    measuredGas: d === undefined ? RECONCILE_GAS_ESTIMATE : REPLACEMENT_GAS_ESTIMATE[d],
+    gasPrice, baseFee, reconciledDraws: 1n,
+    listedShapeUnits: d === undefined ? 0n : BigInt(SHAPES_IN[d]),
+    listedPrizes: d === undefined ? 0n : 1n,
+    processedDraws: 0n,
+  };
+}
 
-/**
- * Expected ETH per draw, by where it goes. Players pay for mint fees and keepers on top of the markup: a drawn Shape
- * prize's price is its cost, the creator's markup on its backing and its restocking fees; a curated NFT's is its value
- * plus the markup. The restocking fee is the creator's income toward keeper pay; the creator's ETH pays every keeper
- * call, including reconciles of draws that time out or win an NFT, which bring no fee (DECISIONS 73).
- */
+/** Per-draw expectation at the actual listed prices. It is not a demand forecast or a guaranteed realized profit. */
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
   const m = BigInt(inputs.markupBps);
@@ -284,25 +325,38 @@ export function economics(counts: Counts, inputs: PoolInputs) {
   let mint = 0;
   let restock = 0;
   let keeper = 0;
-  // The keeper's reimbursed gas price, recovered from the restocking fee (restockGas x price + incentive + restockFlat).
   const st = inputs.settings ?? DEFAULT_SETTINGS;
-  const flat = st.incentive + st.restockFlat;
-  const price = inputs.restockFee > flat ? (inputs.restockFee - flat) / st.restockGas : 0n;
+  const baseFee = inputs.baseFee;
+  const price = inputs.gasPrice ?? (baseFee === undefined ? undefined : baseFee + st.priorityCap);
+  const keeperCostKnown = inputs.keeperQuotes !== undefined || (baseFee !== undefined && price !== undefined);
+  const quoted = (d?: number) => {
+    if (inputs.keeperQuotes) return d === undefined ? inputs.keeperQuotes.reconcile : inputs.keeperQuotes.replace[d];
+    if (baseFee === undefined || price === undefined) return 0n;
+    return quoteV1(keeperWorkAt(baseFee, price, d), st);
+  };
   for (const t of ev.tiers) {
     const p = t.oddsPpm / 1e6; // this tier, all its listings
     if (t.kind === 'curated') {
-      markup += p * toEth(t.listPrice - t.value);
-      keeper += p * toEth((KEEPER_GAS_RECONCILE + st.overheadGas) * price + st.incentive);
+      keeper += p * toEth(quoted());
     } else {
       const shapes = BigInt(SHAPES_IN[t.size!]);
       markup += p * toEth((DENOMS[t.size!] * m) / BPS);
       claimable += p * toEth((DENOMS[t.size!] * claimM) / BPS);
       mint += p * toEth(shapes * inputs.mintFee);
-      restock += p * toEth(shapes * inputs.restockFee);
-      keeper += p * Number(shapes) * toEth((KEEPER_GAS_PER_SHAPE + st.overheadGas) * price + st.incentive);
+      const d = t.size!;
+      let feeWeight = 0n;
+      let totalWeight = 0n;
+      for (let k = 0; k < t.count; k++) {
+        const wi = weightOf(shapePriceAt(d, k, inputs));
+        totalWeight += wi;
+        feeWeight += wi * (inputs.shapeRestockFees?.[d]?.[k] ?? prizeRestockFee(d, inputs));
+      }
+      restock += p * toEth(totalWeight === 0n ? 0n : feeWeight / totalWeight);
+      keeper += p * toEth(quoted(t.size!));
     }
   }
   return {
+    keeperCostKnown,
     ownerProceeds: toEth(ev.ownerProceedsPerDraw),
     /** The markup priced into every draw: what the creator keeps per draw on average (all of it is withdrawable once the
      *  reserve is full). A model average: prize luck moves short runs either way. */
@@ -312,10 +366,9 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     claimablePerDraw: claimable,
     mintFeesPerDraw: mint,
     restockFeesPerDraw: restock,
-    /** Keeper pay per draw, from the creator's ETH: each Shape won is replaced by its own upkeep call and each NFT win is
-     *  reconciled by one (batched calls cost less, so this is an upper estimate). */
+    /** Unknown when keeperCostKnown is false. These quotes assume one replacement call per won prize. */
     keeperPayPerDraw: keeper,
-    /** What the creator keeps per draw: markup plus restocking fees, less keeper pay. A model average. */
+    /** Unknown when keeperCostKnown is false. Markup plus listing fees less quoted keeper payment. */
     keptPerDraw: markup + restock - keeper,
   };
 }

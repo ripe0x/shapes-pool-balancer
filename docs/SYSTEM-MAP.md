@@ -11,6 +11,8 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Players | draw price + FWA randomness fee, paid to the FWA pool | a prize (Shape, Draw Pack or NFT), or refund credit if the draw times out |
 | Keepers (anyone, or the factory's approved list) | gas for `performUpkeep` | a bounded reward per call |
 | Keeper admin | nothing | nothing (controls the keeper list only) |
+| Policy admin | nothing | nothing (recommends a default for future pools after two days) |
+| Selected keeper policy | read-only validated work context | nothing (returns bounded economic quotes) |
 | FWA pool (owned by the Balancer) | custody of listings, draw escrow | 5% edge on each draw price, kept inside the FWA pool |
 | FWA randomness service | random words | 2,340,000 gas x gas price per draw, taken when the draw is bought |
 | Shapes / Draw Packs | ETH-backed prize tokens | 0.001 ETH mint fee per Shape (fork block 26,382,349) |
@@ -20,15 +22,14 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Bucket | Where | Whose | Its own stated need |
 | --- | --- | --- | --- |
 | Creator profit (unclaimed) | Balancer ETH, `profit` | creator | none |
-| Creator reserve | Balancer ETH up to `requiredReserve()` | creator, locked while open | restore the board + one largest prize per unreconciled draw + one spare + keeper rewards for that work |
+| Creator reserve | Balancer ETH up to `requiredReserve()` | creator, locked while open | restore the board + one largest prize per unreconciled draw + one spare + worst split keeper work + board-cycle fee gap |
 | Fund above the reserve | Balancer ETH above `requiredReserve()` | creator, claimable | none |
 | Shape and Pack backing | Shapes contract, tokens held by the FWA pool | creator (redeemable only by unlisting) | the target board |
 | Owner proceeds | FWA pool, `ownerProceeds` | creator (anyone may collect into the Balancer) | none |
 | Pending draws, refund credit, FWA edge | FWA pool | players and FWA | none |
 | Curated NFTs | FWA pool | creator until won | at least one listed, or purchases stop |
 
-Keeper pay has no bucket of its own: it comes out of the Balancer's ETH (the fund first, unclaimed profit only once the
-fund is empty).
+Keeper pay has no custodial bucket of its own: it spends the creator operating fund, excluding booked withdrawable profit. The persistent per-pool burst/refill allowance is an authorization ceiling, not ETH custody. The board-cycle gap is locked creator operating capital, not income already collected. Policies hold nothing.
 
 ## Flows
 
@@ -42,7 +43,7 @@ fund is empty).
 | 6 | Owner proceeds -> Balancer | anyone (`collectProceeds`), every upkeep and creator action | no |
 | 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection, only while the fund is below the reserve | spent first by the next claim; restocking may spend it when the fund is empty |
 | 8 | Balancer -> Shapes / Packs: backing + mint fee, token listed on FWA | keeper upkeep while open, smallest prize first, at most 5 Shapes per call | backing yes (creator `unlistShapes`, only while no draw is unsettled); mint fee no |
-| 9 | Balancer -> keeper: gas plus a flat 0.0001 ETH (owner-approved, D14) | any upkeep that reconciles a draw or lists a prize | the restocking fee inside each prize's price comes back when it is won; pay for draws that timed out or won an NFT does not |
+| 9 | Balancer -> keeper: selected read-only quote, bounded by immutable work, per-call and rate limits | successful paid upkeep with validated progress and caller minimum met | future purchases replenish the creator via listing-time fees; payments themselves do not reverse |
 | 10 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
 | 11 | FWA pool -> player: refund credit withdrawn | player | no |
 
@@ -53,3 +54,19 @@ fund is empty).
 - Listed prices are never repriced: a prize listed at high gas keeps its higher restocking fee until it is won or unlisted.
 - `retire` is irreversible. `mintFeeCap` moves only when the creator configures.
 - Unlisting and NFT withdrawal wait for every pending draw (FWA rule); ETH does not.
+
+## Policy replacement and recovery (2026-11-17)
+
+No asset changes custodian when a policy changes. Activation changes the selected quote address and cached maximum
+only, after the two-day delay and operating-capital check. Uncollected listing surcharges are tracked as future income
+and determine a conservative funding gap; they are never added to the ETH balance. A pending proposal reserves no
+right to withdraw: funding is checked again when activated. Existing listing price and markup records stay fixed.
+
+Unpaid upkeep follows the same mint, listing, proceeds and reconciliation paths with zero keeper transfer, healthy active-policy listing surcharges and an immutable V1 recovery surcharge only when quoting fails. It is available even if the policy fails and paid eligibility is restricted.
+Closing releases future-board reserves, keeps one maximum payment per outstanding draw, and never moves player
+refund credits or FWA edge to the Balancer. Retirement still requires the existing real settlement conditions.
+
+Ratchets: policy generation, finalized reconciliation sequence and cumulative keeper spending increase; generation
+prevents stale offers replaying, reconciliation prevents repeated service fees, and bucket time never resets on
+configuration/policy/ownership changes. The bucket itself refills only to its immutable burst ceiling. These are
+engineering decisions under the owner's autonomous-implementation request, subject to reported economic review.

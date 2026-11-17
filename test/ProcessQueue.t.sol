@@ -86,8 +86,8 @@ contract ProcessQueueTest is ForkBase {
                 (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
                 assertEq(keeper.balance - before, reward, "paid");
                 emit log_named_uint("processing upkeep: reward (wei)", reward);
-                emit log_named_uint("  billed gas incl. 21000", uint256(used) + 21_000);
-                int256 margin = int256(reward) - int256((uint256(used) + 21_000) * 0.55 gwei);
+                emit log_named_uint("  receipt billed gas", uint256(used));
+                int256 margin = int256(reward) - int256((uint256(used)) * 0.55 gwei);
                 emit log_named_int("  keeper margin over billed gas (wei)", margin);
                 assertGe(margin, 0, "a processing upkeep pays the keeper at least its billed gas");
             } catch {}

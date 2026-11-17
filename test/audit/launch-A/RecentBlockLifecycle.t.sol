@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "../../utils/ForkBase.sol";
 import {PoolBalancer} from "../../../src/PoolBalancer.sol";
+import {KeeperPolicyV1} from "../../../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../../../src/BalancerFactory.sol";
 import {MockNFT} from "../../utils/Mocks.sol";
 import {IFWAPool} from "../../../src/interfaces/External.sol";
@@ -17,7 +18,7 @@ contract LaunchAContext {
 }
 
 contract RecentBlockLifecycleTest is ForkBase {
-    uint256 internal constant RECENT_BLOCK = 26_410_296;
+    uint256 internal constant RECENT_BLOCK = 26_436_099;
 
     function setUp() public {
         vm.createSelectFork("mainnet", RECENT_BLOCK);
@@ -32,7 +33,7 @@ contract RecentBlockLifecycleTest is ForkBase {
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin);
+        factory = new BalancerFactory(address(impl), keeperAdmin, address(this), address(new KeeperPolicyV1()));
         nft = new MockNFT();
         vm.deal(creator, 5 ether);
         vm.deal(buyer, 5 ether);

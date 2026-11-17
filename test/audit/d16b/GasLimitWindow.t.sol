@@ -64,17 +64,17 @@ contract D16bGasLimitWindowTest is D16bWorstUpkeepTest {
             bytes32 uh1 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeCall(balancer.performUpkeep, (uh1)));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
             (bool ok2, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
             require(ok2);
             (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
             uint256 paid = keeper.balance - before;
             bool processed = pool.unsettledAcquisitionCount() == 0;
-            uint256 cost = (uint256(used) + 21_000) * 0.55 gwei;
+            uint256 cost = (uint256(used)) * 0.55 gwei;
             emit log_string(
                 string.concat(
                     "G=", vm.toString(G), " ok=", ok ? "1" : "0", " processed=", processed ? "1" : "0",
-                    " billedGas=", vm.toString(uint256(used) + 21_000), " refund=", vm.toString(refunded),
+                    " billedGas=", vm.toString(uint256(used)), " refund=", vm.toString(refunded),
                     " paidWei=", vm.toString(paid), " costWei=", vm.toString(cost),
                     " marginWei=", vm.toString(int256(paid) - int256(cost))
                 )

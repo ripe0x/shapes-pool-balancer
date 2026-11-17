@@ -78,11 +78,13 @@ contract D16bClosedHoldHostileTest is D16bWorstUpkeepTest {
         uint256 hogs;
         for (uint256 k; k < 4; ++k) {
             fulfill(r[k], _hogWord(r[k], 1, abi.encode("cl", k)));
+            uint256 sequenceBefore = balancer.reconciledSequence();
             (uint256 reward,, uint256 measured) = _measure(4.95 gwei, 5 gwei);
             (address coll, uint8 st) = _winner(r[k]);
             if (coll == address(hog) && (st == 2 || (failing && st != 0))) ++hogs;
             emit log_named_uint("  draw status", st);
-            uint256 full = (measured + 50_000) * 5 gwei + 0.0001 ether;
+            uint256 full = ((measured > 3_200_000 ? 3_200_000 : measured) + 50_000) * 5 gwei
+                + (balancer.reconciledSequence() - sequenceBefore) * 0.00002 ether;
             emit log_named_uint("  measured", measured);
             emit log_named_uint("  rule reward (wei)", full);
             emit log_named_uint("  paid (wei)", reward);

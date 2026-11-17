@@ -33,8 +33,8 @@ contract GasBench is ForkBase {
         (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
-        uint256 billed = used;
         uint256 refund = refunded > 0 ? uint256(int256(refunded)) : 0;
+        uint256 billed = used; // pinned five-field 1.8.1 already applies the transaction refund
         emit log(label);
         emit log_named_uint("  billed gas (after refund)", billed);
         emit log_named_uint("  refund", refund);
