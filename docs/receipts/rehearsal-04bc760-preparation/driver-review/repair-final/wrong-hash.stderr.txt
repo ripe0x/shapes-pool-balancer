@@ -1,0 +1,18 @@
+AssertionError [ERR_ASSERTION]: explicit approved plan hash must match exact reviewed driver/doc/route
++ actual - expected
+
++ 'invalid-review-only-hash'
+- 'da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f'
+
+    at execute (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/scripts/run-local-rehearsal.ts:352:10)
+    at <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/scripts/run-local-rehearsal.ts:399:41)
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'invalid-review-only-hash',
+  expected: 'da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

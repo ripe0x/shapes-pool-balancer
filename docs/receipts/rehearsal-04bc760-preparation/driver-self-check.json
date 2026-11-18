@@ -1,0 +1,16 @@
+{
+  "selfCheck": "pass",
+  "planHash": "6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c",
+  "route": "gated",
+  "caps": {
+    "deposits": "6000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "40000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "5000000000000000000",
+    "draws": 252,
+    "rounds": 50,
+    "replacementCuratedNfts": 252
+  },
+  "mutationCount": 0
+}

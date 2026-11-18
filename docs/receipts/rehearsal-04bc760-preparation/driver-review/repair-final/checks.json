@@ -1,0 +1,33 @@
+{
+  "self-check": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+    "stageDirectory": null
+  },
+  "default-plan": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+    "stageDirectory": null
+  },
+  "wrong-hash": {
+    "exitStatus": 1,
+    "expected": 1
+  },
+  "check-stage": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": null,
+    "stageDirectory": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-RuaniV"
+  },
+  "planHash": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+  "head": "06d2e20987068dd653dc3b9e8d62a6ca92f482b4",
+  "hashes": {
+    "scripts/run-local-rehearsal.ts": "140551152aeeae4a5fb5d3be5ebadc20a966f2c871acaa86abb219095c2d9067",
+    "scripts/prepare-local-rehearsal.ts": "7b627779672569a12423c33fd94122581ac422275303363bfab1ec2e3974824e",
+    "docs/RELEASE-REHEARSAL.md": "5b197f790716d00d2bde9efef5b2ae8f2ceb2806c7900e0321519a54104c819b"
+  },
+  "savedPlanHash": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+  "savedMatchesCurrent": true
+}

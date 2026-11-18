@@ -1,0 +1,22 @@
+{
+  "command": [
+    "forge",
+    "script",
+    "script/Deploy.s.sol",
+    "--rpc-url",
+    "http://127.0.0.1:18556",
+    "--unlocked",
+    "--sender",
+    "0x000000000000000000000000000000000001e001",
+    "--with-gas-price",
+    "20000000000",
+    "--slow"
+  ],
+  "environment": {
+    "PACKS_ADMIN": "0x000000000000000000000000000000000001e002",
+    "KEEPER_ADMIN": "0x000000000000000000000000000000000001e003",
+    "POLICY_ADMIN": "0x000000000000000000000000000000000001e004"
+  },
+  "cwd": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-rehearsal-preparation-04bc760-NYQCJu",
+  "broadcast": false
+}

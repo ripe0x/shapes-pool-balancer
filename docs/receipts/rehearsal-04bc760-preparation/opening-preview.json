@@ -1,0 +1,23 @@
+{
+  "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "block": "26438875",
+  "blockHash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+  "basefee": "115909741",
+  "mintFee": "1000000000000000",
+  "maxReward": "16450000000000000",
+  "small": {
+    "inventoryCost": "220000000000000000",
+    "listingBudget": "4929557286200000",
+    "outstandingBudget": "0",
+    "workingBuffer": "1644321627300000",
+    "total": "226573878913500000"
+  },
+  "mixed": {
+    "inventoryCost": "410000000000000000",
+    "listingBudget": "2464778643100000",
+    "outstandingBudget": "0",
+    "workingBuffer": "1644321627300000",
+    "total": "414109100270400000"
+  },
+  "limitation": "Preview at fork block only. Recompute for actual open inclusion. No pools have been created."
+}

@@ -1,0 +1,1 @@
+scripts/run-local-rehearsal.ts(191,5): error TS2339: Property 'opening' does not exist on type '{ creator: `0x${string}`; demo: `0x${string}`; balancer: `0x${string}`; pool: `0x${string}`; target: bigint; counts: Counts; }'.

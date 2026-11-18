@@ -1,0 +1,39 @@
+{
+  "reviewedAt": "2026-11-18T02:39:16.558774+00:00",
+  "scope": "bounded local rehearsal driver safety review; not whole-candidate audit",
+  "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "hashes": {
+    "scripts/run-local-rehearsal.ts": "dd64071aa29205df283323199dfc93f3ff9441d4c98a80fb16ab59f8edc22060",
+    "scripts/prepare-local-rehearsal.ts": "5a8223c5c0e6d60a9763255db745b2032abfe85c590bc3c35048c5c255873cbb",
+    "docs/RELEASE-REHEARSAL.md": "ec5afdb07b167e40159f9bcaa192ca7412be0e4a4c2a90296b1390889dcfc61c"
+  },
+  "chainRequests": 0,
+  "chainMutations": 0,
+  "sourceWrites": 0,
+  "missingRequiredFilesInArchive": [
+    "scripts/test-flow-reporting.py"
+  ],
+  "planHash": "5f45de181f35b6491345fe56478226a7dceca6cb1d7b56a7637ce96b8537dec0",
+  "jsonFilesChecked": [
+    "bounded-plan.json",
+    "command.json",
+    "decode-self-check.json",
+    "deployment-actions.json",
+    "driver-self-check.json",
+    "node.json",
+    "opening-preview.json",
+    "preflight.json",
+    "verification.json"
+  ],
+  "deploymentGas": 22183301,
+  "deploymentGasReserveWei": "443666020000000000",
+  "fundingWei": "47430000000000000000",
+  "self-check": {
+    "exitStatus": 0,
+    "planHash": "5f45de181f35b6491345fe56478226a7dceca6cb1d7b56a7637ce96b8537dec0"
+  },
+  "default-plan": {
+    "exitStatus": 0,
+    "planHash": "5f45de181f35b6491345fe56478226a7dceca6cb1d7b56a7637ce96b8537dec0"
+  }
+}

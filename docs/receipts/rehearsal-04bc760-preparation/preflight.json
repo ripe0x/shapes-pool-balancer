@@ -1,0 +1,85 @@
+{
+  "nodeInfo": {
+    "currentBlockNumber": "0x1936cdb",
+    "currentBlockTimestamp": 1794967991,
+    "currentBlockHash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+    "hardFork": "Bpo2",
+    "transactionOrder": "fees",
+    "environment": {
+      "baseFee": "0x6d80246",
+      "chainId": 31337,
+      "gasLimit": "0x392a220",
+      "gasPrice": "0x4272cc46"
+    },
+    "forkConfig": {
+      "forkUrl": "https://mainnet.gateway.tenderly.co",
+      "forkBlockNumber": 26438875,
+      "forkRetryBackoff": 1000
+    },
+    "network": "ethereum"
+  },
+  "block": {
+    "number": "26438875",
+    "hash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+    "timestamp": "1794967991",
+    "baseFeePerGas": "115909741"
+  },
+  "actors": [
+    {
+      "role": "deployer",
+      "address": "0x000000000000000000000000000000000001e001",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "packsAdmin",
+      "address": "0x000000000000000000000000000000000001e002",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "keeperAdmin",
+      "address": "0x000000000000000000000000000000000001e003",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "policyAdmin",
+      "address": "0x000000000000000000000000000000000001e004",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "creatorA",
+      "address": "0x000000000000000000000000000000000001e005",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "creatorB",
+      "address": "0x000000000000000000000000000000000001e006",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "keeper",
+      "address": "0x000000000000000000000000000000000001e007",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    },
+    {
+      "role": "buyer",
+      "address": "0x000000000000000000000000000000000001e008",
+      "code": "0x",
+      "nonce": 0,
+      "balance": "0"
+    }
+  ]
+}

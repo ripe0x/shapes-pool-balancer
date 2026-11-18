@@ -1,0 +1,14 @@
+{
+  "planHash": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+  "materialHashes": {
+    "scripts/prepare-local-rehearsal.ts": "7b627779672569a12423c33fd94122581ac422275303363bfab1ec2e3974824e",
+    "scripts/run-local-rehearsal.ts": "140551152aeeae4a5fb5d3be5ebadc20a966f2c871acaa86abb219095c2d9067",
+    "docs/RELEASE-REHEARSAL.md": "5b197f790716d00d2bde9efef5b2ae8f2ceb2806c7900e0321519a54104c819b",
+    "docs/receipts/rehearsal-04bc760-preparation/deployment-actions.json": "d642b846477afcbb39e2fb356c78c124cc057df82eb1f57957e3ea397ff19a2b",
+    "docs/receipts/rehearsal-04bc760-preparation/node.json": "3e8ecebe26c7474a14b86ecfa5555e247567d67f9ba5d428f1593c6a31c26cf3",
+    "docs/receipts/rehearsal-04bc760-preparation/preflight.json": "fd260ef3adfdcd329794a47c981b5f77636dfa0fe924aa83f52c3520152aadff",
+    "docs/receipts/rehearsal-04bc760-preparation/opening-preview.json": "4347896c0e30cbee95e3be40f0bf88af31b2394aa73eddd1ed164a6fb4e3627d",
+    "docs/receipts/rehearsal-04bc760-preparation/deployment-code-hashes.json": "f60b7ce5a5ff0a67113c513ad2e247dae3833e265cef7393ab2ad3bf38d72d92",
+    "docs/receipts/rehearsal-04bc760-preparation/demo-nft.json": "c012cec01533ef34c87a34efd0148b7ccbefee7423767eb59463ccebfa92f990"
+  }
+}

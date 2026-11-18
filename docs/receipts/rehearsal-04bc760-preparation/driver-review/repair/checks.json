@@ -1,0 +1,32 @@
+{
+  "self-check": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": "afd389b6d51f10fffc883490316a02c71c63a6a271d9c0ff5af0855e0b62f16e",
+    "stageDirectory": null
+  },
+  "default-plan": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": "afd389b6d51f10fffc883490316a02c71c63a6a271d9c0ff5af0855e0b62f16e",
+    "stageDirectory": null
+  },
+  "wrong-hash": {
+    "exitStatus": 1,
+    "expected": 1
+  },
+  "check-stage": {
+    "exitStatus": 0,
+    "expected": 0,
+    "planHash": null,
+    "stageDirectory": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-PCVxvl"
+  },
+  "computedPlanHash": "afd389b6d51f10fffc883490316a02c71c63a6a271d9c0ff5af0855e0b62f16e",
+  "savedPlanHash": "5f45de181f35b6491345fe56478226a7dceca6cb1d7b56a7637ce96b8537dec0",
+  "savedPlanMatchesCurrent": false,
+  "hashes": {
+    "scripts/run-local-rehearsal.ts": "495aa8061dcfc92cb95a89de8e9aa56137aa72e1171f005da32b65827439c91b",
+    "scripts/prepare-local-rehearsal.ts": "7b627779672569a12423c33fd94122581ac422275303363bfab1ec2e3974824e",
+    "docs/RELEASE-REHEARSAL.md": "3b11c0bd3e8a934f095e68058e494bd89361cbc6d0f332d1382ff5676e1cb267"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "selfCheck": "pass",
+  "planHash": "5f45de181f35b6491345fe56478226a7dceca6cb1d7b56a7637ce96b8537dec0",
+  "route": "gated",
+  "caps": {
+    "deposits": "6000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "40000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "5000000000000000000",
+    "draws": 252,
+    "rounds": 50
+  },
+  "mutationCount": 0
+}

@@ -1,0 +1,61 @@
+{
+  "result": "pass",
+  "contracts": [
+    {
+      "name": "KeeperPolicyCalls",
+      "predictedAddress": "0x09daba55e22379e6870434415f8969984470dc99",
+      "runtimeCodeHash": "0x6067140d955fce87d6f20493a874d7e440d16c9974903938e1c3197c271babc1",
+      "runtimeBytes": 5577
+    },
+    {
+      "name": "PoolPage",
+      "predictedAddress": "0x67c828ad820490c02cdcbbccc3a303c64207fbcf",
+      "runtimeCodeHash": "0x4748911b1d5f84a7a2ad533362bcfb882718d5d49ccc5baf9edcbc88e2127cc5",
+      "runtimeBytes": 1194
+    },
+    {
+      "name": "PoolInventory",
+      "predictedAddress": "0x4b2f2d25edb6042215c15b9744e003d346482748",
+      "runtimeCodeHash": "0x737aae162981bcbe2783419366c47c70c8a4b4417073a28094cbe9369408aebb",
+      "runtimeBytes": 11023
+    },
+    {
+      "name": "ShapePackRenderer",
+      "predictedAddress": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "runtimeCodeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe",
+      "runtimeBytes": 9354
+    },
+    {
+      "name": "ShapePacks",
+      "predictedAddress": "0x8b4087d01443ba7619bb3a6e2a8668c5af0d1955",
+      "runtimeCodeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c",
+      "runtimeBytes": 17768
+    },
+    {
+      "name": "PoolBalancer",
+      "predictedAddress": "0x6ccd1a4ff41e886975db8504f384bc698d4939b3",
+      "runtimeCodeHash": "0x44c877e1714b0cf5ac3a4e39ebaa8661d05f9f0905040730730043a0b5b0f66d",
+      "runtimeBytes": 23641
+    },
+    {
+      "name": "KeeperPolicyV1",
+      "predictedAddress": "0xbd9f1679b7104b308cb13be7c421a3ba313d30a6",
+      "runtimeCodeHash": "0x29e34c09cbcb58dad9f6220722d1cfb6f745b544c90a27d0350a490a95d53040",
+      "runtimeBytes": 1143
+    },
+    {
+      "name": "BalancerFactory",
+      "predictedAddress": "0xf8fda7622370f00dac7ffb06825d0d193cbdb9dc",
+      "runtimeCodeHash": "0xf03f4730422b1c8497a027ba4b47b35628e1fd890d99a6fa0790ad47e451a2d9",
+      "runtimeBytes": 3570
+    }
+  ],
+  "checks": [
+    "creation bytecode matches frozen transaction input",
+    "CREATE/CREATE2 target/address/nonce/value",
+    "linked library and immutable runtime code hashes",
+    "EIP-170 runtime size"
+  ],
+  "rpcCalls": 0,
+  "mutations": 0
+}

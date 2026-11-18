@@ -1,0 +1,137 @@
+[
+  {
+    "path": "REPORT.md",
+    "sha256": "f7bdd2e03d0bdef63e6368897d412b2562c6ac37f0974cbfea2840b7eb798deb",
+    "bytes": 7897
+  },
+  {
+    "path": "checks.json",
+    "sha256": "aae2662b5e6cab7eddd71882183b2f733a0cc9bdd192d1b9d26d9f3f3225a83d",
+    "bytes": 1393
+  },
+  {
+    "path": "default-plan.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "default-plan.stdout.json",
+    "sha256": "23e08d109e24e0dff289124b13474a4afa14396d9151052f2d2df307151b47b7",
+    "bytes": 7193
+  },
+  {
+    "path": "repair/check-stage.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair/check-stage.stdout.txt",
+    "sha256": "d1ebf1765472d52585869487e4b8030f958e5b2878680f7a2f1c04c661300626",
+    "bytes": 63384
+  },
+  {
+    "path": "repair/checks.json",
+    "sha256": "f489036d96a8a85eb591dc2a7ad8a5252492bacb015c2d1da69c64de95699d78",
+    "bytes": 1160
+  },
+  {
+    "path": "repair/default-plan.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair/default-plan.stdout.txt",
+    "sha256": "fb28532cf3361826f7957925f9b1d5f6b4dc506e123b17c87b9c559423113e1b",
+    "bytes": 8899
+  },
+  {
+    "path": "repair/self-check.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair/self-check.stdout.txt",
+    "sha256": "94f5cad026c5799f7d2e021af028b74fbfd6f2551f344f19f8952c96e37e4c0f",
+    "bytes": 416
+  },
+  {
+    "path": "repair/wrong-hash.stderr.txt",
+    "sha256": "1acd47ea869139100d6d2ddd99df968bdb1a390a9b99a79b133d721dd786baa3",
+    "bytes": 939
+  },
+  {
+    "path": "repair/wrong-hash.stdout.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair-final/REPORT.md",
+    "sha256": "993b5012adcb2cf7eb5c5edc2f655c016518f9814118e094205e2325446ef8c0",
+    "bytes": 5567
+  },
+  {
+    "path": "repair-final/WHITESPACE-AMENDMENT.md",
+    "sha256": "aa49207499603a70824df37c9d930b4f75d95783d292f128f3a5c56dea6d51d8",
+    "bytes": 1032
+  },
+  {
+    "path": "repair-final/check-stage.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair-final/check-stage.stdout.txt",
+    "sha256": "bcd963352b7a5d2b11377addb4b25bfbdcd44d7478d4bad395ab1cf8e7d2ce4b",
+    "bytes": 63384
+  },
+  {
+    "path": "repair-final/checks.json",
+    "sha256": "9fd28064699634e5f48ce33a1abc2c632b71728e91452eb80b5e5fb6ae9244c8",
+    "bytes": 1201
+  },
+  {
+    "path": "repair-final/default-plan.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair-final/default-plan.stdout.txt",
+    "sha256": "7405cc261fb7c474935a6996d7260d04127d2a5f27667bf9a81b8fc71a02f93b",
+    "bytes": 8899
+  },
+  {
+    "path": "repair-final/material-hashes.json",
+    "sha256": "0982edd327cb87d3690d21f13312b88334d82ecfc41ce3e67a6ced22c480f291",
+    "bytes": 1254
+  },
+  {
+    "path": "repair-final/self-check.stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "repair-final/self-check.stdout.txt",
+    "sha256": "459cec9c6da0c446b2f066d0c5112ec525fb5d007f822e192c2d63f2ef37f75c",
+    "bytes": 416
+  },
+  {
+    "path": "repair-final/wrong-hash.stderr.txt",
+    "sha256": "8425733ca34e9319927efea3c8ae37b315023158c9e5cf8c470a3a575efbed89",
+    "bytes": 939
+  },
+  {
+    "path": "repair-final/wrong-hash.stdout.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "self-check.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "self-check.stdout.json",
+    "sha256": "c67d8d9828c4935ab700cfaf7ff464fa4921e2c3fc14c8b4330739123b995c55",
+    "bytes": 381
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "pid": 50886,
+  "command": [
+    "anvil",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "18556",
+    "--chain-id",
+    "31337",
+    "--accounts",
+    "0",
+    "--fork-url",
+    "https://mainnet.gateway.tenderly.co",
+    "--fork-block-number",
+    "26438875",
+    "--silent"
+  ],
+  "rpc": "http://127.0.0.1:18556",
+  "started": "2026-11-18T02:13:13.016Z",
+  "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "forkBlock": "26438875",
+  "forkHash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+  "baseFeePerGas": "115909741"
+}
