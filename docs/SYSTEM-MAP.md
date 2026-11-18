@@ -8,7 +8,7 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Actor | Brings | Takes |
 | --- | --- | --- |
 | Creator | ETH deposits, curated NFTs | claims (`claimSurplus`), NFTs back, everything at closeout |
-| Players | draw price + FWA randomness fee, paid to the FWA pool | a prize (Shape, Draw Pack or NFT), or refund credit if the draw times out |
+| Players | draw price + FWA randomness fee, paid to the FWA pool | a prize or the applicable timeout, slippage or failed-delivery refund entitlement |
 | Keepers (anyone, or the factory's approved list) | gas for `performUpkeep` | a bounded reward per call |
 | Keeper admin | nothing | nothing (controls the keeper list only) |
 | Policy admin | nothing | nothing (recommends a default for future pools after two days) |
@@ -26,26 +26,28 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Fund above the reserve | Balancer ETH above `requiredReserve()` | creator, claimable | none |
 | Shape and Pack backing | Shapes contract, tokens held by the FWA pool | creator (redeemable only by unlisting) | the target board |
 | Owner proceeds | FWA pool, `ownerProceeds` | creator (anyone may collect into the Balancer) | none |
-| Pending draws, refund credit, FWA edge | FWA pool | players and FWA | none |
+| Pending draws, refund credit, FWA edge | FWA pool | players and FWA | the actual escrow/refund/protocol totals; fully encumbered |
 | Curated NFTs | FWA pool | creator until won | at least one listed, or purchases stop |
 
-Keeper pay has no custodial bucket of its own: it spends the creator operating fund, excluding booked withdrawable profit. The persistent per-pool burst/refill allowance is an authorization ceiling, not ETH custody. The board-cycle gap is locked creator operating capital, not income already collected. Policies hold nothing.
+Keeper pay has no custodial bucket of its own: it spends the creator operating fund, excluding booked withdrawable profit. The persistent per-pool burst/refill allowance is an authorization ceiling, not ETH custody. The old board-cycle gap is removed. Unsold surcharge expectations are not liquid ETH. Policies hold nothing.
 
 ## Flows
 
 | # | Flow | Trigger | Reverses? |
 | --- | --- | --- | --- |
 | 1 | Creator -> Balancer: deposit | creator (`createBalancer`, `depositETH`, plain send) | yes, by `claimSurplus` down to the reserve while open; fully after `close` |
-| 2 | Player -> FWA pool: draw price | player buys on FWA; the Balancer's gate must admit it | only if the draw times out (30 blocks without a word): refund credit for the price |
-| 3 | Player -> FWA randomness service: fee | same purchase | no, also not on timeout |
-| 4 | FWA pool escrow -> owner proceeds (price / 1.05) and FWA edge (5%) | the random word is delivered and the draw processed | no |
+| 2 | Player -> FWA pool: draw price | player buys on FWA; the Balancer's gate must admit it | applicable expiry/slippage refund credit, or failed-delivery refund under FWA timing |
+| 3 | Player -> FWA randomness service: fee | same purchase | no, including refunded acquisitions |
+| 4 | FWA escrow -> fixed request-board owner base and protocol edge | successful actual prize delivery | no; surcharge is a component of that owner base, not the selected prize fee |
 | 5 | FWA pool -> winner: prize token | same | no (a failed delivery can be refunded after 7 days and recovered by the creator) |
 | 6 | Owner proceeds -> Balancer | anyone (`collectProceeds`), every upkeep and creator action | no |
-| 7 | Proceeds -> creator profit: the markup above the game's first 10% | at collection while open, booked before reconciliation and paid inventory work | spent first by the next claim; restocking may spend it when the fund is empty |
+| 7 | Proceeds -> creator profit: current tracked above-10% share | at collection while open, booked before reconciliation and paid inventory work | claims spend it first; public unpaid recovery may consume it |
 | 8 | Balancer -> Shapes / Packs: backing + mint fee, token listed on FWA | keeper upkeep while open, smallest prize first, at most 5 Shapes per call | backing yes (creator `unlistShapes`, only while no draw is unsettled); mint fee no |
-| 9 | Balancer -> keeper: selected read-only quote, bounded by immutable work, per-call and rate limits | successful paid upkeep with validated progress and caller minimum met | future purchases replenish the creator via listing-time fees; payments themselves do not reverse |
+| 9 | Balancer -> keeper: selected read-only quote, bounded by immutable work, per-call and rate limits | successful paid upkeep with validated progress and caller minimum met | successful purchases replenish through their request-board surcharge component; payments themselves do not reverse |
 | 10 | Balancer -> creator: claim | creator `claimSurplus` | deposit again |
 | 11 | FWA pool -> player: refund credit withdrawn | player | no |
+
+The owner retains approximate current-board profit attribution to preserve concurrent purchases and downtime recovery. Gas/policy changes can reclassify the same creator's operating cash as booked profit; the historical 0.001 ETH O9 bound has counterexamples. No new party receives those amounts, and no purchaser bucket enters the Balancer's payout path. Admission uses actual FWA counts and the guaranteed prior reserved prefix plus the next six activations, with one conservative Shape-staging count, without a per-listing synchronization queue. The count is capped on restock and can clear, so it is not a lifetime ratchet or spending authority. See [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md) for the one-screen scorecard, remaining numerical decision and tested claim/closeout cycles.
 
 ## One-way ratchets and stuck states to watch
 

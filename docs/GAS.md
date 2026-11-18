@@ -3,10 +3,37 @@
 > **Current reserve redesign:** [before/after evidence](reserve-redesign-results.md) and [RESERVES.md](RESERVES.md) supersede the `a8fb321` capital requirements below. Earlier reports remain historical; no deployment is authorized.
 > **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
 
+## Concurrent-admission remediation measurements
+
+Candidate source fingerprint `ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda`:
+three focused `GasBench` tests passed on the real-dependency fork at block26,382,349, with the shared
+0.5gwei basefee /1gwei bid setup. Foundry1.8.1 isolated-call billing includes intrinsic gas and applied refunds;
+these are not newly mined node receipts. Actual FWA purchases also exercise its100k operator-hook stipend.
+
+| Operation | Isolated billed gas | Other measured gas |
+| --- | ---: | ---: |
+| `canPurchase` |43,343|60,136 caller-span gas |
+| FWA `acquireBatch(5)` |1,664,414|59,400 applied refund |
+| Reconcile and replace one Shape |824,631|840,350 inside upkeep;67,100 applied refund |
+
+Command: `forge test --match-path test/Gas.t.sol --match-test 'test_gas_(canPurchase|purchaseWithOperator|replaceOne)' --out /private/tmp/audit-remediation-noqueue/out --cache-path /private/tmp/audit-remediation-noqueue/cache -vv`.
+The raw output is retained in the remediation verification evidence. Runtime is23,641bytes for PoolBalancer
+and11,023bytes for its permanently linked PoolInventory library. Existing historical rows are not a matched
+before/after experiment for this candidate. The staging counter adds no reserve, surcharge or spending authority;
+its actual execution expense is paid by the caller under the existing fee rules.
+
+Measured gas before the transaction refund may exceed billed gas. Profitability compares the actual offered
+payment with execution expense at the actual bid, not the measured span, an executable gas limit or an estimate
+with headroom. A1gwei bid is above this context's0.55gwei reimbursement reference; these gas benchmarks do not
+establish positive keeper profit at that bid. See [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md) for scope and limits.
+
+## Historical rewrite measurements
+
 Measured with `forge test --match-contract GasBench --isolate -vv` on a mainnet fork at block 26,382,349 (real FWA
 StandardPoolBuyback and Shapes). `--isolate` runs each call as its own transaction: cold storage, intrinsic gas, and
-EIP-3529 refunds applied, so "billed" is what the sender pays for. Every keeper benchmark asserts reimbursed gas ≤ billed
-gas, and the keeper e2e (`npm run keeper:e2e`) asserts the same against real anvil receipts.
+EIP-3529 refunds applied. Reimbursement and keeper profitability must use the named revision's actual formula;
+the current raw gas counter is not a billed-gas upper bound. The historical keeper e2e (`npm run keeper:e2e`)
+separately checks actual Anvil receipts.
 
 Measured on the 2026-11-11 rewrite (`forge test --match-path test/Gas.t.sol -vv`, mainnet fork block 26,382,349). The
 heaviest upkeep measured uses 2,756,732 gas in total, 14% under the 3.2M reimbursement cap; that is why one call restocks
@@ -40,7 +67,7 @@ See [current verification](keeper-policy-results.md). PoolBalancer runtime is 24
 
 Foundry 1.8.1's five-field raw `lastCallGas().used` is already billed gas, including intrinsic and applied refunds. A real storage-clear transaction matches an Anvil receipt at 22,503 gas; the 4,800 refund gives 27,303 gross. Current isolated tests use this interpretation. Earlier gas tables below belong to their stated revisions and must not be mixed with current measurements.
 
-## Keeper reward
+## Historical keeper reward (superseded)
 
 ```
 price     = min(tx.gasprice, basefee + 0.05 gwei, 5 gwei)

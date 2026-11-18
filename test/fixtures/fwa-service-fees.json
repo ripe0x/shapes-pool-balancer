@@ -1,0 +1,9 @@
+{
+  "chainId": 1,
+  "sourceBlock": 26382349,
+  "address": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "serviceGasEstimate": "1800000",
+  "serviceMarginBps": "3000",
+  "serviceFlatWei": "0"
+}

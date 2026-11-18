@@ -1,0 +1,40 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.96s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 7 tests for test/SelectableInventory.t.sol:SelectableInventoryTest
+[PASS] test_curatedOnlyStagingDoesNotReduceShapeAdmission() (gas: 41217324)
+[PASS] test_earlierReservedBatchesCountBeforeTheNextSelection() (gas: 47862686)
+[PASS] test_fiveShapeWinsWithoutUpkeepStillAdmitTheNextBatch() (gas: 29947668)
+[PASS] test_oneShapeWinDoesNotCreateFalseCuratedAbsence() (gas: 22990681)
+[PASS] test_reservedActivationNeedsNoAdditionalBalancerSync() (gas: 32451106)
+[PASS] test_stagedBoardCannotPassAndPublicActivationRestoresAdmission() (gas: 70589291)
+[PASS] test_stagedWithdrawalHoleIsClearedExactlyOnce() (gas: 30021352)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 643.07ms (4.04s CPU time)
+
+Ran 1 test suite in 672.28ms (643.07ms CPU time): 7 tests passed, 0 failed, 0 skipped (7 total tests)

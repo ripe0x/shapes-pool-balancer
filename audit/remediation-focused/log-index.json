@@ -1,0 +1,179 @@
+{
+  "baseRevision": "2ab49fdbe7a6b11fe4da7e1f093a0dc20fb1fe94",
+  "candidateSourceHash": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "logs": [
+    {
+      "name": "abandoned-staging-cache",
+      "originalLog": "/private/tmp/audit-remediation-cache-barrier-repro.log",
+      "path": "audit/remediation-focused/logs/abandoned-staging-cache.log",
+      "exitStatus": 1,
+      "sha256": "c8e21b2b196beef5efa6bd7606db14427a545ad2ceb52019b9f312c4d46ff8ff",
+      "summary": [
+        "1",
+        "1.15s (1.14s CPU time)",
+        "0",
+        "1",
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "abandoned-cached-staging-full",
+      "originalLog": "/private/tmp/audit-remediation-foundry-final.log",
+      "path": "audit/remediation-focused/logs/abandoned-cached-staging-full.log",
+      "exitStatus": 1,
+      "sha256": "9935ed7e09932a20c7c8d64074943b1b6bb4fc9fe1e89d0bf75f8abeced2e6aa",
+      "summary": [
+        "67",
+        "499.29s (4313.25s CPU time)",
+        "497",
+        "3",
+        "0",
+        "500"
+      ]
+    },
+    {
+      "name": "abandoned-six-only-full",
+      "originalLog": "/private/tmp/audit-remediation-final-candidate-foundry.log",
+      "path": "audit/remediation-focused/logs/abandoned-six-only-full.log",
+      "exitStatus": 1,
+      "sha256": "a11d456e06c8e590d1690240f0e489a136ea5cf0f7e1e33706d003b412827fa3",
+      "summary": [
+        "67",
+        "323.44s (1713.13s CPU time)",
+        "311",
+        "188",
+        "0",
+        "499"
+      ]
+    },
+    {
+      "name": "abandoned-reserved-prefix-full",
+      "originalLog": "/private/tmp/audit-remediation-final-reserved-candidate-foundry.log",
+      "path": "audit/remediation-focused/logs/abandoned-reserved-prefix-full.log",
+      "exitStatus": 1,
+      "sha256": "9b0149e6954249bc3434b6a3d97650c67fe250ed0d397e070cf11ed52a96a1a6",
+      "summary": [
+        "67",
+        "305.71s (1713.69s CPU time)",
+        "490",
+        "10",
+        "0",
+        "500"
+      ]
+    },
+    {
+      "name": "final-full",
+      "originalLog": "/private/tmp/audit-remediation-final-scalar-candidate-foundry.log",
+      "path": "audit/remediation-focused/logs/final-full.log",
+      "exitStatus": 0,
+      "sha256": "f10d26cf57b02a52528172f24b118b0140116fa99a6a12ecf9536a184ea781cd",
+      "summary": [
+        "67",
+        "288.42s (1552.54s CPU time)",
+        "501",
+        "0",
+        "0",
+        "501"
+      ]
+    },
+    {
+      "name": "final-gas-focused",
+      "originalLog": "/private/tmp/audit-remediation-final-gas-focused.log",
+      "path": "audit/remediation-focused/logs/final-gas-focused.log",
+      "exitStatus": 0,
+      "sha256": "3ca39d26dad4f2af8d4a9607953aa49e50d880ea75c37113c8c5d75583bff152",
+      "summary": [
+        "1",
+        "312.34ms (276.53ms CPU time)",
+        "3",
+        "0",
+        "0",
+        "3"
+      ]
+    },
+    {
+      "name": "final-staging-regressions",
+      "originalLog": "/private/tmp/audit-remediation-shape-scalar-regression.log",
+      "path": "audit/remediation-focused/logs/final-staging-regressions.log",
+      "exitStatus": 0,
+      "sha256": "441840a595300c85f7873dc7220b595a3d667ded6623d08d4ba8d0c19d69629f",
+      "summary": [
+        "1",
+        "672.28ms (643.07ms CPU time)",
+        "7",
+        "0",
+        "0",
+        "7"
+      ]
+    },
+    {
+      "name": "final-asset-gate",
+      "originalLog": "/private/tmp/audit-remediation-final-asset-gate.log",
+      "path": "audit/remediation-focused/logs/final-asset-gate.log",
+      "exitStatus": 2,
+      "sha256": "6b7d6fd40b1a9f868b38f9438924795c902ae5ad36449a9ede7e9a44b2f36ca2",
+      "summary": null
+    },
+    {
+      "name": "flow-reporting-python",
+      "originalLog": "/private/tmp/audit-remediation-flow-reporting-python.log",
+      "path": "audit/remediation-focused/logs/flow-reporting-python.log",
+      "exitStatus": 0,
+      "sha256": "0fd03af6d8ad1cbc24742a77b29dd31aa228027526e9e2357731e2f273387d82",
+      "summary": null
+    },
+    {
+      "name": "final-abi-sources",
+      "originalLog": "/private/tmp/audit-remediation-abi-source-check-scalar-final.log",
+      "path": "audit/remediation-focused/logs/final-abi-sources.log",
+      "exitStatus": 0,
+      "sha256": "2fed46309a886e2655dca27be2c2583bbc443777b7b40bfab875da38cc1e14e4",
+      "summary": null
+    },
+    {
+      "name": "final-abi-export",
+      "originalLog": "/private/tmp/audit-remediation-abi-export-scalar-final.log",
+      "path": "audit/remediation-focused/logs/final-abi-export.log",
+      "exitStatus": 0,
+      "sha256": "6afade4424b57fd8e5d1d3fc024f3a61f8c3acdac270b7deca1d77c57d2cd60d",
+      "summary": null
+    },
+    {
+      "name": "final-typescript",
+      "originalLog": "/private/tmp/audit-remediation-ts-scalar-final.log",
+      "path": "audit/remediation-focused/logs/final-typescript.log",
+      "exitStatus": 0,
+      "sha256": "684ceb029fd3c6d374417b220394576f53249de546dfaadd05befce5034e0765"
+    },
+    {
+      "name": "typecheck",
+      "originalLog": "/private/tmp/audit-remediation-typecheck-scalar-final.log",
+      "path": "audit/remediation-focused/logs/typecheck.log",
+      "exitStatus": 0,
+      "sha256": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c"
+    },
+    {
+      "name": "app-build",
+      "originalLog": "/private/tmp/audit-remediation-app-build-scalar-final.log",
+      "path": "audit/remediation-focused/logs/app-build.log",
+      "exitStatus": 0,
+      "sha256": "f3288f90f60c53df70c80b8fc693bb3241df4b088547776dd8c1b82cbfe1f581"
+    },
+    {
+      "name": "simulation",
+      "originalLog": "/private/tmp/audit-remediation-sim-final.log",
+      "path": "audit/remediation-focused/logs/simulation.log",
+      "exitStatus": 0,
+      "sha256": "6b9ef3c28187ffdfee35ebfdc0d14cbee24b177c3e05125feedd2df4bccbe72e"
+    },
+    {
+      "name": "simulation-sandbox-failure",
+      "originalLog": "/private/tmp/audit-remediation-sim-sandbox-failure.log",
+      "path": "audit/remediation-focused/logs/simulation-sandbox-failure.log",
+      "exitStatus": 1,
+      "sha256": "a6fa482c88e66f459f8af42343ccbc889a1e88a3c6cd05c7904b293ca8040fdc",
+      "resolution": "Approved execution used the same existing tsx tool; no security control or test assertion was disabled."
+    }
+  ]
+}

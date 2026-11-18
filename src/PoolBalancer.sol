@@ -268,7 +268,8 @@ contract PoolBalancer is ReentrancyGuard {
 
         IFWAPoolFactory fwa = FWA_FACTORY;
         // A staging cap would make restocking while draws are unsettled revert (FWA StagingQueueFull), and with it upkeep.
-        if (fwa.maxAcquisitionsPerTx() != MAX_BATCH || fwa.maxStagedListings() != 0) revert UnsupportedFWAConfig();
+        if (fwa.maxAcquisitionsPerTx() != MAX_BATCH || fwa.maxStagedListings() != 0
+            || fwa.maxActivationsPerAcquisition() != 6) revert UnsupportedFWAConfig();
         // FWA reverts unless its implementation is the reviewed one, clones exactly that, and initialises the pool
         // with this contract as owner.
         address p = fwa.createPool(bytes32(0), FWA_IMPLEMENTATION);
@@ -307,18 +308,8 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Set the markup for new listings and the target prize mix, and accept the current Shapes mint fee.
     /// @dev Existing listings keep their prices. A smaller target leaves extra prizes listed until `unlistShapes`.
     function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator nonReentrant {
-        if (newMarkupBps < MIN_MARKUP_BPS || newMarkupBps > MAX_MARKUP_BPS) revert InvalidConfig();
-        if (newTarget >> (16 * DENOMS) != 0) revert InvalidPlan();
+        uint256 w = PoolInventory.validateTarget(newTarget, newMarkupBps);
         uint256 fee = SHAPES.mintFee();
-        uint256 prizes;
-        uint256 w;
-        for (uint256 d; d < DENOMS; ++d) {
-            uint256 n = _count(newTarget, d);
-            if (n == 0) continue;
-            prizes += n;
-            w += n * _weight(d);
-        }
-        if (prizes == 0 || prizes > 1_000) revert InvalidPlan();
         markupBps = newMarkupBps;
         target = newTarget;
         targetWeight = w;
@@ -426,11 +417,7 @@ contract PoolBalancer is ReentrancyGuard {
     ///      `ownerOf == this` (checked under the reentrancy lock) proves the NFT is untracked. Only the
     ///      ERC721 transfer selector is called, and never on the FWA pool or factory.
     function recoverUntrackedNFT(address collection, uint256 tokenId, address to) external onlyCreator nonReentrant {
-        if (to == address(0)) revert InvalidRecipient();
-        if (collection == address(pool) || collection == address(FWA_FACTORY)) revert ProtectedAsset();
-        if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert ProtectedAsset();
-        IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
-        emit UntrackedNFTRecovered(collection, tokenId, to);
+        PoolInventory.recoverUntracked(address(pool), address(FWA_FACTORY), collection, tokenId, to);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -466,28 +453,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 n = listingIds.length;
         if (n == 0 || n > 20) revert InvalidBatch();
         _collect();
-        IFWAPool p = pool;
-        uint256[] memory lids = listingIds;
-        uint256[] memory tokenIds = new uint256[](n);
-        uint8[] memory sizes = new uint8[](n);
-        for (uint256 i; i < n; ++i) {
-            uint256 lid = lids[i];
-            PoolInventory.Item storage it = _inventory.items[lid];
-            if (it.kind != SHAPE) revert InvalidItem();
-            _removeActive(lid); // reverts InvalidItem unless active, so a repeated id too
-            (,,, tokenIds[i],,,,) = p.listings(lid);
-            uint8 d = it.denom;
-            sizes[i] = d;
-            --_inventory.activeShapes[d];
-            prizeWeight -= _weight(d);
-            delete _inventory.items[lid];
-        }
-        p.withdrawListingsTo(lids, address(this));
-        uint256 eth;
-        for (uint256 i; i < n; ++i) {
-            eth += _redeem(sizes[i], tokenIds[i]);
-        }
-        emit ShapesUnlisted(n, eth);
+        prizeWeight -= PoolInventory.unlistShapes(_inventory, pool, address(SHAPES), address(PACKS), listingIds);
         _creatorChanged();
     }
 
@@ -557,19 +523,12 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice Why purchases are or are not admitted right now (see status codes).
-    /// @dev FWA calls the hook before it activates staged listings, so the fill check uses tracked prize weight
-    ///      (including staged restocks) and assumes each unreconciled draw removed the heaviest possible prize.
+    /// @dev Preserve the pending-draw bound and bound selectable Shape weight at the first new selection,
+    ///      including FWA's guaranteed activation. No metadata synchronization or single-batch barrier is required.
     function admissionStatus() public view returns (uint8) {
         if (!enabled) return CLOSED;
         if (creatorWork) return SETTING_UP;
-        if (_inventory.activeIds.length == _listedShapes()) return NO_CURATED;
-        IFWAPool p = pool;
-        if (p.unsettledAcquisitionCount() >= MAX_BATCH) return BUSY;
-        if (SHAPES.mintFee() > mintFeeCap) return MINT_FEE_ROSE;
-        uint256 lost = (p.lastIssuedSequence() - reconciledSequence) * MAX_PRIZE_WEIGHT;
-        uint256 w = prizeWeight;
-        if (w < lost || (w - lost) * BPS < FILL_BPS * targetWeight) return LOW_INVENTORY;
-        return OK;
+        return PoolInventory.admission(_inventory, pool, address(SHAPES), mintFeeCap, targetWeight, prizeWeight, reconciledSequence);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -686,14 +645,6 @@ contract PoolBalancer is ReentrancyGuard {
             it.state = PENDING;
         }
         emit ItemDrawn(lid, kind, d, delivered);
-    }
-
-    /// @dev Redeem one prize token this contract holds for its exact backing. Shapes and Draw Packs share
-    ///      `redeem(uint256)`, which pays the owner (this contract) and burns the token.
-    function _redeem(uint8 d, uint256 tokenId) internal returns (uint256 eth) {
-        uint256 before = address(this).balance;
-        IShapePacks(d < SHAPE_DENOMS ? address(SHAPES) : address(PACKS)).redeem(tokenId);
-        eth = address(this).balance - before;
     }
 
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
@@ -819,6 +770,10 @@ contract PoolBalancer is ReentrancyGuard {
     function maxKeeperReward() public view returns (uint256) { return _keeper.maxReward; }
 
     function restockFee() public view returns (uint256) { return _restockFee(0, 1, true); }
+    /// @notice Bounded active-policy estimate in this pool's caller context, not a promise of payable work.
+    function quoteKeeperReward(IKeeperPolicy.Work calldata work) external view returns (uint256) {
+        return _keeper.enabled ? KeeperPolicyCalls.reward(_keeper.policy, _keeper.maxReward, work) : 0;
+    }
     function restockFeeFor(uint8 denomination) external view returns (uint256) {
         if (denomination >= DENOMS) revert InvalidPlan();
         return _restockFee(denomination, _shapesIn(denomination), true);

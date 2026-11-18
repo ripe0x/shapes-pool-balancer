@@ -1,0 +1,120 @@
+{
+  "baseRevision": "2ab49fdbe7a6b11fe4da7e1f093a0dc20fb1fe94",
+  "branch": "codex/audit-remediation",
+  "sourceHash": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "scope": "Audit remediation preserving concurrent FWA purchases, current working-capital reserves and approximate creator allocation.",
+  "contracts": {
+    "PoolBalancerRuntimeBytes": 23641,
+    "PoolInventoryRuntimeBytes": 11023,
+    "KeeperPolicyCallsRuntimeBytes": 5577,
+    "PoolPageRuntimeBytes": 1194,
+    "BalancerFactoryRuntimeBytes": 3570,
+    "KeeperPolicyV1RuntimeBytes": 1143
+  },
+  "checks": [
+    {
+      "name": "complete Foundry final candidate",
+      "command": "SOURCE_HASH=ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda CANDIDATE_RUN=1 forge test --isolate --threads 8 --gas-limit 100000000000 --extra-output storageLayout -v",
+      "exitStatus": 0,
+      "passed": 501,
+      "failed": 0,
+      "suites": 67,
+      "testSeconds": 288.42,
+      "compileSeconds": 192.69,
+      "log": "logs/final-full.log"
+    },
+    {
+      "name": "asset-flow validation of the same source-stamped execution",
+      "command": "python3 /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py . --no-run --require-review",
+      "exitStatus": 2,
+      "regimes": 25,
+      "numericFailures": 0,
+      "incomplete": [
+        "Unsigned changed outcomes",
+        "No current whole-candidate review seal; focused review does not supply it"
+      ],
+      "log": "logs/final-asset-gate.log"
+    },
+    {
+      "name": "TypeScript final fixtures and real legacy RPC",
+      "command": "CANDIDATE_RUN=1 POLICY_PREVIEW_RPC=http://127.0.0.1:18554 POLICY_PREVIEW_BALANCER=0xf2295c51bB08056109eC2e125941569717965F16 npm run test:ts",
+      "exitStatus": 0,
+      "passed": 125,
+      "files": 12,
+      "wallSeconds": 1.31,
+      "log": "logs/final-typescript.log"
+    },
+    {
+      "name": "typecheck",
+      "command": "CANDIDATE_RUN=1 npm run typecheck",
+      "exitStatus": 0,
+      "scope": "Passed against the final exported ABI and final TypeScript sources.",
+      "log": "logs/typecheck.log"
+    },
+    {
+      "name": "dashboard build",
+      "command": "CANDIDATE_RUN=1 npm run build:app",
+      "exitStatus": 0,
+      "scope": "Passed against the final exported ABI and final TypeScript sources.",
+      "log": "logs/app-build.log"
+    },
+    {
+      "name": "economic model",
+      "command": "CANDIDATE_RUN=1 npm run sim",
+      "exitStatus": 0,
+      "capitalQuoteRows": 40,
+      "modelScenarios": 53,
+      "scope": "Broad gas/cash/concurrency/demand forecasts not fork-calibrated. Controlled five-word selection/pricing/VRF branch has fork parity.",
+      "log": "logs/simulation.log"
+    },
+    {
+      "name": "ABI source metadata and export",
+      "command": "npm run abi",
+      "exitStatus": 0,
+      "scope": "Seven artifacts checked against nine current source keccaks; quoteKeeperReward/reservedStagedCount present, rejected staging APIs absent.",
+      "log": "logs/final-abi-sources.log"
+    },
+    {
+      "name": "reporting reader",
+      "command": "python3 scripts/test-flow-reporting.py",
+      "exitStatus": 0,
+      "passed": 7,
+      "log": "logs/flow-reporting-python.log"
+    },
+    {
+      "name": "focused gas",
+      "exitStatus": 0,
+      "passed": 3,
+      "billedGas": {
+        "canPurchase": 43343,
+        "FWAacquireBatch5": 1664414,
+        "reconcileAndReplaceOneShape": 824631
+      },
+      "scope": "Foundry1.8.1 isolated-call counters at inherited0.5gwei basefee/1gwei bid, not fresh node receipts.",
+      "log": "logs/final-gas-focused.log"
+    }
+  ],
+  "review": {
+    "report": "REPORT.md",
+    "scope": "Independent affected Solidity source security/economic review; no new actionable finding. Not a whole-candidate audit or release approval."
+  },
+  "economicLimits": [
+    "E1 retained: defaultV1 overbooking0.002240053614343757ETH under valid18block gas drop; mutable25percent example0.002729320077460120; mutable100percent example0.010600968921276351; reverse underbooking0.001744348693206539. No universal0.001ETH claim.",
+    "Creator allocation is bounded globally by45percent of actual owner proceeds, not an owner-approved practical drift tolerance.",
+    "Reached minimum-opening/concurrent claim/hostile-policy/paid failure/unpaid closeout paths preserve FWA purchaser funds and real backing. They are bounded scenarios, not an exhaustive safety claim."
+  ],
+  "limitations": [
+    "No new broadcast or real funds; old approved50round local batch used earlier bytecode.",
+    "No interactive dashboard/browser-wallet acceptance.",
+    "No final-revision signed keeper integration/rehearsal in this task; previous bounded local authority was exhausted.",
+    "Other existing audit findings and external FWA service/custody risks are unchanged.",
+    "No outcome signature, whole-candidate audit seal, publication or deployment approval created.",
+    "Aggregate test gas budget100billion covers many operations; it is not a transaction gas allowance. Actual keeper limit remains16,777,216."
+  ],
+  "authority": {
+    "broadcastsForThisCandidate": 0,
+    "mainnetOrTestnetTransactions": 0,
+    "realFundsSpent": 0,
+    "pushAuthorizedByThisCompletion": false
+  }
+}

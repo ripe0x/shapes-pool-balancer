@@ -1,0 +1,8 @@
+
+> abi
+> node scripts/export-abi.mjs
+
+wrote shared/abi.ts
+real 0.35
+user 0.15
+sys 0.05

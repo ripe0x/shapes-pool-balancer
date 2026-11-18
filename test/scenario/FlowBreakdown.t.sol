@@ -108,7 +108,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal paidBeyondGas; // the same, in gas at the reimbursed price
     uint256 internal paidBeyondGasWorstCall;
     uint256 internal feesListed; // restocking fees inside the prices of every prize listed
-    uint256 internal feesWon;
+    uint256 internal selectedFeesWon; // surcharge removed with the selected listing, not cash received
+    uint256 internal feesReceived; // request-board surcharge component of fulfilled FWA owner proceeds
+    uint256 internal ownerProceedsRealized;
     uint256 internal feesUnlisted;
     uint256 internal markupWon; // full markup on the backing of Shape prizes won
     uint256 internal redeemGap;
@@ -166,11 +168,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     bool internal splitCheck;
     mapping(uint256 id => uint256) internal drawBase; // FWA owner proceeds for the draw: sum(w*p)/sum(w), active listings
     mapping(uint256 id => uint256) internal drawShare; // drawBase x sum(markup above 10% / price) over them / count
+    mapping(uint256 id => uint256) internal drawFee;
+    mapping(uint256 id => uint256) internal actualDrawProceeds;
+    uint256[] internal allIds;
     uint256 internal uncollectedBase;
     uint256 internal uncollectedShare;
-    uint256[] internal splitIds; // every draw bought while the split is checked
     uint256 internal splitChecks;
-    uint256 internal splitSkippedAboveReserve;
+    uint256 internal splitZeroBooked;
     uint256 internal splitExpected;
     uint256 internal splitBooked;
     uint256 internal splitOver;
@@ -178,6 +182,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal splitMaxErrorBps;
     uint256 internal proceedsMismatch;
     uint256 internal maxInFlightAtRestock;
+    struct BoardAmounts { uint256 weight; uint256 price; uint256 count; uint256 share; uint256 withoutSurcharge; }
 
     // E9 what-ifs on large_win: the creator acts once, right after the second top prize is won
     uint256 internal daysTopMissing;
@@ -210,6 +215,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     function test_breakdown_policySwitch() public {
         Snap memory a = _launch();
+        splitCheck = true;
         for (uint256 i; i < 6; ++i) _single(i);
         uint256[] memory listed = balancer.getActiveIds();
         uint256[] memory prices = new uint256[](listed.length);
@@ -781,10 +787,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertGt(upkeepsWhileUnsettled, 0, "upkeep ran while draws were unsettled");
         assertGt(restocksStaged, 0, "restocks listed while draws were unsettled");
         assertGe(maxInFlightAtRestock, 3, "a restock listed with at least three draws unsettled");
-        assertGt(splitChecks, 0, "collections booked profit and were checked");
-        Fact[] memory x = new Fact[](10);
+        assertGt(splitChecks, 0, "all collections were checked, including zero bookings");
+        assertGt(splitExpected, 0, "the reached purchase boards owe positive creator profit");
+        Fact[] memory x = new Fact[](11);
         x[0] = Fact("split_collections_checked", splitChecks);
-        x[1] = Fact("split_collections_fund_at_or_above_reserve", splitSkippedAboveReserve);
+        x[1] = Fact("split_collections_zero_booked", splitZeroBooked);
         x[2] = Fact("split_expected_wei", splitExpected);
         x[3] = Fact("split_booked_wei", splitBooked);
         x[4] = Fact("split_overbooked_wei", splitOver);
@@ -793,7 +800,83 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[7] = Fact("owner_proceeds_vs_board_price_mismatch_wei", proceedsMismatch);
         x[8] = Fact("max_draws_unsettled_at_a_staged_restock", maxInFlightAtRestock);
         x[9] = Fact("restocks_staged_while_unsettled_checked", restocksStaged);
+        x[10] = Fact("split_absolute_error_wei", splitOver + splitUnder);
         _done("restock_in_flight", a, x);
+    }
+
+    function test_evidence_selectedListingFeeIsNotRealizedIncome() public {
+        baseFeeRegime = CAP_FEE;
+        uint256[16] memory c;
+        (c[0], c[10]) = (20, 1);
+        _launchWith(c, 2 ether, 23);
+        // This reproducer includes full Pack replacement, rather than the permitted low-capital deferral.
+        vm.prank(creator);
+        balancer.depositETH{value: 0.1 ether}();
+        deposited += 0.1 ether;
+        uint256 selectedFee;
+        uint256 packSlot;
+        uint256 weightedWithoutFee;
+        uint256 weightTotal;
+        for (uint256 lid = 1; lid < nextLid; ++lid) {
+            (,,,, uint256 weight, uint256 price, uint256 slot, uint8 status) = pool.listings(lid);
+            if (status != 1) continue;
+            (uint8 kind, uint8 d,, uint112 base,) = balancer.items(lid);
+            weightTotal += weight;
+            weightedWithoutFee += weight * (kind == SHAPE_KIND ? base : price);
+            if (kind == SHAPE_KIND && d == 10) {
+                selectedFee = price - base;
+                packSlot = slot;
+            }
+        }
+        assertEq(selectedFee, 0.0141 ether, "three Shape units each list with the 5gwei 0.0047ETH surcharge");
+        (uint256[] memory ids,,) = this.extBuy(1);
+        assertEq(ids.length, 1);
+        assertGt(drawFee[ids[0]], 0, "the pending draw has an expected surcharge contribution");
+        assertEq(feesReceived, 0, "pending purchase escrow is not realized owner income");
+        _deliver(ids[0], wordForSlot(packSlot));
+        _account(ids);
+        assertEq(fulfilled, 1, "the selected Pack was actually delivered");
+        uint256 actualOwnerCash = pool.ownerProceeds();
+        assertEq(actualOwnerCash, drawBase[ids[0]], "real FWA owner cash equals its request-time base");
+        assertEq(feesReceived, actualOwnerCash - weightedWithoutFee / weightTotal);
+        assertEq(selectedFeesWon, selectedFee, "selected fee remains a separate listing statistic");
+        assertGt(selectedFee, 2 * feesReceived, "the selected prize fee cannot stand in for realized surcharge cash");
+        _service();
+        assertEq(ownerProceedsRealized, proceedsCollected + pool.ownerProceeds());
+        assertEq(backingWon, 0.03 ether, "the actual winning Pack carried three small Shapes");
+        assertEq(balancer.getActiveShapes()[10], 1, "the funded Pack was really replaced");
+        assertGt(keeperPaidPlay, feesReceived, "this Pack win has a real surcharge versus keeper-payment shortfall");
+        assertLt(keeperPaidPlay, selectedFee, "selected-fee accounting would falsely report coverage");
+        emit log_named_decimal_uint("selected listing fee", selectedFee, 18);
+        emit log_named_decimal_uint("actual request-board surcharge receipts", feesReceived, 18);
+        emit log_named_decimal_uint("actual keeper play reward", keeperPaidPlay, 18);
+    }
+
+    function test_evidence_zeroBookingIsCountedAsUnderpayment() public {
+        // Unit check of the report's own comparison, without substituting any protocol response.
+        uncollectedBase = 1 ether;
+        uncollectedShare = 0.01 ether;
+        _checkSplit(1 ether, 0);
+        assertEq(splitChecks, 1);
+        assertEq(splitZeroBooked, 1);
+        assertEq(splitExpected, 0.01 ether);
+        assertEq(splitBooked, 0);
+        assertEq(splitUnder, 0.01 ether);
+        assertEq(splitOver, 0);
+        assertGt(splitOver + splitUnder, 0.001 ether, "zero profit fails the existing split-error bound");
+    }
+
+    function test_evidence_bothErrorDirectionsRemainVisible() public {
+        uncollectedBase = 1 ether;
+        uncollectedShare = 0.01 ether;
+        _checkSplit(1 ether, 0.011 ether);
+        uncollectedBase = 1 ether;
+        uncollectedShare = 0.01 ether;
+        _checkSplit(1 ether, 0.009 ether);
+        assertEq(splitChecks, 2);
+        assertEq(splitOver, 0.001 ether);
+        assertEq(splitUnder, 0.001 ether);
+        assertEq(splitOver + splitUnder, 0.002 ether, "opposite errors must not cancel or hide underbooking");
     }
 
     // ------------------------------------------------------------------ driver
@@ -826,10 +909,17 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     function _done(string memory regime, Snap memory a, Fact[] memory extra) internal {
+        _account(allIds);
+        assertEq(ownerProceedsRealized, proceedsCollected + pool.ownerProceeds(), "fulfilled request bases equal actual FWA owner proceeds");
+        assertLe(feesReceived, ownerProceedsRealized, "surcharge is a component of realized proceeds, not extra cash");
+        if (splitCheck) {
+            assertGt(splitExpected, 0, "split comparison reaches positive creator entitlement");
+            assertLe(splitOver + splitUnder, 0.001 ether, "both split error directions satisfy the existing absolute bound");
+        }
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 63;
+        uint256 n = 65;
         Fact[] memory f = new Fact[](n + extra.length);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
@@ -866,8 +956,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[31] = Fact("keeper_loss_wei", keeperGasCost > paid ? keeperGasCost - paid : 0);
         f[32] = Fact("keeper_paid_beyond_gas_and_reward_wei", paidBeyondGasAndReward);
         f[33] = Fact("restock_fees_listed_wei", feesListed);
-        f[34] = Fact("restock_fees_won_wei", feesWon);
-        f[35] = Fact("restock_fees_outstanding_wei", feesListed - feesWon - feesUnlisted);
+        f[34] = Fact("selected_listing_restock_fees_won_wei", selectedFeesWon);
+        f[35] = Fact("restock_fees_outstanding_wei", feesListed - selectedFeesWon - feesUnlisted);
         f[36] = Fact("profit_credited_wei", profitCredited);
         f[37] = Fact("profit_share_of_proceeds_bps", proceedsCollected == 0 ? 0 : profitCredited * 10_000 / proceedsCollected);
         f[38] = Fact("creator_markup_ceiling_on_prizes_won_wei", markupWon * (MARKUP_BPS - 1000) / MARKUP_BPS);
@@ -884,12 +974,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         (f[48].key, f[49].key, f[50].key) =
             ("unpaid_upkeeps_needed_at_end", "max_unpaid_upkeep_cost_wei", "admission_status_after_unpaid_upkeep");
         f[51] = Fact("days_ending_with_a_prize_missing", daysPrizeMissing);
-        // R4: the creator's keeper net, restocking fees repaid inside won prizes less all keeper pay
+        // R4: only the request-board surcharge actually realized in owner proceeds repays keeper cash.
         uint256 keeperAll = keeperPaidPlay + keeperPaidSetup;
-        f[52] = Fact("creator_keeper_net_gain_wei", feesWon > keeperAll ? feesWon - keeperAll : 0);
-        f[53] = Fact("creator_keeper_net_loss_wei", keeperAll > feesWon ? keeperAll - feesWon : 0);
+        f[52] = Fact("creator_keeper_net_gain_wei", feesReceived > keeperAll ? feesReceived - keeperAll : 0);
+        f[53] = Fact("creator_keeper_net_loss_wei", keeperAll > feesReceived ? keeperAll - feesReceived : 0);
         // the same for play only, leaving out the creator's own setup work (opening, configuring, unlisting)
-        f[56] = Fact("creator_keeper_play_net_loss_wei", keeperPaidPlay > feesWon ? keeperPaidPlay - feesWon : 0);
+        f[56] = Fact("creator_keeper_play_net_loss_wei", keeperPaidPlay > feesReceived ? keeperPaidPlay - feesReceived : 0);
         // R8: the creator's net, everything claimed or still theirs (Balancer ETH, listed backing, uncollected
         // proceeds) less everything deposited and the NFTs given away at their stated value (the harness hands the
         // creator a fresh NFT after each win, so that value is a cost here)
@@ -906,6 +996,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[60] = Fact("fwa_queue_ready_max", fwaQueueReadyMax);
         f[61] = Fact("upkeeps_with_fwa_queue_ready", upkeepsWithQueueReady);
         f[62] = Fact("upkeeps_with_fwa_queue_ready_over_2", upkeepsWithQueueReadyOver2);
+        f[63] = Fact("restock_fee_receipts_wei", feesReceived);
+        f[64] = Fact("owner_proceeds_realized_wei", ownerProceedsRealized);
         for (uint256 j; j < extra.length; ++j) f[n + j] = extra[j];
         flowReport(regime, a, f);
     }
@@ -1010,26 +1102,25 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     ///      over its active listings (StandardPool, `weightedBackingTotal / totalWeight`), and the creator's part is
     ///      that times the average, over the same listings, of each Shape prize's markup above 10% as a fraction of its
     ///      price (zero for an NFT). This regime never changes the markup, so every Shape prize carries MARKUP_BPS.
-    function _boardQuote() internal view returns (uint256 base, uint256 share) {
-        uint256 w;
-        uint256 wp;
-        uint256 n;
-        uint256 s;
+    function _boardQuote() internal view returns (uint256 base, uint256 share, uint256 surcharge) {
+        BoardAmounts memory b;
         for (uint256 lid = 1;; ++lid) {
             (,,,, uint256 weight, uint256 price,, uint8 status) = pool.listings(lid);
             if (status == 0) break;
             if (status != 1) continue;
-            w += weight;
-            wp += weight * price;
-            ++n;
+            b.weight += weight;
+            b.price += weight * price;
+            ++b.count;
             (uint8 kind, uint8 d,,, uint112 itemPrice) = balancer.items(lid);
             if (kind == SHAPE_KIND) {
                 assertEq(itemPrice, price, "the Balancer's price is FWA's");
-                s += balancer.denominationAmount(d) * (MARKUP_BPS - 1000) * 1e18 / (10_000 * price);
+                b.share += balancer.denominationAmount(d) * (MARKUP_BPS - 1000) * 1e18 / (10_000 * price);
             }
+            b.withoutSurcharge += weight * (kind == SHAPE_KIND ? price - lidFee[lid] : price);
         }
-        base = wp / w;
-        share = base * s / (n * 1e18);
+        base = b.price / b.weight;
+        share = base * b.share / (b.count * 1e18);
+        surcharge = base - b.withoutSurcharge / b.weight;
     }
 
     function _idle(uint256 days_) internal {
@@ -1081,15 +1172,18 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         require(msg.sender == address(this));
         (,, total) = pool.quoteAcquisitionPrice(n);
         uint256 version = pool.inventoryVersion();
-        (uint256 qBase, uint256 qShare) = splitCheck ? _boardQuote() : (0, 0);
         uint256 before = buyer.balance;
         uint256 poolBefore = address(pool).balance;
         vm.prank(buyer, buyer);
         ids = pool.acquireBatch{value: total}(buyer, n, 0, 0, 10_000, version, vm.getBlockTimestamp() + 1);
         assertEq(before - buyer.balance, total, "the player paid the quote");
+        // acquireBatch can activate staging before opening its requests. Snapshot that actual board;
+        // its gross owner base is checked against FWA's actual per-request accrual on fulfillment.
+        (uint256 qBase, uint256 qShare, uint256 qFee) = _boardQuote();
         for (uint256 k; k < ids.length; ++k) {
             (drawBase[ids[k]], drawShare[ids[k]]) = (qBase, qShare);
-            if (splitCheck) splitIds.push(ids[k]);
+            drawFee[ids[k]] = qFee;
+            allIds.push(ids[k]);
         }
         vrf = total - (address(pool).balance - poolBefore); // what FWA passed on to its randomness service
     }
@@ -1114,9 +1208,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory words = new uint256[](1);
         words[0] = word;
         address coordinator = IVRFService(VRF_SERVICE).coordinator();
+        vm.recordLogs();
         vm.prank(coordinator);
         try IVRFService(VRF_SERVICE).rawFulfillRandomWords{gas: 5_000_000}(id, words) {
             ++delivered;
+            _recordOwnerAccruals(vm.getRecordedLogs());
         } catch {
             ++deliverReverts;
         }
@@ -1130,16 +1226,20 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             if (done[ids[i]]) continue;
             (address purchaser,,, uint256 lid, uint8 status,) = pool.acquisitions(ids[i]);
             if (status == 2) {
+                assertEq(actualDrawProceeds[ids[i]], drawBase[ids[i]], "actual per-request FWA proceeds match the purchase board");
+                assertGt(actualDrawProceeds[ids[i]], 0, "a fulfilled draw generated real owner proceeds");
                 done[ids[i]] = true;
                 ++fulfilled;
                 uncollectedBase += drawBase[ids[i]];
                 uncollectedShare += drawShare[ids[i]];
+                ownerProceedsRealized += drawBase[ids[i]];
+                feesReceived += drawFee[ids[i]];
                 (uint8 kind, uint8 d) = (lidKind[lid], lidDenom[lid]);
                 if (kind == SHAPE_KIND) {
                     (address col,,, uint256 tokenId,,,,) = pool.listings(lid);
                     assertEq(IERC721Min(col).ownerOf(tokenId), purchaser, "the winner holds the prize");
                     backingWon += _backingOf(col, tokenId);
-                    feesWon += lidFee[lid];
+                    selectedFeesWon += lidFee[lid];
                     markupWon += balancer.denominationAmount(d) * MARKUP_BPS / 10_000;
                     if (d == TOP) ++topWon;
                 } else if (kind == CURATED_KIND) {
@@ -1242,7 +1342,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256 cost = ReceiptGas.lastBilled() * gasNow;
             // proceeds this call collected, from the Balancer's own event (read after the gas is measured): upkeep may
             // settle draws first (D16), so more than was waiting before the call can arrive
-            op0 = _collectedIn(vm.getRecordedLogs());
+            Vm.Log[] memory logs = vm.getRecordedLogs();
+            op0 = _collectedIn(logs);
             if (rational && reward < cost) {
                 vm.revertToStateAndDelete(snap);
                 ++upkeepsSkipped;
@@ -1250,6 +1351,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 return SKIPPED;
             }
             vm.deleteStateSnapshot(snap);
+            _recordOwnerAccruals(logs);
             assertEq(who.balance - who0, reward, "the caller received the reward");
             ++upkeepsRun;
             if (ready != 0) ++upkeepsWithQueueReady;
@@ -1410,27 +1512,37 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     ///      board each collected draw was priced on. Every draw final by now is booked first: FWA's randomness fast
     ///      path and upkeep (D16) settle draws before the harness's own `_account` reaches them.
     function _checkSplit(uint256 op, uint256 booked) internal {
-        _account(splitIds);
+        _account(allIds);
         proceedsMismatch += op > uncollectedBase ? op - uncollectedBase : uncollectedBase - op;
-        if (booked != 0) {
-            ++splitChecks;
-            splitExpected += uncollectedShare;
-            splitBooked += booked;
-            uint256 err;
-            if (booked > uncollectedShare) {
-                err = booked - uncollectedShare;
-                splitOver += err;
-            } else {
-                err = uncollectedShare - booked;
-                splitUnder += err;
-            }
-            if (uncollectedShare != 0 && err * 10_000 / uncollectedShare > splitMaxErrorBps) {
-                splitMaxErrorBps = err * 10_000 / uncollectedShare;
-            }
+        assertEq(op, uncollectedBase, "the split compares exactly the requests whose owner proceeds were collected");
+        ++splitChecks;
+        if (booked == 0) ++splitZeroBooked;
+        splitExpected += uncollectedShare;
+        splitBooked += booked;
+        uint256 err;
+        if (booked > uncollectedShare) {
+            err = booked - uncollectedShare;
+            splitOver += err;
         } else {
-            ++splitSkippedAboveReserve;
+            err = uncollectedShare - booked;
+            splitUnder += err;
+        }
+        if (uncollectedShare != 0 && err * 10_000 / uncollectedShare > splitMaxErrorBps) {
+            splitMaxErrorBps = err * 10_000 / uncollectedShare;
         }
         (uncollectedBase, uncollectedShare) = (0, 0);
+    }
+
+    function _recordOwnerAccruals(Vm.Log[] memory logs) internal {
+        bytes32 topic = keccak256("OwnerProceedsAccrued(uint256,uint256,uint256)");
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter != address(pool) || logs[i].topics[0] != topic) continue;
+            uint256 id = uint256(logs[i].topics[1]);
+            (uint256 amount,) = abi.decode(logs[i].data, (uint256, uint256));
+            assertEq(actualDrawProceeds[id], 0, "a request contributes owner proceeds once");
+            assertEq(amount, drawBase[id], "FWA's actual per-request accrual proves the captured purchase board");
+            actualDrawProceeds[id] = amount;
+        }
     }
 
     function _claim() internal returns (uint256 s) {
@@ -1601,7 +1713,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[1] = Flow("players -> FWA: draw payments | refunds withdrawn", playersPaid, true, refundsWithdrawn);
         f[2] = Flow("FWA -> Balancer: owner proceeds collected", proceedsCollected, false, 0);
         f[3] = Flow("Balancer -> Shapes and Packs: prize backing | redeemed", backingMinted, true, backingRedeemed);
-        f[4] = Flow("Balancer -> keepers: reconcile and restock | restocking fees in prizes won", keeperPaidPlay, true, feesWon);
+        f[4] = Flow("Balancer -> keepers: reconcile and restock | request-board surcharge received", keeperPaidPlay, true, feesReceived);
         f[5] = Flow("Balancer -> keepers: creator-started work (creator's ETH)", keeperPaidSetup, false, 0);
         f[6] = Flow("proceeds -> creator profit: markup above the game's 10%", profitCredited, false, 0);
     }

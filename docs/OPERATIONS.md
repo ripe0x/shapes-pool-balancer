@@ -12,13 +12,17 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
-| 6 | LOW_INVENTORY | Listed prize weight is below 70% of the target's | call `performUpkeepUnpaid()` to restock; if it stays at 6, `depositETH()` and upkeep again |
+| 6 | LOW_INVENTORY | Prospective Shape-weight lower bound is below 70% of target | process/reconcile existing draws; inspect actual staging and liquidity before adding ETH |
 
 ## Keeper down
 
 New purchases pause once prize weight falls below 70% of the target (status 6) or 5 draws are unsettled (status 4).
 Outstanding draws, refunds and NFT claims retain FWA's rules. Ready or expired draws can require explicit processing; upkeep processes the queue. Anyone, including the creator from the dashboard, can call `performUpkeepUnpaid()`, even if the factory restricts paid keepers. Run a second keeper with the same factory address; duplicate submissions just
 revert `NoUpkeepNeeded` in simulation and are never sent.
+
+Admission uses the [operation-aware bound](SPEC.md): the old unreconciled allowance and actual nonselectable count receive credit only for FWA's previously reserved prefix plus the next six guaranteed activations. It preserves the existing busy threshold and permits purchases without keeper maintenance between every batch. A single bounded Shape/Pack staging-count estimate prevents unrelated curated staging from being charged as missing Shapes; its zero fast path preserves the original allowance. No per-listing staging queue, synchronization transaction or Balancer activation wrapper is required.
+
+If actual staging remains after all draws settle, the dashboard's bounded activation action calls the existing public FWA `activateListings(20)`; repeat while needed. This creates no Balancer compensation and spends only caller gas. Inspect actual active/staged records: a tracked count is not a proof that all records are selectable or that the target is complete. An operating deficit may instead need existing proceeds, Add ETH, a smaller target or closing. Do not add capital to cure a mere activation backlog.
 
 ## Keeper service
 
@@ -42,11 +46,11 @@ Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`
 
 Paid work can consume the buffer, and partial targets may trade while the real weight gate permits. If admission is paused and no proceeds remain, further demand cannot restart it. Use Add ETH, reduce the target or close. A large missing prize may take an unknown number of actual purchases to replenish; do not assume automatic creator deposits or NFT replacement. The dashboard identifies missing prizes and actual withdrawable capital.
 
-Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Booked creator markup is excluded from paid mint/payment affordability.
+Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Booked creator markup is excluded from paid mint/payment affordability. Its current-board allocation remains an approximation under concurrent settlement; measured gas/policy drift is reported in [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md), not described as a universal 0.001 ETH limit.
 
 ## Adopt a policy
 
-1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and quotes, and `policyFunding(candidate)`.
+1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer.
 2. Creator: `proposeKeeperPolicy(candidate)`. Observe `KeeperPolicyProposed` and `policyActivationTime`.
 3. Deposit any shortfall with `depositETH()`. Old prices never change. The fund excludes booked creator profit.
 4. After two days, anyone: `activateKeeperPolicy()`. Funding and compatibility are checked again atomically.
@@ -96,8 +100,7 @@ show when a fee makes the configuration uneconomic.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
-5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except the selected cached maximum per draw not yet
-   reconciled, held to pay the keeper who processes and reconciles them. Run upkeep (or wait for a keeper), then claim the rest.
+5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except the current operation-sensitive reconciliation budget for each actual unreconciled draw while paid upkeep remains enabled. Run upkeep (or wait for a keeper), then claim the rest.
 6. Optional and permanent: `retire()`.
 
 ## FWA pool page

@@ -1,8 +1,9 @@
-# Economic outcome review packet
+# Historical economic outcome review packet (`9b45f91`)
 
-**Awaiting resolution of the received independent audit. E1/E2 invalidate reliance on the current O9/O11 evidence; do not sign this packet as release acceptance.** No outcome, threshold or configuration has been changed here. The exact16outcomes remain in asset-flow.json; the table groups them for review, rather than replacing the signed payload.
+**Superseded as the current acceptance packet.** Remediation changes economic evidence/metrics and admission configuration; R55–R58 retain approximate allocation and concurrency. See [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md) and [READINESS.md](READINESS.md). The prior proposal hash below identifies the historical payload only: it is neither a current approval hash nor an owner signature. No replacement hash or numerical acceptance is invented here.
+**Awaiting resolution of the received independent audit. E1/E2 invalidate reliance on the current O9/O11 evidence; do not sign this packet as release acceptance.** This historical table groups the then-proposed sixteen outcomes. The working remediation configuration now records actual-fee metrics and both allocation-error directions; its broader numerical acceptance remains unresolved.
 
-Candidate9b45f915fcaa27bc24d6125cf4a0062117ef576c; evidence source hash24ebb94a1f05a5c9bc39814426eced47a1cd5e9ffd1b4acbce806062cbdfab33. Proposed approval hash **a9e8a87b4788f851a0e04071f117a6c019fc20beb27715d6b9974f1b3263aca9**. Any changed outcome/configuration invalidates that proposed hash. No signature from an earlier version carries forward.
+Candidate9b45f915fcaa27bc24d6125cf4a0062117ef576c; evidence source hash24ebb94a1f05a5c9bc39814426eced47a1cd5e9ffd1b4acbce806062cbdfab33. Historical proposed approval hash **a9e8a87b4788f851a0e04071f117a6c019fc20beb27715d6b9974f1b3263aca9**. Any changed outcome/configuration invalidates that proposed hash. No signature from an earlier version carries forward.
 
 ## Decisions and measured tradeoffs
 

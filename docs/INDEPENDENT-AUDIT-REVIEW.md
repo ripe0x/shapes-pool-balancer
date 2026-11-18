@@ -1,5 +1,7 @@
 # Review of the independent audit of `9b45f91`
 
+> **Historical review; current status:** subsequent owner direction R55–R58 retains approximate allocation and concurrent purchases. E1 is quantified and its numerical release outcome remains unresolved, rather than requiring serialization or claiming exact attribution. Current fixes, rejected prototypes and verification limits are in [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md). The historical disposition below and the supplied audit remain unchanged.
+
 **Mainnet remains blocked.** The report provides material new economic-accounting and evidence findings. Its bounded conclusions are supported by the source and inspected supplied fork logs; this review did not independently rerun those experiments. The report, source-provenance digest and separate economic review are preserved under [audit/independent-9b45f91](../audit/independent-9b45f91/REPORT.md). No production repair, changed owner right, relaxed outcome or approval signature is authorized or supplied by this review.
 
 ## Disposition

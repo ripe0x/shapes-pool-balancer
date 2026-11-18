@@ -8,6 +8,7 @@ interface IFWAPoolFactory {
     function createPool(bytes32 userSalt, address expectedImplementation) external returns (address pool);
     function edgeBps() external view returns (uint16);
     function maxAcquisitionsPerTx() external view returns (uint16);
+    function maxActivationsPerAcquisition() external view returns (uint16);
     function maxStagedListings() external view returns (uint256);
     function globalWithdrawOnly() external view returns (bool);
 }
@@ -63,6 +64,7 @@ interface IFWAPool {
     ) external payable returns (uint256[] memory requestIds);
     function configureTokenOffer(uint256 price, uint256 maxPulls, bool enabled) external;
     function processAcquisitions(uint256 maxCount) external returns (uint256 processed);
+    function activateListings(uint256 maxCount) external;
     function quoteAcquisitionPrice(uint256 count) external view returns (uint256 fee, uint256 vrf, uint256 total);
 
     // views
@@ -99,6 +101,7 @@ interface IFWAPool {
     function totalWeight() external view returns (uint256);
     function weightedBackingTotal() external view returns (uint256);
     function activeListingCount() external view returns (uint256);
+    function reservedStagedCount() external view returns (uint256);
     function acquisitionFee() external view returns (uint256);
     function ownerProceeds() external view returns (uint256);
     function purchaseOperator() external view returns (address);

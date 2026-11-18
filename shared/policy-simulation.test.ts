@@ -1,10 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { DESIGNS, V1, V2, runScenario, transactionCost, demandAt } from '../sim/fund';
+import { DESIGNS, V1, V2, runScenario, transactionCost, demandAt, playerVrfFeeAt } from '../sim/fund';
 import { keeperWorkAt, DENOMS } from './planner';
 
 const base = { ...DESIGNS[1], name: 'test mixed board', markupBps: 2500, days: 3, drawsPerDay: 10, baseFee: 500_000_000n };
 describe('keeper policy economic model', () => {
+  it('matches the real five-word batch slippage branch and charges VRF on every refunded request', () => {
+    // Same board, basefee, purchaser bid and words as test/BatchSlippage.t.sol.
+    // Only branch/prize-price/service-fee parity is asserted; modeled keeper gas and cash differ.
+    const scenario = { name: 'controlled batch comparison', target: DENOMS.map((_, d) => d === 0 ? 5 : d === 1 ? 3 : d === 2 ? 2 : 0),
+      nftValues: [parseEther('0.25'), parseEther('0.5')], markupBps: 1500, days: 1, drawsPerDay: 5,
+      baseFee: 80_000_000n, playerGasPrice: 80_000_000n, initialCapital: parseEther('3'), selectionWords: Array(5).fill(6_000_000_000_000_000_000n) };
+    const batch = runScenario({ ...scenario, burst: 5 });
+    const singles = runScenario({ ...scenario, burst: 1 });
+    expect(batch.draws).toBe(5);
+    expect(batch.fulfilledDraws).toBe(1);
+    expect(batch.refunded).toBe(4);
+    expect(batch.slippageRefunds).toBe(4);
+    expect(batch.emptyBoardRefunds).toBe(0);
+    expect(batch.playerSpendWei).toBe('27137220785149510');
+    expect(batch.playerRefundsWei).toBe('108548883140598040');
+    expect(batch.deliveredBacking).toBe(0.01);
+    expect(singles.draws).toBe(5);
+    expect(singles.fulfilledDraws).toBe(5);
+    expect(singles.refunded).toBe(0);
+    expect(singles.deliveredBacking).toBe(0.05);
+    expect(singles.playerSpendWei).toBe('135686103925747550');
+    expect(playerVrfFeeAt(80_000_000n)).toBe(187_200_000_000_000n);
+    expect(batch.playerVrfCostWei).toBe('936000000000000');
+    expect(singles.playerVrfCostWei).toBe(batch.playerVrfCostWei);
+    expect(batch.playerVrfCostOnRefundsWei).toBe('748800000000000');
+    expect(singles.playerVrfCostOnRefundsWei).toBe('0');
+    expect(batch.playerTotalSpend).toBeCloseTo(batch.playerSpend + 0.000936, 15);
+    expect(singles.finalDrawPrice).toBe(singles.drawPrice);
+    expect(batch.accountingDifferenceWei).toBe('0');
+    expect(singles.accountingDifferenceWei).toBe('0');
+  });
+
   it('checks an absolute payment and its separate execution expense', () => {
     const w = keeperWorkAt(500_000_000n, 550_000_000n, 0);
     expect(V1.reward(w)).toBe(542_700_000_000_000n);

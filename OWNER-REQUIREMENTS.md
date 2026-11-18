@@ -201,3 +201,12 @@ This request supersedes R10/R28's per-call incentive and R37's immediate mutable
 - R54. "Make the best engineering decisions independently, implement them, and verify the outcome." "Do not deploy to mainnet or spend real funds."
 
 This request supersedes R26's duplicate-largest-prize and full-future-board insurance guarantee, and the corresponding reserve mechanism in decision 95. Existing price, custody, player refund, profit allocation and policy authority requirements remain. Changed numeric outcomes remain unsigned until the owner explicitly signs them for release; implementation authority grants no deployment authority.
+
+## Audit response and concurrency (owner direction, 2026-11-17)
+
+- R55. "Do not implement the one batch at a time restriction." "Preserving concurrent purchases and minimizing downtime are more important than achieving perfectly precise purchase time profit attribution."
+- R56. "We previously accepted bounded profit allocation drift, and I don't want to reverse that decision just to simplify accounting." "Keep the existing FWA admission behavior and focus on the original objective: reducing the reserve and initial capital requirements as much as safely possible."
+- R57. "If exact profit attribution is genuinely necessary for the new reserve design, first demonstrate why the existing bounded approximation is insufficient. Explore a conservative allocation that avoids overcrediting creator profit, or another solution that doesn't restrict purchases."
+- R58. "Do not introduce a new purchase bottleneck or make every batch dependent on keeper maintenance. Quantify any remaining accounting drift and prove that the reduced reserve remains safe under the existing concurrency model."
+
+This rejects the proposed serialized-cohort mechanism. It does not sign revised outcomes or make the fixed O9 seed's 0.001 ETH observation a proven bound for all permitted boards and policies. Purchaser custody and refund requirements remain unchanged. Any changed numerical acceptance requires an explicit owner decision against measured results; no larger tolerance is silently substituted.

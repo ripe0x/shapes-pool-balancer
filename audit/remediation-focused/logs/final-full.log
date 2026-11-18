@@ -1,0 +1,921 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 60 files with Solc 0.8.28
+Solc 0.8.28 finished in 192.69s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> test/PolicyModelParity.t.sol:55:20:
+   |
+55 |                 (, uint256 n, uint256 c) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+   |                    ^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> test/PolicyModelParity.t.sol:105:9:
+    |
+105 |         uint256 n;
+    |         ^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/Packs.t.sol:183:9:
+    |
+183 |         uint256 fee = shapes.mintFee();
+    |         ^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/audit/LaunchB.t.sol:396:13:
+    |
+396 |             uint256 g = gasleft();
+    |             ^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/BatchSlippage.t.sol:170:5:
+    |
+170 |     function _checkLogs(Result memory r) internal {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Gas.t.sol:51:5:
+   |
+51 |     function _reimbursed() internal returns (uint256 gasPaid) {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/Hardening.t.sol:255:5:
+    |
+255 |     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/KeeperPay.t.sol:18:5:
+   |
+18 |     function noop() external returns (uint256) { return 42; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/ReserveCapital.t.sol:259:5:
+    |
+259 |     function test_feeAndCapSensitiveBoundForActualWork() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/audit/d16/WorstUpkeep.t.sol:219:5:
+    |
+219 |     function _lastMeasured() internal returns (uint256 measured) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for test/audit/LowBalanceHoldProbe.t.sol:LowBalanceHoldProbe
+[PASS] test_closeAfterTwoLargestWinsAtMinimumOpenReserve() (gas: 16101967)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 476.69ms (476.00ms CPU time)
+
+Ran 29 tests for test/Balancer.t.sol:BalancerTest
+[PASS] test_basefeeSpikeCappedAtMaxGasPrice() (gas: 947796)
+[PASS] test_blockedRefundRecoveryDoesNotBrickUpkeep() (gas: 7050568)
+[PASS] test_claimDuringUnsettledDraw() (gas: 1865940)
+[PASS] test_claimSurplusRespectsReserveWhileOpen() (gas: 3195315)
+[PASS] test_claimToRejectingRecipientReverts() (gas: 360083)
+[PASS] test_configureRejectsBadTargets() (gas: 232584)
+[PASS] test_creatorTransferTwoStep() (gas: 275610)
+[PASS] test_curatedBatchRepriceWithdraw() (gas: 1919752)
+[PASS] test_curatedOpsAndUnsettledDraws() (gas: 2777278)
+[PASS] test_ensReverseAndForward() (gas: 416163)
+[PASS] test_factory_isolatedBalancersAndPools() (gas: 2010227)
+[PASS] test_failedCuratedDeliveryRefundAndRecovery() (gas: 3547161)
+[PASS] test_gasGriefingCollectionCannotTaxUpkeep() (gas: 5749135)
+[PASS] test_gateRefusesUnrefundablePurchasers() (gas: 357115)
+[PASS] test_lowInventoryGate() (gas: 5213376)
+[PASS] test_manyCuratedListingsUnderStipend() (gas: 49066393)
+[PASS] test_markupAppliesAtListingOnly() (gas: 2761939)
+[PASS] test_noRewardForUnnecessaryWork() (gas: 2837827)
+[PASS] test_onlyCreator() (gas: 833786)
+[PASS] test_priorityOverbidIsNotReimbursed() (gas: 7158154)
+[PASS] test_realMintFeeChange() (gas: 3209672)
+[PASS] test_reentrantCollectionCannotReenter() (gas: 3193006)
+[PASS] test_refundOnlyBatchIsPaid() (gas: 917107)
+[PASS] test_rejectingKeeperIsStillPaidAndCannotBlock() (gas: 2590338)
+[PASS] test_rejectsShapesAndLyingCollections() (gas: 813467)
+[PASS] test_reserveMath() (gas: 114395)
+[PASS] test_retireIsIrreversibleAndKeepsExits() (gas: 1819489)
+[PASS] test_settledAfterRetryNeedsNoUpkeep() (gas: 3264717)
+[PASS] test_unlistShapesInBoundedSteps() (gas: 17675364)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 628.30ms (156.43ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 6 tests for test/audit/d16/ClosedHold.t.sol:D16ClosedHoldTest
+[PASS] test_closedHold_expiredOnePerBlock_5gwei() (gas: 51353534)
+[PASS] test_closedHold_expiredReservedDraws_5gwei() (gas: 50410941)
+[PASS] test_closedHold_reservedDraws_5gwei() (gas: 51087434)
+[PASS] test_lowGasClaimThenGasJumpNeedsUnpaidRefundRecovery() (gas: 50973778)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60353514)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60353653)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 838.45ms (374.00ms CPU time)
+
+Ran 2 tests for test/audit/launch-A/AdmissionBoundary.t.sol:AdmissionBoundaryTest
+[PASS] test_fourSmallShapesAdmitFirstPurchase() (gas: 5642597)
+[PASS] test_threeSmallShapesPauseWhileDrawUnsettledThenReopen() (gas: 5801520)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.50s (18.49ms CPU time)
+
+Ran 5 tests for test/AllocationConcurrency.t.sol:AllocationConcurrencyTest
+[PASS] test_V1ValidGasDropReportsDriftAndPreservesPurchaserAssets() (gas: 38635826)
+[PASS] test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() (gas: 28149433)
+[PASS] test_mutableLoweredFeeAt100PercentReportsDriftAndClaimRoundTrip() (gas: 30804758)
+[PASS] test_mutableLoweredFeeAt25PercentReportsDriftAndClaimRoundTrip() (gas: 30804604)
+[PASS] test_mutableRaisedFeeReportsUnderbookingWithoutZeroingMakerProfit() (gas: 30804907)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.71s (360.26ms CPU time)
+
+Ran 1 test for test/FlowReporting.t.sol:FlowReportingTest
+[PASS] testUnknownNeedIsNullAndKnownObligationsRemainEncumbered() (gas: 1051299)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.05ms (5.76ms CPU time)
+
+Ran 1 test for test/BatchSlippage.t.sol:BatchSlippageTest
+[PASS] test_sameWordsBatchRefundsButSequentialRestockedDrawsDeliver() (gas: 26552125)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.19s (53.57ms CPU time)
+
+Ran 2 tests for test/ForkContext.t.sol:ForkContextTest
+[PASS] test_callsSeeTheConfiguredBasefeeAndGasPrice() (gas: 200604)
+[PASS] test_listedFeesMatchAnIndependentCalculation() (gas: 3781681)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 367.09ms (3.51ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 3 tests for test/audit/d16/NaturalReserved.t.sol:D16NaturalReservedTest
+[PASS] test_naturalReservedRestocks() (gas: 64438883)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60353666)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60353748)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.52s (358.54ms CPU time)
+
+Ran 9 tests for test/Fork.t.sol:ForkScenarioTest
+[PASS] test_canPurchaseFitsStipend() (gas: 5352178)
+[PASS] test_curatedDrawDeliversAndPoolStaysOpen() (gas: 6953020)
+[PASS] test_initialUpkeepBuildsInventory() (gas: 5589161)
+[PASS] test_lastCuratedDrawnClosesPool() (gas: 8046708)
+[PASS] test_overlappingPurchasesBusyAtFive() (gas: 23614952)
+[PASS] test_ownershipAndOperator() (gas: 41245)
+[PASS] test_singleShapeDrawReplenishes() (gas: 8303149)
+[PASS] test_tokenPurchasesImpossible() (gas: 5466388)
+[PASS] test_unlistAndRetire() (gas: 7349627)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 549.48ms (164.79ms CPU time)
+
+Ran 13 tests for test/Hardening.t.sol:HardeningTest
+[PASS] test_cannotRecoverProtectedAssets() (gas: 4271088)
+[PASS] test_creatorTopUpWhileOpenSetsNoCreatorWork() (gas: 195590)
+[PASS] test_creatorWorkPaysFullAndRefusesPurchases() (gas: 5264721)
+[PASS] test_curatedDrawReconcileIsPaid() (gas: 1609416)
+[PASS] test_gasJumpRestockPaidByTheNewListingsFee() (gas: 10829388)
+[PASS] test_griefingBoundForRestrictedCurated() (gas: 3561856)
+[PASS] test_griefingThinPoolIsCheap() (gas: 4452842)
+[PASS] test_historicalRefundsDoNotGrowUpkeepGas() (gas: 998418645)
+[PASS] test_minimumMarkupStillFundsKeepers() (gas: 10624061)
+[PASS] test_poolPageApprovalIsNarrow() (gas: 561672)
+[PASS] test_reconcileBoundPerCall() (gas: 57215750)
+[PASS] test_recoverUntrackedNFTs() (gas: 1271644)
+[PASS] test_reserveExactFormula() (gas: 7999547)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 2.41s (1.94s CPU time)
+
+Ran 1 test for test/HostileCollection.t.sol:AllowlistCheckCost
+[PASS] test_coldFactoryListCheckGas() (gas: 8067960)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 264.72ms (264.28ms CPU time)
+
+Ran 6 tests for test/audit/NormalGasBoundary.t.sol:NormalGasBoundary
+[PASS] test_board_at_0_5_gwei() (gas: 39028305)
+[PASS] test_board_at_0_95_gwei() (gas: 39027904)
+[PASS] test_board_at_2_gwei() (gas: 39028146)
+[PASS] test_board_at_4_95_gwei() (gas: 39028461)
+[PASS] test_board_at_fork_block_basefee() (gas: 39028036)
+[PASS] test_normalBoundaryAtPointOneGwei() (gas: 39027948)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 699.33ms (321.91ms CPU time)
+
+Ran 5 tests for test/HostileCollection.t.sol:HostileCollectionTest
+[PASS] test_paused_thenRetried() (gas: 10606437)
+[PASS] test_refuseAll_nftStuck() (gas: 10751219)
+[PASS] test_refuseDelivery_playerNeverRefunds() (gas: 10629864)
+[PASS] test_refuseDelivery_playerRefunded_creatorRecovers() (gas: 11000823)
+[PASS] test_seize_afterDelivery() (gas: 10415771)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 352.34ms (55.03ms CPU time)
+
+Ran 7 tests for test/audit/O10Ratios.t.sol:O10Ratios
+[PASS] test_afterSpike() (gas: 163033592)
+[PASS] test_launchBoardAtMaxMarkup() (gas: 32877999)
+[PASS] test_launchBoardAtMinMarkup() (gas: 32827113)
+[PASS] test_launchBoardAtNormalGas() (gas: 32878054)
+[PASS] test_overpricedCurated() (gas: 45275725)
+[PASS] test_smallestBoard() (gas: 3967656)
+[PASS] test_spikeRecovery() (gas: 166647562)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 1.03s (776.38ms CPU time)
+
+Ran 1 test for test/audit/OwnHoldChallenge.t.sol:OwnHoldChallenge
+[PASS] test_holdAfterCloseReopenRetireAndUnprocessedDraws() (gas: 4552266)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 316.47ms (9.61ms CPU time)
+
+Ran 9 tests for test/Packs.t.sol:PacksTest
+[PASS] test_constructorRejectsPacksThatCannotMakeTheSmallestPack() (gas: 6467402)
+[PASS] test_drawnPackGoesToWinnerRedeemsExactlyAndIsReplaced() (gas: 3146756)
+[PASS] test_everyPackSizeMintsAtExactValueWithItsShapes() (gas: 6297303)
+[PASS] test_packsContractRefusedAsPurchaserAndAsCurated() (gas: 79603)
+[PASS] test_packsListedAtExactValueWithFewestShapes() (gas: 645041)
+[PASS] test_reserveHoldsWorkingCapitalWithoutDuplicatePackBacking() (gas: 115082)
+[PASS] test_smallerTargetThenUnlistSurplus() (gas: 785357)
+[PASS] test_unlistRedeemsPacksAndShapesForExactBacking() (gas: 1830736)
+[PASS] test_worstPackBatchRebuilds() (gas: 18597236)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 360.74ms (59.48ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 25 tests for test/Gas.t.sol:GasBench
+[PASS] test_breakEven_fillStep() (gas: 21759266)
+[PASS] test_breakEven_gasJumpAfterListing() (gas: 13808245)
+[PASS] test_breakEven_steadyGas_oneDraw() (gas: 64020266)
+[PASS] test_breakEven_steadyGas_threeDraws() (gas: 87889390)
+[PASS] test_gas_canPurchase() (gas: 5507386)
+[PASS] test_gas_createBalancer() (gas: 938548)
+[PASS] test_gas_curatedOnlyReconcile() (gas: 6691111)
+[PASS] test_gas_initialFill() (gas: 21356274)
+[PASS] test_gas_packFillStep() (gas: 16963280)
+[PASS] test_gas_purchaseWithOperator() (gas: 7121009)
+[PASS] test_gas_refundOnlyBatch() (gas: 6315918)
+[PASS] test_gas_replaceFive() (gas: 13326877)
+[PASS] test_gas_replaceFiveMixed() (gas: 14117509)
+[PASS] test_gas_replaceFivePacks() (gas: 20852951)
+[PASS] test_gas_replaceOne() (gas: 8000732)
+[PASS] test_gas_unlistShapes20() (gas: 12865739)
+[PASS] test_gas_worstCaseUpkeep() (gas: 70555222)
+[PASS] test_gas_worstCaseUpkeepFullUnits() (gas: 65704287)
+[PASS] test_gas_worstCaseUpkeepFullUnits_1000Prizes() (gas: 1029496572)
+[PASS] test_gas_worstCaseUpkeepFullUnits_200Prizes() (gas: 209849122)
+[PASS] test_gas_worstCaseUpkeepShapes() (gas: 60742471)
+[PASS] test_gas_worstCaseUpkeepSixSizes() (gas: 67699094)
+[PASS] test_profitAtCap_curatedReconcilePaid() (gas: 7805086)
+[PASS] test_profitAtCap_fillSteps() (gas: 21409896)
+[PASS] test_profitAtCap_replaceFiveMixed() (gas: 14119525)
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 3.61s (3.26s CPU time)
+
+Ran 4 tests for test/PolicyEconomicReview.t.sol:PolicyEconomicReviewTest
+[PASS] test_emergencyDisableInvalidatesMaturedProposal() (gas: 13585047)
+[PASS] test_maximumPolicyCannotConsumePlayerRefundAcrossCloseout() (gas: 17547092)
+[PASS] test_packFeesAndFundingFollowActualShapeWorkAndRedemption() (gas: 17751039)
+[PASS] test_zeroDemandPolicyFundingAndCloseoutExactCapitalRoundTrip() (gas: 17223557)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 351.86ms (87.94ms CPU time)
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 63122667)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.52s (427.82ms CPU time)
+
+Ran 1 test for test/PolicyGasOverhead.t.sol:PolicyGasOverheadTest
+[PASS] test_inlineVersusBoundedQuoteColdAndWarm() (gas: 388528)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 393.00µs (149.29µs CPU time)
+
+Ran 1 test for test/PolicyLifecycle.t.sol:PolicyLifecycleTest
+[PASS] test_threePoolsV1V2AndPolicyFailureNoAssetMigration() (gas: 83419522)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.27s (140.38ms CPU time)
+
+Ran 1 test for test/PolicyPreview.t.sol:PolicyPreviewTest
+[PASS] test_poolContextQuotesMatchCallerSensitiveExecution() (gas: 22446575)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.11s (1.10s CPU time)
+
+Ran 1 test for test/PolicyModelParity.t.sol:PolicyModelParity
+[PASS] test_writePolicyModelParity() (gas: 100504254)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.54s (1.29s CPU time)
+
+Ran 5 tests for test/PolicySecurityReview.t.sol:PolicySecurityReviewTest
+[PASS] test_minimumFailureRollsBackDrawPaymentAndReceiverCallback() (gas: 1831550)
+[PASS] test_mutatingDeclaredMaximumCannotRaiseCachedLiability() (gas: 1673431)
+[PASS] test_policyThatAlsoOwnsPoolCannotUseStaticCallbackAuthority() (gas: 1498421)
+[PASS] test_priceIndexedMinimumUsesMinedPriceAndIsAtomic() (gas: 1770630)
+[PASS] test_unpaidMaintenanceRespectsHealthySelectedSurcharge() (gas: 2129403)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.12s (14.12ms CPU time)
+
+Ran 5 tests for test/scenario/PriceCaps.t.sol:PriceCapsMeasure
+[PASS] test_board_at_0_5_gwei() (gas: 39028283)
+[PASS] test_board_at_0_95_gwei() (gas: 39027904)
+[PASS] test_board_at_2_gwei() (gas: 39028124)
+[PASS] test_board_at_4_95_gwei() (gas: 39028439)
+[PASS] test_board_at_fork_block_basefee() (gas: 39028014)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 571.41ms (293.93ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 1 test for test/ProcessQueue.t.sol:ProcessQueueTest
+[PASS] test_upkeepSettlesDrawsThatReservedAStagedRestock() (gas: 169672054)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.42s (319.25ms CPU time)
+
+Ran 1 test for test/audit/launch-A/RecentBlockLifecycle.t.sol:RecentBlockLifecycleTest
+[PASS] test_recentBlockPurchaseExpiryCloseout() (gas: 7076259)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 312.38ms (10.22ms CPU time)
+
+Ran 14 tests for test/Reserve.t.sol:ReserveTest
+[PASS] test_bigWinKeepsSellingWhileReserveRefills() (gas: 171571166)
+[PASS] test_closeHoldsOnlyPayForUnreconciledDraws() (gas: 4126872)
+[PASS] test_collectionCallbackCannotReconfigure() (gas: 1137796)
+[PASS] test_creatorKeeperCannotReenterFromReward() (gas: 2550091)
+[PASS] test_creatorShareFollowsListedPrices() (gas: 166789)
+[PASS] test_listingNFTsBeforeCollectionCannotMoveFundMoney() (gas: 7693988)
+[PASS] test_lowerMarkupKeepsAFullBoardOpen() (gas: 5657733)
+[PASS] test_markupBelowTenPercentRejected() (gas: 113897)
+[PASS] test_nftsListOnlyAfterTheFirstConfigure() (gas: 2555145)
+[PASS] test_openCollectsSettledProceedsFirst() (gas: 1613666)
+[PASS] test_openNeedsTheReserve() (gas: 1254489)
+[PASS] test_unclaimedProfitRestocksWhenTheFundIsEmpty() (gas: 91110628)
+[PASS] test_upkeepSplitsOverTheListingsTheDrawWasPricedOn() (gas: 3494929)
+[PASS] test_worstBatchAtMinimumReservePaysEveryWinner() (gas: 260987677)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 2.31s (1.22s CPU time)
+
+Ran 1 test for test/ReserveCapitalMatrix.t.sol:ReserveCapitalMatrixTest
+[PASS] test_exportEightBoardFiveGasCapitalQuotes() (gas: 40976519)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 352.12ms (91.07ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveCapital.t.sol:ReserveCapitalTest
+[PASS] test_exactMinimumMixed47PaidBootstrap() (gas: 30020003)
+[PASS] test_exactMinimumThousandExpensivePackPaidBootstrap() (gas: 566390269)
+[PASS] test_exactMinimumTwentyShapeOpeningAndPaidSetup() (gas: 12474260)
+[PASS] test_expensiveTopPrizeDoesNotNeedDuplicateBacking() (gas: 12314590)
+[PASS] test_feeAndCapSensitiveBoundForActualWork() (gas: 9826)
+[PASS] test_listedCreatorMarkupIsBookedBeforeTheExpensiveDeficitIsReconciled() (gas: 15084810)
+[PASS] test_nineOutstandingDrawsAreReservedFromActualSequences() (gas: 18821596)
+[PASS] test_partialExpensiveDeficitCanTradeAndMarkupEditDoesNotRestartSetup() (gas: 15689276)
+[PASS] test_refundReconciliationMaySpendBelowWorkingTarget() (gas: 14863633)
+[PASS] test_unpaidBootstrapNeedsOnlyActualInventoryAndDelayedReenableFunding() (gas: 12365400)
+[PASS] test_writeImmutableEnforcementFixture() (gas: 39451)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 1.65s (1.38s CPU time)
+
+Ran 5 tests for test/ReserveEconomicReview.t.sol:ReserveEconomicReviewTest
+[PASS] test_creatorManufacturedUnlistRestockLosesMintFeeBeyondInternalReward() (gas: 1238192)
+[PASS] test_disableThenWindDownReleasesOnlyActualLiquidETHAndBacking() (gas: 2633044)
+[PASS] test_largeWinWithoutTopupsHasHonestSlowRecoveryAndCreatorAllocation() (gas: 44644229)
+[PASS] test_manufacturedExpiredDrawPaysBuyerKeeperButCostsTheirCreator() (gas: 925792)
+[PASS] test_maturePolicySwitchFundsCurrentDrawAndPreservesOldListingPrices() (gas: 15359619)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 423.43ms (115.76ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[PASS] test_atomicKeeperFloorRollsBackRealMintListingBalancesAndAllowance() (gas: 6110734)
+[PASS] test_contractPurchaserCannotRejectFwaPackTransferAndRetainsExactBacking() (gas: 18419929)
+[PASS] test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() (gas: 14594834)
+[PASS] test_failedDeliveryRefundAndNFTRecoverAfterRetirement() (gas: 16844333)
+[PASS] test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() (gas: 5732553)
+[PASS] test_largeWinDepletesOnlyOperatingCapitalAndRecoveryUsesActualBacking() (gas: 17879467)
+[PASS] test_malformedBurningAndReenteringPolicyPreserveUnpaidRecovery() (gas: 7084757)
+[PASS] test_noAllowanceResetByCloseConfigureOrPolicyAndEmergencyCancelsMaturedChange() (gas: 7857793)
+[PASS] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (gas: 16840214)
+[PASS] test_policyFundingExcludesRealBookedProfitAndSwitchKeepsOldPrices() (gas: 29827646)
+[PASS] test_unpaidRecoveryCanSpendBookedProfitButPaidKeeperCannot() (gas: 18941987)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 497.20ms (222.06ms CPU time)
+
+Ran 7 tests for test/SelectableInventory.t.sol:SelectableInventoryTest
+[PASS] test_curatedOnlyStagingDoesNotReduceShapeAdmission() (gas: 41217324)
+[PASS] test_earlierReservedBatchesCountBeforeTheNextSelection() (gas: 47862686)
+[PASS] test_fiveShapeWinsWithoutUpkeepStillAdmitTheNextBatch() (gas: 29947668)
+[PASS] test_oneShapeWinDoesNotCreateFalseCuratedAbsence() (gas: 22990681)
+[PASS] test_reservedActivationNeedsNoAdditionalBalancerSync() (gas: 32451106)
+[PASS] test_stagedBoardCannotPassAndPublicActivationRestoresAdmission() (gas: 70589291)
+[PASS] test_stagedWithdrawalHoleIsClearedExactlyOnce() (gas: 30021352)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.90s (3.90s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 3 tests for test/audit/d16/Stall.t.sol:D16StallTest
+[PASS] test_stall_hogsReservedPacks_launchGas() (gas: 112680481)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60355403)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60355463)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 966.62ms (713.12ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 14 tests for test/audit/d16b/ClosedHoldHostile.t.sol:D16bClosedHoldHostileTest
+[PASS] test_closedHostile_failedDelivery_owed4() (gas: 58104126)
+[PASS] test_closedHostile_failedDelivery_owed4_pad464() (gas: 389174193)
+[PASS] test_closedHostile_onePerCall_base1gwei() (gas: 58652515)
+[PASS] test_closedHostile_onePerCall_pad464_base1gwei() (gas: 389726154)
+[PASS] test_probeHog_noPad() (gas: 60144126)
+[PASS] test_probeHog_pad13() (gas: 73995121)
+[PASS] test_probeHog_pad16() (gas: 69769692)
+[PASS] test_probeHog_pad2000() (gas: 1579949942)
+[PASS] test_probeHog_pad208() (gas: 214487612)
+[PASS] test_probeHog_pad336() (gas: 312954998)
+[PASS] test_probeHog_pad4048() (gas: 3096262013)
+[PASS] test_probeHog_pad464() (gas: 423540018)
+[PASS] test_probeHog_pad80() (gas: 128754568)
+[PASS] test_probeHog_pad976() (gas: 801628875)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 22.57s (22.28s CPU time)
+
+Ran 2 tests for test/audit/D3ReAttack.t.sol:D3ReAttackTest
+[PASS] test_holdCannotGrowAfterCloseAndNeverStrandsOnPendingDraws() (gas: 1769788)
+[PASS] test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() (gas: 4412173)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 296.58ms (16.37ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 3 tests for test/audit/d16/Starve.t.sol:D16StarveTest
+[PASS] test_noGasLimitStarvesProcessing_closed_5gwei() (gas: 442681029)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60352803)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60352863)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.92s (806.22ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/Settings.t.sol:SettingsTest
+[PASS] test_boundedPolicyQuoteGasOverhead() (gas: 683488)
+[PASS] test_cancelAndCreatorTransferInvalidateProposals() (gas: 13516328)
+[PASS] test_defaultAndPoolTimelocksAreSeparate() (gas: 13631385)
+[PASS] test_emergencyDisableCannotBeInstantlyReenabled() (gas: 13294111)
+[PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 14638098)
+[PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 16176094)
+[PASS] test_pendingWithdrawCannotDefeatActivationFunding() (gas: 13815817)
+[PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185453)
+[PASS] test_policyFailureUnpaidWholePathAndRestrictedKeeper() (gas: 70121525)
+[PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 402638)
+[PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 15077559)
+[PASS] test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() (gas: 14350683)
+[PASS] test_writePolicyQuoteFixture() (gas: 989597)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 3.42s (3.19s CPU time)
+
+Ran 2 tests for test/EconFork.t.sol:EconForkTest
+[PASS] test_econBigWin() (gas: 881333890)
+[PASS] test_econRandom() (gas: 871647162)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.87s (4.59s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 5 tests for test/audit/d16c/EstimatePolicy.t.sol:D16cEstimatePolicyTest
+[PASS] test_naturalReservedRestocks() (gas: 64439975)
+[PASS] test_policy_naturalOneReady() (gas: 146323350)
+[PASS] test_policy_naturalTwoReady() (gas: 174086403)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60355859)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60355914)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.11s (1.02s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 17 tests for test/audit/d16c/FineSweep.t.sol:D16cWindowReasonTest
+[PASS] test_fine_honest() (gas: 854199112)
+[PASS] test_fine_hostile() (gas: 1147998992)
+[PASS] test_probeHog_noPad() (gas: 60144095)
+[PASS] test_probeHog_pad13() (gas: 73995106)
+[PASS] test_probeHog_pad16() (gas: 69769655)
+[PASS] test_probeHog_pad2000() (gas: 1579949905)
+[PASS] test_probeHog_pad208() (gas: 214487553)
+[PASS] test_probeHog_pad336() (gas: 312954939)
+[PASS] test_probeHog_pad4048() (gas: 3096261976)
+[PASS] test_probeHog_pad464() (gas: 423539959)
+[PASS] test_probeHog_pad80() (gas: 128754531)
+[PASS] test_probeHog_pad976() (gas: 801628882)
+[PASS] test_reason_hostile() (gas: 574082518)
+[PASS] test_sweep_noPad() (gas: 117084281)
+[PASS] test_sweep_oneOlder() (gas: 131772928)
+[PASS] test_sweep_oneOlder_fine() (gas: 454206794)
+[PASS] test_sweep_oneOlder_honest_fine() (gas: 357094802)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 36.45s (35.98s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 16 tests for test/audit/d16c/GasGate.t.sol:D16cGasGateTest
+[PASS] test_gateLean_floor100k() (gas: 1519775708)
+[PASS] test_gateLean_floor120k() (gas: 1517110407)
+[PASS] test_gateOne_directControl() (gas: 534026039)
+[PASS] test_gateOne_floor100k() (gas: 1556695336)
+[PASS] test_gateOne_floor120k() (gas: 1557471807)
+[PASS] test_gate_sweep_and_estimate() (gas: 294675349)
+[PASS] test_probeHog_noPad() (gas: 60146610)
+[PASS] test_probeHog_pad13() (gas: 73997649)
+[PASS] test_probeHog_pad16() (gas: 69772092)
+[PASS] test_probeHog_pad2000() (gas: 1579953330)
+[PASS] test_probeHog_pad208() (gas: 214490012)
+[PASS] test_probeHog_pad336() (gas: 312957504)
+[PASS] test_probeHog_pad4048() (gas: 3096265381)
+[PASS] test_probeHog_pad464() (gas: 423543028)
+[PASS] test_probeHog_pad80() (gas: 128757324)
+[PASS] test_probeHog_pad976() (gas: 801631744)
+Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 35.41s (35.16s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/audit/d16b/EstimateStarve.t.sol:D16bEstimateStarveTest
+[PASS] test_estimateNeverLandsOnStarvedProcessing_closed_5gwei() (gas: 57141988)
+[PASS] test_probeHog_noPad() (gas: 60144044)
+[PASS] test_probeHog_pad13() (gas: 73994973)
+[PASS] test_probeHog_pad16() (gas: 69769566)
+[PASS] test_probeHog_pad2000() (gas: 1579949816)
+[PASS] test_probeHog_pad208() (gas: 214487530)
+[PASS] test_probeHog_pad336() (gas: 312954938)
+[PASS] test_probeHog_pad4048() (gas: 3096261865)
+[PASS] test_probeHog_pad464() (gas: 423539958)
+[PASS] test_probeHog_pad80() (gas: 128754442)
+[PASS] test_probeHog_pad976() (gas: 801628727)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 26.10s (25.84s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 28 tests for test/scenario/FlowBreakdown.t.sol:FlowBreakdownTest
+[PASS] test_breakdown_burst() (gas: 1480814096)
+[PASS] test_breakdown_closeoutPending() (gas: 494981369)
+[PASS] test_breakdown_extremeBottomHeavy() (gas: 4529546197)
+[PASS] test_breakdown_extremeTopHeavy() (gas: 5652179531)
+[PASS] test_breakdown_gas2() (gas: 4293879030)
+[PASS] test_breakdown_gas5() (gas: 4281911217)
+[PASS] test_breakdown_gasSpike() (gas: 3527915847)
+[PASS] test_breakdown_largeWin() (gas: 4372674442)
+[PASS] test_breakdown_largestBoard() (gas: 6221071975)
+[PASS] test_breakdown_limitsAtMax() (gas: 1041440304)
+[PASS] test_breakdown_maxThenIdle() (gas: 1073555837)
+[PASS] test_breakdown_minimumCapital() (gas: 3982104373)
+[PASS] test_breakdown_minimumLargeWin() (gas: 4308770795)
+[PASS] test_breakdown_noProcessor() (gas: 15639423934)
+[PASS] test_breakdown_noProcessor5() (gas: 15684813035)
+[PASS] test_breakdown_normalGas() (gas: 5379315970)
+[PASS] test_breakdown_policySwitch() (gas: 217168461)
+[PASS] test_breakdown_quiet() (gas: 4276409928)
+[PASS] test_breakdown_randomnessNotDelivered() (gas: 2345421499)
+[PASS] test_breakdown_restockInFlight() (gas: 4347652195)
+[PASS] test_breakdown_smallestBoard() (gas: 3898196421)
+[PASS] test_breakdown_topHeavy() (gas: 3969505697)
+[PASS] test_breakdown_zeroDemand() (gas: 94672685)
+[PASS] test_evidence_bothErrorDirectionsRemainVisible() (gas: 147551)
+[PASS] test_evidence_selectedListingFeeIsNotRealizedIncome() (gas: 26304396)
+[PASS] test_evidence_zeroBookingIsCountedAsUnderpayment() (gas: 129404)
+[PASS] test_whatIf_largeWinDropTop() (gas: 4364251361)
+[PASS] test_whatIf_largeWinTopUp() (gas: 4377548165)
+Suite result: ok. 28 passed; 0 failed; 0 skipped; finished in 73.99s (131.27s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 16 tests for test/audit/d16c/FineSweep.t.sol:D16cFineSweepTest
+[PASS] test_fine_honest() (gas: 854199090)
+[PASS] test_fine_hostile() (gas: 1147998992)
+[PASS] test_probeHog_noPad() (gas: 60144095)
+[PASS] test_probeHog_pad13() (gas: 73995084)
+[PASS] test_probeHog_pad16() (gas: 69769633)
+[PASS] test_probeHog_pad2000() (gas: 1579949883)
+[PASS] test_probeHog_pad208() (gas: 214487553)
+[PASS] test_probeHog_pad336() (gas: 312954939)
+[PASS] test_probeHog_pad4048() (gas: 3096261954)
+[PASS] test_probeHog_pad464() (gas: 423539959)
+[PASS] test_probeHog_pad80() (gas: 128754509)
+[PASS] test_probeHog_pad976() (gas: 801628860)
+[PASS] test_sweep_noPad() (gas: 117084281)
+[PASS] test_sweep_oneOlder() (gas: 131772906)
+[PASS] test_sweep_oneOlder_fine() (gas: 454206772)
+[PASS] test_sweep_oneOlder_honest_fine() (gas: 357094802)
+Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 33.08s (32.77s CPU time)
+
+Ran 2 tests for test/audit/TopHeavyGateChallenge.t.sol:ChallengeTopHeavyGateTest
+[PASS] test_topHeavyBoardStopsAtOnePendingDraw() (gas: 6204440)
+[PASS] test_topOnlyTwoWinsThenDropTopAndResumeSales() (gas: 10001176)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.24s (28.03ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 3 tests for test/audit/d16/WorstUpkeep.t.sol:D16WorstUpkeepHonestTest
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60356748)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60356808)
+[PASS] test_worstUpkeep_honestCuratedReserved_055gwei() (gas: 58808213)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 811.43ms (331.27ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 4 tests for test/audit/d16/WorstUpkeep.t.sol:D16WorstUpkeepPacksTest
+[PASS] test_worstUpkeep_hogsReservedPacks_015gwei() (gas: 82568794)
+[PASS] test_worstUpkeep_hogsReserved_015gwei() (gas: 60356451)
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60356215)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60356281)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 908.63ms (530.76ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/audit/d16c/StarveAbove.t.sol:D16cStarveAboveTest
+[PASS] test_probeHog_noPad() (gas: 60146394)
+[PASS] test_probeHog_pad13() (gas: 73997339)
+[PASS] test_probeHog_pad16() (gas: 69771910)
+[PASS] test_probeHog_pad2000() (gas: 1579952182)
+[PASS] test_probeHog_pad208() (gas: 214489852)
+[PASS] test_probeHog_pad336() (gas: 312957260)
+[PASS] test_probeHog_pad4048() (gas: 3096264231)
+[PASS] test_probeHog_pad464() (gas: 423542280)
+[PASS] test_probeHog_pad80() (gas: 128756764)
+[PASS] test_probeHog_pad976() (gas: 801631093)
+[PASS] test_starveAbove_pad0_5gwei() (gas: 3060989683)
+[PASS] test_starveAbove_pad464_5gwei() (gas: 3537019604)
+[PASS] test_starveAbove_pad976_5gwei() (gas: 3928770662)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 68.52s (68.23s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 2 tests for test/audit/d16/WorstUpkeep.t.sol:D16WorstUpkeepTest
+[PASS] test_worstUpkeep_hogsReserved_055gwei() (gas: 60356719)
+[PASS] test_worstUpkeep_hogsReserved_5gwei() (gas: 60356779)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 638.42ms (232.07ms CPU time)
+
+Ran 6 tests for test/audit/d16b/SustainedPlay.t.sol:D16bSustainedPlayTest
+[PASS] test_sustained_buyFirst_five_per_block_lat2() (gas: 412007293)
+[PASS] test_sustained_buyFirst_one_per_block_lat2() (gas: 330612293)
+[PASS] test_sustained_buyFirst_two_per_block_lat1() (gas: 508298344)
+[PASS] test_sustained_five_per_block_lat2() (gas: 610901031)
+[PASS] test_sustained_five_per_block_lat5() (gas: 286278064)
+[PASS] test_sustained_one_per_block_lat2() (gas: 330523529)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 6.15s (5.80s CPU time)
+
+Ran 1 test for test/audit/TopHeavyGateChallenge.t.sol:ChallengePriceTest
+[PASS] test_normalPriceAndMaxGasGate() (gas: 33324236)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 384.38ms (53.35ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 9 tests for test/audit/TopHeavyGateChallenge.t.sol:ChallengeTest
+[PASS] test_closedSplitAtMaxGas() (gas: 11327499)
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 8297549)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 10101013)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 22709662)
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 22709679)
+[PASS] test_noWorkCallIsPaidNothing() (gas: 9352836)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 10701210)
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 9785693)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 12456636)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 1.38s (225.67ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/audit/d16c/FineSweep.t.sol:D16cProcessNeedTest
+[PASS] test_need_pad0() (gas: 110822926)
+[PASS] test_need_pad464() (gas: 480029763)
+[PASS] test_need_pad976() (gas: 855117183)
+[PASS] test_probeHog_noPad() (gas: 60146171)
+[PASS] test_probeHog_pad13() (gas: 73997129)
+[PASS] test_probeHog_pad16() (gas: 69771683)
+[PASS] test_probeHog_pad2000() (gas: 1579953894)
+[PASS] test_probeHog_pad208() (gas: 214489839)
+[PASS] test_probeHog_pad336() (gas: 312957373)
+[PASS] test_probeHog_pad4048() (gas: 3096268036)
+[PASS] test_probeHog_pad464() (gas: 423542509)
+[PASS] test_probeHog_pad80() (gas: 128756614)
+[PASS] test_probeHog_pad976() (gas: 801631838)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 27.84s (26.65s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 10 tests for test/audit/d16b/WorstUpkeepB.t.sol:D16bWorstUpkeepTest
+[PASS] test_probeHog_noPad() (gas: 60162845)
+[PASS] test_probeHog_pad13() (gas: 74013785)
+[PASS] test_probeHog_pad16() (gas: 69788378)
+[PASS] test_probeHog_pad2000() (gas: 1579970280)
+[PASS] test_probeHog_pad208() (gas: 214506500)
+[PASS] test_probeHog_pad336() (gas: 312974015)
+[PASS] test_probeHog_pad4048() (gas: 3096284007)
+[PASS] test_probeHog_pad464() (gas: 423559152)
+[PASS] test_probeHog_pad80() (gas: 128773316)
+[PASS] test_probeHog_pad976() (gas: 801648328)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 26.49s (26.17s CPU time)
+
+Ran 3 tests for test/KeeperList.t.sol:KeeperListTest
+[PASS] test_factoryKeeperListCoversEveryPoolAndIsOpenByDefault() (gas: 5006174)
+[PASS] test_keeperAdminTransferIsTwoStep() (gas: 2527564)
+[PASS] test_oneListCoversEveryPool() (gas: 12773914)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 2.01s (59.99ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 8297549)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 10101013)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 22709662)
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 22709657)
+[PASS] test_noWorkCallIsPaidNothing() (gas: 9352836)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 10701210)
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 9785693)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 12456493)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 1.57s (167.78ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 17 tests for test/audit/LaunchB.t.sol:AttackB
+[PASS] test_O10_afterSpike() (gas: 159192618)
+[PASS] test_O10_launchBoardAtMaxMarkup() (gas: 32931576)
+[PASS] test_O10_launchBoardAtMinMarkup() (gas: 32880531)
+[PASS] test_O10_overpricedCurated() (gas: 45333986)
+[PASS] test_O10_smallestBoard() (gas: 4013000)
+[PASS] test_O10_spikeRecovery() (gas: 230510413)
+[PASS] test_O1_bottomHeavy_5gwei() (gas: 167094162)
+[PASS] test_O1_launch_5gwei() (gas: 156772189)
+[PASS] test_O1_packBoard_5gwei() (gas: 213957422)
+[PASS] test_O5_bigWinsAfterMaxClaim() (gas: 39640315)
+[PASS] test_R7_maxClaimingCreator() (gas: 302521360)
+[PASS] test_closeClaimThenSplitReconcileAtCap() (gas: 35902660)
+[PASS] test_gasGriefDeliveryFailure() (gas: 512556895)
+[PASS] test_keeperAdminLocksOutKeepers() (gas: 48679129)
+[PASS] test_reservedBatchDrawWaitsForAProcessor() (gas: 170179704)
+[PASS] test_shapesFeeAtCap_thenCloseout() (gas: 39741094)
+[PASS] test_worstUpkeepGas_mixedPacks() (gas: 52268531)
+Suite result: ok. 17 passed; 0 failed; 0 skipped; finished in 5.84s (4.70s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperAdversarial.t.sol:KeeperAdversarialTest
+[PASS] test_callerRefundsDoNotChangePoolPayment() (gas: 12824143)
+[PASS] test_creatorActionDuringOutstandingBatchBound() (gas: 13108031)
+[PASS] test_depositDoesNotUnlockFullIncentive() (gas: 12873351)
+[PASS] test_inflatedBidOrGasLimitDoesNotRaiseReward() (gas: 11876931)
+[PASS] test_noPurchasesDuringCreatorWork() (gas: 13662833)
+[PASS] test_selfDealingDrainsOnlyCheapCurated() (gas: 9721152)
+[PASS] test_selfDealingRepeatedLowValuePurchases() (gas: 46372009)
+[PASS] test_selfDealingSingleDrawCheapPool() (gas: 11275889)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 1.38s (195.91ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 15 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchWhichTest
+[PASS] test_margin_pad0_5gwei() (gas: 8012060332)
+[PASS] test_margin_pad2000_5gwei() (gas: 10062733069)
+[PASS] test_margin_pad976_055gwei() (gas: 9126267703)
+[PASS] test_margin_pad976_5gwei() (gas: 9128408427)
+[PASS] test_probeHog_noPad() (gas: 60147484)
+[PASS] test_probeHog_pad13() (gas: 73998495)
+[PASS] test_probeHog_pad16() (gas: 69773022)
+[PASS] test_probeHog_pad2000() (gas: 1579953316)
+[PASS] test_probeHog_pad208() (gas: 214490942)
+[PASS] test_probeHog_pad336() (gas: 312958350)
+[PASS] test_probeHog_pad4048() (gas: 3096265387)
+[PASS] test_probeHog_pad464() (gas: 423543370)
+[PASS] test_probeHog_pad80() (gas: 128757876)
+[PASS] test_probeHog_pad976() (gas: 801632249)
+[PASS] test_which_pad0() (gas: 9361566226)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 140.59s (214.49s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 14 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchMarginTest
+[PASS] test_margin_pad0_5gwei() (gas: 8011832852)
+[PASS] test_margin_pad2000_5gwei() (gas: 10062505611)
+[PASS] test_margin_pad976_055gwei() (gas: 9126040223)
+[PASS] test_margin_pad976_5gwei() (gas: 9128180947)
+[PASS] test_probeHog_noPad() (gas: 60145316)
+[PASS] test_probeHog_pad13() (gas: 73996305)
+[PASS] test_probeHog_pad16() (gas: 69770832)
+[PASS] test_probeHog_pad2000() (gas: 1579951126)
+[PASS] test_probeHog_pad208() (gas: 214488774)
+[PASS] test_probeHog_pad336() (gas: 312956182)
+[PASS] test_probeHog_pad4048() (gas: 3096263197)
+[PASS] test_probeHog_pad464() (gas: 423541202)
+[PASS] test_probeHog_pad80() (gas: 128755708)
+[PASS] test_probeHog_pad976() (gas: 801630059)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 187.08s (183.51s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 15 tests for test/audit/d16d/CatchMargin.t.sol:D16dOpenSweepTest
+[PASS] test_margin_pad0_5gwei() (gas: 8011832919)
+[PASS] test_margin_pad2000_5gwei() (gas: 10062505656)
+[PASS] test_margin_pad976_055gwei() (gas: 9126040290)
+[PASS] test_margin_pad976_5gwei() (gas: 9128181014)
+[PASS] test_open_pad2000() (gas: 7025824832)
+[PASS] test_probeHog_noPad() (gas: 60146296)
+[PASS] test_probeHog_pad13() (gas: 73997307)
+[PASS] test_probeHog_pad16() (gas: 69771834)
+[PASS] test_probeHog_pad2000() (gas: 1579952128)
+[PASS] test_probeHog_pad208() (gas: 214489754)
+[PASS] test_probeHog_pad336() (gas: 312957162)
+[PASS] test_probeHog_pad4048() (gas: 3096264199)
+[PASS] test_probeHog_pad464() (gas: 423542182)
+[PASS] test_probeHog_pad80() (gas: 128756688)
+[PASS] test_probeHog_pad976() (gas: 801631061)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 125.77s (231.93s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 14 tests for test/audit/d16b/GasLimitWindow.t.sol:D16bGasLimitWindowTest
+[PASS] test_probeHog_noPad() (gas: 60144095)
+[PASS] test_probeHog_pad13() (gas: 73995062)
+[PASS] test_probeHog_pad16() (gas: 69769611)
+[PASS] test_probeHog_pad2000() (gas: 1579949861)
+[PASS] test_probeHog_pad208() (gas: 214487553)
+[PASS] test_probeHog_pad336() (gas: 312954939)
+[PASS] test_probeHog_pad4048() (gas: 3096261932)
+[PASS] test_probeHog_pad464() (gas: 423539959)
+[PASS] test_probeHog_pad80() (gas: 128754487)
+[PASS] test_probeHog_pad976() (gas: 801628816)
+[PASS] test_sweep_noPad() (gas: 117084281)
+[PASS] test_sweep_oneOlder() (gas: 131772884)
+[PASS] test_sweep_oneOlder_fine() (gas: 454206750)
+[PASS] test_sweep_oneOlder_honest_fine() (gas: 357094768)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 147.48s (26.36s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 15 tests for test/audit/d16d/CatchMargin.t.sol:D16dCatchTraceTest
+[PASS] test_margin_pad0_5gwei() (gas: 8012060310)
+[PASS] test_margin_pad2000_5gwei() (gas: 10062733069)
+[PASS] test_margin_pad976_055gwei() (gas: 9126267681)
+[PASS] test_margin_pad976_5gwei() (gas: 9128408405)
+[PASS] test_probeHog_noPad() (gas: 60146296)
+[PASS] test_probeHog_pad13() (gas: 73997285)
+[PASS] test_probeHog_pad16() (gas: 69771812)
+[PASS] test_probeHog_pad2000() (gas: 1579952106)
+[PASS] test_probeHog_pad208() (gas: 214489754)
+[PASS] test_probeHog_pad336() (gas: 312957162)
+[PASS] test_probeHog_pad4048() (gas: 3096264177)
+[PASS] test_probeHog_pad464() (gas: 423542182)
+[PASS] test_probeHog_pad80() (gas: 128756688)
+[PASS] test_probeHog_pad976() (gas: 801631061)
+[PASS] test_trace_pad0() (gas: 56263922)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 66.93s (171.22s CPU time)
+
+Ran 2 tests for test/Invariant.t.sol:HandlerSmokeTest
+[PASS]
+HandlerSmokeTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_profitHeldAndShareBounded
+[PASS] invariant_reconciledTrackingMatchesFWA
+ HandlerSmokeTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 427   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 430   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 383   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 436   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 390   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 399   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 427   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 386   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 436   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 382   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+[PASS] test_handlerBuysAndSettles() (gas: 2045148)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 269.14s (268.83s CPU time)
+
+Ran 1 test for test/Invariant.t.sol:InvariantTest
+[PASS]
+InvariantTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_profitHeldAndShareBounded
+[PASS] invariant_reconciledTrackingMatchesFWA
+ InvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 427   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 430   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 383   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 436   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 390   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 399   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 427   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 386   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 436   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 382   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 193.02s (192.69s CPU time)
+
+Ran 67 test suites in 288.42s (1552.54s CPU time): 501 tests passed, 0 failed, 0 skipped (501 total tests)

@@ -36,9 +36,11 @@ CI (`.github/workflows/ci.yml`) and Git hooks do not run the gate. The source ha
 (Draw Packs is deployed from there) or the kit itself.
 
 
-## Policy candidate (2026-11-17)
+## Historical policy candidate (2026-11-17)
 
 The work-based payment mechanism supersedes O1's flat-per-call wording. O3 now holds one selected maximum per outstanding draw, including split settlement. Their previous owner signature remains in Git history and is not copied onto changed outcomes. The current manifest is intentionally unsigned; the deployment gate must return INCOMPLETE until the owner signs the new outcomes and the exact reviewed candidate has valid evidence. This is a mainnet release blocker, not permission to bypass the gate for production. Local production-path rehearsals remain isolated on chain 31337 with test ETH.
+
+> The selected-maximum-per-draw wording above is historical. Current O3 uses actual unreconciled draws times their current immutable operation-sensitive reconciliation budget while paid upkeep is enabled; see [RESERVES.md](RESERVES.md). No historical owner signature carries into the revised payload.
 
 ## Current-work reserve candidate
 
@@ -53,3 +55,13 @@ A bucket's held balance is separate from its need and from creator withdrawal au
 If need is unknown, the helper prints "not determined" and emits JSON null for need, above_need and its bps share. An outcome requiring that unknown metric is INCOMPLETE, never silently zero or passing. Existing numeric report files remain readable as historical data; their labels are not retroactively corrected. Above need is an accounting comparison, not permission to withdraw; the dashboard's withdrawable amount remains the contract's withdrawableSurplus calculation.
 
 The existing shared reader at ~/.agents/guidance/asset-flow-kit/asset_gate.py has nullable support. Its exact compatible patch and before/after digests are versioned in audit/reporting-fix/asset-gate-nullable.patch and reader-hashes.json. A fresh audit environment should verify/install that tool update against the recorded prior version rather than blindly replacing a different local reader. No alternate gate or deployment bypass was introduced. Focused checks: forge test --match-path test/FlowReporting.t.sol, then python3 scripts/test-flow-reporting.py. Neither creates signing keys or supplies an owner signature.
+
+
+## Concurrent audit remediation
+
+The current [remediation](AUDIT-REMEDIATION.md) retains approximate current-board allocation and concurrent requests under R55–R58. O9 now measures both error directions, but its historical 0.001 ETH fixed-regime bound has actual counterexamples outside that seed; no new universal number or owner signature is inferred. O11 uses the request-board surcharge component of real owner proceeds, not the selected prize's fee.
+
+A complete final Foundry run may execute and write the same 25 current-source regimes as part of its broader test set. The authorized `--no-run` command can validate those already fresh records without paying to execute them twice; it still checks source/evidence hashes, outcomes and approval and is not used by `script/deploy.sh` to bypass production gating. Final results, raw failures and exact revision/source hashes must be recorded. Passing numeric checks remains distinct from owner numerical approval, a current independent review and deployment authority. No gate implementation or signer configuration changes are made by this documentation update.
+
+
+Final scalar candidate source `ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda` executed all 25 records inside its complete 501-test Foundry pass. `--no-run --require-review` returned exit 2 with **all numerical checks passing**, and only two incomplete conditions: missing/mismatched owner approval hash and no fresh whole-candidate audit seal. The fixed in-flight O9 absolute error was 0.000145285333333628 ETH per 180 draws, while broader adversarial cases still exceeded 0.001 ETH; do not convert that named pass into a universal limit. Corrected O11 named play shortfall was 0. The focused final-source review is bounded and is not represented as a whole-candidate audit seal. Exact evidence is in [verification.json](../audit/remediation-focused/verification.json).

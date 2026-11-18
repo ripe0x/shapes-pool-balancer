@@ -25,6 +25,7 @@ library PoolInventory {
         uint256 profitShareSum;
         uint256 listedFees;
         uint256 listedPrizes;
+        uint256 shapeStageUpper;
     }
     struct Fill {
         uint256 plan;
@@ -52,20 +53,75 @@ library PoolInventory {
     event ShapeListed(uint256 indexed listingId, uint8 indexed denom, uint256 tokenId, uint256 price);
     error InvalidItem();
 
+    event ShapesUnlisted(uint256 count, uint256 ethRedeemed);
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
+    event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     error InvalidBatch();
     error InvalidRecipient();
     error ValueTooHigh();
     error ShapesNotCurated();
+    error InvalidConfig();
+    error InvalidPlan();
+    error ProtectedAsset();
+
+    function validateTarget(uint256 plan, uint256 markup) public pure returns (uint256 weight) {
+        if (markup < 1_000 || markup > 10_000) revert InvalidConfig();
+        uint256 prizes;
+        for (uint256 d; d < DENOMS; ++d) {
+            uint256 n = _count(plan, d);
+            if (n == 0) continue;
+            prizes += n;
+            weight += n * _weight(d);
+        }
+        if (prizes == 0 || prizes > 1_000) revert InvalidPlan();
+    }
+
+    function recoverUntracked(address pool, address factory, address collection, uint256 tokenId, address to) public {
+        if (to == address(0)) revert InvalidRecipient();
+        if (collection == pool || collection == factory) revert ProtectedAsset();
+        if (IERC721Min(collection).ownerOf(tokenId) != address(this)) revert ProtectedAsset();
+        IERC721Min(collection).safeTransferFrom(address(this), to, tokenId);
+        emit UntrackedNFTRecovered(collection, tokenId, to);
+    }
+
+    function admission(State storage s, IFWAPool pool, address shapes, uint256 mintFeeCap,
+        uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence) public view returns (uint8)
+    {
+        if (s.activeIds.length == s.listedPrizes) return 3;
+        uint256 unsettled = pool.unsettledAcquisitionCount();
+        if (unsettled >= 5) return 4;
+        if (IShapes(shapes).mintFee() > mintFeeCap) return 5;
+        uint256 unavailable = pool.lastIssuedSequence() - reconciledSequence;
+        uint256 stageUpper = s.shapeStageUpper;
+        if (stageUpper == 0) {
+            uint256 lost = unavailable * (1e36 / 0.01 ether);
+            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight ? 6 : 0;
+        }
+        uint256 shapeBound = unavailable + stageUpper;
+        uint256 active = pool.activeListingCount();
+        uint256 tracked = s.activeIds.length;
+        // Earlier reserved batches and the next six staged records activate before the first new selection.
+        // Inactive records are staged or already won; max(q, C-activation+u) avoids counting a win twice.
+        uint256 inactive = tracked > active ? tracked - active : 0;
+        uint256 activation = pool.reservedStagedCount() + 6;
+        uint256 afterActivation = (inactive > activation ? inactive - activation : 0) + unsettled;
+        if (afterActivation > unavailable) unavailable = afterActivation;
+        if (shapeBound < unavailable) unavailable = shapeBound;
+        uint256 lost = unavailable * (1e36 / 0.01 ether);
+        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight) return 6;
+        return 0;
+    }
 
     function listCurated(State storage s, IFWAPool pool, address shapes, address packs,
         PoolBalancer.CuratedInput[] calldata inputs) public returns (uint256[] memory listingIds)
     {
         uint256 n = inputs.length;
         if (n == 0 || n > 20) revert InvalidBatch();
+        // Clear stale Shape uncertainty before adding curated staging, only with proof all tracked records are active.
+        if (s.shapeStageUpper != 0 && pool.activeListingCount() == s.activeIds.length) s.shapeStageUpper = 0;
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](n);
         for (uint256 i; i < n; ++i) {
             PoolBalancer.CuratedInput calldata c = inputs[i];
@@ -124,6 +180,28 @@ library PoolInventory {
         }
         emit RefundedRecovered(lid, to, eth);
     }
+    function unlistShapes(State storage s, IFWAPool pool, address shapes, address packs, uint256[] calldata ids)
+        public returns (uint256 removedWeight)
+    {
+        uint256 n = ids.length;
+        uint256[] memory tokens = new uint256[](n);
+        uint8[] memory sizes = new uint8[](n);
+        for (uint256 i; i < n; ++i) {
+            Item storage it = s.items[ids[i]];
+            if (it.kind != SHAPE) revert InvalidItem();
+            removeActive(s, ids[i]);
+            (,,, tokens[i],,,,) = pool.listings(ids[i]);
+            sizes[i] = it.denom;
+            --s.activeShapes[it.denom];
+            removedWeight += _weight(it.denom);
+            delete s.items[ids[i]];
+        }
+        pool.withdrawListingsTo(ids, address(this));
+        uint256 before = address(this).balance;
+        for (uint256 i; i < n; ++i) IShapePacks(sizes[i] < 9 ? shapes : packs).redeem(tokens[i]);
+        emit ShapesUnlisted(n, address(this).balance - before);
+    }
+
     function _checkValue(uint256 base) internal pure {
         if (base == 0 || base > type(uint104).max) revert ValueTooHigh();
     }
@@ -195,6 +273,11 @@ library PoolInventory {
             emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
         }
         listed = n;
+        // Every new Shape/pack prize may be staged; activation/removal can only reduce this upper bound.
+        uint256 stageUpper = st.shapeStageUpper + n;
+        if (stageUpper > st.listedPrizes) stageUpper = st.listedPrizes;
+        if (p.activeListingCount() == st.activeIds.length) stageUpper = 0;
+        st.shapeStageUpper = stageUpper;
     }
 
     function missingUnits(State storage s, uint256 plan) public view returns (uint256 units) {
@@ -230,6 +313,7 @@ library PoolInventory {
         s.activeIds.pop();
         delete s.activeIndexPlusOne[lid];
     }
+
     function _share(Item storage it) internal view returns (uint256) {
         if (it.kind == 1) return 0;
         return _amount(it.denom) * (it.markupBps - 1_000) * 1e18 / (10_000 * it.price);

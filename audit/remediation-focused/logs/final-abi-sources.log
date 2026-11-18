@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "scope": "final scalar upper-bound candidate ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "sourceKeccaks": {
+    "src/BalancerFactory.sol": "0xe149a6370ad1114774fc1865f596a89b688a5a49c9684725d402ba792f718026",
+    "src/interfaces/External.sol": "0x21c87f980390629459fb215d0c9eb6a9e7a6611f93a9ba40e7e611e770937269",
+    "src/interfaces/IKeeperPolicy.sol": "0x73a600029fae14c0defafca4e47e08c59918d576cde28e01aa89492ff5dd7b37",
+    "src/KeeperPolicyCalls.sol": "0x070f8c637da9f70bc938e45e65d394e74d7b56d8cf521e468b90a5b8b518861b",
+    "src/KeeperPolicyV1.sol": "0xbdbd33e61aac79d6d097dfeae46eef94a8960800cf400a743d3eace95ec507ca",
+    "src/PoolBalancer.sol": "0x742e45d5e7f58f339001b053e2eae743ddc65a79f25dbb2711db26892067ab67",
+    "src/PoolInventory.sol": "0xf1c811d9c2440caad8df3a7fcb2cf2dec8d9098bc60cb571aab3e14cadd33315",
+    "src/PoolPage.sol": "0xf125be9ef0712310c778875e7efa8bdb3e63385af40da061083154ad072d379e",
+    "src/Settings.sol": "0x5e15b24dc121c8fd9d8b85bf0acc0cbc8bf47e8b283a52f6f84ee2e3873b4d31"
+  },
+  "artifacts": 7,
+  "contextualQuote": true,
+  "reservedStagedCount": true,
+  "abandonedStagingApis": false
+}

@@ -47,11 +47,19 @@ The per-pool spending allowance is separate from cash locked in reserve: 0.622 E
 
 Initial opening funds and completes the target before admitting players. Subsequent ordinary depletion may trade if the existing 70% inverse-backing-weight gate, curated-NFT presence, busy threshold and mint-fee checks permit it. A markup edit does not turn an operating partial board into initial setup again. Reopening a closed incomplete design still requires its current opening capital; reducing the design is an explicit alternative.
 
+The operation-aware admission formula in [SPEC.md](SPEC.md) retains concurrency and credits only the previously reserved staging and next six records FWA guarantees to activate before the first new selection. A single conservative Shape/Pack staging-count upper bound also caps that loss estimate, so unrelated curated-only staging does not force Shape depletion. It needs no queue sync or keeper call between every batch, changes no reserve/payment coefficient and is not a spending counter. A large staged target increase can still pause; after requests settle, anyone may use FWA `activateListings(20)` repeatedly. This spends caller gas, pays no Balancer reward and requires no additional backing capital. Tracked-curated presence retains its prior reconciliation lag.
+
 An expensive missing prize can have very little inverse weight, permitting continued sales. FWA prices actual listed inventory; odds and prices change when prizes leave or return. The dashboard shows the deficit rather than claiming the target is stocked. New proceeds can accumulate toward replacement, but its duration is unknown without actual demand.
 
 If small-prize depletion crosses the admission threshold, future purchases cannot refill a paused pool. Existing owner proceeds, Add ETH, an explicit smaller target, appropriate unlisting/redemption or closing provide recovery. Losing the last curated NFT also requires creator action. No simulation may assume invisible creator deposits or automatic curated-NFT replacement.
 
 Public unpaid maintenance preserves selected healthy prices and the immutable V1 fallback on policy quote failure. It can process/reconcile, restock what is affordable and support closing/retirement; the caller pays gas. Dependency pauses, delivery locks and buyer refund timing remain in force.
+
+## Approximate allocation and actual obligations
+
+The existing current-board proceeds split is unchanged under R55–R58. Gas and policy transitions can over/underbook the creator relative to the purchase board, and surplus claims can expose temporary operating shortfalls. The [concurrent real-fork cases](AUDIT-REMEDIATION.md) run from exact opening capital, allow independent buyers before keeper intervention, take maximum allowed creator claims, and reconcile/close while preserving actual FWA escrow, refunds, protocol balances and redeemable backing. They show retained purchaser rights in their reached contexts, not universal paid continuity or a 0.001 ETH global drift guarantee.
+
+At 0.5 gwei basefee, a hostile maximum policy with two actual outstanding draws is constrained by the 0.0028 ETH work envelope in the named test, rather than its declared 0.311 ETH ceiling. After a later valid fee increase, a closed pool's current-fee hold can be insufficient for paid processing; the paid transaction reverts atomically and unpaid processing still restores purchaser refund claims. There is no obligation to pre-fund every future gas regime, and no larger capital lock or tax is introduced by the reporting/admission repairs. A new numerical allocation tolerance remains for owner review.
 
 ## Alternatives considered
 

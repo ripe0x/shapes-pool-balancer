@@ -1,0 +1,63 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.55s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Gas.t.sol:51:5:
+   |
+51 |     function _reimbursed() internal returns (uint256 gasPaid) {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 3 tests for test/Gas.t.sol:GasBench
+[PASS] test_gas_canPurchase() (gas: 5507386)
+Logs:
+  canPurchase (operator check under the FWA 100k stipend)
+    billed gas (after refund): 43343
+    refund: 0
+    measured gas: 0
+    canPurchase gas: 60136
+
+[PASS] test_gas_purchaseWithOperator() (gas: 7121009)
+Logs:
+  FWA acquireBatch(5) incl. operator check
+    billed gas (after refund): 1664414
+    refund: 59400
+    measured gas: 0
+
+[PASS] test_gas_replaceOne() (gas: 8000732)
+Logs:
+  upkeep: reconcile + replace 1 Shape
+    billed gas (after refund): 824631
+    refund: 67100
+    measured gas: 840350
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 276.53ms (32.76ms CPU time)
+
+Ran 1 test suite in 312.34ms (276.53ms CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

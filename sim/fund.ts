@@ -2,6 +2,7 @@
 // Numeric outputs are scenario estimates until a matching fork run agrees step by step.
 import { writeFileSync } from 'node:fs';
 import { parseEther } from 'viem';
+import serviceFees from '../test/fixtures/fwa-service-fees.json';
 import {
   BPS, BY_VALUE, DEFAULT_SETTINGS, DENOMS, MAX_KEEPER_REWARD, MAX_OPS, MIN_MARKUP_BPS, NUM, SHAPES_IN,
   keeperWorkAt, listingBatches, KEEPER_LIMITS, paymentBound, reserveBreakdownAt, prizeBase, prizeCost, quoteV1,
@@ -44,20 +45,30 @@ export interface Scenario {
   burst?: number; refundEvery?: number; spikeDay?: number; spikeDays?: number; switchDay?: number;
   elasticity?: number; failPolicyDay?: number; dependencyPausedDay?: number; forcedLargeEvery?: number; seed?: number;
   forceFirstLargest?: boolean; replaceCurated?: boolean; unpaidRecovery?: boolean; extraCapital?: bigint; initialCapital?: bigint;
+  selectionWords?: readonly bigint[]; playerGasPrice?: bigint;
 }
 export interface ModelResult {
-  name: string; baseFeeGwei: number; draws: number; refunded: number; blockedDraws: number;
+  name: string; baseFeeGwei: number; draws: number; refunded: number; fulfilledDraws: number; slippageRefunds: number; emptyBoardRefunds: number; blockedDraws: number;
   unavailableSeconds: number; maintenanceLatencySeconds: number; initialCapital: number; switchTopup: number;
   reserve: number; setupKeeperPay: number; keeperPay: number; keeperCost: number; keeperNet: number; creatorNet: number;
-  nftsContributed: number; curatedReplacements: number; drawPrice: number; finalDrawPrice: number; playerSpend: number;
+  nftsContributed: number; curatedReplacements: number;
+  /** FWA acquisition fee including protocol edge, excluding VRF and player transaction gas. */
+  drawPrice: number; finalDrawPrice: number;
+  /** Acquisition charges net of modeled refunds; excludes VRF and player transaction gas. */
+  playerSpend: number;
+  playerVrfCost: number; playerVrfCostOnRefunds: number; playerTotalSpend: number; playerRefunds: number;
+  playerVrfCostWei: string; playerVrfCostOnRefundsWei: string; playerSpendWei: string; playerRefundsWei: string;
   fund: number; creatorProfitWithdrawn: number; creatorWithdrawals: number; accountingDifferenceWei: string; listedBacking: number;
   mintFees: number; deliveredBacking: number; ownerProceeds: number; missingPrizes: number;
   profitCredited: number; gasSpikeWhileOpen: number; policyFailureWhileOpen: number; dependencyPauseWhileOpen: number;
   unreconciledDraws: number; endStatus: string; restockShortfall: number; paidOperations: number; unpaidGasCost: number;
 }
 
-/** Scenario assumption, not a receipt-calibrated billed-gas bound. Refunds and failed sends are absent. */
+/** Keeper gas assumption, not a receipt-calibrated billed-gas bound. Storage refunds and failed sends are absent. */
 export function transactionCost(work: KeeperWork): bigint { return (work.measuredGas + 50_000n) * work.gasPrice; }
+/** Pinned real service parameters; this purchaser fee never enters Balancer liquid ETH. */
+export const playerVrfFeeAt = (gasPrice: bigint) => BigInt(serviceFees.serviceGasEstimate) * gasPrice
+  * (BPS + BigInt(serviceFees.serviceMarginBps)) / BPS + BigInt(serviceFees.serviceFlatWei);
 const gasPriceAt = (baseFee: bigint) => baseFee + DEFAULT_SETTINGS.priorityCap <= DEFAULT_SETTINGS.maxGasPrice
   ? baseFee + DEFAULT_SETTINGS.priorityCap : baseFee;
 
@@ -80,6 +91,8 @@ export function runScenario(s: Scenario): ModelResult {
   const owed: { won?: Listing; refunded: boolean }[] = [];
   let liquid = 0n, profit = 0n, profitWithdrawn = 0n, putIn = 0n, withdrawn = 0n, proceeds = 0n, heldProceeds = 0n;
   let mintSpent = 0n, keeperPay = 0n, keeperCost = 0n, unpaidGas = 0n, prizesDelivered = 0n, playerSpend = 0n;
+  let playerVrfCost = 0n, playerVrfCostOnRefunds = 0n, playerRefunds = 0n;
+  let slippageRefunds = 0, emptyBoardRefunds = 0;
   let profitCredited = 0n, gasSpikeWhileOpen = 0, policyFailureWhileOpen = 0, dependencyPauseWhileOpen = 0;
   let nftContributed = s.nftValues.reduce((a, b) => a + b, 0n), nftDelivered = 0n, switchTopup = 0n;
   let unavailable = 0, serviceLatency = 0, draws = 0, refunded = 0, blocked = 0, replacements = 0, paidOperations = 0;
@@ -202,14 +215,40 @@ export function runScenario(s: Scenario): ModelResult {
     while (remaining > 0) {
       if (status() !== 'open') { blocked += remaining; unavailable += Math.floor(DAY * remaining / Math.max(1, intended)); break; }
       const batch = Math.min(remaining, s.burst ?? 1, 5);
-      let requested = 0;
-      for (let j = 0; j < batch && status() === 'open'; j++) {
-        remaining--; requested++; draws++;
+      // FWA checks the operator once and snapshots one price for the whole purchase.
+      // Canonical callbacks then compare each request with the evolving live board.
+      const requestQuote = drawQuote();
+      const playerBid = s.playerGasPrice ?? gasPriceAt(baseFee);
+      if (playerBid < baseFee) throw new Error('player gas price below the modeled basefee');
+      const vrfPerRequest = playerVrfFeeAt(playerBid);
+      playerVrfCost += BigInt(batch) * vrfPerRequest;
+      for (let j = 0; j < batch; j++) {
+        remaining--; draws++;
         const q = drawQuote();
-        if (s.refundEvery && draws % s.refundEvery === 0) { refunded++; owed.push({ refunded: true }); continue; }
-        playerSpend += q.price; heldProceeds += q.proceeds;
+        const word = s.selectionWords?.[draws - 1];
+        if (s.selectionWords && (word === undefined || word < 0n || word >= 2n ** 256n)) throw new Error('missing or invalid uint256 selection word');
+        const forcedRefund = !!s.refundEvery && draws % s.refundEvery === 0;
+        const empty = q.weight === 0n;
+        // Matches this pool's 10% positive guard, with maximum negative tolerance.
+        const slippage = !empty && q.price > requestQuote.price + requestQuote.price / 10n;
+        if (forcedRefund || empty || slippage) {
+          refunded++;
+          if (!forcedRefund && empty) emptyBoardRefunds++;
+          if (!forcedRefund && slippage) slippageRefunds++;
+          playerRefunds += requestQuote.price;
+          playerVrfCostOnRefunds += vrfPerRequest;
+          owed.push({ refunded: true }); continue;
+        }
+        playerSpend += requestQuote.price; heldProceeds += requestQuote.proceeds;
         let index = listings.length - 1;
-        if (s.forceFirstLargest && draws === 1 || s.forcedLargeEvery && draws % s.forcedLargeEvery === 0) {
+        if (word !== undefined) {
+          let x = word % q.weight;
+          for (let k = 0; k < listings.length; k++) {
+            const weight = NUM / listings[k].price;
+            if (x < weight) { index = k; break; }
+            x -= weight;
+          }
+        } else if (s.forceFirstLargest && draws === 1 || s.forcedLargeEvery && draws % s.forcedLargeEvery === 0) {
           index = listings.reduce((best, l, k) => l.d >= 0 && (best < 0 || l.value > listings[best].value) ? k : best, -1);
           if (index < 0) index = listings.length - 1;
         } else {
@@ -219,7 +258,6 @@ export function runScenario(s: Scenario): ModelResult {
         const won = listings.splice(index, 1)[0]; owed.push({ won, refunded: false });
         if (won.d >= 0) prizesDelivered += won.value; else nftDelivered += won.value;
       }
-      if (!requested) { blocked += remaining; break; }
       maintain(); claim();
     }
   }
@@ -230,13 +268,15 @@ export function runScenario(s: Scenario): ModelResult {
   if (nftContributed !== nftHeld + nftDelivered) throw new Error('NFT value accounting mismatch');
   const fund = liquid - profit, need = required();
   return {
-    name: s.name, baseFeeGwei: Number(s.baseFee) / 1e9, draws, refunded, blockedDraws: blocked,
+    name: s.name, baseFeeGwei: Number(s.baseFee) / 1e9, draws, refunded, fulfilledDraws: draws - refunded, slippageRefunds, emptyBoardRefunds, blockedDraws: blocked,
     unavailableSeconds: unavailable, maintenanceLatencySeconds: serviceLatency,
     initialCapital: E(initialCapital), switchTopup: E(switchTopup), reserve: E(need), setupKeeperPay: E(setupPay),
     keeperPay: E(keeperPay), keeperCost: E(keeperCost), keeperNet: E(keeperPay - keeperCost),
     creatorNet: E(withdrawn + liquid + backing + nftHeld - putIn - nftContributed - unpaidGas),
     nftsContributed: E(nftContributed), curatedReplacements: replacements, drawPrice: E(openingPrice), finalDrawPrice: E(drawQuote().price),
-    playerSpend: E(playerSpend), fund: E(fund), creatorProfitWithdrawn: E(profitWithdrawn), creatorWithdrawals: E(withdrawn), accountingDifferenceWei: diff.toString(),
+    playerSpend: E(playerSpend), playerVrfCost: E(playerVrfCost), playerVrfCostOnRefunds: E(playerVrfCostOnRefunds),
+    playerTotalSpend: E(playerSpend + playerVrfCost), playerRefunds: E(playerRefunds),
+    playerVrfCostWei: playerVrfCost.toString(), playerVrfCostOnRefundsWei: playerVrfCostOnRefunds.toString(), playerSpendWei: playerSpend.toString(), playerRefundsWei: playerRefunds.toString(), fund: E(fund), creatorProfitWithdrawn: E(profitWithdrawn), creatorWithdrawals: E(withdrawn), accountingDifferenceWei: diff.toString(),
     listedBacking: E(backing), mintFees: E(mintSpent), deliveredBacking: E(prizesDelivered), ownerProceeds: E(proceeds),
     profitCredited: E(profitCredited), gasSpikeWhileOpen, policyFailureWhileOpen, dependencyPauseWhileOpen,
     missingPrizes: missing(), unreconciledDraws: owed.length, endStatus: status(), restockShortfall: E(need > fund ? need - fund : 0n),
@@ -313,6 +353,7 @@ function report(results: ModelResult[]): string {
   const matrix = capitalComparisons();
   return '# Reserve redesign: capital and operating scenarios\n\n'
     + 'Generated by `npm run sim`. **Model-only gas, demand, selection and timing assumptions.** Contract parameter fixtures and separate real-fork money replay establish arithmetic/branch correspondence, not these demand or availability forecasts.\n\n'
+    + '**Corrected batch/VRF model:** this generation supersedes the earlier freshly-quoted-per-request batch assumption. Purchase batches snapshot one price, later positive drift can refund requests, and every accepted request still incurs the separately reported purchaser VRF fee. Prior outputs remain in Git history. The controlled five-word fork comparison establishes that branch only; full keeper gas/profit, cash, concurrency and demand are not calibrated forecasts.\n\n'
     + '**Funding-quote parity:** Every current opening/stocked value in the 40-row capital matrix is exported from actual `KeeperPolicyCalls.reserve` calls on fork block 26,382,349, using the real Shapes mint fee of 0.001 ETH and the deployed V1 maximum. The non-view probe asserts the selected basefee and bid inside execution. `shared/reserve-capital.test.ts` matches every current report row to `test/fixtures/reserve-capital.json`, plus closed-outstanding and paid-disabled-deficit cases. This validates funding quotes, not forty separately executed pool lifecycles.\n\n'
     + 'All amounts are ETH; 0.001 ETH mint fee, 15% Shape markup, FWA 5% edge. Gas columns are basefees; bids add 0.05 gwei except at 5 gwei where the bid is 5 gwei. Opening capital includes initial backing, mint fees, bounded current setup and one working buffer. Stocked reserve excludes backing already in Shapes. No ordinary operating top-ups occur. Only the explicitly named policy-adoption scenario deposits its quoted activation shortfall. Curated NFTs are not automatically replaced, except in the explicitly named creator-replacement scenario. Creator claims after every maintenance batch.\n\n'
     + '## Exact before/after capital matrix\n\nHistorical formula is frozen at a8fb321. Unsold fee income is never a liquid balance in either comparison.\n\n'
@@ -321,12 +362,12 @@ function report(results: ModelResult[]): string {
     + '\n\nAt 0.5 gwei, the following setup payouts and withdrawable remainders use the explicit stochastic gas model, not receipts:\n\n| Board | Setup payment estimate | Withdrawable after estimated setup |\n|---|---:|---:|\n'
     + matrix.filter((r) => r.baseFeeGwei === 0.5).map((r) => `| ${r.name} | ${E(BigInt(r.modeledSetupQuoteWei)).toFixed(8)} | ${E(BigInt(r.modeledWithdrawableAfterSetupWei)).toFixed(8)} |`).join('\n')
     + '\n\nThe minted backing can return on unlisting/redemption; mint fees and execution gas are one-way costs. Setup budgets are immutable upper allowances for canonical batches, not expected keeper invoices. The listed surcharge remains an expected future contribution and never reduces the new reserve.\n\n'
-    + '## Operating scenarios\n\nEach scenario is 30 days with baseline demand of 40 draws/day unless named otherwise; elasticity changes desired volume after price changes, deterministic seed 12345. A lower request count reflects refusal/curated-NFT depletion, not manufactured demand. Partial replenishment uses only operating ETH after excluding booked creator profit and reserving the current call’s immutable payment ceiling. It stops at the first unaffordable prize in value order. Every batch rechecks the existing 70% weight admission condition and curated-NFT presence. Missing inventory can coexist with open admission; a paused pool cannot bootstrap new revenue from refused purchases.\n\n'
-    + '| Scenario | Draws / refused | Initial ETH | Explicit switch ETH | First / final draw ETH | Fund / required | Missing prizes | Keeper net | Creator net | Refusal hours | Final status |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n'
-    + results.map((r) => `| ${r.name} | ${r.draws} / ${r.blockedDraws} | ${r.initialCapital.toFixed(6)} | ${r.switchTopup.toFixed(6)} | ${r.drawPrice.toFixed(6)} / ${r.finalDrawPrice.toFixed(6)} | ${r.fund.toFixed(6)} / ${r.reserve.toFixed(6)} | ${r.missingPrizes} | ${r.keeperNet.toFixed(6)} | ${r.creatorNet.toFixed(6)} | ${(r.unavailableSeconds / 3600).toFixed(2)} | ${r.endStatus} |`).join('\n')
+    + '## Operating scenarios\n\nEach scenario is 30 days with baseline demand of 40 draws/day unless named otherwise; elasticity changes desired volume after price changes, deterministic seed 12345. A lower request count reflects refusal/curated-NFT depletion, not manufactured demand. Partial replenishment uses only operating ETH after excluding booked creator profit and reserving the current call’s immutable payment ceiling. It stops at the first unaffordable prize in value order. Admission and one acquisition quote are checked once per purchase batch. Each subsequent canonical selection uses the request price and the unchanged 10% positive-slippage refund guard; it does not buy a freshly quoted draw. The model accepts maximum negative slippage, like the controlled fork comparison. Missing inventory can coexist with open admission; a paused pool cannot bootstrap new revenue from refused purchases.\n\n'
+    + '| Scenario | Requests / wins / refunds / refused | Initial ETH | Explicit switch ETH | First / final draw ETH | Fund / required | Missing prizes | Keeper net | Creator net | Refusal hours | Final status |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n'
+    + results.map((r) => `| ${r.name} | ${r.draws} / ${r.fulfilledDraws} / ${r.refunded} / ${r.blockedDraws} | ${r.initialCapital.toFixed(6)} | ${r.switchTopup.toFixed(6)} | ${r.drawPrice.toFixed(6)} / ${r.finalDrawPrice.toFixed(6)} | ${r.fund.toFixed(6)} / ${r.reserve.toFixed(6)} | ${r.missingPrizes} | ${r.keeperNet.toFixed(6)} | ${r.creatorNet.toFixed(6)} | ${(r.unavailableSeconds / 3600).toFixed(2)} | ${r.endStatus} |`).join('\n')
     + '\n\nNamed disruptions reached while the weighted gate was open:\n\n| Scenario | Gas-spike days | Policy-failure days | Dependency-pause days | Curated NFTs added |\n|---|---:|---:|---:|---:|\n'
     + results.filter((r) => r.gasSpikeWhileOpen || r.policyFailureWhileOpen || r.dependencyPauseWhileOpen).map((r) => `| ${r.name} | ${r.gasSpikeWhileOpen} | ${r.policyFailureWhileOpen} | ${r.dependencyPauseWhileOpen} | ${r.curatedReplacements} |`).join('\n')
-    + '\n\nKeeper net subtracts modeled billed gas but excludes competition, failed sends and hosting. Gas is assumed measured span plus 50k, without storage refunds. Unpaid recovery expenses are charged separately to the creator; paid keeper net excludes them. Draw price excludes VRF and player transaction gas. Refusal hours are scenario scheduling estimates, not fork-measured FWA downtime. Randomness is modeled as immediate; this does not establish live Chainlink timing. The stochastic board selection and batched request/pricing order are approximations, not replayed FWA transactions. Aggregate spending-bucket contention is not simulated; separate actual-fork cap/workload tests must support it.\n\n'
+    + '\n\nKeeper net subtracts modeled billed gas but excludes competition, failed sends and hosting. Gas is assumed measured span plus 50k, without storage refunds. Unpaid recovery expenses are charged separately to the creator; paid keeper net excludes them. Draw price and playerSpend exclude VRF and player transaction gas; playerSpend is net of modeled acquisition refunds. Separate playerVrfCost includes every accepted request, including refunds; playerTotalSpend adds those nonrefundable fees and still excludes actor gas. Pinned real VRF service parameters are in test/fixtures/fwa-service-fees.json; default purchaser bid follows gasPriceAt(baseFee), unless explicitly supplied. Modeled refund amounts are entitlements, not proof of an executed refund withdrawal. Refusal hours are scenario scheduling estimates, not fork-measured FWA downtime. Randomness is modeled as immediate; this does not establish live Chainlink timing. The batch snapshot/positive-slippage branch is compared with the real five-word fork case. This does not calibrate all gas, cash, slot reuse, staging, concurrency or timing; general stochastic selection remains an approximation, not a full replay of FWA transactions. Aggregate spending-bucket contention is not simulated; separate actual-fork cap/workload tests must support it.\n\n'
     + 'The separate `keeper-policy-money-path.json` fork fixture is replayed step by step by TypeScript. That bounded real-contract ledger must be regenerated for the new reserve; it does not validate the modeled gas, selection, demand or timing above.\n\n'
     + '## Money destinations and demand limits\n\nEvery scenario asserts pool deposits plus actually collected FWA owner proceeds equal liquid pool ETH plus held Shape/Pack backing plus creator claims plus delivered backing plus Shapes mint fees plus keeper transfers. Contributed curated-NFT value equals retained plus delivered value; automatic replacement is disabled by default. Uncollected FWA proceeds remain outside pool liquid ETH. Paid work never consumes booked profit. Claimable surplus is the greater of booked profit and balance above the current reserve, spent profit first.\n\n'
     + 'A 20% draw-price increase implies 83.3%, 69.4% or 57.9% retained demand at hypothetical elasticity 1, 2 or 3. These sensitivities are not empirical estimates. Higher surcharges cannot be assumed harmless. The V1 surcharge and creator markup allocation are unchanged by reserve reduction.\n\n'
