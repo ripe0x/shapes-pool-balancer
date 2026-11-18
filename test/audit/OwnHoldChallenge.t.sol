@@ -59,7 +59,7 @@ contract OwnHoldChallenge is ForkBase {
             bytes32 uh1 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
-            balancer.performUpkeep(uh1);
+            balancer.performUpkeep(uh1, 0, 0);
             assertGt(keeper.balance - before, 0.0001 ether);
         }
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());

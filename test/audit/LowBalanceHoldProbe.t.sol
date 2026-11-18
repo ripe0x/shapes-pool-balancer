@@ -40,7 +40,7 @@ contract LowBalanceHoldProbe is ForkBase {
             if (win == 0) {
                 bytes32 uh1 = balancer.settingsHash();
                 vm.prank(keeper, keeper);
-                balancer.performUpkeep(uh1);
+                balancer.performUpkeep(uh1, 0, 0);
                 assertEq(balancer.getActiveShapes()[15],0,"first25ETH prize has no duplicated liquid backing");
                 assertEq(balancer.admissionStatus(),6,"one-prize target honestly pauses until capital or redesign");
                 emit log_named_decimal_uint("fund after deferred first replacement",address(balancer).balance,18);
@@ -61,7 +61,7 @@ contract LowBalanceHoldProbe is ForkBase {
         bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh2);
+        balancer.performUpkeep(uh2, 0, 0);
         emit log_named_decimal_uint("keeper paid after close", keeper.balance - before, 18);
         assertGt(keeper.balance - before, 0.0001 ether);
         assertEq(balancer.requiredReserve(), 0);

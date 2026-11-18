@@ -7,7 +7,7 @@ const ERRORS: Record<string, string> = {
   WithdrawLocked: 'draws are settling on FWA; try again in a minute',
   InsufficientSurplus: 'amount exceeds claimable surplus',
   ReserveNotFunded: 'deposit the reserve first',
-  InvalidConfig: 'the markup must be 10% to 100%, with a saved mix',
+  InvalidConfig: 'check the markup, revenue share, target mix and mint fee cap',
   Unauthorized: 'only the creator can do this',
   NotClosed: 'close purchases first',
   InvalidPlan: 'the mix needs at least one prize and no more than this pool allows',

@@ -1,0 +1,46 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.64s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 1 test for test/EconFork.t.sol:EconForkTest
+[PASS] test_econRandom() (gas: 868756717)
+Logs:
+  markup bps: 2500
+  ETH put in: 1.140204135850000000
+  seed: 1
+  forced 0.5 at draw: 0
+  draws sold: 184
+  draws refused: 0
+  0.5 wins: 1
+  NFTs won: 1
+  draws with nothing to claim: 0
+  draws with a top prize off the board: 51
+  players paid incl VRF: 4.751681957833912352
+  creator ETH result after closeout: 0.286363621256107102
+  after NFTs given: 0.086363621256107102
+  seed: 2
+  forced 0.5 at draw: 0
+  draws sold: 184
+  draws refused: 0
+  0.5 wins: 0
+  NFTs won: 0
+  draws with nothing to claim: 0
+  draws with a top prize off the board: 0
+  players paid incl VRF: 4.811341273992786450
+  creator ETH result after closeout: 1.275120939397891931
+  after NFTs given: 1.275120939397891931
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 84.07s (82.24s CPU time)
+
+Ran 1 test suite in 84.07s (84.07s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

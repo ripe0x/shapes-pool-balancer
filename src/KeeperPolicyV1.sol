@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
-import {Settings} from "./Settings.sol";
 
 /// @notice Immutable starting policy. The work fee follows completed draw sequences and created/listed Shape units,
 ///         so splitting a job cannot duplicate service fees. Gas reimbursement and refunds can still favor splitting.
@@ -28,11 +27,6 @@ contract KeeperPolicyV1 is IKeeperPolicy {
     }
     function quoteRestock(uint8, uint256 units, uint256 baseFee) external pure returns (uint256) {
         return units * (RESTOCK_GAS * _price(baseFee) + RESTOCK_FLAT);
-    }
-    /// @notice Optional linear-policy display capability. incentive is a fee per verified work unit, not per call.
-    function settings() external pure returns (Settings memory) {
-        return Settings(uint64(GAS_PRICE_CEILING), uint64(PRIORITY_ALLOWANCE), uint64(WORK_FEE),
-            uint64(RESTOCK_FLAT), uint32(MAX_GAS), uint32(OVERHEAD_GAS), uint32(RESTOCK_GAS), 1_000);
     }
     function _price(uint256 baseFee) internal pure returns (uint256 price) {
         price = baseFee + PRIORITY_ALLOWANCE;

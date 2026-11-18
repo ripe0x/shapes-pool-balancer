@@ -1,5 +1,5 @@
-import { parseAbi, type Address, type PublicClient } from 'viem';
-import { DENOMS, SHAPES_IN, keeperWorkAt, settingsFrom } from '../../shared/planner';
+import { parseAbi, type Address, type PublicClient, type Block } from 'viem';
+import { DENOMS, SHAPES_IN, keeperWorkAt } from '../../shared/planner';
 
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
@@ -12,24 +12,21 @@ const poolQuoteAbi = parseAbi([
   'function restockFeeFor(uint8 denomination) view returns (uint256)',
   'function quoteKeeperReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work) view returns (uint256)',
 ]);
-const displayAbi = parseAbi(['function settings() view returns ((uint64 maxGasPrice,uint64 priorityCap,uint64 incentive,uint64 restockFlat,uint32 maxGas,uint32 overheadGas,uint32 restockGas,uint32 maxPrizes))']);
 
 /** Existing pools quote through Balancer; a not-yet-created pool has only unverified direct previews. */
-export async function policyEconomics(pub: PublicClient, policy: Address, cachedMaximum?: bigint, balancer?: Address) {
-  const block = await pub.getBlock();
-  const at = { address: policy, blockNumber: block.number! };
+export async function policyEconomics(pub: PublicClient, policy: Address, cachedMaximum?: bigint, balancer?: Address, snapshot?: Pick<Block, 'number' | 'baseFeePerGas' | 'timestamp'>) {
+  const block = snapshot ?? await pub.getBlock();
+  const at = { address: policy, blockNumber: block.number!, gas: 100_000n };
   const baseFee = block.baseFeePerGas ?? 0n;
-  const [version, declaredMaximum, settings] = await Promise.all([
+  const [version, declaredMaximum] = await Promise.all([
     pub.readContract({ ...at, abi: policyAbi, functionName: 'version' }).catch(() => undefined),
     cachedMaximum === undefined ? pub.readContract({ ...at, abi: policyAbi, functionName: 'maxReward' }) : Promise.resolve(cachedMaximum),
-    pub.readContract({ ...at, address: balancer ?? policy, abi: displayAbi, functionName: 'settings' }).then(settingsFrom).catch(() => undefined),
   ]);
   const maxReward = cachedMaximum ?? declaredMaximum;
-  if (settings) settings.maxPrizes = 1_000;
-  // Metadata never defines a pool's reserve or payout. A future policy need not support the linear display capability.
-  const gasPrice = baseFee + (settings?.priorityCap ?? 50_000_000n);
+  // A preview bid is a local assumption; only bounded pool quotes promise compensation.
+  const gasPrice = baseFee + 50_000_000n;
   // viem forwards call parameters through readContract; fees also prevent multicall's caller substitution.
-  const callContext = { blockNumber: block.number!, gasPrice, batch: false };
+  const callContext = { blockNumber: block.number!, gasPrice, batch: false, gas: 150_000n };
   const restockFees = await Promise.all(DENOMS.map((_, d) => balancer
     ? pub.readContract({ ...callContext, address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] })
     : pub.readContract({ ...at, ...callContext, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] })));
@@ -45,7 +42,7 @@ export async function policyEconomics(pub: PublicClient, policy: Address, cached
   if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n)) {
     throw new Error('Policy surcharge exceeds the pool limit');
   }
-  return { version, policyMaxReward: maxReward, settings, baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };
+  return { version, policyMaxReward: maxReward, baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };
 }
 
 export type PolicyEconomics = Awaited<ReturnType<typeof policyEconomics>>;

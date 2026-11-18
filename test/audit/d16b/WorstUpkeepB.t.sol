@@ -179,7 +179,7 @@ contract D16bWorstUpkeepTest is ForkBase {
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep(uh1);
+        reward = balancer.performUpkeep(uh1, 0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 q; q < logs.length; ++q) {
             if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -208,7 +208,7 @@ contract D16bWorstUpkeepTest is ForkBase {
             bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
             g0 = gasleft();
-            balancer.performUpkeep(uh2);
+            balancer.performUpkeep(uh2, 0, 0);
             emit log_named_uint("performUpkeep uncapped, from caller frame", g0 - gasleft());
             vm.revertToState(snap);
         }

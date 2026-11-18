@@ -219,7 +219,6 @@ contract GasBench is ForkBase {
     /// The same worst case at the factory's highest prize limit: 1,000 prizes and 100 curated NFTs (1,148 listings, so
     /// FWA's selection tree is past 1,024). Audit rc-f5c81d6 F3.
     function test_gas_worstCaseUpkeepFullUnits_1000Prizes() public {
-        assertEq(factory.settings().maxPrizes, 1_000, "the default prize limit");
         _listMany(98, 700);
         uint8[6] memory first = [uint8(0), 0, 0, 1, 2, 3];
         uint256 used = _worstAfterHeldRestock(first, 988, "WORST CASE upkeep at 1,000 prizes and 100 NFTs");
@@ -364,8 +363,8 @@ contract GasBench is ForkBase {
 
     function test_gas_createBalancer() public {
         address c = makeAddr("gasCreator");
-        vm.prank(c);
-        factory.createBalancer(bytes32(0));
+        vm.deal(c, 1 ether);
+        _createFixture(c, bytes32(0), 0.1 ether);
         _report("createBalancer (clone + FWA pool + operator + approval)", 0);
     }
 

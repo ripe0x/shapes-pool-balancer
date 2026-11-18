@@ -202,7 +202,7 @@ contract D16WorstUpkeepTest is ForkBase {
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep(uh1);
+        reward = balancer.performUpkeep(uh1, 0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 q; q < logs.length; ++q) {
             if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -248,7 +248,7 @@ contract D16WorstUpkeepTest is ForkBase {
             uint256 snap = vm.snapshotState();
             bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh2) {} catch {
+            try balancer.performUpkeep(uh2, 0, 0) {} catch {
                 vm.revertToState(snap);
                 return;
             }

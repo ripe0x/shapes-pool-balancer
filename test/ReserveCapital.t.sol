@@ -43,7 +43,7 @@ contract ReserveCapitalTest is ForkBase {
     function _paid() internal returns (uint256 reward, uint256 billed) {
         bytes32 generation = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep(generation, 1);
+        reward = balancer.performUpkeep(generation, 1, 0);
         billed = ReceiptGas.lastBilled();
     }
 
@@ -192,7 +192,7 @@ contract ReserveCapitalTest is ForkBase {
         assertEq(balancer.getActiveShapes()[8],0,"no cash for immediate100ETH replacement");
         assertEq(balancer.admissionStatus(),0,"small Shapes preserve more than70% of inverse backing weight");
         assertGt(balancer.requiredReserve(),100 ether);
-        assertEq(balancer.withdrawableSurplus(),balancer.profit(),"missing inventory reserves subsequent operating income");
+        assertEq(balancer.withdrawableSurplus(),balancer.creatorCredit(),"missing inventory reserves subsequent operating income");
         uint256 target=balancer.target();
         vm.prank(creator); balancer.configure(1600,target);
         assertFalse(balancer.creatorWork(),"ordinary markup change does not restart initial setup");
@@ -230,29 +230,27 @@ contract ReserveCapitalTest is ForkBase {
         assertEq(address(balancer).balance,0);
     }
 
-    function test_listedCreatorMarkupIsBookedBeforeTheExpensiveDeficitIsReconciled() public {
+    function test_collectedRevenueIsCreditedBeforeTheExpensiveDeficitIsReconciled() public {
         configure(plan([uint256(19),0,0,0,0,0,0,0,1]));
         listCurated(1,0.2 ether);
         _deposit(_quoteOpen());
         vm.prank(creator); balancer.open(); fillUp();
         uint256 free=balancer.withdrawableSurplus();
         vm.prank(creator); balancer.claimSurplus(free,creator);
-        uint256 count=balancer.getActiveIds().length;
-        uint256 share=balancer.profitShareSum();
         (,,,,,,uint256 slot,)=pool.listings(lastListingId());
         uint256[] memory request=buy(buyer,1);
         fulfill(request[0],wordForSlot(slot)); settle();
         uint256 proceeds=pool.ownerProceeds();
-        uint256 expected=proceeds*share/(count*1e18);
-        assertGt(expected,0,"real listed markup above ten percent contributes creator income");
+        uint256 expected=proceeds*balancer.creatorRevenueBps()/10_000;
+        assertGt(expected,0,"actual owner proceeds receive the stored allocation");
         balancer.collectProceeds();
-        assertEq(balancer.profit(),expected,"creator allocation is preserved before the missing100ETH prize is reconciled");
-        uint256 fund=address(balancer).balance-balancer.profit();
+        assertEq(balancer.creatorCredit(),expected,"creator allocation is preserved before the missing100ETH prize is reconciled");
+        uint256 fund=address(balancer).balance-balancer.creatorCredit();
         vm.prank(creator); balancer.claimSurplus(expected,creator);
-        assertEq(address(balancer).balance,fund,"claiming only booked markup leaves operating funds unchanged");
+        assertEq(address(balancer).balance,fund,"claiming existing credit leaves operating funds unchanged");
         _paid();
         assertEq(balancer.getActiveShapes()[8],0);
-        assertEq(balancer.profit(),0);
+        assertEq(balancer.creatorCredit(),0);
         assertEq(balancer.withdrawableSurplus(),0,"actual large deficit retains all remaining operating capital");
     }
 

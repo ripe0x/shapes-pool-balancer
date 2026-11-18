@@ -11,6 +11,7 @@ const base: DesignInputs = {
   restockFee: restockFeeAt(10n ** 9n),
   baseFee: 10n ** 9n,
   have: Array(9).fill(0),
+  v1Preview: true,
 };
 const mix = (m: Record<number, number>): Counts => DENOMS.map((_, i) => m[i] ?? 0);
 

@@ -28,7 +28,7 @@ contract ProcessQueueTest is ForkBase {
     function _keeper() internal {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        try balancer.performUpkeep(uh1) {} catch {}
+        try balancer.performUpkeep(uh1, 0, 0) {} catch {}
     }
 
     function test_upkeepSettlesDrawsThatReservedAStagedRestock() public {
@@ -72,7 +72,7 @@ contract ProcessQueueTest is ForkBase {
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
             vm.recordLogs();
-            try balancer.performUpkeep(uh2) returns (uint256 reward) {
+            try balancer.performUpkeep(uh2, 0, 0) returns (uint256 reward) {
                 Vm.Log[] memory logs = vm.getRecordedLogs();
                 for (uint256 q; q < logs.length; ++q) {
                     if (logs[q].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {

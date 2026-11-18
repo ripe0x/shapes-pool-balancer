@@ -46,12 +46,12 @@ describe('keeper policy economic model', () => {
     expect(V2.surcharge(10, w.baseFee)).toBe(1_322_000_000_000_000n);
   });
 
-  it('preserves exact ETH and NFT accounting with funded policy replacement and refunds', () => {
+  it('preserves exact ETH and NFT accounting with affordable policy replacement and refunds', () => {
     const r = runScenario({ ...base, switchDay: 1, refundEvery: 5 });
     expect(r.accountingDifferenceWei).toBe('0');
     expect(r.draws).toBe(30);
     expect(r.refunded).toBe(6);
-    expect(r.switchTopup).toBeGreaterThan(0);
+    expect(r.switchTopup).toBe(0);
     expect(r.finalDrawPrice).not.toBe(r.drawPrice);
     expect(r.creatorNet).toBeLessThan(r.playerSpend);
   });
@@ -62,7 +62,7 @@ describe('keeper policy economic model', () => {
     expect(r.playerSpend).toBe(0);
     expect(r.creatorNet).toBeLessThan(0);
     expect(r.keeperPay).toBe(r.setupKeeperPay);
-    expect(r.creatorProfitWithdrawn).toBe(0);
+    expect(r.creatorCreditClaimed).toBe(0);
     expect(r.creatorWithdrawals).toBeGreaterThan(0);
     expect(r.accountingDifferenceWei).toBe('0');
   });
@@ -127,13 +127,40 @@ describe('keeper policy economic model', () => {
     expect(r.accountingDifferenceWei).toBe('0');
   });
 
-  it('preserves the creator markup share even when a large win turns a funded board into a deficit', () => {
+  it('claims the stored creator revenue share while a large replacement remains unfunded', () => {
     const r = runScenario({ ...base, days: 1, drawsPerDay: 1, forceFirstLargest: true });
     expect(r.missingPrizes).toBeGreaterThan(0);
-    // Independent initial 48-listing FWA EV and 15% above-floor markup at base/bid 0.5/0.55 gwei.
-    expect(r.profitCredited).toBeCloseTo(0.002355773536669513, 15);
+    // Initial 48-listing FWA EV at base/bid 0.5/0.55 gwei; reviewed rate rounds down to 1070 bps.
+    expect(r.creatorRevenueBps).toBe(1070);
+    expect(r.creatorCreditAccrued).toBeCloseTo(0.002353979051084406, 15);
+    expect(r.creatorCreditClaimed).toBe(r.creatorCreditAccrued);
+    expect(r.restockShortfall).toBeGreaterThan(0);
     expect(r.ownerProceeds).toBeCloseTo(0.021999804215742121, 15);
-    expect(r.profitCredited).toBeLessThan(r.ownerProceeds);
+    expect(r.creatorCreditAccrued).toBeLessThan(r.ownerProceeds);
+    expect(r.accountingDifferenceWei).toBe('0');
+  });
+
+  it('protects a 100% allocation in paid and unpaid recovery without pretending operations earned revenue', () => {
+    for (const unpaidRecovery of [false, true]) {
+      const r = runScenario({ ...base, days: 1, drawsPerDay: 1, forceFirstLargest: true,
+        creatorRevenueBps: 10000, unpaidRecovery, failPolicyDay: unpaidRecovery ? 0 : undefined });
+      expect(r.creatorRevenueBps).toBe(10000);
+      expect(r.ownerProceeds).toBeCloseTo(0.021999804215742121, 15);
+      expect(r.creatorCreditAccrued).toBe(r.ownerProceeds);
+      expect(r.creatorCreditClaimed).toBe(r.creatorCreditAccrued);
+      expect(r.creatorCredit).toBe(0);
+      expect(r.missingPrizes).toBeGreaterThan(0);
+      expect(r.restockShortfall).toBeGreaterThan(0);
+      expect(r.accountingDifferenceWei).toBe('0');
+      if (unpaidRecovery) expect(r.unpaidGasCost).toBeGreaterThan(0);
+    }
+  });
+
+  it('a zero rate allocates no credit while all collected proceeds remain operating income', () => {
+    const r = runScenario({ ...base, days: 1, drawsPerDay: 1, creatorRevenueBps: 0 });
+    expect(r.creatorCreditAccrued).toBe(0);
+    expect(r.creatorCreditClaimed).toBe(0);
+    expect(r.ownerProceeds).toBeGreaterThan(0);
     expect(r.accountingDifferenceWei).toBe('0');
   });
 

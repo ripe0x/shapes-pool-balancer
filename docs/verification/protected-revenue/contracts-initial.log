@@ -1,0 +1,1093 @@
+Compiling 26 files with Solc 0.8.28
+Solc 0.8.28 finished in 68.88s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/Packs.t.sol:183:9:
+    |
+183 |         uint256 fee = shapes.mintFee();
+    |         ^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/BatchSlippage.t.sol:170:5:
+    |
+170 |     function _checkLogs(Result memory r) internal {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Gas.t.sol:51:5:
+   |
+51 |     function _reimbursed() internal returns (uint256 gasPaid) {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/Hardening.t.sol:255:5:
+    |
+255 |     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/KeeperPay.t.sol:18:5:
+   |
+18 |     function noop() external returns (uint256) { return 42; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/PolicyGasOverhead.t.sol:12:5:
+   |
+12 |     function compare(address policy, IKeeperPolicy.Work calldata input, bool warm)
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for test/FlowReporting.t.sol:FlowReportingTest
+[PASS] testUnknownNeedIsNullAndKnownObligationsRemainEncumbered() (gas: 1045534)
+Logs:
+
+  FLOW BREAKDOWN  flow-reporting   gas 550000000 / basefee 500000000 wei, fork block 0
+  TABLE 1  Where the inflows went
+    in: report input                                                              1.9260   100.00%
+    held in unknown (change)                                                      0.2000    10.38%
+    held in backing (change)                                                      1.7000    88.26%
+    held in withdrawable (change)                                                 0.0100     0.51%
+    held in shortfall (change)                                                    0.0010     0.05%
+    held in known excess (change)                                                 0.0150     0.77%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    unknown: held                                                                 0.2000    10.38%
+    stated need / above need: not determined
+    backing: held                                                                 1.7000    88.26%
+      stated need                                                                 1.7000    88.26%
+      ABOVE its need                                                              0.0000     0.00%
+    withdrawable: held                                                            0.0100     0.51%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0100     0.51%
+    shortfall: held                                                               0.0010     0.05%
+      stated need                                                                 0.0200     1.03%
+      ABOVE its need                                                              0.0000     0.00%
+    known excess: held                                                            0.0150     0.77%
+      stated need                                                                 0.0050     0.25%
+      ABOVE its need                                                              0.0100     0.51%
+  TABLE 3  One-way flows (amount | return)
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.26ms (5.63ms CPU time)
+
+Ran 1 test for test/HostileCollection.t.sol:AllowlistCheckCost
+[PASS] test_coldFactoryListCheckGas() (gas: 9887722)
+Logs:
+  cold factory list check, gas: 5483
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.88s (4.88s CPU time)
+
+Ran 2 tests for test/ForkContext.t.sol:ForkContextTest
+[PASS] test_callsSeeTheConfiguredBasefeeAndGasPrice() (gas: 200604)
+[PASS] test_listedFeesMatchAnIndependentCalculation() (gas: 5376214)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 7.61s (4.73s CPU time)
+
+Ran 5 tests for test/HostileCollection.t.sol:HostileCollectionTest
+[PASS] test_paused_thenRetried() (gas: 12219757)
+Logs:
+  paused, then retried
+    NFT owner: 0x0fF93eDfa7FB7Ad5E962E4C0EdB9207C03a0fe02
+    FWA listing status: 4
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.014419368218180553
+
+[PASS] test_refuseAll_nftStuck() (gas: 12364528)
+Logs:
+  refuses delivery and recovery
+    NFT owner: 0xdEB32E2b42cC178c0601e2f6dd382ee57Dc194E0
+    FWA listing status: 7
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.015140336629089580
+    owner proceeds at FWA: 0.000000000000000000
+
+[PASS] test_refuseDelivery_playerNeverRefunds() (gas: 12243173)
+Logs:
+  player never refunds (30 days)
+    NFT owner: 0xdEB32E2b42cC178c0601e2f6dd382ee57Dc194E0
+    FWA listing status: 6
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.000000000000000000
+
+[PASS] test_refuseDelivery_playerRefunded_creatorRecovers() (gas: 12614137)
+Logs:
+  refused, before the deadline
+    NFT owner: 0xdEB32E2b42cC178c0601e2f6dd382ee57Dc194E0
+    FWA listing status: 6
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.000000000000000000
+  after refund and recovery
+    NFT owner: 0x2190d584E30F4a2396C1487Aa784428f2068CBE8
+    FWA listing status: 3
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.000000000000000000
+
+[PASS] test_seize_afterDelivery() (gas: 12029091)
+Logs:
+    proceeds credited to the Balancer for this draw: 0.014419368218180553
+  seized after delivery
+    NFT owner: 0x2190d584E30F4a2396C1487Aa784428f2068CBE8
+    FWA listing status: 4
+    player paid (draw + randomness fee): 0.017480336629089580
+    of which randomness fee: 0.002340000000000000
+    player refund credit at FWA: 0.000000000000000000
+    owner proceeds at FWA: 0.014419368218180553
+
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 11.96s (9.08s CPU time)
+
+Ran 9 tests for test/ProtectedRevenueAtomic.t.sol:ProtectedRevenueAtomicTest
+[PASS] test_atomicHostileTransferCannotReenterAndInvalidRateReverts() (gas: 4330850)
+[PASS] test_atomicMissingApprovalAndInsufficientFundingLeaveNothing() (gas: 4810948)
+[PASS] test_capitalMovementsNeverCreateCreditAndClosePreservesIt() (gas: 15471895)
+[PASS] test_creditClaimCallbackCannotDuplicateCollectionOrClaims() (gas: 15300981)
+[PASS] test_creditClaimDuringRealHundredEthDeficit() (gas: 18399891)
+Logs:
+  missing expensive prize: 100.000000000000000000
+  creator claimed during deficit: 0.002827589190799155
+  remaining operating cash: 0.029004213017192403
+
+[PASS] test_creditClaimDuringRealOneEthDeficit() (gas: 18392409)
+Logs:
+  missing expensive prize: 1.000000000000000000
+  creator claimed during deficit: 0.002826771927742353
+  remaining operating cash: 0.028998836549681180
+
+[PASS] test_fullRateCreditOnlyCashSurvivesUnpaidAndFailingPolicy() (gas: 15630064)
+[PASS] test_policyActivationIgnoresMissingHundredEthBackingAtEqualExposure() (gas: 17177626)
+[PASS] test_rateChangesUseCollectionBoundaryAndKeepConcurrentRequests() (gas: 17057881)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 13.11s (10.23s CPU time)
+
+Ran 1 test for test/BatchSlippage.t.sol:BatchSlippageTest
+[PASS] test_sameWordsBatchRefundsButSequentialRestockedDrawsDeliver() (gas: 26783364)
+Logs:
+  fork block: 26382349
+  batch fulfilled / five requests: 1
+  sequential fulfilled / five requests: 5
+  VRF spent on the four batch refunds: 0.000748800000000000
+  VRF paid in each five-draw path: 0.000936000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 14.29s (4.50s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 9863820)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 11652654)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 24496544)
+Logs:
+  setup fill
+    reward: 0.013030160000000000
+    reward less gas: 0.000232655000000000
+  setup fill
+    reward: 0.012935815000000000
+    reward less gas: 0.000232655000000000
+  reconcile 1 timed-out draw
+    reward: 0.000757720000000000
+    reward less gas: 0.000000170000000000
+  reconcile 1 NFT win
+    reward: 0.001149735000000000
+    reward less gas: 0.000110170000000000
+  reconcile and replace 1 Shape
+    reward: 0.004597810000000000
+    reward less gas: 0.000338670000000000
+  reconcile and replace 5 Shapes
+    reward: 0.013582095000000000
+    reward less gas: 0.000786665000000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.001700985000000000
+
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 24496497)
+Logs:
+  setup fill
+    reward: 0.001522307150000000
+    reward less gas: 0.000114592050000000
+  setup fill
+    reward: 0.001511929200000000
+    reward less gas: 0.000114592050000000
+  reconcile 1 timed-out draw
+    reward: 0.000101149200000000
+    reward less gas: 0.000017818700000000
+  reconcile 1 NFT win
+    reward: 0.000144270850000000
+    reward less gas: 0.000029918700000000
+  reconcile and replace 1 Shape
+    reward: 0.000541359100000000
+    reward less gas: 0.000072853700000000
+  reconcile and replace 5 Shapes
+    reward: 0.001672020000000000
+    reward less gas: 0.000264533150000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.000614308350000000
+
+[PASS] test_noWorkCallIsPaidNothing() (gas: 10951468)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 12210927)
+Logs:
+  held at close: 0.007000000000000000
+  paid to the keeper: 0.000198059500000000
+
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 11429472)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 14074597)
+Logs:
+  paid for two batched calls: 0.000326637600000000
+  paid for four split calls: 0.000485458350000000
+  keeper net from batched upkeep: 0.000094962200000000
+  keeper net from split upkeep: 0.000091446600000000
+
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 18.77s (15.82s CPU time)
+
+Ran 4 tests for test/PolicyEconomicReview.t.sol:PolicyEconomicReviewTest
+[PASS] test_emergencyDisableInvalidatesMaturedProposal() (gas: 15058446)
+[PASS] test_maximumPolicyCannotConsumePlayerRefundAcrossCloseout() (gas: 19008832)
+Logs:
+  independent protected buyer refund: 0.028999313514543896
+  independent maximum policy actual reward: 0.000260223800000000
+  independent maximum policy creator top-up: 0.000000000000000000
+
+[PASS] test_packFeesAndFundingFollowActualShapeWorkAndRedemption() (gas: 19494702)
+[PASS] test_zeroDemandPolicyFundingAndCloseoutExactCapitalRoundTrip() (gas: 19179112)
+Logs:
+  independent setup keeper pay: 0.006041158050000000
+  independent retained board reserve: 0.003680000000000000
+  independent policy activation top-up: 0.002680000000000000
+
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 10.19s (9.90s CPU time)
+
+Ran 3 tests for test/KeeperList.t.sol:KeeperListTest
+[PASS] test_factoryKeeperListCoversEveryPoolAndIsOpenByDefault() (gas: 5086236)
+[PASS] test_keeperAdminTransferIsTwoStep() (gas: 2575620)
+[PASS] test_oneListCoversEveryPool() (gas: 14456677)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 9.17s (8.01s CPU time)
+
+Ran 1 test for test/ReserveCapitalMatrix.t.sol:ReserveCapitalMatrixTest
+[PASS] test_exportEightBoardFiveGasCapitalQuotes() (gas: 40970221)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 10.35s (9.23s CPU time)
+
+Ran 9 tests for test/Fork.t.sol:ForkScenarioTest
+[PASS] test_canPurchaseFitsStipend() (gas: 5292313)
+Logs:
+  canPurchase gas (cold): 46724
+
+[PASS] test_curatedDrawDeliversAndPoolStaysOpen() (gas: 6940212)
+[PASS] test_initialUpkeepBuildsInventory() (gas: 5531950)
+[PASS] test_lastCuratedDrawnClosesPool() (gas: 8004717)
+[PASS] test_overlappingPurchasesBusyAtFive() (gas: 23470398)
+[PASS] test_ownershipAndOperator() (gas: 41245)
+[PASS] test_singleShapeDrawReplenishes() (gas: 8307255)
+[PASS] test_tokenPurchasesImpossible() (gas: 5406411)
+[PASS] test_unlistAndRetire() (gas: 7232471)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 24.51s (19.62s CPU time)
+
+Ran 9 tests for test/Packs.t.sol:PacksTest
+[PASS] test_constructorRejectsPacksThatCannotMakeTheSmallestPack() (gas: 6467402)
+[PASS] test_drawnPackGoesToWinnerRedeemsExactlyAndIsReplaced() (gas: 3197310)
+[PASS] test_everyPackSizeMintsAtExactValueWithItsShapes() (gas: 6269259)
+[PASS] test_packsContractRefusedAsPurchaserAndAsCurated() (gas: 71241)
+[PASS] test_packsListedAtExactValueWithFewestShapes() (gas: 643731)
+[PASS] test_reserveHoldsWorkingCapitalWithoutDuplicatePackBacking() (gas: 116549)
+[PASS] test_smallerTargetThenUnlistSurplus() (gas: 778588)
+[PASS] test_unlistRedeemsPacksAndShapesForExactBacking() (gas: 1813334)
+[PASS] test_worstPackBatchRebuilds() (gas: 18667093)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 8.06s (6.91s CPU time)
+
+Ran 29 tests for test/Balancer.t.sol:BalancerTest
+[PASS] test_basefeeSpikeCappedAtMaxGasPrice() (gas: 939875)
+[PASS] test_blockedRefundRecoveryDoesNotBrickUpkeep() (gas: 7101340)
+[PASS] test_claimDuringUnsettledDraw() (gas: 1899993)
+[PASS] test_claimSurplusRespectsReserveWhileOpen() (gas: 3231026)
+[PASS] test_claimToRejectingRecipientReverts() (gas: 363868)
+[PASS] test_configureRejectsBadTargets() (gas: 253906)
+[PASS] test_creatorTransferTwoStep() (gas: 275582)
+[PASS] test_curatedBatchRepriceWithdraw() (gas: 1873694)
+[PASS] test_curatedOpsAndUnsettledDraws() (gas: 2752053)
+[PASS] test_ensReverseAndForward() (gas: 416163)
+[FAIL: EvmError: Revert] test_factory_isolatedBalancersAndPools() (block: 26382349) (gas: 157845)
+[PASS] test_failedCuratedDeliveryRefundAndRecovery() (gas: 3569066)
+[PASS] test_gasGriefingCollectionCannotTaxUpkeep() (gas: 5819026)
+[PASS] test_gateRefusesUnrefundablePurchasers() (gas: 357485)
+[PASS] test_lowInventoryGate() (gas: 5201851)
+[PASS] test_manyCuratedListingsUnderStipend() (gas: 48930847)
+Logs:
+  canPurchase gas with 120+ listings: 55702
+
+[PASS] test_markupAppliesAtListingOnly() (gas: 2806279)
+[PASS] test_noRewardForUnnecessaryWork() (gas: 2893649)
+[PASS] test_onlyCreator() (gas: 833770)
+[PASS] test_priorityOverbidIsNotReimbursed() (gas: 7256594)
+[PASS] test_realMintFeeChange() (gas: 3233310)
+[PASS] test_reentrantCollectionCannotReenter() (gas: 3239837)
+[PASS] test_refundOnlyBatchIsPaid() (gas: 920240)
+[PASS] test_rejectingKeeperIsStillPaidAndCannotBlock() (gas: 2640623)
+[PASS] test_rejectsShapesAndLyingCollections() (gas: 796524)
+[PASS] test_reserveMath() (gas: 117882)
+[PASS] test_retireIsIrreversibleAndKeepsExits() (gas: 1782094)
+[PASS] test_settledAfterRetryNeedsNoUpkeep() (gas: 3284000)
+[PASS] test_unlistShapesInBoundedSteps() (gas: 17560359)
+Suite result: FAILED. 28 passed; 1 failed; 0 skipped; finished in 31.43s (20.06s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[PASS] test_atomicKeeperFloorRollsBackRealMintListingBalancesAndAllowance() (gas: 7678022)
+[PASS] test_contractPurchaserCannotRejectFwaPackTransferAndRetainsExactBacking() (gas: 20006900)
+[PASS] test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() (gas: 16134367)
+[PASS] test_failedDeliveryRefundAndNFTRecoverAfterRetirement() (gas: 18391859)
+[PASS] test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() (gas: 7307109)
+[PASS] test_largeWinDepletesOnlyOperatingCapitalAndRecoveryUsesActualBacking() (gas: 19454439)
+[PASS] test_malformedBurningAndReenteringPolicyPreserveUnpaidRecovery() (gas: 8659724)
+[PASS] test_noAllowanceResetByCloseConfigureOrPolicyAndEmergencyCancelsMaturedChange() (gas: 9373004)
+[FAIL: InvalidItem()] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (block: 26382349) (gas: 19127614)
+[FAIL: assertion failed: 4130705967022721 <= 2758869391401136051] test_policyFundingExcludesRealBookedProfitAndSwitchKeepsOldPrices() (block: 26382349) (gas: 32084103)
+[FAIL: InvalidItem()] test_unpaidRecoveryCanSpendBookedProfitButPaidKeeperCannot() (block: 26382349) (gas: 14924503)
+Suite result: FAILED. 8 passed; 3 failed; 0 skipped; finished in 1.27s (170.97ms CPU time)
+
+Ran 5 tests for test/ReserveEconomicReview.t.sol:ReserveEconomicReviewTest
+[PASS] test_creatorManufacturedUnlistRestockLosesMintFeeBeyondInternalReward() (gas: 1479712)
+[PASS] test_disableThenWindDownReleasesOnlyActualLiquidETHAndBacking() (gas: 2601661)
+[PASS] test_largeWinWithoutTopupsHasHonestSlowRecoveryAndCreatorAllocation() (gas: 46748283)
+Logs:
+  ten small draws real fund gain after100ETHwin: 0.017527147718377700
+  ten small draws creator booked profit: 0.005536564482015730
+  conditional draws for100ETH at observed gain: 57054
+
+[PASS] test_manufacturedExpiredDrawPaysBuyerKeeperButCostsTheirCreator() (gas: 928109)
+Logs:
+  expired draw reward: 0.000050253116000000
+  expired draw coalition loss before gas: 0.000002340000000000
+
+[PASS] test_maturePolicySwitchFundsCurrentDrawAndPreservesOldListingPrices() (gas: 16908134)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 32.67s (20.83s CPU time)
+
+Ran 1 test for test/PolicyGasOverhead.t.sol:PolicyGasOverheadTest
+[PASS] test_inlineVersusBoundedQuoteColdAndWarm() (gas: 388528)
+Logs:
+  inline V1 gas, no prior external quote: 434
+  bounded V1 gas, cold policy and linked helper: 8801
+  additional gas over inline, cold: 8367
+  inline V1 gas, after quote warm-up: 434
+  bounded V1 gas, warm policy and linked helper: 3774
+  additional gas over inline, warm: 3340
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 405.62µs (156.21µs CPU time)
+
+Ran 5 tests for test/PolicySecurityReview.t.sol:PolicySecurityReviewTest
+[PASS] test_minimumFailureRollsBackDrawPaymentAndReceiverCallback() (gas: 1821451)
+[PASS] test_mutatingDeclaredMaximumCannotRaiseCachedLiability() (gas: 1663086)
+[PASS] test_policyThatAlsoOwnsPoolCannotUseStaticCallbackAuthority() (gas: 1485468)
+[PASS] test_priceIndexedMinimumUsesMinedPriceAndIsAtomic() (gas: 1759756)
+[PASS] test_unpaidMaintenanceRespectsHealthySelectedSurcharge() (gas: 2116112)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.15s (12.69ms CPU time)
+
+Ran 1 test for test/PolicyPreview.t.sol:PolicyPreviewTest
+[PASS] test_poolContextQuotesMatchCallerSensitiveExecution() (gas: 23986602)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.15s (1.15s CPU time)
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 73868905)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 38.46s (35.59s CPU time)
+
+Ran 1 test for test/PolicyLifecycle.t.sol:PolicyLifecycleTest
+[PASS] test_threePoolsV1V2AndPolicyFailureNoAssetMigration() (gas: 90377308)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 15.01s (13.87s CPU time)
+
+Ran 7 tests for test/SelectableInventory.t.sol:SelectableInventoryTest
+[PASS] test_curatedOnlyStagingDoesNotReduceShapeAdmission() (gas: 42445583)
+[PASS] test_earlierReservedBatchesCountBeforeTheNextSelection() (gas: 49053243)
+[PASS] test_fiveShapeWinsWithoutUpkeepStillAdmitTheNextBatch() (gas: 31626536)
+[PASS] test_oneShapeWinDoesNotCreateFalseCuratedAbsence() (gas: 24568469)
+[PASS] test_reservedActivationNeedsNoAdditionalBalancerSync() (gas: 34145917)
+[PASS] test_stagedBoardCannotPassAndPublicActivationRestoresAdmission() (gas: 71910639)
+[PASS] test_stagedWithdrawalHoleIsClearedExactlyOnce() (gas: 31529268)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 41.04s (41.32s CPU time)
+
+Ran 1 test for test/PolicyModelParity.t.sol:PolicyModelParity
+[PASS] test_writePolicyModelParity() (gas: 100358073)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 20.77s (19.62s CPU time)
+
+Ran 14 tests for test/Reserve.t.sol:ReserveTest
+[PASS] test_bigWinKeepsSellingWhileReserveRefills() (gas: 171549450)
+Logs:
+  draws to refill after the 0.5 win: 52
+  creator claimed meanwhile: 0.047779245511248313
+
+[PASS] test_closeHoldsOnlyPayForUnreconciledDraws() (gas: 4140991)
+[PASS] test_collectionCallbackCannotReconfigure() (gas: 1129004)
+[PASS] test_creatorKeeperCannotReenterFromReward() (gas: 2600693)
+[PASS] test_creatorRateRemainsStoredAcrossInventoryChanges() (gas: 11071)
+[FAIL: unlisting Shapes collects first: the split is the honest one: 0 != 865219881744952] test_listingNFTsBeforeCollectionCannotMoveFundMoney() (block: 26382349) (gas: 8372351)
+[PASS] test_lowerMarkupKeepsAFullBoardOpen() (gas: 5588411)
+[PASS] test_markupBelowTenPercentRejected() (gas: 119132)
+[PASS] test_nftsListOnlyAfterTheFirstConfigure() (gas: 4119064)
+[PASS] test_openCollectsSettledProceedsFirst() (gas: 1662835)
+[PASS] test_openNeedsTheReserve() (gas: 1238221)
+[FAIL: NoUpkeepNeeded()] test_unclaimedProfitRestocksWhenTheFundIsEmpty() (block: 26382349) (gas: 99728658)
+[PASS] test_upkeepSplitsOverTheListingsTheDrawWasPricedOn() (gas: 3568233)
+[PASS] test_worstBatchAtMinimumReservePaysEveryWinner() (gas: 265635830)
+Logs:
+  held at minimum reserve: 0.003680000000000000
+  listed price of the five prizes won: 0.836475000000000000
+  draws to restock and refill: 71
+
+Suite result: FAILED. 12 passed; 2 failed; 0 skipped; finished in 44.42s (51.02s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 1 test for test/ProcessQueue.t.sol:ProcessQueueTest
+[PASS] test_upkeepSettlesDrawsThatReservedAStagedRestock() (gas: 170942735)
+Logs:
+    measured inside performUpkeep: 1331581
+  processing upkeep: reward (wei): 799869550000000
+    receipt billed gas: 1168669
+    keeper margin over billed gas (wei): 157101600000000
+  draws that reserved a staged restock: 20
+  purchase attempts refused along the way: 0
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 36.54s (35.44s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/Settings.t.sol:SettingsTest
+[PASS] test_boundedPolicyQuoteGasOverhead() (gas: 547736)
+Logs:
+  direct cold reward quote gas: 1237
+  bounded cold reward quote plus immutable envelope gas: 8739
+
+[PASS] test_cancelAndCreatorTransferInvalidateProposals() (gas: 15068140)
+[PASS] test_defaultAndPoolTimelocksAreSeparate() (gas: 15158631)
+[PASS] test_emergencyDisableCannotBeInstantlyReenabled() (gas: 14832265)
+[PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 16165748)
+[PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 17745427)
+[PASS] test_pendingWithdrawCannotDefeatActivationFunding() (gas: 15334758)
+[PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185453)
+Logs:
+  storage span before refund: 5007
+  five-field raw used (billed): 22503
+  five-field refund counter: 4800
+
+[PASS] test_policyFailureUnpaidWholePathAndRestrictedKeeper() (gas: 75902189)
+[PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 334756)
+[PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 16596511)
+[PASS] test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() (gas: 15891856)
+[PASS] test_writePolicyQuoteFixture() (gas: 921737)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 77.25s (75.27s CPU time)
+
+Ran 2 tests for test/EconFork.t.sol:EconForkTest
+[FAIL: no 0.5 Shape listed] test_econBigWin() (block: 26382349) (gas: 911517821)
+Logs:
+  seed: 100
+  forced 0.5 at draw: 60
+  draws sold: 184
+  draws refused: 0
+  0.5 wins: 1
+  NFTs won: 1
+  draws with nothing to claim: 0
+  draws with a top prize off the board: 82
+  players paid incl VRF: 4.750166823746300444
+  creator ETH result after closeout: 0.745365918860762415
+  after NFTs given: 0.545365918860762415
+
+[PASS] test_econRandom() (gas: 868541601)
+Logs:
+  markup bps: 2500
+  ETH put in: 1.140204135850000000
+  seed: 1
+  forced 0.5 at draw: 0
+  draws sold: 184
+  draws refused: 0
+  0.5 wins: 1
+  NFTs won: 1
+  draws with nothing to claim: 0
+  draws with a top prize off the board: 51
+  players paid incl VRF: 4.751681957833912352
+  creator ETH result after closeout: 0.286363621256107102
+  after NFTs given: 0.086363621256107102
+  seed: 2
+  forced 0.5 at draw: 0
+  draws sold: 184
+  draws refused: 0
+  0.5 wins: 0
+  NFTs won: 0
+  draws with nothing to claim: 0
+  draws with a top prize off the board: 0
+  players paid incl VRF: 4.811341273992786450
+  creator ETH result after closeout: 1.275120939397891931
+  after NFTs given: 1.275120939397891931
+
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 121.15s (189.02s CPU time)
+
+Ran 13 tests for test/Hardening.t.sol:HardeningTest
+[PASS] test_cannotRecoverProtectedAssets() (gas: 4290357)
+[PASS] test_creatorTopUpWhileOpenSetsNoCreatorWork() (gas: 197786)
+[PASS] test_creatorWorkPaysFullAndRefusesPurchases() (gas: 6882660)
+[PASS] test_curatedDrawReconcileIsPaid() (gas: 1656476)
+[PASS] test_gasJumpRestockPaidByTheNewListingsFee() (gas: 10944700)
+[PASS] test_griefingBoundForRestrictedCurated() (gas: 3581219)
+Logs:
+  expected attacker cost to lock (ETH): 0.856277575324515303
+
+[PASS] test_griefingThinPoolIsCheap() (gas: 6058026)
+Logs:
+  thin pool: expected cost to lock a 0.5 ETH NFT (ETH): 0.141009950738916228
+
+[PASS] test_historicalRefundsDoNotGrowUpkeepGas() (gas: 1004654211)
+Logs:
+  shape upkeep gas before: 867071
+  shape upkeep gas after 200 refunds: 859061
+
+[PASS] test_minimumMarkupStillFundsKeepers() (gas: 12277270)
+[PASS] test_poolPageApprovalIsNarrow() (gas: 561430)
+[PASS] test_reconcileBoundPerCall() (gas: 56998910)
+[PASS] test_recoverUntrackedNFTs() (gas: 1271839)
+[PASS] test_reserveExactFormula() (gas: 9586334)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 125.02s (146.09s CPU time)
+
+Ran 2 tests for test/Invariant.t.sol:HandlerSmokeTest
+[PASS]
+HandlerSmokeTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_profitHeldAndShareBounded
+[PASS] invariant_reconciledTrackingMatchesFWA
+ HandlerSmokeTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 421   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 414   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 394   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 360   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 383   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 428   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 388   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 439   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 408   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 461   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+Logs:
+  purchases admitted this run: 4
+  closed reason 6: 4
+
+[PASS] test_handlerBuysAndSettles() (gas: 2067879)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 487.20s (476.48s CPU time)
+
+Ran 1 test for test/Invariant.t.sol:InvariantTest
+[PASS]
+InvariantTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_profitHeldAndShareBounded
+[PASS] invariant_reconciledTrackingMatchesFWA
+ InvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 421   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 414   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 394   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 360   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 383   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 428   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 388   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 439   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 408   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 461   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+Logs:
+  purchases admitted this run: 2
+  closed reason 6: 5
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 487.23s (475.56s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperAdversarial.t.sol:KeeperAdversarialTest
+[PASS] test_callerRefundsDoNotChangePoolPayment() (gas: 14442987)
+[PASS] test_creatorActionDuringOutstandingBatchBound() (gas: 14696409)
+[PASS] test_depositDoesNotUnlockFullIncentive() (gas: 14519572)
+[PASS] test_inflatedBidOrGasLimitDoesNotRaiseReward() (gas: 13498665)
+[PASS] test_noPurchasesDuringCreatorWork() (gas: 15236814)
+[PASS] test_selfDealingDrainsOnlyCheapCurated() (gas: 11351300)
+Logs:
+  drain the only cheap curated NFT, PnL (ETH): -0.001098614200602408
+
+[PASS] test_selfDealingRepeatedLowValuePurchases() (gas: 47939746)
+Logs:
+  cumulative PnL (ETH): -0.094900227956290516
+
+[PASS] test_selfDealingSingleDrawCheapPool() (gas: 12879014)
+Logs:
+  single cheap draw PnL (ETH): -0.002731710568493293
+
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 524.52s (31.42s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 25 tests for test/Gas.t.sol:GasBench
+[PASS] test_breakEven_fillStep() (gas: 21374673)
+Logs:
+  fill step, 5 mints (creator-caused, full incentive)
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000103449030000000
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000114592050000000
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000127857550000000
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000154388550000000
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000175613350000000
+
+    billed gas: 2577240
+    keeper PnL (ETH): 0.000194185050000000
+
+    billed gas: 2577259
+    keeper PnL (ETH): 0.000212756750000000
+
+    billed gas: 2577259
+    keeper PnL (ETH): 0.000232655000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_gasJumpAfterListing() (gas: 13907641)
+Logs:
+  1 draw, prizes listed at 0.08 gwei, restocked at each basefee
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000047765420000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000072853700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000102720700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000162454700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000210241900000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000252055700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000293869500000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000338670000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_steadyGas_oneDraw() (gas: 64151236)
+Logs:
+  1 draw per call, 0.01-only pool
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000047765420000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000072853700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000102720700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000162454700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000210241900000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000252055700000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000293869500000000
+
+    billed gas: 842128
+    keeper PnL (ETH): 0.000338670000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_steadyGas_threeDraws() (gas: 88388147)
+Logs:
+  3 draws per call, 0.01-only pool
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000131509290000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000168693150000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000212959650000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000301492650000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000372319050000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000434292150000000
+
+    billed gas: 1682522
+    keeper PnL (ETH): 0.000496265250000000
+
+    billed gas: 1682541
+    keeper PnL (ETH): 0.000562665000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_gas_canPurchase() (gas: 5449871)
+Logs:
+  canPurchase (operator check under the FWA 100k stipend)
+    billed gas (after refund): 43367
+    refund: 0
+    measured gas: 0
+    canPurchase gas: 60157
+
+[PASS] test_gas_createBalancer() (gas: 2773821)
+Logs:
+  createBalancer (clone + FWA pool + operator + approval)
+    billed gas (after refund): 294719
+    refund: 73679
+    measured gas: 0
+
+[PASS] test_gas_curatedOnlyReconcile() (gas: 6655355)
+Logs:
+  upkeep: reconcile 1 curated draw
+    billed gas (after refund): 207893
+    refund: 24800
+    measured gas: 175947
+
+[PASS] test_gas_initialFill() (gas: 21211473)
+Logs:
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2577204
+    refund: 28300
+    measured gas: 2553755
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2513665
+    refund: 28300
+    measured gas: 2490216
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2569743
+    refund: 28300
+    measured gas: 2546294
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2493616
+    refund: 28300
+    measured gas: 2470167
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2531595
+    refund: 28300
+    measured gas: 2508146
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2493667
+    refund: 28300
+    measured gas: 2470218
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2578334
+    refund: 28300
+    measured gas: 2554885
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2523148
+    refund: 28300
+    measured gas: 2499699
+
+[PASS] test_gas_packFillStep() (gas: 16829110)
+Logs:
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1445954
+    refund: 39500
+    measured gas: 1433705
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1309155
+    refund: 39500
+    measured gas: 1296906
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1343355
+    refund: 39500
+    measured gas: 1331106
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1309170
+    refund: 39500
+    measured gas: 1296921
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1326271
+    refund: 39500
+    measured gas: 1314022
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1309155
+    refund: 39500
+    measured gas: 1296906
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1360454
+    refund: 39500
+    measured gas: 1348205
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1309171
+    refund: 39500
+    measured gas: 1296922
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1326272
+    refund: 39500
+    measured gas: 1314023
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1309155
+    refund: 39500
+    measured gas: 1296906
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1343338
+    refund: 39500
+    measured gas: 1331089
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1316557
+    refund: 39500
+    measured gas: 1304308
+
+[PASS] test_gas_purchaseWithOperator() (gas: 7063494)
+Logs:
+  FWA acquireBatch(5) incl. operator check
+    billed gas (after refund): 1664438
+    refund: 59400
+    measured gas: 0
+
+[PASS] test_gas_refundOnlyBatch() (gas: 6260859)
+Logs:
+  upkeep: reconcile refund-only batch
+    billed gas (after refund): 151490
+    refund: 2800
+    measured gas: 97544
+
+[PASS] test_gas_replaceFive() (gas: 13436312)
+Logs:
+  upkeep: reconcile + replace 5 Shapes
+    billed gas (after refund): 2160077
+    refund: 104700
+    measured gas: 2213030
+
+[PASS] test_gas_replaceFiveMixed() (gas: 14224118)
+Logs:
+  upkeep: reconcile + replace 5 Shapes across 4 denominations
+    billed gas (after refund): 2627054
+    refund: 127500
+    measured gas: 2702807
+
+[PASS] test_gas_replaceFivePacks() (gas: 20896579)
+Logs:
+  upkeep: reconcile + replace 5 three-Shape packs (staged)
+    billed gas (after refund): 1421857
+    refund: 113500
+    measured gas: 1483610
+
+[PASS] test_gas_replaceOne() (gas: 8016872)
+Logs:
+  upkeep: reconcile + replace 1 Shape
+    billed gas (after refund): 842092
+    refund: 61500
+    measured gas: 851846
+
+[PASS] test_gas_unlistShapes20() (gas: 12755099)
+Logs:
+  unlistShapes(20): withdraw + redeem 20 Shapes (creator)
+    billed gas (after refund): 2625872
+    refund: 656467
+    measured gas: 0
+
+[PASS] test_gas_worstCaseUpkeep() (gas: 70554274)
+Logs:
+  WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 2 three-Shape packs
+    billed gas (after refund): 1575742
+    refund: 113500
+    measured gas: 1637495
+    actual gas used (measured span + overhead): 1676366
+
+[PASS] test_gas_worstCaseUpkeepFullUnits() (gas: 65767443)
+Logs:
+  WORST CASE upkeep: reconcile 5 draws + mint/list 5 Shapes in 4 sizes
+    billed gas (after refund): 2626528
+    refund: 119100
+    measured gas: 2693881
+
+[PASS] test_gas_worstCaseUpkeepFullUnits_1000Prizes() (gas: 1026503259)
+Logs:
+  WORST CASE upkeep at 1,000 prizes and 100 NFTs
+    billed gas (after refund): 2592305
+    refund: 119100
+    measured gas: 2659658
+
+[PASS] test_gas_worstCaseUpkeepFullUnits_200Prizes() (gas: 209442094)
+Logs:
+  WORST CASE upkeep at 200 prizes and 20 NFTs
+    billed gas (after refund): 2592260
+    refund: 119100
+    measured gas: 2659613
+
+[PASS] test_gas_worstCaseUpkeepShapes() (gas: 60811663)
+Logs:
+  WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 5 Shapes
+    billed gas (after refund): 2744397
+    refund: 127500
+    measured gas: 2820150
+    actual gas used (measured span + overhead): 2895640
+
+[PASS] test_gas_worstCaseUpkeepSixSizes() (gas: 67747925)
+Logs:
+  WORST CASE upkeep: reconcile 5 draws + mint/list 4 Shapes in 4 sizes
+    billed gas (after refund): 2243610
+    refund: 116300
+    measured gas: 2308163
+
+[PASS] test_profitAtCap_curatedReconcilePaid() (gas: 7781145)
+Logs:
+  reconcile 1 curated draw
+    billed gas: 207913
+    keeper PnL (ETH): 0.000110170000000000
+
+[PASS] test_profitAtCap_fillSteps() (gas: 21265119)
+Logs:
+  fill step
+    billed gas: 2577259
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2513720
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2569798
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2493671
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2531650
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2493722
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2578389
+    keeper PnL (ETH): 0.000232655000000000
+  fill step
+    billed gas: 2523203
+    keeper PnL (ETH): 0.000232655000000000
+
+[PASS] test_profitAtCap_replaceFiveMixed() (gas: 14226134)
+Logs:
+  replace 5 Shapes, 4 denominations, listed at the cap
+    billed gas: 2627195
+    keeper PnL (ETH): 0.000828665000000000
+
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 524.52s (621.00s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveCapital.t.sol:ReserveCapitalTest
+[PASS] test_exactMinimumMixed47PaidBootstrap() (gas: 29650001)
+Logs:
+  exact minimum opening: 1.790920000000000000
+  actual setup reward: 0.016600748450000000
+  actual setup billed gas: 27780651
+  largest reached upkeep billed gas: 2560810
+  paid setup calls: 12
+  stocked reserve: 0.003680000000000000
+
+[PASS] test_exactMinimumThousandExpensivePackPaidBootstrap() (gas: 562859335)
+Logs:
+  exact minimum opening: 84.883280000000000000
+  actual setup reward: 0.334645738750000000
+  actual setup billed gas: 560570965
+  largest reached upkeep billed gas: 2645320
+  paid setup calls: 240
+  stocked reserve: 0.003680000000000000
+
+[PASS] test_exactMinimumTwentyShapeOpeningAndPaidSetup() (gas: 12211790)
+Logs:
+  exact twenty opening: 0.235600000000000000
+  actual twenty setup reward: 0.006041158050000000
+  actual setup billed gas: 10150575
+  stocked reserve: 0.003680000000000000
+  post setup withdrawable: 0.005878841950000000
+
+[PASS] test_expensiveTopPrizeDoesNotNeedDuplicateBacking() (gas: 12052613)
+Logs:
+  top prize opening: 100.225600000000000000
+
+[PASS] test_feeAndCapSensitiveBoundForActualWork() (gas: 9826)
+[PASS] test_listedCreatorMarkupIsBookedBeforeTheExpensiveDeficitIsReconciled() (gas: 14771643)
+[PASS] test_nineOutstandingDrawsAreReservedFromActualSequences() (gas: 18570229)
+[PASS] test_partialExpensiveDeficitCanTradeAndMarkupEditDoesNotRestartSetup() (gas: 15494684)
+[PASS] test_refundReconciliationMaySpendBelowWorkingTarget() (gas: 14607266)
+[PASS] test_unpaidBootstrapNeedsOnlyActualInventoryAndDelayedReenableFunding() (gas: 12062420)
+[PASS] test_writeImmutableEnforcementFixture() (gas: 39451)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 556.90s (633.13s CPU time)
+
+Ran 32 test suites in 561.80s (3300.59s CPU time): 198 tests passed, 7 failed, 0 skipped (205 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/Balancer.t.sol:BalancerTest
+[FAIL: EvmError: Revert] test_factory_isolatedBalancersAndPools() (block: 26382349) (gas: 157845)
+
+Encountered 1 failing test in test/EconFork.t.sol:EconForkTest
+[FAIL: no 0.5 Shape listed] test_econBigWin() (block: 26382349) (gas: 911517821)
+
+Encountered 2 failing tests in test/Reserve.t.sol:ReserveTest
+[FAIL: unlisting Shapes collects first: the split is the honest one: 0 != 865219881744952] test_listingNFTsBeforeCollectionCannotMoveFundMoney() (block: 26382349) (gas: 8372351)
+[FAIL: NoUpkeepNeeded()] test_unclaimedProfitRestocksWhenTheFundIsEmpty() (block: 26382349) (gas: 99728658)
+
+Encountered 3 failing tests in test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[FAIL: InvalidItem()] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (block: 26382349) (gas: 19127614)
+[FAIL: assertion failed: 4130705967022721 <= 2758869391401136051] test_policyFundingExcludesRealBookedProfitAndSwitchKeepsOldPrices() (block: 26382349) (gas: 32084103)
+[FAIL: InvalidItem()] test_unpaidRecoveryCanSpendBookedProfitButPaidKeeperCannot() (block: 26382349) (gas: 14924503)
+
+Encountered a total of 7 failing tests, 198 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 7 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

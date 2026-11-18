@@ -12,7 +12,6 @@ library PoolInventory {
         uint8 kind;
         uint8 denom;
         uint8 state;
-        uint16 markupBps; // Shape markup when listed (zero for curated): the creator's part of its price is its backing x this
         uint104 base; // creator value (curated) or the price less its restocking fees: backing, mint fees, markup (Shape)
         uint104 price; // price listed on FWA
     }
@@ -22,8 +21,6 @@ library PoolInventory {
         uint256[] activeIds;
         mapping(uint256 => uint256) activeIndexPlusOne;
         uint16[16] activeShapes;
-        uint256 profitShareSum;
-        uint256 listedFees;
         uint256 listedPrizes;
         uint256 shapeStageUpper;
     }
@@ -115,7 +112,7 @@ library PoolInventory {
         return 0;
     }
 
-    function listCurated(State storage s, IFWAPool pool, address shapes, address packs,
+    function listCurated(State storage s, IFWAPool pool, address shapes, address packs, address source,
         PoolBalancer.CuratedInput[] calldata inputs) public returns (uint256[] memory listingIds)
     {
         uint256 n = inputs.length;
@@ -127,7 +124,7 @@ library PoolInventory {
             PoolBalancer.CuratedInput calldata c = inputs[i];
             if (c.collection == shapes || c.collection == packs) revert ShapesNotCurated();
             IERC721Min token = IERC721Min(c.collection);
-            token.transferFrom(msg.sender, address(this), c.tokenId);
+            token.transferFrom(source, address(this), c.tokenId);
             if (token.ownerOf(c.tokenId) != address(this)) revert InvalidItem();
             token.approve(address(pool), c.tokenId);
             _checkValue(c.base);
@@ -136,7 +133,7 @@ library PoolInventory {
         listingIds = pool.listNFTs(batch);
         for (uint256 i; i < n; ++i) {
             uint256 lid = listingIds[i];
-            s.items[lid] = Item(1, 0, ACTIVE, 0, uint104(inputs[i].base), uint104(inputs[i].base));
+            s.items[lid] = Item(1, 0, ACTIVE, uint104(inputs[i].base), uint104(inputs[i].base));
             addActive(s, lid);
             emit CuratedListed(lid, inputs[i].collection, inputs[i].tokenId, inputs[i].base, inputs[i].base);
         }
@@ -266,7 +263,7 @@ library PoolInventory {
         for (uint256 i; i < n; ++i) {
             uint8 d = sizes[i];
             uint256 base = _prizeBase(d, fee, markup);
-            st.items[lids[i]] = PoolInventory.Item(SHAPE, d, ACTIVE, uint16(markup), uint104(base), uint104(batch[i].price));
+            st.items[lids[i]] = PoolInventory.Item(SHAPE, d, ACTIVE, uint104(base), uint104(batch[i].price));
             addActive(st, lids[i]);
             ++st.activeShapes[d];
             added += _weight(d);
@@ -291,22 +288,18 @@ library PoolInventory {
     function addActive(State storage s, uint256 lid) public {
         Item storage it = s.items[lid];
         if (it.kind == SHAPE) {
-            s.listedFees += uint256(it.price) - it.base;
             ++s.listedPrizes;
         }
         s.activeIds.push(lid);
         s.activeIndexPlusOne[lid] = s.activeIds.length;
-        s.profitShareSum += _share(it);
     }
     function removeActive(State storage s, uint256 lid) public {
         uint256 idx = s.activeIndexPlusOne[lid];
         if (idx == 0) revert InvalidItem();
         Item storage it = s.items[lid];
         if (it.kind == SHAPE) {
-            s.listedFees -= uint256(it.price) - it.base;
             --s.listedPrizes;
         }
-        s.profitShareSum -= _share(it);
         uint256 lastId = s.activeIds[s.activeIds.length - 1];
         s.activeIds[idx - 1] = lastId;
         s.activeIndexPlusOne[lastId] = idx;
@@ -314,10 +307,6 @@ library PoolInventory {
         delete s.activeIndexPlusOne[lid];
     }
 
-    function _share(Item storage it) internal view returns (uint256) {
-        if (it.kind == 1) return 0;
-        return _amount(it.denom) * (it.markupBps - 1_000) * 1e18 / (10_000 * it.price);
-    }
     function _weight(uint256 d) internal pure returns (uint256) { return 1e36 / _amount(d); }
     function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
         return _cost(d, fee) + _amount(d) * markup / 10_000;

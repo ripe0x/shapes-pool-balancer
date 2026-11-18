@@ -58,7 +58,7 @@ contract AttackB is ForkBase {
         for (uint256 i; i < 200; ++i) {
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh1) {} catch { break; }
+            try balancer.performUpkeep(uh1, 0, 0) {} catch { break; }
         }
         assertEq(balancer.admissionStatus(), 0, "open");
     }
@@ -183,9 +183,9 @@ contract AttackB is ForkBase {
                 markupAbove10 += balancer.denominationAmount(d) * 1500 / 10_000;
             }
             proceeds += pool.ownerProceeds();
-            uint256 p0 = balancer.profit();
+            uint256 p0 = balancer.creatorCredit();
             fillUp();
-            uint256 p1 = balancer.profit();
+            uint256 p1 = balancer.creatorCredit();
             if (p1 > p0) creditedTotal += p1 - p0;
             uint256 w = balancer.withdrawableSurplus();
             if (w != 0) { vm.prank(creator); balancer.claimSurplus(w, creator); claimed += w; }
@@ -195,7 +195,7 @@ contract AttackB is ForkBase {
         console.log("of which credited as profit (wei)", creditedTotal);
         console.log("markup above 10% on Shape prizes won (wei)", markupAbove10);
         console.log("backing of Shape prizes won (wei)", wonBacking);
-        console.log("fund at end, requiredReserve", address(balancer).balance - balancer.profit(), balancer.requiredReserve());
+        console.log("fund at end, requiredReserve", address(balancer).balance - balancer.creatorCredit(), balancer.requiredReserve());
     }
 
     /// @dev R15 / O5 from the worst creator state: the creator has claimed everything, then the 0.5 ETH Shape is won
@@ -225,7 +225,7 @@ contract AttackB is ForkBase {
         uint16[16] memory a = balancer.getActiveShapes();
         console.log("0.5 ETH Shapes listed after two wins (target 1)", a[3]);
         console.log("admission status", balancer.admissionStatus());
-        console.log("fund, requiredReserve", address(balancer).balance - balancer.profit(), balancer.requiredReserve());
+        console.log("fund, requiredReserve", address(balancer).balance - balancer.creatorCredit(), balancer.requiredReserve());
         // Add ETH: the dashboard's first response
         vm.prank(creator);
         balancer.depositETH{value: 1 ether}();
@@ -266,7 +266,7 @@ contract AttackB is ForkBase {
             bytes32 uh2 = balancer.settingsHash();
             uint256 g = gasleft();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh2) returns (uint256 reward) {
+            try balancer.performUpkeep(uh2, 0, 0) returns (uint256 reward) {
                 uint256 used = g - gasleft();
                 if (used > maxGas) maxGas = used;
                 console.log("upkeep gas", used, "reward wei", reward);
@@ -309,7 +309,7 @@ contract AttackB is ForkBase {
             ++sold;
             bytes32 uh3 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh3) {
+            try balancer.performUpkeep(uh3, 0, 0) {
                 revert("unapproved keeper ran upkeep");
             } catch {}
         }
@@ -321,7 +321,7 @@ contract AttackB is ForkBase {
         for (uint256 i; i < 10; ++i) {
             bytes32 uh4 = balancer.settingsHash();
             vm.prank(creator, creator);
-            try balancer.performUpkeep(uh4) {} catch { break; }
+            try balancer.performUpkeep(uh4, 0, 0) {} catch { break; }
         }
         if (balancer.admissionStatus() == 3) listCurated(4000, 0.2 ether);
         assertEq(balancer.admissionStatus(), 0, "creator upkeep reopens sales");
@@ -395,7 +395,7 @@ contract AttackB is ForkBase {
             bytes32 uh5 = balancer.settingsHash();
             uint256 g = gasleft();
             vm.prank(keeper, keeper);
-            uint256 reward = balancer.performUpkeep(uh5);
+            uint256 reward = balancer.performUpkeep(uh5, 0, 0);
             uint256 cost = ReceiptGas.lastBilled() * 5 gwei;
             console.log("reward", reward, "cost", cost);
             if (reward < cost) short += cost - reward;
@@ -416,7 +416,7 @@ contract AttackB is ForkBase {
         bytes32 uh6 = balancer.settingsHash();
         uint256 g = gasleft();
         vm.prank(keeper, keeper);
-        try balancer.performUpkeep(uh6) returns (uint256 reward) {
+        try balancer.performUpkeep(uh6, 0, 0) returns (uint256 reward) {
             uint256 used = g - gasleft() + 21_000;
             uint256 most = (used + 50_000) * price + 0.0001 ether;
             return (reward > most ? reward - most : 0, true);
@@ -516,7 +516,7 @@ contract AttackB is ForkBase {
             // the keeper runs while this draw is in flight: the restock of earlier wins is staged
             bytes32 uh7 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh7) {} catch {}
+            try balancer.performUpkeep(uh7, 0, 0) {} catch {}
             uint256[] memory r2;
             if (balancer.admissionStatus() == 0) {
                 // a second player buys while the first draw is unsettled: this request reserves the staged restock
@@ -541,7 +541,7 @@ contract AttackB is ForkBase {
         console.log("processed", n, "gas for processAcquisitions(5)", g - gasleft());
         bytes32 uh8 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep(uh8);
+        uint256 reward = balancer.performUpkeep(uh8, 0, 0);
         console.log("following upkeep reward (wei)", reward);
         console.log("admission status after", balancer.admissionStatus());
     }

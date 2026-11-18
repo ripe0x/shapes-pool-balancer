@@ -23,7 +23,7 @@ contract RefundingKeeper {
         for (uint256 i; i < 64; ++i) {
             junk[i] = 0;
         }
-        reward = b.performUpkeep(settingsHash);
+        reward = b.performUpkeep(settingsHash, 0, 0);
     }
 
     receive() external payable {}
@@ -92,7 +92,7 @@ contract KeeperAdversarialTest is ForkBase {
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(atk, atk);
             uint256 g = gasleft();
-            try balancer.performUpkeep(uh1) returns (uint256 r) {
+            try balancer.performUpkeep(uh1, 0, 0) returns (uint256 r) {
                 pnl += int256(r) - int256((g - gasleft() + 21_000) * BASEFEE);
             } catch {
                 break;
@@ -138,7 +138,7 @@ contract KeeperAdversarialTest is ForkBase {
         bytes32 generation=balancer.settingsHash();
         uint256 sequence=balancer.reconciledSequence();
         vm.recordLogs();
-        vm.prank(keeper,keeper);reward=balancer.performUpkeep{gas:gasLimit}(generation);
+        vm.prank(keeper,keeper);reward=balancer.performUpkeep{gas:gasLimit}(generation, 0, 0);
         billed=ReceiptGas.lastBilled();
         Vm.Log[] memory logs=vm.getRecordedLogs();
         units=balancer.reconciledSequence()-sequence;
@@ -163,7 +163,7 @@ contract KeeperAdversarialTest is ForkBase {
         bytes32 uh4 = balancer.settingsHash();
         uint256 snap = vm.snapshotState();
         vm.prank(keeper, keeper);
-        uint256 plain = balancer.performUpkeep(uh4);
+        uint256 plain = balancer.performUpkeep(uh4, 0, 0);
         vm.revertToState(snap);
         uint256 viaRefunds = rk.run(balancer, uh4);
         assertApproxEqAbs(viaRefunds, plain, 1_000 * BASEFEE + 1, "pool pays for its own work only");
@@ -281,7 +281,7 @@ contract KeeperAdversarialTest is ForkBase {
         bytes32 uh5 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(atk, atk);
-        uint256 reward = balancer.performUpkeep(uh5);
+        uint256 reward = balancer.performUpkeep(uh5, 0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         uint256 gasPaid;
         for (uint256 i; i < logs.length; ++i) {

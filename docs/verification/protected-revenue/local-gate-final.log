@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 636ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  333ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  11:12:25
+   Duration  1.30s (transform 27ms, setup 0ms, collect 462ms, tests 636ms, environment 0ms, prepare 35ms)

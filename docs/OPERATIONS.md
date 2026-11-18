@@ -1,6 +1,7 @@
 # Operations and recovery
 
-> **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
+Current operations, 2026-11-18. See [SPEC.md](SPEC.md), [KEEPER-POLICIES.md](KEEPER-POLICIES.md) and
+[implementation evidence](PROTECTED-REVENUE-RESULTS.md). Historical reports validate only their named revisions.
 
 Status codes come from `admissionStatus()`; the dashboard shows them as text.
 
@@ -8,7 +9,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | --- | --- | --- | --- |
 | 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | CLOSED | Closed by creator | `open()` |
-| 2 | SETTING_UP | A creator action (configure, open, unlist) started restocking work | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
+| 2 | SETTING_UP | Initial stocking or reopening setup is unfinished | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
 | 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
@@ -28,7 +29,7 @@ If actual staging remains after all draws settle, the dashboard's bounded activa
 
 Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`, `STATE_FILE`, and the keeper's signing identity through the existing environment/secret store, then run `npm run keeper`. Never place a private key in a command literal, file, or log. `KEEPER_ADDRESS` selects an unlocked account for isolated local forks only.
 
-- Each tick discovers all pools created by the factory and reads each pool's selected policy, payment state, and generation hash. It simulates the actual offered reward with fee fields and the same executable gas limit it would send. Core-compatible new policies need no keeper code change. Optional linear metadata only informs bidding caps; unknown policies use the operator's cap.
+- Each tick discovers all pools created by the factory and reads each pool's selected policy, payment state, and generation hash. It simulates the actual offered reward with fee fields and the same executable gas limit it would send. Core-compatible new policies need no keeper code change. Bidding caps are operator configuration; policy economics are learned only through bounded quotes and complete transaction simulation. No settings metadata is read.
 - The send condition budgets execution expense, `OPERATING_COST_WEI`, and the configured `MAX_LOSS_WEI` (default 0.0002 ETH per attempted successful call). Setting the loss allowance to zero requests no modeled loss; it does not guarantee inclusion or profit. Failed attempts remain operator costs and are included in receipt stats.
 - `eth_estimateGas` sets the executable limit with 30% headroom and a 4M floor, bounded by EIP-7825's 16,777,216. It is not the gas ultimately billed. An optional top-level `debug_traceCall` estimates billed expense; receipt comparisons report its calibration. If tracing is unavailable, estimation is conservative and may skip profitable work. No formula is recovered by dividing compensation or listing fees.
 - Paid calls use `performUpkeep(settingsHash, minimumFixed, minimumGas)`: minimumFixed budgets operating costs, while minimumGas budgets traced/estimated billed gas less a conservative conversion of the configured loss allowance. The atomic floor follows the transaction's actual included gas price, avoiding false fixed-wei reverts when basefee falls. Quote failure, stale policy generation, disabled payments, insufficient operating funds/allowance, or reward below the minimum reverts all work. Another caller can change work between simulation and inclusion, so atomic checks protect the minimum, not the operator's spent gas.
@@ -46,13 +47,26 @@ Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`
 
 Paid work can consume the buffer, and partial targets may trade while the real weight gate permits. If admission is paused and no proceeds remain, further demand cannot restart it. Use Add ETH, reduce the target or close. A large missing prize may take an unknown number of actual purchases to replenish; do not assume automatic creator deposits or NFT replacement. The dashboard identifies missing prizes and actual withdrawable capital.
 
-Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Booked creator markup is excluded from paid mint/payment affordability. Its current-board allocation remains an approximation under concurrent settlement; measured gas/policy drift is reported in [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md), not described as a universal 0.001 ETH limit.
+Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Creator credit is excluded from every paid and unpaid mint/payment affordability check. It stays withdrawable during depletion. Collection uses the stored revenue rate; listing turnover never recomputes that rate.
+
+## Collect and claim earnings
+
+`collectProceeds()` permissionlessly pulls actual FWA owner proceeds and credits the stored creator percentage, even
+after closing. `creatorCredit()` is accrued withdrawable earnings, separate from capital surplus. Claim any amount up
+to it using `claimSurplus(amount, to)` without collecting or reading a policy/reserve/mint fee. The earnings button
+remains available when quotes or historical RPC scans fail. A larger capital withdrawal requires the full reserve.
+
+To change allocation, the creator explicitly calls `setCreatorRevenueBps(newBps)` (0 to 10,000): it collects available
+proceeds at the old rate and then saves the new one. Pending purchases collected afterward use the new rate. Inventory,
+markup, gas and policy changes never change it. At 100%, all collected revenue is earnings; operations receive none.
+History and failed-delivery discovery load separately with their own errors. A historical failure is a gap in that
+history view, not a reason to disable current claims, maintenance, closing or policy recovery.
 
 ## Adopt a policy
 
 1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer.
 2. Creator: `proposeKeeperPolicy(candidate)`. Observe `KeeperPolicyProposed` and `policyActivationTime`.
-3. Deposit any shortfall with `depositETH()`. Old prices never change. The fund excludes booked creator profit.
+3. `policyFunding` returns candidate maintenance budget and activation shortfall. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
 4. After two days, anyone: `activateKeeperPolicy()`. Funding and compatibility are checked again atomically.
 5. Creator may `cancelKeeperPolicy()` or `setPaidUpkeepEnabled(false)` immediately. Reenabling requires delayed activation, even with the same policy. Ownership acceptance cancels the former creator's proposal.
 
@@ -100,7 +114,7 @@ show when a fee makes the configuration uneconomic.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.
-5. `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except the current operation-sensitive reconciliation budget for each actual unreconciled draw while paid upkeep remains enabled. Run upkeep (or wait for a keeper), then claim the rest.
+5. `collectProceeds()` separately, then `claimSurplus(withdrawableSurplus(), to)`; while closed everything is claimable except the current operation-sensitive reconciliation budget for each actual unreconciled draw while paid upkeep remains enabled. Run upkeep (or wait for a keeper), then claim the rest.
 6. Optional and permanent: `retire()`.
 
 ## FWA pool page

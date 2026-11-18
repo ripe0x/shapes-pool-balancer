@@ -96,7 +96,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal vrfPaid;
     uint256 internal refundsWithdrawn;
     uint256 internal proceedsCollected;
-    uint256 internal profitCredited;
+    uint256 internal creatorCreditAccrued;
     uint256 internal backingMinted;
     uint256 internal backingRedeemed;
     uint256 internal backingWon;
@@ -112,7 +112,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal feesReceived; // request-board surcharge component of fulfilled FWA owner proceeds
     uint256 internal ownerProceedsRealized;
     uint256 internal feesUnlisted;
-    uint256 internal markupWon; // full markup on the backing of Shape prizes won
     uint256 internal redeemGap;
 
     // run facts
@@ -163,26 +162,22 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256[4] internal phaseSkipped;
     uint256[4] internal phaseQuote;
 
-    // split check (restock_in_flight): the creator's profit for each draw, computed independently from the FWA board
-    // the draw was priced on, against what the Balancer books when it collects
-    bool internal splitCheck;
+    // Collection checks compare actual cash received with the explicitly stored creator percentage.
+    bool internal creditCheck = true;
     mapping(uint256 id => uint256) internal drawBase; // FWA owner proceeds for the draw: sum(w*p)/sum(w), active listings
-    mapping(uint256 id => uint256) internal drawShare; // drawBase x sum(markup above 10% / price) over them / count
     mapping(uint256 id => uint256) internal drawFee;
     mapping(uint256 id => uint256) internal actualDrawProceeds;
     uint256[] internal allIds;
     uint256 internal uncollectedBase;
-    uint256 internal uncollectedShare;
-    uint256 internal splitChecks;
-    uint256 internal splitZeroBooked;
-    uint256 internal splitExpected;
-    uint256 internal splitBooked;
-    uint256 internal splitOver;
-    uint256 internal splitUnder;
-    uint256 internal splitMaxErrorBps;
+    uint256 internal creditChecks;
+    uint256 internal creditZeroBooked;
+    uint256 internal creditExpected;
+    uint256 internal creditBooked;
+    uint256 internal creditOver;
+    uint256 internal creditUnder;
     uint256 internal proceedsMismatch;
     uint256 internal maxInFlightAtRestock;
-    struct BoardAmounts { uint256 weight; uint256 price; uint256 count; uint256 share; uint256 withoutSurcharge; }
+    struct BoardAmounts { uint256 weight; uint256 price; uint256 withoutSurcharge; }
 
     // E9 what-ifs on large_win: the creator acts once, right after the second top prize is won
     uint256 internal daysTopMissing;
@@ -215,7 +210,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     function test_breakdown_policySwitch() public {
         Snap memory a = _launch();
-        splitCheck = true;
+        creditCheck = true;
         for (uint256 i; i < 6; ++i) _single(i);
         uint256[] memory listed = balancer.getActiveIds();
         uint256[] memory prices = new uint256[](listed.length);
@@ -227,15 +222,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertEq(pool.unsettledAcquisitionCount(), 1);
         vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertGt(shortfall, 0, "the current outstanding-draw funding target is explicitly met before activation");
-        vm.prank(creator); balancer.depositETH{value: shortfall}();
-        deposited += shortfall;
+        assertEq(required, 0.00508 ether, "one outstanding request and one operating call at 0.5 gwei");
+        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no activation top-up");
         vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
         vm.warp(vm.getBlockTimestamp() + 2 days);
         vm.prank(stranger); balancer.activateKeeperPolicy();
         assertEq(balancer.keeperPolicy(), address(v2));
         alternativePolicy = true;
-        assertGe(address(balancer).balance - balancer.profit(), required);
+        assertLt(address(balancer).balance - balancer.creatorCredit(), required, "existing underfunding does not block equal-exposure replacement");
         uint256 repriced;
         for (uint256 i; i < listed.length; ++i) {
             (,,,,, uint256 price,,) = pool.listings(listed[i]);
@@ -617,7 +611,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         );
         x[5] = Fact("top_prizes_listed_at_end", balancer.getActiveShapes()[TOP]);
         x[6] = Fact("claimed_right_after_setup_wei", claimedAtSetup);
-        x[7] = Fact("profit_claimed_wei", profitCredited - balancer.profit());
+        x[7] = Fact("creator_credit_claimed_wei", creatorCreditAccrued - balancer.creatorCredit());
         // at day 30, after the creator's last daily claim
         x[8] = Fact("end_backing_listed_wei", _backingListed());
         x[9] = Fact("end_held_in_balancer_wei", address(balancer).balance);
@@ -777,30 +771,28 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     /// @dev Same inputs bought five at a time, with keepers running after every single settlement, so each restock
-    ///      lists while one to four draws are still unsettled and FWA stages it. Every collection is checked against
-    ///      the split computed from the board each draw was priced on (see `_boardQuote`).
+    ///      lists while one to four draws are still unsettled and FWA stages it. Every collection uses the stored rate.
     function test_breakdown_restockInFlight() public {
         Snap memory a = _launch();
-        splitCheck = true;
+        creditCheck = true;
         _runInFlight(0, DRAWS);
         // reached: restocks were made and staged while draws were unsettled, and collections were checked
         assertGt(upkeepsWhileUnsettled, 0, "upkeep ran while draws were unsettled");
         assertGt(restocksStaged, 0, "restocks listed while draws were unsettled");
         assertGe(maxInFlightAtRestock, 3, "a restock listed with at least three draws unsettled");
-        assertGt(splitChecks, 0, "all collections were checked, including zero bookings");
-        assertGt(splitExpected, 0, "the reached purchase boards owe positive creator profit");
-        Fact[] memory x = new Fact[](11);
-        x[0] = Fact("split_collections_checked", splitChecks);
-        x[1] = Fact("split_collections_zero_booked", splitZeroBooked);
-        x[2] = Fact("split_expected_wei", splitExpected);
-        x[3] = Fact("split_booked_wei", splitBooked);
-        x[4] = Fact("split_overbooked_wei", splitOver);
-        x[5] = Fact("split_underbooked_wei", splitUnder);
-        x[6] = Fact("split_max_error_bps", splitMaxErrorBps);
-        x[7] = Fact("owner_proceeds_vs_board_price_mismatch_wei", proceedsMismatch);
-        x[8] = Fact("max_draws_unsettled_at_a_staged_restock", maxInFlightAtRestock);
-        x[9] = Fact("restocks_staged_while_unsettled_checked", restocksStaged);
-        x[10] = Fact("split_absolute_error_wei", splitOver + splitUnder);
+        assertGt(creditChecks, 0, "all collections were checked, including zero bookings");
+        assertGt(creditExpected, 0, "the reached purchase boards owe positive creator profit");
+        Fact[] memory x = new Fact[](10);
+        x[0] = Fact("credit_collections_checked", creditChecks);
+        x[1] = Fact("credit_collections_zero_booked", creditZeroBooked);
+        x[2] = Fact("credit_expected_wei", creditExpected);
+        x[3] = Fact("credit_booked_wei", creditBooked);
+        x[4] = Fact("credit_overbooked_wei", creditOver);
+        x[5] = Fact("credit_underbooked_wei", creditUnder);
+        x[6] = Fact("owner_proceeds_vs_board_price_mismatch_wei", proceedsMismatch);
+        x[7] = Fact("max_draws_unsettled_at_a_staged_restock", maxInFlightAtRestock);
+        x[8] = Fact("restocks_staged_while_unsettled_checked", restocksStaged);
+        x[9] = Fact("creator_credit_error_wei", creditOver + creditUnder);
         _done("restock_in_flight", a, x);
     }
 
@@ -852,33 +844,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         emit log_named_decimal_uint("actual keeper play reward", keeperPaidPlay, 18);
     }
 
-    function test_evidence_zeroBookingIsCountedAsUnderpayment() public {
-        // Unit check of the report's own comparison, without substituting any protocol response.
-        uncollectedBase = 1 ether;
-        uncollectedShare = 0.01 ether;
-        _checkSplit(1 ether, 0);
-        assertEq(splitChecks, 1);
-        assertEq(splitZeroBooked, 1);
-        assertEq(splitExpected, 0.01 ether);
-        assertEq(splitBooked, 0);
-        assertEq(splitUnder, 0.01 ether);
-        assertEq(splitOver, 0);
-        assertGt(splitOver + splitUnder, 0.001 ether, "zero profit fails the existing split-error bound");
-    }
-
-    function test_evidence_bothErrorDirectionsRemainVisible() public {
-        uncollectedBase = 1 ether;
-        uncollectedShare = 0.01 ether;
-        _checkSplit(1 ether, 0.011 ether);
-        uncollectedBase = 1 ether;
-        uncollectedShare = 0.01 ether;
-        _checkSplit(1 ether, 0.009 ether);
-        assertEq(splitChecks, 2);
-        assertEq(splitOver, 0.001 ether);
-        assertEq(splitUnder, 0.001 ether);
-        assertEq(splitOver + splitUnder, 0.002 ether, "opposite errors must not cancel or hide underbooking");
-    }
-
     // ------------------------------------------------------------------ driver
 
     /// @dev Sets and proves the gas context, then the creator's whole setup, inside the measured window.
@@ -912,15 +877,16 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _account(allIds);
         assertEq(ownerProceedsRealized, proceedsCollected + pool.ownerProceeds(), "fulfilled request bases equal actual FWA owner proceeds");
         assertLe(feesReceived, ownerProceedsRealized, "surcharge is a component of realized proceeds, not extra cash");
-        if (splitCheck) {
-            assertGt(splitExpected, 0, "split comparison reaches positive creator entitlement");
-            assertLe(splitOver + splitUnder, 0.001 ether, "both split error directions satisfy the existing absolute bound");
+        if (creditCheck) {
+            assertEq(creditBooked, creatorCreditAccrued, "all actual creator credit is included in collection checks");
+            assertEq(creditOver + creditUnder, 0, "every collection allocates the exact stored rate");
         }
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 65;
+        uint256 n = 66;
         Fact[] memory f = new Fact[](n + extra.length);
+        f[65] = Fact("creator_credit_error_wei", creditOver + creditUnder);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
         f[2] = Fact("draws_expired", expired);
@@ -958,9 +924,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[33] = Fact("restock_fees_listed_wei", feesListed);
         f[34] = Fact("selected_listing_restock_fees_won_wei", selectedFeesWon);
         f[35] = Fact("restock_fees_outstanding_wei", feesListed - selectedFeesWon - feesUnlisted);
-        f[36] = Fact("profit_credited_wei", profitCredited);
-        f[37] = Fact("profit_share_of_proceeds_bps", proceedsCollected == 0 ? 0 : profitCredited * 10_000 / proceedsCollected);
-        f[38] = Fact("creator_markup_ceiling_on_prizes_won_wei", markupWon * (MARKUP_BPS - 1000) / MARKUP_BPS);
+        f[36] = Fact("creator_credit_accrued_wei", creatorCreditAccrued);
+        f[37] = Fact("creator_credit_share_of_proceeds_bps", proceedsCollected == 0 ? 0 : creatorCreditAccrued * 10_000 / proceedsCollected);
+        f[38] = Fact("creator_revenue_bps", balancer.creatorRevenueBps());
         f[39] = Fact("creator_deposited_wei", deposited);
         f[40] = Fact("creator_claimed_wei", claimed);
         f[41] = Fact("admission_status_at_end", balancer.admissionStatus());
@@ -1098,11 +1064,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
-    /// @dev Independent of the Balancer's counters: FWA's owner proceeds per draw are sum(weight x price) / sum(weight)
-    ///      over its active listings (StandardPool, `weightedBackingTotal / totalWeight`), and the creator's part is
-    ///      that times the average, over the same listings, of each Shape prize's markup above 10% as a fraction of its
-    ///      price (zero for an NFT). This regime never changes the markup, so every Shape prize carries MARKUP_BPS.
-    function _boardQuote() internal view returns (uint256 base, uint256 share, uint256 surcharge) {
+    /// @dev Independently reconstruct actual FWA owner proceeds and the request-board fee component.
+    ///      Neither amount assigns creator credit: only actual collection at the stored rate does that.
+    function _boardQuote() internal view returns (uint256 base, uint256 surcharge) {
         BoardAmounts memory b;
         for (uint256 lid = 1;; ++lid) {
             (,,,, uint256 weight, uint256 price,, uint8 status) = pool.listings(lid);
@@ -1110,16 +1074,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             if (status != 1) continue;
             b.weight += weight;
             b.price += weight * price;
-            ++b.count;
-            (uint8 kind, uint8 d,,, uint112 itemPrice) = balancer.items(lid);
-            if (kind == SHAPE_KIND) {
-                assertEq(itemPrice, price, "the Balancer's price is FWA's");
-                b.share += balancer.denominationAmount(d) * (MARKUP_BPS - 1000) * 1e18 / (10_000 * price);
-            }
+            (uint8 kind,,,, uint112 itemPrice) = balancer.items(lid);
+            if (kind == SHAPE_KIND) assertEq(itemPrice, price, "the Balancer's price is FWA's");
             b.withoutSurcharge += weight * (kind == SHAPE_KIND ? price - lidFee[lid] : price);
         }
         base = b.price / b.weight;
-        share = base * b.share / (b.count * 1e18);
         surcharge = base - b.withoutSurcharge / b.weight;
     }
 
@@ -1179,9 +1138,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertEq(before - buyer.balance, total, "the player paid the quote");
         // acquireBatch can activate staging before opening its requests. Snapshot that actual board;
         // its gross owner base is checked against FWA's actual per-request accrual on fulfillment.
-        (uint256 qBase, uint256 qShare, uint256 qFee) = _boardQuote();
+        (uint256 qBase, uint256 qFee) = _boardQuote();
         for (uint256 k; k < ids.length; ++k) {
-            (drawBase[ids[k]], drawShare[ids[k]]) = (qBase, qShare);
+            drawBase[ids[k]] = qBase;
             drawFee[ids[k]] = qFee;
             allIds.push(ids[k]);
         }
@@ -1231,7 +1190,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 done[ids[i]] = true;
                 ++fulfilled;
                 uncollectedBase += drawBase[ids[i]];
-                uncollectedShare += drawShare[ids[i]];
                 ownerProceedsRealized += drawBase[ids[i]];
                 feesReceived += drawFee[ids[i]];
                 (uint8 kind, uint8 d) = (lidKind[lid], lidDenom[lid]);
@@ -1240,7 +1198,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                     assertEq(IERC721Min(col).ownerOf(tokenId), purchaser, "the winner holds the prize");
                     backingWon += _backingOf(col, tokenId);
                     selectedFeesWon += lidFee[lid];
-                    markupWon += balancer.denominationAmount(d) * MARKUP_BPS / 10_000;
                     if (d == TOP) ++topWon;
                 } else if (kind == CURATED_KIND) {
                     ++nftsWon;
@@ -1263,7 +1220,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             _listNft();
             _keeperPass();
         }
-        uint256 fund = address(balancer).balance - balancer.profit();
+        uint256 fund = address(balancer).balance - balancer.creatorCredit();
         uint256 need = balancer.requiredReserve();
         if (need > fund) {
             ++passesWithReserveShort;
@@ -1277,7 +1234,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
     function _act() internal {
         if (actTopUp) {
-            uint256 fund = address(balancer).balance - balancer.profit();
+            uint256 fund = address(balancer).balance - balancer.creatorCredit();
             uint256 need = balancer.requiredReserve();
             if (need > fund) {
                 toppedUp = need - fund;
@@ -1322,14 +1279,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     }
 
     function _upkeep(address who, bool rational) internal returns (uint8) {
-        // measured on its own; performUpkeep collects first anyway, at the same state
-        if (splitCheck) _collectNow();
+        // The production keeper performs its own collection; the driver adds no service call here.
         uint256 ready = this.fwaQueueReady(); // own frame: its memory does not grow this one's
         if (ready > fwaQueueReadyMax) fwaQueueReadyMax = ready;
         uint256 snap = vm.snapshotState();
         uint256 bal0 = address(balancer).balance;
         uint256 op0 = pool.ownerProceeds();
-        uint256 p0 = balancer.profit();
+        uint256 p0 = balancer.creatorCredit();
         uint64 seq0 = balancer.reconciledSequence();
         bool setupWork = balancer.creatorWork();
         uint256 who0 = who.balance;
@@ -1338,7 +1294,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _coolKeeperTx();
         vm.prank(who, who);
         vm.recordLogs();
-        try balancer.performUpkeep(uh2) returns (uint256 reward) {
+        try balancer.performUpkeep(uh2, 0, 0) returns (uint256 reward) {
             uint256 cost = ReceiptGas.lastBilled() * gasNow;
             // proceeds this call collected, from the Balancer's own event (read after the gas is measured): upkeep may
             // settle draws first (D16), so more than was waiting before the call can arrive
@@ -1365,9 +1321,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 claimed += reward;
             }
             proceedsCollected += op0;
-            uint256 p1 = balancer.profit();
-            if (p1 > p0) profitCredited += p1 - p0;
-            if (splitCheck && op0 != 0) _checkSplit(op0, p1 > p0 ? p1 - p0 : 0); // upkeep settled draws itself (D16)
+            uint256 p1 = balancer.creatorCredit();
+            if (p1 > p0) creatorCreditAccrued += p1 - p0;
+            if (creditCheck && op0 != 0) _checkCredit(op0, p1 > p0 ? p1 - p0 : 0); // upkeep settled draws itself (D16)
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
@@ -1498,39 +1454,30 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     function _collectNow() internal {
         uint256 op = pool.ownerProceeds();
         if (op == 0) return;
-        uint256 p0 = balancer.profit();
+        uint256 p0 = balancer.creatorCredit();
         uint256 b0 = address(balancer).balance;
         balancer.collectProceeds();
         assertEq(address(balancer).balance - b0, op, "proceeds arrived in full");
         proceedsCollected += op;
-        uint256 p1 = balancer.profit();
-        if (p1 > p0) profitCredited += p1 - p0;
-        if (splitCheck) _checkSplit(op, p1 > p0 ? p1 - p0 : 0);
+        uint256 p1 = balancer.creatorCredit();
+        if (p1 > p0) creatorCreditAccrued += p1 - p0;
+        if (creditCheck) _checkCredit(op, p1 > p0 ? p1 - p0 : 0);
     }
 
-    /// @dev Checks one collection of `op` proceeds that booked `booked` profit against the split computed from the
-    ///      board each collected draw was priced on. Every draw final by now is booked first: FWA's randomness fast
-    ///      path and upkeep (D16) settle draws before the harness's own `_account` reaches them.
-    function _checkSplit(uint256 op, uint256 booked) internal {
+    /// @dev This is a cash allocation assertion, independent of the board and historical listing prices.
+    function _checkCredit(uint256 op, uint256 booked) internal {
         _account(allIds);
         proceedsMismatch += op > uncollectedBase ? op - uncollectedBase : uncollectedBase - op;
-        assertEq(op, uncollectedBase, "the split compares exactly the requests whose owner proceeds were collected");
-        ++splitChecks;
-        if (booked == 0) ++splitZeroBooked;
-        splitExpected += uncollectedShare;
-        splitBooked += booked;
-        uint256 err;
-        if (booked > uncollectedShare) {
-            err = booked - uncollectedShare;
-            splitOver += err;
-        } else {
-            err = uncollectedShare - booked;
-            splitUnder += err;
-        }
-        if (uncollectedShare != 0 && err * 10_000 / uncollectedShare > splitMaxErrorBps) {
-            splitMaxErrorBps = err * 10_000 / uncollectedShare;
-        }
-        (uncollectedBase, uncollectedShare) = (0, 0);
+        assertEq(op, uncollectedBase, "exactly the actual collected FWA proceeds");
+        uint256 expected = op * balancer.creatorRevenueBps() / 10_000;
+        ++creditChecks;
+        if (booked == 0) ++creditZeroBooked;
+        creditExpected += expected;
+        creditBooked += booked;
+        if (booked > expected) creditOver += booked - expected;
+        else creditUnder += expected - booked;
+        assertEq(booked, expected, "stored percentage applied once, floor residual stays in operating cash");
+        uncollectedBase = 0;
     }
 
     function _recordOwnerAccruals(Vm.Log[] memory logs) internal {
@@ -1685,8 +1632,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 fwaNeed;
         if (address(balancer) != address(0)) {
             bal = address(balancer).balance;
-            profit = balancer.profit();
-            if (profit > bal) profit = bal;
+            profit = balancer.creatorCredit();
+            assertGe(bal, profit, "credit must remain backed");
             need = balancer.requiredReserve();
             uint16[16] memory have = balancer.getActiveShapes();
             for (uint256 d; d < 16; ++d) implied += uint256(have[d]) * balancer.denominationAmount(d);
@@ -1698,7 +1645,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
         uint256 rest = bal - profit;
         uint256 reserve = rest < need ? rest : need;
-        k[0] = Bucket("creator profit (unclaimed)", profit, false, 0, true, profit);
+        k[0] = Bucket("creator credit (unclaimed)", profit, false, 0, true, profit);
         k[1] = Bucket("creator reserve", reserve, false, 0, true, need);
         k[2] = Bucket("fund above the reserve", rest - reserve, false, 0, true, 0);
         uint256 backing = _backingListed();
@@ -1715,6 +1662,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         f[3] = Flow("Balancer -> Shapes and Packs: prize backing | redeemed", backingMinted, true, backingRedeemed);
         f[4] = Flow("Balancer -> keepers: reconcile and restock | request-board surcharge received", keeperPaidPlay, true, feesReceived);
         f[5] = Flow("Balancer -> keepers: creator-started work (creator's ETH)", keeperPaidSetup, false, 0);
-        f[6] = Flow("proceeds -> creator profit: markup above the game's 10%", profitCredited, false, 0);
+        f[6] = Flow("proceeds -> creator credit: stored collection percentage", creatorCreditAccrued, false, 0);
     }
 }

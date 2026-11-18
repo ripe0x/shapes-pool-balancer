@@ -1,0 +1,54 @@
+
+> keeper:e2e
+> tsx keeper/e2e.ts
+
+balancers 0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def 0x9cc8F2989f8D6Aa27263D2CDEdF698b2B112Bee5
+✓ discovered and filled 2 pools; sent 4
+✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)
+┌─────────┬─────────┬──────────┬─────────────────────┬────────────┬─────────┬────────────────────┬─────────────┬───────────────────┬───────────────────┐
+│ (index) │ gasUsed │ estimate │ estimateMinusBilled │ expenseGas │ source  │ expenseMinusBilled │ measuredGas │ rewardWei         │ costWei           │
+├─────────┼─────────┼──────────┼─────────────────────┼────────────┼─────────┼────────────────────┼─────────────┼───────────────────┼───────────────────┤
+│ 0       │ 2584792 │ 2656463  │ 71671               │ 2585651    │ 'trace' │ 859                │ 2558483     │ '337030343457837' │ '234877565054888' │
+│ 1       │ 2584836 │ 2650770  │ 65934               │ 2585590    │ 'trace' │ 754                │ 2558527     │ '324856509043336' │ '222814331386848' │
+│ 2       │ 2550240 │ 2624059  │ 73819               │ 2550953    │ 'trace' │ 713                │ 2526731     │ '311460416402973' │ '209286422341920' │
+│ 3       │ 2550188 │ 2620683  │ 70495               │ 2550953    │ 'trace' │ 765                │ 2526679     │ '302006317911223' │ '199929478162156' │
+│ 4       │ 891544  │ 969950   │ 78406               │ 892290     │ 'trace' │ 746                │ 898473      │ '130308884948067' │ '47289258125576'  │
+│ 5       │ 925590  │ 1004559  │ 78969               │ 926397     │ 'trace' │ 807                │ 932519      │ '171752254727608' │ '48753631688880'  │
+└─────────┴─────────┴──────────┴─────────────────────┴────────────┴─────────┴────────────────────┴─────────────┴───────────────────┴───────────────────┘
+✓ rewards within immutable maximum for 6 keeper txs
+✓ restart resumes without duplicate work
+✓ restart recovers unrecorded receipt and exact costs/rewards once without duplicate work
+✓ peer-mined eviction boundary preserves exact once-only financial accounting
+✓ replacement tx mined; stats {"sent":9,"mined":9,"reverted":0,"replaced":1,"skippedUnprofitable":0,"spentWei":"1100788892339979","earnedWei":"1833408459316897"}
+✓ without peer rebroadcast, orphaned nonce stays tracked and reports operator action without spending
+✓ reorg rolls back orphaned receipts and accounts re-mined empty-target gas
+✓ downtime: restarted keeper restored both pools
+✓ waited through a basefee spike, then serviced
+✓ purchaser gate refuses the Shapes contract (no failed Shape delivery can be bought)
+┌─────────┬─────────┬──────────┬─────────────────────┬────────────┬─────────┬────────────────────┬─────────────┬───────────────────┬───────────────────┐
+│ (index) │ gasUsed │ estimate │ estimateMinusBilled │ expenseGas │ source  │ expenseMinusBilled │ measuredGas │ rewardWei         │ costWei           │
+├─────────┼─────────┼──────────┼─────────────────────┼────────────┼─────────┼────────────────────┼─────────────┼───────────────────┼───────────────────┤
+│ 0       │ 857388  │ 935297   │ 77909               │ 858178     │ 'trace' │ 790                │ 864317      │ '105738808499870' │ '42890929012680'  │
+│ 1       │ 891456  │ 969906   │ 78450               │ 892202     │ 'trace' │ 746                │ 898385      │ '147440172321485' │ '44592466410816'  │
+│ 2       │ 840390  │ 918010   │ 77620               │ 841161     │ 'trace' │ 771                │ 847284      │ '163376550000000' │ '115553625000000' │
+└─────────┴─────────┴──────────┴─────────────────────┴────────────┴─────────┴────────────────────┴─────────────┴───────────────────┴───────────────────┘
+✓ rewards within immutable maximum for 3 keeper txs
+✓ pool page approval verifies through viem ERC-1271; other messages rejected
+✓ keeper list: skipped while not approved, serviced once approved
+keeper calibration {"transactionGasPriceWei":"150000000","netWei":"48534100000000","receipts":[{"estimate":"917970","expenseGas":"841122","source":"trace","billed":"840368","rewardWei":"174589300000000"}]}
+keeper calibration {"transactionGasPriceWei":"500000000","netWei":"68447000000000","receipts":[{"estimate":"912277","expenseGas":"835518","source":"trace","billed":"840390","rewardWei":"488642000000000"}]}
+keeper calibration {"transactionGasPriceWei":"5000000000","netWei":"324470000000000","receipts":[{"estimate":"912277","expenseGas":"835518","source":"trace","billed":"840368","rewardWei":"4526310000000000"}]}
+timeout keeper calibration {"transactionGasPriceWei":"5000000000","netWei":"85815000000000","receipts":[{"estimate":"202555","expenseGas":"173585","source":"trace","billed":"172853","rewardWei":"950080000000000"}]}
+✓ mixed V1/V2 service, delayed funded switch and stale pending transaction recovery
+✓ policy-changing replacement response loss recovers actual receipt and calldata floors
+✓ per-pool payment disable and unpaid maintenance; health {"ok":true,"lastTick":"2026-11-18T15:47:06.546Z","block":"26382549","keeper":"0x00000000000000000000000000000000000ce3e5","balancers":3,"pending":[],"errors":{},"policies":{"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def":{"address":"0xb383740D3599381072437d9ca96Fe170d570A648","paid":true},"0x9cc8F2989f8D6Aa27263D2CDEdF698b2B112Bee5":{"address":"0xb383740D3599381072437d9ca96Fe170d570A648","paid":false},"0xDf56278DDF7a5413732EcDC53D6f3C39095e36a6":{"address":"0xb383740D3599381072437d9ca96Fe170d570A648","paid":true}},"expenseEstimator":"trace when supported","accounting":{"coverage":"journal","journalEntries":10,"retryNonces":[],"reorgWindow":64,"journalPrunedThrough":"26382454","errors":{}},"stats":{"sent":28,"mined":27,"reverted":1,"replaced":2,"skippedUnprofitable":2,"spentWei":"17759236320355315","earnedWei":"19913897179388490"}}
+canonical keeper accounting {"transactions":28,"success":27,"reverted":1,"gasWei":"17759236320355315","rewardsWei":"19913897179388490"}
+┌─────────┬─────────┬──────────┬─────────────────────┬────────────┬─────────┬────────────────────┬─────────────┬───────────────────┬──────────────────┐
+│ (index) │ gasUsed │ estimate │ estimateMinusBilled │ expenseGas │ source  │ expenseMinusBilled │ measuredGas │ rewardWei         │ costWei          │
+├─────────┼─────────┼──────────┼─────────────────────┼────────────┼─────────┼────────────────────┼─────────────┼───────────────────┼──────────────────┤
+│ 0       │ 840327  │ 917842   │ 77515               │ 840996     │ 'trace' │ 669                │ 847369      │ '82401459319465'  │ '65394235375422' │
+│ 1       │ 1295041 │ 1397364  │ 102323              │ 1295825    │ 'trace' │ 784                │ 1319282     │ '131677174481584' │ '68379604885592' │
+└─────────┴─────────┴──────────┴─────────────────────┴────────────┴─────────┴────────────────────┴─────────────┴───────────────────┴──────────────────┘
+✓ rewards within immutable maximum for 2 keeper txs
+KEEPER E2E PASSED
+KEEPER_E2E_NODE {"pid":98137,"rpc":"http://127.0.0.1:18746","factory":"0xCd171B437d9329C2654128645944fbC05C9AA2BF","creator":"0x70997970C51812dc3A010C7d01b50e0d17dc79C8","succeeded":true}

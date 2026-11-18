@@ -218,3 +218,42 @@ This rejects the proposed serialized-cohort mechanism. It does not sign revised 
 - R60. "Yes, make the local-only gate change, keep production gates intact, and prepare the exact batch for my approval." (2026-11-18.) The prepared isolated local diagnostic may use its own exact-plan/process/chain/budget preflight without production outcome signatures or a completed whole-candidate review. The default production route retains those gates. This authorizes implementation and read-only preparation, not funding or broadcasting the proposed batch.
 
 - R61. The owner requested "make sure everything is merged into main" and replied "yes approved" (2026-11-18). The lead explicitly treated that reply as approval of the pending exact local batch `7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236` before execution, while completing the separately authorized main integration. That run interrupted after nine successful local transactions. Approval is not transferred to changed material or a replay; no public-network, real-fund or production-outcome approval follows.
+
+
+## Protected collected revenue and atomic creation (owner request, 2026-11-18)
+
+R59 through R66 are settled implementation requirements from the attached implementation brief. They supersede
+conflicting historical text above, particularly R6/R7/R17/R18/R31/R33/R48/R56's historical markup attribution,
+allocation drift and game-first unpaid spending. Earlier signatures, source seals and outcome measurements remain
+historical. This implementation authority does not sign new release outcomes or authorize mainnet actions.
+
+- R59. Creators receive a stored **0 to 10,000 bps** of actual collected FWA owner proceeds. Each collection adds
+  `floor(collected * creatorRevenueBps / 10000)` credit once. Deposits, direct ETH, unlisting/redemption, recovered
+  backing, uncollected proceeds and purchaser escrow/refunds create **zero** credit. Rounding stays operating cash.
+- R60. **Both paid and unpaid maintenance protect all creator credit**, including when a **1 ETH or 100 ETH** prize
+  is missing. Credit-only claims require **zero** policy, reserve, mint-fee, collection or inventory reads.
+  `B >= C`, `O=B-C`, withdrawable=`C+max(O-R,0)`. **0.20 ETH balance, 0.02 credit, 0.10 reserve permits 0.10 total**.
+  Closing preserves credit and late collections retain the stored split.
+- R61. A percentage change is explicit: collect available proceeds at the old percentage, store the chosen new
+  percentage, then use it for subsequent collections, including earlier pending purchases. Ordinary inventory,
+  markup, target, gas and policy changes never recompute it. No purchase cohorts or rate snapshots are introduced.
+- R62. The shared planner suggests the initial rate from intended Shape markup above the first **10%**, divided by
+  actual expected owner proceeds, using real prices, weights, fee treatment, packs and integer rounding. Curated
+  listings contribute zero intended allocation. Store the exact reviewed bps. Show allocation, retained revenue,
+  replacement/mint/keeper costs and margin/shortfall; allocation is not overall realized profit.
+- R63. Keeper algorithms remain replaceable through `quoteReward(Work)` and `quoteRestock(denom,units,basefee)`.
+  Remove optional Settings metadata and duplicate paid APIs. Retain only paid `(hash, minimumFixed, minimumGas)` and
+  unpaid upkeep, bounded static calls, exact data checks, immutable caps, **two-day** delay, cancellation, emergency
+  disable, generation invalidation and persistent allowance. Policies cannot move assets or alter credit/rates.
+- R64. Activation compares old/candidate maintenance budgets from one current snapshot. Disabled means old paid
+  exposure **zero**. No-greater exposure can activate during inventory depletion; increased exposure needs the
+  **full candidate** maintenance budget in operating cash. Keep full inventory restoration in the withdrawal reserve.
+- R65. After predicted-address NFT approvals, **one transaction** deploys/configures/funds/lists the initial curated
+  batch and enters stocking. Derive creator/NFT source from factory caller, protect initialization, revert everything
+  on failure. Mint **zero** Shapes at creation; retain **five Shape units/four sizes** per upkeep and **20 curated
+  items per batch**, with no new total curated cap. Purchases wait until initial stocking completes.
+- R66. Remove inventory attribution, historical allocation markup fields, unsold-fee accumulator and partial-creation
+  compatibility states. Current controls load independently of history. Preserve concurrent purchases, staged
+  replenishment/admission, actual backing, FWA settlement/refunds, separate collection and creator shutdown/recovery.
+  Complete focused implementation, verification, local commits and a draft PR. No public deployment, real expenditure,
+  production configuration changes or merge is authorized.

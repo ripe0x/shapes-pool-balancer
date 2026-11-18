@@ -1,8 +1,8 @@
 # Replaceable keeper policies
 
-Policy architecture began at `origin/main` `a29af3a`; current reserve redesign starts from `a8fb321`, branch `codex/replaceable-keeper-policies`, 2026-11-17.
-No mainnet deployment or real spending is authorized. Verification and independent review are recorded separately;
-this specification does not establish release readiness.
+Current specification, 2026-11-18. Protected credit, metadata removal, one paid entry point and maintenance-only
+activation replace earlier policy documentation. [Implementation evidence](PROTECTED-REVENUE-RESULTS.md) records
+verification separately. No mainnet deployment or real spending is authorized.
 
 ## Authority and immutable boundaries
 
@@ -46,8 +46,7 @@ it takes one or two calls. This is a calibration hypothesis, not evidence about 
 The default maximum is 0.01645 ETH, including up to ten service units. The 50,000 overhead allowance is retained. Receipt calibration below measures its practical margin; it is not a guarantee of keeper profit.
 
 Markup remains separate. Shapes list at backing plus mint fees plus markup on backing plus restocking surcharge;
-curated NFTs list at their creator-assigned price with no markup or surcharge. Old `Item.price`, `Item.base`, original
-markup share and FWA listing prices never change merely because a policy changes.
+curated NFTs list at their creator-assigned price with no markup or surcharge. Old `Item.price`, `Item.base`, FWA listing prices never change merely because a policy changes.
 
 ## Financial limits and operating capital
 
@@ -59,7 +58,12 @@ Reference price for security budgets is `min(basefee + 0.1 gwei, 50 gwei)`. Actu
 
 The per-pool allowance has a 0.622 ETH burst and `floor(0.05 ETH / 12)` wei/second refill, never reset by policy/configuration/ownership/open-state changes. It is spending authority, not ETH that must be locked upfront. At most burst plus elapsed-time refill can be paid, additionally bounded by current validated work, the selected maximum and creator-owned operating liquidity. A popular pool uses its own allowance.
 
-Activation checks `balance - bookedProfit >= candidateReserve` at the current gas/mint-fee context. A larger declared maximum only increases funding where it changes present enforced work budgets. Old listings remain fixed. Future higher gas or adverse wins may require additional capital; a finite current reserve does not promise unlimited self-funding. Paid operations may consume their working buffer while respecting booked profit. The caller's mined-price-indexed minimum remains atomic.
+Activation validates the candidate and compares its current maintenance budget with the old effective budget from
+the same snapshot. The old paid maximum is zero when disabled. No-greater maintenance exposure needs no additional
+funding, even with missing expensive inventory. Increased exposure requires operating cash covering the entire
+candidate maintenance budget. Missing inventory restoration is excluded here and remains in full withdrawal/opening
+reserves. Creator credit, uncollected proceeds, listed backing and future fees cannot fund activation. A smaller
+permitted maximum need not quote a smaller reward on each job. Existing prices and spending allowance stay unchanged.
 
 Disabling paid upkeep releases payment-related reserve terms, retaining actual missing inventory cost. Delayed reenabling still checks the candidate's positive paid budget. A creator can bootstrap twenty small Shapes unpaid with 0.22 ETH pool funding, paying execution gas separately. Purchaser escrow/refunds remain in FWA regardless of payment state.
 
@@ -75,19 +79,24 @@ traces when supported and calibrated against receipts, with conservative estimat
 inverted into an assumed billed cost. Receipt costs, failed attempts, operator overhead and received payments are
 separate records. Nonce persistence, replacements, eviction recovery and discovery remain shared across policies.
 
-The creator dashboard uses actual policy quotes, preserves existing listing prices and original fee contributions,
+The creator dashboard uses bounded pool-context quotes, preserves existing listing prices,
 shows proposed activation and shortfall, permits top-ups and cancellation, and exposes emergency disable and unpaid
-maintenance. Optional `settings()` metadata describes linear policies; future core-compatible policies need not use it.
+maintenance. There is no `settings()` metadata decoding or linear-policy compatibility getter in contracts or clients. The keeper
+uses its operator bidding configuration independently of policy reimbursement and simulates the complete transaction.
 Unknown costs must remain visibly unknown. Historical gas and simulation reports do not validate this implementation.
+
+The only paid entry point is `performUpkeep(expectedPolicyHash, minimumFixed, minimumGas)`. The atomic floor is
+`minimumFixed + minimumGas * tx.gasprice`; zero gas means a fixed floor and both zero accept the offered compensation.
+`performUpkeepUnpaid()` remains permissionless. The generation hash is exposed as `settingsHash()` for existing keeper
+journal terminology; it encodes policy address, cached maximum, generation and payment state, with no settings metadata.
+There are no paid overloads or arbitrary selected-policy delegatecalls. Linked immutable libraries remain fixed.
 
 ## Verification status
 
-The owner explicitly retained the existing deterministic Chainlink-coordinator impersonation exception on 2026-11-17 for fork/local tests. This does not validate real VRF timing or availability and authorizes no other dependency substitution.
+See [PROTECTED-REVENUE-RESULTS.md](PROTECTED-REVENUE-RESULTS.md). Real-dependency tests use the existing controlled
+coordinator delivery infrastructure; this does not establish real Chainlink timing or availability. Earlier reports,
+source seals and signed outcomes remain historical and do not validate the new implementation. Production release
+controls and the sealed historical local rehearsal are preserved.
 
-Implementation, real-dependency fork lifecycles, hostile-policy tests, dashboard interactions, candidate checks and
-focused independent security/economic reviews are recorded in [keeper-policy-results.md](keeper-policy-results.md). That report preserves failed attempts, repairs and limitations. Existing
-signed asset-flow outcomes do not approve this changed payment mechanism; their history must be preserved and the
-release gate remains binding. No deployment authorization follows from passing tests.
-
-Things that don't make sense: a small immutable spend cap cannot also promise unlimited future paid throughput;
-a full-board worst-case economic guarantee has a large capital cost. Both tradeoffs need owner review before launch.
+Things that don't make sense: a 100% creator share supplies no new operating revenue. It is permitted explicitly,
+so demand alone cannot fund further mint/keeper costs at that setting.

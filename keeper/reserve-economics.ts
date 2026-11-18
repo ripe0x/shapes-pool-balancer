@@ -1,7 +1,7 @@
 // Isolated actual-receipt economic review. No keys, external writes, or fabricated protocol state.
 // Run after compiling test/ReserveEconomicReview.t.sol: npx tsx keeper/reserve-economics.ts
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createPublicClient, createTestClient, createWalletClient, http, parseAbi, parseEventLogs, toHex, type Address, type Hex } from 'viem';
 
@@ -71,6 +71,7 @@ const gasSince=(start:number,actor?:Address)=>receipts.slice(start).filter(r=>!a
 const scalar=(v:any):any=>typeof v==='bigint'?v.toString():Array.isArray(v)?v.map(scalar):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,scalar(x)])):v;
 async function main(){
  assert.notEqual(process.env.RPC_URL,'https://mainnet.gateway.tenderly.co');
+ assert.equal(spawnSync('lsof',['-nP','-iTCP:18552','-sTCP:LISTEN'],{stdio:'ignore'}).status,1,'isolated diagnostic port must be free');
  const prior=existsSync('deployments/31337.json')?readFileSync('deployments/31337.json'):null;
  const node=spawn('anvil',['--fork-url','https://mainnet.gateway.tenderly.co','--fork-block-number',FORK.toString(),'--port','18552','--chain-id','31337','--silent'],{stdio:'ignore'});
  try{
@@ -93,21 +94,20 @@ async function main(){
    const r0=receipts.length,begin=await wealth();
    const salt=toHex(BigInt(i+1),{size:32});
    const b=await read(factory,fAbi,'predictBalancer',[A.creator,salt]) as Address;
-   await send(A.creator,factory,fAbi,'createBalancer',[salt],10n**18n,'create pool/deposit1ETH');
-   const pool=await read(b,bAbi,'pool') as Address;
-   await send(A.creator,b,bAbi,'configure',[1500,20n]);
    await send(A.creator,nft,nArt.abi,'mint',[A.creator,BigInt(i+1)]);
    await send(A.creator,nft,nArt.abi,'approve',[b,BigInt(i+1)]);
-   await send(A.creator,b,bAbi,'listCuratedBatch',[[{collection:nft,tokenId:BigInt(i+1),base:200_000_000_000_000_000n}]]);
+   const initial=[{collection:nft,tokenId:BigInt(i+1),base:200_000_000_000_000_000n}];
+   const config={markupBps:1500,creatorRevenueBps:400,target:20n,mintFeeCap:await read(SHAPES,shapeAbi,'mintFee')};
+   await send(A.creator,factory,fAbi,'createBalancer',[salt,config,initial],10n**18n,'atomic create/deposit1ETH');
+   const pool=await read(b,bAbi,'pool') as Address;
    await send(A.creator,b,bAbi,'proposeKeeperPolicy',[policy]);
    await test.increaseTime({seconds:172801});await test.mine({blocks:1});
    await send(A.creator,b,bAbi,'activateKeeperPolicy');
-   await send(A.creator,b,bAbi,'open');
-   for(let j=0;j<4;j++)await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n],0n,'setup 5Shapes');
+   for(let j=0;j<4;j++)await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n,0n],0n,'setup 5Shapes');
    assert.equal((await read(b,bAbi,'getActiveShapes'))[0],20);
    assert.equal(await read(b,bAbi,'requiredReserve'),5_300_000n*(base+100_000_000n)+500_000_000_000_000n);
    assert.equal(await read(b,bAbi,'admissionStatus'),0);
-   assert.equal(await read(b,bAbi,'listedRestockFees'),0n);
+
    const cycleStart=await wealth();const cycR=receipts.length;
    const fundBefore=await balance(b);let price=0n,vrf=0n,refund=0n,redeemed=0n,edge=0n,newMint=0n;let failedDeliveryEvent:unknown=null;
    if(mode==='unlist'){
@@ -115,7 +115,7 @@ async function main(){
     let lid=0n;for(const id of ids){if((await read(b,bAbi,'items',[id]))[0]===2){lid=id;break;}}
     await send(A.creator,b,bAbi,'unlistShapes',[[lid]]);
     assert.equal(await balance(b),fundBefore+10_000_000_000_000_000n);
-    await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n]);newMint=1_000_000_000_000_000n;
+    await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n,0n]);newMint=1_000_000_000_000_000n;
    }else{
     if(mode==='failedDelivery')await send(A.creator,nft,nArt.abi,'setRefused',[A.buyer]);
     const quote=await read(pool,poolAbi,'quoteAcquisitionPrice',[1n]);[price,vrf]=quote;
@@ -131,7 +131,7 @@ async function main(){
      const word=mode==='curated'||mode==='failedDelivery'?0n:curatedListing[4];
      await test.mine({blocks:3});
      const coordinator=await read(VRF,serviceAbi,'coordinator') as Address;
-     await test.impersonateAccount({address:coordinator});await test.setBalance({address:coordinator,value:10n**18n});
+     await test.impersonateAccount({address:coordinator});
      const delivered=await send(coordinator,VRF,serviceAbi,'rawFulfillRandomWords',[request,[word]],0n,'permitted coordinator delivery');
      if(mode==='failedDelivery'){
       const events=parseEventLogs({abi:poolAbi,logs:delivered.logs,eventName:'NFTDeliveryFailed'});
@@ -142,7 +142,7 @@ async function main(){
       assert.equal(events[0].args.collection?.toLowerCase(),nft.toLowerCase());
      }
     }
-    await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n]);
+    await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n,0n]);
     assert.equal(await read(b,bAbi,'reconciledSequence'),1n);
     assert.equal(await read(pool,poolAbi,'unsettledAcquisitionCount'),0n);
     const acquisition=await read(pool,poolAbi,'acquisitions',[request]);
@@ -182,6 +182,9 @@ async function main(){
     }
    }
    const cycleEnd=await wealth();const fundAfter=await balance(b);
+   const creatorCredit=await read(b,bAbi,'creatorCredit') as bigint;
+   const operatingCash=fundAfter-creatorCredit;
+   assert.ok(operatingCash>=0n,'actual cash backs creator credit');
    const cycleGasByActor={creator:gasSince(cycR,A.creator),buyer:gasSince(cycR,A.buyer),keeper:gasSince(cycR,A.keeper)};
    const cycleGas=cycleGasByActor.creator+cycleGasByActor.buyer+cycleGasByActor.keeper;
    const rewards=receipts.slice(cycR).filter(r=>r.from.toLowerCase()===A.keeper.toLowerCase());
@@ -196,6 +199,7 @@ async function main(){
    for(const id of active){if((await read(b,bAbi,'items',[id]))[0]===2)shapeIds.push(id);else remainingCurated=id;}
    if(shapeIds.length)await send(A.creator,b,bAbi,'unlistShapes',[shapeIds]);
    if(remainingCurated)await send(A.creator,b,bAbi,'withdrawCurated',[remainingCurated,A.creator]);
+   await send(A.creator,b,bAbi,'collectProceeds');
    const claim=await read(b,bAbi,'withdrawableSurplus');await send(A.creator,b,bAbi,'claimSurplus',[claim,A.creator]);
    assert.equal(await balance(b),0n);assert.equal(await read(pool,poolAbi,'ownerProceeds'),0n);
    assert.equal((await read(b,bAbi,'getActiveIds')).length,0);
@@ -204,7 +208,7 @@ async function main(){
    await send(A.creator,b,bAbi,'retire');assert.equal(await read(pool,poolAbi,'retired'),true);
    const end=await wealth();const actorGas=gasSince(r0,A.creator)+gasSince(r0,A.buyer)+gasSince(r0,A.keeper);
    assert.equal(sum(end)-sum(begin),-(actorGas+20_000_000_000_000_000n+newMint+vrf+edge),'full setup and closeout coalition wealth');
-   const result={mode,bid,base,pool,b,failedDeliveryEvent,price,vrf,refund,redeemed,edge,initialMintFees:20_000_000_000_000_000n,newMintFees:newMint,cycle:{buyerKeeperDelta,creatorFundCost:fundBefore-fundAfter,keeperReward:rewardTotal,coalitionDelta:cycleCoalition,actorGas:cycleGas,gasByActor:cycleGasByActor,keeperTransactions:rewards.length},fullLifecycle:{creatorDelta:end.creator-begin.creator,buyerDelta:end.buyer-begin.buyer,keeperDelta:end.keeper-begin.keeper,coalitionDelta:sum(end)-sum(begin),actorGas,endingBalancerBalance:await balance(b),endingFwaBalance:await balance(pool)}};
+   const result={mode,bid,base,pool,b,creatorRevenueBps:400,creatorCredit,operatingCash,creatorCapitalContribution:10n**18n,additionalCapitalContribution:0n,failedDeliveryEvent,price,vrf,refund,redeemed,edge,initialMintFees:20_000_000_000_000_000n,newMintFees:newMint,cycle:{buyerKeeperDelta,creatorFundCost:fundBefore-fundAfter,keeperReward:rewardTotal,coalitionDelta:cycleCoalition,actorGas:cycleGas,gasByActor:cycleGasByActor,keeperTransactions:rewards.length},fullLifecycle:{creatorDelta:end.creator-begin.creator,buyerDelta:end.buyer-begin.buyer,keeperDelta:end.keeper-begin.keeper,coalitionDelta:sum(end)-sum(begin),actorGas,endingBalancerBalance:await balance(b),endingFwaBalance:await balance(pool)}};
    totals.push(result);console.log(JSON.stringify(scalar(result)));
   }
   const end=await wealth();

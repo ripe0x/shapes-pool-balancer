@@ -184,7 +184,7 @@ contract D16ClosedHoldTest is D16WorstUpkeepTest {
         bytes32 generation=balancer.settingsHash();
         _setGas(4.95 gwei,5 gwei);
         vm.prank(keeper,keeper);vm.expectRevert(PoolBalancer.PaymentUnavailable.selector);
-        balancer.performUpkeep(generation,1);
+        balancer.performUpkeep(generation,1, 0);
         assertEq(balancer.reconciledSequence(),cursor,"unfunded paid work reverted atomically");
         assertEq(address(balancer).balance,held);
         assertEq(balancer.keeperAllowance(),allowance);

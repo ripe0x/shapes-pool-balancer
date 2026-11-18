@@ -103,10 +103,10 @@ contract PolicyEconomicReviewTest is ForkBase {
         uint256 keeperPaid = keeper.balance - keeperStart;
         assertGt(keeperPaid, 0, "actual paid setup was reached");
         assertEq(address(balancer).balance, 5 ether - 0.22 ether - keeperPaid);
-        assertEq(balancer.listedRestockFees(), 0.0139 ether, "20 future fees at 0.000695 each");
+        assertEq(_listedFees(balancer), 0.0139 ether, "20 future fees at 0.000695 each");
         assertEq(balancer.requiredReserve(), 0.00368 ether, "stocked current-work buffer; unsold fees are never cash");
         assertEq(pool.ownerProceeds(), 0, "zero demand: no proceeds exist");
-        assertEq(balancer.profit(), 0, "zero demand: no earned profit exists");
+        assertEq(balancer.creatorCredit(), 0, "zero demand: no earned profit exists");
         uint256[] memory all = balancer.getActiveIds();
         uint256[] memory shapeIds = new uint256[](20);
         uint256[] memory oldPrices = new uint256[](20);
@@ -145,7 +145,7 @@ contract PolicyEconomicReviewTest is ForkBase {
             (,,,,uint256 price) = balancer.items(shapeIds[i]);
             assertEq(price, oldPrices[i], "activation cannot retroactively reprice inventory");
         }
-        assertEq(balancer.listedRestockFees(), 0.0139 ether);
+        assertEq(_listedFees(balancer), 0.0139 ether);
         vm.prank(creator); balancer.close();
         assertEq(balancer.requiredReserve(), 0, "remove demand and close: no draw claim remains");
         vm.prank(creator); balancer.unlistShapes(shapeIds);
@@ -157,7 +157,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         vm.prank(creator); balancer.retire();
         assertEq(creatorStart - creator.balance, 0.02 ether + keeperPaid, "creator loses only mint fees and actual setup pay");
         assertEq(address(balancer).balance, 0);
-        assertEq(balancer.listedRestockFees(), 0);
+        assertEq(_listedFees(balancer), 0);
         assertEq(pool.ownerProceeds(), 0);
         assertEq(nft.ownerOf(1), creator);
         emit log_named_decimal_uint("independent setup keeper pay", keeperPaid, 18);
@@ -184,7 +184,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         uint256 poolCash = address(pool).balance;
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        uint256 reward = balancer.performUpkeep(expected, 1);
+        uint256 reward = balancer.performUpkeep(expected, 1, 0);
         assertEq(balancer.reconciledSequence(), 2);
         assertGt(reward, 0.0001 ether, "actual execution plus two bounded service units paid");
         assertLe(reward, 0.0028 ether, "actual gas/work envelope stays within two current single-draw budgets");
@@ -235,7 +235,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         assertEq(balancer.getActiveShapes()[0], 20);
         assertEq(balancer.getActiveShapes()[10], 1);
         assertEq(balancer.listedShapePrizes(), 21);
-        assertEq(balancer.listedRestockFees(), 0.015985 ether, "23 underlying Shapes each carry0.000695");
+        assertEq(_listedFees(balancer), 0.015985 ether, "23 underlying Shapes each carry0.000695");
         assertEq(balancer.requiredReserve(), 0.00368 ether, "fully stocked mixed board retains one working buffer");
         uint256[] memory all = balancer.getActiveIds();
         uint256[] memory ids = new uint256[](21);
@@ -277,7 +277,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         vm.prank(creator); balancer.claimSurplus(claim, creator);
         vm.prank(creator); balancer.retire();
         assertEq(address(balancer).balance, 0);
-        assertEq(balancer.listedRestockFees(), 0);
+        assertEq(_listedFees(balancer), 0);
         assertEq(pool.ownerProceeds(), 0);
         _context();
     }

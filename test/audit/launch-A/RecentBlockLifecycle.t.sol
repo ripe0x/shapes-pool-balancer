@@ -21,7 +21,7 @@ contract RecentBlockLifecycleTest is ForkBase {
     uint256 internal constant RECENT_BLOCK = 26_437_232;
 
     function setUp() public {
-        vm.createSelectFork("mainnet", RECENT_BLOCK);
+        vm.createSelectFork("mainnet", vm.envOr("RECENT_FORK_BLOCK", RECENT_BLOCK));
         vm.fee(0.5 gwei);
         vm.txGasPrice(0.55 gwei);
         LaunchAContext witness = new LaunchAContext();
@@ -57,7 +57,7 @@ contract RecentBlockLifecycleTest is ForkBase {
         assertEq(pool.processAcquisitions(1), 1, "expired without randomness");
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
         assertEq(balancer.reconciledSequence(), 1, "keeper reconciled");
 
         vm.prank(creator);

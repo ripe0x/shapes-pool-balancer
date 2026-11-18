@@ -149,7 +149,7 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         assertEq(pool.processAcquisitions(1), 1, "expired draw processed");
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
         assertEq(balancer.admissionStatus(), 0, "sales resume after reconciliation");
     }
 
@@ -197,7 +197,7 @@ contract ChallengeTopHeavyGateTest is ForkBase {
             if (win == 0) {
                 bytes32 uh2 = balancer.settingsHash();
                 vm.prank(keeper, keeper);
-                balancer.performUpkeep(uh2);
+                balancer.performUpkeep(uh2, 0, 0);
                 assertEq(balancer.admissionStatus(), 0, "sales resumed after first restock");
                 emit log_named_decimal_uint("fund after first top win and restock", address(balancer).balance, 18);
             }
@@ -211,7 +211,7 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         assertEq(balancer.admissionStatus(), 6, "new empty target pauses at the inventory gate without restarting initial setup");
         bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh3);
+        balancer.performUpkeep(uh3, 0, 0);
         assertEq(balancer.getActiveShapes()[15], 0, "top omitted");
         assertEq(balancer.getActiveShapes()[0], 1, "small prize listed");
         assertEq(balancer.admissionStatus(), 0, "sales resumed after pivot");

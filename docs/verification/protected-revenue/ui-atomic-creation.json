@@ -1,0 +1,94 @@
+{
+  "chainId": 31337,
+  "rpc": "http://127.0.0.1:18766",
+  "balancer": "0xA54AF51f57035550af3b9bbCf1fD298a0C1c2626",
+  "pool": "0xE573ca5Eb987cBf251f0A041F341995958B2A949",
+  "creator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "target": "66902235595591869424607154817945088813236234",
+  "markup": 2500,
+  "creatorRevenueBps": 1234,
+  "mintFeeCap": "1000000000000000",
+  "creatorWork": true,
+  "enabled": true,
+  "activeShapes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "admissionStatus": 2,
+  "nftOwner": "0xE573ca5Eb987cBf251f0A041F341995958B2A949",
+  "transactions": [
+    {
+      "hash": "0x48aef38117e826daead0fbccd1a5313fba3dd2fcb5b08306304a1ff7abfa73e5",
+      "nonce": 5352,
+      "to": "0x7de7bc53e06f8549c6f89aee3f59cd605c97c455",
+      "value": "0",
+      "gasUsed": "48142",
+      "status": "success",
+      "decoded": {
+        "functionName": "approve",
+        "args": [
+          "0xA54AF51f57035550af3b9bbCf1fD298a0C1c2626",
+          "2026111801"
+        ]
+      },
+      "shapeMintEvents": 0
+    },
+    {
+      "hash": "0x210fbf4e1eeb15afc279bb8fc5699678fedb7481a2a98a27583114abb27a458c",
+      "nonce": 5353,
+      "to": "0xcd171b437d9329c2654128645944fbc05c9aa2bf",
+      "value": "536116000000000000",
+      "gasUsed": "2362733",
+      "status": "success",
+      "decoded": {
+        "functionName": "createBalancer",
+        "args": [
+          "0x79dd8334174f9055728090cba3882f24f741c2f6a8502b812c7df194883451f8",
+          {
+            "markupBps": 2500,
+            "creatorRevenueBps": 1234,
+            "target": "66902235595591869424607154817945088813236234",
+            "mintFeeCap": "1000000000000000"
+          },
+          [
+            {
+              "collection": "0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455",
+              "tokenId": "2026111801",
+              "base": "250000000000000000"
+            }
+          ]
+        ]
+      },
+      "shapeMintEvents": 0
+    }
+  ],
+  "listedShapePrizes": "0",
+  "firstStocking": {
+    "hash": "0x1abb970521264ce14de3039fa2a7abc7221f8e622e636bceec2c4d3ee55caa48",
+    "gasUsed": "2527600",
+    "function": "performUpkeepUnpaid",
+    "shapeUnits": 5,
+    "underlyingBackingWei": "50000000000000000",
+    "mintCostWei": "5000000000000000",
+    "poolCashSpentWei": "55000000000000000",
+    "keeperPaymentWei": "0",
+    "creatorRevenueBps": 1234,
+    "status": 2,
+    "setup": true,
+    "operatingWei": "481116000000000000"
+  }
+}

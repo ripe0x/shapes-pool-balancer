@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -14,9 +14,22 @@ function changed(plan:Record<string,any>, edit:(p:Record<string,any>)=>void) {
 }
 describe('local rehearsal gate without chain mutations',()=>{
   const proposed=packet();
-  it('accepts current real material and exact intended arguments in both read-only phases',()=>{
+  it('validates reported material and arguments without approving the changed candidate source',()=>{
     const p=validatePlan(proposed,proposed.planHash);
     validateForgeArgs(p,p.forgeArguments,'prepare'); validateForgeArgs(p,p.forgeArguments,'deploy');
+  });
+  it('reports deleted tracked inputs without treating the report as source approval',()=>{
+    const cfg=JSON.parse(readFileSync(join(root,'asset-flow.json'),'utf8'));
+    const missing=execFileSync('git',['ls-files','--deleted','-z','--',...cfg.source_paths,...cfg.evidence_paths],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean).sort();
+    assert.deepEqual(proposed.reportOnlyMissingSourcePaths,missing);
+    assert.equal(proposed.sourceVerification,'not performed; execution requires exact frozen archive inputs');
+    assert.equal(proposed.execution,'not authorized; no node requests or writes made');
+  });
+  it('keeps guarded checks fail-closed for inputs outside the frozen archive',()=>{
+    const result=spawnSync(process.execPath,['--import','tsx','scripts/run-local-rehearsal.ts','--self-check'],{cwd:root,encoding:'utf8',maxBuffer:8*1024*1024});
+    assert.notEqual(result.status,0);
+    assert.match(result.stderr,/Settings\.sol|Command failed: git|exact archived inputs/);
+    assert.doesNotMatch(result.stdout,/'selfCheck': 'pass'|"selfCheck": "pass"/);
   });
   it('rejects a stale approval before material or node access',()=>{
     assert.throws(()=>validatePlan(proposed,'0'.repeat(64)),/exact approved plan hash/);

@@ -60,7 +60,7 @@ contract D16bClosedHoldHostileTest is D16bWorstUpkeepTest {
         if (reconcileFirst) {
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            balancer.performUpkeep(uh1); // reconciles r0 (fast path); a restock stages behind the reserved draws
+            balancer.performUpkeep(uh1, 0, 0); // reconciles r0 (fast path); a restock stages behind the reserved draws
             assertEq(balancer.reconciledSequence() + 4, pool.lastIssuedSequence());
         }
         _setGas(4.95 gwei,5 gwei); // fund actual cap-price work before claiming its current-price hold

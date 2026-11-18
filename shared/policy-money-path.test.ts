@@ -8,8 +8,8 @@ interface Step {
   action: string;
   deposited: string; collected: string; claimed: string; mintCost: string; mintedBacking: string;
   redeemed: string; reward: string; measuredGas: string; shapeUnits: string; listedPrizes: string;
-  reconciledDraws: string; processedDraws: string; balance: string; profit: string; required: string; listedFees: string;
-  target: string; maxReward: string; owed: string; ownerProceeds: string; profitShareSum: string;
+  reconciledDraws: string; processedDraws: string; balance: string; creatorCredit: string; creatorRevenueBps: string; required: string;
+  target: string; maxReward: string; owed: string; ownerProceeds: string;
   activeCount: string; refundCredit: string; enabled: boolean; have: number[]; mintFee: string;
   version: number; baseFee: string; gasPrice: string; deliveredBacking: string; ownerAccrued: string;
   livePrices: string[]; listedBacking: string; drawPrice: string;
@@ -21,26 +21,25 @@ describe('independent economic replay of the fork lifecycle', () => {
     expect(rows.length).toBeGreaterThan(15);
     let balance = 0n;
     let backing = 0n;
-    let profit = 0n;
+    let credit = 0n;
     let fwaProceeds = 0n;
     let previous: Step | undefined;
     const paidVersions = new Set<number>();
     for (const step of rows) {
       const b = (k: keyof Step) => BigInt(step[k] as string);
-      if (b('collected') && previous?.enabled && BigInt(previous.activeCount) > 0n) {
-        const mine = b('collected') * BigInt(previous.profitShareSum) / (BigInt(previous.activeCount) * 10n ** 18n);
-        profit += mine;
+      if (b('collected')) {
+        const rate = previous ? BigInt(previous.creatorRevenueBps) : b('creatorRevenueBps');
+        credit += b('collected') * rate / 10000n;
       }
       balance += b('deposited') + b('collected') + b('redeemed') - b('mintCost') - b('reward');
       backing += b('mintedBacking') - b('redeemed') - b('deliveredBacking');
       fwaProceeds += b('ownerAccrued') - b('collected');
-      if (profit > balance) profit = balance;
-      if (step.action === 'close') profit = 0n;
-      profit = b('claimed') >= profit ? 0n : profit - b('claimed');
+      credit = b('claimed') >= credit ? 0n : credit - b('claimed');
       balance -= b('claimed');
       expect(balance, `${step.action}: liquid ETH`).toBe(b('balance'));
       expect(backing, `${step.action}: real FWA listed backing`).toBe(b('listedBacking'));
-      expect(profit, `${step.action}: creator's booked claim`).toBe(b('profit'));
+      expect(credit, `${step.action}: protected creator credit`).toBe(b('creatorCredit'));
+      expect(balance).toBeGreaterThanOrEqual(credit);
       expect(fwaProceeds, `${step.action}: owner proceeds still at FWA`).toBe(b('ownerProceeds'));
       const maximum = b('maxReward');
       const need = step.enabled

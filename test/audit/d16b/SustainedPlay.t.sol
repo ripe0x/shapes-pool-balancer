@@ -80,7 +80,7 @@ contract D16bSustainedPlayTest is ForkBase {
             uint256 sh = _shapes();
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh1) {
+            try balancer.performUpkeep(uh1, 0, 0) {
                 if (pool.nextSequenceToProcess() != nx) ++procCalls;
                 if (_shapes() > sh || pool.nextSequenceToProcess() == nx) ++restockCalls;
             } catch {}

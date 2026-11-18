@@ -54,22 +54,23 @@ contract BalancerTest is ForkBase {
 
     function test_factory_isolatedBalancersAndPools() public {
         address other = makeAddr("other");
+        vm.deal(other, 1 ether);
         vm.prank(other);
-        PoolBalancer b2 = PoolBalancer(payable(factory.createBalancer(bytes32(uint256(7)))));
+        PoolBalancer b2 = _createFixture(other, bytes32(uint256(7)), 0);
         assertEq(address(b2), factory.predictBalancer(other, bytes32(uint256(7))));
         assertTrue(address(b2.pool()) != address(pool));
         assertEq(b2.pool().owner(), address(b2));
         assertEq(b2.creator(), other);
         assertTrue(factory.isBalancer(address(b2)) && factory.isBalancer(address(balancer)), "both are this factory's");
         vm.prank(creator);
-        PoolBalancer b3 = PoolBalancer(payable(factory.createBalancer(bytes32(uint256(1)))));
+        PoolBalancer b3 = _createFixture(creator, bytes32(uint256(1)), 0);
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger);
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger);
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/
@@ -204,7 +205,7 @@ contract BalancerTest is ForkBase {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
 
         fulfill(ids[0], wordForSlot(slot));
         settle();
@@ -250,7 +251,7 @@ contract BalancerTest is ForkBase {
         bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh2);
+        balancer.performUpkeep(uh2, 0, 0);
         vm.prank(creator);
         balancer.recoverRefunded(lid, creator);
         assertEq(frozen.ownerOf(9), creator);
@@ -284,7 +285,7 @@ contract BalancerTest is ForkBase {
         bytes32 uh3 = balancer.settingsHash();
         vm.recordLogs();
         vm.prank(who, who);
-        balancer.performUpkeep(uh3);
+        balancer.performUpkeep(uh3, 0, 0);
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == keccak256("KeeperPaid(address,uint256,uint256)")) {
@@ -323,7 +324,7 @@ contract BalancerTest is ForkBase {
         (uint256 reward, uint256 gasPaid) = _paidUpkeep(keeper);
         assertGe(reward, gasPaid * 5 gwei, "refund-safe gas at the capped price");
         assertLe(reward, (gasPaid + gasPaid / 4 + 1) * 5 gwei + 0.0001 ether, "never above measured gas x cap + incentive");
-        assertLe(reward, balancer.maxKeeperReward());
+        assertLe(reward, balancer.policyMaxReward());
     }
 
     function test_gateRefusesUnrefundablePurchasers() public {
@@ -347,14 +348,14 @@ contract BalancerTest is ForkBase {
         bytes32 uh4 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh4);
+        balancer.performUpkeep(uh4, 0, 0);
 
         // re-configuring the same target leaves no work
         configure(planA);
         bytes32 uh5 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh5);
+        balancer.performUpkeep(uh5, 0, 0);
         assertTrue(balancer.canPurchase(buyer));
 
         // a second keeper racing the same work finds nothing left
@@ -363,7 +364,7 @@ contract BalancerTest is ForkBase {
         bytes32 uh6 = balancer.settingsHash();
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh6);
+        balancer.performUpkeep(uh6, 0, 0);
     }
 
     /// A refunded draw brings no restocking fee; reconciling it is still paid, from the creator's ETH.
@@ -374,7 +375,7 @@ contract BalancerTest is ForkBase {
         uint256 before = keeper.balance;
         upkeep();
         assertGe(keeper.balance - before, 0.00002 ether, "gas and a verified draw fee");
-        assertLe(keeper.balance - before, balancer.maxKeeperReward());
+        assertLe(keeper.balance - before, balancer.policyMaxReward());
         assertTrue(balancer.canPurchase(buyer));
     }
 
@@ -478,7 +479,7 @@ contract BalancerTest is ForkBase {
         assertEq(have[1], 3);
         assertEq(have[2], 1, "expensive deficit is not silently subsidized by a duplicate spare");
         assertEq(balancer.admissionStatus(), 0, "remaining inventory still passes the actual weight gate");
-        uint256 needed = balancer.requiredReserve() - (address(balancer).balance - balancer.profit());
+        uint256 needed = balancer.requiredReserve() - (address(balancer).balance - balancer.creatorCredit());
         vm.prank(creator); balancer.depositETH{value: needed}();
         fillUp();
         assertEq(balancer.getActiveShapes()[2], 2, "explicit creator funding restores the expensive target");
@@ -776,7 +777,7 @@ contract BalancerTest is ForkBase {
         bytes32 uh7 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh7);
+        balancer.performUpkeep(uh7, 0, 0);
         _drawOneShape();
         uint256 g = gasleft();
         upkeep();

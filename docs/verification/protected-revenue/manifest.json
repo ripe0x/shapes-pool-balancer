@@ -1,0 +1,192 @@
+{
+  "baseRevision": "2f83f9a412a2f0b9de00a72af3bec5e86f57fb73",
+  "branch": "codex/creator-credit-atomic",
+  "scope": "src Solidity only; tests and documentation excluded from production counts",
+  "sourceBefore": {
+    "files": 10,
+    "bytes": 94484,
+    "lines": 1864
+  },
+  "sourceAfter": {
+    "files": 9,
+    "bytes": 91140,
+    "lines": 1822
+  },
+  "runtime": {
+    "PoolBalancer": {
+      "beforeRuntimeBytes": 23641,
+      "afterRuntimeBytes": 20516,
+      "baselineCompiler": "0.8.28+commit.7893614a",
+      "baselineSettings": {
+        "enabled": true,
+        "runs": 50
+      },
+      "baselineEVM": "cancun",
+      "baselineSourceHashesVerified": true,
+      "currentCompiledSourceHashesVerified": true
+    },
+    "BalancerFactory": {
+      "beforeRuntimeBytes": 3570,
+      "afterRuntimeBytes": 3501,
+      "baselineCompiler": "0.8.28+commit.7893614a",
+      "baselineSettings": {
+        "enabled": true,
+        "runs": 50
+      },
+      "baselineEVM": "cancun",
+      "baselineSourceHashesVerified": true,
+      "currentCompiledSourceHashesVerified": true
+    },
+    "PoolInventory": {
+      "beforeRuntimeBytes": 11023,
+      "afterRuntimeBytes": 10707,
+      "baselineCompiler": "0.8.28+commit.7893614a",
+      "baselineSettings": {
+        "enabled": true,
+        "runs": 50
+      },
+      "baselineEVM": "cancun",
+      "baselineSourceHashesVerified": true,
+      "currentCompiledSourceHashesVerified": true
+    },
+    "KeeperPolicyCalls": {
+      "beforeRuntimeBytes": 5577,
+      "afterRuntimeBytes": 4833,
+      "baselineCompiler": "0.8.28+commit.7893614a",
+      "baselineSettings": {
+        "enabled": true,
+        "runs": 50
+      },
+      "baselineEVM": "cancun",
+      "baselineSourceHashesVerified": true,
+      "currentCompiledSourceHashesVerified": true
+    },
+    "KeeperPolicyV1": {
+      "beforeRuntimeBytes": 1143,
+      "afterRuntimeBytes": 829,
+      "baselineCompiler": "0.8.28+commit.7893614a",
+      "baselineSettings": {
+        "enabled": true,
+        "runs": 50
+      },
+      "baselineEVM": "cancun",
+      "baselineSourceHashesVerified": true,
+      "currentCompiledSourceHashesVerified": true
+    }
+  },
+  "sourceSha256": {
+    "src/BalancerFactory.sol": "6b9c4277f2e67029d8687c98dca0b23813bb4d3ae3b2f4d991dff6c844700cbb",
+    "src/KeeperPolicyCalls.sol": "dceedd6ea369e6634525a236555c022da358596979949971fea5f5d3b54e24fd",
+    "src/KeeperPolicyV1.sol": "0f8c6d29bb717684008cdb0db03f77c963c42099a89ca37adf9250f689d656f2",
+    "src/PoolBalancer.sol": "bc0ef85e4755703139eddd185672642f57fc554512328d54735ceef781d93b79",
+    "src/PoolInventory.sol": "8aa6d15ebed52c0e5ee16e69d6ec425ddd7551ab0e7955224912219da8115a2c",
+    "src/PoolPage.sol": "8876cdfd348bc6209f63e0be2b043269e0bcf7fdfee1eb7df65722010a7b2b28",
+    "src/interfaces/External.sol": "fa30810c2ceb604f13b2b271865b7cbc99eb8d331a692791fe22e17f6328d579",
+    "src/interfaces/IKeeperPolicy.sol": "24a0adfb4d212f5211a5e36b538b9ab00c3adf7e598e239cc4a3382bceb67c00",
+    "src/vendor/PacksBuild.sol": "15ec15fd2482a1e1c8e5fbb8d3b659cd7d04d4f45b417837a0569140ba4b8b84"
+  },
+  "testEvidence": "Initial broad checks plus focused repaired checks; see report for commands, status, and limitations",
+  "note": "No production deployment, real funds, merge or new release outcome signature.",
+  "productionSourceCategories": {
+    "Solidity": {
+      "before": {
+        "files": 10,
+        "lines": 1864,
+        "bytes": 94484
+      },
+      "after": {
+        "files": 9,
+        "lines": 1822,
+        "bytes": 91140
+      }
+    },
+    "Creator app": {
+      "before": {
+        "files": 11,
+        "lines": 2806,
+        "bytes": 207445
+      },
+      "after": {
+        "files": 11,
+        "lines": 2863,
+        "bytes": 213293
+      }
+    },
+    "Shared planner": {
+      "before": {
+        "files": 2,
+        "lines": 521,
+        "bytes": 26659
+      },
+      "after": {
+        "files": 2,
+        "lines": 518,
+        "bytes": 27318
+      }
+    },
+    "Production keeper": {
+      "before": {
+        "files": 1,
+        "lines": 631,
+        "bytes": 38465
+      },
+      "after": {
+        "files": 1,
+        "lines": 626,
+        "bytes": 37767
+      }
+    },
+    "Production deployment": {
+      "before": {
+        "files": 2,
+        "lines": 114,
+        "bytes": 7316
+      },
+      "after": {
+        "files": 2,
+        "lines": 114,
+        "bytes": 7316
+      }
+    },
+    "Generated ABI": {
+      "before": {
+        "files": 1,
+        "lines": 8,
+        "bytes": 47495
+      },
+      "after": {
+        "files": 1,
+        "lines": 8,
+        "bytes": 46416
+      }
+    }
+  },
+  "productionSourceSha256": {
+    "app/src/App.tsx": "9bcc0496b100081ada4471058f5a4511853b1548bc751697d12e828683d20a8b",
+    "app/src/HowItWorks.tsx": "b8a339fefe9c2bf37cab08a579b0f5880be75c733de4f224444187b764dd1e9e",
+    "app/src/chain.ts": "879b3e8722bc216707cd6cce35bef2b8e5f898439d822df8fcda62676108659f",
+    "app/src/errors.ts": "83a65b52fac273cfe5d0deed0128c5fcd94d6b2ff00b86479116f4639f156f2e",
+    "app/src/inventory.ts": "162b70b1738a6d552acbdcb7bb7971d4c04507398a6bf21147cd6abcfaa90c9a",
+    "app/src/main.tsx": "8bbe3d819034aa4e82ecd8a4f77b8056e597c4f3a27669df67442113456ef969",
+    "app/src/policy.ts": "970261c06085eb9f8191e02527035c60c5a826f73a174d177ae92321f375bebe",
+    "app/src/styles.css": "22f4459c1c42d08944a1d3c2834bdbb1988265a7b851d3052df767a785975360",
+    "app/src/tx.ts": "6354cb9ed99c2bc2fd585210b84ad002a9305ff5f1842acf1bf830782d6b5fe0",
+    "app/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "app/src/wallet.ts": "d6c60917b2b0988942345e75c7e11ce5d49eec810d1719a92ad0a238edc3a962",
+    "keeper/keeper.ts": "bef61574ac06b7c8c66656e36a87dc409c35f04f7cd99cca0dd1ec946465f00f",
+    "script/Deploy.s.sol": "a89c7daf35bc1337d4ff8bcc01a3aa939cc18603845d2fca07faf7e116efe450",
+    "script/deploy.sh": "0d65a4310fc94c4f55f58d81c2a08132b7b4e2a1d0a4ad28111a4b807c89f139",
+    "shared/abi.ts": "243be76cafafdc780e815d3287ef2f278fd1f32fcf6c522e55838a3a85279a8a",
+    "shared/design.ts": "918f932c064a022a03652ce53de95012a24469a53c41f3dc8fbb3e7878b552b0",
+    "shared/planner.ts": "ca3ca9de09ca2169749ea04f276e31ab871477ea1055443ec4de30c59fd91900",
+    "src/BalancerFactory.sol": "6b9c4277f2e67029d8687c98dca0b23813bb4d3ae3b2f4d991dff6c844700cbb",
+    "src/KeeperPolicyCalls.sol": "dceedd6ea369e6634525a236555c022da358596979949971fea5f5d3b54e24fd",
+    "src/KeeperPolicyV1.sol": "0f8c6d29bb717684008cdb0db03f77c963c42099a89ca37adf9250f689d656f2",
+    "src/PoolBalancer.sol": "bc0ef85e4755703139eddd185672642f57fc554512328d54735ceef781d93b79",
+    "src/PoolInventory.sol": "8aa6d15ebed52c0e5ee16e69d6ec425ddd7551ab0e7955224912219da8115a2c",
+    "src/PoolPage.sol": "8876cdfd348bc6209f63e0be2b043269e0bcf7fdfee1eb7df65722010a7b2b28",
+    "src/interfaces/External.sol": "fa30810c2ceb604f13b2b271865b7cbc99eb8d331a692791fe22e17f6328d579",
+    "src/interfaces/IKeeperPolicy.sol": "24a0adfb4d212f5211a5e36b538b9ab00c3adf7e598e239cc4a3382bceb67c00",
+    "src/vendor/PacksBuild.sol": "15ec15fd2482a1e1c8e5fbb8d3b659cd7d04d4f45b417837a0569140ba4b8b84"
+  }
+}

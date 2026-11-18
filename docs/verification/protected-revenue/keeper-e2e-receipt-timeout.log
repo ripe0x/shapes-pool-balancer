@@ -1,0 +1,68 @@
+
+> keeper:e2e
+> tsx keeper/e2e.ts
+
+balancers 0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def 0x9cc8F2989f8D6Aa27263D2CDEdF698b2B112Bee5
+✓ discovered and filled 2 pools; sent 4
+✓ reconciled and replenished after draws on both pools (direct FWA ETH purchases, 5-draw batch)
+┌─────────┬─────────┬──────────┬─────────────────────┬────────────┬─────────┬────────────────────┬─────────────┬───────────────────┬───────────────────┐
+│ (index) │ gasUsed │ estimate │ estimateMinusBilled │ expenseGas │ source  │ expenseMinusBilled │ measuredGas │ rewardWei         │ costWei           │
+├─────────┼─────────┼──────────┼─────────────────────┼────────────┼─────────┼────────────────────┼─────────────┼───────────────────┼───────────────────┤
+│ 0       │ 2584941 │ 2656401  │ 71460               │ 2585590    │ 'trace' │ 649                │ 2558632     │ '337043882944648' │ '234891104541699' │
+│ 1       │ 2584897 │ 2650708  │ 65811               │ 2585700    │ 'trace' │ 803                │ 2558588     │ '324861832492684' │ '222819654243921' │
+│ 2       │ 2550222 │ 2624060  │ 73838               │ 2550954    │ 'trace' │ 732                │ 2526713     │ '311459019104182' │ '209285024221908' │
+│ 3       │ 2550240 │ 2620684  │ 70444               │ 2550953    │ 'trace' │ 713                │ 2526731     │ '302010459022222' │ '199933618610880' │
+│ 4       │ 891522  │ 969950   │ 78428               │ 892290     │ 'trace' │ 768                │ 898451      │ '130307719921431' │ '47288092985082'  │
+│ 5       │ 925590  │ 1004559  │ 78969               │ 926397     │ 'trace' │ 807                │ 932519      │ '171752256692646' │ '48753633540060'  │
+└─────────┴─────────┴──────────┴─────────────────────┴────────────┴─────────┴────────────────────┴─────────────┴───────────────────┴───────────────────┘
+✓ rewards within immutable maximum for 6 keeper txs
+✓ restart resumes without duplicate work
+✓ restart recovers unrecorded receipt and exact costs/rewards once without duplicate work
+✓ peer-mined eviction boundary preserves exact once-only financial accounting
+✓ replacement tx mined; stats {"sent":9,"mined":9,"reverted":0,"replaced":1,"skippedUnprofitable":0,"spentWei":"1101305636591446","earnedWei":"1833925133946065"}
+✓ without peer rebroadcast, orphaned nonce stays tracked and reports operator action without spending
+✓ reorg rolls back orphaned receipts and accounts re-mined empty-target gas
+✓ downtime: restarted keeper restored both pools
+✓ waited through a basefee spike, then serviced
+✓ purchaser gate refuses the Shapes contract (no failed Shape delivery can be bought)
+┌─────────┬─────────┬──────────┬─────────────────────┬────────────┬─────────┬────────────────────┬─────────────┬───────────────────┬───────────────────┐
+│ (index) │ gasUsed │ estimate │ estimateMinusBilled │ expenseGas │ source  │ expenseMinusBilled │ measuredGas │ rewardWei         │ costWei           │
+├─────────┼─────────┼──────────┼─────────────────────┼────────────┼─────────┼────────────────────┼─────────────┼───────────────────┼───────────────────┤
+│ 0       │ 857388  │ 935252   │ 77864               │ 858134     │ 'trace' │ 746                │ 864317      │ '105738808499870' │ '42890929012680'  │
+│ 1       │ 891478  │ 969861   │ 78383               │ 892224     │ 'trace' │ 746                │ 898407      │ '147441272806827' │ '44593566896158'  │
+│ 2       │ 840390  │ 918009   │ 77619               │ 841160     │ 'trace' │ 770                │ 847284      │ '163376550000000' │ '115553625000000' │
+└─────────┴─────────┴──────────┴─────────────────────┴────────────┴─────────┴────────────────────┴─────────────┴───────────────────┴───────────────────┘
+✓ rewards within immutable maximum for 3 keeper txs
+✓ pool page approval verifies through viem ERC-1271; other messages rejected
+discovered {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","block":"26382393"}
+sent performUpkeep {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0x09d94582aea9743f396a4fea9b26e894591d5dd0fb93256f0c9297117f2c2c12","nonce":9,"gasEstimate":"2650708","expenseGas":"2579986","expenseSource":"trace","expectedRewardWei":"231098455501513","minimumFixedWei":"0","minimumGas":"604579","minimumRewardWei":"30417117354223","expectedExpenseWei":"129802287102682","expectedNetWei":"101296168398831"}
+mined {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","hash":"0x09d94582aea9743f396a4fea9b26e894591d5dd0fb93256f0c9297117f2c2c12","gasUsed":"2584858","gasLimit":"4000000","measuredGas":"2558549","rewardWei":"231149389412691","costWei":"129958282715222","netWei":"101191106697469","effectiveGasPriceWei":"50276759","gasEstimate":"2650708","estimateMinusBilled":"65850","expenseGas":"2579986","expenseSource":"trace","expenseMinusBilled":"-4872","minimumFixedWei":"0","minimumGas":"604579","minimumRewardWei":"30396272679461","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+sent performUpkeep {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0x743de40e7f0e01b40f23713be598b1e063c91142265f94db1a5e39c8d697c58b","nonce":10,"gasEstimate":"2620701","expenseGas":"2545367","expenseSource":"trace","expectedRewardWei":"229408858292870","minimumFixedWei":"0","minimumGas":"569960","minimumRewardWei":"28675392640520","expectedExpenseWei":"128060562388979","expectedNetWei":"101348295903891"}
+reorg: verifying bounded receipt journal {"window":64,"journalPrunedThrough":"0"}
+orphaned receipt rolled back {"hash":"0x09d94582aea9743f396a4fea9b26e894591d5dd0fb93256f0c9297117f2c2c12","nonce":9,"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596"}
+dropped (no code, reorged) {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596"}
+orphaned nonce requires operator action {"nonce":"9","balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596"}
+orphaned nonce requires operator action {"nonce":"10","balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596"}
+mined {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","hash":"0x09d94582aea9743f396a4fea9b26e894591d5dd0fb93256f0c9297117f2c2c12","gasUsed":"23170","gasLimit":"4000000","measuredGas":"0","rewardWei":"0","costWei":"1162727204310","netWei":"-1162727204310","effectiveGasPriceWei":"50182443","gasEstimate":"2650708","estimateMinusBilled":"2627538","expenseGas":"2579986","expenseSource":"trace","expenseMinusBilled":"2556816","minimumFixedWei":"0","minimumGas":"604579","minimumRewardWei":"30339251206497","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+mined {"balancer":"0x4C9AcaD8B52B6E21362FC2967Ab6e98F69Bd7596","hash":"0x743de40e7f0e01b40f23713be598b1e063c91142265f94db1a5e39c8d697c58b","gasUsed":"23170","gasLimit":"4000000","measuredGas":"0","rewardWei":"0","costWei":"1162727204310","netWei":"-1162727204310","effectiveGasPriceWei":"50182443","gasEstimate":"2620701","estimateMinusBilled":"2597531","expenseGas":"2545367","expenseSource":"trace","expenseMinusBilled":"2522197","minimumFixedWei":"0","minimumGas":"569960","minimumRewardWei":"28601985212280","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+sent performUpkeep {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0xb3bdad04836a5b2690accb3dd3cfb59c2484a7ebdddd30fbbf25097211f3871f","nonce":11,"gasEstimate":"935252","expenseGas":"858134","expenseSource":"trace","expectedRewardWei":"105740966494830","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","expectedExpenseWei":"42931306134316","expectedNetWei":"62809660360514"}
+sent performUpkeep {"balancer":"0x9cc8F2989f8D6Aa27263D2CDEdF698b2B112Bee5","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0x9c4ab18b5905978ba5bf55210672e818c37bf84c8f476514fb908cb54834e7bf","nonce":12,"gasEstimate":"969861","expenseGas":"892224","expenseSource":"trace","expectedRewardWei":"147443063947350","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","expectedExpenseWei":"44636783630976","expectedNetWei":"102806280316374"}
+mined {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","hash":"0xb3bdad04836a5b2690accb3dd3cfb59c2484a7ebdddd30fbbf25097211f3871f","gasUsed":"857388","gasLimit":"4000000","measuredGas":"864317","rewardWei":"105738808499870","costWei":"42890929012680","netWei":"62847879487190","effectiveGasPriceWei":"50025110","gasEstimate":"935252","estimateMinusBilled":"77864","expenseGas":"858134","expenseSource":"trace","expenseMinusBilled":"746","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+mined {"balancer":"0x9cc8F2989f8D6Aa27263D2CDEdF698b2B112Bee5","hash":"0x9c4ab18b5905978ba5bf55210672e818c37bf84c8f476514fb908cb54834e7bf","gasUsed":"891478","gasLimit":"4000000","measuredGas":"898407","rewardWei":"147441272806827","costWei":"44593566896158","netWei":"102847705910669","effectiveGasPriceWei":"50022061","gasEstimate":"969861","estimateMinusBilled":"78383","expenseGas":"892224","expenseSource":"trace","expenseMinusBilled":"746","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+skip: unprofitable at current gas {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+sent performUpkeep {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0xe3aa43cee855d1b20af71b4eeca7b2618839cee1095518f5d90ddaf715e511f8","nonce":13,"gasEstimate":"918009","expenseGas":"841160","expenseSource":"trace","expectedRewardWei":"174598300000000","minimumFixedWei":"0","minimumGas":"441160","minimumRewardWei":"66174000000000","expectedExpenseWei":"126174000000000","expectedNetWei":"48424300000000"}
+mined {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","hash":"0xe3aa43cee855d1b20af71b4eeca7b2618839cee1095518f5d90ddaf715e511f8","gasUsed":"840390","gasLimit":"4000000","measuredGas":"847284","rewardWei":"163376550000000","costWei":"115553625000000","netWei":"47822925000000","effectiveGasPriceWei":"137500000","gasEstimate":"918009","estimateMinusBilled":"77619","expenseGas":"841160","expenseSource":"trace","expenseMinusBilled":"770","minimumFixedWei":"0","minimumGas":"441160","minimumRewardWei":"60659500000000","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+sent performUpkeep {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3","hash":"0xd2bb4c9cac7e2a0b2c4247822a442fdde0ccc0efffe09862466494373c38983e","nonce":14,"gasEstimate":"910353","expenseGas":"833624","expenseSource":"trace","expectedRewardWei":"111509788266186","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","expectedExpenseWei":"66996194291224","expectedNetWei":"44513593974962"}
+mined {"balancer":"0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def","hash":"0xd2bb4c9cac7e2a0b2c4247822a442fdde0ccc0efffe09862466494373c38983e","gasUsed":"832856","gasLimit":"4000000","measuredGas":"839786","rewardWei":"108137609659650","costWei":"63778051161400","netWei":"44359558498250","effectiveGasPriceWei":"76577525","gasEstimate":"910353","estimateMinusBilled":"77497","expenseGas":"833624","expenseSource":"trace","expenseMinusBilled":"768","minimumFixedWei":"0","minimumGas":"0","minimumRewardWei":"0","policy":"0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3"}
+WaitForTransactionReceiptTimeoutError: Timed out while waiting for transaction with hash "0xba46ac8f17c5d1050741dda078bd675b27308841e987e2384233f2d59510e610" to be confirmed.
+
+Version: viem@2.57.17
+    at Timeout.<anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/waitForTransactionReceipt.ts:248:16)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7) {
+  details: undefined,
+  docsPath: undefined,
+  metaMessages: undefined,
+  shortMessage: 'Timed out while waiting for transaction with hash "0xba46ac8f17c5d1050741dda078bd675b27308841e987e2384233f2d59510e610" to be confirmed.',
+  version: '2.57.17'
+}

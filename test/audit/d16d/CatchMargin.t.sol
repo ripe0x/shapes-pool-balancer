@@ -54,7 +54,7 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
             uint256 snap = vm.snapshotState();
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
+            (bool ok,) = address(balancer).call{gas: mid}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0));
             vm.revertToState(snap);
             if (ok) hi = mid;
             else lo = mid;
@@ -83,7 +83,7 @@ contract D16dCatchMarginTest is D16bWorstUpkeepTest {
         bytes32 uh2 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeWithSignature("performUpkeep(bytes32)", uh2));
+        (bool ok,) = address(balancer).call{gas: 4_000_000}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh2, 0, 0));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         assertTrue(ok, "4M succeeds");
@@ -164,7 +164,7 @@ contract D16dOpenSweepTest is D16dCatchMarginTest {
             uint256 snap = vm.snapshotState();
             bytes32 uh3 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh3));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh3, 0, 0));
             bool done = IProcess(address(pool)).unsettledAcquisitionCount() == 0;
             vm.revertToState(snap);
             if (ok) ++oks;
