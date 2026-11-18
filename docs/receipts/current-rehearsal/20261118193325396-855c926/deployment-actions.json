@@ -1,0 +1,162 @@
+{
+  "revision": "855c926c77284c57939a2c93c67442bbadb6ec1c",
+  "rpc": "http://127.0.0.1:18787",
+  "forkBlock": "26444068",
+  "forkHash": "0xaaf21d233e5e6832c7c22859f475a0feb6c0e41ca0f93a635e918bc830c11437",
+  "actors": {
+    "deployer": "0x000000000000000000000000000000000001e001",
+    "packsAdmin": "0x000000000000000000000000000000000001e002",
+    "keeperAdmin": "0x000000000000000000000000000000000001e003",
+    "policyAdmin": "0x000000000000000000000000000000000001e004",
+    "creatorA": "0x000000000000000000000000000000000001e005",
+    "creatorB": "0x000000000000000000000000000000000001e006",
+    "keeper": "0x000000000000000000000000000000000001e007",
+    "buyer": "0x000000000000000000000000000000000001e008"
+  },
+  "actions": [
+    {
+      "index": 0,
+      "nonce": "0",
+      "type": "CREATE2",
+      "name": "KeeperPolicyCalls",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "predictedAddress": "0x1601a841c2c86f6ac574279b87f1168ff284b8fb",
+      "constructorArguments": [],
+      "gasLimit": "1608471",
+      "valueWei": "0",
+      "inputHash": "0xd2eaa7e9ca3a4984e07ccac48fed9de1dbeb8f118fb4df205e98e08f575dc5c9",
+      "runtimeCodeHash": "0xd988ab3c3e0dbee33008ea7eea13bb4029c4c7dece63d9a2069d116dc5983517",
+      "runtimeBytes": 4833
+    },
+    {
+      "index": 1,
+      "nonce": "1",
+      "type": "CREATE2",
+      "name": "PoolPage",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "predictedAddress": "0x67c828ad820490c02cdcbbccc3a303c64207fbcf",
+      "constructorArguments": [],
+      "gasLimit": "431388",
+      "valueWei": "0",
+      "inputHash": "0x3a06e77e15903c54bed02b3d32d72a0204eaee7a3dc681c9aea4a1521b85d57c",
+      "runtimeCodeHash": "0x4748911b1d5f84a7a2ad533362bcfb882718d5d49ccc5baf9edcbc88e2127cc5",
+      "runtimeBytes": 1194
+    },
+    {
+      "index": 2,
+      "nonce": "2",
+      "type": "CREATE2",
+      "name": "PoolInventory",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "predictedAddress": "0x50d33c4730bdb780734a94b36e7fda48e3e6fd6b",
+      "constructorArguments": [],
+      "gasLimit": "3469637",
+      "valueWei": "0",
+      "inputHash": "0x40e6c8299e0510a19d7242bca7db66e8d072bbb0ad18d7bf50c5d337aeac5c08",
+      "runtimeCodeHash": "0x0f0816459a194868a17ae3645a8a254a62c86b07ec1958f5abf1e15079ad1100",
+      "runtimeBytes": 10707
+    },
+    {
+      "index": 3,
+      "nonce": "3",
+      "type": "CREATE",
+      "name": "ShapePackRenderer",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "constructorArguments": [
+        "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0"
+      ],
+      "gasLimit": "2703828",
+      "valueWei": "0",
+      "inputHash": "0x8af7af6cdf431165b46d8df2d42adede8a95438daf916d395cff90e620385ce0",
+      "runtimeCodeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe",
+      "runtimeBytes": 9354
+    },
+    {
+      "index": 4,
+      "nonce": "4",
+      "type": "CREATE",
+      "name": "ShapePacks",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0x8b4087d01443ba7619bb3a6e2a8668c5af0d1955",
+      "constructorArguments": [
+        "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+        "0x000000000000000000000000000000000001E002",
+        "Pool Prize Packs",
+        "PRIZEPACK",
+        "2"
+      ],
+      "gasLimit": "5562551",
+      "valueWei": "0",
+      "inputHash": "0x14fc2a22987684ffdc877c078690e4943b4eee9b402e2a7f867efac49e53034f",
+      "runtimeCodeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c",
+      "runtimeBytes": 17768
+    },
+    {
+      "index": 5,
+      "nonce": "5",
+      "type": "CREATE",
+      "name": "PoolBalancer",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0x6ccd1a4ff41e886975db8504f384bc698d4939b3",
+      "constructorArguments": [
+        "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+        "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+        "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+        "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955",
+        "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+      ],
+      "gasLimit": "5918790",
+      "valueWei": "0",
+      "inputHash": "0x609acf060eee6734b69e4d35924440c7fcf5bd96e1d1fa9395c9a2d550ff4e77",
+      "runtimeCodeHash": "0x9546a51b079e60eb2e35653a3723ec831ef70c391f7693ee43d6ecd7cb015b0b",
+      "runtimeBytes": 20516
+    },
+    {
+      "index": 6,
+      "nonce": "6",
+      "type": "CREATE",
+      "name": "KeeperPolicyV1",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0xbd9f1679b7104b308cb13be7c421a3ba313d30a6",
+      "constructorArguments": [],
+      "gasLimit": "301901",
+      "valueWei": "0",
+      "inputHash": "0xb89822ba73ea18db5d877f02a50a629028c443c6aea8dc4d3f2cbd4d20515123",
+      "runtimeCodeHash": "0xe72efa43358c84167d3dce6836db9cc015db0674de897bb631f7be5b8ac6dfa9",
+      "runtimeBytes": 829
+    },
+    {
+      "index": 7,
+      "nonce": "7",
+      "type": "CREATE",
+      "name": "BalancerFactory",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0xf8fda7622370f00dac7ffb06825d0d193cbdb9dc",
+      "constructorArguments": [
+        "0x6CCD1A4ff41e886975Db8504F384Bc698d4939B3",
+        "0x000000000000000000000000000000000001E003",
+        "0x000000000000000000000000000000000001e004",
+        "0xbd9F1679b7104B308cB13bE7C421A3Ba313D30A6"
+      ],
+      "gasLimit": "1167028",
+      "valueWei": "0",
+      "inputHash": "0x77720bbfa7b43ff9aa54e6f5a31f8882f82dc83c0f0df49d85e36fa6531f20e8",
+      "runtimeCodeHash": "0xb8a27395d50f7fae58b5ac8a09b23fe08f71ae9ae4acdbbe2aa29cd30eb7ee1d",
+      "runtimeBytes": 3501
+    }
+  ],
+  "deploymentGasReserveWei": "423271880000000000",
+  "broadcast": false,
+  "mutationCount": 0
+}

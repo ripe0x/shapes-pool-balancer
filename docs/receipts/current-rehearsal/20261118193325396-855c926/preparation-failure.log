@@ -1,0 +1,17 @@
+AssertionError [ERR_ASSERTION]: simulation used exact frozen artifact
++ actual - expected
+
++ '1f2e0e326a197b7ad2b0b76719f334c550b9848a01b1eff5e861bcbd21909ab4'
+- 'a19b42ff34074013f7d7dffc2b07a893146f763a6973406c4f83b2bdc5412452'
+
+    at validateCurrentPlan (/private/tmp/fwa-credit-atomic/scripts/current-local-rehearsal.ts:86:16)
+    at prepareCurrentPlan (/private/tmp/fwa-credit-atomic/scripts/current-local-rehearsal.ts:186:5)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/private/tmp/fwa-credit-atomic/scripts/current-local-rehearsal.ts:514:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '1f2e0e326a197b7ad2b0b76719f334c550b9848a01b1eff5e861bcbd21909ab4',
+  expected: 'a19b42ff34074013f7d7dffc2b07a893146f763a6973406c4f83b2bdc5412452',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

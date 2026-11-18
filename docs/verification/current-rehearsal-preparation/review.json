@@ -13,5 +13,14 @@
     "Controlled Keeper ticks do not test CLI timing.",
     "Controlled real coordinator callbacks do not test live randomness.",
     "No new forced hostile-NFT delivery or trusted-Shape delivery-failure branch."
-  ]
+  ],
+  "stagingRepair": {
+    "controllerSha256": "f15a0d03cac8a28911a4a9849c9e4c4c8c964a18f1d576472add4fc6e0743386",
+    "testSha256": "2c589a93196f56e67cc15b077d562eae64f805853721a72f2aec5d8061ba80a2",
+    "independentReviewer": "frontend",
+    "findings": [],
+    "boundDependencyPathsCovered": 58,
+    "validation": "32 focused current and legacy gate tests pass; final staging typecheck passes",
+    "limits": "Preparation02 must still establish exact artifact identity; no source/artifact waiver."
+  }
 }

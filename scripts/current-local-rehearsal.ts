@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -31,6 +31,37 @@ const eq = (a: string, b: string) => assert.equal(a.toLowerCase(), b.toLowerCase
 function files(root = ROOT) { return gitAt(root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', ...INPUTS).split('\0').filter(Boolean).filter(p => !p.split('/').some(v => /^\.env($|\.)/.test(v))).sort(); }
 export function manifest(root = ROOT) { return files(root).map(path => { assert.ok(statSync(join(root, path)).isFile(), `ordinary frozen input ${path}`); return { path, sha256: digest(readFileSync(join(root, path))) }; }); }
 export function dependencyState(root = ROOT) { gitAt(root, 'submodule', 'foreach', '--recursive', 'git diff --quiet && git diff --cached --quiet'); return gitAt(root, 'submodule', 'status', '--recursive').split('\n').map(s => { assert.ok(!/^[+\-U]/.test(s), 'initialized pinned submodules'); return s.trim(); }); }
+const DEPENDENCY_SOURCE_ROOTS = ['lib/forge-std/src/', 'lib/solady/src/', 'lib/shape-packs/src/', 'lib/shape-packs/lib/shapes/src/', 'lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/'];
+function dependencySourcePaths(p: any) {
+    return p.dependencies.flatMap((state: string) => {
+        const match = state.match(/^[0-9a-f]{40} ([^ ]+)/); assert.ok(match, 'pinned dependency path');
+        const base = match[1];
+        return gitAt(p.repositoryRoot, '-C', base, 'ls-files', '--cached', '-z').split('\0').filter(Boolean).map(path => `${base}/${path}`);
+    }).filter((path: string) => path.endsWith('.sol') && DEPENDENCY_SOURCE_ROOTS.some(prefix => path.startsWith(prefix))).sort() as string[];
+}
+export function assertStagedDependencies(p: any, dir: string) {
+    const paths = dependencySourcePaths(p); assert.ok(paths.length > 0);
+    for (const path of paths) {
+        assert.ok(lstatSync(join(dir, path)).isFile(), `ordinary staged dependency source ${path}`);
+        assert.equal(digest(readFileSync(join(dir, path))), digest(readFileSync(join(p.repositoryRoot, path))), `staged pinned dependency source ${path}`);
+    }
+    return paths;
+}
+function copySource(source: string, destination: string) {
+    const info = statSync(source);
+    cpSync(source, destination, { preserveTimestamps: true });
+    // cpSync rounds through Date on this filesystem; retain fractional milliseconds used by Forge's cache.
+    utimesSync(destination, info.atimeMs / 1000, info.mtimeMs / 1000);
+}
+export function copyStagedDependencies(p: any, dir: string) {
+    // Only tracked Solidity inputs are needed; Git metadata, tests, secrets and build outputs stay outside the stage.
+    for (const path of dependencySourcePaths(p)) {
+        assert.ok(lstatSync(join(p.repositoryRoot, path)).isFile());
+        mkdirSync(dirname(join(dir, path)), { recursive: true });
+        copySource(join(p.repositoryRoot, path), join(dir, path));
+    }
+    return assertStagedDependencies(p, dir);
+}
 export function runtimeState() {
     const binaries = [process.execPath, ...['forge', 'anvil'].map(name => execFileSync('which', [name], { encoding: 'utf8' }).trim()), join(homedir(), '.svm', '0.8.28', 'solc-0.8.28')];
     return { node: process.version, binaries: binaries.map(path => ({ path: realpathSync(path), sha256: digest(readFileSync(path)) })), installedLock: digest(readFileSync(join(ROOT, 'node_modules/.package-lock.json'))) };
@@ -39,6 +70,7 @@ export function sourceCheck(p: any, executedRoot = ROOT) {
     assert.deepEqual(manifest(p.repositoryRoot), p.inputs, 'current runtime/build/app/driver inputs changed');
     assert.equal(digest(json(p.inputs)), p.sourceFingerprint);
     assert.deepEqual(dependencyState(p.repositoryRoot), p.dependencies, 'dependency revisions changed');
+    if (realpathSync(executedRoot) !== p.repositoryRoot) assertStagedDependencies(p, executedRoot);
     assert.deepEqual(runtimeState(), p.runtime, 'runtime binaries or installed dependency lock changed');
     for (const i of p.inputs)
         assert.equal(digest(readFileSync(join(executedRoot, i.path))), i.sha256, `executed frozen input ${i.path}`);
@@ -131,11 +163,11 @@ function stage(p: any) {
     const dir = mkdtempSync(join(tmpdir(), 'fwa-current-rehearsal-stage-'));
     for (const i of p.inputs) {
         mkdirSync(dirname(join(dir, i.path)), { recursive: true });
-        cpSync(join(ROOT, i.path), join(dir, i.path));
+        copySource(join(ROOT, i.path), join(dir, i.path));
     }
     for (const name of ['out', 'cache'])
-        cpSync(join(ROOT, name), join(dir, name), { recursive: true });
-    symlinkSync(join(ROOT, 'lib'), join(dir, 'lib'));
+        cpSync(join(ROOT, name), join(dir, name), { recursive: true, preserveTimestamps: true });
+    copyStagedDependencies(p, dir);
     symlinkSync(realpathSync(join(ROOT, 'node_modules')), join(dir, 'node_modules'));
     sourceCheck(p, dir);
     return dir;

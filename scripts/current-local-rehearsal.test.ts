@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'vitest';
-import { ARTIFACTS, CAPS, CurrentRehearsal, FUNDING, MAINNET, ROLES, ROOT, SCENARIO, dependencyState, digest, forgeArguments, json, manifest, runtimeState, sourceCheck, validateCurrentBounds, validateCurrentForgeArguments, validateCurrentPlan } from './current-local-rehearsal';
+import { ARTIFACTS, CAPS, CurrentRehearsal, FUNDING, MAINNET, ROLES, ROOT, SCENARIO, assertStagedDependencies, copyStagedDependencies, dependencyState, digest, forgeArguments, json, manifest, runtimeState, sourceCheck, validateCurrentBounds, validateCurrentForgeArguments, validateCurrentPlan } from './current-local-rehearsal';
 const names = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
 const bounds = () => ({ schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, chainId: 31337, rpc: 'http://127.0.0.1:18786', upstream: MAINNET, revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: '16777216', evidenceDirectory: join(ROOT, 'docs/receipts/current-rehearsal/test-input-only'), planFile: join(ROOT, 'docs/receipts/current-rehearsal/test-input-only/bounded-plan.json'), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), deployment: names.map(name => ({ name, gasLimit: '1000000' })) });
 describe('current local rehearsal control inputs, without node mutation', () => {
@@ -64,6 +65,20 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         const changed = structuredClone(p);
         changed.inputs[0].sha256 = '0'.repeat(64);
         assert.throws(() => sourceCheck(changed));
+    });
+    it('stages real pinned dependency source bytes without library symlinks or Git metadata', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'fwa-current-dependency-copy-test-'));
+        const p = {repositoryRoot:ROOT,dependencies:dependencyState()};
+        const paths = copyStagedDependencies(p, dir);
+        assert.ok(paths.includes('lib/shape-packs/lib/shapes/lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol'));
+        assert.ok(lstatSync(join(dir,'lib')).isDirectory()); assert.equal(lstatSync(join(dir,'lib')).isSymbolicLink(),false);
+        assert.ok(paths.every(path => path.endsWith('.sol') && !path.split('/').some(part => part === '.git' || part.startsWith('.env'))));
+        assert.equal(existsSync(join(dir,'lib/forge-std/.git')),false);
+        assert.deepEqual(assertStagedDependencies(p,dir),paths);
+        const source = paths[0];
+        assert.equal(Math.trunc(statSync(join(dir,source)).mtimeMs),Math.trunc(statSync(join(ROOT,source)).mtimeMs));
+        writeFileSync(join(dir,source),'// modified staging input');
+        assert.throws(() => assertStagedDependencies(p,dir), /staged pinned dependency source/);
     });
     it('preserves the production gate tail exactly and requires an explicit new local route', () => {
         const wrapper = readFileSync(join(ROOT, 'script/deploy.sh'), 'utf8');

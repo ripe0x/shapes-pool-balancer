@@ -1,0 +1,9 @@
+{
+  "balancerFactory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+  "block": 26382349,
+  "chainId": 31337,
+  "keeperPolicy": "0x870E6242eBDe2Adb8DBBA5d7c90693523787eCC3",
+  "packs": "0xde1627CA9D57bb646eda817366F96Daf3595A436",
+  "policyAdmin": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "poolBalancerImplementation": "0x5c4075FCC531b2227dd1E6Aef747BeEe3a0A7067"
+}
