@@ -85,7 +85,7 @@
     "src/interfaces/IKeeperPolicy.sol": "24a0adfb4d212f5211a5e36b538b9ab00c3adf7e598e239cc4a3382bceb67c00",
     "src/vendor/PacksBuild.sol": "15ec15fd2482a1e1c8e5fbb8d3b659cd7d04d4f45b417837a0569140ba4b8b84"
   },
-  "testEvidence": "Original contract/economic evidence retains its source scope; final frontend, CI and current-candidate rehearsal evidence is in docs/FRONTEND-FOLLOWUP-RESULTS.md.",
+  "testEvidence": "Current cancellation/replacement evidence: docs/CREATION-REPLACEMENT-RESULTS.md. Original frontend and complete rehearsal evidence retains the revisions in docs/FRONTEND-FOLLOWUP-RESULTS.md.",
   "note": "No production deployment, real funds, merge or new release outcome signature.",
   "productionSourceCategories": {
     "Solidity": {
@@ -108,8 +108,8 @@
       },
       "after": {
         "files": 14,
-        "lines": 3128,
-        "bytes": 227964
+        "lines": 3240,
+        "bytes": 234782
       }
     },
     "Shared planner": {
@@ -162,10 +162,10 @@
     }
   },
   "productionSourceSha256": {
-    "app/src/App.tsx": "4c9d3d1c5ec069d25c747ca201d745bfd17790479089d2299375ad666838ebcf",
+    "app/src/App.tsx": "722f85a4e78b5cba572209345193eae7c7ab0dee897e8859b772e57900e234d4",
     "app/src/HowItWorks.tsx": "b8a339fefe9c2bf37cab08a579b0f5880be75c733de4f224444187b764dd1e9e",
     "app/src/chain.ts": "879b3e8722bc216707cd6cce35bef2b8e5f898439d822df8fcda62676108659f",
-    "app/src/creation.ts": "ea870fd6b96a7c5cb910bf636958eea76a8e42fedc45efd267212cadb3f5113c",
+    "app/src/creation.ts": "1d30a00c3f68949402a89e847e0e81d74ab7fd8e924f92b18588329d149622e2",
     "app/src/errors.ts": "83a65b52fac273cfe5d0deed0128c5fcd94d6b2ff00b86479116f4639f156f2e",
     "app/src/inventory.ts": "162b70b1738a6d552acbdcb7bb7971d4c04507398a6bf21147cd6abcfaa90c9a",
     "app/src/main.tsx": "8bbe3d819034aa4e82ecd8a4f77b8056e597c4f3a27669df67442113456ef969",
@@ -194,7 +194,7 @@
   },
   "followupBaseRevision": "51dd7b7c3b300eee9a0279127e08021230539030",
   "frontendVerifiedRevision": "895de04dc98d519cc378ce8655e02f43aeba80f5",
-  "productionSourceFingerprint": "54cada588b35987b8c82cacdd469e696248c5d0db4bcdca7da29954ef0602e2a",
+  "productionSourceFingerprint": "f202dd7009c2ae3f0ec80226b1b3c97ad51b15ee8d1cc66ea42c1ccca855f00b",
   "buildInputSha256": {
     "package.json": "600dafaa55964697c3c2376cef32e91210946f3ce70d5bb09bbce507248467eb",
     "package-lock.json": "313ac4f309179fadd4fb82f21be410abea54aea15200e40709820e4fc13b1b02",
@@ -210,5 +210,12 @@
     "lib/shape-packs": "3a463f750eee56b0ca175999f184a32909173780",
     "lib/shape-packs/lib/shapes": "1b84c102a6603ca9751d863ff259b08870d22a6b",
     "lib/solady": "acd959aa4bd04720d640bf4e6a5c71037510cc4b"
+  },
+  "replacementFollowup": {
+    "baseRevision": "feb71f652e49c1d7faa9a8b9af09d666c752b282",
+    "evidence": "docs/CREATION-REPLACEMENT-RESULTS.md",
+    "previousProductionSourceFingerprint": "54cada588b35987b8c82cacdd469e696248c5d0db4bcdca7da29954ef0602e2a",
+    "previousManifest": "https://github.com/ripe0x/shapes-pool-balancer/blob/feb71f652e49c1d7faa9a8b9af09d666c752b282/docs/verification/protected-revenue/manifest.json",
+    "scope": "Only app/src/App.tsx and app/src/creation.ts production bytes changed since the previous delivered manifest; historical full rehearsal is not relabeled."
   }
 }

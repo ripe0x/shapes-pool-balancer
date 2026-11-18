@@ -1,0 +1,17 @@
+{
+  "scope": "Read-only preflight only; no broadcast",
+  "rpc": "http://127.0.0.1:18795",
+  "chainId": 31337,
+  "pinnedBlock": "26382399",
+  "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+  "creator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "config": { "markupBps": 2500, "creatorRevenueBps": 1234, "target": "1", "mintFeeCap": "1000000000000000" },
+  "curated": [],
+  "value": "25000000000000000",
+  "gas": "4000000",
+  "maxFeePerGas": "1000000000",
+  "maxPriorityFeePerGas": "50000000",
+  "commandExitStatus": 1,
+  "result": { "reverted": true, "selector": "0x33b094a1", "decodedError": "InvalidBatch" },
+  "consequence": "Empty-curated valid creation assumption rejected. Test fixture now uses one real DemoNFT with actual mint and approvals; invalid-rate deliberate negative inclusion probes remain empty-curated because their rate is rejected before listing."
+}

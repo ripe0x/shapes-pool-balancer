@@ -1,6 +1,6 @@
 import { BaseError, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, createPublicClient, custom, http, type Address } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { canRetryCreation, creationContextMatches, creationNotSubmitted, recoverCreation, sameCreation, submitCreation, type CreationAttempt } from './creation';
+import { canRetryCreation, creationContextMatches, creationNotSubmitted, recoverCreation, sameCreation, sameSubmission, submitCreation, type CreationAttempt } from './creation';
 
 const attempt: CreationAttempt = {
   chainId: 31337,
@@ -31,6 +31,23 @@ describe('atomic creation submission identity', () => {
     for (const other of [{ ...context, chainId: 1 }, { ...context, creator: undefined },
       { ...context, creator: attempt.factory }, { ...context, factory: attempt.creator }]) {
       expect(creationContextMatches(attempt, other)).toBe(false);
+    }
+  });
+
+  it('rejects late writes or clearing against an older persisted transaction identity', () => {
+    const submitted = { ...attempt, hash: `0x${'05'.repeat(32)}` as const };
+    const observed = { ...submitted, nonce: 7 };
+    const replaced = { ...observed, hash: `0x${'06'.repeat(32)}` as const };
+    expect(sameCreation(submitted, replaced)).toBe(true);
+    expect(sameSubmission(submitted, observed)).toBe(false);
+    expect(sameSubmission(observed, replaced)).toBe(false);
+    expect(sameSubmission(replaced, JSON.parse(JSON.stringify(replaced)))).toBe(true);
+    expect(sameSubmission(undefined, replaced)).toBe(false);
+    for (const outcome of ['cancelled', 'replaced', 'reverted'] as const) {
+      expect(canRetryCreation(outcome, replaced, context)).toBe(true);
+      for (const other of [{ ...context, chainId: 1 }, { ...context, creator: attempt.factory }, { ...context, factory: attempt.creator }]) {
+        expect(canRetryCreation(outcome, replaced, other)).toBe(false);
+      }
     }
   });
 

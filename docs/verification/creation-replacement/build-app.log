@@ -1,0 +1,250 @@
+
+> build:app
+> vite build --config app/vite.config.ts
+
+vite v6.4.6 building for production...
+transforming...
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@base-org/account/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@coinbase/wallet-sdk/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/zod/v4/core/regexes.js (74:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/zod/v4/core/util.js (400:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@wagmi/connectors/node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@walletconnect/utils/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@walletconnect/utils/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@walletconnect/utils/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@walletconnect/utils/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "../../../Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 5642 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        0.70 kB │ gzip:   0.39 kB
+dist/assets/index-BTkTwajp.css                        50.10 kB │ gzip:   9.36 kB
+dist/assets/cursor-Dzj7vBhG.js                         0.26 kB │ gzip:   0.22 kB
+dist/assets/chevron-left-DmsmcP16.js                   0.40 kB │ gzip:   0.28 kB
+dist/assets/chevron-top-Cu3KEOkP.js                    0.40 kB │ gzip:   0.28 kB
+dist/assets/external-link-D08urZW3.js                  0.40 kB │ gzip:   0.28 kB
+dist/assets/chevron-bottom-jMQ4ou8z.js                 0.40 kB │ gzip:   0.29 kB
+dist/assets/chevron-right-CeNAM7Mm.js                  0.40 kB │ gzip:   0.28 kB
+dist/assets/arrow-top-CWV4kNra.js                      0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-bottom-Cki9EgOz.js                   0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-left-CHZekVfU.js                     0.41 kB │ gzip:   0.29 kB
+dist/assets/arrow-right-h8VBQMbP.js                    0.42 kB │ gzip:   0.29 kB
+dist/assets/off-lCqQbwSJ.js                            0.43 kB │ gzip:   0.29 kB
+dist/assets/search-CyQ5JWfN.js                         0.44 kB │ gzip:   0.30 kB
+dist/assets/close-DbEvYKxV.js                          0.44 kB │ gzip:   0.29 kB
+dist/assets/all-wallets-kgS61grN.js                    0.45 kB │ gzip:   0.27 kB
+dist/assets/filters-_1dtFTn8.js                        0.45 kB │ gzip:   0.28 kB
+dist/assets/info-circle-Dsxtm7xB.js                    0.47 kB │ gzip:   0.30 kB
+dist/assets/more-CClXAMNo.js                           0.49 kB │ gzip:   0.31 kB
+dist/assets/refresh-DvTHj668.js                        0.49 kB │ gzip:   0.33 kB
+dist/assets/warning-circle-B3iyFl_p.js                 0.50 kB │ gzip:   0.32 kB
+dist/assets/coinPlaceholder-B-kTwzAr.js                0.50 kB │ gzip:   0.35 kB
+dist/assets/celo-GEP4TUHG-CenIBYLU.js                  0.51 kB │ gzip:   0.31 kB
+dist/assets/compass-LCFScLgK.js                        0.52 kB │ gzip:   0.34 kB
+dist/assets/Windows-PPTHQER6-BlyV2p7Y.js               0.52 kB │ gzip:   0.29 kB
+dist/assets/swapVertical-B76N-qUS.js                   0.55 kB │ gzip:   0.34 kB
+dist/assets/swapHorizontal-Bh2fPSiH.js                 0.55 kB │ gzip:   0.33 kB
+dist/assets/x-BSCx3F9N.js                              0.57 kB │ gzip:   0.39 kB
+dist/assets/cursor-transparent-ltAgysi3.js             0.58 kB │ gzip:   0.36 kB
+dist/assets/twitterIcon-Bo_eMAj9.js                    0.58 kB │ gzip:   0.38 kB
+dist/assets/mobile-CMa7peFS.js                         0.59 kB │ gzip:   0.32 kB
+dist/assets/zetachain-TLDS5IPW-Udhyw16T.js             0.60 kB │ gzip:   0.38 kB
+dist/assets/base-OAXLRA4F-CoYTVIiL.js                  0.60 kB │ gzip:   0.33 kB
+dist/assets/checkmark-bold-G9EfH0Bq.js                 0.65 kB │ gzip:   0.43 kB
+dist/assets/etherscan-CIABl2Bg.js                      0.70 kB │ gzip:   0.45 kB
+dist/assets/checkmark-90tYUpCA.js                      0.71 kB │ gzip:   0.47 kB
+dist/assets/help-circle-8yjOPBQT.js                    0.71 kB │ gzip:   0.43 kB
+dist/assets/wallet-CM2UXZQo.js                         0.72 kB │ gzip:   0.42 kB
+dist/assets/hyperevm-VKPAA4SA-CHwraEsx.js              0.73 kB │ gzip:   0.41 kB
+dist/assets/optimism-HAF2GUT7-ec6Nqxs9.js              0.73 kB │ gzip:   0.38 kB
+dist/assets/monad-4KWC6TSS-DVXSkpiz.js                 0.74 kB │ gzip:   0.40 kB
+dist/assets/plus-DrIjjh-m.js                           0.76 kB │ gzip:   0.42 kB
+dist/assets/verify-filled-D8kZpj3p.js                  0.77 kB │ gzip:   0.47 kB
+dist/assets/add-QX1nppSl.js                            0.77 kB │ gzip:   0.43 kB
+dist/assets/google-CRMG-SDw.js                         0.81 kB │ gzip:   0.46 kB
+dist/assets/three-dots-Owh5c9M3.js                     0.84 kB │ gzip:   0.41 kB
+dist/assets/clock-DV_tHhsA.js                          0.84 kB │ gzip:   0.48 kB
+dist/assets/flow-5FQJFCTK-CUie2reO.js                  0.86 kB │ gzip:   0.39 kB
+dist/assets/disconnect-Dhj658ec.js                     0.89 kB │ gzip:   0.51 kB
+dist/assets/twitch-CKqxFAKj.js                         0.90 kB │ gzip:   0.50 kB
+dist/assets/bank-BeaFy-8b.js                           0.94 kB │ gzip:   0.52 kB
+dist/assets/apple-DrdV16cy.js                          0.96 kB │ gzip:   0.53 kB
+dist/assets/unichain-C5BWO2ZY-BfguYsnu.js              0.98 kB │ gzip:   0.46 kB
+dist/assets/superposition-HG6MMR2Y-bRkgatRO.js         0.99 kB │ gzip:   0.55 kB
+dist/assets/play-store-mBBWFHaW.js                     1.01 kB │ gzip:   0.52 kB
+dist/assets/farcaster-Ddc5Jpe2.js                      1.02 kB │ gzip:   0.53 kB
+dist/assets/linea-QRMVQ5DY-DuI3vv0d.js                 1.05 kB │ gzip:   0.47 kB
+dist/assets/injectedWallet-AWJSZPMG-Df9x-YJA.js        1.05 kB │ gzip:   0.48 kB
+dist/assets/zksync-DH7HK5U4-Dt4usFw6.js                1.11 kB │ gzip:   0.49 kB
+dist/assets/arrow-bottom-circle-1jlcvVnk.js            1.13 kB │ gzip:   0.53 kB
+dist/assets/github-Cn1DAptl.js                         1.13 kB │ gzip:   0.60 kB
+dist/assets/swapHorizontalBold-CZyMKlkZ.js             1.16 kB │ gzip:   0.62 kB
+dist/assets/app-store-44BYB91L.js                      1.20 kB │ gzip:   0.68 kB
+dist/assets/mail-C-SKW8qa.js                           1.21 kB │ gzip:   0.66 kB
+dist/assets/facebook-B3erI83g.js                       1.23 kB │ gzip:   0.64 kB
+dist/assets/wallet-placeholder-BbT6LHTF.js             1.26 kB │ gzip:   0.60 kB
+dist/assets/avalanche-KOMJD3XY-Dsn_JPR4.js             1.27 kB │ gzip:   0.66 kB
+dist/assets/desktop-OaTxDtJB.js                        1.27 kB │ gzip:   0.64 kB
+dist/assets/discord-BiwY4gpb.js                        1.30 kB │ gzip:   0.65 kB
+dist/assets/swapHorizontalMedium-CbSXDmPK.js           1.30 kB │ gzip:   0.68 kB
+dist/assets/xdc-KJ3TDBYO-DNV6zchh.js                   1.31 kB │ gzip:   0.60 kB
+dist/assets/recycle-horizontal-BEkp6RBW.js             1.35 kB │ gzip:   0.70 kB
+dist/assets/ethereum-RGGVA4PY-SWGOlkuk.js              1.37 kB │ gzip:   0.45 kB
+dist/assets/ink-FZMYZWHG-62p-5IK5.js                   1.38 kB │ gzip:   0.61 kB
+dist/assets/extension-m7SDxmC_.js                      1.43 kB │ gzip:   0.70 kB
+dist/assets/telegram-hxHNgFVR.js                       1.45 kB │ gzip:   0.84 kB
+dist/assets/swapHorizontalRoundedBold-C9EmzPxd.js      1.46 kB │ gzip:   0.77 kB
+dist/assets/apechain-SX5YFU6N-q5qBv-mp.js              1.46 kB │ gzip:   0.64 kB
+dist/assets/verify-D0PUdUSh.js                         1.47 kB │ gzip:   0.71 kB
+dist/assets/kaia-65D2U3PU-JmuLQ4gC.js                  1.48 kB │ gzip:   0.67 kB
+dist/assets/degen-FQQ4XGHB-CeHTs88l.js                 1.49 kB │ gzip:   0.72 kB
+dist/assets/qr-code-yrmlriYn.js                        1.52 kB │ gzip:   0.53 kB
+dist/assets/cronos-HJPAQTAE-BEOvlOC4.js                1.52 kB │ gzip:   0.61 kB
+dist/assets/polygon-WW6ZI7PM-DXlmm4L1.js               1.53 kB │ gzip:   0.63 kB
+dist/assets/gravity-J5YQHTYH-Bj6B0uod.js               1.54 kB │ gzip:   0.74 kB
+dist/assets/browser-nXZPYmnk.js                        1.58 kB │ gzip:   0.79 kB
+dist/assets/bsc-N647EYR2-B2nLKXWV.js                   1.59 kB │ gzip:   0.61 kB
+dist/assets/network-placeholder-CNjfo4uT.js            1.65 kB │ gzip:   0.73 kB
+dist/assets/blast-V555OVXZ-BbhJh1tj.js                 1.67 kB │ gzip:   0.73 kB
+dist/assets/Chrome-65Q5P54Y-DR9MQEVr.js                1.72 kB │ gzip:   0.58 kB
+dist/assets/id-DSvCLdJk.js                             1.75 kB │ gzip:   0.81 kB
+dist/assets/nftPlaceholder-yAutnHnx.js                 1.75 kB │ gzip:   0.87 kB
+dist/assets/gnosis-37ZC4RBL-B137OtHZ.js                1.80 kB │ gzip:   0.72 kB
+dist/assets/Opera-KQZLSACL-Cwv5MDFy.js                 2.10 kB │ gzip:   0.76 kB
+dist/assets/metaMaskWallet-EI6MED72-D5HFOsnz.js        2.20 kB │ gzip:   0.89 kB
+dist/assets/info-B17cQubX.js                           2.26 kB │ gzip:   1.14 kB
+dist/assets/exclamation-triangle-LVGtkDdO.js           2.42 kB │ gzip:   1.14 kB
+dist/assets/send-Dhys_BYL.js                           2.42 kB │ gzip:   1.28 kB
+dist/assets/arbitrum-WURIBY6W-CqVkHBr5.js              2.59 kB │ gzip:   0.86 kB
+dist/assets/card-CicpWmgF.js                           2.59 kB │ gzip:   1.17 kB
+dist/assets/chrome-store-tTd7OZne.js                   2.59 kB │ gzip:   1.01 kB
+dist/assets/reown-logo-DaHCiCuY.js                     2.60 kB │ gzip:   1.07 kB
+dist/assets/scroll-5OBGQVOV-DJFECiai.js                2.63 kB │ gzip:   1.02 kB
+dist/assets/ronin-EMCPYXZT-N-QBHZdV.js                 2.67 kB │ gzip:   1.20 kB
+dist/assets/zora-FYL5H3IO-iB4wygST.js                  2.68 kB │ gzip:   0.59 kB
+dist/assets/lightbulb-B48_UrvR.js                      2.72 kB │ gzip:   1.22 kB
+dist/assets/refresh-S4T5V5GX-CwqIaaxK.js               3.00 kB │ gzip:   0.95 kB
+dist/assets/rabbyWallet-GFVPHCTK-CCnTfCkL.js           3.16 kB │ gzip:   1.16 kB
+dist/assets/manta-SI27YFEJ-CpVOKa06.js                 3.20 kB │ gzip:   1.33 kB
+dist/assets/image-9iwQos1w.js                          3.49 kB │ gzip:   1.51 kB
+dist/assets/connect-UA7M4XW6-IY3X6Bmr.js               3.55 kB │ gzip:   1.08 kB
+dist/assets/berachain-NJECWIVC-DumxnFvf.js             3.78 kB │ gzip:   1.25 kB
+dist/assets/copy-CBj9xae0.js                           3.82 kB │ gzip:   1.48 kB
+dist/assets/walletconnect-eIkSHzPb.js                  4.06 kB │ gzip:   1.67 kB
+dist/assets/hardhat-TX56IT5N-CV1FY-wE.js               4.20 kB │ gzip:   1.35 kB
+dist/assets/Brave-BRAKJXDS-mq-Xo37j.js                 4.26 kB │ gzip:   1.49 kB
+dist/assets/create-FASO7PVG-D_rvSpre.js                4.33 kB │ gzip:   1.09 kB
+dist/assets/ccip-I9pNdYAj.js                           4.53 kB │ gzip:   2.03 kB
+dist/assets/scan-4UYSQ56Q-CjMz6-XC.js                  4.59 kB │ gzip:   1.16 kB
+dist/assets/mantle-CKIUT334-DR2WgqzU.js                5.27 kB │ gzip:   2.25 kB
+dist/assets/sign-A7IJEUT5-CGsRnPrd.js                  5.55 kB │ gzip:   4.23 kB
+dist/assets/Edge-XSPUTORV-DEoZslQE.js                  5.82 kB │ gzip:   1.34 kB
+dist/assets/Arc-VDBY7LNS-BChRXCXW.js                   6.62 kB │ gzip:   1.62 kB
+dist/assets/Browser-76IHF3Y2-BMhRaC5Z.js              11.82 kB │ gzip:   2.18 kB
+dist/assets/login-UP3DZBGS-Db_wM5oQ.js                12.00 kB │ gzip:   2.98 kB
+dist/assets/Safari-ZPL37GXR-C4Ggg6rz.js               13.75 kB │ gzip:   3.75 kB
+dist/assets/Firefox-AAHGJQIP-Bp_Hm04m.js              15.19 kB │ gzip:   3.39 kB
+dist/assets/sanko-RHQYXGM5-OX010CbN.js                21.93 kB │ gzip:  16.45 kB
+dist/assets/assets-Q6ZU7ZJ5-P8HioiAD.js               23.62 kB │ gzip:   4.10 kB
+dist/assets/secp256k1-Cxa9K-Q1.js                     31.41 kB │ gzip:  12.56 kB
+dist/assets/secp256k1-CCkaMdgh.js                     31.43 kB │ gzip:  12.57 kB
+dist/assets/index-CjmOluUP.js                         38.52 kB │ gzip:   9.38 kB
+dist/assets/w3m-modal-Cston4kj.js                     40.06 kB │ gzip:   9.39 kB
+dist/assets/Macos-MW4AE7LN-Vvm8Drw3.js                49.68 kB │ gzip:  35.82 kB
+dist/assets/zh_CN-4XK5YJPR-Bt6Yz5Ek.js                54.62 kB │ gzip:   5.75 kB
+dist/assets/zh_TW-CNCRXH6Z-BNelatfN.js                54.66 kB │ gzip:   5.46 kB
+dist/assets/zh_HK-N4YN2WSI-Cvzl1V16.js                55.52 kB │ gzip:   5.51 kB
+dist/assets/id_ID-SBYANJ7G-Cjpa4ay6.js                60.04 kB │ gzip:   5.50 kB
+dist/assets/ms_MY-EZSGYYYQ-4cPLK-3L.js                60.89 kB │ gzip:   5.15 kB
+dist/assets/pt_BR-JQFQ3P4L-DOHfdcA2.js                61.26 kB │ gzip:   5.29 kB
+dist/assets/es_419-7LMPU7G4-DH7rM0yQ.js               61.61 kB │ gzip:   5.67 kB
+dist/assets/tr_TR-5FKHPPIO-D5jTpIm9.js                63.31 kB │ gzip:   5.74 kB
+dist/assets/ko_KR-FR54RFUG-upinSHjQ.js                65.33 kB │ gzip:   6.52 kB
+dist/assets/de_DE-YE3KOFHU-BRt5ztUe.js                66.81 kB │ gzip:   5.58 kB
+dist/assets/fr_FR-VBJP3ZLL-B-_ocunw.js                67.47 kB │ gzip:   5.60 kB
+dist/assets/vi_VN-5EVRZKLY-x078672g.js                68.84 kB │ gzip:   5.47 kB
+dist/assets/ar_AR-LIPSOZP5-BQrIDibT.js                71.12 kB │ gzip:   6.19 kB
+dist/assets/ja_JP-ZRMWJV3I-DXbifiMm.js                73.59 kB │ gzip:   6.62 kB
+dist/assets/uk_UA-ZD4IBC52-DgnQrpzl.js                89.01 kB │ gzip:   6.36 kB
+dist/assets/ru_RU-Z42UEJBP-Cvb2oWxQ.js                90.64 kB │ gzip:   7.00 kB
+dist/assets/Linux-OO4TNCLJ-B0aw93n9.js                91.13 kB │ gzip:  14.88 kB
+dist/assets/th_TH-4YB4VSB2-BUipNP-V.js               106.23 kB │ gzip:   7.67 kB
+dist/assets/hi_IN-WBVD5XYI-D73g2UFs.js               110.28 kB │ gzip:   8.11 kB
+dist/assets/basic-CCV36550.js                        144.31 kB │ gzip:  33.63 kB
+dist/assets/index.es-BhIRMJcL.js                     424.18 kB │ gzip: 122.76 kB
+dist/assets/core-CKY0zRvG.js                         500.72 kB │ gzip: 136.50 kB
+dist/assets/metamask-sdk-CFy4K28n.js                 558.17 kB │ gzip: 170.70 kB
+dist/assets/index-IOHnvEFO.js                      1,025.83 kB │ gzip: 309.55 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.42s

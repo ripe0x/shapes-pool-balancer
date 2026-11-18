@@ -10,7 +10,7 @@ import {
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
-import { canRetryCreation, creationContextMatches, recoverCreation, sameCreation, submitCreation, type CreationAttempt, type CreationOutcome } from './creation';
+import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { policyAbi, policyEconomics } from './policy';
@@ -568,16 +568,18 @@ const draftKey = () => 'pool-design-draft';
 const loadDraft = (): Draft | undefined => { try { return JSON.parse(localStorage.getItem(draftKey()) ?? 'null') ?? undefined; } catch { return undefined; } };
 const saveDraft = (x: Draft) => { try { localStorage.setItem(draftKey(), JSON.stringify({ ...x, creation: loadDraft()?.creation })); } catch { /* storage unavailable */ } };
 const clearDraft = () => { try { if (!loadDraft()?.creation) localStorage.removeItem(draftKey()); } catch { /* storage unavailable */ } };
-const storeCreation = (attempt: CreationAttempt) => {
+const storeCreation = (attempt: CreationAttempt, previous?: CreationAttempt) => {
   const draft = loadDraft();
   if (!draft) throw new Error('Save the design before submitting creation.');
   if (draft.creation && !sameCreation(draft.creation, attempt)) throw new Error('Another creation still needs confirmation.');
+  if (previous && !sameSubmission(draft.creation, previous)) return false;
   // Persistence must succeed before asking the wallet to submit.
   localStorage.setItem(draftKey(), JSON.stringify({ ...draft, creation: attempt }));
+  return true;
 };
 const forgetCreation = (attempt: CreationAttempt) => {
   const draft = loadDraft();
-  if (!sameCreation(draft?.creation, attempt)) return false;
+  if (!sameSubmission(draft?.creation, attempt)) return false;
   localStorage.setItem(draftKey(), JSON.stringify({ ...draft, creation: undefined }));
   return true;
 };
@@ -614,7 +616,9 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   created.current = onCreated;
   const recoveryContext = useRef({ chainId: walletChainId, creator: me, factory: FACTORY, pub });
   recoveryContext.current = { chainId: walletChainId, creator: me, factory: FACTORY, pub };
-  const trackCreation = (next: CreationAttempt) => { storeCreation(next); setAttempt(next); };
+  const trackCreation = (next: CreationAttempt, previous?: CreationAttempt) => {
+    if (storeCreation(next, previous)) { setAttempt(next); setOutcome('unknown'); }
+  };
   const rejectCreation = (rejected: CreationAttempt) => { if (forgetCreation(rejected)) setAttempt(undefined); };
   useEffect(() => {
     if (!pub || !attempt || tx.busy) return;
@@ -625,11 +629,18 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
       inFlight = true;
       setChecking(true);
       try {
-        const next = await recoverCreation(pub, attempt, { chainId: walletChainId, creator: me, factory: FACTORY });
+        let checked = attempt;
+        const next = await recoverCreation(pub, attempt, { chainId: walletChainId, creator: me, factory: FACTORY }, (updated, previous) => {
+          if (storeCreation(updated, previous)) checked = updated;
+        });
         if (!current || recoveryContext.current.pub !== pub) return;
         if (!creationContextMatches(attempt, recoveryContext.current)) { setOutcome('context'); return; }
+        const saved = loadDraft()?.creation;
+        if (!sameCreation(saved, attempt)) return;
+        if (!sameSubmission(saved, checked)) { setAttempt(saved); setOutcome('unknown'); return; }
+        if (saved!.hash !== attempt.hash || saved!.nonce !== attempt.nonce) setAttempt(saved);
         setOutcome(next);
-        if (next === 'confirmed' && forgetCreation(attempt)) {
+        if (next === 'confirmed' && forgetCreation(saved!)) {
           clearDraft();
           created.current(attempt.predicted);
         }
@@ -663,10 +674,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
   if (attempt) return <main className="page narrow-page">
     <h1 className="title t2">Pool creation</h1>
-    <p className="lead">{outcome === 'context' ? 'Reconnect the creating account and network to verify this pool.'
-      : outcome === 'reverted' ? 'Creation reverted. Your saved design can be retried.'
-        : outcome === 'mismatch' ? 'The pool does not match the submitted design. Check it before continuing.'
-          : outcome === 'pending' ? 'Creation is pending.' : 'Creation confirmation is unavailable. Check the existing submission before trying again.'}</p>
+    <p className="lead">{creationStatus(outcome)}</p>
     <p className="note">Account {attempt.creator} · Chain {attempt.chainId}</p>
     <p className="note">Predicted pool {attempt.predicted}</p>
     {attempt.hash && <p className="note mono">Transaction {attempt.hash}</p>}
@@ -737,7 +745,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void };
 
 /**
  * One Design page for every stage: a preview before connecting (no NFTs until a wallet is connected), a pool about to be created
@@ -1024,10 +1032,16 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
         saveDraft(current());
-        steps.push(['Create and stock pool', () => submitCreation(attempt,
-          (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
-            args: [salt, config, curated], value: deposit }, beforeWallet),
-          { existing: () => loadDraft()?.creation, store: create!.trackCreation, reject: create!.rejectCreation })]);
+        steps.push(['Create and stock pool', async () => {
+          await submitCreation(attempt,
+            (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
+              args: [salt, config, curated], value: deposit }, beforeWallet),
+            { existing: () => loadDraft()?.creation, store: create!.trackCreation, reject: create!.rejectCreation }, pub);
+          const outcome = await waitForCreation(pub, loadDraft()!.creation!,
+            { chainId: chain.id, factory: FACTORY, creator: me }, create!.trackCreation);
+          if (outcome !== 'confirmed') throw new Error(creationStatus(outcome));
+          return undefined;
+        }]);
       } else {
         if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
         steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));

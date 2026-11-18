@@ -1,0 +1,26 @@
+{
+  "ownedChild": true,
+  "pid": 14847,
+  "args": [
+    "/Users/dd/.foundry/bin/anvil",
+    "--silent",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "18795",
+    "--chain-id",
+    "31337",
+    "--fork-url",
+    "http://127.0.0.1:18766",
+    "--fork-block-number",
+    "26382399",
+    "--no-mining"
+  ],
+  "rpc": "http://127.0.0.1:18795",
+  "parentRpc": "http://127.0.0.1:18766",
+  "parentPinnedBlock": "26382399",
+  "parentPinnedHash": "0x3cf592fb018c2ef796f08cc02d8f3e8ac490e5e441bb222a3f6e0e1773117072",
+  "chainId": 31337,
+  "log": "/private/tmp/fwa-creation-replacement-anvil.log",
+  "broadcasts": 0
+}

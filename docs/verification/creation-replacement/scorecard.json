@@ -1,0 +1,52 @@
+{
+  "sent": 11,
+  "submittedValues": "75000000000000000",
+  "actualPoolDeposit": "25000000000000000",
+  "gasSpent": "351298612583226",
+  "initialBalance": "200000000000000000",
+  "finalBalance": "174648701387416774",
+  "balanceDelta": "25351298612583226",
+  "preservedParent": "http://127.0.0.1:18766",
+  "regimes": [
+    {
+      "label": "mint one real DemoNFT for both valid original transactions",
+      "actualValue": "0"
+    },
+    {
+      "label": "approve real NFT for mined cancellation with live callback and reload",
+      "actualValue": "0"
+    },
+    {
+      "label": "mined cancellation with live callback and reload",
+      "outcome": "cancelled",
+      "originalHash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+      "replacementHash": "0x18680616082a6804ba33cbf4a8ca37b361c76cc50a2feace1ee116f64d3c4025",
+      "actualValue": "0"
+    },
+    {
+      "label": "same-calldata repriced real revert with live callback and reload",
+      "outcome": "reverted",
+      "originalHash": "0x7153e793e9470407b1050e8f03107ec5cf4fdc09c22eba584de6cd8a9f8d5159",
+      "replacementHash": "0xb4b4529a829b320d82c042309870cb8a42805ffc9109b35f7514d26adc99e368",
+      "actualValue": "0"
+    },
+    {
+      "label": "unrelated replacement after actual wait timeout",
+      "outcome": "replaced",
+      "originalHash": "0xdbb7bbcf0e74536dccb6c86b00207f7131d430784e25c96521ce135d8937db63",
+      "replacementHash": "0x1d754cb6ab3edf0a764d16b989e7ffd6659ecdc640c53262c6477b92f765a2ec",
+      "actualValue": "0"
+    },
+    {
+      "label": "approve real NFT for same-calldata repriced successful atomic creation",
+      "actualValue": "0"
+    },
+    {
+      "label": "same-calldata repriced successful atomic creation",
+      "outcome": "confirmed",
+      "originalHash": "0x4b5662a363888e2bb8ba5b35fa9d0763f37b2e4fe512c58b16704e70f2806290",
+      "replacementHash": "0xd65d8813dc1cc44ec61a66d68e06f4da02173bcd2a67dc355dfc9fd40a65c0fe",
+      "actualValue": "25000000000000000"
+    }
+  ]
+}

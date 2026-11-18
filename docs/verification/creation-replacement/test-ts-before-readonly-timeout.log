@@ -1,0 +1,34 @@
+
+> test:ts
+> vitest run
+
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/refresh.test.ts (9 tests) 17ms
+ ✓ shared/planner.test.ts (29 tests) 9ms
+ ✓ app/src/errors.test.ts (3 tests) 7ms
+ ✓ keeper/keeper.test.ts (15 tests) 4ms
+ ✓ shared/design.test.ts (13 tests) 30ms
+ ✓ app/src/wallet.test.ts (4 tests) 13ms
+ ✓ app/src/revenue-rate.test.ts (6 tests) 3ms
+ ✓ shared/policy-simulation.test.ts (14 tests) 33ms
+ ✓ app/src/policy.test.ts (2 tests | 1 skipped) 7ms
+ ↓ app/src/creation-replacement.test.ts (1 test | 1 skipped)
+ ✓ shared/reserve-capital.test.ts (42 tests) 10ms
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 10ms
+ ✓ shared/policy-money-path.test.ts (1 test) 6ms
+ ✓ shared/policy-quotes.test.ts (1 test) 2ms
+ ✓ app/src/tx.test.ts (6 tests) 6ms
+ ✓ app/src/inventory.test.ts (3 tests) 2ms
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 896ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  431ms
+ ✓ scripts/current-local-rehearsal.test.ts (17 tests) 3357ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  1700ms
+   ✓ current local rehearsal control inputs, without node mutation > stages real pinned dependency source bytes without library symlinks or Git metadata  1133ms
+
+ Test Files  17 passed | 1 skipped (18)
+      Tests  189 passed | 5 skipped (194)
+   Start at  16:32:41
+   Duration  3.98s (transform 855ms, setup 0ms, collect 4.90s, tests 4.41s, environment 2ms, prepare 1.09s)
+

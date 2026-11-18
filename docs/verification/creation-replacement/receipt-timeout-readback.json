@@ -1,0 +1,47 @@
+{
+  "scope": "Read-only real-node replacement recovery; receipt-only external failure injection, no transactions",
+  "original": {
+    "chainId": 31337,
+    "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+    "creator": "0x00000000000000000000000000000000000ce001",
+    "salt": "0x0000000000000000000000000000000000000000000000007265706c61636503",
+    "predicted": "0xdD588c44f13e580c0858544390744cfab751eb16",
+    "config": {
+      "markupBps": 2500,
+      "creatorRevenueBps": 10001,
+      "target": "1",
+      "mintFeeCap": "1000000000000000"
+    },
+    "curated": [],
+    "value": "0",
+    "fromBlock": "26382403",
+    "hash": "0xdbb7bbcf0e74536dccb6c86b00207f7131d430784e25c96521ce135d8937db63",
+    "submittedHash": "0xdbb7bbcf0e74536dccb6c86b00207f7131d430784e25c96521ce135d8937db63",
+    "nonce": 4
+  },
+  "replacementHash": "0x1d754cb6ab3edf0a764d16b989e7ffd6659ecdc640c53262c6477b92f765a2ec",
+  "replacementBlock": "26382404",
+  "receiptCalls": 1,
+  "timeout": 100,
+  "requiredError": "WaitForTransactionReceiptTimeoutError",
+  "recoveredOutcome": "replaced",
+  "persisted": {
+    "chainId": 31337,
+    "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+    "creator": "0x00000000000000000000000000000000000ce001",
+    "salt": "0x0000000000000000000000000000000000000000000000007265706c61636503",
+    "predicted": "0xdD588c44f13e580c0858544390744cfab751eb16",
+    "config": {
+      "markupBps": 2500,
+      "creatorRevenueBps": 10001,
+      "target": "1",
+      "mintFeeCap": "1000000000000000"
+    },
+    "curated": [],
+    "value": "0",
+    "fromBlock": "26382403",
+    "hash": "0x1d754cb6ab3edf0a764d16b989e7ffd6659ecdc640c53262c6477b92f765a2ec",
+    "submittedHash": "0xdbb7bbcf0e74536dccb6c86b00207f7131d430784e25c96521ce135d8937db63",
+    "nonce": 4
+  }
+}

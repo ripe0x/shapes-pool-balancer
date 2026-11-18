@@ -1,0 +1,32 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ❯ app/src/creation-replacement.test.ts (1 test | 1 failed) 1116ms
+   × reconciles actual cancelled, repriced and late replacements through live waits and reloads 1116ms
+     → expected 'unknown' to be 'pending' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/src/creation-replacement.test.ts > reconciles actual cancelled, repriced and late replacements through live waits and reloads
+AssertionError: expected 'unknown' to be 'pending' // Object.is equality
+
+Expected: "pending"
+Received: "unknown"
+
+ ❯ original app/src/creation-replacement.test.ts:140:57
+    138|     const frozen = JSON.parse(JSON.stringify(saved)) as CreationAttemp…
+    139|     record.original = frozen; record.originalHash = hash; save();
+    140|     expect(await recoverCreation(pub, frozen, context)).toBe('pending'…
+       |                                                         ^
+    141|     return { a: frozen, record, data, nonce, value };
+    142|   }
+ ❯ app/src/creation-replacement.test.ts:160:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  16:28:25
+   Duration  1.47s (transform 60ms, setup 0ms, collect 153ms, tests 1.12s, environment 0ms, prepare 32ms)
+

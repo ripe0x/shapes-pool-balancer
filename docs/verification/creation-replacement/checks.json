@@ -1,0 +1,97 @@
+{
+  "baseRevision": "feb71f652e49c1d7faa9a8b9af09d666c752b282",
+  "scope": "Creation-only replacement and cancellation recovery. Contracts, economic parameters, historical plans and production controls unchanged.",
+  "checks": [
+    {
+      "command": "CANDIDATE_RUN=1 CREATION_REPLACEMENT_RPC=http://127.0.0.1:18795 CREATION_REPLACEMENT_BROADCAST=1 CREATION_REPLACEMENT_RESUME=1 ./node_modules/.bin/vitest run app/src/creation-replacement.test.ts",
+      "exitStatus": 0,
+      "result": "Four actual replacement regimes, callback and retrospective recovery, reload serialization, missing-proof/RPC failure and context guards; all passed. Same bounded batch continued at verified pending-A checkpoint.",
+      "log": "replacement-regressions.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run test:ts",
+      "exitStatus": 0,
+      "result": "189 passed, 6 opt-in skipped, 18 files; both actual replacement cases and three original creation cases separately passed",
+      "log": "test-ts.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 CREATION_RECOVERY_RPC=http://127.0.0.1:18766 ./node_modules/.bin/vitest run app/src/creation.test.ts",
+      "exitStatus": 0,
+      "result": "13 passed, including three real-fork creation recovery/receipt failure cases",
+      "log": "original-creation-regressions.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run typecheck",
+      "exitStatus": 0,
+      "result": "passed",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run build:app",
+      "exitStatus": 0,
+      "result": "passed, existing bundle warnings retained",
+      "log": "build-app.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 CREATION_REPLACEMENT_RPC=http://127.0.0.1:18795 CREATION_REPLACEMENT_READBACK=1 ./node_modules/.bin/vitest run app/src/creation-replacement.test.ts",
+      "exitStatus": 0,
+      "result": "Actual viem WaitForTransactionReceiptTimeoutError required with receipt-only service failure; JSON reload then real historical reads recover already-mined replacement. No new transactions.",
+      "log": "receipt-timeout-readback.log"
+    },
+    {
+      "command": "Read-only final verification through actual viem receipt/block/state reads",
+      "exitStatus": 0,
+      "result": "All seven canonical receipts, four recovery outcomes, actual NFT custody, pool deposit and actor balance verified",
+      "evidence": "postflight.json"
+    }
+  ],
+  "preservedFailures": [
+    {
+      "log": "failed-delegated-actor-preflight.log",
+      "result": "zero-code precondition rejected delegated actor, no mutation/broadcast"
+    },
+    {
+      "log": "failed-typecheck-preflight.log",
+      "result": "new test Error/data narrowing repaired"
+    },
+    {
+      "log": "failed-pending-status.log",
+      "result": "real pending status lost in new fallback; fixed before same-batch continuation",
+      "checkpoint": "interrupted-after-3-sends.json"
+    },
+    {
+      "log": "preflight-empty-curated.json",
+      "result": "InvalidBatch, no broadcast; fixture corrected to actual NFT"
+    },
+    {
+      "log": "failed-helper-hash-narrowing-typecheck.log",
+      "result": "Initial helper reassignment lost TypeScript hash narrowing; repaired before actual replacement execution."
+    }
+  ],
+  "browser": {
+    "url": "http://127.0.0.1:5210",
+    "setup": "preview-setup.mjs restores actual recorded pre-replacement attempts into isolated preview draft; all successful chain responses come from owned child18795",
+    "observed": [
+      "disconnected context guard",
+      "original hash replaced with actual mined cancellation/revert hash",
+      "reload and reconnect retain terminal outcome",
+      "Return to saved design opens draft",
+      "no additional UI submission"
+    ],
+    "limits": "No extension wallet Cancel UI interaction; replacements were real unlocked-node transactions. Browser did not retry creation or assert the transferred NFT remained available after later successful test creation."
+  },
+  "limits": [
+    "Original disappearing before its actual nonce is observed stays unresolved; no guessed nonce is used.",
+    "Unavailable historical account/transaction reads or canonical receipt proof keeps recovery unresolved.",
+    "Prior complete rehearsal belongs to0065ec4; not relabeled or repeated for this frontend patch."
+  ],
+  "productionSourceFingerprint": "f202dd7009c2ae3f0ec80226b1b3c97ad51b15ee8d1cc66ea42c1ccca855f00b",
+  "executedTransactionFixtureSha256": "6c72e2408a76c630653417a873c43bdeb2eb3456cc5b1b65e1b3ec8937a7e649",
+  "finalFixtureSha256": "74f3a9f9280d0c9155b8b9f5e2810f1a71cf9253c3448613829e6093ccdd19dd",
+  "sourceScope": "Only the read-only timeout test and its imports/opt-in flag were appended after the completed transaction fixture; its transaction case and bounds remain unchanged.",
+  "executedFixtureArchive": {
+    "path": "executed-transaction-fixture.ts.txt",
+    "sha256": "6c72e2408a76c630653417a873c43bdeb2eb3456cc5b1b65e1b3ec8937a7e649",
+    "method": "Removed only the later read-only appended case and its import/opt-in flag from final source; resulting exact bytes match SHA256 recorded before execution."
+  }
+}

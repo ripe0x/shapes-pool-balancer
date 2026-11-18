@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/creation-replacement.test.ts (2 tests | 1 skipped) 496ms
+   ✓ times out on unavailable real replacement receipts and recovers the mined replacement after reload  495ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 1 skipped (2)
+   Start at  16:39:56
+   Duration  843ms (transform 62ms, setup 0ms, collect 163ms, tests 496ms, environment 0ms, prepare 34ms)
+

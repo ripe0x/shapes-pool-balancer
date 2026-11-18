@@ -1,0 +1,200 @@
+{
+  "scope": "Owned isolated child only; actual protocol contracts, no successful RPC fixtures",
+  "node": {
+    "ownedChild": true,
+    "pid": 14847,
+    "args": [
+      "/Users/dd/.foundry/bin/anvil",
+      "--silent",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "18795",
+      "--chain-id",
+      "31337",
+      "--fork-url",
+      "http://127.0.0.1:18766",
+      "--fork-block-number",
+      "26382399",
+      "--no-mining"
+    ],
+    "rpc": "http://127.0.0.1:18795",
+    "parentRpc": "http://127.0.0.1:18766",
+    "parentPinnedBlock": "26382399",
+    "parentPinnedHash": "0x3cf592fb018c2ef796f08cc02d8f3e8ac490e5e441bb222a3f6e0e1773117072",
+    "chainId": 31337,
+    "log": "/private/tmp/fwa-creation-replacement-anvil.log",
+    "broadcasts": 0
+  },
+  "walletSetup": {
+    "actor": "0x00000000000000000000000000000000000ce001",
+    "priorCode": "0x",
+    "priorNonce": 0,
+    "priorBalance": "0",
+    "fundedBalance": "200000000000000000",
+    "nodeMethods": [
+      "anvil_setBalance",
+      "anvil_impersonateAccount"
+    ],
+    "childInfo": {
+      "currentBlockNumber": "0x192903f",
+      "currentBlockTimestamp": 1794299892,
+      "currentBlockHash": "0x3cf592fb018c2ef796f08cc02d8f3e8ac490e5e441bb222a3f6e0e1773117072",
+      "hardFork": "Bpo2",
+      "transactionOrder": "fees",
+      "environment": {
+        "baseFee": "0x1604b",
+        "chainId": 31337,
+        "gasLimit": "0x3938700",
+        "gasPrice": "0x3b9c2a4b"
+      },
+      "forkConfig": {
+        "forkUrl": "http://127.0.0.1:18766",
+        "forkBlockNumber": 26382399,
+        "forkRetryBackoff": 1000
+      },
+      "network": "ethereum"
+    },
+    "transactions": 0
+  },
+  "initialBlock": "26382399",
+  "initialBaseFeePerGas": "101933",
+  "initialBalance": "200000000000000000",
+  "sent": 3,
+  "deposited": "25000000000000000",
+  "gasSpent": "5819437374456",
+  "records": [
+    {
+      "label": "mint one real DemoNFT for both valid original transactions",
+      "receipt": {
+        "type": "eip1559",
+        "status": "success",
+        "cumulativeGasUsed": "68048",
+        "logs": [
+          {
+            "address": "0x7de7bc53e06f8549c6f89aee3f59cd605c97c455",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "0x00000000000000000000000000000000000000000000000000000000000ce001",
+              "0x0000000000000000000000000000000000000000000000000000000078c4039d"
+            ],
+            "data": "0x",
+            "blockHash": "0x31b6b40d4c1035502acac03082852b99cee1abd23e9072caf4524a8c85af9ba4",
+            "blockNumber": "26382400",
+            "blockTimestamp": "1794300408",
+            "transactionHash": "0x49144271825209b129d2081b12c865f4bec886a4daa2de0e1b4ffde5004bc223",
+            "transactionIndex": 0,
+            "logIndex": 0,
+            "removed": false
+          }
+        ],
+        "logsBloom": "0x00000000000000000000000000000000000000000000040000400000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000008000000000000000000000400000000000000000000000000020000000000000200000800000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000002000000000000000000000000000000002000000000800000000020000000000000000000000000000000000000000000000000000000200000000000",
+        "transactionHash": "0x49144271825209b129d2081b12c865f4bec886a4daa2de0e1b4ffde5004bc223",
+        "transactionIndex": 0,
+        "blockHash": "0x31b6b40d4c1035502acac03082852b99cee1abd23e9072caf4524a8c85af9ba4",
+        "blockNumber": "26382400",
+        "gasUsed": "68048",
+        "effectiveGasPrice": "50090187",
+        "blobGasPrice": "17302111423264",
+        "from": "0x00000000000000000000000000000000000ce001",
+        "to": "0x7de7bc53e06f8549c6f89aee3f59cd605c97c455",
+        "contractAddress": null,
+        "blockTimestamp": 1794300408
+      }
+    },
+    {
+      "label": "approve real NFT for mined cancellation with live callback and reload",
+      "receipt": {
+        "type": "eip1559",
+        "status": "success",
+        "cumulativeGasUsed": "48142",
+        "logs": [
+          {
+            "address": "0x7de7bc53e06f8549c6f89aee3f59cd605c97c455",
+            "topics": [
+              "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+              "0x00000000000000000000000000000000000000000000000000000000000ce001",
+              "0x00000000000000000000000069dcdf2c371b14ec9090aced545f5c6ff825c035",
+              "0x0000000000000000000000000000000000000000000000000000000078c4039d"
+            ],
+            "data": "0x",
+            "blockHash": "0xf5a4d9e216ef413e479b4d89dec9cf5143a5f50445f2aeaf9ada494aec03b094",
+            "blockNumber": "26382401",
+            "blockTimestamp": "1794300408",
+            "transactionHash": "0x0ba803923874b7e98cbbf025ac42af58b20231236b3c190a7c2f75905949cba4",
+            "transactionIndex": 0,
+            "logIndex": 0,
+            "removed": false
+          }
+        ],
+        "logsBloom": "0x00000000000000000000000000000000000000000000040000400000000000000000000000000000000000000000000000000000000200000000000000200000000040000000000000000000000000000000000000000400000000000000000000000000000000000000000200000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000002000000000800000000000000010000000000000000000000000200000000000000000000000200000000000",
+        "transactionHash": "0x0ba803923874b7e98cbbf025ac42af58b20231236b3c190a7c2f75905949cba4",
+        "transactionIndex": 0,
+        "blockHash": "0xf5a4d9e216ef413e479b4d89dec9cf5143a5f50445f2aeaf9ada494aec03b094",
+        "blockNumber": "26382401",
+        "gasUsed": "48142",
+        "effectiveGasPrice": "50078940",
+        "blobGasPrice": "9985902147666",
+        "from": "0x00000000000000000000000000000000000ce001",
+        "to": "0x7de7bc53e06f8549c6f89aee3f59cd605c97c455",
+        "contractAddress": null,
+        "blockTimestamp": 1794300408
+      }
+    },
+    {
+      "label": "mined cancellation with live callback and reload",
+      "latest": {
+        "chainId": 31337,
+        "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+        "creator": "0x00000000000000000000000000000000000ce001",
+        "salt": "0x0000000000000000000000000000000000000000000000007265706c61636501",
+        "predicted": "0x69DcDf2c371B14eC9090aCeD545F5c6ff825c035",
+        "config": {
+          "markupBps": 2500,
+          "creatorRevenueBps": 1234,
+          "target": "1",
+          "mintFeeCap": "1000000000000000"
+        },
+        "curated": [
+          {
+            "collection": "0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455",
+            "tokenId": "2026111901",
+            "base": "10000000000000000"
+          }
+        ],
+        "value": "25000000000000000",
+        "fromBlock": "26382401",
+        "hash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+        "submittedHash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+        "nonce": 2
+      },
+      "original": {
+        "chainId": 31337,
+        "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+        "creator": "0x00000000000000000000000000000000000ce001",
+        "salt": "0x0000000000000000000000000000000000000000000000007265706c61636501",
+        "predicted": "0x69DcDf2c371B14eC9090aCeD545F5c6ff825c035",
+        "config": {
+          "markupBps": 2500,
+          "creatorRevenueBps": 1234,
+          "target": "1",
+          "mintFeeCap": "1000000000000000"
+        },
+        "curated": [
+          {
+            "collection": "0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455",
+            "tokenId": "2026111901",
+            "base": "10000000000000000"
+          }
+        ],
+        "value": "25000000000000000",
+        "fromBlock": "26382401",
+        "hash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+        "submittedHash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+        "nonce": 2
+      },
+      "originalHash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255"
+    }
+  ]
+}

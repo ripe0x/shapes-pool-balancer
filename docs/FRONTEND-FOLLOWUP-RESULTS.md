@@ -1,5 +1,8 @@
 # Frontend corrections and current candidate rehearsal
 
+This report records delivery `feb71f6` and the rehearsal frozen at `0065ec4`. The subsequent
+[creation replacement correction](CREATION-REPLACEMENT-RESULTS.md) has separate source bindings and targeted evidence.
+
 Follow-up to reviewed commit `51dd7b7c3b300eee9a0279127e08021230539030`, PR 10 on
 `codex/creator-credit-atomic`. Fetch and PR metadata checks found that exact head, open and draft, with no subsequent
 fixes to reconcile. No Solidity, generated ABI, dependencies, production configuration or economic terms were changed.
@@ -145,7 +148,8 @@ Read-only postflight re-fetched all 419 receipts and current retired pool balanc
 the successful completion markers. The original terminal session expired across context continuation before its OS
 exit status could be recovered; that status is **unavailable**, rather than reported as a captured zero. The separate
 postflight command exited 0. [Execution output](receipts/current-rehearsal/20261118195158615-0065ec4/execution-command.log).
-Final documentation is an output-only descendant of the frozen candidate; it does not alter the sealed inputs.
+The `feb71f6` delivery was an output-only descendant of the frozen candidate. The later creation replacement fix has
+its own source manifest and targeted checks; this rehearsal is not relabeled as exercising that later patch.
 
 The [first failed preparation](receipts/current-rehearsal/20261118193325396-855c926/STATUS.md) rejected source-map/ID
 artifact drift caused by a staged library symlink; bytecode was unchanged and the node remained unfunded. The repaired
@@ -162,7 +166,7 @@ Typecheck, production app build, 32 current/legacy gate cases and applicable CI 
 large-chunk build warning is retained. `forge build --sizes` passed: PoolBalancer **20,516 bytes**, 4,060 below EIP-170.
 [Commands, results and scope](verification/frontend-followup/checks.json). No unrelated broad audit campaign was repeated.
 
-The [production manifest](verification/protected-revenue/manifest.json) covers all 29 production files, including the
+The [production manifest at that delivery](https://github.com/ripe0x/shapes-pool-balancer/blob/feb71f652e49c1d7faa9a8b9af09d666c752b282/docs/verification/protected-revenue/manifest.json) covers all 29 production files, including the
 three frontend helpers, with fingerprint `54cada588b35987b8c82cacdd469e696248c5d0db4bcdca7da29954ef0602e2a`.
 Its scope is narrower than the 146-input rehearsal fingerprint. Historical reports retain their original evidence.
 

@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/creation.test.ts (13 tests) 157ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  16:32:45
+   Duration  570ms (transform 58ms, setup 0ms, collect 152ms, tests 157ms, environment 0ms, prepare 34ms)
+

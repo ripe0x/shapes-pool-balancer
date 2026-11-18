@@ -1,0 +1,12 @@
+{
+  "scope": "Read-only child readbacks after failed root preflight; no broadcasts or node mutations before failure",
+  "rpc": "http://127.0.0.1:18795",
+  "block": "26382399",
+  "rejectedActor": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "actualCode": "0xef01008a67b5020ee254ef48e3b6a04927f39baf7e408a",
+  "interpretation": "Existing actor has EIP-7702 delegation; self-send need not behave like a plain EOA cancellation. The code-zero guard was preserved.",
+  "replacementActor": "0x00000000000000000000000000000000000ce001",
+  "replacementActualCode": "0x",
+  "replacementActualNonce": "0",
+  "approvedSetup": "Fund external actor exactly 0.2 synthetic ETH and impersonate on owned child only; no protocol state faked. Root owns execution."
+}
