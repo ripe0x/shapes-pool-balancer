@@ -14,7 +14,8 @@
     "test/ReserveEconomicReview.t.sol",
     "test/ReserveSecurityReview.t.sol",
     "test/ReserveCapitalMatrix.t.sol",
-    "test/AllocationConcurrency.t.sol",
+    "test/ProtectedRevenueAtomic.t.sol",
+    "test/ConcurrentRecovery.t.sol",
     "test/BatchSlippage.t.sol",
     "test/PolicyPreview.t.sol",
     "test/SelectableInventory.t.sol",
@@ -186,9 +187,9 @@
     },
     {
       "id": "O8",
-      "text": "The first 10% of Shape markup supports the game, with the share above it credited to the creator using the tracked-board approximation. In these explicitly named reference regimes, all relevant historical/current listings use markup no higher than 25%, so the creator fraction is at most 12% of collected owner proceeds. At the permitted 100% markup setting the source-derived fraction ceiling is 45%; 12% is not a universal protocol limit. Allocation drift is reported separately under O9.",
-      "metric": "facts.profit_share_of_proceeds_bps",
-      "max": 1200,
+      "text": "Actual collected FWA owner proceeds create floor(amount \u00d7 stored creatorRevenueBps / 10,000) credit exactly once. Capital returns create none. Paid and unpaid work protect existing credit; claims remain available during inventory depletion. Historical markup attribution and its drift threshold are superseded; previous signatures do not approve this changed outcome.",
+      "metric": "facts.creator_credit_error_wei",
+      "max": 0,
       "regimes": [
         "quiet",
         "limits_at_max",
@@ -215,15 +216,6 @@
         "policy_switch",
         "minimum_capital",
         "minimum_large_win"
-      ]
-    },
-    {
-      "id": "O9",
-      "text": "Creator profit uses the current tracked-board approximation while concurrent purchases remain enabled. In the named fixed-input restock_in_flight regression only, absolute allocation error stays below 0.001 ETH over 180 draws. This is a scenario threshold, not a bound for other boards, gas changes, policy changes or purchase orderings. Other permitted sequences can overbook or underbook creator-owned operating capital; their measured drift is reported separately. Purchaser escrow, refund entitlements and actual prize backing remain protected independently of this allocation.",
-      "metric": "facts.split_absolute_error_wei",
-      "max": 1000000000000000,
-      "regimes": [
-        "restock_in_flight"
       ]
     },
     {

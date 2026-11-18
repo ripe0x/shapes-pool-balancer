@@ -1,0 +1,49 @@
+Compiling 3 files with Solc 0.8.28
+Solc 0.8.28 finished in 11.71s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> test/PolicyModelParity.t.sol:55:20:
+   |
+55 |                 (, uint256 n, uint256 c) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+   |                    ^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> test/PolicyModelParity.t.sol:104:9:
+    |
+104 |         uint256 n;
+    |         ^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/ReserveCapital.t.sol:257:5:
+    |
+257 |     function test_feeAndCapSensitiveBoundForActualWork() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 73868905)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 417.30ms (74.12ms CPU time)
+
+Ran 1 test for test/Settings.t.sol:SettingsTest
+[PASS] test_writePolicyQuoteFixture() (gas: 921737)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 538.47ms (3.74ms CPU time)
+
+Ran 1 test for test/ReserveCapital.t.sol:ReserveCapitalTest
+[PASS] test_writeImmutableEnforcementFixture() (gas: 39451)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 608.48ms (733.04µs CPU time)
+
+Ran 1 test for test/PolicyModelParity.t.sol:PolicyModelParity
+[PASS] test_writePolicyModelParity() (gas: 100358073)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.08s (808.08ms CPU time)
+
+Ran 4 test suites in 1.12s (2.65s CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

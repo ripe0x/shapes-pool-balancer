@@ -1,0 +1,32 @@
+{
+  "before": {
+    "chain": 31337,
+    "rpc": "http://127.0.0.1:18766",
+    "balancer": "0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def",
+    "creator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "credit": "3092531885935719",
+    "balance": "2593363196833869536",
+    "operating": "2590270664947933817",
+    "block": "26382386",
+    "action": "claimSurplus(existing credit, creator) via local UI; history and quote RPC reads fail; no real funds"
+  },
+  "after": {
+    "credit": "0",
+    "balance": "2590270664947933817",
+    "operating": "2590270664947933817",
+    "receipt": {
+      "hash": "0x424240f694c9765fe914bfee6d2f6c50b80068432726fcc751fc51b787227ba4",
+      "status": "success",
+      "gasUsed": "50067",
+      "effectiveGasPrice": "1000482140",
+      "nativeValue": "0",
+      "decodedFunction": "claimSurplus",
+      "decodedArgs": [
+        "3092531885935719",
+        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      ]
+    },
+    "historyRPCFailed": true,
+    "policyQuoteRPCFailed": true
+  }
+}

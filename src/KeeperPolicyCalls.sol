@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {Settings, SettingsLib} from "./Settings.sol";
 import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 
 /// @dev Fixed returndata buffer and gas stipend bound even a reverting, gas-burning or returndata-bomb policy.
@@ -74,7 +73,10 @@ library KeeperPolicyCalls {
     function activate(State storage s, uint256 fund, Reserve memory r) public {
         if (s.pending == address(0) || block.timestamp < s.activationTime) revert PolicyNotReady();
         uint256 bound = validate(s.pending);
-        if (fund < reserve(bound, r)) revert ReserveNotFunded();
+        uint256 candidate = maintenanceBudget(bound, r);
+        uint256 previous = maintenanceBudget(s.enabled ? s.maxReward : 0, r);
+        // A lower bound need not quote less for each job; only immutable maintenance exposure is compared.
+        if (candidate > previous && fund < candidate) revert ReserveNotFunded();
         emit KeeperPolicyChanged(s.policy, s.pending);
         s.policy = s.pending;
         s.maxReward = bound;
@@ -110,14 +112,19 @@ library KeeperPolicyCalls {
             emit KeeperPaid(msg.sender, amount, w.measuredGas);
         }
     }
-    /// @dev This is a withdrawal/activation working-capital target, not a debt to unperformed keeper work.
-    ///      Listed fees are future income and never offset the liquid requirement.
-    function reserve(uint256 maxReward, Reserve memory r) public pure returns (uint256 need) {
+    /// @dev Actual issued work plus one bounded operating call, independent of inventory restoration and policy quotes.
+    function maintenanceBudget(uint256 maxReward, Reserve memory r) public pure returns (uint256 need) {
         need = r.owed * paymentBound(maxReward, r.baseFee, 1, 1, 0, 0);
         if (!r.enabled) return need;
         uint256 operating = paymentBound(maxReward, r.baseFee, 0, 5, 5, 5);
         uint256 process = paymentBound(maxReward, r.baseFee, 2, 5, 0, 0);
         need += operating > process ? operating : process;
+    }
+
+    /// @dev Full withdrawal/opening target. Missing prize capital never enters policy activation funding.
+    function reserve(uint256 maxReward, Reserve memory r) public pure returns (uint256 need) {
+        need = maintenanceBudget(maxReward, r);
+        if (!r.enabled) return need;
         uint256 units;
         uint256 prizes;
         uint256 sizes;
@@ -225,22 +232,4 @@ library KeeperPolicyCalls {
         return units * (900_000 * price + 0.0002 ether);
     }
 
-    function metadata(address policy) public view returns (Settings memory s) {
-        s = SettingsLib.defaults();
-        bytes memory input = abi.encodeWithSignature("settings()");
-        bool ok;
-        bytes memory output = new bytes(256);
-        assembly ("memory-safe") {
-            ok := staticcall(100000, policy, add(input, 32), mload(input), add(output, 32), 256)
-            ok := and(ok, eq(returndatasize(), 256))
-        }
-        if (ok) {
-            uint256[8] memory fields;
-            assembly ("memory-safe") { fields := add(output, 32) }
-            if (fields[0] <= type(uint64).max && fields[1] <= type(uint64).max && fields[2] <= type(uint64).max
-                && fields[3] <= type(uint64).max && fields[4] <= type(uint32).max && fields[5] <= type(uint32).max
-                && fields[6] <= type(uint32).max && fields[7] <= type(uint32).max) s = abi.decode(output, (Settings));
-        }
-        s.maxPrizes = 1_000;
-    }
 }

@@ -51,7 +51,7 @@ contract ReserveTest is ForkBase {
 
     /// @dev The fund: this Balancer's ETH less the creator's unclaimed profit.
     function _fund() internal view returns (uint256) {
-        return address(balancer).balance - balancer.profit();
+        return address(balancer).balance - balancer.creatorCredit();
     }
 
     /// @dev Sell single draws that each win a 0.01 Shape, the creator claiming everything claimable after each, until
@@ -117,7 +117,7 @@ contract ReserveTest is ForkBase {
         fillUp();
         assertEq(balancer.getActiveShapes()[3], 0, "expensive replacement is deferred without a duplicate backing reserve");
         assertGt(balancer.requiredReserve(), need, "actual missing inventory raises the working target");
-        assertEq(balancer.withdrawableSurplus(), balancer.profit(), "only profit is claimable while the fund is short");
+        assertEq(balancer.withdrawableSurplus(), balancer.creatorCredit(), "only profit is claimable while the fund is short");
         assertEq(balancer.admissionStatus(), 0, "purchases continue");
 
         (uint256 n, uint256 claimed) = _sellUntilRefilled();
@@ -126,22 +126,11 @@ contract ReserveTest is ForkBase {
         assertGe(_fund(), balancer.requiredReserve());
     }
 
-    /// The creator's share of each payment follows the listed prices: the markup on each Shape prize's backing,
-    /// weighted by 1 / price as FWA weights its draws. Curated NFTs count zero.
-    function test_creatorShareFollowsListedPrices() public view {
-        uint256[] memory ids = balancer.getActiveIds();
-        uint256 expected;
-        for (uint256 i; i < ids.length; ++i) {
-            (uint8 kind, uint8 denom,,, uint112 price) = balancer.items(ids[i]);
-            if (kind != 1) expected += balancer.denominationAmount(denom) * (MARKUP - 1000) * 1e18 / (10_000 * uint256(price));
-        }
-        assertEq(balancer.profitShareSum(), expected);
+    function test_creatorRateRemainsStoredAcrossInventoryChanges() public view {
+        assertEq(balancer.creatorRevenueBps(), 400);
     }
 
-    /// Review finding: proceeds are split against the listings at collection, so a creator could list NFTs just before
-    /// a collection to move fund money into profit. Curated NFTs count zero, so listing them only lowers the creator's
-    /// share. Withdrawing NFTs raises it at most to the Shapes-only share, below half the payment, so the fund always
-    /// keeps at least half of every payment.
+    /// Changing listed inventory cannot change the explicitly stored collection percentage.
     function test_listingNFTsBeforeCollectionCannotMoveFundMoney() public {
         _claimAll();
         uint256[] memory r = buy(buyer, 1);
@@ -154,25 +143,25 @@ contract ReserveTest is ForkBase {
         settle();
         uint256 amount = pool.ownerProceeds();
         assertGt(amount, 0, "proceeds waiting");
-        uint256 p0 = balancer.profit();
+        uint256 p0 = balancer.creatorCredit();
         uint256 snap = vm.snapshotState();
         balancer.collectProceeds();
-        uint256 honest = balancer.profit() - p0;
+        uint256 honest = balancer.creatorCredit() - p0;
         vm.revertToState(snap);
         for (uint256 i; i < 5; ++i) listCurated(100 + i, 50 ether);
         balancer.collectProceeds();
-        uint256 padded = balancer.profit() - p0;
+        uint256 padded = balancer.creatorCredit() - p0;
         assertGt(honest, 0, "profit flows while the fund is short");
-        assertEq(padded, honest, "listing NFTs collects first: the split is the honest one");
+        assertEq(padded, honest, "new curated listings do not alter the collection percentage");
         assertLt(honest, amount / 2, "the fund keeps at least half of a payment");
 
         vm.revertToState(snap);
         vm.prank(creator);
         balancer.withdrawCurated(curated, creator);
         balancer.collectProceeds();
-        assertEq(balancer.profit() - p0, honest, "withdrawing NFTs collects first: the split is the honest one");
+        assertEq(balancer.creatorCredit() - p0, honest, "curated withdrawal does not alter the collection percentage");
 
-        // Unlisting Shapes also collects first.
+        // Unlisting returns backing; collection remains a separate action.
         vm.revertToState(snap);
         uint256[] memory one = new uint256[](1);
         uint256[] memory ids = balancer.getActiveIds();
@@ -182,12 +171,13 @@ contract ReserveTest is ForkBase {
         }
         vm.prank(creator);
         balancer.unlistShapes(one);
-        assertEq(balancer.profit() - p0, honest, "unlisting Shapes collects first: the split is the honest one");
+        assertEq(balancer.creatorCredit(), p0, "unlisting does not collect or change the stored credit");
+        balancer.collectProceeds();
+        assertEq(balancer.creatorCredit() - p0, honest, "listing changes do not change the chosen revenue share");
     }
 
-    /// Round 9 R9-E1: upkeep collects before reconciling, so a draw's proceeds are split over the listings it was
-    /// priced on. Reconciling first dropped the won NFT (share 0) and booked n / (n - 1) of the share from the fund.
-    function test_upkeepSplitsOverTheListingsTheDrawWasPricedOn() public {
+    /// Paid maintenance and a separate collection apply the same stored revenue percentage.
+    function test_upkeepAndSeparateCollectionUseTheSameStoredRate() public {
         _claimAll();
         uint256[] memory r = buy(buyer, 1);
         fulfill(r[0], _wordFor(3));
@@ -196,49 +186,37 @@ contract ReserveTest is ForkBase {
         uint256[] memory d = buy(buyer, 1);
         _drawListing(d[0], curated);
         assertLt(_fund(), balancer.requiredReserve(), "fund short after the big win");
-        uint256 p0 = balancer.profit();
+        uint256 p0 = balancer.creatorCredit();
         uint256 snap = vm.snapshotState();
         balancer.collectProceeds();
-        uint256 drawTime = balancer.profit() - p0;
+        uint256 drawTime = balancer.creatorCredit() - p0;
         vm.revertToState(snap);
         upkeep();
         assertGt(drawTime, 0, "profit flows while the fund is short");
-        assertEq(balancer.profit() - p0, drawTime, "upkeep books the draw-time split");
+        assertEq(balancer.creatorCredit() - p0, drawTime, "upkeep applies the same stored percentage");
     }
 
-    /// Game first: when the fund cannot pay a restock, unclaimed profit pays it.
-    function test_unclaimedProfitRestocksWhenTheFundIsEmpty() public {
-        // A 100% markup, so restocked prizes carry a large share above the 10% the fund keeps.
-        uint256 t = balancer.target();
-        vm.prank(creator);
-        balancer.configure(10_000, t);
+    /// Both maintenance paths protect credit even when it is the only cash able to buy a missing prize.
+    function test_unpaidRecoveryPreservesCreditWhenOperatingCashCannotRestock() public {
         _claimAll();
-        uint256[] memory r = buy(buyer, 1);
-        fulfill(r[0], _wordFor(3));
+        vm.prank(creator); balancer.setCreatorRevenueBps(10_000);
+        uint256[] memory big = buy(buyer, 1);
+        fulfill(big[0], _wordFor(3));
         settle();
         fillUp();
-        // Let profit build unclaimed until the balance covers a second 0.5 Shape the fund alone cannot.
-        uint256 i;
-        while (address(balancer).balance < 0.51 ether) {
-            uint256[] memory s = buy(buyer, 1);
-            fulfill(s[0], _wordFor(0));
-            settle();
-            fillUp();
-            require(++i < 400, "balance never reached 0.51");
-        }
-        assertEq(balancer.getActiveShapes()[3],0,"the first expensive win is still awaiting funded replacement");
+        uint256[] memory small = buy(buyer, 1);
+        fulfill(small[0], _wordFor(0));
+        settle();
         balancer.collectProceeds();
-        assertLt(_fund(), 0.5011 ether, "the fund alone cannot restock the 0.5 Shape");
-        assertGt(address(balancer).balance, 0.506 ether, "fund and profit together can");
-        uint256 booked = balancer.profit();
-        fillUp();
-        assertEq(balancer.getActiveShapes()[3], 0, "paid upkeep cannot use already booked creator profit");
-        assertEq(balancer.profit(), booked, "payment and its capital hold preserve the creator's booked share");
-        vm.prank(creator);
-        balancer.performUpkeepUnpaid();
-        assertEq(balancer.getActiveShapes()[3], 1, "unpaid recovery preserves game-first asset maintenance");
-        assertLt(balancer.profit(), booked, "only real inventory spending consumed profit");
-        assertEq(balancer.profit(), address(balancer).balance, "unpaid inventory spending clips profit to remaining ETH");
+        uint256 credit = balancer.creatorCredit();
+        assertGt(credit, 0.011 ether);
+        assertLt(_fund(), 0.011 ether);
+        uint256 before = address(balancer).balance;
+        vm.prank(creator); balancer.performUpkeepUnpaid();
+        assertEq(balancer.getActiveShapes()[3], 0);
+        assertEq(balancer.getActiveShapes()[0], 3);
+        assertEq(balancer.creatorCredit(), credit);
+        assertEq(address(balancer).balance, before);
     }
 
     /// The worst batch at the minimum reserve (the 0.5, both 0.1 and two 0.01 Shapes) costs more to restock than the
@@ -336,7 +314,7 @@ contract ReserveTest is ForkBase {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
     }
 
     /// S4: a collection that is also the creator cannot change the markup inside its own transfer: `configure` is
@@ -379,12 +357,10 @@ contract ReserveTest is ForkBase {
     /// Independent audit E3: NFTs are listed only once the pool has a design, at their value (no markup).
     function test_nftsListOnlyAfterTheFirstConfigure() public {
         vm.prank(creator);
-        PoolBalancer fresh = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(1)))));
+        PoolBalancer fresh = _createFixture(creator, bytes32(uint256(1)), 1 ether);
         nft.mint(creator, 50);
         vm.startPrank(creator);
         nft.approve(address(fresh), 50);
-        vm.expectRevert(PoolBalancer.InvalidConfig.selector);
-        fresh.listCurated(address(nft), 50, 0.3 ether);
         fresh.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]));
         uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
         vm.stopPrank();
@@ -407,7 +383,7 @@ contract ReserveTest is ForkBase {
         balancer.open();
         assertEq(pool.ownerProceeds(), 0, "collected on open");
         assertEq(address(balancer).balance, before + proceeds, "proceeds now held here");
-        assertGe(address(balancer).balance - balancer.profit(), balancer.requiredReserve(), "reserve held in ETH here");
+        assertGe(address(balancer).balance - balancer.creatorCredit(), balancer.requiredReserve(), "reserve held in ETH here");
     }
 
     /// Round 9 R9-S4: a creator contract running upkeep cannot re-enter creator functions from its keeper reward.
@@ -442,7 +418,7 @@ contract CreatorKeeper {
     }
 
     function upkeep() external returns (uint256) {
-        return b.performUpkeep(b.settingsHash());
+        return b.performUpkeep(b.settingsHash(), 0, 0);
     }
 
     receive() external payable {

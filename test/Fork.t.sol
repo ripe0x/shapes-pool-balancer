@@ -56,7 +56,7 @@ contract ForkScenarioTest is ForkBase {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
     }
 
     function test_canPurchaseFitsStipend() public {

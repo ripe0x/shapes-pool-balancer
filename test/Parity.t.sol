@@ -25,7 +25,7 @@ contract ParityFixture is ForkBase {
         address c = makeAddr(string.concat("creator", vm.toString(n)));
         vm.deal(c, 1_000 ether);
         vm.prank(c);
-        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 200 ether}(bytes32(0))));
+        PoolBalancer b = _createFixture(c, bytes32(0), 200 ether);
         // Configure the markup first so the curated NFTs are listed at that markup: the planner models every
         // listing at the current markup, which the contract only produces when nothing predates the markup
         // (listings made before `configure`, or before a markup change, keep their original price).
@@ -43,7 +43,7 @@ contract ParityFixture is ForkBase {
         for (uint256 i; i < 40; ++i) {
             bytes32 uh1 = b.settingsHash();
             vm.prank(keeper, keeper);
-            try b.performUpkeep(uh1) {} catch {
+            try b.performUpkeep(uh1, 0, 0) {} catch {
                 break;
             }
         }
@@ -76,8 +76,7 @@ contract ParityFixture is ForkBase {
         vm.serializeString(o, "mintFee", vm.toString(shapes.mintFee()));
         // Every prize was listed in this block, so at this restocking fee.
         vm.serializeString(o, "restockFee", vm.toString(b.restockFee()));
-        vm.serializeString(o, "maxReward", vm.toString(b.maxKeeperReward()));
-        vm.serializeString(o, "listedRestockFees", vm.toString(b.listedRestockFees()));
+        vm.serializeString(o, "maxReward", vm.toString(b.policyMaxReward()));
         string memory out = vm.serializeString(o, "reserve", vm.toString(b.requiredReserve()));
         json = vm.serializeString("root", key, out);
         ++n;

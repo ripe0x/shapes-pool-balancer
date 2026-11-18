@@ -59,12 +59,10 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const counts = mixOf(SMALL, styleBonus('board', EXAMPLE, SMALL));
   const { ev, view, list } = groups(counts);
   const econ = economics(counts, EXAMPLE);
-  const edge = EXAMPLE.edgeBps / 10_000;
-  const draw = econ.ownerProceeds * (1 + edge);
-  const markupShare = econ.markupPerDraw / draw;
-  const feeShare = (econ.mintFeesPerDraw + econ.restockFeesPerDraw) / draw;
-  const edgeShare = edge / (1 + edge);
-  const valueShare = 1 - markupShare - feeShare - edgeShare;
+  const draw = Number(ev.drawPrice) / 1e18;
+  const creatorShare = econ.creatorEarningsPerDraw / draw;
+  const retainedShare = econ.retainedRevenuePerDraw / draw;
+  const edgeShare = (draw - econ.ownerProceeds) / draw;
   const inPrizes = capitalOf(counts);
   const needed = ethNeeded(counts, EXAMPLE);
   const capital = reserveBreakdownAt(counts, EXAMPLE.have, EXAMPLE.mintFee, 0, MAX_KEEPER_REWARD, EXAMPLE.baseFee);
@@ -114,12 +112,11 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <h2 className="h3">4. Where each draw's ETH goes</h2>
         <p className="hiw-p">On average, of every draw price:</p>
         <Bar parts={[
-          { label: 'goes back to players as prizes', share: valueShare, style: { background: '#7a7a7a' } },
-          { label: 'is your markup', share: markupShare, style: { background: '#fff' } },
-          { label: 'pays mint fees and keepers', share: feeShare, style: { background: '#b5b5b5' } },
+          { label: 'is allocated to creator earnings', share: creatorShare, style: { background: '#fff' } },
+          { label: 'is retained for pool operations', share: retainedShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Markup adds about {econ.markupPerDraw.toFixed(4)} ETH a draw in this example. Its first 10% supports operating capital; the share above 10% is your earnings.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. The suggested share is {econ.creatorRevenueBps / 100}% of collected owner proceeds, about {econ.creatorEarningsPerDraw.toFixed(4)} ETH per draw in this example. Your reviewed share is stored at creation. It changes only when you explicitly change it.</p>
       </section>
 
       <section className="hiw-sec">
@@ -168,10 +165,11 @@ const FAQ: [string, string][] = [
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its creator. You can hand the creator role to another address, which has to accept.'],
   ['What happens when someone wins my NFT?', 'It goes to them. If other curated NFTs remain, purchases continue while the inventory gate permits them. If it was your last NFT, purchases stop until you add another.'],
   ['Can I lose money?', 'Mint fees and restocking charges are built into prize prices. Successful purchases generate proceeds; refunded draws do not. Keepers are paid from your operating ETH, so low volume, large wins and gas costs can consume your capital. Fees in unsold prizes are not cash. Initial mint and keeper costs remain costs even if nobody buys. Shapes and Packs retain their redeemable backing.'],
-  ['How do I get my ETH and NFTs back?', 'Unused ETH can be withdrawn at any time. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
+  ['How do I get my ETH and NFTs back?', 'Accrued creator earnings can be claimed even while inventory is underfunded. Operating ETH above the reserve can also be withdrawn. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'Purchases may continue with a partially stocked target. They pause when the inventory gate is below 70% of the target weight, at the busy threshold, after the last curated NFT is won, or when the Shapes mint fee rises above the accepted amount. The actual remaining inventory sets the current draw price and odds.'],
   ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. A new purchase is also refused when at least five draws are unsettled; a batch can already be in flight. Settlement can release that busy condition, but an inventory or ETH shortage may still need creator action.'],
   ['Can sales replenish every shortage?', 'Only while purchases remain available and players keep buying. If inventory is too low to admit purchases and no sales are waiting to be collected, add ETH, reduce the target mix, or close and recover the remaining assets. No refill time is guaranteed.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
+  ['When does a new revenue share apply?', 'Changing the share collects currently available owner proceeds using the old percentage, then stores the new percentage. Later collections use the new percentage, including earlier purchases that settle afterward. Existing credit stays unchanged. A 100% share leaves no new proceeds for operations.'],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];

@@ -60,7 +60,7 @@ contract EconForkTest is ForkBase {
     }
 
     function _fund() internal view returns (uint256) {
-        return address(balancer).balance - balancer.profit();
+        return address(balancer).balance - balancer.creatorCredit();
     }
 
     function _backing() internal view returns (uint256 b) {
@@ -68,16 +68,16 @@ contract EconForkTest is ForkBase {
         for (uint256 d; d < 16; ++d) b += uint256(a[d]) * balancer.denominationAmount(d);
     }
 
-    function _bigSlot() internal view returns (uint256 slot) {
+    function _shapeSlot(uint8 wanted) internal view returns (uint256 slot) {
         uint256[] memory ids = balancer.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind, uint8 denom,,,) = balancer.items(ids[i]);
-            if (kind == SHAPE_KIND && denom == 3) {
+            if (kind == SHAPE_KIND && denom == wanted) {
                 (,,,,,, slot,) = pool.listings(ids[i]);
                 return slot;
             }
         }
-        revert("no 0.5 Shape listed");
+        revert("required Shape is not listed");
     }
 
     /// @dev Close, unlist every prize (redeemed for its backing), withdraw every NFT and claim everything.
@@ -110,7 +110,7 @@ contract EconForkTest is ForkBase {
     function upkeepOnce() external {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
     }
 
     struct R {
@@ -138,10 +138,15 @@ contract EconForkTest is ForkBase {
                 r.playersPaid += total;
                 uint256[] memory ids = buy(buyer, 1);
                 ++r.draws;
-                uint256 word = n == forceBigAt ? wordForSlot(_bigSlot()) : uint256(keccak256(abi.encode(seed, n)));
+                // Isolate the timing of the designated large win: earlier draws select small prizes, so a
+                // random earlier win cannot make the intended late-win state unreachable.
+                uint256 word = n == forceBigAt ? wordForSlot(_shapeSlot(3))
+                    : forceBigAt != 0 && n < forceBigAt ? wordForSlot(_shapeSlot(0))
+                    : uint256(keccak256(abi.encode(seed, n)));
                 fulfill(ids[0], word);
                 settle();
-                (,,, uint256 lid,,) = pool.acquisitions(ids[0]);
+                (,,, uint256 lid, uint8 status,) = pool.acquisitions(ids[0]);
+                assertEq(status, 2, "economics count only a real delivered draw");
                 (uint8 kind, uint8 denom,,,) = balancer.items(lid);
                 fillUp();
                 if (kind != SHAPE_KIND) {
@@ -151,7 +156,7 @@ contract EconForkTest is ForkBase {
                 } else if (denom == 3) {
                     ++r.bigWins;
                 }
-                assertLe(balancer.profit(), address(balancer).balance, "profit held");
+                assertLe(balancer.creatorCredit(), address(balancer).balance, "profit held");
                 uint256 f = _fund();
                 uint256 need = balancer.requiredReserve();
                 if (_claim() == 0) ++r.dry;

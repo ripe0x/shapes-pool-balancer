@@ -1,0 +1,225 @@
+{
+  "fork": "26382349",
+  "rpcSource": "https://mainnet.gateway.tenderly.co",
+  "factory": "0xCd171B437d9329C2654128645944fbC05C9AA2BF",
+  "mode": "complete run incl creator collection/policy/probe deployments",
+  "coalitionDelta": "-103402950772953270",
+  "actorGas": "85179558000000",
+  "totals": [
+    {
+      "mode": "expired",
+      "bid": "1000000",
+      "base": "500000",
+      "pool": "0x33BBc7f34f5f7DDA27bF29ae1a57457fB3D17A1a",
+      "b": "0xee019195d77F7c4c98D8C0329179C8B11892Cc33",
+      "creatorRevenueBps": 400,
+      "creatorCredit": "0",
+      "operatingCash": "778939280192000000",
+      "creatorCapitalContribution": "1000000000000000000",
+      "additionalCapitalContribution": "0",
+      "failedDeliveryEvent": null,
+      "price": "13738317757009345",
+      "vrf": "2340000000000",
+      "refund": "13738317757009345",
+      "redeemed": "0",
+      "edge": "0",
+      "initialMintFees": "20000000000000000",
+      "newMintFees": "0",
+      "cycle": {
+        "buyerKeeperDelta": "47094427000000",
+        "creatorFundCost": "50253116000000",
+        "keeperReward": "50253116000000",
+        "coalitionDelta": "-3158689000000",
+        "actorGas": "818689000000",
+        "gasByActor": {
+          "creator": "0",
+          "buyer": "629226000000",
+          "keeper": "189463000000"
+        },
+        "keeperTransactions": 1
+      },
+      "fullLifecycle": {
+        "creatorDelta": "-21066475614000000",
+        "buyerDelta": "-2969226000000",
+        "keeperDelta": "1050360525000000",
+        "coalitionDelta": "-20019084315000000",
+        "actorGas": "16744315000000",
+        "endingBalancerBalance": "0",
+        "endingFwaBalance": "0"
+      }
+    },
+    {
+      "mode": "shape",
+      "bid": "1000000",
+      "base": "500000",
+      "pool": "0x589BdCf06a1364888001bA3b021e91b25B6Fd685",
+      "b": "0x08588d38762BfB2D883986946f3ac108393e4c2b",
+      "creatorRevenueBps": 400,
+      "creatorCredit": "523364485981308",
+      "operatingCash": "780449316677551402",
+      "creatorCapitalContribution": "1000000000000000000",
+      "additionalCapitalContribution": "0",
+      "failedDeliveryEvent": null,
+      "price": "13738317757009345",
+      "vrf": "2340000000000",
+      "refund": "0",
+      "redeemed": "10000000000000000",
+      "edge": "654205607476635",
+      "initialMintFees": "20000000000000000",
+      "newMintFees": "1000000000000000",
+      "cycle": {
+        "buyerKeeperDelta": "-3641186092009345",
+        "creatorFundCost": "-1983147988532710",
+        "keeperReward": "100964161000000",
+        "coalitionDelta": "-1658038103476635",
+        "actorGas": "1492496000000",
+        "gasByActor": {
+          "creator": "0",
+          "buyer": "635719000000",
+          "keeper": "856777000000"
+        },
+        "keeperTransactions": 1
+      },
+      "fullLifecycle": {
+        "creatorDelta": "-19033046674467290",
+        "buyerDelta": "-3741293476009345",
+        "keeperDelta": "1100404256000000",
+        "coalitionDelta": "-21673935894476635",
+        "actorGas": "17390287000000",
+        "endingBalancerBalance": "0",
+        "endingFwaBalance": "654205607476635"
+      }
+    },
+    {
+      "mode": "curated",
+      "bid": "1000000",
+      "base": "500000",
+      "pool": "0xFA68473fc55C872Bd5d0567AafD3270C628F2c12",
+      "b": "0x142e36eEAd9C6E79dCc0DeC76AA64F143378b034",
+      "creatorRevenueBps": 400,
+      "creatorCredit": "523364485981308",
+      "operatingCash": "791500005106551402",
+      "creatorCapitalContribution": "1000000000000000000",
+      "additionalCapitalContribution": "0",
+      "failedDeliveryEvent": null,
+      "price": "13738317757009345",
+      "vrf": "2340000000000",
+      "refund": "0",
+      "redeemed": "0",
+      "edge": "654205607476635",
+      "initialMintFees": "20000000000000000",
+      "newMintFees": "0",
+      "cycle": {
+        "buyerKeeperDelta": "-13691204034009345",
+        "creatorFundCost": "-13033836202532710",
+        "keeperReward": "50275947000000",
+        "coalitionDelta": "-657367831476635",
+        "actorGas": "822224000000",
+        "gasByActor": {
+          "creator": "0",
+          "buyer": "611961000000",
+          "keeper": "210263000000"
+        },
+        "keeperTransactions": 1
+      },
+      "fullLifecycle": {
+        "creatorDelta": "-7982073318467290",
+        "buyerDelta": "-13741269718009345",
+        "keeperDelta": "1050362556000000",
+        "coalitionDelta": "-20672980480476635",
+        "actorGas": "16434873000000",
+        "endingBalancerBalance": "0",
+        "endingFwaBalance": "654205607476635"
+      }
+    },
+    {
+      "mode": "unlist",
+      "bid": "1000000",
+      "base": "500000",
+      "pool": "0x2Fd5b27d7BB2C98B24Eb2977b6A972B01C40E301",
+      "b": "0xE41E97cd9DFe8dEE060Ea64AbbEAE7C3F1a86A9a",
+      "creatorRevenueBps": 400,
+      "creatorCredit": "0",
+      "operatingCash": "777938640791000000",
+      "creatorCapitalContribution": "1000000000000000000",
+      "additionalCapitalContribution": "0",
+      "failedDeliveryEvent": null,
+      "price": "0",
+      "vrf": "0",
+      "refund": "0",
+      "redeemed": "0",
+      "edge": "0",
+      "initialMintFees": "20000000000000000",
+      "newMintFees": "1000000000000000",
+      "cycle": {
+        "buyerKeeperDelta": "50078984000000",
+        "creatorFundCost": "1050892516000000",
+        "keeperReward": "50892516000000",
+        "coalitionDelta": "-1001193486000000",
+        "actorGas": "1193486000000",
+        "gasByActor": {
+          "creator": "379954000000",
+          "buyer": "0",
+          "keeper": "813532000000"
+        },
+        "keeperTransactions": 1
+      },
+      "fullLifecycle": {
+        "creatorDelta": "-22067469001000000",
+        "buyerDelta": "0",
+        "keeperDelta": "1050375856000000",
+        "coalitionDelta": "-21017093145000000",
+        "actorGas": "17093145000000",
+        "endingBalancerBalance": "0",
+        "endingFwaBalance": "0"
+      }
+    },
+    {
+      "mode": "failedDelivery",
+      "bid": "1000000",
+      "base": "500000",
+      "pool": "0x5246494B6d4a2Aa0220E1F07965c6AeE2beBBD2c",
+      "b": "0x538627ADaEA8691fdbb53125e358295BA8Cb722E",
+      "creatorRevenueBps": 400,
+      "creatorCredit": "0",
+      "operatingCash": "778939301127000000",
+      "creatorCapitalContribution": "1000000000000000000",
+      "additionalCapitalContribution": "0",
+      "failedDeliveryEvent": {
+        "listingId": "1",
+        "recipient": "0x00000000000000000000000000000000000ec002",
+        "collection": "0x69FCa34aa0c65778B16AE1c14d0bd6f6A3765dFa",
+        "tokenId": "5"
+      },
+      "price": "13738317757009345",
+      "vrf": "2340000000000",
+      "refund": "13738317757009345",
+      "redeemed": "0",
+      "edge": "0",
+      "initialMintFees": "20000000000000000",
+      "newMintFees": "0",
+      "cycle": {
+        "buyerKeeperDelta": "47008212000000",
+        "creatorFundCost": "50232207000000",
+        "keeperReward": "50232207000000",
+        "coalitionDelta": "-3381837000000",
+        "actorGas": "1041837000000",
+        "gasByActor": {
+          "creator": "157842000000",
+          "buyer": "705072000000",
+          "keeper": "178923000000"
+        },
+        "keeperTransactions": 1
+      },
+      "fullLifecycle": {
+        "creatorDelta": "-21066301626000000",
+        "buyerDelta": "-3045072000000",
+        "keeperDelta": "1050350156000000",
+        "coalitionDelta": "-20018996542000000",
+        "actorGas": "16656542000000",
+        "endingBalancerBalance": "0",
+        "endingFwaBalance": "0"
+      }
+    }
+  ]
+}

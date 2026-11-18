@@ -1,0 +1,7 @@
+{
+  "scope": "Read-only after pending-classification repair, before continuation",
+  "hash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+  "nonce": 2,
+  "blockNumber": null,
+  "outcome": "pending"
+}

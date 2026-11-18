@@ -5,8 +5,8 @@ Creator-operated [FWA](https://pools.fwa.fun) community pools that use ETH-backe
 
 A creator deploys a `PoolBalancer`, which creates and permanently owns an FWA standard pool. The creator lists curated
 NFTs and sets a target mix of ETH-backed prizes (Shapes and Draw Packs); players buy on FWA's own site with ETH; a
-permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. Surplus above the reserve
-belongs to the creator.
+permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. A stored percentage of actual collected owner proceeds becomes protected creator credit. Credit remains
+claimable during depletion; operating capital above the full reserve is separately withdrawable.
 
 **Not deployed to mainnet.** See [docs/READINESS.md](docs/READINESS.md).
 
@@ -20,7 +20,7 @@ belongs to the creator.
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Status codes, keeper operation, recovery procedures |
 | [docs/READINESS.md](docs/READINESS.md) | Mainnet deployment readiness report |
 
-See [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
+See [protected-revenue implementation evidence](docs/PROTECTED-REVENUE-RESULTS.md), [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
 
 ## Layout
 
@@ -48,7 +48,7 @@ npm install
 ```
 
 ```bash
-forge build && npm run abi
+forge build --sizes && npm run abi
 ```
 
 ## Tests
@@ -98,20 +98,17 @@ npm run sim -- --runs 60
 
 ## Local fork rehearsal and dashboard
 
-The dev fork uses anvil's standard port, 8545. If a mainnet fork with `--chain-id 31337` already runs there, deploy onto
-it; otherwise start one:
+The canonical owner-approved, hash-bound local rehearsal route is documented in
+[docs/RELEASE-REHEARSAL.md](docs/RELEASE-REHEARSAL.md). Its old interrupted batch is historical; it must not be replayed
+for new bytecode. Prepare/review candidate-specific local material before executing that guarded rehearsal. Production
+always uses `script/deploy.sh` with the required exact-source review and outcome approval. Use
+`https://mainnet.gateway.tenderly.co` for every Ethereum mainnet RPC command; no deployment is authorized here.
 
-```bash
-anvil --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 --chain-id 31337 --port 8545
-```
-
-```bash
-PACKS_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 KEEPER_ADMIN=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast
-```
-
-```bash
-FACTORY=$(jq -r .balancerFactory deployments/31337.json) forge script script/DevSetup.s.sol --tc DevSetup --rpc-url http://127.0.0.1:8545 --unlocked --sender 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --broadcast
-```
+For the existing isolated keeper integration diagnostic, `npm run keeper:e2e` starts its own local fork and runs the
+production deployment implementation under synthetic actors. It is not the sealed full production-path rehearsal.
+Creation now requires predicted-address NFT approvals followed by one
+`createBalancer(salt, {markupBps, creatorRevenueBps, target, mintFeeCap}, curated)` transaction with the reviewed funding.
+`script/DevSetup.s.sol` uses that path. Initial stocking is bounded maintenance, not part of creation.
 
 Copy `app/.env.example` to `app/.env.local`, set `VITE_FACTORY` and, for the fork only, `VITE_DEV_ACCOUNT` (an unlocked
 anvil account), then:
@@ -123,8 +120,9 @@ npm run dev
 ## Keeper
 
 ```bash
-FACTORY=<factory> FROM_BLOCK=<block> KEEPER_PRIVATE_KEY=<from your secret store> MAX_LOSS_WEI=100000000000000 npm run keeper
+FACTORY=<factory> FROM_BLOCK=<block> MAX_LOSS_WEI=100000000000000 npm run keeper
 ```
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md). The pool keeps working for existing players if the keeper stops; anyone can
-call `performUpkeep(settingsHash())`.
+call `performUpkeep(settingsHash(), 0, 0)` when paid upkeep is available, or `performUpkeepUnpaid()` for recovery.
+The keeper signing identity belongs in the existing secret store, never in a command literal or a new file.

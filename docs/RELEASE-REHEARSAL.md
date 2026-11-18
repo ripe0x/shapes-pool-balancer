@@ -1,3 +1,8 @@
+> Protected-revenue candidate, 2026-11-18: this document and its sealed batch remain historical. New atomic creation,
+> credit accounting and policy activation require candidate-specific preparation and review before using this guarded
+> route. Do not reuse its plan hash, node or approval for the changed implementation. Current diagnostics are recorded
+> in [PROTECTED-REVENUE-RESULTS.md](PROTECTED-REVENUE-RESULTS.md).
+
 # Candidate 04bc760 local rehearsal, prepared 2026-11-17
 
 **Status: approved batch `7b18522f…f244a236` was attempted and INTERRUPTED.** Eight system deployments succeeded. The first test-NFT creation also succeeded, but the driver stopped on an immediate receipt-not-found read. Nine actual transactions are reconciled; total gas is **0.002123978546527748 synthetic ETH**. No pools, pool deposits, purchases or draws occurred. The [original journal and readbacks](../audit/local-rehearsal-7b18522f/REPORT.md) remain preserved. The receipt wait is repaired; changed material invalidates the old hash for further execution. Do not replay or rerun this one-shot batch. A controlled continuation requires a newly prepared/reviewed plan and explicit approval. The earlier port18554 batch remains historical and untouched.

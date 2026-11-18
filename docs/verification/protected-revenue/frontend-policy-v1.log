@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/policy.test.ts > reads bounded creator previews without policy settings metadata 37ms
+ ✓ app/src/policy.test.ts > reports failed policy economics as unavailable instead of substituting V1 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  10:46:18
+   Duration  394ms (transform 57ms, setup 0ms, collect 133ms, tests 41ms, environment 0ms, prepare 40ms)

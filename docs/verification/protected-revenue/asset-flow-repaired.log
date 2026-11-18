@@ -1,0 +1,121 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 9.84s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 2 tests for test/scenario/FlowBreakdown.t.sol:FlowBreakdownTest
+[PASS] test_breakdown_policySwitch() (gas: 213375040)
+Logs:
+
+  FLOW BREAKDOWN  policy_switch   gas 550000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: creator deposits                                                          5.0000    91.51%
+    in: player payments for draws (price and randomness fee)                      0.4635     8.48%
+    claimed by the creator                                                        3.3326    60.99%
+    prize backing delivered to winners (Shapes and Packs)                         0.2800     5.12%
+    paid to keepers                                                               0.0268     0.49%
+    randomness fees paid to FWA's service                                         0.0244     0.44%
+    Shapes mint fees                                                              0.0750     1.37%
+    refunds withdrawn by players                                                  0.0000     0.00%
+    held in creator credit (unclaimed) (change)                                   0.0000     0.00%
+    held in creator reserve (change)                                              0.0036     0.06%
+    held in fund above the reserve (change)                                       0.0000     0.00%
+    held in Shape and Pack backing listed on FWA (change)                         1.7000    31.11%
+    held in held by FWA: owner proceeds not yet collected (change)                0.0000     0.00%
+    held in held by FWA: pending draws, player refund credit and FWA's edge (change)        0.0209     0.38%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    creator credit (unclaimed): held                                              0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    creator reserve: held                                                         0.0036     0.06%
+      stated need                                                                 0.0036     0.06%
+      ABOVE its need                                                              0.0000     0.00%
+    fund above the reserve: held                                                  0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    Shape and Pack backing listed on FWA: held                                    1.7000    31.11%
+      counters imply                                                              1.7000    31.11%
+    Shape and Pack backing listed on FWA: held - counters                                        0 wei
+      stated need                                                                 1.7000    31.11%
+      ABOVE its need                                                              0.0000     0.00%
+    held by FWA: owner proceeds not yet collected: held                           0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    held by FWA: pending draws, player refund credit and FWA's edge: held         0.0209     0.38%
+      stated need                                                                 0.0209     0.38%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator -> Balancer: deposits | claimed back                            5.0000    91.51%  | returned 3.3326
+    players -> FWA: draw payments | refunds withdrawn                       0.4635     8.48%  | returned 0.0000
+    FWA -> Balancer: owner proceeds collected                               0.4181     7.65%  | no return path
+    Balancer -> Shapes and Packs: prize backing | redeemed                  1.9800    36.24%  | returned 0.0000
+    Balancer -> keepers: reconcile and restock | request-board surcharge received        0.0102     0.18%  | returned 0.0149
+    Balancer -> keepers: creator-started work (creator's ETH)               0.0166     0.30%  | no return path
+    proceeds -> creator credit: stored collection percentage                0.0167     0.30%  | no return path
+
+[PASS] test_breakdown_zeroDemand() (gas: 95682945)
+Logs:
+
+  FLOW BREAKDOWN  zero_demand   gas 550000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: creator deposits                                                          5.0000   100.00%
+    in: player payments for draws (price and randomness fee)                      0.0000     0.00%
+    claimed by the creator                                                        3.2247    64.49%
+    prize backing delivered to winners (Shapes and Packs)                         0.0000     0.00%
+    paid to keepers                                                               0.0166     0.33%
+    randomness fees paid to FWA's service                                         0.0000     0.00%
+    Shapes mint fees                                                              0.0550     1.10%
+    refunds withdrawn by players                                                  0.0000     0.00%
+    held in creator credit (unclaimed) (change)                                   0.0000     0.00%
+    held in creator reserve (change)                                              0.0036     0.07%
+    held in fund above the reserve (change)                                       0.0000     0.00%
+    held in Shape and Pack backing listed on FWA (change)                         1.7000    34.00%
+    held in held by FWA: owner proceeds not yet collected (change)                0.0000     0.00%
+    held in held by FWA: pending draws, player refund credit and FWA's edge (change)        0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    creator credit (unclaimed): held                                              0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    creator reserve: held                                                         0.0036     0.07%
+      stated need                                                                 0.0036     0.07%
+      ABOVE its need                                                              0.0000     0.00%
+    fund above the reserve: held                                                  0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    Shape and Pack backing listed on FWA: held                                    1.7000    34.00%
+      counters imply                                                              1.7000    34.00%
+    Shape and Pack backing listed on FWA: held - counters                                        0 wei
+      stated need                                                                 1.7000    34.00%
+      ABOVE its need                                                              0.0000     0.00%
+    held by FWA: owner proceeds not yet collected: held                           0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+    held by FWA: pending draws, player refund credit and FWA's edge: held         0.0000     0.00%
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator -> Balancer: deposits | claimed back                            5.0000   100.00%  | returned 3.2247
+    players -> FWA: draw payments | refunds withdrawn                       0.0000     0.00%  | returned 0.0000
+    FWA -> Balancer: owner proceeds collected                               0.0000     0.00%  | no return path
+    Balancer -> Shapes and Packs: prize backing | redeemed                  1.7000    34.00%  | returned 0.0000
+    Balancer -> keepers: reconcile and restock | request-board surcharge received        0.0000     0.00%  | returned 0.0000
+    Balancer -> keepers: creator-started work (creator's ETH)               0.0166     0.33%  | no return path
+    proceeds -> creator credit: stored collection percentage                0.0000     0.00%  | no return path
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 549.92ms (426.66ms CPU time)
+
+Ran 1 test suite in 562.81ms (549.92ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

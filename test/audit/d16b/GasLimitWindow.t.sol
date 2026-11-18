@@ -64,7 +64,7 @@ contract D16bGasLimitWindowTest is D16bWorstUpkeepTest {
             bytes32 uh1 = balancer.settingsHash();
             uint256 before = keeper.balance;
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0));
             (bool ok2, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
             require(ok2);
             (, uint64 used,, int64 refunded,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));

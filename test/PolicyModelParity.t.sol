@@ -84,14 +84,13 @@ contract PolicyModelParity is ForkBase {
         uint256 seq = balancer.reconciledSequence();
         vm.serializeString(key, "reconciledDraws", vm.toString(seq - previousSequence)); previousSequence = seq;
         vm.serializeString(key, "balance", vm.toString(address(balancer).balance));
-        vm.serializeString(key, "profit", vm.toString(balancer.profit()));
+        vm.serializeString(key, "creatorCredit", vm.toString(balancer.creatorCredit()));
         vm.serializeString(key, "required", vm.toString(balancer.requiredReserve()));
-        vm.serializeString(key, "listedFees", vm.toString(balancer.listedRestockFees()));
         vm.serializeString(key, "target", vm.toString(balancer.target()));
-        vm.serializeString(key, "maxReward", vm.toString(balancer.maxKeeperReward()));
+        vm.serializeString(key, "maxReward", vm.toString(balancer.policyMaxReward()));
         vm.serializeString(key, "owed", vm.toString(pool.lastIssuedSequence() - seq));
         vm.serializeString(key, "ownerProceeds", vm.toString(pool.ownerProceeds()));
-        vm.serializeString(key, "profitShareSum", vm.toString(balancer.profitShareSum()));
+        vm.serializeString(key, "creatorRevenueBps", vm.toString(balancer.creatorRevenueBps()));
         vm.serializeString(key, "activeCount", vm.toString(balancer.getActiveIds().length));
         vm.serializeString(key, "refundCredit", vm.toString(IRefundCredit(address(pool)).acquisitionRefundCredit(buyer)));
         vm.serializeBool(key, "enabled", balancer.enabled());
@@ -152,7 +151,7 @@ contract PolicyModelParity is ForkBase {
         for (uint256 i; i < 10; ++i) {
             bytes32 expected = balancer.settingsHash();
             vm.prank(keeper);
-            try balancer.performUpkeep(expected, 0) {} catch { break; }
+            try balancer.performUpkeep(expected, 0, 0) {} catch { break; }
             _snapshot("setup");
         }
         assertEq(balancer.getActiveShapes()[0], 17);

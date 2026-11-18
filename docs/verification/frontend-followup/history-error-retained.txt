@@ -1,0 +1,93 @@
+Browser tab: 3, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5206/".
+1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5206/
+	2 container root
+		3 container
+			4 link Description: FWA Pool Balancer, Value: 127.0.0.1:5206/
+			5 container Main
+				7 button Your pools
+				6 button How it works
+			8 button 0x7099…79C8
+		9 button Your pools
+		10 text  /
+		11 heading Pool 0xe3A3…3def, Value: 1
+			12 text Pool 0xe3A3…3def
+		13 text 0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def
+		14 button Copy address
+		15 link Description: Pool on FWA ↗, Value: pools.fwa.fun/pools/0xBC21A7CC6FBeB5d8Ab997b6C7CD00d1CE67C7b34
+		16 container Sections
+			17 button Overview
+			18 button NFTs
+			19 button Prices & mix
+			20 button Settings
+		21 container
+			22 text Open. Players can buy draws. Nothing needs attention.
+		23 container
+			24 text Draw price
+			25 container
+				26 text 0.02705 ETH PER DRAW
+			27 heading In the pool now, Value: 2
+				28 text In the pool now
+			29 button Change prices or mix
+			30 content list Pool inventory
+				31 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				32 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				33 container 0.01 ETH Shape: 1 in 6.0 draws, worth 0.010 ETH
+				34 container 0.01 ETH Shape: 1 in 6.0 draws, worth 0.010 ETH
+				35 container 0.01 ETH Shape: 1 in 6.0 draws, worth 0.010 ETH
+				36 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				37 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				38 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				39 container 0.1 ETH Shape: 1 in 54 draws, worth 0.100 ETH
+				40 container 0.1 ETH Shape: 1 in 54 draws, worth 0.100 ETH
+				41 container Demo Curated #1: 1 in 116 draws, worth 0.250 ETH
+				42 container Demo Curated #2: 1 in 233 draws, worth 0.500 ETH
+			43 text 5  ×  0.01 ETH Shape  · each  1 in 5.9 3  ×  0.05 ETH Shape  · each  1 in 27 2  ×  0.1 ETH Shape  · each  1 in 54 2  of your NFTs ·  1 in 78  draws for any of them
+			44 text Each square is selectable on FWA. Hover or tap a square for its chance and value.
+			45 text Selectable prizes 12 Staged prizes 0
+			46 text Several draws before restocking can trigger price-drift refunds. Randomness fees are not refunded.
+			47 heading Your ETH, Value: 2
+				48 text Your ETH
+			49 text Selectable prize backing 0.400000  ETH Operating ETH 2.590271  ETH Accrued creator earnings 0.000000  ETH Creator revenue share 4 %
+			50 button (disabled) Claim 0.000000 ETH earnings
+				51 text Claim  0.000000  ETH earnings
+			52 text Required operating reserve 0.001031  ETH Available to withdraw 2.589240  ETH ETH and listed backing 2.990271  ETH Expected fees in unsold prizes 0.002680  ETH
+			53 text Unsold fees are future income, not operating ETH. Gas changes and adverse wins can require more capital.
+			54 container
+				55 text Additional operating ETH can reduce replenishment delays after large wins. Manage the target on 
+				56 button Prices & mix
+				57 text , or withdraw the surplus.
+			58 button Add ETH
+			59 heading Revenue and overall results, Value: 2
+				60 text Revenue and overall results
+			90 container
+				91 text Historical earnings unavailable:  Missing or invalid parameters. Double check you have provided the correct parameters.
+			84 text Overall ETH result
+			85 container
+				86 text − 0.00664 ETH
+			87 container
+				88 text You put in  3.000  ETH and took out  0.003  ETH;  2.990  ETH is yours in the pool.
+			89 text Draw sales + 0.07731  ETH Prizes won by players − 0.07000  ETH Shapes mint fees − 0.01300  ETH Keeper pay − 0.00095  ETH
+			62 text Available to withdraw
+			63 text Excess operating capital.
+			64 container
+				65 text 2.58924 ETH
+			66 button Withdraw
+			67 heading Estimate, Value: 3
+				68 text Estimate
+			69 text Per draw, on average
+			70 container
+				71 text +0.00103 ETH
+			72 text Revenue retained per draw
+			73 container
+				74 text +0.02473 ETH
+			75 text Every 30 days
+			76 container
+				77 text +1.23642 ETH
+			78 container
+				79 text Revenue allocation at the stored  4 % share. This estimate assumes purchases continue. It does not measure overall realized profit. Assumes  40  draws a day. 
+				80 button Change
+			81 button How this is worked out ▾
+				82 text How this is worked out 
+				83 text ▾
+
+The focused UI element is 1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5206/

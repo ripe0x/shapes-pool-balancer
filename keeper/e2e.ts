@@ -44,8 +44,8 @@ async function main() {
     console.log(process.env.E2E_RECOVERY_ONLY === '1' ? 'KEEPER RECOVERY E2E PASSED' : 'KEEPER E2E PASSED');
     succeeded = true;
   } finally {
-    if (succeeded && process.env.E2E_KEEP_NODE === '1') {
-      console.log('KEEPER_E2E_NODE', JSON.stringify({ pid: anvil.pid, rpc: RPC, factory, creator: ACCTS[1] }));
+    if (process.env.E2E_KEEP_NODE === '1') {
+      console.log('KEEPER_E2E_NODE', JSON.stringify({ pid: anvil.pid, rpc: RPC, factory, creator: ACCTS[1], succeeded }));
       anvil.unref();
     } else anvil.kill();
   }
@@ -320,14 +320,17 @@ async function run() {
   await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)));
   console.log('✓ downtime: restarted keeper restored both pools');
 
-  // 7. gas policy: above the bid cap the keeper waits instead of overbidding
+  // 7. Complete simulation rejects an unaffordable job above V1 reimbursement, independently of operator bid limits.
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b07', 31n);
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 6n * 10n ** 9n });
   await test.mine({ blocks: 1 });
   const sentBeforeSpike = k.state.stats.sent;
+  const reconciledBeforeSpike = await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'reconciledSequence' });
+  const logsBeforeSpike = logs.length;
   await k.tick();
-  assert.equal(k.state.stats.sent, sentBeforeSpike, 'no send above the 5 gwei bid cap');
-  assert.ok(logs.some((l) => l.startsWith('skip: basefee above bid cap')));
+  assert.equal(k.state.stats.sent, sentBeforeSpike, 'no unaffordable send above V1 reimbursement');
+  assert.equal(await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'reconciledSequence' }), reconciledBeforeSpike, 'maintenance waits through the spike');
+  assert.ok(logs.slice(logsBeforeSpike).some((l) => l.startsWith('skip: unprofitable at current gas') || l.startsWith('skip: basefee above bid cap')));
   await test.setNextBlockBaseFeePerGas({ baseFeePerGas: 10n ** 8n });
   await test.mine({ blocks: 1 });
   await tickUntil(k, async () => (await stocked(b1)));
@@ -374,8 +377,13 @@ async function run() {
   // 9b. keeper list (on the factory, keeper admin = deployer): while restricted to other keepers the pool is skipped
   //     quietly; once approved, it is serviced
   const restrict = async (fn: 'setKeepersRestricted' | 'setKeeperApproved', args: readonly unknown[]) => {
-    const h = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName: fn, args: args as never, account: ACCTS[0] as Address, chain: null });
-    assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success');
+    const h = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName: fn, args: args as never, account: ACCTS[0] as Address, chain: null, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 50_000_000n });
+    try {
+      assert.equal((await pub.waitForTransactionReceipt({ hash: h })).status, 'success', fn);
+    } catch (error) {
+      console.error('keeper-list transaction context', { functionName: fn, transaction: await pub.getTransaction({ hash: h }), block: await pub.getBlock(), automine: await test.getAutomine() });
+      throw error;
+    }
   };
   await restrict('setKeepersRestricted', [true]);
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b08', 41n);

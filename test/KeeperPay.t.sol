@@ -80,14 +80,14 @@ contract KeeperPayTest is ForkBase {
         uint256 before = keeper.balance;
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        reward = balancer.performUpkeep(uh1);
+        reward = balancer.performUpkeep(uh1, 0, 0);
         (bool ok, bytes memory usage) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,,,) = abi.decode(usage, (uint64, uint64, uint64, int64, uint64));
         uint256 billed = used;
         if (!isolated) {
             billed += 21_000;
-            bytes memory data = abi.encodeWithSignature("performUpkeep(bytes32)", uh1);
+            bytes memory data = abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0);
             for (uint256 i; i < data.length; ++i) billed += data[i] == 0 ? 4 : 16;
         }
         // Pinned 1.8.1's five-field `used` already includes the applied transaction refund.
@@ -104,7 +104,7 @@ contract KeeperPayTest is ForkBase {
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh2);
+        balancer.performUpkeep(uh2, 0, 0);
         assertEq(keeper.balance, before, "no work, no pay");
     }
 
@@ -310,6 +310,6 @@ contract KeeperPayTest is ForkBase {
         emit log_named_decimal_uint("  reward", reward, 18);
         emit log_named_decimal_int("  reward less gas", pnl, 18);
         assertGe(pnl, 0, "this call paid for its gas");
-        assertLe(reward, balancer.maxKeeperReward());
+        assertLe(reward, balancer.policyMaxReward());
     }
 }

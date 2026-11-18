@@ -1,0 +1,80 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 7.73s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[PASS] test_atomicKeeperFloorRollsBackRealMintListingBalancesAndAllowance() (gas: 7678034)
+[PASS] test_contractPurchaserCannotRejectFwaPackTransferAndRetainsExactBacking() (gas: 20006878)
+[PASS] test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() (gas: 16134361)
+[PASS] test_failedDeliveryRefundAndNFTRecoverAfterRetirement() (gas: 18391847)
+[PASS] test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() (gas: 7307103)
+[PASS] test_largeWinDepletesOnlyOperatingCapitalAndRecoveryUsesActualBacking() (gas: 19454411)
+[PASS] test_malformedBurningAndReenteringPolicyPreserveUnpaidRecovery() (gas: 8659695)
+[PASS] test_noAllowanceResetByCloseConfigureOrPolicyAndEmergencyCancelsMaturedChange() (gas: 9372982)
+[PASS] test_paidAndUnpaidCannotSpendBookedCredit() (gas: 19907597)
+[PASS] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (gas: 18324702)
+[PASS] test_policyFundingExcludesRealCreditAndSwitchKeepsOldPrices() (gas: 17831478)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 322.94ms (301.09ms CPU time)
+
+Ran 1 test for test/ConcurrentRecovery.t.sol:ConcurrentRecoveryTest
+[PASS] test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() (gas: 29829518)
+Logs:
+  exact minimum opening
+  deposited: 0.235600000000000000
+  Balancer liquid ETH: 0.015200000000000000
+  booked creator profit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.015200000000000000
+  current reserve target: 0.003680000000000000
+  FWA separate ETH obligations: 0.000000000000000000
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.000000000000000000
+  actual keeper transfers: 0.000400000000000000
+  hostile maximum payment
+  deposited: 0.235600000000000000
+  Balancer liquid ETH: 0.003407731200000000
+  booked creator profit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.003407731200000000
+  current reserve target: 0.003680000000000000
+  FWA separate ETH obligations: 0.031189292000014946
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.011520000000000000
+  actual keeper transfers: 0.000672268800000000
+  unpaid recovery of both purchaser claims
+  deposited: 0.235600000000000000
+  Balancer liquid ETH: 0.002800000000000000
+  booked creator profit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.002800000000000000
+  current reserve target: 0.000000000000000000
+  FWA separate ETH obligations: 0.031189292000014946
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.012400000000000000
+  actual keeper transfers: 0.000400000000000000
+  complete creator closeout; FWA purchaser/protocol rights remain separate
+  deposited: 0.235600000000000000
+  Balancer liquid ETH: 0.000000000000000000
+  booked creator profit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.000000000000000000
+  current reserve target: 0.000000000000000000
+  FWA separate ETH obligations: 0.031189292000014946
+  actual remaining Shape backing: 0.000000000000000000
+  actual creator claims: 0.215200000000000000
+  actual keeper transfers: 0.000400000000000000
+  purchaser principal shortfall: 0.000000000000000000
+  nonrefundable VRF cost for the two expired draws: 0.002574000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 361.13ms (41.97ms CPU time)
+
+Ran 2 test suites in 368.69ms (684.07ms CPU time): 12 tests passed, 0 failed, 0 skipped (12 total tests)

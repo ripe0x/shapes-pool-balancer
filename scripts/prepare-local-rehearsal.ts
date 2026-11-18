@@ -1,7 +1,8 @@
 // Preparation only: no transaction sender, test client, funding or node mutation API exists here.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { cpSync, mkdtempSync, openSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, openSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -37,7 +38,7 @@ async function freePort() {
   }
   throw new Error('No free preparation port 18556..18565; existing services preserved');
 }
-function verifyActions(dir: string) {
+export function verifyActions(dir: string) {
   type Action = { transactionType: string; contractName: string; contractAddress: Address; transaction: { from: Address; to?: Address; input: Hex; nonce: Hex; gas: Hex; value: Hex } };
   const raw = JSON.parse(readFileSync(join(dir, 'broadcast/Deploy.s.sol/31337/dry-run/run-latest.json'), 'utf8')) as { transactions: Action[] };
   const names = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
@@ -191,9 +192,12 @@ async function main() {
   save('deployment-actions.json', evidence);
   console.log(json(evidence));
 }
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
 if (process.argv[2] === '--check' && process.argv.length === 4) {
   const result = verifyActions(resolve(process.argv[3]));
   console.log(json({ checkedExistingSimulation: true, directory: resolve(process.argv[3]), ...result }));
 } else {
   main().catch(error => { console.error(error); process.exitCode = 1; });
+}
+
 }

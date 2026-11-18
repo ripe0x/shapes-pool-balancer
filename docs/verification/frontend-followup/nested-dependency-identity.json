@@ -1,0 +1,9 @@
+{
+  "nestedDependency": "lib/shape-packs/lib/shapes",
+  "commit": "1b84c102a6603ca9751d863ff259b08870d22a6b",
+  "sourceTreeSha256Before": "55aa7e4b0ef0401df10179e1ef5742924c8053d53ed12385cc0258241ceba658",
+  "sourceTreeSha256After": "55aa7e4b0ef0401df10179e1ef5742924c8053d53ed12385cc0258241ceba658",
+  "sourceBytesChanged": false,
+  "trackedDiffExit": 0,
+  "method": "shared local Git metadata clone from existing clean checkout; index populated with exact declared commit"
+}

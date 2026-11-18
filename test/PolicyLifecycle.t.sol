@@ -13,7 +13,7 @@ contract PolicyLifecycleTest is ForkBase {
 
     function _new(address owner, uint256 salt) internal returns (PoolBalancer b) {
         vm.prank(owner);
-        b = PoolBalancer(payable(factory.createBalancer{value: 5 ether}(bytes32(salt))));
+        b = _createFixture(owner, bytes32(salt), 5 ether);
         uint256[16] memory counts;
         counts[0] = 18;
         counts[9] = 1;
@@ -72,9 +72,9 @@ contract PolicyLifecycleTest is ForkBase {
             assertEq(status, 1);
             assertEq(IERC721Min(collection).ownerOf(id), address(b.pool()), "FWA retains exact custody");
         }
-        assertEq(fees, b.listedRestockFees());
+        assertEq(fees, _listedFees(b));
         assertEq(n, b.listedShapePrizes());
-        assertGe(address(b).balance - b.profit(), b.requiredReserve(), "creator capital covers obligations");
+        assertGe(address(b).balance - b.creatorCredit(), b.requiredReserve(), "creator capital covers obligations");
         assertEq(b.pool().ownerProceeds(), 0, "all completed proceeds collected");
         assertEq(b.pool().unsettledAcquisitionCount(), 0);
     }
@@ -97,8 +97,8 @@ contract PolicyLifecycleTest is ForkBase {
         vm.prank(owner); b.claimSurplus(surplus, owner);
         assertEq(address(b).balance, 0);
         assertEq(b.getActiveIds().length, 0);
-        assertEq(b.listedRestockFees(), 0);
-        assertEq(b.profit(), 0);
+        assertEq(_listedFees(b), 0);
+        assertEq(b.creatorCredit(), 0);
         assertEq(b.requiredReserve(), 0);
     }
 
@@ -138,7 +138,7 @@ contract PolicyLifecycleTest is ForkBase {
         assertEq(third.keeperPolicy(), address(v2));
         (,,,, uint112 keptPrice) = first.items(oldIds[1]);
         assertEq(keptPrice, oldPrice, "old listing retains its exact historical surcharge");
-        vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector); first.performUpkeep(priced, 1);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector); first.performUpkeep(priced, 1, 0);
         vm.roll(vm.getBlockNumber() + 40);
         upkeep(); fillUp();
         assertEq(first.pool().unsettledAcquisitionCount(), 0);

@@ -1,0 +1,7 @@
+TRANSCRIPTION OF CAPTURED TOOL RESULT; NOT A NEW EXECUTION
+Working directory: /private/tmp/fwa-credit-atomic
+Command: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+Exit status: 0
+Original output: empty
+Original elapsed time: 5.341596125 seconds
+Run concurrently with final 12-case creation test (Vitest start 14:27:14 on 2026-11-18).

@@ -1,0 +1,31 @@
+{
+  "actor": "0x00000000000000000000000000000000000ce001",
+  "priorCode": "0x",
+  "priorNonce": 0,
+  "priorBalance": "0",
+  "fundedBalance": "200000000000000000",
+  "nodeMethods": [
+    "anvil_setBalance",
+    "anvil_impersonateAccount"
+  ],
+  "childInfo": {
+    "currentBlockNumber": "0x192903f",
+    "currentBlockTimestamp": 1794299892,
+    "currentBlockHash": "0x3cf592fb018c2ef796f08cc02d8f3e8ac490e5e441bb222a3f6e0e1773117072",
+    "hardFork": "Bpo2",
+    "transactionOrder": "fees",
+    "environment": {
+      "baseFee": "0x1604b",
+      "chainId": 31337,
+      "gasLimit": "0x3938700",
+      "gasPrice": "0x3b9c2a4b"
+    },
+    "forkConfig": {
+      "forkUrl": "http://127.0.0.1:18766",
+      "forkBlockNumber": 26382399,
+      "forkRetryBackoff": 1000
+    },
+    "network": "ethereum"
+  },
+  "transactions": 0
+}

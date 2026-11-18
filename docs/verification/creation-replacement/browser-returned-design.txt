@@ -1,0 +1,101 @@
+Browser tab: 6, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5210/".
+1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5210/
+	2 container root
+		3 container
+			4 link Description: FWA Pool Balancer, Value: 127.0.0.1:5210/
+			5 container Main
+				15 button Your pools
+				6 button How it works
+			16 button 0x0000…E001
+		9 text New pool.  Nothing is sent until you create it and confirm in your wallet.
+		17 button Back to your pools
+		18 container
+			19 text Pool address
+			20 text field (settable) Pool address, ID: open-pool-address
+			21 button (disabled) Open pool
+		22 container
+			23 heading Design your pool, Value: 1
+				24 text Design your pool
+			25 text Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: curated NFTs from your wallet, and Shapes you fund with ETH.
+			26 button (collapsed) How a pool works ▾, Secondary Actions: Expand
+				27 text How a pool works 
+				28 text ▾
+			29 button Reset to defaults
+			30 heading Curated NFTs, Value: 2
+				31 text Curated NFTs
+			32 text The rare prizes, chosen from your wallet. The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.
+			33 text NO IMAGE
+			34 link Description: 0x7de7…c455 #2026111901, Help: View on OpenSea, Value: opensea.io/assets/ethereum/0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455/2026111901
+			35 text Won about 1 in 10 draws
+			36 text Value
+			37 text field (settable) Description: Value of 0x7de7…c455 #2026111901, Value: 0.01, ID: nft-value-0
+			38 text ETH
+			39 button Remove 0x7de7…c455 #2026111901
+			40 button + Add another curated NFT
+			41 heading Shapes, Value: 2
+				42 text Shapes
+			43 text ETH-backed prizes that make up most draws. Upkeep replenishes won Shapes when operating ETH is available.
+			44 heading Shape style, Value: 3, ID: style-label
+				45 text Shape style
+			46 container Shape style
+				47 checkbox Low draw price Cheapest draws. Curated NFTs are the big prizes., Value: 0
+				48 checkbox Balanced Prizes in steady steps, 0.01 to 0.1 ETH., Value: 1
+				49 checkbox More big wins About 1 in 10 draws wins 2× the price., Value: 0
+				50 checkbox Jackpot Adds one Shape worth about 50× the price., Value: 0
+			51 button (collapsed) Adjust prizes by hand ▾, Secondary Actions: Expand
+				52 text Adjust prizes by hand 
+				53 text ▾
+			54 text Shape pool size
+			55 text 19 prize s
+			56 slider (settable, integer) Shape pool size, Value: 9, ID: small
+			57 text More prizes make curated NFTs rarer and the draw cheaper.
+			58 text Shape markup
+			59 text 25 %
+			60 slider (settable, integer) Shape markup, Value: 25, ID: markup
+			61 text Added to each new Shape listing price.
+			62 container
+				63 text 0.01 ETH Shape restocking charge:  0.00025  ETH.
+			64 text Draw price 0.02053 ETH / DRAW
+			65 text With this mix, new purchases pause once 3 earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.
+			66 container View
+				67 checkbox Inventory, Value: 1
+				68 checkbox Out of 100 draws, Value: 0
+			69 content list Pool inventory
+				70 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				71 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				72 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				73 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				74 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				75 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				76 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				77 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				78 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				79 container 0.01 ETH Shape: 1 in 14 draws, worth 0.010 ETH
+				80 container 0.02 ETH Pack: 1 in 28 draws, worth 0.020 ETH
+				81 container 0.02 ETH Pack: 1 in 28 draws, worth 0.020 ETH
+				82 container 0.02 ETH Pack: 1 in 28 draws, worth 0.020 ETH
+				83 container 0x7de7…c455 #2026111901: 1 in 10 draws, worth 0.010 ETH
+				84 container 0.05 ETH Shape: 1 in 65 draws, worth 0.050 ETH
+				85 container 0.05 ETH Shape: 1 in 65 draws, worth 0.050 ETH
+				86 container 0.05 ETH Shape: 1 in 65 draws, worth 0.050 ETH
+				87 container 0.05 ETH Shape: 1 in 65 draws, worth 0.050 ETH
+				88 container 0.05 ETH Shape: 1 in 65 draws, worth 0.050 ETH
+				89 container 0.1 ETH Shape: 1 in 129 draws, worth 0.100 ETH
+			90 button (collapsed) Show key ▾, Secondary Actions: Expand
+			91 heading For players, Value: 3
+				92 text For players
+			93 text Win a curated NFT 1 in 10 Win more than the draw price 1 in 12 Top prize 0.1 ETH Shape · 4.9× Average prize 72% of the price To create the pool 0.536107 ETH
+			94 text Creator revenue share
+			95 container
+				96 text Suggested  10.62 %
+			97 stepper (settable, float) Description: Creator revenue share, Value: 12.34000015258789, Details: 12.34, ID: initial-revenue-share
+			98 text % Expected creator earnings per draw +0.00241 ETH Expected revenue retained by the pool +0.01714 ETH Expected replacement backing +0.01385 ETH Expected mint costs +0.00101 ETH Estimated keeper costs Unavailable Replenishment margin or shortfall Unavailable
+			99 text Restocking charges and player prices are unverified estimates.
+			100 text Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.
+			101 button (disabled) Create pool with 0.54 ETH
+			102 text Your wallet has 0.175 ETH.
+			103 button (collapsed) All numbers ▾, Secondary Actions: Expand
+				104 text All numbers 
+				105 text ▾
+
+The focused UI element is 1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5210/

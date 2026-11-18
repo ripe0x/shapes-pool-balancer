@@ -11,8 +11,7 @@ import {
   type Account, type Address, type Hash, type PublicClient, type TransactionReceipt, type WalletClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { keeperPolicyV1Abi, poolBalancerAbi } from '../shared/abi';
-import { settingsFrom, type KeeperSettings } from '../shared/planner';
+import { poolBalancerAbi } from '../shared/abi';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
@@ -94,7 +93,7 @@ export interface KeeperConfig {
   stateFile: string;
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
-  maxGasPriceGwei?: number; // operator bid ceiling; supported policy metadata can lower it
+  maxGasPriceGwei?: number; // operator bid ceiling; compensation is checked by complete simulation
   priorityGwei?: number; // operator's bid, independent of a policy's reimbursement formula
   maxLossWei?: bigint;
   operatingCostWei?: bigint;
@@ -108,7 +107,7 @@ interface Offer { policy?: Address; minimumReward?: string; minimumGas?: string;
 interface Pending extends Offer { hashes: Hash[]; offers?: Record<string, Offer>; nonce: number; settingsHash?: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface ReceiptRecord { balancer: Address; nonce: number; hash: Hash; block: string; blockHash: Hash; status: 'success' | 'reverted'; cost: string; reward: string; pending: Pending }
 interface AccountingRetry { balancer: Address; pending: Pending }
-interface PolicyContext { policy: Address; paid: boolean; settingsHash: Hash; settings?: KeeperSettings }
+interface PolicyContext { policy: Address; paid: boolean; settingsHash: Hash }
 interface State {
   lastScanned: string;
   balancers: Address[];
@@ -253,11 +252,10 @@ export class Keeper {
     this.save();
   }
 
-  /** Bid limits for one pool: never above the operator's cap or the pool's reimbursed cap. */
-  private fees(baseFee: bigint, poolCap: bigint) {
+  /** Local operator bidding limits. The selected policy makes no promise to reimburse this bid. */
+  private fees(baseFee: bigint) {
     const priority = this.gwei(this.c.priorityGwei);
-    const own = this.gwei(this.c.maxGasPriceGwei);
-    const cap = poolCap < own ? poolCap : own;
+    const cap = this.gwei(this.c.maxGasPriceGwei);
     const max = baseFee * 2n + priority > cap ? cap : baseFee * 2n + priority;
     return { priority, max, cap };
   }
@@ -269,14 +267,11 @@ export class Keeper {
       this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settingsHash', blockNumber: head }) as Promise<Hash>,
     ]);
     this.policies[b] = { address: policy, paid };
-    // Informational metadata is optional. New formulas remain serviceable without changing this bot.
-    const settings = await this.pub.readContract({ address: policy, abi: keeperPolicyV1Abi, functionName: 'settings', blockNumber: head, gas: 100_000n } as never)
-      .then((r) => settingsFrom(r as Record<keyof KeeperSettings, bigint | number>)).catch(() => undefined);
-    const context = { policy, paid, settingsHash, settings };
+    const context = { policy, paid, settingsHash };
     const pending = this.state.pending[b];
     if (pending && (await this.resolvePending(b, pending, head, baseFee, context))) return;
     if (!paid) return;
-    const { priority, max, cap } = this.fees(baseFee, settings?.maxGasPrice ?? this.gwei(this.c.maxGasPriceGwei));
+    const { priority, max, cap } = this.fees(baseFee);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
       return;
@@ -432,9 +427,9 @@ export class Keeper {
         const decoded = decodeFunctionData({ abi: poolBalancerAbi, data: tx.input });
         ours = decoded.functionName === 'performUpkeep';
         if (ours && decoded.functionName === 'performUpkeep') {
-          const args = decoded.args as readonly [Hash, bigint?, bigint?];
+          const args = decoded.args as readonly [Hash, bigint, bigint];
           const knownOffer = p.offers?.[tx.hash];
-          (p.offers ??= {})[tx.hash] = { ...(knownOffer ?? { policy: args[0] === p.settingsHash ? p.policy : undefined, gas: p.gas, estimate: p.estimate, expenseGas: p.expenseGas, expenseSource: p.expenseSource }), minimumReward: (args[1] ?? 0n).toString(), minimumGas: (args[2] ?? 0n).toString() };
+          (p.offers ??= {})[tx.hash] = { ...(knownOffer ?? { policy: args[0] === p.settingsHash ? p.policy : undefined, gas: p.gas, estimate: p.estimate, expenseGas: p.expenseGas, expenseSource: p.expenseSource }), minimumReward: args[1].toString(), minimumGas: args[2].toString() };
         }
       }
       catch { ours = false; }
@@ -519,7 +514,7 @@ export class Keeper {
     }
     if (!context.paid || p.replacements >= this.c.maxReplacements) return true;
     // Replace with the same nonce and +25% fees, only while the bid stays under the cap and profitable.
-    const { cap } = this.fees(baseFee, context.settings?.maxGasPrice ?? this.gwei(this.c.maxGasPriceGwei));
+    const { cap } = this.fees(baseFee);
     const prio = (BigInt(p.maxPriorityFeePerGas) * 125n) / 100n + 1n;
     let max = (BigInt(p.maxFeePerGas) * 125n) / 100n + 1n;
     if (max < baseFee + prio) max = baseFee + prio;

@@ -184,7 +184,7 @@ contract HardeningTest is ForkBase {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
         uint256 after_ = _shapeUpkeepGas();
         emit log_named_uint("shape upkeep gas before", baseline);
         emit log_named_uint("shape upkeep gas after 200 refunds", after_);
@@ -203,7 +203,7 @@ contract HardeningTest is ForkBase {
         address c = makeAddr("reserveCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
-        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 10 ether}(bytes32(0))));
+        PoolBalancer b = _createFixture(c, bytes32(0), 10 ether);
         vm.startPrank(c);
         b.configure(MARKUP, planA);
         nft.mint(c, 9001);
@@ -219,7 +219,7 @@ contract HardeningTest is ForkBase {
         for (uint256 i; i < 10; ++i) {
             bytes32 uh2 = b.settingsHash();
             vm.prank(keeper, keeper);
-            try b.performUpkeep(uh2) {} catch { break; }
+            try b.performUpkeep(uh2, 0, 0) {} catch { break; }
         }
         assertEq(b.requiredReserve(), 0.00368 ether, "reconciled-open reserve");
     }
@@ -231,7 +231,7 @@ contract HardeningTest is ForkBase {
         address c = makeAddr("setupCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
-        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 5 ether}(bytes32(0))));
+        PoolBalancer b = _createFixture(c, bytes32(0), 5 ether);
         vm.startPrank(c);
         b.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
         nft.mint(c, 9101);
@@ -246,7 +246,7 @@ contract HardeningTest is ForkBase {
         bytes32 uh3 = b.settingsHash();
         vm.recordLogs();
         vm.prank(keeper, keeper);
-        b.performUpkeep(uh3);
+        b.performUpkeep(uh3, 0, 0);
         (uint256 reward, uint256 gasPaid) = _fromLogs();
         // from the creator's ETH: measured gas plus the 50,000 overhead at the reimbursed price, plus the flat 0.0001
         assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "full reward");
@@ -267,7 +267,7 @@ contract HardeningTest is ForkBase {
         address c = makeAddr("cheapCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
-        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
+        PoolBalancer b = _createFixture(c, bytes32(0), 2 ether);
         vm.startPrank(c);
         b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
         nft.mint(c, 9200);
@@ -483,7 +483,7 @@ contract HardeningTest is ForkBase {
         address c = makeAddr("thinPoolCreator");
         vm.deal(c, 100 ether);
         vm.prank(c);
-        PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 2 ether}(bytes32(0))));
+        PoolBalancer b = _createFixture(c, bytes32(0), 2 ether);
         ContractBlockingNFT r = new ContractBlockingNFT();
         r.allow(address(b.pool()));
         r.allow(address(b));

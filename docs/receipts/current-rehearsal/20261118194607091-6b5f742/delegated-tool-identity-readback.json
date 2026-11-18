@@ -1,0 +1,19 @@
+{
+  "readOnly": true,
+  "underlyingBinaryInvoked": false,
+  "guardUnchanged": true,
+  "delegatedTools": [
+    {
+      "tool": "forge",
+      "pathFromExistingPath": "/Users/dd/.foundry/bin/forge",
+      "realPath": "/Users/dd/.foundry/versions/foundry-rs/foundry/v1.8.1/forge",
+      "sha256": "2ffdebdfb9fd8c8992412f555133519ab3933cb48f042bce96d71f547b2facec"
+    },
+    {
+      "tool": "anvil",
+      "pathFromExistingPath": "/Users/dd/.foundry/bin/anvil",
+      "realPath": "/Users/dd/.foundry/versions/foundry-rs/foundry/v1.8.1/anvil",
+      "sha256": "cad9ae8b74a37fd417e2b8d29b2caca869ba10fd015a1e92059ed15973188e66"
+    }
+  ]
+}

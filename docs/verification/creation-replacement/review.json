@@ -1,0 +1,48 @@
+{
+  "baseRevision": "feb71f652e49c1d7faa9a8b9af09d666c752b282",
+  "productionReviewer": "frontend",
+  "fixtureAndAccountingReviewer": "tests_operations",
+  "sourceSha256": {
+    "app/src/App.tsx": "722f85a4e78b5cba572209345193eae7c7ab0dee897e8859b772e57900e234d4",
+    "app/src/creation.ts": "1d30a00c3f68949402a89e847e0e81d74ab7fd8e924f92b18588329d149622e2",
+    "app/src/creation.test.ts": "80df93bc1f65d14667f5d3276e0cb4abe4d5e66d061b455d9ad186a129fe47c8",
+    "app/src/creation-replacement.test.ts": "74f3a9f9280d0c9155b8b9f5e2810f1a71cf9253c3448613829e6093ccdd19dd"
+  },
+  "findingsResolved": [
+    "Root found cross-tab old outcome could attach to a newer saved submission; checked-version gate repaired and independently reviewed.",
+    "Real pending case exposed an empty historical result discarding a known pending transaction; repaired, real pending readback passed and continuation completed.",
+    "Report distinguishes negative InvalidConfig preflight from mined revert status; exact timeout-class coverage added as separate read-only test."
+  ],
+  "remainingFindings": [],
+  "limits": [
+    "Independent bounded implementation/fixture review, not a whole-system audit.",
+    "Static production review plus real-node helper cases and browser recovery of recorded attempts; no extension-wallet Cancel UI used."
+  ],
+  "economicRecomputation": {
+    "submissions": 11,
+    "minedReceipts": 7,
+    "gasWei": "351298612583226",
+    "poolDepositWei": "25000000000000000",
+    "initialBalanceWei": "200000000000000000",
+    "finalBalanceWei": "174648701387416774"
+  },
+  "reportSha256": "28b2f886dded2be2d9b45b9130efaa77ce48502d7d7e3ee99432ee2fa1a7991b",
+  "reviewScope": {
+    "frontend": [
+      "app/src/App.tsx",
+      "app/src/creation.ts",
+      "app/src/creation.test.ts"
+    ],
+    "tests_operations": [
+      "executed transaction fixture body at6c72e2408a76c630653417a873c43bdeb2eb3456cc5b1b65e1b3ec8937a7e649",
+      "transactions.json",
+      "scorecard.json",
+      "bounded report claims"
+    ],
+    "root": [
+      "final appended read-only timeout test",
+      "all consequential callers",
+      "final staged diff"
+    ]
+  }
+}

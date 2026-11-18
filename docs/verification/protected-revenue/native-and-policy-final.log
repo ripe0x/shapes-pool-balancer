@@ -1,0 +1,71 @@
+Compiling 4 files with Solc 0.8.28
+Solc 0.8.28 finished in 11.23s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 15 tests for test/ProtectedRevenueAtomic.t.sol:ProtectedRevenueAtomicTest
+[PASS] test_activationRechecksNewPendingRequestsAndBasefeeDuringDelay() (gas: 15045723)
+[PASS] test_atomicCannotPullApprovedAssetFromWrongOwner() (gas: 1285794)
+[PASS] test_atomicHostileSecondFwaTransferRollsBackPoolAndBothNfts() (gas: 3176691)
+[PASS] test_atomicHostileTransferCannotReenterAndInvalidRateReverts() (gas: 4555093)
+[PASS] test_atomicLaterListingFailureRollsBackEarlierTransfersAndFunding() (gas: 1447306)
+[PASS] test_atomicMissingApprovalAndInsufficientFundingLeaveNothing() (gas: 4810979)
+[PASS] test_atomicThousandPrizeCreationMintsNoneAndFirstUpkeepStaysBounded() (gas: 5171490)
+[PASS] test_capitalMovementsNeverCreateCreditAndClosePreservesIt() (gas: 15471896)
+[PASS] test_creditClaimCallbackCannotDuplicateCollectionOrClaims() (gas: 15300982)
+[PASS] test_creditClaimDuringRealHundredEthDeficit() (gas: 18399892)
+Logs:
+  missing expensive prize: 100.000000000000000000
+  creator claimed during deficit: 0.002827589190799155
+  remaining operating cash: 0.029004213017192403
+
+[PASS] test_creditClaimDuringRealOneEthDeficit() (gas: 18392410)
+Logs:
+  missing expensive prize: 1.000000000000000000
+  creator claimed during deficit: 0.002826771927742353
+  remaining operating cash: 0.028998836549681180
+
+[PASS] test_fullRateCreditOnlyCashSurvivesUnpaidAndFailingPolicy() (gas: 15645300)
+[PASS] test_policyActivationIgnoresMissingHundredEthBackingAtEqualExposure() (gas: 17177626)
+[PASS] test_rateChangesUseCollectionBoundaryAndKeepConcurrentRequests() (gas: 17057901)
+[PASS] test_zeroFullAndOneBasisPointRoundingRemainBacked() (gas: 20374871)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 405.10ms (189.78ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 13 tests for test/Settings.t.sol:SettingsTest
+[PASS] test_boundedPolicyQuoteGasOverhead() (gas: 547736)
+Logs:
+  direct cold reward quote gas: 1237
+  bounded cold reward quote plus immutable envelope gas: 8739
+
+[PASS] test_cancelAndCreatorTransferInvalidateProposals() (gas: 15068140)
+[PASS] test_defaultAndPoolTimelocksAreSeparate() (gas: 15158631)
+[PASS] test_emergencyDisableCannotBeInstantlyReenabled() (gas: 14975476)
+[PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 16165748)
+[PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 17745427)
+[PASS] test_pendingWithdrawCannotDefeatActivationFunding() (gas: 15334758)
+[PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185453)
+Logs:
+  storage span before refund: 5007
+  five-field raw used (billed): 22503
+  five-field refund counter: 4800
+
+[PASS] test_policyFailureUnpaidWholePathAndRestrictedKeeper() (gas: 75902189)
+[PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 334756)
+[PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 16596529)
+[PASS] test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() (gas: 15891881)
+[PASS] test_writePolicyQuoteFixture() (gas: 921737)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 3.21s (16.54s CPU time)
+
+Ran 2 test suites in 3.21s (3.61s CPU time): 28 tests passed, 0 failed, 0 skipped (28 total tests)

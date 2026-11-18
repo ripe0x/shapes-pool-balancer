@@ -1,0 +1,22 @@
+{
+  "endpoint": "http://127.0.0.1:18766",
+  "anvilPid": 95500,
+  "chainId": 31337,
+  "forkBlock": 26382349,
+  "creator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "collection": "0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455",
+  "tokenId": "2026111801",
+  "action": "mint(address,uint256)",
+  "value": "0",
+  "nonce": 5351,
+  "gasLimit": "1000000",
+  "gasUsed": "68252",
+  "effectiveGasPrice": "50421974",
+  "gasCost": "3441400569448",
+  "hash": "0x69358769b971f06f14238e0ecc5df807ea1df083daf70520012fe10ee700429d",
+  "blockNumber": "26382388",
+  "status": "success",
+  "owner": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "poolInventoryUnchanged": true,
+  "runtimeHash": "0x95f0d7877d2e8c300d90233293932989b060eebd2497cd941d9b6bb02d0dd7e2"
+}

@@ -1,0 +1,45 @@
+
+> rehearsal
+> tsx keeper/rehearsal.ts --rounds 50
+
+pools filled and opened by the keeper service 2026-11-18T15:48:27.271Z
+{"estimateMinusBilled":{"n":59,"min":-563808,"median":77639,"max":99320},"traceExpenseMinusBilled":{"n":59,"min":-172279,"median":746,"max":834}}
+{"balanceDelta":"6768210579261065","rewards":"40144418701363331","rewardEvents":59,"gasPaid":"33376208122102266","keeperTxs":59,"valueIn":"0","valueOut":"0"}
+{
+  "rounds": 50,
+  "arrivals": 48,
+  "foundOpenPct": 100,
+  "batches": 48,
+  "draws": 150,
+  "batchesByPeriod": {
+    "normal": 36,
+    "below": 4,
+    "near": 4,
+    "above": 4
+  },
+  "reopenMs": {
+    "median": 51,
+    "p90": 304,
+    "max": 1085
+  },
+  "aboveCap": {
+    "keeperWaited": 4,
+    "keeperSent": 0,
+    "resumedWithoutIntervention": 4
+  },
+  "markupChanges": 2,
+  "creatorEdits": 1,
+  "creatorRestocks": 0,
+  "keeperRestarts": 2,
+  "keeper": {
+    "netWei": "6768210579261065",
+    "sent": 59,
+    "mined": 59,
+    "reverted": 0,
+    "replaced": 0,
+    "skippedUnprofitable": 42,
+    "errors": {}
+  },
+  "healthOk": true
+}
+REHEARSAL PASSED

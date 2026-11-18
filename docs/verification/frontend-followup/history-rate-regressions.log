@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+···············
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Start at  13:57:24
+   Duration  264ms (transform 55ms, setup 0ms, collect 77ms, tests 13ms, environment 0ms, prepare 79ms)
+

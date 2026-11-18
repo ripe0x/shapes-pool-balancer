@@ -1,0 +1,108 @@
+{
+  "candidate": "855c926c77284c57939a2c93c67442bbadb6ec1c",
+  "sourceFingerprint": "ab32ca5e5b4d77b03fa2e7c0095680ba4e147736146786e39643c303d934344b",
+  "failedPacketRemainsInvalid": true,
+  "simulationRoot": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-AF1Akt",
+  "comparison": [
+    {
+      "path": "out/KeeperPolicyCalls.sol/KeeperPolicyCalls.json",
+      "frozenOriginalJsonSha256": "a19b42ff34074013f7d7dffc2b07a893146f763a6973406c4f83b2bdc5412452",
+      "canonicalScriptJsonSha256": "1f2e0e326a197b7ad2b0b76719f334c550b9848a01b1eff5e861bcbd21909ab4",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 56,
+      "canonicalSourceId": 23
+    },
+    {
+      "path": "out/PoolPage.sol/PoolPage.json",
+      "frozenOriginalJsonSha256": "cb7b80a6aceb7f839ed1b22ef0700de0747ee1e450298a84bddd11bb2185e580",
+      "canonicalScriptJsonSha256": "2d871ffbf9ac7f7a6487ed8608720d5d781766f4616a22cbb319041f47134b00",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 60,
+      "canonicalSourceId": 27
+    },
+    {
+      "path": "out/PoolInventory.sol/PoolInventory.json",
+      "frozenOriginalJsonSha256": "92491ba0d69006cc9eb611513d7f06d41eaaf322cbde19a10d93109f4894c4f3",
+      "canonicalScriptJsonSha256": "9d34309eed915066f885fc8b31b3440871d7512930fa148a563e04f6a0e4eed8",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 59,
+      "canonicalSourceId": 26
+    },
+    {
+      "path": "out/ShapePackRenderer.sol/ShapePackRenderer.json",
+      "frozenOriginalJsonSha256": "b2bc785962aa79194c377c3bf6f46b3c805b5a5f3a712ac36a9fcf156e8a3a97",
+      "canonicalScriptJsonSha256": "b2bc785962aa79194c377c3bf6f46b3c805b5a5f3a712ac36a9fcf156e8a3a97",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 27,
+      "canonicalSourceId": 27
+    },
+    {
+      "path": "out/ShapePacks.sol/ShapePacks.json",
+      "frozenOriginalJsonSha256": "454ec6e584de4d167e8bcb41f74736c15aece1e252cdc8f38e43d974f7eb7bbd",
+      "canonicalScriptJsonSha256": "454ec6e584de4d167e8bcb41f74736c15aece1e252cdc8f38e43d974f7eb7bbd",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 28,
+      "canonicalSourceId": 28
+    },
+    {
+      "path": "out/PoolBalancer.sol/PoolBalancer.json",
+      "frozenOriginalJsonSha256": "bd32c8386a6cc39e4fa1923f9ad498bc4f89ebefd44d2248eab4c8154fe87566",
+      "canonicalScriptJsonSha256": "527b5e927a63ecdc6ca03dd9514a4dd0e5082697b93512cebe8c9212151d1863",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 58,
+      "canonicalSourceId": 25
+    },
+    {
+      "path": "out/KeeperPolicyV1.sol/KeeperPolicyV1.json",
+      "frozenOriginalJsonSha256": "f62fae9bd2a3c9f81891fd0ce6da057c76308de3acff35e3ac890c71f3f3bd30",
+      "canonicalScriptJsonSha256": "06b0d39015e285beed0023b00eefd722c28791b2c76fb34f487b3d1345321b4c",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 57,
+      "canonicalSourceId": 24
+    },
+    {
+      "path": "out/BalancerFactory.sol/BalancerFactory.json",
+      "frozenOriginalJsonSha256": "54e4efaa8f744b5e930ec1a291fd777f6fa2eae1e1ee8fb433651645b9c91c02",
+      "canonicalScriptJsonSha256": "561fd9148502fe4113f7937c2100778de80b0ad041d4600620ca83710827da17",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 55,
+      "canonicalSourceId": 22
+    },
+    {
+      "path": "out/DevSetup.s.sol/DemoNFT.json",
+      "frozenOriginalJsonSha256": "7a9503ac0c647c183556063a00ea9f1a5d34e07af2a146a8b50238aadfd70e8c",
+      "canonicalScriptJsonSha256": "7a9503ac0c647c183556063a00ea9f1a5d34e07af2a146a8b50238aadfd70e8c",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 22,
+      "canonicalSourceId": 22
+    },
+    {
+      "path": "out/Settings.t.sol/KeeperPolicyV2.json",
+      "frozenOriginalJsonSha256": "e75021998bf19ed1451322b5156e43d4c7ddf97afc248cd0b361d59629a80263",
+      "canonicalScriptJsonSha256": "e75021998bf19ed1451322b5156e43d4c7ddf97afc248cd0b361d59629a80263",
+      "creationBytecodeObjectIdentical": true,
+      "runtimeBytecodeObjectIdentical": true,
+      "allFieldsIdenticalExceptSourceIdSourceMapsAndImmutableIdKeys": true,
+      "originalSourceId": 37,
+      "canonicalSourceId": 37
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 600ms
+ ❯ scripts/current-local-rehearsal.test.ts (17 tests | 1 failed) 1506ms
+   ✓ current local rehearsal control inputs, without node mutation > keeps the fixed scope separate from any deployment or owner approval 7ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects mainnet independent of a plan hash 10ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects testnet independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects remote RPC independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects old owned node independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects arbitrary signer independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects higher spending independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects second time jump independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different negative action independent of a plan hash 7ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different action count independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects parent-path evidence independent of a plan hash 11ms
+   ✓ current local rehearsal control inputs, without node mutation > enforces the actual sender budget boundary before any mutation or submission 0ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects stale approval before touching a node or preparation file 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects altered command arguments, signer, relay and resume paths 6ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  930ms
+   × current local rehearsal control inputs, without node mutation > stages real pinned dependency source bytes without library symlinks or Git metadata 471ms
+     → Expected values to be strictly equal:
++ actual - expected
+
++ 1794288066977
+- 1794288066978
+              ^
+
+   ✓ current local rehearsal control inputs, without node mutation > preserves the production gate tail exactly and requires an explicit new local route 14ms
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 31 passed (32)
+   Start at  14:39:29
+   Duration  1.84s (transform 107ms, setup 0ms, collect 559ms, tests 2.11s, environment 0ms, prepare 72ms)
+

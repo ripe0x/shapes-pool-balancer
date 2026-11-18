@@ -131,7 +131,7 @@ contract SettingsTest is ForkBase {
         vm.prank(creator); balancer.claimSurplus(claimable, creator);
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
         assertGt(shortfall, 0);
-        assertGt(required, address(balancer).balance - balancer.profit());
+        assertGt(required, address(balancer).balance - balancer.creatorCredit());
         vm.warp(vm.getBlockTimestamp() + 2 days);
         vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
         vm.prank(creator); balancer.depositETH{value: shortfall}();
@@ -142,12 +142,24 @@ contract SettingsTest is ForkBase {
     function test_emergencyDisableCannotBeInstantlyReenabled() public {
         _open(5 ether);
         bytes32 old = balancer.settingsHash();
+        uint64 generation = balancer.policyGeneration();
+        uint256 allowance = balancer.keeperAllowance();
+        uint64 allowanceTime = balancer.keeperAllowanceTime();
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
+        bytes32 disabled = balancer.settingsHash();
         assertFalse(balancer.paidUpkeepEnabled());
-        assertTrue(old != balancer.settingsHash());
+        assertTrue(old != disabled);
+        assertEq(balancer.policyGeneration(), generation + 1);
         vm.prank(creator); vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.setPaidUpkeepEnabled(true);
         _switch(balancer.keeperPolicy());
         assertTrue(balancer.paidUpkeepEnabled());
+        assertTrue(old != balancer.settingsHash(), "same-address re-enable invalidates the original terms");
+        assertTrue(disabled != balancer.settingsHash(), "re-enabled terms also differ from disabled terms");
+        assertEq(balancer.policyGeneration(), generation + 2);
+        assertEq(balancer.keeperAllowance(), allowance, "same-address cycle preserves spending history");
+        assertEq(balancer.keeperAllowanceTime(), allowanceTime);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector);
+        balancer.performUpkeep(old, 0, 0);
     }
 
     function test_minimumPaymentRevertsWorkAtomically() public {
@@ -158,9 +170,9 @@ contract SettingsTest is ForkBase {
         uint256 beforeIds = lastListingId();
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
-        balancer.performUpkeep(expected, 1 ether);
+        balancer.performUpkeep(expected, 1 ether, 0);
         assertEq(lastListingId(), beforeIds);
-        vm.prank(keeper); assertGt(balancer.performUpkeep(expected, 1), 0);
+        vm.prank(keeper); assertGt(balancer.performUpkeep(expected, 1, 0), 0);
     }
 
     function test_policyFailureUnpaidWholePathAndRestrictedKeeper() public {
@@ -193,7 +205,7 @@ contract SettingsTest is ForkBase {
             uint256 surplus = balancer.withdrawableSurplus();
             vm.prank(creator); balancer.claimSurplus(surplus, creator);
             assertEq(address(balancer).balance, 0);
-            assertEq(balancer.listedRestockFees(), 0);
+            assertEq(_listedFees(balancer), 0);
             vm.revertToState(snap);
         }
     }
@@ -216,7 +228,7 @@ contract SettingsTest is ForkBase {
         vm.roll(vm.getBlockNumber() + 40);
         uint256 before = balancer.availableKeeperAllowance();
         bytes32 expected = balancer.settingsHash();
-        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1);
+        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
         assertGt(reward, 0);
         assertLe(reward, balancer.HARD_MAX_KEEPER_REWARD());
         assertEq(balancer.keeperAllowance(), before - reward);
@@ -243,13 +255,13 @@ contract SettingsTest is ForkBase {
         vm.roll(vm.getBlockNumber() + 40);
         bytes32 expected = balancer.settingsHash();
         uint256 before = keeper.balance;
-        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1);
+        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
         assertEq(reward, 0.00001 ether);
         assertEq(keeper.balance - before, 0.00001 ether);
         assertEq(balancer.reconciledSequence(), 1);
         assertEq(balancer.listedShapePrizes(), 20);
         assertEq(balancer.creator(), creator);
-        vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(expected, 0);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(expected, 0, 0);
     }
 
     function test_writePolicyQuoteFixture() public {
@@ -307,7 +319,7 @@ contract SettingsTest is ForkBase {
         uint256 quotedMinimum = 700_000 * 0.55 gwei;
         vm.fee(0.15 gwei); vm.txGasPrice(0.2 gwei);
         vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
-        balancer.performUpkeep(expected, quotedMinimum);
+        balancer.performUpkeep(expected, quotedMinimum, 0);
         assertEq(balancer.listedShapePrizes(), 19, "the fixed old quote reverted atomically despite falling expense");
         vm.prank(keeper);
         (bool ok, bytes memory out) = address(balancer).call(abi.encodeWithSignature(

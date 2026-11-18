@@ -5,55 +5,19 @@ import enforcement from '../test/fixtures/keeper-enforcement.json';
 
 export const BPS = 10_000n;
 export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
-/** PoolBalancer.MIN_MARKUP_BPS: the game's share of every markup. While the fund is below the reserve, only the markup
- *  above this is the creator's claimable profit; the rest refills the reserve. */
+/** Initial calibration allocates Shape markup above the first 10%; runtime credit uses the stored rate. */
 export const MIN_MARKUP_BPS = 1_000n;
 export const MAX_BATCH = 5;
-export const MAX_OPS = Number(enforcement.maxUnits); // Shape units restocked per upkeep call
-/** Optional informational policy metadata. It cannot describe an arbitrary future policy formula. */
-export interface KeeperSettings {
-  maxGasPrice: bigint;
-  priorityCap: bigint;
-  incentive: bigint;
-  restockFlat: bigint;
-  maxGas: bigint;
-  overheadGas: bigint;
-  restockGas: bigint;
-  maxPrizes: number;
-}
-/** Generated from KeeperPolicyV1 by the Solidity policy fixture test; live policy quotes take precedence. */
-export const DEFAULT_SETTINGS: KeeperSettings = {
-  maxGasPrice: BigInt(policyV1.maxGasPrice),
-  priorityCap: BigInt(policyV1.priorityCap),
-  incentive: BigInt(policyV1.drawFee),
-  restockFlat: BigInt(policyV1.restockFlat),
-  maxGas: BigInt(policyV1.maxGas),
-  overheadGas: BigInt(policyV1.overheadGas),
-  restockGas: BigInt(policyV1.restockGas),
-  maxPrizes: Number(policyV1.maxPrizes),
-};
-/** A `settings()` read from the chain: viem decodes the uint32 fields as numbers and the uint64 ones as bigints. */
-export const settingsFrom = (r: Record<keyof KeeperSettings, bigint | number>): KeeperSettings => ({
-  maxGasPrice: BigInt(r.maxGasPrice),
-  priorityCap: BigInt(r.priorityCap),
-  incentive: BigInt(r.incentive),
-  restockFlat: BigInt(r.restockFlat),
-  maxGas: BigInt(r.maxGas),
-  overheadGas: BigInt(r.overheadGas),
-  restockGas: BigInt(r.restockGas),
-  maxPrizes: Number(r.maxPrizes),
-});
-/** The immutable plan-size limit. */
-export const MAX_SHAPES_PER_PLAN = DEFAULT_SETTINGS.maxPrizes;
-/** V1 preview only. Existing pools must supply their cached policy maximum. */
-export const maxKeeperReward = (s: KeeperSettings = DEFAULT_SETTINGS) =>
-  (s.maxGas + s.overheadGas) * s.maxGasPrice + 10n * s.incentive;
-export const MAX_KEEPER_REWARD = BigInt(policyV1.maxReward);
-export const rewardPrice = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) =>
-  (baseFee + s.priorityCap > s.maxGasPrice ? s.maxGasPrice : baseFee + s.priorityCap);
-/** V1 preview only; metadata's restockFlat is the total flat charge, independent of its work fee. */
-export const restockFeeAt = (baseFee: bigint, s: KeeperSettings = DEFAULT_SETTINGS) =>
-  s.restockGas * rewardPrice(baseFee, s) + s.restockFlat;
+export const MAX_OPS = Number(enforcement.maxUnits);
+export const MAX_SHAPES_PER_PLAN = 1_000;
+/** Immutable V1 parameters exported by Solidity, for explicitly selected V1 simulations only. */
+export const V1_POLICY = Object.fromEntries(Object.entries(policyV1).map(([k, v]) => [k, BigInt(v)])) as
+  Record<keyof typeof policyV1, bigint>;
+export const MAX_KEEPER_REWARD = V1_POLICY.maxReward;
+export const rewardPrice = (baseFee: bigint) =>
+  baseFee + V1_POLICY.priorityCap > V1_POLICY.maxGasPrice ? V1_POLICY.maxGasPrice : baseFee + V1_POLICY.priorityCap;
+/** V1 surcharge preview. Arbitrary selected policies require their own bounded Balancer quotes. */
+export const restockFeeAt = (baseFee: bigint) => V1_POLICY.restockGas * rewardPrice(baseFee) + V1_POLICY.restockFlat;
 
 export interface KeeperWork {
   measuredGas: bigint;
@@ -65,8 +29,9 @@ export interface KeeperWork {
   processedDraws: bigint;
 }
 /** Exact V1 arithmetic for previews and simulations; arbitrary policies are consumed through absolute quotes. */
-export function quoteV1(work: KeeperWork, s: KeeperSettings = DEFAULT_SETTINGS): bigint {
-  let price = rewardPrice(work.baseFee, s);
+export function quoteV1(work: KeeperWork): bigint {
+  const s = V1_POLICY;
+  let price = rewardPrice(work.baseFee);
   if (work.gasPrice < price) price = work.gasPrice;
   const measured = work.measuredGas > s.maxGas ? s.maxGas : work.measuredGas;
   return (measured + s.overheadGas) * price
@@ -124,25 +89,41 @@ export function listingBatches(target: Counts, have: Counts): ListingBatch[] {
 const workCounts = (processed: number, draws: number, units = 0, prizes = 0): WorkCounts => ({
   processedDraws: BigInt(processed), reconciledDraws: BigInt(draws), listedShapeUnits: BigInt(units), listedPrizes: BigInt(prizes),
 });
-export interface ReserveBreakdown {
-  inventoryCost: bigint; listingBudget: bigint; outstandingBudget: bigint; workingBuffer: bigint; total: bigint;
+export interface MaintenanceBudget {
+  outstandingBudget: bigint; workingBuffer: bigint; total: bigint;
 }
-/** Missing inventory and present work only. Unsold fees never offset liquid capital; closed pools hold only actual draws. */
+/** Only issued requests and one operating call; missing prizes never increase activation exposure. */
+export function maintenanceBudgetAt(unreconciled: number, maxReward: bigint, baseFee: bigint, enabled = true): MaintenanceBudget {
+  const outstandingBudget = BigInt(unreconciled) * immutableWorkBudget(workCounts(1, 1), baseFee, maxReward);
+  const processing = immutableWorkBudget(workCounts(Number(KEEPER_LIMITS.maxProcessed), Number(KEEPER_LIMITS.maxReconciles)), baseFee, maxReward);
+  const listing = immutableWorkBudget(workCounts(0, Number(KEEPER_LIMITS.maxReconciles), MAX_OPS, MAX_OPS), baseFee, maxReward);
+  const workingBuffer = enabled ? (processing > listing ? processing : listing) : 0n;
+  return { outstandingBudget, workingBuffer, total: outstandingBudget + workingBuffer };
+}
+/** Both budgets use one work/basefee/state snapshot. An increase requires the full candidate budget. */
+export function policyActivationFundingAt(unreconciled: number, oldMaximum: bigint, candidateMaximum: bigint,
+  baseFee: bigint, enabled: boolean, paidUpkeepEnabled: boolean, operatingCash: bigint) {
+  const oldBudget = maintenanceBudgetAt(unreconciled, paidUpkeepEnabled ? oldMaximum : 0n, baseFee, enabled).total;
+  const candidateBudget = maintenanceBudgetAt(unreconciled, candidateMaximum, baseFee, enabled).total;
+  const required = candidateBudget;
+  const shortfall = candidateBudget > oldBudget && required > operatingCash ? required - operatingCash : 0n;
+  return { oldBudget, candidateBudget, required, shortfall, canActivate: shortfall === 0n };
+}
+export interface ReserveBreakdown extends MaintenanceBudget {
+  inventoryCost: bigint; listingBudget: bigint;
+}
+/** Missing inventory and present work only. Unsold fees never offset liquid capital; closed pools hold actual draws. */
 export function reserveBreakdownAt(target: Counts, have: Counts, mintFee: bigint, unreconciled: number,
   maxReward: bigint, baseFee: bigint, enabled = true): ReserveBreakdown {
-  const outstandingBudget = BigInt(unreconciled) * immutableWorkBudget(workCounts(1, 1), baseFee, maxReward);
-  let inventoryCost = 0n, listingBudget = 0n, workingBuffer = 0n;
+  const maintenance = maintenanceBudgetAt(unreconciled, maxReward, baseFee, enabled);
+  let inventoryCost = 0n, listingBudget = 0n;
   if (enabled) {
     target.forEach((n, d) => { if (n > (have[d] ?? 0)) inventoryCost += BigInt(n - (have[d] ?? 0)) * prizeCost(d, mintFee); });
     for (const batch of listingBatches(target, have)) {
       listingBudget += immutableWorkBudget(workCounts(0, 0, batch.units, batch.prizes), baseFee, maxReward);
     }
-    const processing = immutableWorkBudget(workCounts(Number(KEEPER_LIMITS.maxProcessed), Number(KEEPER_LIMITS.maxReconciles)), baseFee, maxReward);
-    const listing = immutableWorkBudget(workCounts(0, Number(KEEPER_LIMITS.maxReconciles), MAX_OPS, MAX_OPS), baseFee, maxReward);
-    workingBuffer = processing > listing ? processing : listing;
   }
-  return { inventoryCost, listingBudget, outstandingBudget, workingBuffer,
-    total: inventoryCost + listingBudget + outstandingBudget + workingBuffer };
+  return { ...maintenance, inventoryCost, listingBudget, total: inventoryCost + listingBudget + maintenance.total };
 }
 export const requiredReserveAt = (target: Counts, have: Counts, mintFee: bigint, unreconciled: number,
   maxReward: bigint, baseFee: bigint, enabled = true): bigint =>
@@ -176,6 +157,8 @@ export type Counts = number[]; // length 16, indexed like DENOMS
 export interface PoolInputs {
   curatedBases: bigint[]; // creator-assigned values (wei): an unlisted NFT's FWA price (curated NFTs carry no markup)
   markupBps: number;
+  /** Stored payout percentage. Omit only for a new design, to preview its initial suggestion. */
+  creatorRevenueBps?: number;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
   restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
@@ -186,19 +169,13 @@ export interface PoolInputs {
    *  of each active prize of that size, which keeps the markup and fees in force when it was listed. Prizes beyond the
    *  listed count (new ones the plan adds) are priced at the current markup and fees. Parallels `curatedPrices`. */
   shapePrices?: bigint[][];
-  /** Recorded surcharge (Item.price - Item.base) beside each historical Shape/Pack listing price. */
-  shapeRestockFees?: bigint[][];
-  /** The pool's settings (keeper pay, restocking fee); the factory defaults when absent. */
-  settings?: KeeperSettings;
   /** Cached immutable-enforced maximum read from the selected pool/policy. */
   policyMaxReward?: bigint;
   /** Exact surcharge per new prize, indexed by denomination. Supports pack-specific future policies. */
   restockFees?: readonly bigint[];
-  /** Exact aggregate Item.price - Item.base for listed Shape/Pack prizes. Never a liquid balance. */
-  listedRestockFees?: bigint;
   /** On-chain quotes for representative work. The workload assumptions are exported below. */
   keeperQuotes?: { replace: readonly bigint[]; reconcile: bigint; setup?: bigint };
-  /** Explicit V1 preview context; omit it for unsupported policies. Never inferred from listing fees. */
+  /** Current block basefee used by the policy-independent reserve calculations. */
   baseFee: bigint;
   gasPrice?: bigint;
   /** Explicit local V1 preview. Other policies require their actual absolute quotes. */
@@ -206,6 +183,14 @@ export interface PoolInputs {
   unreconciled?: number;
   enabled?: boolean;
   paidUpkeepEnabled?: boolean;
+}
+
+/** A missing selected-policy maximum must not silently adopt V1's economics. */
+export function effectivePolicyMaximum(inputs: Pick<PoolInputs, 'paidUpkeepEnabled' | 'policyMaxReward' | 'v1Preview'>): bigint {
+  if (inputs.paidUpkeepEnabled === false) return 0n;
+  if (inputs.policyMaxReward !== undefined) return inputs.policyMaxReward;
+  if (inputs.v1Preview === true) return MAX_KEEPER_REWARD;
+  throw new Error('Policy maximum unavailable');
 }
 
 export function packPlan(counts: Counts): bigint {
@@ -341,7 +326,7 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
     capital,
     shapes,
     requiredReserve: requiredReserveAt(counts, counts, inputs.mintFee, inputs.unreconciled ?? 0,
-      inputs.paidUpkeepEnabled === false ? 0n : inputs.policyMaxReward ?? MAX_KEEPER_REWARD, inputs.baseFee),
+      effectivePolicyMaximum(inputs), inputs.baseFee),
     ownerProceedsPerDraw: ev,
   };
 }
@@ -363,62 +348,74 @@ export function keeperWorkAt(baseFee: bigint, gasPrice: bigint, d?: number): Kee
   };
 }
 
-/** Per-draw expectation at the actual listed prices. It is not a demand forecast or a guaranteed realized profit. */
+/** Expected Shape allocation above 10% divided by actual FWA owner proceeds, rounded down to basis points.
+ * FWA escrows floor(weighted EV) plus its edge, but credits the owner only floor(weighted EV); VRF is separate. */
+export function suggestedCreatorRevenueBps(counts: Counts, inputs: PoolInputs): number {
+  const c = curatedTotals(inputs);
+  const s = shapeTotals(counts, inputs);
+  const totalWeight = c.w + s.w;
+  if (totalWeight === 0n) return 0;
+  const ownerProceeds = (c.wp + s.wp) / totalWeight;
+  if (ownerProceeds === 0n) return 0;
+  const allocationBps = BigInt(inputs.markupBps) > MIN_MARKUP_BPS ? BigInt(inputs.markupBps) - MIN_MARKUP_BPS : 0n;
+  let weightedAllocation = 0n;
+  counts.forEach((n, d) => {
+    const allocation = DENOMS[d] * allocationBps / BPS;
+    for (let k = 0; k < n; k++) weightedAllocation += weightOf(shapePriceAt(d, k, inputs)) * allocation;
+  });
+  return Number(weightedAllocation * BPS / (totalWeight * ownerProceeds));
+}
+
+/** Per-draw expectation at actual listed prices. Collections round credit once per collected amount. */
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
-  const m = BigInt(inputs.markupBps);
-  // The game's share (the first MIN_MARKUP_BPS of markup) refills the reserve; only the markup above it is the creator's
-  // claimable profit while the fund is below the reserve. Curated NFTs contribute nothing to profit while short.
-  const claimM = m > MIN_MARKUP_BPS ? m - MIN_MARKUP_BPS : 0n;
-  let markup = 0;
-  let claimable = 0;
-  let mint = 0;
-  let restock = 0;
-  let keeper = 0;
-  const st = inputs.settings ?? DEFAULT_SETTINGS;
-  const baseFee = inputs.baseFee;
-  const price = inputs.gasPrice ?? (baseFee === undefined ? undefined : baseFee + st.priorityCap);
-  const keeperCostKnown = inputs.keeperQuotes !== undefined || (inputs.v1Preview === true && price !== undefined);
-  const quoted = (d?: number) => {
-    if (inputs.keeperQuotes) return d === undefined ? inputs.keeperQuotes.reconcile : inputs.keeperQuotes.replace[d];
-    if (!inputs.v1Preview || price === undefined) return 0n;
-    return quoteV1(keeperWorkAt(baseFee, price, d), st);
-  };
-  for (const t of ev.tiers) {
-    const p = t.oddsPpm / 1e6; // this tier, all its listings
-    if (t.kind === 'curated') {
-      keeper += p * toEth(quoted());
-    } else {
-      const shapes = BigInt(SHAPES_IN[t.size!]);
-      markup += p * toEth((DENOMS[t.size!] * m) / BPS);
-      claimable += p * toEth((DENOMS[t.size!] * claimM) / BPS);
-      mint += p * toEth(shapes * inputs.mintFee);
-      const d = t.size!;
-      let feeWeight = 0n;
-      let totalWeight = 0n;
-      for (let k = 0; k < t.count; k++) {
-        const wi = weightOf(shapePriceAt(d, k, inputs));
-        totalWeight += wi;
-        feeWeight += wi * (inputs.shapeRestockFees?.[d]?.[k] ?? prizeRestockFee(d, inputs));
-      }
-      restock += p * toEth(totalWeight === 0n ? 0n : feeWeight / totalWeight);
-      keeper += p * toEth(quoted(t.size!));
-    }
+  const creatorRevenueBps = inputs.creatorRevenueBps ?? suggestedCreatorRevenueBps(counts, inputs);
+  if (!Number.isInteger(creatorRevenueBps) || creatorRevenueBps < 0 || creatorRevenueBps > 10_000) {
+    throw new Error('Creator revenue share must be 0 to 10000 basis points');
   }
+  const totalWeight = curatedTotals(inputs).w + shapeTotals(counts, inputs).w;
+  const price = inputs.gasPrice ?? rewardPrice(inputs.baseFee);
+  const keeperCostKnown = inputs.paidUpkeepEnabled === false || (inputs.keeperQuotes !== undefined
+    ? counts.every((n, d) => !n || inputs.keeperQuotes!.replace[d] !== undefined)
+    : inputs.v1Preview === true);
+  const quoted = (d?: number) => {
+    if (inputs.paidUpkeepEnabled === false) return 0n;
+    if (inputs.keeperQuotes) return d === undefined ? inputs.keeperQuotes.reconcile : inputs.keeperQuotes.replace[d];
+    if (!inputs.v1Preview) return undefined;
+    const work = keeperWorkAt(inputs.baseFee, price, d);
+    return lesser(quoteV1(work), paymentBound(work, effectivePolicyMaximum(inputs)));
+  };
+  let backingWeighted = 0n, mintWeighted = 0n, surchargeWeighted = 0n, keeperWeighted = 0n;
+  for (let i = 0; i < inputs.curatedBases.length; i++) {
+    keeperWeighted += weightOf(curatedPrice(i, inputs)) * (quoted() ?? 0n);
+  }
+  counts.forEach((n, d) => {
+    for (let k = 0; k < n; k++) {
+      const weight = weightOf(shapePriceAt(d, k, inputs));
+      backingWeighted += weight * DENOMS[d];
+      mintWeighted += weight * BigInt(SHAPES_IN[d]) * inputs.mintFee;
+      surchargeWeighted += weight * prizeRestockFee(d, inputs);
+      keeperWeighted += weight * (quoted(d) ?? 0n);
+    }
+  });
+  const average = (weighted: bigint) => totalWeight === 0n ? 0n : weighted / totalWeight;
+  const creator = ev.ownerProceedsPerDraw * BigInt(creatorRevenueBps) / BPS;
+  const retained = ev.ownerProceedsPerDraw - creator;
+  const replacement = average(backingWeighted);
+  const mint = average(mintWeighted);
+  const keeper = keeperCostKnown ? average(keeperWeighted) : undefined;
   return {
+    creatorRevenueBps,
     keeperCostKnown,
     ownerProceeds: toEth(ev.ownerProceedsPerDraw),
-    /** The markup priced into every draw: what the creator keeps per draw on average (all of it is withdrawable once the
-     *  reserve is full). A model average: prize luck moves short runs either way. */
-    markupPerDraw: markup,
-    /** What the creator can withdraw per draw while the fund is below the reserve: the Shape markup above
-     *  MIN_MARKUP_BPS. A model average: prize luck moves short runs either way. */
-    claimablePerDraw: claimable,
-    mintFeesPerDraw: mint,
-    restockFeesPerDraw: restock,
-    /** Unknown when keeperCostKnown is false. These quotes assume one replacement call per won prize. */
-    keeperPayPerDraw: keeper,
-    /** Unknown when keeperCostKnown is false. Markup plus listing fees less quoted keeper payment. */
-    keptPerDraw: markup + restock - keeper,
+    creatorEarningsPerDraw: toEth(creator),
+    retainedRevenuePerDraw: toEth(retained),
+    replacementCostsPerDraw: toEth(replacement),
+    mintFeesPerDraw: toEth(mint),
+    /** Current surcharge expectation, not evidence of surcharge revenue actually collected. */
+    restockFeesPerDraw: toEth(average(surchargeWeighted)),
+    /** Estimates assume one maintenance call per won prize; complete execution simulation decides keeper bids. */
+    keeperPayPerDraw: keeper === undefined ? undefined : toEth(keeper),
+    marginPerDraw: keeper === undefined ? undefined : toEth(retained - replacement - mint - keeper),
   };
 }

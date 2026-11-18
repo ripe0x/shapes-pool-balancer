@@ -1,0 +1,85 @@
+Browser tab: 3, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5206/".
+1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5206/
+	2 container root
+		3 container
+			4 link Description: FWA Pool Balancer, Value: 127.0.0.1:5206/
+			5 container Main
+				7 button Your pools
+				6 button How it works
+			8 button 0x7099…79C8
+		9 button Your pools
+		10 text  /
+		11 heading Pool 0xe3A3…3def, Value: 1
+			12 text Pool 0xe3A3…3def
+		13 text 0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def
+		14 button Copy address
+		15 link Description: Pool on FWA ↗, Value: pools.fwa.fun/pools/0xBC21A7CC6FBeB5d8Ab997b6C7CD00d1CE67C7b34
+		16 container Sections
+			17 button Overview
+			18 button NFTs
+			19 button Prices & mix
+			20 button Settings
+		21 container
+			22 text Open. Players can buy draws. Nothing needs attention.
+		23 container
+			24 heading Prices & mix, Value: 2
+				25 text Prices & mix
+			26 text What players pay and which Shapes the pool keeps. Your 2 NFTs stay as listed; change them on the NFTs tab.
+			27 button Reset to saved
+			28 heading Shapes, Value: 2
+				29 text Shapes
+			30 text ETH-backed prizes that make up most draws. Upkeep replenishes won Shapes when operating ETH is available.
+			31 heading Shape style, Value: 3, ID: style-label
+				32 text Shape style
+			33 container Shape style
+				34 checkbox Low draw price Cheapest draws. Curated NFTs are the big prizes., Value: 0
+				35 checkbox Balanced Prizes in steady steps, 0.01 to 0.1 ETH., Value: 0
+				36 checkbox More big wins About 1 in 10 draws wins 2× the price., Value: 0
+				37 checkbox Jackpot Adds one Shape worth about 50× the price., Value: 0
+			38 button (collapsed) Adjust prizes by hand ▾, Secondary Actions: Expand
+				39 text Adjust prizes by hand 
+				40 text ▾
+			41 text Custom:  Five 0.01 ETH Shapes, three 0.05 ETH Shapes and two 0.1 ETH Shapes
+			42 text Shape pool size
+			43 text 10 prize s
+			44 slider (settable, integer) Shape pool size, Value: 4, ID: small
+			45 text More prizes make curated NFTs rarer and the draw cheaper.
+			46 text Shape markup
+			47 text 15 %
+			48 slider (settable, integer) Shape markup, Value: 15, ID: markup
+			49 text Added to each new Shape listing price.
+			50 container
+				51 text 0.01 ETH Shape restocking charge:  0.00025  ETH.
+			52 text A markup change applies to Shapes listed after it. Listed prizes keep their price.
+			53 text Draw price 0.02705 ETH / DRAW
+			54 text With this mix, new purchases pause once 1 earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.
+			55 container View
+				56 checkbox Inventory, Value: 1
+				57 checkbox Out of 100 draws, Value: 0
+			58 content list Pool inventory
+				59 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				60 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				61 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				62 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				63 container 0.01 ETH Shape: 1 in 5.9 draws, worth 0.010 ETH
+				64 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				65 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				66 container 0.05 ETH Shape: 1 in 27 draws, worth 0.050 ETH
+				67 container 0.1 ETH Shape: 1 in 54 draws, worth 0.100 ETH
+				68 container 0.1 ETH Shape: 1 in 54 draws, worth 0.100 ETH
+				69 container Demo Curated #1: 1 in 116 draws, worth 0.250 ETH
+				70 container Demo Curated #2: 1 in 233 draws, worth 0.500 ETH
+			71 button (collapsed) Show key ▾, Secondary Actions: Expand
+			72 heading For players, Value: 3
+				73 text For players
+			74 text Win a curated NFT 1 in 78 Win more than the draw price 1 in 6.3 Top prize Curated NFT · 18.5× Average prize 81% of the price Required operating capital 0.001031 ETH Available in the pool 2.590 ETH Above the operating requirement 2.589240 ETH Creator revenue share 8 % Suggested share for the revised mix 3.41 % Expected creator earnings per draw +0.00206 ETH Expected revenue retained by the pool +0.02370 ETH Expected replacement backing +0.01758 ETH Expected mint costs +0.00099 ETH Estimated keeper costs +0.00009 ETH Replenishment margin or shortfall +0.00505 ETH
+			75 text Revenue share changes require the explicit action in Settings.
+			76 text Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.
+			77 button (disabled) Save changes
+			78 text Saved. Nothing has changed.
+			79 button (expanded) All numbers ▴, Secondary Actions: Collapse
+				80 text All numbers 
+				81 text ▴
+			82 text FOR PLAYERS Draw price 0.02705  ETH FWA's randomness fee, at today's gas 0.00234  ETH Most draws ( 84.1% ) A 0.01 ETH Shape  ·  0.37 × Wins a curated NFT 1 in 78  ·  1.3% Wins more than the draw price 1 in 6.3  ·  15.9% Wins 2× or more 1 in 20  ·  5.0% Top prize 0.5  ETH ·  1 in 233 Average prize value 81 % of the draw price FOR YOU Prize backing 0.400  ETH Required operating capital 0.001  ETH Available 2.590  ETH Keeper pay per draw, from your ETH 0.00009 ETH Mint and restocking fees per draw 0.00123  ETH 0.01 ETH Shape restocking charge 0.00025  ETH
+
+The focused UI element is 79 button (expanded) All numbers ▴, Secondary Actions: Collapse

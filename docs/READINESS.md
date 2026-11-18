@@ -1,3 +1,14 @@
+# Current implementation status: protected revenue, 2026-11-18
+
+The current branch replaces historical inventory-dependent attribution, optional policy settings metadata,
+full-inventory activation checks and separate setup transactions. [Current evidence](PROTECTED-REVENUE-RESULTS.md)
+records the candidate checks and limitations. Previous signatures and audit seals do not validate this code.
+Mainnet deployment, real spending, production configuration changes and merging remain unauthorized. The existing
+release gates and historical local rehearsal seal are preserved. Implementation verification and product acceptance
+are separate from release readiness.
+
+All material below is historical context for its named revision.
+
 # Mainnet deployment readiness
 
 ## Main integration and interrupted local batch (2026-11-18)

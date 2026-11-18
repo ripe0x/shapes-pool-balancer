@@ -55,7 +55,7 @@ contract AdmissionBoundaryTest is ForkBase {
         assertEq(pool.processAcquisitions(1), 1, "real FWA expired the pending draw");
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
         assertEq(balancer.admissionStatus(), 0, "reconciled draw reopens sales");
     }
 

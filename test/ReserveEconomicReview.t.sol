@@ -102,7 +102,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256 reward=keeper.balance-keeperStart;
         assertGt(reward,0.00005 ether);
         assertEq(creatorStart+keeperStart-address(balancer).balance-keeper.balance,0.001 ether,"only new mint fee leaves coalition before gas");
-        assertEq(balancer.listedRestockFees(),0,"hostile zero quote never becomes imagined cash");
+        assertEq(_listedFees(balancer),0,"hostile zero quote never becomes imagined cash");
     }
 
     function test_largeWinWithoutTopupsHasHonestSlowRecoveryAndCreatorAllocation() public {
@@ -110,7 +110,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         vm.fee(0.5 gwei);vm.txGasPrice(0.55 gwei);
         ReserveReviewContext probe=new ReserveReviewContext();probe.record();
         assertEq(probe.observedBaseFee(),0.5 gwei);assertEq(probe.observedGasPrice(),0.55 gwei);
-        vm.prank(creator);balancer=PoolBalancer(payable(factory.createBalancer{value:110 ether}(bytes32(uint256(1)))));
+        vm.prank(creator);balancer=_createFixture(creator, bytes32(uint256(1)), 110 ether);
         pool=balancer.pool();
         configure(plan([uint256(19),0,0,0,0,0,0,0,1]));
         listCurated(2,0.2 ether);
@@ -118,7 +118,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256 surplus=balancer.withdrawableSurplus();
         vm.prank(creator);balancer.claimSurplus(surplus,creator);
         assertEq(address(balancer).balance,0.00368 ether,"only current-call buffer remains liquid");
-        assertEq(balancer.listedRestockFees(),0.0139 ether,"unsold fee expectation is distinct from liquid ETH");
+        assertEq(_listedFees(balancer),0.0139 ether,"unsold fee expectation is distinct from liquid ETH");
         uint256 top;uint256 topSlot;uint256 token;
         uint256[] memory ids=balancer.getActiveIds();
         for(uint256 i;i<ids.length;++i){(uint8 kind,uint8 d,,,)=balancer.items(ids[i]);if(kind==2&&d==8){top=ids[i];(,,,token,,,topSlot,)=pool.listings(top);break;}}
@@ -130,8 +130,8 @@ contract ReserveEconomicReviewTest is ForkBase {
         assertEq(balancer.admissionStatus(),0);
         assertFalse(balancer.creatorWork());
         assertGt(balancer.requiredReserve(),100 ether);
-        uint256 beforeFund=address(balancer).balance-balancer.profit();
-        uint256 beforeProfit=balancer.profit();
+        uint256 beforeFund=address(balancer).balance-balancer.creatorCredit();
+        uint256 beforeProfit=balancer.creatorCredit();
         for(uint256 n;n<10;++n){
             uint256 slot;
             uint256[] memory current=balancer.getActiveIds();
@@ -141,10 +141,10 @@ contract ReserveEconomicReviewTest is ForkBase {
             assertEq(balancer.getActiveShapes()[8],0,"large deficit remains missing");
             assertEq(balancer.admissionStatus(),0);
         }
-        uint256 gain=(address(balancer).balance-balancer.profit())-beforeFund;
-        uint256 creatorGain=balancer.profit()-beforeProfit;
+        uint256 gain=(address(balancer).balance-balancer.creatorCredit())-beforeFund;
+        uint256 creatorGain=balancer.creatorCredit()-beforeProfit;
         assertGt(gain,0,"fund accumulates actual ETH");assertGt(creatorGain,0,"above10percent creator allocation is still booked");
-        assertEq(balancer.withdrawableSurplus(),balancer.profit());
+        assertEq(balancer.withdrawableSurplus(),balancer.creatorCredit());
         emit log_named_decimal_uint("ten small draws real fund gain after100ETHwin",gain,18);
         emit log_named_decimal_uint("ten small draws creator booked profit",creatorGain,18);
         emit log_named_uint("conditional draws for100ETH at observed gain",100 ether*10/gain);
@@ -164,7 +164,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         vm.fee(0.5 gwei);vm.txGasPrice(0.55 gwei);
         ReserveReviewContext probe=new ReserveReviewContext();probe.record();
         assertEq(probe.observedBaseFee(),0.5 gwei);assertEq(probe.observedGasPrice(),0.55 gwei);
-        vm.prank(creator);balancer=PoolBalancer(payable(factory.createBalancer{value:1 ether}(bytes32(uint256(2)))));
+        vm.prank(creator);balancer=_createFixture(creator, bytes32(uint256(2)), 1 ether);
         pool=balancer.pool();configure(plan([uint256(20),0,0,0,0,0,0,0,0]));listCurated(3,0.2 ether);
         address low=address(new ReserveReviewLowPolicy());
         vm.prank(creator);balancer.proposeKeeperPolicy(low);vm.warp(vm.getBlockTimestamp()+2 days);balancer.activateKeeperPolicy();
@@ -205,7 +205,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256 all=balancer.withdrawableSurplus();
         vm.prank(creator);balancer.claimSurplus(all,creator);
         assertEq(address(balancer).balance,0);
-        assertEq(balancer.listedRestockFees(),0);
+        assertEq(_listedFees(balancer),0);
         assertEq(pool.ownerProceeds(),0);
     }
 }

@@ -1,0 +1,17 @@
+{
+  "baseRevision": "51dd7b7c3b300eee9a0279127e08021230539030",
+  "historyAndRateReviewer": "planner_keeper",
+  "creationReviewer": "frontend",
+  "sourceSha256": {
+    "app/src/App.tsx": "4c9d3d1c5ec069d25c747ca201d745bfd17790479089d2299375ad666838ebcf",
+    "app/src/refresh.ts": "f2d54c75eccfbce7c1a88818ea77ea51091e564e97e28ea4deb69f69159c35f1",
+    "app/src/creation.ts": "ea870fd6b96a7c5cb910bf636958eea76a8e42fedc45efd267212cadb3f5113c",
+    "app/src/revenue-rate.ts": "8d9a21e4393939f17c7df13464d4258c3402b04f3361798d12a51da248e27c48"
+  },
+  "findings": [],
+  "limits": [
+    "Static independent review does not establish production release readiness.",
+    "Disposed viem requests cannot be aborted; obsolete callbacks and queued work are suppressed.",
+    "Creation recovery verifies current factory registration, creator, configuration and FWA ownership; later owner changes can leave a mismatch pending."
+  ]
+}

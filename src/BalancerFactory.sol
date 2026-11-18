@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {LibClone} from "solady/utils/LibClone.sol";
 import {PoolBalancer} from "./PoolBalancer.sol";
-import {Settings, SettingsLib} from "./Settings.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 
 /// @title BalancerFactory
@@ -56,9 +55,6 @@ contract BalancerFactory {
         emit PolicyAdminTransferred(address(0), policyAdmin_);
         emit DefaultPolicyChanged(address(0), policy_);
     }
-
-    /// @notice Compatibility display values only. Pools never follow mutable factory economics.
-    function settings() external pure returns (Settings memory) { return SettingsLib.defaults(); }
 
     function proposeDefaultKeeperPolicy(address policy) external {
         if (msg.sender != policyAdmin) revert Unauthorized();
@@ -135,10 +131,12 @@ contract BalancerFactory {
 
     /// @notice Deploy a Balancer for `msg.sender`, which immediately creates and owns a new FWA pool.
     ///         Any ETH sent is deposited into the Balancer.
-    function createBalancer(bytes32 salt) external payable returns (address balancer) {
+    function createBalancer(bytes32 salt, PoolBalancer.CreationConfig calldata config, PoolBalancer.CuratedInput[] calldata curated)
+        external payable returns (address balancer)
+    {
         balancer = LibClone.cloneDeterministic(implementation, _salt(msg.sender, salt));
         isBalancer[balancer] = true;
-        PoolBalancer(payable(balancer)).initialize{value: msg.value}(msg.sender);
+        PoolBalancer(payable(balancer)).initialize{value: msg.value}(msg.sender, config, curated);
         emit BalancerCreated(msg.sender, balancer, address(PoolBalancer(payable(balancer)).pool()), salt);
     }
 

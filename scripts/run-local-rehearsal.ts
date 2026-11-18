@@ -46,9 +46,20 @@ const gateConfig = JSON.parse(readFileSync(join(ROOT,'asset-flow.json'),'utf8'))
 delete gateConfig.approval; // production approval remains separate; local execution requires exact plan approval
 const protectedPaths = [...gateConfig.source_paths,...gateConfig.evidence_paths,'keeper','shared','lib','package.json','package-lock.json','tsconfig.json','test/fixtures/keeper-policy-v1.json'];
 const git = (...a:string[]) => execFileSync('git',a,{cwd:ROOT,encoding:'utf8'});
-function sourceFingerprint(root=ROOT, archivedWrapper=false) {
+const reportOnlyMissingSourcePaths: string[] = [];
+function sourceFingerprint(root=ROOT, archivedWrapper=false, reportOnly=false) {
   const files=execFileSync('git',['ls-files','-z','--',...gateConfig.source_paths,...gateConfig.evidence_paths],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean).sort();
-  const hash=createHash('sha256');for(const file of files){hash.update(`${file}\0`);hash.update(archivedWrapper&&file==='script/deploy.sh'?execFileSync('git',['show',`${REVISION}:script/deploy.sh`],{cwd:ROOT}):readFileSync(join(root,file)));hash.update('\0');}return hash.digest('hex');
+  const hash=createHash('sha256');
+  for(const file of files){
+    hash.update(`${file}\0`);
+    // Missing tracked paths are report data only; guarded modes retain strict reads.
+    if(reportOnly && !existsSync(join(root,file))){
+      reportOnlyMissingSourcePaths.push(file);
+      hash.update('\0deleted tracked source\0');
+    } else hash.update(archivedWrapper&&file==='script/deploy.sh'?execFileSync('git',['show',`${REVISION}:script/deploy.sh`],{cwd:ROOT}):readFileSync(join(root,file)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
 }
 function sourceCheck() {
   git('merge-base','--is-ancestor',REVISION,'HEAD');
@@ -59,7 +70,7 @@ function sourceCheck() {
 const materialPaths=['script/deploy.sh','scripts/local-rehearsal-gate.ts','scripts/prepare-local-rehearsal.ts','scripts/run-local-rehearsal.ts','docs/RELEASE-REHEARSAL.md',...['deployment-actions.json','node.json','preflight.json','opening-preview.json','deployment-code-hashes.json','demo-nft.json'].map(n=>`docs/receipts/rehearsal-04bc760-preparation/${n}`)];
 const materialHashes=Object.fromEntries(materialPaths.map(path=>[path,sha(readFileSync(join(ROOT,path),'utf8'))]));
 const forgeArguments=['--rpc-url',prepared.rpc,'--unlocked','--sender',roles.deployer,'--with-gas-price',String(MAX_FEE),'--priority-gas-price',String(TIP),'--slow','--broadcast'];
-const plan = { repositoryRoot:ROOT, archiveRevision:REVISION, forgeArguments, sourceFingerprintScope:'archive04 before material-bound local wrapper overlay; not a new production review seal', localOverlaySourceFingerprint:sourceFingerprint(), sourceFingerprint: SOURCE_FINGERPRINT, materialHashes, plannedDriverDraws:152, uiWrites:'not supported or authorized; separate uncompleted requirement', syntheticContributions: { initialCuratedNfts:4, replacementLimit:caps.replacementCuratedNfts, initialNotionalWei:3n*ETH/2n, replacementNotionalWei:ETH/4n, realMarketValue:'unmeasured; no creator net-profit claim' }, gateConfigHash: sha(stringify(gateConfig)), revision: REVISION, rpc: prepared.rpc, chainId: 31337, forkBlock: prepared.forkBlock, forkHash: prepared.forkHash, roles, funding, caps, route, maxFeePerGas: MAX_FEE, maxPriorityFeePerGas: TIP, perTransactionGas: MAX_TRANSACTION_GAS, closeoutGasReserveWei: EXIT_RESERVE, coordinatorException: true, timeJumpSeconds: 172801, baseline: 'natural EIP-1559', stress: ['3 gwei', '4.9 gwei', '8 gwei'], keeper: 'production Keeper class; controlled ticks and persisted health, not CLI', deployment: prepared.actions, driverHash: sha(readFileSync(import.meta.filename, 'utf8')), documentHash: sha(readFileSync(join(ROOT, 'docs/RELEASE-REHEARSAL.md'), 'utf8')) };
+const plan = { repositoryRoot:ROOT, archiveRevision:REVISION, forgeArguments, sourceFingerprintScope:'archive04 before material-bound local wrapper overlay; not a new production review seal', localOverlaySourceFingerprint:sourceFingerprint(ROOT,false,args.length===0), sourceFingerprint: SOURCE_FINGERPRINT, materialHashes, plannedDriverDraws:152, uiWrites:'not supported or authorized; separate uncompleted requirement', syntheticContributions: { initialCuratedNfts:4, replacementLimit:caps.replacementCuratedNfts, initialNotionalWei:3n*ETH/2n, replacementNotionalWei:ETH/4n, realMarketValue:'unmeasured; no creator net-profit claim' }, gateConfigHash: sha(stringify(gateConfig)), revision: REVISION, rpc: prepared.rpc, chainId: 31337, forkBlock: prepared.forkBlock, forkHash: prepared.forkHash, roles, funding, caps, route, maxFeePerGas: MAX_FEE, maxPriorityFeePerGas: TIP, perTransactionGas: MAX_TRANSACTION_GAS, closeoutGasReserveWei: EXIT_RESERVE, coordinatorException: true, timeJumpSeconds: 172801, baseline: 'natural EIP-1559', stress: ['3 gwei', '4.9 gwei', '8 gwei'], keeper: 'production Keeper class; controlled ticks and persisted health, not CLI', deployment: prepared.actions, driverHash: sha(readFileSync(import.meta.filename, 'utf8')), documentHash: sha(readFileSync(join(ROOT, 'docs/RELEASE-REHEARSAL.md'), 'utf8')) };
 const planHash = sha(stringify(plan));
 const pub = createPublicClient({ transport: http(prepared.rpc, { timeout: 60_000 }), cacheTime: 0 });
 const test = createTestClient({ mode: 'anvil', transport: http(prepared.rpc, { timeout: 60_000 }) });
@@ -413,4 +424,4 @@ else if(flag('--self-check')){
   assert.equal(decodeFunctionData({abi:poolBalancerAbi,data:encodeFunctionData({abi:poolBalancerAbi,functionName:'configure',args:[1500,20n]})}).functionName,'configure');
   console.log(stringify({selfCheck:'pass',planHash,route,caps,mutationCount:0}));
 }else if(option('--approved-plan-hash'))execute().catch(e=>{if(journal){journal.failure=String(e);save();}console.error(e);process.exitCode=1;});
-else console.log(stringify({planHash,plan,execution:'not authorized; no node requests or writes made'}));
+else console.log(stringify({planHash,plan,reportOnlyMissingSourcePaths,sourceVerification:'not performed; execution requires exact frozen archive inputs',execution:'not authorized; no node requests or writes made'}));

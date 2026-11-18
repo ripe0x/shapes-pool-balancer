@@ -68,7 +68,7 @@ contract D3ReAttackTest is ForkBase {
     ///         five paid calls for five draws. The hold must pay every one.
     function test_splitCallReconcileOfExpiredDrawsIsFullyPaidFromTheHold() public {
         // Independent absolute check of the constant the hold is built from.
-        assertEq(balancer.maxKeeperReward(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01645 ETH at the cap");
+        assertEq(balancer.policyMaxReward(), _independentMaxReward(), "MAX_KEEPER_REWARD = 0.01645 ETH at the cap");
         assertEq(_independentMaxReward(), 0.01645 ether, "0.01645 ETH");
 
         // Five draws issued one per block, left pending (no VRF), then closed.
@@ -97,7 +97,7 @@ contract D3ReAttackTest is ForkBase {
             uint256 keeperBefore = keeper.balance;
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            balancer.performUpkeep(uh1);
+            balancer.performUpkeep(uh1, 0, 0);
             uint256 pay = keeper.balance - keeperBefore;
             totalPaid += pay;
 
@@ -124,7 +124,7 @@ contract D3ReAttackTest is ForkBase {
         bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh2);
+        balancer.performUpkeep(uh2, 0, 0);
     }
 
     /// @notice The hold cannot be grown after close, and in-flight draws that NEVER receive VRF still drain it: FWA
@@ -161,7 +161,7 @@ contract D3ReAttackTest is ForkBase {
 
         bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh3); // reconciles both (<= MAX_RECONCILE)
+        balancer.performUpkeep(uh3, 0, 0); // reconciles both (<= MAX_RECONCILE)
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "all reconciled");
         assertEq(balancer.requiredReserve(), 0, "hold released once reconciled");
 

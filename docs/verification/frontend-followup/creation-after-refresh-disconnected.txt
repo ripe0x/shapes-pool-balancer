@@ -1,0 +1,17 @@
+Browser tab: 5, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5207/".
+1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/
+	2 container root
+		3 container
+			4 link Description: FWA Pool Balancer, Value: 127.0.0.1:5207/
+			5 container Main
+				6 button How it works
+			7 button Local dev account
+			8 button Connect wallet
+		9 text Preview.  Design a pool. Nothing is sent until you connect a wallet and create it.
+		10 container
+			11 heading Pool creation, Value: 1
+				12 text Pool creation
+			13 text Reconnect the creating account and network to verify this pool. Account  0x70997970C51812dc3A010C7d01b50e0d17dc79C8  · Chain  31337 Predicted pool  0x26f754B66cAD7F30b891f606E997be637d13028d Transaction  0x7656aec1be1ef7604eeeb919e69c286969d3b0ff1f24ee4ca1192cda3165248e
+			14 button Check creation
+
+The focused UI element is 1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/

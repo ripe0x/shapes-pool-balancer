@@ -1,0 +1,8 @@
+{
+  "started": 1795028581152,
+  "observed": 1795028642741,
+  "transportTimeoutMs": 60000,
+  "historyDelayMs": 35000,
+  "pool": "0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def",
+  "outcome": "Overall ETH result visible while queued history refresh loads"
+}

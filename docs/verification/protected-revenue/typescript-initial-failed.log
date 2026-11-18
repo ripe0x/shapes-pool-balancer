@@ -1,0 +1,81 @@
+
+> test:ts
+> vitest run
+
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ shared/planner.test.ts (29 tests) 9ms
+ ✓ app/src/inventory.test.ts (3 tests) 2ms
+ ✓ keeper/keeper.test.ts (15 tests) 4ms
+ ✓ app/src/wallet.test.ts (4 tests) 9ms
+ ✓ shared/policy-simulation.test.ts (14 tests) 25ms
+ ✓ shared/policy-money-path.test.ts (1 test) 4ms
+ ✓ shared/policy-quotes.test.ts (1 test) 2ms
+ ✓ shared/design.test.ts (13 tests) 14ms
+ ✓ app/src/errors.test.ts (3 tests) 6ms
+ ✓ app/src/policy.test.ts (2 tests | 1 skipped) 7ms
+ ✓ shared/reserve-capital.test.ts (42 tests) 9ms
+ ✓ app/src/tx.test.ts (6 tests) 7ms
+node:fs:561
+  return binding.open(
+                 ^
+
+Error: ENOENT: no such file or directory, open '/private/tmp/fwa-credit-atomic/src/Settings.sol'
+    at Object.openSync (node:fs:561:18)
+    at readFileSync (node:fs:445:35)
+    at sourceFingerprint (/private/tmp/fwa-credit-atomic/scripts/run-local-rehearsal.ts:51:211)
+    at <anonymous> (/private/tmp/fwa-credit-atomic/scripts/run-local-rehearsal.ts:62:223)
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/private/tmp/fwa-credit-atomic/src/Settings.sol'
+}
+
+Node.js v22.19.0
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/local-rehearsal-gate.test.ts [ scripts/local-rehearsal-gate.test.ts ]
+Error: Command failed: /Users/dd/.nvm/versions/node/v22.19.0/bin/node --import tsx scripts/run-local-rehearsal.ts
+node:fs:561
+  return binding.open(
+                 ^
+
+Error: ENOENT: no such file or directory, open '/private/tmp/fwa-credit-atomic/src/Settings.sol'
+    at Object.openSync (node:fs:561:18)
+    at readFileSync (node:fs:445:35)
+    at sourceFingerprint (/private/tmp/fwa-credit-atomic/scripts/run-local-rehearsal.ts:51:211)
+    at <anonymous> (/private/tmp/fwa-credit-atomic/scripts/run-local-rehearsal.ts:62:223)
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/private/tmp/fwa-credit-atomic/src/Settings.sol'
+}
+
+Node.js v22.19.0
+
+ ❯ sourceFingerprint scripts/run-local-rehearsal.ts:51:211
+ ❯ <anonymous> scripts/run-local-rehearsal.ts:62:223
+ ❯ packet scripts/local-rehearsal-gate.test.ts:10:29
+      8|
+      9| const root=resolve(import.meta.dirname,'..');
+     10| const packet=()=>JSON.parse(execFileSync(process.execPath,['--import',…
+       |                             ^
+     11| // These are plan-input attacks, not substitutes for successful extern…
+     12| function changed(plan:Record<string,any>, edit:(p:Record<string,any>)=…
+ ❯ scripts/local-rehearsal-gate.test.ts:16:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 12 passed (13)
+      Tests  132 passed | 1 skipped (133)
+   Start at  10:39:15
+   Duration  752ms (transform 374ms, setup 0ms, collect 2.51s, tests 98ms, environment 1ms, prepare 703ms)

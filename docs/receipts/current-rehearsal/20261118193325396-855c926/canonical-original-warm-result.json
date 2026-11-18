@@ -1,0 +1,30 @@
+{
+  "candidate": "855c926c77284c57939a2c93c67442bbadb6ec1c",
+  "sourceFingerprint": "ab32ca5e5b4d77b03fa2e7c0095680ba4e147736146786e39643c303d934344b",
+  "arguments": [
+    "script",
+    "script/Deploy.s.sol",
+    "--rpc-url",
+    "http://127.0.0.1:18787",
+    "--unlocked",
+    "--sender",
+    "0x000000000000000000000000000000000001e001",
+    "--with-gas-price",
+    "20000000000",
+    "--priority-gas-price",
+    "50000000",
+    "--slow"
+  ],
+  "environmentKeys": [
+    "PATH",
+    "HOME",
+    "PACKS_ADMIN",
+    "KEEPER_ADMIN",
+    "POLICY_ADMIN"
+  ],
+  "broadcast": false,
+  "exit": 0,
+  "registryExisted": true,
+  "priorRegistrySha256": "9121deb8ce686fcc9d19c3df16f077f8fbf51a0c7b7699ef629be7c1b1c5b761",
+  "registryRestored": true
+}

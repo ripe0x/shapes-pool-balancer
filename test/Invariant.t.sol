@@ -88,7 +88,7 @@ contract Handler is Test {
             if (before[i] > last) last = before[i];
         }
         uint64 seq = b.reconciledSequence();
-        try b.performUpkeep(b.settingsHash()) returns (uint256 reward) {
+        try b.performUpkeep(b.settingsHash(), 0, 0) returns (uint256 reward) {
             if (reward == 0) return;
             paidFromFees += reward;
             if (reward > maxReward) maxReward = reward;
@@ -197,14 +197,12 @@ contract InvariantTest is ForkBase {
         assertGe((w - lost) * 10_000, FILL_BPS * balancer.targetWeight(), "inventory at or above the fill floor");
     }
 
-    /// The creator's unclaimed profit is always held, claims never exceed the balance, and the creator's share of the
-    /// listed prices counts only Shape markups, each at most half its price (markup at most 100%).
-    function invariant_profitHeldAndShareBounded() public view {
+    /// Creator credit stays fully backed, total claims fit cash, and the stored percentage stays valid.
+    function invariant_creatorCreditBackedAndRateBounded() public view {
         uint256 bal = address(balancer).balance;
-        assertLe(balancer.profit(), bal, "profit held");
+        assertLe(balancer.creatorCredit(), bal, "profit held");
         assertLe(balancer.withdrawableSurplus(), bal, "claims within the balance");
-        assertLe(balancer.profitShareSum(), _listedShapes() * 5e17, "only Shape markups, at most half each price");
-        if (!balancer.enabled()) assertEq(balancer.profit(), 0, "everything claimable while closed");
+        assertLe(balancer.creatorRevenueBps(), 10_000, "valid stored collection rate");
     }
 
     function _listedShapes() internal view returns (uint256 n) {
@@ -222,7 +220,7 @@ contract InvariantTest is ForkBase {
     /// Keepers are paid only for a call that reconciled a draw or listed a prize, at most MAX_KEEPER_REWARD each.
     function invariant_keeperPaidOnlyForWork() public view {
         assertEq(handler.paidWithoutWork(), 0);
-        assertLe(handler.maxReward(), balancer.maxKeeperReward());
+        assertLe(handler.maxReward(), balancer.policyMaxReward());
     }
 
     function invariant_permanentOwnershipAndOperator() public view {

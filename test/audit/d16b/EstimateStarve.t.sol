@@ -15,7 +15,7 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
         bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper, keeper);
-        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
+        (ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0));
         (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
         billed = uint256(used);
@@ -57,7 +57,7 @@ contract D16bEstimateStarveTest is D16bWorstUpkeepTest {
         uint256 snap = vm.snapshotState();
         bytes32 uh2 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeWithSignature("performUpkeep(bytes32)", uh2));
+        (bool okHi,) = address(balancer).call{gas: 30_000_000}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh2, 0, 0));
         (, bytes memory rr) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         (, uint64 usedHi,, int64 refHi,) = abi.decode(rr, (uint64, uint64, uint64, int64, uint64));
         vm.revertToState(snap);

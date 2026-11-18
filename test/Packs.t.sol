@@ -124,7 +124,7 @@ contract PacksTest is ForkBase {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
 
         uint256 lid = _listingOfSize(12);
         uint256[] memory surplus = new uint256[](1);

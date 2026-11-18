@@ -1,0 +1,5983 @@
+[
+  {
+    "regime": "burst",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 161,
+      "draws_fulfilled": 161,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 5,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 4,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 236,
+      "upkeeps_run": 146,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 52,
+      "upkeeps_while_draws_unsettled": 65,
+      "restocks_staged_while_unsettled": 19,
+      "restock_incomplete_after_full_pass": 8,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 1,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 4,
+      "keeper_paid_outside_creator_work_wei": 98761002250000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 98367320700000000,
+      "keeper_profit_wei": 16994430000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 5347207250000000,
+      "restock_fees_listed_wei": 164020000000000000,
+      "selected_listing_restock_fees_won_wei": 125795000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 142267750225362093,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3931652004934053430,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 11037407112353866,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 435332004934053430,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 60386,
+      "keeper_refund_gas_kept_worst_call": 207732,
+      "keeper_refund_share_of_creator_net_bps": 122,
+      "fwa_queue_ready_max": 5,
+      "upkeeps_with_fwa_queue_ready": 65,
+      "upkeeps_with_fwa_queue_ready_over_2": 42,
+      "restock_fee_receipts_wei": 126399157812353866,
+      "owner_proceeds_realized_wei": 3556693755634053430,
+      "creator_credit_error_wei": 0,
+      "draws_that_reserved_a_staged_restock": 19,
+      "unsettled_draws_at_day_end_max": 0,
+      "unsettled_draws_at_end": 0
+    },
+    "inflow_base": "8941735443415756024",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3931652004934053430",
+        "bps": 4396
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2570000000000000000",
+        "bps": 2874
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "115361750700000000",
+        "bps": 129
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "207207000000000000",
+        "bps": 231
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "236000000000000000",
+        "bps": 263
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 4
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1901
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "177834687781702594",
+        "bps": 198
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "177834687781702594",
+        "need": "177834687781702594",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3931652004934053430",
+        "bps": 5591
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "3941735443415756024",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4408
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3556693755634053430",
+        "has_return": false,
+        "returned": "0",
+        "bps": 3977
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4270000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4775
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "98761002250000000",
+        "has_return": true,
+        "returned": "126399157812353866",
+        "bps": 110
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 18
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "142267750225362093",
+        "has_return": false,
+        "returned": "0",
+        "bps": 159
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "closeout_pending",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 95,
+      "draws_fulfilled": 92,
+      "draws_expired": 3,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 5,
+      "busy_status_seen": 18,
+      "max_reconciled_in_one_upkeep": 5,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 153,
+      "upkeeps_run": 47,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 59,
+      "upkeeps_while_draws_unsettled": 12,
+      "restocks_staged_while_unsettled": 10,
+      "restock_incomplete_after_full_pass": 12,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 54533038814437818,
+      "keeper_passes_with_reserve_short": 4,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 15,
+      "keeper_paid_outside_creator_work_wei": 36789197950000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 46315465900000000,
+      "keeper_profit_wei": 7074480500000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 1022984600000000,
+      "restock_fees_listed_wei": 106335000000000000,
+      "selected_listing_restock_fees_won_wei": 69500000000000000,
+      "restock_fees_outstanding_wei": 0,
+      "creator_credit_accrued_wei": 80716539597950457,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 5411523543548761752,
+      "admission_status_at_end": 1,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 54533038814437818,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 1,
+      "days_ending_with_a_prize_missing": 2,
+      "creator_keeper_net_gain_wei": 18674204650642544,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 411523543548761752,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 19578,
+      "keeper_refund_gas_kept_worst_call": 147833,
+      "keeper_refund_share_of_creator_net_bps": 24,
+      "fwa_queue_ready_max": 3,
+      "upkeeps_with_fwa_queue_ready": 2,
+      "upkeeps_with_fwa_queue_ready_over_2": 1,
+      "restock_fee_receipts_wei": 72064151050642544,
+      "owner_proceeds_realized_wei": 2017913489948761752,
+      "creator_credit_error_wei": 0,
+      "draws_pending_at_close": 5,
+      "unclaimable_after_close_beyond_held_pay_wei": 0,
+      "unlist_blocked_while_pending": 1,
+      "nft_withdraw_blocked_while_pending": 1,
+      "claimed_at_close_wei": 0,
+      "blocks_until_closeout_possible": 37,
+      "draws_expired_after_close": 3,
+      "creator_upkeeps_to_reconcile": 0,
+      "nfts_returned_to_creator": 1,
+      "pool_retired": 1,
+      "keeper_paid_after_close_wei": 0,
+      "creator_assets_left_wei": 0,
+      "prizes_still_listed": 0,
+      "redeem_gap_wei": 0,
+      "fwa_held_after_closeout_wei": 100895674497438072,
+      "fwa_protocol_fees_accrued_wei": 100895674497438072,
+      "fwa_player_escrow_and_refund_credit_wei": 0,
+      "fwa_owner_proceeds_wei": 0,
+      "fwa_held_not_named_wei": 0,
+      "keeper_pay_held_at_close_wei": 7000000000000000,
+      "closed_reconciliation_target_shortfall_wei": 3320000000000000
+    },
+    "inflow_base": "7310373547725787505",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "5411523543548761752",
+        "bps": 7402
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1400000000000000000",
+        "bps": 1915
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "53389946400000000",
+        "bps": 73
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "122265000000000000",
+        "bps": 167
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "153000000000000000",
+        "bps": 209
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "69299383279587681",
+        "bps": 94
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "100895674497438072",
+        "bps": 138
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "100895674497438072",
+        "need": "100895674497438072",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "5411523543548761752",
+        "bps": 6839
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "2310373547725787505",
+        "has_return": true,
+        "returned": "69299383279587681",
+        "bps": 3160
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "2017913489948761752",
+        "has_return": false,
+        "returned": "0",
+        "bps": 2760
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "3080000000000000000",
+        "has_return": true,
+        "returned": "1680000000000000000",
+        "bps": 4213
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "36789197950000000",
+        "has_return": true,
+        "returned": "72064151050642544",
+        "bps": 50
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 22
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "80716539597950457",
+        "has_return": false,
+        "returned": "0",
+        "bps": 110
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "extreme_bottom_heavy",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 260,
+      "upkeeps_run": 196,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 361,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 96150210800000000,
+      "keeper_paid_for_creator_work_wei": 24119619650000000,
+      "keeper_gas_cost_wei": 105365054850000000,
+      "keeper_profit_wei": 14904775600000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 921302800000000,
+      "restock_fees_listed_wei": 180700000000000000,
+      "selected_listing_restock_fees_won_wei": 125100000000000000,
+      "restock_fees_outstanding_wei": 55600000000000000,
+      "creator_credit_accrued_wei": 103389823840661280,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4600795765566533980,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 4719280772886980,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 404475765566533980,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9306,
+      "keeper_refund_gas_kept_worst_call": 9734,
+      "keeper_refund_share_of_creator_net_bps": 22,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 124989111222886980,
+      "owner_proceeds_realized_wei": 2584745596016533980,
+      "creator_credit_error_wei": 0,
+      "board_shape_units": 80,
+      "pending_draws_admitted_by_board": 24
+    },
+    "inflow_base": "7945642875817360580",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4600795765566533980",
+        "bps": 5790
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1800000000000000000",
+        "bps": 2265
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "120269830450000000",
+        "bps": 151
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 291
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "260000000000000000",
+        "bps": 327
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 4
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "800000000000000000",
+        "bps": 1006
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "129237279800826600",
+        "bps": 162
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "800000000000000000",
+        "need": "800000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "129237279800826600",
+        "need": "129237279800826600",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4600795765566533980",
+        "bps": 6292
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "2945642875817360580",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3707
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "2584745596016533980",
+        "has_return": false,
+        "returned": "0",
+        "bps": 3253
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "2600000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3272
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "96150210800000000",
+        "has_return": true,
+        "returned": "124989111222886980",
+        "bps": 121
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "24119619650000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 30
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "103389823840661280",
+        "has_return": false,
+        "returned": "0",
+        "bps": 130
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "extreme_top_heavy",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 1,
+      "shape_units_listed": 1,
+      "upkeeps_run": 181,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 541,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 180,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 23603038000000000,
+      "keeper_paid_for_creator_work_wei": 526690250000000,
+      "keeper_gas_cost_wei": 18752133400000000,
+      "keeper_profit_wei": 5377594850000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 0,
+      "restock_fees_listed_wei": 695000000000000,
+      "selected_listing_restock_fees_won_wei": 0,
+      "restock_fees_outstanding_wei": 695000000000000,
+      "creator_credit_accrued_wei": 2875399423306529220,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 400000000000000000000,
+      "creator_claimed_wei": 371856175854413233920,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 23929890699877440,
+      "creator_net_gain_wei": 35859855854413233920,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 23403200449877440,
+      "keeper_refund_gas_kept_per_draw": 0,
+      "keeper_refund_gas_kept_worst_call": 0,
+      "keeper_refund_share_of_creator_net_bps": 0,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 199837550122560,
+      "owner_proceeds_realized_wei": 71884985582663233920,
+      "creator_credit_error_wei": 0,
+      "board_shape_units": 1,
+      "pending_draws_admitted_by_board": 0
+    },
+    "inflow_base": "475710894861796395580",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "371856175854413233920",
+        "bps": 7816
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "24129728250000000",
+        "bps": 0
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 4
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "1000000000000000",
+        "bps": 0
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 0
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "100000000000000000000",
+        "bps": 2102
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "3594249279133161660",
+        "bps": 75
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "100000000000000000000",
+        "need": "100000000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "3594249279133161660",
+        "need": "3594249279133161660",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "400000000000000000000",
+        "has_return": true,
+        "returned": "371856175854413233920",
+        "bps": 8408
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "75710894861796395580",
+        "has_return": true,
+        "returned": "0",
+        "bps": 1591
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "71884985582663233920",
+        "has_return": false,
+        "returned": "0",
+        "bps": 1511
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "100000000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 2102
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "23603038000000000",
+        "has_return": true,
+        "returned": "199837550122560",
+        "bps": 0
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "526690250000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "2875399423306529220",
+        "has_return": false,
+        "returned": "0",
+        "bps": 60
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "gas_2_gwei",
+    "source_hash": "",
+    "gas_price": 2000000000,
+    "base_fee": 1950000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 262,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 84,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 111232731530771153,
+      "keeper_passes_with_reserve_short": 58,
+      "nfts_won": 1,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 346081098000000000,
+      "keeper_paid_for_creator_work_wei": 57466358000000000,
+      "keeper_gas_cost_wei": 372881720000000000,
+      "keeper_profit_wei": 30665736000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 3598178000000000,
+      "restock_fees_listed_wei": 524000000000000000,
+      "selected_listing_restock_fees_won_wei": 416000000000000000,
+      "restock_fees_outstanding_wei": 108000000000000000,
+      "creator_credit_accrued_wei": 171180792495949240,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4062721863173787846,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 111232731530771153,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 6,
+      "creator_keeper_net_gain_wei": 1793413772412702,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 523972356398734645,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9994,
+      "keeper_refund_gas_kept_worst_call": 15334,
+      "keeper_refund_share_of_creator_net_bps": 68,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 405340869772412702,
+      "owner_proceeds_realized_wei": 4279519812398734645,
+      "creator_credit_error_wei": 0
+    },
+    "inflow_base": "10335895803018671259",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4062721863173787846",
+        "bps": 3930
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2890000000000000000",
+        "bps": 2796
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "403547456000000000",
+        "bps": 390
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "842400000000000000",
+        "bps": 815
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "262000000000000000",
+        "bps": 253
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "61250493224946799",
+        "bps": 59
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1600000000000000000",
+        "bps": 1548
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "213975990619936614",
+        "bps": 207
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "61250493224946799",
+        "need": "114772500000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1600000000000000000",
+        "need": "1600000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "213975990619936614",
+        "need": "213975990619936614",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4062721863173787846",
+        "bps": 4837
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "5335895803018671259",
+        "has_return": true,
+        "returned": "0",
+        "bps": 5162
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "4279519812398734645",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4140
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4490000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4344
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "346081098000000000",
+        "has_return": true,
+        "returned": "405340869772412702",
+        "bps": 334
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "57466358000000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 55
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "171180792495949240",
+        "has_return": false,
+        "returned": "0",
+        "bps": 165
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "gas_5_gwei",
+    "source_hash": "",
+    "gas_price": 5000000000,
+    "base_fee": 4950000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 251,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 42,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 83331417572445046,
+      "keeper_passes_with_reserve_short": 31,
+      "nfts_won": 1,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 836729975000000000,
+      "keeper_paid_for_creator_work_wei": 142017130000000000,
+      "keeper_gas_cost_wei": 915326765000000000,
+      "keeper_profit_wei": 63420340000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 8749615000000000,
+      "restock_fees_listed_wei": 1179700000000000000,
+      "selected_listing_restock_fees_won_wei": 925900000000000000,
+      "restock_fees_outstanding_wei": 253800000000000000,
+      "creator_credit_accrued_wei": 198718632654011525,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4465442972661876654,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 83331417572445046,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 4,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 28024222470219440,
+      "creator_net_gain_wei": 958218711350290516,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9721,
+      "keeper_refund_gas_kept_worst_call": 15334,
+      "keeper_refund_share_of_creator_net_bps": 91,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 950722882529780560,
+      "owner_proceeds_realized_wei": 4967965816350290516,
+      "creator_credit_error_wei": 0
+    },
+    "inflow_base": "12322364107167804889",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4465442972661876654",
+        "bps": 3623
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2580000000000000000",
+        "bps": 2093
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "978747105000000000",
+        "bps": 794
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "2106000000000000000",
+        "bps": 1709
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "251000000000000000",
+        "bps": 203
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "42775738688413862",
+        "bps": 34
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1650000000000000000",
+        "bps": 1339
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "248398290817514373",
+        "bps": 201
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "42775738688413862",
+        "need": "73307500000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1650000000000000000",
+        "need": "1650000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "248398290817514373",
+        "need": "248398290817514373",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4465442972661876654",
+        "bps": 4057
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "7322364107167804889",
+        "has_return": true,
+        "returned": "0",
+        "bps": 5942
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "4967965816350290516",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4031
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4230000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3432
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "836729975000000000",
+        "has_return": true,
+        "returned": "950722882529780560",
+        "bps": 679
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "142017130000000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 115
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "198718632654011525",
+        "has_return": false,
+        "returned": "0",
+        "bps": 161
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "gas_spike",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 145,
+      "draws_fulfilled": 145,
+      "draws_expired": 0,
+      "draws_refused": 35,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 35,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 5,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 223,
+      "upkeeps_run": 151,
+      "upkeeps_skipped_unprofitable": 55,
+      "upkeeps_with_nothing_to_do": 275,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 102,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 123814416078282047,
+      "keeper_passes_with_reserve_short": 73,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 267269823300000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 260401972250000000,
+      "keeper_profit_wei": 23468599500000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 2837750750000000,
+      "restock_fees_listed_wei": 363245000000000000,
+      "selected_listing_restock_fees_won_wei": 276960000000000000,
+      "restock_fees_outstanding_wei": 86285000000000000,
+      "creator_credit_accrued_wei": 135552756201334667,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3778268333283368527,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 123814416078282047,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 8,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 9272105841747258,
+      "creator_net_gain_wei": 481948333283368527,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 10377,
+      "keeper_refund_gas_kept_worst_call": 74176,
+      "keeper_refund_share_of_creator_net_bps": 58,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 274598465908252742,
+      "owner_proceeds_realized_wei": 3388818905033368527,
+      "creator_credit_error_wei": 0,
+      "draws_sold_base": 45,
+      "draws_refused_base": 0,
+      "upkeeps_skipped_base": 0,
+      "one_draw_quote_wei_base": 24386794426529227,
+      "draws_sold_at_cap": 45,
+      "draws_refused_at_cap": 0,
+      "upkeeps_skipped_at_cap": 0,
+      "one_draw_quote_wei_at_cap": 34799794426529227,
+      "draws_sold_beyond_cap": 10,
+      "draws_refused_beyond_cap": 35,
+      "upkeeps_skipped_beyond_cap": 55,
+      "one_draw_quote_wei_beyond_cap": 73784334298470954,
+      "draws_sold_after_spike": 45,
+      "draws_refused_after_spike": 0,
+      "upkeeps_skipped_after_spike": 0,
+      "one_draw_quote_wei_after_spike": 26784701440288966,
+      "max_gas_price_seen_in_tx": 20050000000,
+      "max_base_fee_seen_in_tx": 20000000000
+    },
+    "inflow_base": "9669759850285036890",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3778268333283368527",
+        "bps": 3907
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2400000000000000000",
+        "bps": 2481
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "283870571750000000",
+        "bps": 293
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "1111500000000000000",
+        "bps": 1149
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "223000000000000000",
+        "bps": 230
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1758
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "169440945251668363",
+        "bps": 175
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "169440945251668363",
+        "need": "169440945251668363",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3778268333283368527",
+        "bps": 5170
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4669759850285036890",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4829
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3388818905033368527",
+        "has_return": false,
+        "returned": "0",
+        "bps": 3504
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4100000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4240
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "267269823300000000",
+        "has_return": true,
+        "returned": "274598465908252742",
+        "bps": 276
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "135552756201334667",
+        "has_return": false,
+        "returned": "0",
+        "bps": 140
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "large_win",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 265,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 257,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 480771444902887563,
+      "keeper_passes_with_reserve_short": 133,
+      "nfts_won": 1,
+      "top_prizes_won": 1,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 101592862900000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 103256388950000000,
+      "keeper_profit_wei": 14937222400000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 1023268950000000,
+      "restock_fees_listed_wei": 184175000000000000,
+      "selected_listing_restock_fees_won_wei": 145950000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 156138297301479564,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3706583821186992485,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 480771444902887563,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 20,
+      "creator_keeper_net_gain_wei": 22779751066006195,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 210263821186992485,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 10336,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 48,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140973362416006195,
+      "owner_proceeds_realized_wei": 3903457432536992485,
+      "creator_credit_error_wei": 0,
+      "forced_top_prize_draw_a": 60,
+      "forced_top_prize_draw_b": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "days_top_prize_missing_from_design": 16,
+      "creator_topped_up_wei": 0,
+      "creator_position_at_end_wei": 5410263821186992485,
+      "top_prizes_listed_at_end": 1,
+      "claimed_right_after_setup_wei": 3224719251550000000,
+      "creator_credit_claimed_wei": 156138297301479564,
+      "end_backing_listed_wei": 1700000000000000000,
+      "end_held_in_balancer_wei": 3680000000000000,
+      "end_required_reserve_wei": 3680000000000000,
+      "end_withdrawable_now_wei": 0
+    },
+    "inflow_base": "9330290304163842059",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3706583821186992485",
+        "bps": 3972
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "3110000000000000000",
+        "bps": 3333
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "118193611350000000",
+        "bps": 126
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 248
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "265000000000000000",
+        "bps": 284
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1822
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "195172871626849574",
+        "bps": 209
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "195172871626849574",
+        "need": "195172871626849574",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3706583821186992485",
+        "bps": 5358
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4330290304163842059",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4641
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3903457432536992485",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4183
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4810000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 5155
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "101592862900000000",
+        "has_return": true,
+        "returned": "140973362416006195",
+        "bps": 108
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "156138297301479564",
+        "has_return": false,
+        "returned": "0",
+        "bps": 167
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "largest_board",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 96,
+      "upkeeps_run": 196,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 525,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 236,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 196674083513895048138,
+      "keeper_passes_with_reserve_short": 84,
+      "nfts_won": 164,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 30485928400000000,
+      "keeper_paid_for_creator_work_wei": 24182346600000000,
+      "keeper_gas_cost_wei": 46756274400000000,
+      "keeper_profit_wei": 7912000600000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 24865500000000,
+      "restock_fees_listed_wei": 66720000000000000,
+      "selected_listing_restock_fees_won_wei": 11120000000000000,
+      "restock_fees_outstanding_wei": 55600000000000000,
+      "creator_credit_accrued_wei": 102725066292520941912,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 9000000000000000000000,
+      "creator_claimed_wei": 1967972309038023550632,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 196674083513895048138,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 17,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 40567280403471928,
+      "creator_net_gain_wei": 935175989038023550632,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 16384933803471928,
+      "keeper_refund_gas_kept_per_draw": 251,
+      "keeper_refund_gas_kept_worst_call": 9734,
+      "keeper_refund_share_of_creator_net_bps": 0,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 14100994596528072,
+      "owner_proceeds_realized_wei": 2568126657313023550632,
+      "creator_credit_error_wei": 0,
+      "board_shape_units": 80,
+      "pending_draws_admitted_by_board": 0
+    },
+    "inflow_base": "11696764650178674728100",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "1967972309038023550632",
+        "bps": 1682
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1600000000000000000000",
+        "bps": 1367
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "54668275000000000",
+        "bps": 0
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 0
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "96000000000000000",
+        "bps": 0
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 0
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "8000000000000000000000",
+        "bps": 6839
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "128406332865651177468",
+        "bps": 109
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "8000000000000000000000",
+        "need": "8000000000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "128406332865651177468",
+        "need": "128406332865651177468",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "9000000000000000000000",
+        "has_return": true,
+        "returned": "1967972309038023550632",
+        "bps": 7694
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "2696764650178674728100",
+        "has_return": true,
+        "returned": "0",
+        "bps": 2305
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "2568126657313023550632",
+        "has_return": false,
+        "returned": "0",
+        "bps": 2195
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "9600000000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 8207
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "30485928400000000",
+        "has_return": true,
+        "returned": "14100994596528072",
+        "bps": 0
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "24182346600000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "102725066292520941912",
+        "has_return": false,
+        "returned": "0",
+        "bps": 87
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "limits_at_max",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 5,
+      "busy_status_seen": 36,
+      "max_reconciled_in_one_upkeep": 5,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 255,
+      "upkeeps_run": 79,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 109,
+      "upkeeps_while_draws_unsettled": 19,
+      "restocks_staged_while_unsettled": 19,
+      "restock_incomplete_after_full_pass": 30,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 54533038814437818,
+      "keeper_passes_with_reserve_short": 9,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 74248082050000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 78142645900000000,
+      "keeper_profit_wei": 12706184600000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 2038881350000000,
+      "restock_fees_listed_wei": 177225000000000000,
+      "selected_listing_restock_fees_won_wei": 139000000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 157852425542387043,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4176781808059676675,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 54533038814437818,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 6,
+      "creator_keeper_net_gain_wei": 50149969038804735,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 880461808059676675,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 20594,
+      "keeper_refund_gas_kept_worst_call": 156233,
+      "keeper_refund_share_of_creator_net_bps": 23,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140998799538804735,
+      "owner_proceeds_realized_wei": 3946310638559676675,
+      "creator_credit_error_wei": 0
+    },
+    "inflow_base": "9375286170487660475",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4176781808059676675",
+        "bps": 4455
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2720000000000000000",
+        "bps": 2901
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "90848830500000000",
+        "bps": 96
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 247
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "255000000000000000",
+        "bps": 271
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1813
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "197315531927983800",
+        "bps": 210
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "197315531927983800",
+        "need": "197315531927983800",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4176781808059676675",
+        "bps": 5333
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4375286170487660475",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4666
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3946310638559676675",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4209
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4420000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4714
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "74248082050000000",
+        "has_return": true,
+        "returned": "140998799538804735",
+        "bps": 79
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "157852425542387043",
+        "has_return": false,
+        "returned": "0",
+        "bps": 168
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "max_then_idle",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 5,
+      "busy_status_seen": 36,
+      "max_reconciled_in_one_upkeep": 5,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 255,
+      "upkeeps_run": 79,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 116,
+      "upkeeps_while_draws_unsettled": 19,
+      "restocks_staged_while_unsettled": 19,
+      "restock_incomplete_after_full_pass": 30,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 54533038814437818,
+      "keeper_passes_with_reserve_short": 9,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 37,
+      "keeper_paid_outside_creator_work_wei": 74248082050000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 78142645900000000,
+      "keeper_profit_wei": 12706184600000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 2038881350000000,
+      "restock_fees_listed_wei": 177225000000000000,
+      "selected_listing_restock_fees_won_wei": 139000000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 157852425542387043,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4176781808059676675,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 54533038814437818,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 6,
+      "creator_keeper_net_gain_wei": 50149969038804735,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 880461808059676675,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 20594,
+      "keeper_refund_gas_kept_worst_call": 156233,
+      "keeper_refund_share_of_creator_net_bps": 23,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140998799538804735,
+      "owner_proceeds_realized_wei": 3946310638559676675,
+      "creator_credit_error_wei": 0,
+      "idle_days_after_play": 7
+    },
+    "inflow_base": "9375286170487660475",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4176781808059676675",
+        "bps": 4455
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2720000000000000000",
+        "bps": 2901
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "90848830500000000",
+        "bps": 96
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 247
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "255000000000000000",
+        "bps": 271
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1813
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "197315531927983800",
+        "bps": 210
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "197315531927983800",
+        "need": "197315531927983800",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4176781808059676675",
+        "bps": 5333
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4375286170487660475",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4666
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3946310638559676675",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4209
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4420000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4714
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "74248082050000000",
+        "has_return": true,
+        "returned": "140998799538804735",
+        "bps": 79
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "157852425542387043",
+        "has_return": false,
+        "returned": "0",
+        "bps": 168
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "minimum_capital",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 199,
+      "upkeeps_run": 184,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 1,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 95750891750000000,
+      "keeper_paid_for_creator_work_wei": 6041158050000000,
+      "keeper_gas_cost_wei": 88305313800000000,
+      "keeper_profit_wei": 13486736000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 915949100000000,
+      "restock_fees_listed_wei": 138305000000000000,
+      "selected_listing_restock_fees_won_wei": 124405000000000000,
+      "restock_fees_outstanding_wei": 13900000000000000,
+      "creator_credit_accrued_wei": 106934715428622660,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 235600000000000000,
+      "creator_claimed_wei": 614495835915566860,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 22865571466530520,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 382575835915566860,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9252,
+      "keeper_refund_gas_kept_worst_call": 9734,
+      "keeper_refund_share_of_creator_net_bps": 23,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 124657621266530520,
+      "owner_proceeds_realized_wei": 2673367885715566860,
+      "creator_credit_error_wei": 0,
+      "initial_opening_requirement_wei": 235600000000000000,
+      "operating_topups_wei": 0,
+      "stocked_working_buffer_wei": 3680000000000000
+    },
+    "inflow_base": "3274296280001345140",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "614495835915566860",
+        "bps": 1876
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1790000000000000000",
+        "bps": 5466
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "101792049800000000",
+        "bps": 310
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 707
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "199000000000000000",
+        "bps": 607
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 11
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "200000000000000000",
+        "bps": 610
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "133668394285778280",
+        "bps": 408
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "200000000000000000",
+        "need": "200000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "133668394285778280",
+        "need": "133668394285778280",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "235600000000000000",
+        "has_return": true,
+        "returned": "614495835915566860",
+        "bps": 719
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "3038696280001345140",
+        "has_return": true,
+        "returned": "0",
+        "bps": 9280
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "2673367885715566860",
+        "has_return": false,
+        "returned": "0",
+        "bps": 8164
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "1990000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 6077
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "95750891750000000",
+        "has_return": true,
+        "returned": "124657621266530520",
+        "bps": 292
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "6041158050000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 18
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "106934715428622660",
+        "has_return": false,
+        "returned": "0",
+        "bps": 326
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "minimum_large_win",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 268,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 276,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 504497513116599556,
+      "keeper_passes_with_reserve_short": 142,
+      "nfts_won": 1,
+      "top_prizes_won": 1,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 102808028450000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 104334224500000000,
+      "keeper_profit_wei": 15074552400000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 1016645850000000,
+      "restock_fees_listed_wei": 186260000000000000,
+      "selected_listing_restock_fees_won_wei": 148035000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 156011295230820764,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 1790920000000000000,
+      "creator_claimed_wei": 460113603870522690,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 504497513116599556,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 22,
+      "creator_keeper_net_gain_wei": 21576091725370722,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 172873603870522690,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 10269,
+      "keeper_refund_gas_kept_worst_call": 15334,
+      "keeper_refund_share_of_creator_net_bps": 58,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140984868625370722,
+      "owner_proceeds_realized_wei": 3900282380770522690,
+      "creator_credit_error_wei": 0,
+      "initial_opening_requirement_wei": 1790920000000000000,
+      "operating_topups_wei": 0
+    },
+    "inflow_base": "6117876499809048778",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "460113603870522690",
+        "bps": 752
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "3140000000000000000",
+        "bps": 5132
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "119408776900000000",
+        "bps": 195
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 378
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "268000000000000000",
+        "bps": 438
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 6
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 2778
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "195014119038526088",
+        "bps": 318
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "195014119038526088",
+        "need": "195014119038526088",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "1790920000000000000",
+        "has_return": true,
+        "returned": "460113603870522690",
+        "bps": 2927
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4326956499809048778",
+        "has_return": true,
+        "returned": "0",
+        "bps": 7072
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3900282380770522690",
+        "has_return": false,
+        "returned": "0",
+        "bps": 6375
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4840000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 7911
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "102808028450000000",
+        "has_return": true,
+        "returned": "140984868625370722",
+        "bps": 168
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 27
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "156011295230820764",
+        "has_return": false,
+        "returned": "0",
+        "bps": 255
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "no_processor",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 540,
+      "draws_fulfilled": 540,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 2,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 2,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 659,
+      "upkeeps_run": 546,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 391,
+      "upkeeps_while_draws_unsettled": 180,
+      "restocks_staged_while_unsettled": 174,
+      "restock_incomplete_after_full_pass": 41,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 320243400950000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 286693928400000000,
+      "keeper_profit_wei": 50150221000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 12053195550000000,
+      "restock_fees_listed_wei": 458005000000000000,
+      "selected_listing_restock_fees_won_wei": 419780000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 475485011644355485,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 6297601141708893833,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 86285437703018847,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 3001281141708893833,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 40583,
+      "keeper_refund_gas_kept_worst_call": 126540,
+      "keeper_refund_share_of_creator_net_bps": 40,
+      "fwa_queue_ready_max": 1,
+      "upkeeps_with_fwa_queue_ready": 174,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 423129587103018847,
+      "owner_proceeds_realized_wei": 11887125291108893833,
+      "creator_credit_error_wei": 0,
+      "draws_that_reserved_a_staged_restock": 174,
+      "unsettled_draws_at_day_end_max": 0,
+      "unsettled_draws_at_end": 0
+    },
+    "inflow_base": "18176461555664338454",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "6297601141708893833",
+        "bps": 3464
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "7890000000000000000",
+        "bps": 4340
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "336844149400000000",
+        "bps": 185
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "694980000000000000",
+        "bps": 382
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "659000000000000000",
+        "bps": 362
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 2
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 935
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "594356264555444621",
+        "bps": 326
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "594356264555444621",
+        "need": "594356264555444621",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "6297601141708893833",
+        "bps": 2750
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "13176461555664338454",
+        "has_return": true,
+        "returned": "0",
+        "bps": 7249
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "11887125291108893833",
+        "has_return": false,
+        "returned": "0",
+        "bps": 6539
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "9590000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 5276
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "320243400950000000",
+        "has_return": true,
+        "returned": "423129587103018847",
+        "bps": 176
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 9
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "475485011644355485",
+        "has_return": false,
+        "returned": "0",
+        "bps": 261
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "no_processor_5_gwei",
+    "source_hash": "",
+    "gas_price": 5000000000,
+    "base_fee": 4950000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 539,
+      "draws_fulfilled": 539,
+      "draws_expired": 0,
+      "draws_refused": 1,
+      "refused_setting_up": 0,
+      "refused_no_curated": 1,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 2,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 2,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 670,
+      "upkeeps_run": 545,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 394,
+      "upkeeps_while_draws_unsettled": 180,
+      "restocks_staged_while_unsettled": 172,
+      "restock_incomplete_after_full_pass": 50,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 87586551091595812,
+      "keeper_passes_with_reserve_short": 2,
+      "nfts_won": 3,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 2741590450000000000,
+      "keeper_paid_for_creator_work_wei": 142017130000000000,
+      "keeper_gas_cost_wei": 2621180970000000000,
+      "keeper_profit_wei": 262426610000000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 109784715000000000,
+      "restock_fees_listed_wei": 3149000000000000000,
+      "selected_listing_restock_fees_won_wei": 2890500000000000000,
+      "restock_fees_outstanding_wei": 258500000000000000,
+      "creator_credit_accrued_wei": 596202135229246456,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 6174995800731167007,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 87586551091595812,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 2,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 35544596554734971,
+      "creator_net_gain_wei": 2291445800731167007,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 40736,
+      "keeper_refund_gas_kept_worst_call": 121236,
+      "keeper_refund_share_of_creator_net_bps": 479,
+      "fwa_queue_ready_max": 1,
+      "upkeeps_with_fwa_queue_ready": 172,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 2848062983445265029,
+      "owner_proceeds_realized_wei": 14905053380731167007,
+      "creator_credit_error_wei": 0,
+      "draws_that_reserved_a_staged_restock": 172,
+      "unsettled_draws_at_day_end_max": 0,
+      "unsettled_draws_at_end": 0
+    },
+    "inflow_base": "26956606049767725025",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "6174995800731167007",
+        "bps": 2290
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "8460000000000000000",
+        "bps": 3138
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "2883607580000000000",
+        "bps": 1069
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "6306300000000000000",
+        "bps": 2339
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "670000000000000000",
+        "bps": 248
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "16450000000000000",
+        "bps": 6
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 630
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "745252669036558018",
+        "bps": 276
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "16450000000000000",
+        "need": "16450000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "745252669036558018",
+        "need": "745252669036558018",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "6174995800731167007",
+        "bps": 1854
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "21956606049767725025",
+        "has_return": true,
+        "returned": "0",
+        "bps": 8145
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "14905053380731167007",
+        "has_return": false,
+        "returned": "0",
+        "bps": 5529
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "10160000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3769
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "2741590450000000000",
+        "has_return": true,
+        "returned": "2848062983445265029",
+        "bps": 1017
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "142017130000000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 52
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "596202135229246456",
+        "has_return": false,
+        "returned": "0",
+        "bps": 221
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "normal_gas",
+    "source_hash": "",
+    "gas_price": 150000000,
+    "base_fee": 100000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 256,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 361,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 54,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 56019556053577385,
+      "keeper_passes_with_reserve_short": 27,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 32766995250000000,
+      "keeper_paid_for_creator_work_wei": 5327476850000000,
+      "keeper_gas_cost_wei": 27728301900000000,
+      "keeper_profit_wei": 10366170200000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 269490150000000,
+      "restock_fees_listed_wei": 85760000000000000,
+      "selected_listing_restock_fees_won_wei": 67335000000000000,
+      "restock_fees_outstanding_wei": 18425000000000000,
+      "creator_credit_accrued_wei": 154354558387036651,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4493209487575919870,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 56019556053577385,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 2,
+      "creator_keeper_net_gain_wei": 29876936845693765,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 1194769487575919870,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9981,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 2,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 67971408945693765,
+      "owner_proceeds_realized_wei": 3858863959675919870,
+      "creator_credit_error_wei": 0,
+      "player_price_to_backing_bps_max": 14717,
+      "player_price_to_backing_bps_min": 14660,
+      "base_fee_wei": 100000000
+    },
+    "inflow_base": "9114987157659715836",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4493209487575919870",
+        "bps": 4929
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2370000000000000000",
+        "bps": 2600
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "38094472100000000",
+        "bps": 41
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "63180000000000000",
+        "bps": 69
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "256000000000000000",
+        "bps": 280
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "1560000000000000",
+        "bps": 1
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1865
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "192943197983795966",
+        "bps": 211
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "1560000000000000",
+        "need": "1560000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "192943197983795966",
+        "need": "192943197983795966",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4493209487575919870",
+        "bps": 5485
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4114987157659715836",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4514
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3858863959675919870",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4233
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4070000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4465
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "32766995250000000",
+        "has_return": true,
+        "returned": "67971408945693765",
+        "bps": 35
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "5327476850000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 5
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "154354558387036651",
+        "has_return": false,
+        "returned": "0",
+        "bps": 169
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "policy_switch",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 19,
+      "draws_fulfilled": 19,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 75,
+      "upkeeps_run": 31,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 38,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 1619230068881787,
+      "keeper_passes_with_reserve_short": 1,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 3,
+      "keeper_paid_outside_creator_work_wei": 10272174460000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 24232193700000000,
+      "keeper_profit_wei": 2640729210000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 105275490000000,
+      "restock_fees_listed_wei": 52762000000000000,
+      "selected_listing_restock_fees_won_wei": 13998000000000000,
+      "restock_fees_outstanding_wei": 38764000000000000,
+      "creator_credit_accrued_wei": 16726154610382442,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3332600942349561329,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 1619230068881787,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 11887964911636500,
+      "creator_net_gain_wei": 36280942349561329,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 10420,
+      "keeper_refund_gas_kept_worst_call": 15334,
+      "keeper_refund_share_of_creator_net_bps": 29,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 14984957998363500,
+      "owner_proceeds_realized_wei": 418153865259561329,
+      "creator_credit_error_wei": 0,
+      "policy_switches": 1,
+      "policy_repriced_listings": 0,
+      "policy_transition_deposit_wei": 0,
+      "policy_transition_required_wei": 5080000000000000,
+      "policy_switch_outstanding_draws": 1
+    },
+    "inflow_base": "5463514558522539390",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3332600942349561329",
+        "bps": 6099
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "280000000000000000",
+        "bps": 512
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "26872922910000000",
+        "bps": 49
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "24453000000000000",
+        "bps": 44
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "75000000000000000",
+        "bps": 137
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 6
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 3111
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "20907693262978061",
+        "bps": 38
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "20907693262978061",
+        "need": "20907693262978061",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3332600942349561329",
+        "bps": 9151
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "463514558522539390",
+        "has_return": true,
+        "returned": "0",
+        "bps": 848
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "418153865259561329",
+        "has_return": false,
+        "returned": "0",
+        "bps": 765
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "1980000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3624
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "10272174460000000",
+        "has_return": true,
+        "returned": "14984957998363500",
+        "bps": 18
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 30
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "16726154610382442",
+        "has_return": false,
+        "returned": "0",
+        "bps": 30
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "quiet",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 258,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 361,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 126,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 123814416078282047,
+      "keeper_passes_with_reserve_short": 72,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 99472321700000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 101392447750000000,
+      "keeper_profit_wei": 14680622400000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 989161250000000,
+      "restock_fees_listed_wei": 179310000000000000,
+      "selected_listing_restock_fees_won_wei": 141085000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 157447999766323180,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 4068446924008082280,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 123814416078282047,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 9,
+      "creator_keeper_net_gain_wei": 24916177400155334,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 772126924008082280,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9991,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 12,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140989247550155334,
+      "owner_proceeds_realized_wei": 3936199994158082280,
+      "creator_credit_error_wei": 0
+    },
+    "inflow_base": "9364669993865986350",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4068446924008082280",
+        "bps": 4344
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2790000000000000000",
+        "bps": 2979
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "116073070150000000",
+        "bps": 123
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 247
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "258000000000000000",
+        "bps": 275
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1815
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "196809999707904070",
+        "bps": 210
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "196809999707904070",
+        "need": "196809999707904070",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "4068446924008082280",
+        "bps": 5339
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4364669993865986350",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4660
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3936199994158082280",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4203
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4490000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4794
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "99472321700000000",
+        "has_return": true,
+        "returned": "140989247550155334",
+        "bps": 106
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "157447999766323180",
+        "has_return": false,
+        "returned": "0",
+        "bps": 168
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "randomness_not_delivered",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 125,
+      "draws_fulfilled": 120,
+      "draws_expired": 5,
+      "draws_refused": 1,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 1,
+      "refused_low_inventory": 0,
+      "buy_reverts": 54,
+      "max_unsettled": 5,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 2,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 192,
+      "upkeeps_run": 135,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 254,
+      "upkeeps_while_draws_unsettled": 2,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 106,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 123814416078282047,
+      "keeper_passes_with_reserve_short": 70,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 67038668800000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 73274770800000000,
+      "keeper_profit_wei": 10364646450000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 662516250000000,
+      "restock_fees_listed_wei": 133440000000000000,
+      "selected_listing_restock_fees_won_wei": 95215000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 104761896865629988,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3749728004390751390,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 123814416078282047,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 1683515192,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 7,
+      "creator_keeper_net_gain_wei": 10363992018227219,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 453408004390751390,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9636,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 14,
+      "fwa_queue_ready_max": 5,
+      "upkeeps_with_fwa_queue_ready": 3,
+      "upkeeps_with_fwa_queue_ready_over_2": 2,
+      "restock_fee_receipts_wei": 94003409268227219,
+      "owner_proceeds_realized_wei": 2619047421640751390,
+      "creator_credit_error_wei": 0,
+      "selection_timeout_blocks": 30,
+      "draws_bought_in_outage": 5,
+      "player_paid_in_outage_wei": 121933972132646135,
+      "player_refund_credit_wei": 115498972132646135,
+      "player_not_refunded_wei": 6435000000000000,
+      "admission_status_when_refused_in_outage": 4,
+      "buy_reverts_in_outage": 54,
+      "vrf_outstanding_after_expiry": 5,
+      "vrf_outstanding_after_resume": 0,
+      "late_words_rejected": 0
+    },
+    "inflow_base": "8026373764855435059",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3749728004390751390",
+        "bps": 4671
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1890000000000000000",
+        "bps": 2354
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "83639417250000000",
+        "bps": 104
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "160875000000000000",
+        "bps": 200
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "192000000000000000",
+        "bps": 239
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "115498972132646135",
+        "bps": 143
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 4
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 2118
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "130952371082037534",
+        "bps": 163
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "130952371082037534",
+        "need": "130952371082037534",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3749728004390751390",
+        "bps": 6229
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "3026373764855435059",
+        "has_return": true,
+        "returned": "115498972132646135",
+        "bps": 3770
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "2619047421640751390",
+        "has_return": false,
+        "returned": "0",
+        "bps": 3263
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "3590000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4472
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "67038668800000000",
+        "has_return": true,
+        "returned": "94003409268227219",
+        "bps": 83
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 20
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "104761896865629988",
+        "has_return": false,
+        "returned": "0",
+        "bps": 130
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "restock_in_flight",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 5,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 256,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 397,
+      "upkeeps_while_draws_unsettled": 144,
+      "restocks_staged_while_unsettled": 134,
+      "restock_incomplete_after_full_pass": 137,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 153560177202141495,
+      "keeper_passes_with_reserve_short": 14,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 96884992150000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 98078093850000000,
+      "keeper_profit_wei": 15407646750000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 1784376000000000,
+      "restock_fees_listed_wei": 177920000000000000,
+      "selected_listing_restock_fees_won_wei": 139695000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 157439851990425870,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3982830559160649435,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 153560177202141495,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 9,
+      "creator_keeper_net_gain_wei": 27508497956144645,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 686510559160649435,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 18023,
+      "keeper_refund_gas_kept_worst_call": 125134,
+      "keeper_refund_share_of_creator_net_bps": 25,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140994238556144645,
+      "owner_proceeds_realized_wei": 3935996299760649435,
+      "creator_credit_error_wei": 0,
+      "credit_collections_checked": 180,
+      "credit_collections_zero_booked": 0,
+      "credit_expected_wei": 157439851990425870,
+      "credit_booked_wei": 157439851990425870,
+      "credit_overbooked_wei": 0,
+      "credit_underbooked_wei": 0,
+      "owner_proceeds_vs_board_price_mismatch_wei": 0,
+      "max_draws_unsettled_at_a_staged_restock": 4,
+      "restocks_staged_while_unsettled_checked": 134
+    },
+    "inflow_base": "9364456114748681885",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3982830559160649435",
+        "bps": 4253
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "2880000000000000000",
+        "bps": 3075
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "113485740600000000",
+        "bps": 121
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 247
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "256000000000000000",
+        "bps": 273
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1815
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "196799814988032450",
+        "bps": 210
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "196799814988032450",
+        "need": "196799814988032450",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3982830559160649435",
+        "bps": 5339
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4364456114748681885",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4660
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3935996299760649435",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4203
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4580000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4890
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "96884992150000000",
+        "has_return": true,
+        "returned": "140994238556144645",
+        "bps": 103
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "157439851990425870",
+        "has_return": false,
+        "returned": "0",
+        "bps": 168
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "smallest_board",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 1,
+      "shape_units_listed": 171,
+      "upkeeps_run": 181,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 371,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 10,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 92852181800000000,
+      "keeper_paid_for_creator_work_wei": 526611050000000,
+      "keeper_gas_cost_wei": 80702248000000000,
+      "keeper_profit_wei": 12676544850000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 870687400000000,
+      "restock_fees_listed_wei": 118845000000000000,
+      "selected_listing_restock_fees_won_wei": 118150000000000000,
+      "restock_fees_outstanding_wei": 695000000000000,
+      "creator_credit_accrued_wei": 190861598076518880,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 1000000000000000000,
+      "creator_claimed_wei": 3793481159062976320,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 23430656483551100,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 807161159062976320,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 8794,
+      "keeper_refund_gas_kept_worst_call": 9734,
+      "keeper_refund_share_of_creator_net_bps": 10,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 116809449333551100,
+      "owner_proceeds_realized_wei": 4771539951912976320,
+      "creator_credit_error_wei": 0,
+      "board_shape_units": 1,
+      "pending_draws_admitted_by_board": 0
+    },
+    "inflow_base": "6241776949508625100",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3793481159062976320",
+        "bps": 6077
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1700000000000000000",
+        "bps": 2723
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "93378792850000000",
+        "bps": 149
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 371
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "171000000000000000",
+        "bps": 273
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 5
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "10000000000000000",
+        "bps": 16
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "238576997595648780",
+        "bps": 382
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "10000000000000000",
+        "need": "10000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "238576997595648780",
+        "need": "238576997595648780",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "1000000000000000000",
+        "has_return": true,
+        "returned": "3793481159062976320",
+        "bps": 1602
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "5241776949508625100",
+        "has_return": true,
+        "returned": "0",
+        "bps": 8397
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "4771539951912976320",
+        "has_return": false,
+        "returned": "0",
+        "bps": 7644
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "1710000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 2739
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "92852181800000000",
+        "has_return": true,
+        "returned": "116809449333551100",
+        "bps": 148
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "526611050000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "190861598076518880",
+        "has_return": false,
+        "returned": "0",
+        "bps": 305
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "top_heavy",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 180,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 4,
+      "shape_units_listed": 170,
+      "upkeeps_run": 181,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 375,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 14,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 91255702550000000,
+      "keeper_paid_for_creator_work_wei": 1162654100000000,
+      "keeper_gas_cost_wei": 79834906800000000,
+      "keeper_profit_wei": 12583449850000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 852088050000000,
+      "restock_fees_listed_wei": 118150000000000000,
+      "selected_listing_restock_fees_won_wei": 115370000000000000,
+      "restock_fees_outstanding_wei": 2780000000000000,
+      "creator_credit_accrued_wei": 286171041167950320,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 100000000000000000000,
+      "creator_claimed_wei": 80218177672548759800,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 619095850,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 24500663757873680,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 2431857672548759800,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 8606,
+      "keeper_refund_gas_kept_worst_call": 10431,
+      "keeper_refund_share_of_creator_net_bps": 3,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 116919020407873680,
+      "owner_proceeds_realized_wei": 7154276029198759800,
+      "creator_credit_error_wei": 0,
+      "pending_draws_admitted_by_board": 0,
+      "second_buyer_arrivals_while_pending": 180,
+      "second_buyer_refused_while_pending": 180,
+      "second_buyer_sold_while_pending": 0,
+      "pause_worst_case_blocks_before_processing": 31
+    },
+    "inflow_base": "107743649830658697700",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "80218177672548759800",
+        "bps": 7445
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "1660000000000000000",
+        "bps": 154
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "92418356650000000",
+        "bps": 8
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 21
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "170000000000000000",
+        "bps": 15
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 0
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "25010000000000000000",
+        "bps": 2321
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "357713801459937900",
+        "bps": 33
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "25010000000000000000",
+        "need": "25010000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "357713801459937900",
+        "need": "357713801459937900",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "100000000000000000000",
+        "has_return": true,
+        "returned": "80218177672548759800",
+        "bps": 9281
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "7743649830658697700",
+        "has_return": true,
+        "returned": "0",
+        "bps": 718
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "7154276029198759800",
+        "has_return": false,
+        "returned": "0",
+        "bps": 664
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "26670000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 2475
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "91255702550000000",
+        "has_return": true,
+        "returned": "116919020407873680",
+        "bps": 8
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "1162654100000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "286171041167950320",
+        "has_return": false,
+        "returned": "0",
+        "bps": 26
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "whatif_large_win_drop_top",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 264,
+      "upkeeps_run": 192,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 364,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 146,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 480771444902887563,
+      "keeper_passes_with_reserve_short": 80,
+      "nfts_won": 2,
+      "top_prizes_won": 1,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 100411988350000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 102235709400000000,
+      "keeper_profit_wei": 14777027400000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 997893050000000,
+      "restock_fees_listed_wei": 183480000000000000,
+      "selected_listing_restock_fees_won_wei": 146645000000000000,
+      "restock_fees_outstanding_wei": 36835000000000000,
+      "creator_credit_accrued_wei": 155153160626326169,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3998545389607265416,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 480771444902887563,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 11,
+      "creator_keeper_net_gain_wei": 23982388581699464,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 0,
+      "creator_net_loss_wei": 202183721141842544,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 10079,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 0,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140995125381699464,
+      "owner_proceeds_realized_wei": 3878829015658157456,
+      "creator_credit_error_wei": 0,
+      "forced_top_prize_draw_a": 60,
+      "forced_top_prize_draw_b": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "days_top_prize_missing_from_design": 0,
+      "creator_topped_up_wei": 0,
+      "creator_position_at_end_wei": 5197816278858157456,
+      "top_prizes_listed_at_end": 0,
+      "claimed_right_after_setup_wei": 3224719251550000000,
+      "creator_credit_claimed_wei": 155153160626326169,
+      "end_backing_listed_wei": 1100000000000000000,
+      "end_held_in_balancer_wei": 99270889250892040,
+      "end_required_reserve_wei": 105420000000000000,
+      "end_withdrawable_now_wei": 0
+    },
+    "inflow_base": "9304430466441065264",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3998545389607265416",
+        "bps": 4297
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "3300000000000000000",
+        "bps": 3546
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "117012736800000000",
+        "bps": 125
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 248
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "264000000000000000",
+        "bps": 283
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "99270889250892040",
+        "bps": 106
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1100000000000000000",
+        "bps": 1182
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "193941450782907808",
+        "bps": 208
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "99270889250892040",
+        "need": "105420000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1100000000000000000",
+        "need": "1100000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "193941450782907808",
+        "need": "193941450782907808",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3998545389607265416",
+        "bps": 5373
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4304430466441065264",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4626
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3878829015658157456",
+        "has_return": false,
+        "returned": "0",
+        "bps": 4168
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "4400000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4728
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "100411988350000000",
+        "has_return": true,
+        "returned": "140995125381699464",
+        "bps": 107
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 17
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "155153160626326169",
+        "has_return": false,
+        "returned": "0",
+        "bps": 166
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "whatif_large_win_top_up",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 180,
+      "draws_fulfilled": 180,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 1,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 1,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 260,
+      "upkeeps_run": 193,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 362,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 136,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 480771444902887563,
+      "keeper_passes_with_reserve_short": 78,
+      "nfts_won": 0,
+      "top_prizes_won": 1,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 99884778950000000,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 101781991300000000,
+      "keeper_profit_wei": 14703536100000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 988714650000000,
+      "restock_fees_listed_wei": 180700000000000000,
+      "selected_listing_restock_fees_won_wei": 142475000000000000,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 157399451783127076,
+      "creator_credit_share_of_proceeds_bps": 399,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5480771444902887563,
+      "creator_claimed_wei": 4035592212081067167,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 480771444902887563,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 10,
+      "creator_keeper_net_gain_wei": 24506256212780354,
+      "creator_keeper_net_loss_wei": 0,
+      "creator_net_gain_wei": 258500767178179604,
+      "creator_net_loss_wei": 0,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 9987,
+      "keeper_refund_gas_kept_worst_call": 40034,
+      "keeper_refund_share_of_creator_net_bps": 38,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 140991783612780354,
+      "owner_proceeds_realized_wei": 3934986294578179604,
+      "creator_credit_error_wei": 0,
+      "forced_top_prize_draw_a": 60,
+      "forced_top_prize_draw_b": 115792089237316195423570985008687907853269984665640564039457584007913129639935,
+      "days_top_prize_missing_from_design": 0,
+      "creator_topped_up_wei": 480771444902887563,
+      "creator_position_at_end_wei": 5739272212081067167,
+      "top_prizes_listed_at_end": 1,
+      "claimed_right_after_setup_wei": 3224719251550000000,
+      "creator_credit_claimed_wei": 157399451783127076,
+      "end_backing_listed_wei": 1700000000000000000,
+      "end_held_in_balancer_wei": 3680000000000000,
+      "end_required_reserve_wei": 3680000000000000,
+      "end_withdrawable_now_wei": 0
+    },
+    "inflow_base": "9844167054209976101",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "4035592212081067167",
+        "bps": 4099
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "3300000000000000000",
+        "bps": 3352
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "116485527400000000",
+        "bps": 118
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "231660000000000000",
+        "bps": 235
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "260000000000000000",
+        "bps": 264
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 3
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 1726
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "196749314728908934",
+        "bps": 199
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "196749314728908934",
+        "need": "196749314728908934",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5480771444902887563",
+        "has_return": true,
+        "returned": "4035592212081067167",
+        "bps": 5567
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "4363395609307088538",
+        "has_return": true,
+        "returned": "0",
+        "bps": 4432
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "3934986294578179604",
+        "has_return": false,
+        "returned": "0",
+        "bps": 3997
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 5079
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "99884778950000000",
+        "has_return": true,
+        "returned": "140991783612780354",
+        "bps": 101
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 16
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "157399451783127076",
+        "has_return": false,
+        "returned": "0",
+        "bps": 159
+      }
+    ],
+    "mismatches": []
+  },
+  {
+    "regime": "zero_demand",
+    "source_hash": "",
+    "gas_price": 550000000,
+    "base_fee": 500000000,
+    "fork_block": 26382349,
+    "reached": {
+      "draws_requested": 0,
+      "draws_fulfilled": 0,
+      "draws_expired": 0,
+      "draws_refused": 0,
+      "refused_setting_up": 0,
+      "refused_no_curated": 0,
+      "refused_busy": 0,
+      "refused_low_inventory": 0,
+      "buy_reverts": 0,
+      "max_unsettled": 0,
+      "busy_status_seen": 0,
+      "max_reconciled_in_one_upkeep": 0,
+      "max_shape_units_in_one_upkeep": 5,
+      "shape_units_listed": 55,
+      "upkeeps_run": 12,
+      "upkeeps_skipped_unprofitable": 0,
+      "upkeeps_with_nothing_to_do": 31,
+      "upkeeps_while_draws_unsettled": 0,
+      "restocks_staged_while_unsettled": 0,
+      "restock_incomplete_after_full_pass": 0,
+      "low_inventory_after_full_upkeep": 0,
+      "max_reserve_shortfall_wei": 0,
+      "keeper_passes_with_reserve_short": 0,
+      "nfts_won": 0,
+      "top_prizes_won": 0,
+      "top_prize_not_listed_when_forced": 0,
+      "days_run": 30,
+      "keeper_paid_outside_creator_work_wei": 0,
+      "keeper_paid_for_creator_work_wei": 16600748450000000,
+      "keeper_gas_cost_wei": 15279278850000000,
+      "keeper_profit_wei": 1321469600000000,
+      "keeper_loss_wei": 0,
+      "keeper_paid_beyond_gas_and_reward_wei": 7277050000000,
+      "restock_fees_listed_wei": 38225000000000000,
+      "selected_listing_restock_fees_won_wei": 0,
+      "restock_fees_outstanding_wei": 38225000000000000,
+      "creator_credit_accrued_wei": 0,
+      "creator_credit_share_of_proceeds_bps": 0,
+      "creator_revenue_bps": 400,
+      "creator_deposited_wei": 5000000000000000000,
+      "creator_claimed_wei": 3224719251550000000,
+      "admission_status_at_end": 0,
+      "unknown_wins": 0,
+      "upkeep_reverts": 0,
+      "max_reserve_shortfall_all_reconciled_wei": 0,
+      "refused_low_inventory_within_gas_cap": 0,
+      "first_buy_revert_selector": 0,
+      "unreconciled_draws_at_end": 0,
+      "unpaid_upkeeps_needed_at_end": 0,
+      "max_unpaid_upkeep_cost_wei": 0,
+      "admission_status_after_unpaid_upkeep": 0,
+      "days_ending_with_a_prize_missing": 0,
+      "creator_keeper_net_gain_wei": 0,
+      "creator_keeper_net_loss_wei": 16600748450000000,
+      "creator_net_gain_wei": 0,
+      "creator_net_loss_wei": 71600748450000000,
+      "creator_keeper_play_net_loss_wei": 0,
+      "keeper_refund_gas_kept_per_draw": 0,
+      "keeper_refund_gas_kept_worst_call": 13231,
+      "keeper_refund_share_of_creator_net_bps": 0,
+      "fwa_queue_ready_max": 0,
+      "upkeeps_with_fwa_queue_ready": 0,
+      "upkeeps_with_fwa_queue_ready_over_2": 0,
+      "restock_fee_receipts_wei": 0,
+      "owner_proceeds_realized_wei": 0,
+      "creator_credit_error_wei": 0,
+      "idle_days": 30
+    },
+    "inflow_base": "5000000000000000000",
+    "destinations": [
+      {
+        "name": "claimed by the creator",
+        "wei": "3224719251550000000",
+        "bps": 6449
+      },
+      {
+        "name": "prize backing delivered to winners (Shapes and Packs)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "paid to keepers",
+        "wei": "16600748450000000",
+        "bps": 33
+      },
+      {
+        "name": "randomness fees paid to FWA's service",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shapes mint fees",
+        "wei": "55000000000000000",
+        "bps": 110
+      },
+      {
+        "name": "refunds withdrawn by players",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator credit (unclaimed) (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in creator reserve (change)",
+        "wei": "3680000000000000",
+        "bps": 7
+      },
+      {
+        "name": "held in fund above the reserve (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in Shape and Pack backing listed on FWA (change)",
+        "wei": "1700000000000000000",
+        "bps": 3400
+      },
+      {
+        "name": "held in held by FWA: owner proceeds not yet collected (change)",
+        "wei": "0",
+        "bps": 0
+      },
+      {
+        "name": "held in held by FWA: pending draws, player refund credit and FWA's edge (change)",
+        "wei": "0",
+        "bps": 0
+      }
+    ],
+    "buckets": [
+      {
+        "name": "creator credit (unclaimed)",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "creator reserve",
+        "held": "3680000000000000",
+        "need": "3680000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "fund above the reserve",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "Shape and Pack backing listed on FWA",
+        "held": "1700000000000000000",
+        "need": "1700000000000000000",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: owner proceeds not yet collected",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      },
+      {
+        "name": "held by FWA: pending draws, player refund credit and FWA's edge",
+        "held": "0",
+        "need": "0",
+        "above_need": "0",
+        "bps": 0
+      }
+    ],
+    "flows": [
+      {
+        "name": "creator -> Balancer: deposits | claimed back",
+        "wei": "5000000000000000000",
+        "has_return": true,
+        "returned": "3224719251550000000",
+        "bps": 10000
+      },
+      {
+        "name": "players -> FWA: draw payments | refunds withdrawn",
+        "wei": "0",
+        "has_return": true,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "FWA -> Balancer: owner proceeds collected",
+        "wei": "0",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "Balancer -> Shapes and Packs: prize backing | redeemed",
+        "wei": "1700000000000000000",
+        "has_return": true,
+        "returned": "0",
+        "bps": 3400
+      },
+      {
+        "name": "Balancer -> keepers: reconcile and restock | request-board surcharge received",
+        "wei": "0",
+        "has_return": true,
+        "returned": "0",
+        "bps": 0
+      },
+      {
+        "name": "Balancer -> keepers: creator-started work (creator's ETH)",
+        "wei": "16600748450000000",
+        "has_return": false,
+        "returned": "0",
+        "bps": 33
+      },
+      {
+        "name": "proceeds -> creator credit: stored collection percentage",
+        "wei": "0",
+        "has_return": false,
+        "returned": "0",
+        "bps": 0
+      }
+    ],
+    "mismatches": []
+  }
+]

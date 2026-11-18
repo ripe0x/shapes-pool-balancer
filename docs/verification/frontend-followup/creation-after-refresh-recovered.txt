@@ -1,0 +1,79 @@
+Browser tab: 5, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5207/".
+1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/
+	2 container root
+		3 container
+			4 link Description: FWA Pool Balancer, Value: 127.0.0.1:5207/
+			5 container Main
+				15 button Your pools
+				6 button How it works
+			16 button 0x7099…79C8
+		17 button Your pools
+		18 text  /
+		19 heading Pool 0x26f7…028d, Value: 1
+			20 text Pool 0x26f7…028d
+		21 text 0x26f754B66cAD7F30b891f606E997be637d13028d
+		22 button Copy address
+		23 link Description: Pool on FWA ↗, Value: pools.fwa.fun/pools/0x24167a7920760db093DD1576bccC5261aE49D4ED
+		24 container Sections
+			25 button Overview
+			26 button NFTs
+			27 button Prices & mix
+			28 button Settings
+		29 container
+			30 text Stocking. Purchases open once every target prize is listed.
+			31 button Run unpaid maintenance
+		32 container
+			33 text Draw price
+			34 container
+				35 text 0.05250 ETH PER DRAW
+			36 heading In the pool now, Value: 2
+				37 text In the pool now
+			38 button Change prices or mix
+			39 content list Pool inventory
+				40 container Demo Curated #2026111803: every draw draws, worth 0.050 ETH
+			41 text 1  of your NFTs ·  every draw  draws for any of them
+			42 text Each square is selectable on FWA. Hover or tap a square for its chance and value.
+			43 text Selectable prizes 1 Staged prizes 0
+			44 text Several draws before restocking can trigger price-drift refunds. Randomness fees are not refunded.
+			45 container
+				46 text 19  of  19  target Shape prizes are not selectable. Replenishment uses available operating ETH. Draw price and odds follow the current inventory.
+			47 heading Your ETH, Value: 2
+				48 text Your ETH
+			49 text Selectable prize backing 0.000000  ETH Operating ETH 0.536109  ETH Accrued creator earnings 0.000000  ETH Creator revenue share 0 %
+			50 button (disabled) Claim 0.000000 ETH earnings
+				51 text Claim  0.000000  ETH earnings
+			52 text Required operating reserve 0.536108  ETH Available to withdraw 0.000001  ETH ETH and listed backing 0.536109  ETH Expected fees in unsold prizes 0.000000  ETH
+			53 text Unsold fees are future income, not operating ETH. Gas changes and adverse wins can require more capital.
+			54 button Add ETH
+			55 heading Revenue and overall results, Value: 2
+				56 text Revenue and overall results
+			57 text Overall ETH result
+			58 container
+				59 text + 0.00000 ETH
+			60 container
+				61 text You put in  0.536  ETH and took out  0.000  ETH;  0.536  ETH is yours in the pool.
+			62 text Draw sales + 0.00000  ETH Prizes won by players − 0.00000  ETH Shapes mint fees − 0.00000  ETH Keeper pay − 0.00000  ETH
+			63 text Available to withdraw
+			64 text Excess operating capital.
+			65 container
+				66 text 0.00000 ETH
+			67 button Withdraw
+			68 heading Estimate, Value: 3
+				69 text Estimate
+			70 text Per draw, on average
+			71 container
+				72 text 0 ETH
+			73 text Revenue retained per draw
+			74 container
+				75 text +0.05000 ETH
+			76 text Every 30 days
+			77 container
+				78 text +0.00000 ETH
+			79 container
+				80 text Revenue allocation at the stored  0 % share. This estimate assumes purchases continue. It does not measure overall realized profit. Assumes  40  draws a day. 
+				81 button Change
+			82 button How this is worked out ▾
+				83 text How this is worked out 
+				84 text ▾
+
+The focused UI element is 1 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/

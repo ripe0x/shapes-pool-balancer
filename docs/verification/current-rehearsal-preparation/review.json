@@ -1,0 +1,33 @@
+{
+  "controllerSha256": "1fcb9b44188ae26e09c8cb3fe8f707c347ac6aa1d9ea429505761920c8614ddb",
+  "gateTestSha256": "99acc7088091e99bb6499818fa9d33b7692ce324636a55177161fcbac0382875",
+  "keeperDriverSha256": "44da2916251d4b82771fdaec5d8c508cfbbdc050e141bd1f4a942122793c02f8",
+  "independentGateReview": "frontend",
+  "leadLifecycleReview": "root",
+  "resolvedFindings": [
+    "pre-activation edge estimate replaced by receipt-block request pricing and actual fee/debit events",
+    "negative probe now shares 20 gwei budget guard before broadcasting"
+  ],
+  "validation": "31 current and legacy gate tests pass; affected solc-binding case passes; final typecheck passes",
+  "limitations": [
+    "Controlled Keeper ticks do not test CLI timing.",
+    "Controlled real coordinator callbacks do not test live randomness.",
+    "No new forced hostile-NFT delivery or trusted-Shape delivery-failure branch."
+  ],
+  "stagingRepair": {
+    "controllerSha256": "f15a0d03cac8a28911a4a9849c9e4c4c8c964a18f1d576472add4fc6e0743386",
+    "testSha256": "2c589a93196f56e67cc15b077d562eae64f805853721a72f2aec5d8061ba80a2",
+    "independentReviewer": "frontend",
+    "findings": [],
+    "boundDependencyPathsCovered": 58,
+    "validation": "32 focused current and legacy gate tests pass; final staging typecheck passes",
+    "limits": "Preparation02 must still establish exact artifact identity; no source/artifact waiver."
+  },
+  "delegatedForgeBinding": {
+    "controllerSha256": "c1b543d854dfe21271f08940c9d48db545b18f0e0b428d5c85dcec5c29a54266",
+    "testSha256": "0657b34274e8a169b4ed9c0f697e21ef23ddfccdd24f4d9a93dae9dd21e22c83",
+    "reviewer": "root",
+    "findingResolved": "Actual Forge executable behind the unchanged mandatory guard is now hashed in addition to the guard; invocations still use the guard.",
+    "validation": "Affected source-binding case and typecheck pass; no broadcasts."
+  }
+}

@@ -21,7 +21,7 @@ contract D16cStarveAboveTest is D16bWorstUpkeepTest {
             uint256 u = pool.unsettledAcquisitionCount();
             bytes32 uh1 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32)", uh1));
+            (bool ok,) = address(balancer).call{gas: G}(abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0));
             (, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
             (, uint64 used,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
             bool processed = pool.unsettledAcquisitionCount() < u;

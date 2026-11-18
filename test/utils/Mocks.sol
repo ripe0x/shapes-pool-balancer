@@ -36,7 +36,7 @@ contract FreezableNFT is MockNFT {
 }
 
 interface IReenterTarget {
-    function performUpkeep(bytes32) external;
+    function performUpkeep(bytes32, uint256, uint256) external;
     function settingsHash() external view returns (bytes32);
     function claimSurplus(uint256, address) external;
 }
@@ -45,6 +45,8 @@ interface IReenterTarget {
 contract ReentrantNFT is MockNFT {
     address public target;
     bool public reentered;
+    uint256 public attempts;
+    uint256 public initializationAttempts;
 
     function setTarget(address t) external {
         target = t;
@@ -52,8 +54,14 @@ contract ReentrantNFT is MockNFT {
 
     function _beforeTokenTransfer(address from, address, uint256) internal override {
         if (target != address(0) && from != address(0)) {
-            (bool ok,) = target.call(abi.encodeCall(IReenterTarget.performUpkeep, (IReenterTarget(target).settingsHash())));
-            reentered = ok;
+            (bool ok,) = target.call(abi.encodeCall(IReenterTarget.performUpkeep, (IReenterTarget(target).settingsHash(), 0, 0)));
+            ++attempts;
+            if (ok) reentered = true;
+            PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(1500, 1000, 1, 0.001 ether);
+            (ok,) = target.call(abi.encodeCall(PoolBalancer.initialize,
+                (address(this), config, new PoolBalancer.CuratedInput[](0))));
+            ++initializationAttempts;
+            if (ok) reentered = true;
         }
     }
 }
@@ -68,7 +76,7 @@ contract LyingNFT is MockNFT {
 /// @dev Keeper contract that rejects ETH, to exercise the forced reward transfer.
 contract RejectingKeeper {
     function upkeep(address b) external {
-        IReenterTarget(b).performUpkeep(IReenterTarget(b).settingsHash());
+        IReenterTarget(b).performUpkeep(IReenterTarget(b).settingsHash(), 0, 0);
     }
 
     receive() external payable {

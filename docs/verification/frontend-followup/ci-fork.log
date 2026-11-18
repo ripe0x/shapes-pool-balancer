@@ -1,0 +1,15 @@
+No files changed, compilation skipped
+
+Ran 9 tests for test/Fork.t.sol:ForkScenarioTest
+[PASS] test_canPurchaseFitsStipend() (gas: 5292313)
+[PASS] test_curatedDrawDeliversAndPoolStaysOpen() (gas: 6940212)
+[PASS] test_initialUpkeepBuildsInventory() (gas: 5531950)
+[PASS] test_lastCuratedDrawnClosesPool() (gas: 8004717)
+[PASS] test_overlappingPurchasesBusyAtFive() (gas: 23470398)
+[PASS] test_ownershipAndOperator() (gas: 41245)
+[PASS] test_singleShapeDrawReplenishes() (gas: 8307255)
+[PASS] test_tokenPurchasesImpossible() (gas: 5406411)
+[PASS] test_unlistAndRetire() (gas: 7232471)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 866.90ms (80.13ms CPU time)
+
+Ran 1 test suite in 1.19s (866.90ms CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

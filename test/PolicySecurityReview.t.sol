@@ -41,7 +41,7 @@ contract AlternativeSurchargePolicy is IKeeperPolicy {
 
 contract ReviewReceiver {
     uint256 public callbacks;
-    function run(PoolBalancer b, uint256 min) external returns (uint256) { return b.performUpkeep(b.settingsHash(), min); }
+    function run(PoolBalancer b, uint256 min) external returns (uint256) { return b.performUpkeep(b.settingsHash(), min, 0); }
     receive() external payable { ++callbacks; }
 }
 
@@ -101,7 +101,7 @@ contract PolicySecurityReviewTest is ForkBase {
         bytes32 hash = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
-        vm.prank(keeper, keeper); uint256 paid = balancer.performUpkeep(hash, 1);
+        vm.prank(keeper, keeper); uint256 paid = balancer.performUpkeep(hash, 1, 0);
         Vm.Log[] memory logs=vm.getRecordedLogs();
         uint256 measured;
         for(uint256 i;i<logs.length;++i)if(logs[i].emitter==address(balancer)&&logs[i].topics[0]==keccak256("KeeperPaid(address,uint256,uint256)"))
@@ -117,7 +117,7 @@ contract PolicySecurityReviewTest is ForkBase {
         assertEq(IReviewRefunds(address(pool)).acquisitionRefundCredit(buyer), playerFee, "entire real player refund stays theirs");
         assertEq(address(pool).balance - fwaHeld, playerFee, "keeper payout took none of the FWA refund backing");
         assertEq(pool.ownerProceeds(), 0, "expiry creates no creator proceeds");
-        vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(hash, 0);
+        vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(hash, 0, 0);
     }
 
     function test_policyThatAlsoOwnsPoolCannotUseStaticCallbackAuthority() public {
@@ -129,7 +129,7 @@ contract PolicySecurityReviewTest is ForkBase {
         _expire();
         bytes32 hash = balancer.settingsHash();
         uint256 held = address(balancer).balance;
-        vm.prank(keeper); assertEq(balancer.performUpkeep(hash, 0.0001 ether), 0.0001 ether);
+        vm.prank(keeper); assertEq(balancer.performUpkeep(hash, 0.0001 ether, 0), 0.0001 ether);
         assertEq(balancer.creator(), address(policy));
         assertEq(balancer.pendingCreator(), address(0));
         assertTrue(balancer.paidUpkeepEnabled());

@@ -1,0 +1,22 @@
+{
+  "scope": "Completed run output files; frozen source/build/artifact/action inputs are in bounded-plan.json",
+  "sha256": {
+    "anvil.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bounded-plan.json": "0a318f9b96b1a78b2a112256a07b63dba0511bc2933d72305f0f2fb6bb7c66c9",
+    "canonical-deployment.log": "16ea754a4fadeb1f57c9f0c2f6031c79a2c8da7e39ee25100935f9d52e9b5c4c",
+    "coordinator-readback.json": "21162317e87991ccbb41e641afdb6b3683851d5947fb7aca2a2216ce408b6ad1",
+    "creation-recovery-probes.json": "0f2dbc04c95b358203268c6cd195393376c0c2f68f738796e59916a350b1611b",
+    "deployment-actions.json": "77667c8ee8e839e4acb5757ee482d2a6547756307a03cc56a0df6b4b847f3874",
+    "deployment-simulation.log": "6c6ca2e288faf591db701b44c05f3f91d6fa1908ed716ee6d35cee88ee6b1795",
+    "execution-command.log": "a39f271f67cdcc8a721ba2daf45f5f8d38dcd66a79815004069082389f608b49",
+    "final-report-review.json": "050ac43a80716a5dea4c764bb826cf1cdbbb51072832f8b125cebfcffe4603fd",
+    "final-verification.json": "437e833a2fd393c597bbdd3b51c97b53754cfba377e5b60393a04466dd5bd6ad",
+    "journal.json": "2b933290ce799742b6e53270ebb37508792a12690a19f6d0759340867424bf64",
+    "keeper-health.json": "5e6298012360b9c9a72571dbf4d2dc37722ba7a67df52a97da20153fd54229f6",
+    "keeper-state.json": "d07c1acd60fb2d5d673878adf35383bdc0c7d406146e7765bbe83a5d2ebdfb38",
+    "packet-review.json": "d4f79a2efaba7ae1701d2f911fcd381d16002b3e3e47822765f301edb3fbc881",
+    "postflight.mjs": "0562bb64fc6cb9b174383e6912d6ec70b20c92d7c8349d08a7b6ffe9309813f4",
+    "preflight.json": "4bebaec4c3a7ae82d6c1c0b5bdd07907e69491f614aef00d232a9374dcb3b404",
+    "preparation-command.log": "800dccc7c3df5107a632d980d4e1404ee6a2e7e2bcc1776f0841a35ca14308f0"
+  }
+}

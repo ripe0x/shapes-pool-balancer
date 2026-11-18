@@ -1,0 +1,102 @@
+Compiling 3 files with Solc 0.8.28
+Solc 0.8.28 finished in 13.08s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 29 tests for test/Balancer.t.sol:BalancerTest
+[PASS] test_basefeeSpikeCappedAtMaxGasPrice() (gas: 939875)
+[PASS] test_blockedRefundRecoveryDoesNotBrickUpkeep() (gas: 7101340)
+[PASS] test_claimDuringUnsettledDraw() (gas: 1899993)
+[PASS] test_claimSurplusRespectsReserveWhileOpen() (gas: 3231026)
+[PASS] test_claimToRejectingRecipientReverts() (gas: 363868)
+[PASS] test_configureRejectsBadTargets() (gas: 253906)
+[PASS] test_creatorTransferTwoStep() (gas: 275582)
+[PASS] test_curatedBatchRepriceWithdraw() (gas: 1873694)
+[PASS] test_curatedOpsAndUnsettledDraws() (gas: 2752053)
+[PASS] test_ensReverseAndForward() (gas: 416163)
+[PASS] test_factory_isolatedBalancersAndPools() (gas: 5827397)
+[PASS] test_failedCuratedDeliveryRefundAndRecovery() (gas: 3569066)
+[PASS] test_gasGriefingCollectionCannotTaxUpkeep() (gas: 5819026)
+[PASS] test_gateRefusesUnrefundablePurchasers() (gas: 357485)
+[PASS] test_lowInventoryGate() (gas: 5201851)
+[PASS] test_manyCuratedListingsUnderStipend() (gas: 48930847)
+Logs:
+  canPurchase gas with 120+ listings: 55702
+
+[PASS] test_markupAppliesAtListingOnly() (gas: 2806279)
+[PASS] test_noRewardForUnnecessaryWork() (gas: 2893649)
+[PASS] test_onlyCreator() (gas: 833770)
+[PASS] test_priorityOverbidIsNotReimbursed() (gas: 7256594)
+[PASS] test_realMintFeeChange() (gas: 3233310)
+[PASS] test_reentrantCollectionCannotReenter() (gas: 3239837)
+[PASS] test_refundOnlyBatchIsPaid() (gas: 920240)
+[PASS] test_rejectingKeeperIsStillPaidAndCannotBlock() (gas: 2640623)
+[PASS] test_rejectsShapesAndLyingCollections() (gas: 796524)
+[PASS] test_reserveMath() (gas: 117882)
+[PASS] test_retireIsIrreversibleAndKeepsExits() (gas: 1782094)
+[PASS] test_settledAfterRetryNeedsNoUpkeep() (gas: 3284000)
+[PASS] test_unlistShapesInBoundedSteps() (gas: 17560359)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 944.84ms (880.26ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[PASS] test_atomicKeeperFloorRollsBackRealMintListingBalancesAndAllowance() (gas: 7678034)
+[PASS] test_contractPurchaserCannotRejectFwaPackTransferAndRetainsExactBacking() (gas: 20006878)
+[PASS] test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() (gas: 16134373)
+[PASS] test_failedDeliveryRefundAndNFTRecoverAfterRetirement() (gas: 18391847)
+[PASS] test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() (gas: 7307115)
+[PASS] test_largeWinDepletesOnlyOperatingCapitalAndRecoveryUsesActualBacking() (gas: 19454411)
+[PASS] test_malformedBurningAndReenteringPolicyPreserveUnpaidRecovery() (gas: 8659695)
+[PASS] test_noAllowanceResetByCloseConfigureOrPolicyAndEmergencyCancelsMaturedChange() (gas: 9372982)
+[PASS] test_paidAndUnpaidCannotSpendBookedCredit() (gas: 19907597)
+[FAIL: Unauthorized()] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (block: 26382349) (gas: 19128189)
+[PASS] test_policyFundingExcludesRealCreditAndSwitchKeepsOldPrices() (gas: 17831490)
+Suite result: FAILED. 10 passed; 1 failed; 0 skipped; finished in 2.38s (224.08ms CPU time)
+
+Ran 14 tests for test/Reserve.t.sol:ReserveTest
+[PASS] test_bigWinKeepsSellingWhileReserveRefills() (gas: 171549450)
+Logs:
+  draws to refill after the 0.5 win: 52
+  creator claimed meanwhile: 0.047779245511248313
+
+[PASS] test_closeHoldsOnlyPayForUnreconciledDraws() (gas: 4140987)
+[PASS] test_collectionCallbackCannotReconfigure() (gas: 1129004)
+[PASS] test_creatorKeeperCannotReenterFromReward() (gas: 2600705)
+[PASS] test_creatorRateRemainsStoredAcrossInventoryChanges() (gas: 11071)
+[PASS] test_listingNFTsBeforeCollectionCannotMoveFundMoney() (gas: 7723142)
+[PASS] test_lowerMarkupKeepsAFullBoardOpen() (gas: 5588395)
+[PASS] test_markupBelowTenPercentRejected() (gas: 119132)
+[PASS] test_nftsListOnlyAfterTheFirstConfigure() (gas: 4119064)
+[PASS] test_openCollectsSettledProceedsFirst() (gas: 1662857)
+[PASS] test_openNeedsTheReserve() (gas: 1238221)
+[PASS] test_unpaidRecoveryPreservesCreditWhenOperatingCashCannotRestock() (gas: 3568844)
+[PASS] test_upkeepSplitsOverTheListingsTheDrawWasPricedOn() (gas: 3568233)
+[PASS] test_worstBatchAtMinimumReservePaysEveryWinner() (gas: 265635830)
+Logs:
+  held at minimum reserve: 0.003680000000000000
+  listed price of the five prizes won: 0.836475000000000000
+  draws to restock and refill: 71
+
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 2.38s (747.39ms CPU time)
+
+Ran 3 test suites in 2.39s (5.71s CPU time): 53 tests passed, 1 failed, 0 skipped (54 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/ReserveSecurityReview.t.sol:ReserveSecurityReviewTest
+[FAIL: Unauthorized()] test_pendingExpiryRefundSurvivesDisableCloseWithdrawalRetirement() (block: 26382349) (gas: 19128189)
+
+Encountered a total of 1 failing tests, 53 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

@@ -1,14 +1,14 @@
 import { createPublicClient, custom, http, toFunctionSelector, toHex, type Address } from 'viem';
 import { expect, it } from 'vitest';
 import { poolBalancerAbi } from '../../shared/abi';
-import { DENOMS, restockFeeAt, SHAPES_IN } from '../../shared/planner';
+import { DENOMS, SHAPES_IN } from '../../shared/planner';
 import { policyEconomics } from './policy';
 
 const rpc = process.env.POLICY_PREVIEW_RPC;
 const balancer = process.env.POLICY_PREVIEW_BALANCER as Address | undefined;
 
-// Opt-in reads of the preserved V1 local rehearsal. No successful RPC answers are substituted.
-it.skipIf(!rpc || !balancer)('keeps legacy pools usable with exact pool surcharge quotes and unknown unsupported reward estimates', async () => {
+// Opt-in reads of a deployed local pool. Every successful answer comes from its real contracts.
+it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy settings metadata', async () => {
   const actual = createPublicClient({ transport: http(rpc), cacheTime: 0 });
   const requests: { method: string; params?: unknown }[] = [];
   // Observe the real RPC request envelope; forward every response unchanged.
@@ -21,13 +21,16 @@ it.skipIf(!rpc || !balancer)('keeps legacy pools usable with exact pool surcharg
     pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'keeperPolicy' }),
     pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'policyMaxReward' }),
   ]);
-  expect(policy.toLowerCase()).toBe('0x058b476b600e8f3d66c84ce874eb131eeacddbdf');
   const costs = await policyEconomics(pub, policy, maxReward, balancer);
   expect(costs.restockQuoteVerified).toBe(true);
-  expect(costs.keeperQuotes).toBeUndefined();
-  expect(costs.baseFee).toBe(80_000_000n);
-  expect(costs.restockFee).toBe(317_000_000_000_000n);
-  expect(costs.restockFees).toEqual(SHAPES_IN.map(units => BigInt(units) * restockFeeAt(costs.baseFee)));
+  expect(costs.keeperQuotes).toBeDefined();
+  for (const quote of [...costs.keeperQuotes!.replace, costs.keeperQuotes!.reconcile]) {
+    expect(quote).toBeGreaterThanOrEqual(0n);
+    expect(quote).toBeLessThanOrEqual(maxReward);
+  }
+  costs.restockFees.forEach((fee, d) => expect(fee).toBeLessThanOrEqual(BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n));
+  const settingsSelector = toFunctionSelector('settings()');
+  expect(requests.some(request => request.method === 'eth_call' && JSON.stringify(request.params).includes(settingsSelector.slice(2)))).toBe(false);
   expect(costs.restockFees).toHaveLength(DENOMS.length);
   expect(costs.policyMaxReward).toBe(maxReward);
   const feeCalls = requests.filter(request => request.method === 'eth_call').map(request => request.params as [{ to?: string; data?: string; gasPrice?: string }, string])
@@ -37,4 +40,11 @@ it.skipIf(!rpc || !balancer)('keeps legacy pools usable with exact pool surcharg
     expect(call.gasPrice).toBe(toHex(costs.gasPrice));
     expect(block).toMatch(/^0x[0-9a-f]+$/);
   }
+});
+
+// Failure injection is permitted for off-chain services; no successful answer is fabricated.
+it('reports failed policy economics as unavailable instead of substituting V1', async () => {
+  const pub = createPublicClient({ transport: custom({ request: async () => { throw new Error('RPC unavailable'); } }, { retryCount: 0 }), cacheTime: 0 });
+  const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
+  await expect(policyEconomics(pub, '0x0000000000000000000000000000000000000001', 100_000_000_000_000n, undefined, snapshot)).rejects.toThrow('RPC unavailable');
 });

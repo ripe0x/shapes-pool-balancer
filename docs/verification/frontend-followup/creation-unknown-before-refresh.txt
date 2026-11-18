@@ -1,0 +1,22 @@
+Browser tab: 5, Title: "FWA Pool Balancer", URL: "http://127.0.0.1:5207/".
+0 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/
+	1 container root
+		2 container
+			3 link Description: FWA Pool Balancer, Value: 127.0.0.1:5207/
+			4 container Main
+				6 button Your pools
+				5 button How it works
+			7 button 0x7099…79C8
+		8 text New pool.  Nothing is sent until you create it and confirm in your wallet.
+		9 container
+			10 text Pool address
+			11 text field (settable) Pool address, ID: open-pool-address
+			12 button (disabled) Open pool
+		13 container
+			14 heading Pool creation, Value: 1
+				15 text Pool creation
+			16 text Creation confirmation is unavailable. Check the existing submission before trying again. Account  0x70997970C51812dc3A010C7d01b50e0d17dc79C8  · Chain  31337 Predicted pool  0x26f754B66cAD7F30b891f606E997be637d13028d Transaction  0x7656aec1be1ef7604eeeb919e69c286969d3b0ff1f24ee4ca1192cda3165248e
+			17 button Check creation
+			18 text Create and stock pool: Missing or invalid parameters. Double check you have provided the correct parameters.
+
+The focused UI element is 0 AXWebArea FWA Pool Balancer, URL: 127.0.0.1:5207/

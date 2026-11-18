@@ -1,0 +1,26 @@
+
+> test:ts
+> vitest run
+
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ shared/planner.test.ts (29 tests) 10ms
+ ✓ app/src/inventory.test.ts (3 tests) 2ms
+ ✓ shared/policy-simulation.test.ts (14 tests) 26ms
+ ✓ app/src/wallet.test.ts (4 tests) 12ms
+ ✓ app/src/errors.test.ts (3 tests) 9ms
+ ✓ shared/policy-quotes.test.ts (1 test) 2ms
+ ✓ app/src/policy.test.ts (2 tests | 1 skipped) 9ms
+ ✓ shared/policy-money-path.test.ts (1 test) 4ms
+ ✓ shared/design.test.ts (13 tests) 17ms
+ ✓ keeper/keeper.test.ts (15 tests) 4ms
+ ✓ shared/reserve-capital.test.ts (42 tests) 10ms
+ ✓ app/src/tx.test.ts (6 tests) 6ms
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 674ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  311ms
+
+ Test Files  13 passed (13)
+      Tests  147 passed | 1 skipped (148)
+   Start at  10:43:21
+   Duration  1.53s (transform 496ms, setup 0ms, collect 3.70s, tests 786ms, environment 1ms, prepare 876ms)

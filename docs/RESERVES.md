@@ -1,12 +1,14 @@
 # Working-capital reserves
 
-Current implementation work starts from `a8fb321` on `codex/replaceable-keeper-policies`, 2026-11-17. This replaces its whole-board keeper insurance reserve. No mainnet deployment or real-fund spending is authorized. Final measurements/reviews belong in the reserve redesign results; this specification alone is not release evidence.
+Current specification, 2026-11-18. Supersedes inventory-dependent credit attribution and full-restoration policy
+activation funding. [Implementation evidence](PROTECTED-REVENUE-RESULTS.md) is scoped separately; historical approvals
+do not approve this implementation. No mainnet deployment or real-fund spending is authorized.
 
 ## What is protected
 
-Player prizes remain actually backed by Shapes/Draw Packs and held by FWA. FWA also holds draw escrow, delivery escrow and purchaser-owned refund credits. These never fund keeper payments. Balancer ETH and settled owner proceeds are creator operating capital, excluding independently claimable booked creator profit for paid maintenance. Existing listing prices, base values and markup shares do not change under a new policy or a lower reserve.
+Player prizes remain actually backed by Shapes/Draw Packs and held by FWA. FWA also holds draw escrow, delivery escrow and purchaser-owned refund credits. These never fund keeper payments. Balancer ETH and settled owner proceeds are creator operating capital, excluding protected `creatorCredit` for both paid and unpaid maintenance. Existing listing prices and base values remain fixed under policy/rate changes.
 
-A reserve is a restriction on creator surplus withdrawals and a funding check at opening/policy activation. It is not an accrued debt to a keeper before work, an untouched perpetual buffer, or a guarantee of unlimited fully restored inventory. Successful paid operations pay the final bounded quote and caller minimum atomically; unavailable compensation reverts the entire transaction. Legitimate maintenance can consume working capital and leave the pool below its current funding target.
+The full reserve restricts operating-capital withdrawals and checks opening funding. Activation uses only its maintenance component. It is not an accrued debt to a keeper before work, an untouched perpetual buffer, or a guarantee of unlimited fully restored inventory. Successful paid operations pay the final bounded quote and caller minimum atomically; unavailable compensation reverts the entire transaction. Legitimate maintenance can consume working capital and leave the pool below its current funding target.
 
 ## Chosen formula
 
@@ -29,7 +31,7 @@ While open, required liquid operating capital is:
 3. Actual issued-but-unreconciled draws times the single-draw bound (one processed and one reconciled draw).
 4. One working-call buffer: the greater bound for two processed/five reconciled draws, or five reconciled draws plus five successfully listed Shape units/prizes.
 
-When closed, only item 3 remains while payments are enabled. When payments are disabled all keeper budget terms are zero; open pools retain only actual missing inventory cost. Delayed activation reenables payment and must fund the positive candidate budget. Current mint fee cannot be understated by an older accepted fee. Old unsold surcharges never offset these ETH requirements. The expected fee sum remains available for creator information only.
+When closed, only item 3 remains while payments are enabled. When payments are disabled all keeper budget terms are zero; open pools retain only actual missing inventory cost. Delayed activation reenables payment and must fund the positive candidate budget. Current mint fee cannot be understated by an older accepted fee. Old unsold surcharges never offset these ETH requirements. Expected fees may be derived from listing records for information; no fee accumulator is stored.
 
 The largest-prize duplicate backing, implied spare draw, full-board future maintenance cycle, fee-income bridge and multiplication of every missing Shape unit by an unrelated full-call maximum are removed. There is no new tax or player-price increase. V1's quoted formula and restocking surcharge are unchanged.
 
@@ -39,7 +41,7 @@ The reference price is current, not a promise that the initial deposit covers al
 
 The pool clamps a policy's proposal to the same work-sensitive envelope, using the lesser of measured gas and workGas, and the lesser of actual gas price and reserveReference. These coefficients are enforced payment ceilings; they are not assertions that every external execution fits within those gas amounts. The cached selected maximum, immutable absolute maximum, real operating liquidity and persistent spending allowance are additional restrictions. The policy cannot decide work counts or alter these checks.
 
-Paid inventory planning retains booked profit and the payment bound for the exact candidate work accumulated in the current call. It can reduce a candidate quantity, mint fewer prizes, and leave a visible deficit. It no longer withholds an unrelated entire policy maximum for a one-prize operation. Work still stops at the first unaffordable missing denomination; existing value order and custody rules remain.
+Paid inventory planning retains creator credit and the payment bound for the exact candidate work accumulated in the current call. It can reduce a candidate quantity, mint fewer prizes, and leave a visible deficit. It no longer withholds an unrelated entire policy maximum for a one-prize operation. Work still stops at the first unaffordable missing denomination; existing value order and custody rules remain.
 
 The per-pool spending allowance is separate from cash locked in reserve: 0.622 ETH burst and `floor(0.05 ETH / 12)` wei/second refill. It persists through changes of policy, ownership, target and open state, and saturates during inactivity. This permits ordinary V1 work while reducing the previous absolute exposure. Actual high-volume evidence must support its operational suitability; arithmetic bounds alone do not establish profitability.
 
@@ -55,11 +57,27 @@ If small-prize depletion crosses the admission threshold, future purchases canno
 
 Public unpaid maintenance preserves selected healthy prices and the immutable V1 fallback on policy quote failure. It can process/reconcile, restock what is affordable and support closing/retirement; the caller pays gas. Dependency pauses, delivery locks and buyer refund timing remain in force.
 
-## Approximate allocation and actual obligations
+## Policy activation and protected credit
 
-The existing current-board proceeds split is unchanged under R55–R58. Gas and policy transitions can over/underbook the creator relative to the purchase board, and surplus claims can expose temporary operating shortfalls. The [concurrent real-fork cases](AUDIT-REMEDIATION.md) run from exact opening capital, allow independent buyers before keeper intervention, take maximum allowed creator claims, and reconcile/close while preserving actual FWA escrow, refunds, protocol balances and redeemable backing. They show retained purchaser rights in their reached contexts, not universal paid continuity or a 0.001 ETH global drift guarantee.
+`maintenanceBudget(M, snapshot)` factors items 3 and 4 above. Activation and `policyFunding(candidate)` use one
+snapshot of current basefee, pool enabled state and actual issued-minus-reconciled requests; they make no mint-fee or
+policy economic quote read. Candidate interface/max validation remains a bounded static call. The old effective maximum
+is zero when paid upkeep is disabled. If the candidate maintenance budget is no greater than the old budget, activation
+requires no extra cash. If greater, operating cash must cover the whole candidate budget. `policyFunding` returns the
+candidate maintenance budget as `required`; `shortfall` is zero for a nonincrease, otherwise
+`max(candidateBudget - operatingCash, 0)`. The shared planner uses identical semantics. Delay expiry does not freeze work
+counts or gas: activation rechecks both. Full opening/withdrawal reserve is unchanged by this separation.
 
-At 0.5 gwei basefee, a hostile maximum policy with two actual outstanding draws is constrained by the 0.0028 ETH work envelope in the named test, rather than its declared 0.311 ETH ceiling. After a later valid fee increase, a closed pool's current-fee hold can be insufficient for paid processing; the paid transaction reverts atomically and unpaid processing still restores purchaser refund claims. There is no obligation to pre-fund every future gas regime, and no larger capital lock or tax is introduced by the reporting/admission repairs. A new numerical allocation tolerance remains for owner review.
+For example, at basefee 0.5 gwei and two unreconciled requests, V1's candidate maintenance budget is 0.00648 ETH.
+A previous 0.001 ETH maximum implies a 0.003 ETH old budget. For the increase, funding only the 0.00348 ETH difference
+is insufficient. The entire 0.00648 ETH must be operating cash. Missing 100 ETH inventory does not become activation
+funding; it remains visible in the separate restoration shortfall.
+
+`creatorCredit` is always protected. Both paid and unpaid replacement affordability retain it, keeper payments use
+`balance - creatorCredit`, and capital claims reserve operating cash after excluding credit. Closing never resets credit.
+Credit-only claims bypass all reserve and dependency reads. With B=0.20 ETH, C=0.02 ETH and R=0.10 ETH, O=0.18 ETH and
+withdrawable=C+max(O-R,0)=0.10 ETH. The 0% and 100% collection rates are valid; at 100%, operating replenishment receives
+zero new revenue. A creator can withdraw and redeposit voluntarily, with no reinvestment API.
 
 ## Alternatives considered
 
@@ -70,8 +88,10 @@ At 0.5 gwei basefee, a hostile maximum policy with two actual outstanding draws 
 | C: largest-prize hybrid without the full-board cycle | Lower keeper reserve but retains a potentially enormous second largest-prize backing | Not selected; same top-prize capital problem |
 | Zero operating reserve | Creator can strip all maintenance cash; paid setup/reconciliation becomes unreliable | Not selected; the displayed minimum would hide necessary expense |
 
-The first 10% of markup remains a replenishment priority, not permanent third-party escrow. The above-10% share is always booked while open before collection is followed by reconciliation/paid restocking, preserving the allocation when a new deficit is recognized. A lower target releases surplus earlier; that withdrawal timing change is intentional and must be measured. Fees, gas and bad prize luck can still make the creator lose money.
+Shape markup above the first 10% calibrates only the planner's initial rate suggestion. Runtime credit is the stored
+share of actual collections. There is no inventory attribution, historical-markup mapping, allocation-drift tolerance or
+unsold-fee accumulator. Fees, gas, curated contributions and bad prize luck can still make the creator lose money.
 
 ## Things that don't make sense
 
-Guaranteed immediate replacement of every possible win and minimum launch capital are different products. This implementation chooses conditional operation with explicit deficits, rather than duplicating expensive prize backing. A paused low-liquidity pool cannot recover from hypothetical demand alone, and a flat positive work fee can subsidize buyer/keeper activity from creator capital at very low gas. Final economic evidence must quantify both coalition-wide loss and that separate subsidy.
+Guaranteed immediate replacement of every possible win and minimum launch capital are different products. This implementation chooses conditional operation with explicit deficits, rather than duplicating expensive prize backing. A paused low-liquidity pool cannot recover from hypothetical demand alone, and a flat positive work fee can subsidize buyer/keeper activity from creator capital at very low gas. The measured low-gas expiry case selected `ReserveReviewMaxPolicy` at its maximum-paying behavior and deliberately withheld randomness past the timeout. Buyer plus keeper gained 0.000047094427 ETH from creator operating cash at basefee 0.0005 gwei/bid 0.001 gwei; the combined creator/buyer/keeper loss of 0.000003158689 ETH reconciles costs and does not protect the creator from that subsidy. This local execution does not establish that an outside buyer can force expiry with a normally operating oracle. See [the experiment and its limits](PROTECTED-REVENUE-RESULTS.md).

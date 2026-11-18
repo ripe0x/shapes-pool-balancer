@@ -64,11 +64,38 @@ abstract contract ForkBase is Test {
         vm.deal(keeper, 1 ether);
     }
 
+    /// @dev Existing flow fixtures start closed. Reach that state through the real atomic creation path, then
+    ///      unwind its temporary curated listing. Dedicated atomic tests exercise creation without this round trip.
+    function _createFixture(address owner, bytes32 salt, uint256 deposit) internal returns (PoolBalancer b) {
+        address predicted = factory.predictBalancer(owner, salt);
+        uint256 id = uint256(keccak256(abi.encode(owner, salt, address(factory))));
+        nft.mint(owner, id);
+        PoolBalancer.CuratedInput[] memory initial = new PoolBalancer.CuratedInput[](1);
+        initial[0] = PoolBalancer.CuratedInput(address(nft), id, 0.2 ether);
+        uint256 seed = deposit < 0.1 ether ? 0.1 ether : deposit;
+        vm.startPrank(owner);
+        nft.approve(predicted, id);
+        b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
+            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee()), initial)));
+        b.close();
+        b.withdrawCurated(b.getActiveIds()[0], owner);
+        if (seed > deposit) b.claimSurplus(seed - deposit, owner);
+        vm.stopPrank();
+    }
+
     function createBalancer(uint256 deposit) internal returns (PoolBalancer b) {
-        vm.prank(creator);
-        b = PoolBalancer(payable(factory.createBalancer{value: deposit}(bytes32(0))));
+        b = _createFixture(creator, bytes32(0), deposit);
         balancer = b;
         pool = b.pool();
+    }
+
+    /// @dev Informational fees derived from current listing records, never used as liquid funding.
+    function _listedFees(PoolBalancer b) internal view returns (uint256 fees) {
+        uint256[] memory ids = b.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind,,, uint112 base, uint112 price) = b.items(ids[i]);
+            if (kind == 2) fees += price - base;
+        }
     }
 
     /// @dev Pack nine Shape counts, denomination index 0 first.
@@ -105,7 +132,7 @@ abstract contract ForkBase is Test {
         uint256 price = block.basefee + 0.1 gwei;
         if (price > 50 gwei) price = 50 gwei;
         cap = 2_250_000 * price + 0.00005 ether;
-        uint256 selected = balancer.maxKeeperReward();
+        uint256 selected = balancer.policyMaxReward();
         if (cap > selected) cap = selected;
     }
 
@@ -113,14 +140,14 @@ abstract contract ForkBase is Test {
         uint256 price = block.basefee + 0.1 gwei;
         if (price > 50 gwei) price = 50 gwei;
         cap = 5_300_000 * price + 0.0005 ether;
-        uint256 selected = balancer.maxKeeperReward();
+        uint256 selected = balancer.policyMaxReward();
         if (cap > selected) cap = selected;
     }
 
     function upkeep() internal {
         bytes32 uh1 = balancer.settingsHash();
         vm.prank(keeper, keeper);
-        balancer.performUpkeep(uh1);
+        balancer.performUpkeep(uh1, 0, 0);
     }
 
     /// @dev Run upkeep until it has nothing left to do (each call is bounded by MAX_OPS); returns the calls that worked.
@@ -129,7 +156,7 @@ abstract contract ForkBase is Test {
         for (uint256 i; i < 400; ++i) {
             bytes32 uh2 = balancer.settingsHash();
             vm.prank(keeper, keeper);
-            try balancer.performUpkeep(uh2) {
+            try balancer.performUpkeep(uh2, 0, 0) {
                 ++calls;
             } catch {
                 return calls;

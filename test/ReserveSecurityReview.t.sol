@@ -66,7 +66,7 @@ contract ReviewCreatorKeeper {
     constructor(PoolBalancer b) { balancer = b; }
     function accept() external { balancer.acceptCreator(); }
     function configure(uint256 target) external { balancer.configure(1500, target); }
-    function upkeep(bytes32 expected) external returns (uint256) { return balancer.performUpkeep(expected, 1); }
+    function upkeep(bytes32 expected) external returns (uint256) { return balancer.performUpkeep(expected, 1, 0); }
     receive() external payable {
         callbackReached = true;
         basefee = block.basefee;
@@ -173,8 +173,9 @@ contract ReserveSecurityReviewTest is ForkBase {
         balancer.unlistShapes(shapesOnly);
         assertEq(address(balancer).balance, 0.2 ether, "exact backing returned after retirement");
         _claimAvailable();
+        uint256 curatedId = balancer.getActiveIds()[0];
         vm.prank(creator);
-        balancer.withdrawCurated(1, creator);
+        balancer.withdrawCurated(curatedId, creator);
         assertEq(nft.ownerOf(1), creator);
         assertEq(address(pool).balance, 0, "expiry and recovery leave no FWA value");
         assertEq(address(balancer).balance, 0);
@@ -240,7 +241,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         assertEq(active[0], 20);
         assertTrue(balancer.canPurchase(buyer), "safe remaining weight admits purchases");
         assertGt(balancer.requiredReserve(), 0.501 ether, "actual half-ETH replacement shortfall exposed");
-        assertLe(balancer.profit(), address(balancer).balance);
+        assertLe(balancer.creatorCredit(), address(balancer).balance);
         uint256[] memory ids = balancer.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind,,,,) = balancer.items(ids[i]);
@@ -270,7 +271,7 @@ contract ReserveSecurityReviewTest is ForkBase {
             bytes32 expected = balancer.settingsHash();
             vm.prank(keeper);
             vm.expectRevert();
-            balancer.performUpkeep{gas: 5_000_000}(expected);
+            balancer.performUpkeep{gas: 5_000_000}(expected, 0, 0);
             assertEq(address(balancer).balance, bal, "bad policy rolls back minted backing and pay");
             assertEq(balancer.listedShapePrizes(), 1);
             assertEq(balancer.availableKeeperAllowance(), allowance);
@@ -279,7 +280,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         bytes32 bombExpected = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert();
-        balancer.performUpkeep{gas: 5_000_000}(bombExpected);
+        balancer.performUpkeep{gas: 5_000_000}(bombExpected, 0, 0);
         assertEq(address(balancer).balance, bal);
         assertEq(balancer.listedShapePrizes(), 1);
         h.setMode(3);
@@ -310,13 +311,13 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256 poolCount = pool.activeListingCount();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
-        balancer.performUpkeep(expected, 0.311 ether);
+        balancer.performUpkeep(expected, 0.311 ether, 0);
         assertEq(address(balancer).balance, bal);
         assertEq(pool.activeListingCount(), poolCount);
         assertEq(balancer.listedShapePrizes(), 1);
         assertEq(balancer.availableKeeperAllowance(), allowance);
         vm.prank(keeper);
-        uint256 reward = balancer.performUpkeep(expected, 1);
+        uint256 reward = balancer.performUpkeep(expected, 1, 0);
         uint256 receipt = ReceiptGas.lastBilled();
         assertGt(reward, 0);
         assertLe(reward, 1_150_000 * 0.6 gwei + 0.00005 ether, "one-shape immutable work envelope");
@@ -395,64 +396,38 @@ contract ReserveSecurityReviewTest is ForkBase {
         assertEq(balancer.listedShapePrizes(), 2);
     }
 
-    function test_policyFundingExcludesRealBookedProfitAndSwitchKeepsOldPrices() public {
+    function test_policyFundingExcludesRealCreditAndSwitchKeepsOldPrices() public {
+        _context(0.5 gwei, 0.55 gwei);
         _setup(20, 0);
-        uint256[9] memory c;
-        c[0] = 20;
-        vm.prank(creator);
-        balancer.configure(10_000, plan(c));
-        // Recreate the board at the requested high markup through actual redemption/minting.
-        vm.prank(creator);
-        balancer.close();
-        uint256[] memory ids = balancer.getActiveIds();
-        uint256[] memory shapeIds = new uint256[](20);
-        for (uint256 i; i < 20; ++i) shapeIds[i] = ids[i + 1];
-        vm.prank(creator);
-        balancer.unlistShapes(shapeIds);
-        vm.prank(creator);
-        balancer.open();
-        fillUp();
+        vm.prank(creator); balancer.setCreatorRevenueBps(10_000);
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
+        uint256 free = balancer.withdrawableSurplus();
+        vm.prank(creator); balancer.claimSurplus(free, creator);
+        assertEq(address(balancer).balance, 0);
         uint256 request = buy(buyer, 1)[0];
         fulfill(request, wordForSlot(2));
         settle();
-        upkeep();
-        assertGt(balancer.profit(), 0, "real sale produced booked creator markup");
-        uint256 profit = balancer.profit();
+        balancer.collectProceeds();
+        uint256 credit = balancer.creatorCredit();
+        assertEq(address(balancer).balance, credit);
         ReviewHostilePolicy h = new ReviewHostilePolicy();
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(h));
-        uint256 operating = address(balancer).balance - profit;
-        assertEq(shortfall, required > operating ? required - operating : 0);
-        assertGt(required, 0);
+        assertEq(shortfall, required);
+        assertGe(credit, required, "total cash covers maintenance, but none of it is operating cash");
         uint256[] memory beforeIds = balancer.getActiveIds();
         uint112[] memory oldPrices = new uint112[](beforeIds.length);
         for (uint256 i; i < beforeIds.length; ++i) (,,,,oldPrices[i]) = balancer.items(beforeIds[i]);
-        c[0] = 1000;
-        configure(plan(c));
-        (required,) = balancer.policyFunding(address(h));
-        // Real actor funding creates the boundary: total cash covers the reserve, but operating cash does not.
-        uint256 boundaryBalance = required + profit / 2;
-        assertGt(boundaryBalance, address(balancer).balance);
-        vm.prank(creator);
-        balancer.depositETH{value: boundaryBalance - address(balancer).balance}();
-        (,shortfall) = balancer.policyFunding(address(h));
-        assertEq(shortfall, profit - profit / 2, "booked profit is excluded to the wei");
-        assertGe(address(balancer).balance, required);
-        vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(h));
+        vm.prank(creator); balancer.proposeKeeperPolicy(address(h));
         vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);
+        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        assertEq(balancer.creatorCredit(), credit);
+        vm.prank(creator); balancer.depositETH{value: shortfall}();
         balancer.activateKeeperPolicy();
-        assertEq(balancer.profit(), profit);
-        vm.prank(creator);
-        balancer.depositETH{value: shortfall}();
-        balancer.activateKeeperPolicy();
-        assertEq(balancer.profit(), profit, "policy activation cannot consume booked profit");
+        assertEq(balancer.creatorCredit(), credit);
         for (uint256 i; i < beforeIds.length; ++i) {
             (,,,,uint112 nowPrice) = balancer.items(beforeIds[i]);
-            assertEq(nowPrice, oldPrices[i], "old listing prices fixed across upgrade");
+            assertEq(nowPrice, oldPrices[i], "old listing prices fixed across policy adoption");
         }
-        emit ReviewAmount("high-markup real booked creator share", profit);
-        emit ReviewAmount("switch current operating requirement", required);
     }
 
     function test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() public {
@@ -465,7 +440,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256 before = address(balancer).balance;
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper);
-        uint256 reward = balancer.performUpkeep(expected, 1);
+        uint256 reward = balancer.performUpkeep(expected, 1, 0);
         uint256 billed = ReceiptGas.lastBilled();
         assertLe(reward, 2_250_000 * 0.02 gwei + 0.00005 ether, "cheap expiry cap uses one actual process and reconcile");
         assertLt(reward, 0.0001 ether, "max-declared policy cannot draw theoretical heavy-call maximum");
@@ -515,7 +490,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         emit ReviewAmount("won pack backing redeemed by purchaser", address(actor).balance);
     }
 
-    function test_unpaidRecoveryCanSpendBookedProfitButPaidKeeperCannot() public {
+    function test_paidAndUnpaidCannotSpendBookedCredit() public {
         _setup(20, 0);
         uint256[9] memory c;
         c[0] = 20;
@@ -523,7 +498,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         vm.prank(creator);
         balancer.configure(10_000, plan(c));
         uint256[] memory one = new uint256[](1);
-        one[0] = 2;
+        one[0] = balancer.getActiveIds()[1];
         vm.prank(creator);
         balancer.unlistShapes(one);
         upkeep();
@@ -531,7 +506,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         fulfill(request, wordForSlot(2));
         settle();
         upkeep();
-        uint256 booked = balancer.profit();
+        uint256 booked = balancer.creatorCredit();
         assertGt(booked, 0);
         // Consume operating cash only through real one-ETH prize minting.
         c[4] = 2;
@@ -546,12 +521,12 @@ contract ReserveSecurityReviewTest is ForkBase {
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper);
         vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
-        balancer.performUpkeep(expected);
-        assertEq(balancer.profit(), booked, "paid mint cannot invade booked profit");
+        balancer.performUpkeep(expected, 0, 0);
+        assertEq(balancer.creatorCredit(), booked, "paid mint cannot invade booked profit");
+        vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector);
         balancer.performUpkeepUnpaid();
-        assertEq(balancer.getActiveShapes()[4], 3);
-        assertEq(address(balancer).balance, booked / 2);
-        assertEq(balancer.profit(), booked / 2, "public unpaid path explicitly spends booked profit");
-        emit ReviewAmount("booked profit used for unpaid real restock", booked - booked / 2);
+        assertEq(balancer.getActiveShapes()[4], 2);
+        assertEq(address(balancer).balance, desired);
+        assertEq(balancer.creatorCredit(), booked, "public unpaid path preserves the same protected credit");
     }
 }

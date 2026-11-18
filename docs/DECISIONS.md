@@ -720,3 +720,26 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
 
 
 100. **Separate isolated diagnostic approval from production release acceptance** (owner R60, 2026-11-18). The owner authorized a local-only gate and preparation of the exact batch for later approval. `script/deploy.sh` retains its original production gate/Forge tail byte-for-byte. Only an explicit local-plan route may run the same deployment script without production outcome-signature/whole-review acceptance, after exact hash/material/source/argument checks and actual loopback Anvil process/fork/synthetic-signer preflight. It clears the inherited mainnet marker. No public RPC, mainnet/testnet signer or arbitrary Forge flag is accepted by that route. Runtime payment/custody/reserve logic and all rehearsal spending caps are unchanged. The local source overlay is separately identified; old review seals and scorecards are not reissued. Gate implementation permission is not permission to fund accounts or broadcast the proposed batch. A successful eventual diagnostic remains limited by its pinned fork, controlled Keeper ticks, accepted coordinator exception and absence of real wallet/UI signing.
+
+
+99. **Protected collected revenue and atomic creation (2026-11-18).**
+
+Owner implementation brief settles R62–R69. Stored creatorRevenueBps and creatorCredit replace current-inventory
+attribution, profitShareSum, historical allocation markup and listedFees. Both paid and unpaid spending protect credit;
+closing does not erase it. Existing-credit claims skip every external read. Collection is explicit and independent.
+The payout rate changes only through a creator transaction collecting old available proceeds first; later collections
+use the new rate, including pending purchases. Initial planner calibration uses intended Shape markup above 10% and
+actual FWA owner proceeds; it is a suggestion, not runtime attribution or an overall profit promise.
+
+Keep policy algorithms replaceable, remove Settings metadata, and retain only the price-indexed paid upkeep API plus
+unpaid recovery. Activation compares shared maintenance budgets; nonincreases need no new cash and increases require
+full candidate maintenance cash excluding credit. Full withdrawal reserve still includes missing inventory.
+
+Creation is approvals then one typed transaction. The authenticated creator is the initial NFT source. Initial
+configuration, reviewed rate/cap, funding, curated listing and stocking entry revert atomically together. Maintenance
+mints inventory in the existing bounded batches. Current controls/history load independently.
+
+Routine choices: keep `claimSurplus` as the single withdrawal API, with no implicit collection; keep `settingsHash`
+as the policy-generation identity used by existing journals, with no Settings decoding; store the reviewed initial
+mint-fee cap exactly and reject an increased live fee. Linked immutable libraries and the active listing array remain.
+All historical release approvals stay historical; no new public deployment or real-spend authority follows.
