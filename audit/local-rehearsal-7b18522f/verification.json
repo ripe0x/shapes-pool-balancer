@@ -1,0 +1,26 @@
+{
+  "runCommand": "node --import tsx scripts/run-local-rehearsal.ts --approved-plan-hash 7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "exitStatus": 1,
+  "reason": "Immediate receipt availability race after first DemoNFT submission; separately reconciled status1.",
+  "repair": "Bounded receipt wait plus exact returned transaction hash check; no resubmission.",
+  "typecheck": {
+    "command": "npm run typecheck",
+    "exitStatus": 0
+  },
+  "receiptReconciliation": {
+    "result": "PASS against actual mined local transaction and all actor balances",
+    "file": "reconciled-receipt-and-balances.json",
+    "newTransactions": 0
+  },
+  "independentReview": {
+    "reviewer": "/root/remediation_review",
+    "result": "No must-fix within two-line receipt repair; batch must remain interrupted; changed material requires newly prepared/reviewed/approved plan.",
+    "rpcCalls": 0,
+    "sends": 0
+  },
+  "limitations": [
+    "No new transaction tests polling after repair.",
+    "No full lifecycle, pools, draws, inventory or keeper payments reached.",
+    "No further execution of repaired material is approved."
+  ]
+}

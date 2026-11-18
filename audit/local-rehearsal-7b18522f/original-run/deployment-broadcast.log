@@ -1,0 +1,49 @@
+{
+  "localPreflight": {
+    "phase": "deploy",
+    "chainId": 31337,
+    "rpc": "http://127.0.0.1:18556",
+    "pid": 50886,
+    "block": "26438875",
+    "hash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+    "transactionsSent": 0
+  },
+  "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "releaseApproval": false
+}
+No files changed, compilation skipped
+Script ran successfully.
+
+== Return ==
+factory: contract BalancerFactory 0xF8FDA7622370f00dAC7ffb06825d0D193cbDB9dC
+impl: contract PoolBalancer 0x6CCD1A4ff41e886975Db8504F384Bc698d4939B3
+packs: address 0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955
+
+== Logs ==
+  PoolBalancer implementation 0x6CCD1A4ff41e886975Db8504F384Bc698d4939B3
+  BalancerFactory 0xF8FDA7622370f00dAC7ffb06825d0D193cbDB9dC
+  Packs 0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 20 gwei
+
+Estimated total gas used for script: 22183301
+
+Estimated amount required: 0.44366602 ETH
+
+==========================
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-SmGA2X/broadcast/Deploy.s.sol/31337/run-latest.json
+
+Sensitive values saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-SmGA2X/cache/Deploy.s.sol/31337/run-latest.json
+

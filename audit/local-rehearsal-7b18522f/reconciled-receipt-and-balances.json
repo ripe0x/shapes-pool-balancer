@@ -1,0 +1,79 @@
+{
+  "chainId": 31337,
+  "rpc": "http://127.0.0.1:18556",
+  "transactionHash": "0xe936f3d7ccc198a9747bc4762d6c35d2edf4fd8407ae95a193d1ebf4cdbe21c7",
+  "receiptStatus": "success",
+  "block": "26438884",
+  "contract": "0xad016a96d3f9f8654b0B601d6aAaC7c909818aae",
+  "runtimeCodeHash": "0x5f8cefb65dbcb67ef6ab0194f87028412b81f7da528c62ec4f502f32a077e4b3",
+  "creationInputHash": "0x7a78411925f4c2f4b56b1a5b25c9841b45ac62e7b3dbf4a49432e255873c4962",
+  "nativeValue": "0",
+  "gasUsed": "506160",
+  "effectiveGasPrice": "92716987",
+  "totalTransactions": 9,
+  "totalGasWei": "2123978546527748",
+  "remainingGasWei": "997876021453472252",
+  "creatorPoolDepositsWei": 0,
+  "buyerPaymentsWei": 0,
+  "draws": 0,
+  "poolsCreated": 0,
+  "receiptReplayed": false,
+  "balances": [
+    {
+      "role": "deployer",
+      "address": "0x000000000000000000000000000000000001e001",
+      "balance": "997922951083612172",
+      "costs": "2077048916387828",
+      "nonce": 8
+    },
+    {
+      "role": "packsAdmin",
+      "address": "0x000000000000000000000000000000000001e002",
+      "balance": "10000000000000000",
+      "costs": "0",
+      "nonce": 0
+    },
+    {
+      "role": "keeperAdmin",
+      "address": "0x000000000000000000000000000000000001e003",
+      "balance": "10000000000000000",
+      "costs": "0",
+      "nonce": 0
+    },
+    {
+      "role": "policyAdmin",
+      "address": "0x000000000000000000000000000000000001e004",
+      "balance": "10000000000000000",
+      "costs": "0",
+      "nonce": 0
+    },
+    {
+      "role": "creatorA",
+      "address": "0x000000000000000000000000000000000001e005",
+      "balance": "3099953070369860080",
+      "costs": "46929630139920",
+      "nonce": 1
+    },
+    {
+      "role": "creatorB",
+      "address": "0x000000000000000000000000000000000001e006",
+      "balance": "3100000000000000000",
+      "costs": "0",
+      "nonce": 0
+    },
+    {
+      "role": "keeper",
+      "address": "0x000000000000000000000000000000000001e007",
+      "balance": "200000000000000000",
+      "costs": "0",
+      "nonce": 0
+    },
+    {
+      "role": "buyer",
+      "address": "0x000000000000000000000000000000000001e008",
+      "balance": "40000000000000000000",
+      "costs": "0",
+      "nonce": 0
+    }
+  ]
+}

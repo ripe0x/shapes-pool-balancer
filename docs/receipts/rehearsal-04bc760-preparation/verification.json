@@ -24,9 +24,9 @@
   ],
   "authority": {
     "localGateChange": "Owner explicitly authorized local-only gate change; root relayed this implementation scope",
-    "batchApproval": false,
-    "fundingApproval": false,
-    "broadcastApproval": false,
+    "batchApproval": "Owner yes approved; lead transparently applied it to exact7b before execution.",
+    "fundingApproval": "One-time47.43syntheticETH setup performed under7b; no replenishment.",
+    "broadcastApproval": "Exact7b attempted; interrupted. No approval transferred to repaired driver.",
     "productionReleaseApproval": false
   },
   "checks": [
@@ -102,18 +102,22 @@
     "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
     "block": "26438875",
     "pid": 50886,
-    "transactionsSent": 0
+    "transactionsSent": 0,
+    "scope": "Historical successful preflight before the approved run funded actors and mined nine transactions."
   },
   "execution": {
-    "validDriverExecuteInvocations": 0,
-    "broadcasts": 0,
-    "fundingActions": 0,
-    "impersonations": 0,
-    "minedBlocks": 0,
-    "timeChanges": 0,
-    "basefeeChanges": 0,
-    "plannedDriverDraws": 152,
-    "absoluteDrawCap": 252
+    "status": "INTERRUPTED",
+    "validDriverExecuteInvocations": 1,
+    "successfulTransactions": 9,
+    "fundedActors": 8,
+    "fundingWei": "47430000000000000000",
+    "gasWei": "2123978546527748",
+    "poolsCreated": 0,
+    "poolDepositsWei": "0",
+    "buyerPaymentsWei": "0",
+    "draws": 0,
+    "replayedTransactions": 0,
+    "continuationAuthorized": false
   },
   "limits": {
     "deposits": "6000000000000000000",
@@ -129,7 +133,7 @@
     "Exact bounded batch still needs separate owner approval of this final frozen plan hash; local gate implementation approval authorizes no funding or sends.",
     "The explicit local wrapper route replaces production asset/signature/review prerequisites only for the named isolated chain31337 plan; production normal wrapper gates remain intact and production approval/review/signature requirements are not met by this diagnostic.",
     "Archive04 fingerprint is validated before overlay; the full deployment-tooling fingerprint intentionally changes with the local wrapper. No old production audit/review stamp is reused for it.",
-    "Full driver, dependent live simulations and actual transaction lifecycle remain unexecuted.",
+    "Full driver did not finish: eight system creations plus one DemoNFT succeeded, then the receipt read interrupted. No pools/deposits/purchases/draws occurred.",
     "Whole eight-action Forge --slow child batch is checked by the parent after return, without per-deployment semantic checkpoints.",
     "Controlled ticks of production Keeper class are not CLI/HTTP-health service evidence. No manual/UI writes or real browser-wallet signature evidence.",
     "Coordinator impersonation is a diagnostic exception, not real oracle delivery; no coordinator or protocol funding.",
@@ -154,5 +158,7 @@
     "report": "../../../audit/local-gate-change/review/REPORT.md",
     "result": "No concrete must-fix within bounded routing review. Exact batch approval remains pending; no production seal/signature or target contract audit."
   },
-  "finalTypecheckAndGateTests": "Root final typecheck and12focused gate tests pass; audit/local-gate-change/checks.json captures commands/statuses. Production no-run gate remainsINCOMPLETE for existing missing approval/review and newlystale source stamps."
+  "finalTypecheckAndGateTests": "Root final typecheck and12focused gate tests pass; audit/local-gate-change/checks.json captures commands/statuses. Production no-run gate remainsINCOMPLETE for existing missing approval/review and newlystale source stamps.",
+  "currentMaterialStatus": "INVALID for further execution: driver receipt wait repaired and batch-status doc updated after stopped attempt. Canonical7b packet is retained as historical owner-approved input; do not regenerate/replay it as fresh.",
+  "runReport": "../../../audit/local-rehearsal-7b18522f/REPORT.md"
 }

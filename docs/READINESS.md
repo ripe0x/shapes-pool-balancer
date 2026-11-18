@@ -1,5 +1,9 @@
 # Mainnet deployment readiness
 
+## Main integration and interrupted local batch (2026-11-18)
+
+All twelve task commits through `8886048` were fast-forwarded and pushed to `main`, including policies, reduced reserves, audit remediation and local gate separation. The owner then-approved exact local batch7b was attempted. Its eight system deployments and one test-NFT creation succeeded; the driver stopped on a receipt-not-found race before creating a pool, depositing creatorETH or requesting draws. The [nine-transaction reconciliation](../audit/local-rehearsal-7b18522f/REPORT.md) accounts for0.002123978546527748syntheticETHgas and every actor balance. Receipt polling is repaired, but the approved material hash is now invalid and no further transaction is authorized by that packet. A separately prepared/reviewed continuation remains required. This was neither a complete rehearsal nor real-wallet/oracle or production-release evidence.
+
 ## Local gate separation (2026-11-18)
 
 The owner authorized a local-only gate change and preparation of the exact batch for a later decision. The [local rehearsal route](ASSET-FLOW-GATE.md) removes production outcome-signature/whole-review prerequisites only for the hash-bound owned Anvil diagnostic. The default production gate retains both. No batch approval, funding or broadcast follows from implementation authority. [The concrete batch](RELEASE-REHEARSAL.md) remains proposed until the owner approves its final hash.

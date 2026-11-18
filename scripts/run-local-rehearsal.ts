@@ -109,7 +109,8 @@ function checkMined(tx:{to:Address|null;value:bigint}, expected:ExpectedTransact
   else assert.equal(receiptCreated,null,'CALL/CREATE2 outer receipt must not be CREATE');
 }
 async function record(hash: Hash, fn: string, category: string, nonce: number, inputHash: Hash, actor: Address, expected:ExpectedTransaction) {
-  const r = await pub.getTransactionReceipt({ hash });
+  const r = await pub.waitForTransactionReceipt({ hash, timeout: 30_000, pollingInterval: 100 });
+  assert.equal(r.transactionHash, hash, 'only the submitted transaction may satisfy this receipt');
   const [tx, block] = await Promise.all([pub.getTransaction({ hash }), pub.getBlock({ blockNumber: r.blockNumber })]);
   assert.ok(!journal.receipts.some(x => x.hash === hash));
   journal.receipts.push({ hash, function: fn, category, actor: tx.from, nonce: tx.nonce, to: tx.to, value: String(tx.value), gas: String(tx.gas), gasUsed: String(r.gasUsed), cost: String(r.gasUsed * r.effectiveGasPrice), basefee: String(block.baseFeePerGas), gasPrice: String(r.effectiveGasPrice), status: r.status }); save();

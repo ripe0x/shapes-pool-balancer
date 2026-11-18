@@ -1,0 +1,467 @@
+{
+  "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "plan": {
+    "repositoryRoot": "/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation",
+    "archiveRevision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+    "forgeArguments": [
+      "--rpc-url",
+      "http://127.0.0.1:18556",
+      "--unlocked",
+      "--sender",
+      "0x000000000000000000000000000000000001e001",
+      "--with-gas-price",
+      "20000000000",
+      "--priority-gas-price",
+      "50000000",
+      "--slow",
+      "--broadcast"
+    ],
+    "sourceFingerprintScope": "archive04 before material-bound local wrapper overlay; not a new production review seal",
+    "localOverlaySourceFingerprint": "f248d695668453f4099024c092c4f969b6434de619919503b9f040e46fc123dc",
+    "sourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+    "materialHashes": {
+      "script/deploy.sh": "0d65a4310fc94c4f55f58d81c2a08132b7b4e2a1d0a4ad28111a4b807c89f139",
+      "scripts/local-rehearsal-gate.ts": "ad95d585a0d46002d1aa4aff897e69150be79d8d9f7d149ff8c7fcdefee3e209",
+      "scripts/prepare-local-rehearsal.ts": "7b627779672569a12423c33fd94122581ac422275303363bfab1ec2e3974824e",
+      "scripts/run-local-rehearsal.ts": "5ad52e2736809e316380e6f3466fc40be94e731b63c604831e8df24748b30edb",
+      "docs/RELEASE-REHEARSAL.md": "efb14a690b4f4ccb02a1cadaba9d1f9a63b378b225427f48e8eb6f9050cce5f3",
+      "docs/receipts/rehearsal-04bc760-preparation/deployment-actions.json": "d642b846477afcbb39e2fb356c78c124cc057df82eb1f57957e3ea397ff19a2b",
+      "docs/receipts/rehearsal-04bc760-preparation/node.json": "3e8ecebe26c7474a14b86ecfa5555e247567d67f9ba5d428f1593c6a31c26cf3",
+      "docs/receipts/rehearsal-04bc760-preparation/preflight.json": "fd260ef3adfdcd329794a47c981b5f77636dfa0fe924aa83f52c3520152aadff",
+      "docs/receipts/rehearsal-04bc760-preparation/opening-preview.json": "4347896c0e30cbee95e3be40f0bf88af31b2394aa73eddd1ed164a6fb4e3627d",
+      "docs/receipts/rehearsal-04bc760-preparation/deployment-code-hashes.json": "f60b7ce5a5ff0a67113c513ad2e247dae3833e265cef7393ab2ad3bf38d72d92",
+      "docs/receipts/rehearsal-04bc760-preparation/demo-nft.json": "c012cec01533ef34c87a34efd0148b7ccbefee7423767eb59463ccebfa92f990"
+    },
+    "plannedDriverDraws": 152,
+    "uiWrites": "not supported or authorized; separate uncompleted requirement",
+    "syntheticContributions": {
+      "initialCuratedNfts": 4,
+      "replacementLimit": 252,
+      "initialNotionalWei": "1500000000000000000",
+      "replacementNotionalWei": "250000000000000000",
+      "realMarketValue": "unmeasured; no creator net-profit claim"
+    },
+    "gateConfigHash": "9c3287f35dd6172b3fc358272f1efe302e56dba67f84847c4a39375be25c9a6e",
+    "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+    "rpc": "http://127.0.0.1:18556",
+    "chainId": 31337,
+    "forkBlock": "26438875",
+    "forkHash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+    "roles": {
+      "deployer": "0x000000000000000000000000000000000001e001",
+      "packsAdmin": "0x000000000000000000000000000000000001e002",
+      "keeperAdmin": "0x000000000000000000000000000000000001e003",
+      "policyAdmin": "0x000000000000000000000000000000000001e004",
+      "creatorA": "0x000000000000000000000000000000000001e005",
+      "creatorB": "0x000000000000000000000000000000000001e006",
+      "keeper": "0x000000000000000000000000000000000001e007",
+      "buyer": "0x000000000000000000000000000000000001e008"
+    },
+    "funding": {
+      "deployer": "1000000000000000000",
+      "packsAdmin": "10000000000000000",
+      "keeperAdmin": "10000000000000000",
+      "policyAdmin": "10000000000000000",
+      "creatorA": "3100000000000000000",
+      "creatorB": "3100000000000000000",
+      "keeper": "200000000000000000",
+      "buyer": "40000000000000000000"
+    },
+    "caps": {
+      "deposits": "6000000000000000000",
+      "gas": "1000000000000000000",
+      "buyer": "40000000000000000000",
+      "edge": "1000000000000000000",
+      "vrf": "5000000000000000000",
+      "draws": 252,
+      "rounds": 50,
+      "replacementCuratedNfts": 252
+    },
+    "route": "local-rehearsal-plan",
+    "maxFeePerGas": "20000000000",
+    "maxPriorityFeePerGas": "50000000",
+    "perTransactionGas": "16777216",
+    "closeoutGasReserveWei": "100000000000000000",
+    "coordinatorException": true,
+    "timeJumpSeconds": 172801,
+    "baseline": "natural EIP-1559",
+    "stress": [
+      "3 gwei",
+      "4.9 gwei",
+      "8 gwei"
+    ],
+    "keeper": "production Keeper class; controlled ticks and persisted health, not CLI",
+    "deployment": [
+      {
+        "index": 0,
+        "nonce": "0",
+        "type": "CREATE2",
+        "name": "KeeperPolicyCalls",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+        "predictedAddress": "0x09daba55e22379e6870434415f8969984470dc99",
+        "constructorArguments": [],
+        "gasLimit": "1741612",
+        "valueWei": "0",
+        "inputHash": "0xb855af0b08573ca6ad58f9c89eedcb8b012ba2f76cc0ff63406ccb50c5fdafd8",
+        "runtimeBytes": 5577
+      },
+      {
+        "index": 1,
+        "nonce": "1",
+        "type": "CREATE2",
+        "name": "PoolPage",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+        "predictedAddress": "0x67c828ad820490c02cdcbbccc3a303c64207fbcf",
+        "constructorArguments": [],
+        "gasLimit": "431388",
+        "valueWei": "0",
+        "inputHash": "0x3a06e77e15903c54bed02b3d32d72a0204eaee7a3dc681c9aea4a1521b85d57c",
+        "runtimeBytes": 1194
+      },
+      {
+        "index": 2,
+        "nonce": "2",
+        "type": "CREATE2",
+        "name": "PoolInventory",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+        "predictedAddress": "0x4b2f2d25edb6042215c15b9744e003d346482748",
+        "constructorArguments": [],
+        "gasLimit": "3371006",
+        "valueWei": "0",
+        "inputHash": "0x3a789fea1e92fb404f4e591c529847fae535e2fe6a79c4cbd72f5ccb2741b595",
+        "runtimeBytes": 11023
+      },
+      {
+        "index": 3,
+        "nonce": "3",
+        "type": "CREATE",
+        "name": "ShapePackRenderer",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+        "constructorArguments": [
+          "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0"
+        ],
+        "gasLimit": "2703828",
+        "valueWei": "0",
+        "inputHash": "0x8af7af6cdf431165b46d8df2d42adede8a95438daf916d395cff90e620385ce0",
+        "runtimeBytes": 9354
+      },
+      {
+        "index": 4,
+        "nonce": "4",
+        "type": "CREATE",
+        "name": "ShapePacks",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0x8b4087d01443ba7619bb3a6e2a8668c5af0d1955",
+        "constructorArguments": [
+          "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+          "0x000000000000000000000000000000000001E002",
+          "Pool Prize Packs",
+          "PRIZEPACK",
+          "2"
+        ],
+        "gasLimit": "5562551",
+        "valueWei": "0",
+        "inputHash": "0x14fc2a22987684ffdc877c078690e4943b4eee9b402e2a7f867efac49e53034f",
+        "runtimeBytes": 17768
+      },
+      {
+        "index": 5,
+        "nonce": "5",
+        "type": "CREATE",
+        "name": "PoolBalancer",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0x6ccd1a4ff41e886975db8504f384bc698d4939b3",
+        "constructorArguments": [
+          "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+          "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+          "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+          "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955",
+          "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+        ],
+        "gasLimit": "6796544",
+        "valueWei": "0",
+        "inputHash": "0x00ba3a0aab98356f7b82a0a007f6576a651271c4e2db19866ed4073143f40314",
+        "runtimeBytes": 23641
+      },
+      {
+        "index": 6,
+        "nonce": "6",
+        "type": "CREATE",
+        "name": "KeeperPolicyV1",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0xbd9f1679b7104b308cb13be7c421a3ba313d30a6",
+        "constructorArguments": [],
+        "gasLimit": "390054",
+        "valueWei": "0",
+        "inputHash": "0xbd04e074ae7b4e3ed1bf9a823a2cb31185b4d5b1a6a7303791eacd9e44621722",
+        "runtimeBytes": 1143
+      },
+      {
+        "index": 7,
+        "nonce": "7",
+        "type": "CREATE",
+        "name": "BalancerFactory",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0xf8fda7622370f00dac7ffb06825d0d193cbdb9dc",
+        "constructorArguments": [
+          "0x6CCD1A4ff41e886975Db8504F384Bc698d4939B3",
+          "0x000000000000000000000000000000000001E003",
+          "0x000000000000000000000000000000000001e004",
+          "0xbd9F1679b7104B308cB13bE7C421A3Ba313D30A6"
+        ],
+        "gasLimit": "1186318",
+        "valueWei": "0",
+        "inputHash": "0x46927bc82983bbd39170d2b4cb1b9f273d07efacca0856272fcaa030cdde0374",
+        "runtimeBytes": 3570
+      }
+    ],
+    "driverHash": "5ad52e2736809e316380e6f3466fc40be94e731b63c604831e8df24748b30edb",
+    "documentHash": "efb14a690b4f4ccb02a1cadaba9d1f9a63b378b225427f48e8eb6f9050cce5f3"
+  },
+  "funded": {
+    "0x000000000000000000000000000000000001e001": "1000000000000000000",
+    "0x000000000000000000000000000000000001e002": "10000000000000000",
+    "0x000000000000000000000000000000000001e003": "10000000000000000",
+    "0x000000000000000000000000000000000001e004": "10000000000000000",
+    "0x000000000000000000000000000000000001e005": "3100000000000000000",
+    "0x000000000000000000000000000000000001e006": "3100000000000000000",
+    "0x000000000000000000000000000000000001e007": "200000000000000000",
+    "0x000000000000000000000000000000000001e008": "40000000000000000000"
+  },
+  "pools": [
+    {
+      "creator": "0x000000000000000000000000000000000001e005",
+      "demo": "0xad016a96d3f9f8654b0B601d6aAaC7c909818aae",
+      "balancer": "0x65abd07CC5210bfff9F193252d9B965666D63315",
+      "pool": "0x0000000000000000000000000000000000000000",
+      "target": "20",
+      "counts": [
+        20,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "receipts": [
+    {
+      "hash": "0xe8f72ef6b208be56fa0dfd04b93f6599c5ff3b28e879505d287e904825227ce3",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 0,
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "value": "0",
+      "gas": "1741612",
+      "gasUsed": "1260896",
+      "cost": "207820442449984",
+      "basefee": "114819654",
+      "gasPrice": "164819654",
+      "status": "success"
+    },
+    {
+      "hash": "0xed03ee5904354b2e7885773c0aef7970ba6a914191ec1dd424c8875d495964ea",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 1,
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "value": "0",
+      "gas": "431388",
+      "gasUsed": "312318",
+      "cost": "47182198512042",
+      "basefee": "101071019",
+      "gasPrice": "151071019",
+      "status": "success"
+    },
+    {
+      "hash": "0xbcb147e0c0d2b0f94215caed98dccb0f70e2588b518f4ccd980160cf0ff7882f",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 2,
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "value": "0",
+      "gas": "3371006",
+      "gasUsed": "2440548",
+      "cost": "338183800380756",
+      "basefee": "88568797",
+      "gasPrice": "138568797",
+      "status": "success"
+    },
+    {
+      "hash": "0xa6bc7d2e7e322fd815c13869873527155de36ac673d1965a19374ca9a62927fc",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 3,
+      "to": null,
+      "value": "0",
+      "gas": "2703828",
+      "gasUsed": "2079868",
+      "cost": "267053449701640",
+      "basefee": "78399230",
+      "gasPrice": "128399230",
+      "status": "success"
+    },
+    {
+      "hash": "0x0a79fc57e360f9e7f94f84a450a9ec8bcf3832c9bb8fd53cfd08cefab30dba79",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 4,
+      "to": null,
+      "value": "0",
+      "gas": "5562551",
+      "gasUsed": "4278886",
+      "cost": "510382988979488",
+      "basefee": "69279408",
+      "gasPrice": "119279408",
+      "status": "success"
+    },
+    {
+      "hash": "0x216eac7beba7be5fd4363d261428d153640f99c60f5453824b05f876b70111ae",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 5,
+      "to": null,
+      "value": "0",
+      "gas": "6796544",
+      "gasUsed": "5228111",
+      "cost": "584794805027461",
+      "basefee": "61855851",
+      "gasPrice": "111855851",
+      "status": "success"
+    },
+    {
+      "hash": "0x00931795f635117a33291ba4cf511a03882a2abb2591e12f03340d72c8a9db1c",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 6,
+      "to": null,
+      "value": "0",
+      "gas": "390054",
+      "gasUsed": "300042",
+      "cost": "31646222450964",
+      "basefee": "55472642",
+      "gasPrice": "105472642",
+      "status": "success"
+    },
+    {
+      "hash": "0x50e42f8d2289e85735ef8671e699ab58c7a8c78d44ce3f7646316bdd73d566cb",
+      "function": "Deploy",
+      "category": "deployment",
+      "actor": "0x000000000000000000000000000000000001e001",
+      "nonce": 7,
+      "to": null,
+      "value": "0",
+      "gas": "1186318",
+      "gasUsed": "912553",
+      "cost": "89985008885493",
+      "basefee": "48607981",
+      "gasPrice": "98607981",
+      "status": "success"
+    }
+  ],
+  "draws": [],
+  "deposits": "0",
+  "buyer": "0",
+  "edge": "0",
+  "vrf": "0",
+  "round": 0,
+  "nonces": {
+    "0x000000000000000000000000000000000001e001": 8,
+    "0x000000000000000000000000000000000001e002": 0,
+    "0x000000000000000000000000000000000001e003": 0,
+    "0x000000000000000000000000000000000001e004": 0,
+    "0x000000000000000000000000000000000001e005": 0,
+    "0x000000000000000000000000000000000001e006": 0,
+    "0x000000000000000000000000000000000001e007": 0,
+    "0x000000000000000000000000000000000001e008": 0
+  },
+  "checkedBlock": "26438883",
+  "checkedHash": "0x38742fb5d5cb4b888b8363fb032554674cd6105113a1cda58806eb3c69f4a687",
+  "mutationCount": 16,
+  "nextNft": 100,
+  "curatedContributions": [],
+  "reports": [
+    {
+      "created": "0x09daba55e22379e6870434415f8969984470dc99",
+      "runtimeCodeHash": "0x6067140d955fce87d6f20493a874d7e440d16c9974903938e1c3197c271babc1",
+      "block": "26438876"
+    },
+    {
+      "created": "0x67c828ad820490c02cdcbbccc3a303c64207fbcf",
+      "runtimeCodeHash": "0x4748911b1d5f84a7a2ad533362bcfb882718d5d49ccc5baf9edcbc88e2127cc5",
+      "block": "26438877"
+    },
+    {
+      "created": "0x4b2f2d25edb6042215c15b9744e003d346482748",
+      "runtimeCodeHash": "0x737aae162981bcbe2783419366c47c70c8a4b4417073a28094cbe9369408aebb",
+      "block": "26438878"
+    },
+    {
+      "created": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "runtimeCodeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe",
+      "block": "26438879"
+    },
+    {
+      "created": "0x8b4087d01443ba7619bb3a6e2a8668c5af0d1955",
+      "runtimeCodeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c",
+      "block": "26438880"
+    },
+    {
+      "created": "0x6ccd1a4ff41e886975db8504f384bc698d4939b3",
+      "runtimeCodeHash": "0x44c877e1714b0cf5ac3a4e39ebaa8661d05f9f0905040730730043a0b5b0f66d",
+      "block": "26438881"
+    },
+    {
+      "created": "0xbd9f1679b7104b308cb13be7c421a3ba313d30a6",
+      "runtimeCodeHash": "0x29e34c09cbcb58dad9f6220722d1cfb6f745b544c90a27d0350a490a95d53040",
+      "block": "26438882"
+    },
+    {
+      "created": "0xf8fda7622370f00dac7ffb06825d0d193cbdb9dc",
+      "runtimeCodeHash": "0xf03f4730422b1c8497a027ba4b47b35628e1fd890d99a6fa0790ad47e451a2d9",
+      "block": "26438883"
+    }
+  ],
+  "inFlight": {
+    "actor": "0x000000000000000000000000000000000001e005",
+    "fn": "DemoNFT CREATE",
+    "category": "setup",
+    "nonce": 0,
+    "data": "0x60808060405234601557610830908161001a8239f35b5f80fdfe6080806040526004361015610012575f80fd5b5f3560e01c90816301ffc9a71461055d5750806306fdde031461051b578063081812fc146104ca578063095ea7b31461042257806323b872dd1461041057806340c10f191461035857806342842e0e146103235780636352211e146102cd57806370a082311461027a57806395d89b4114610240578063a22cb465146101cf578063b88d4fde1461012e578063c87b56dd146100fd5763e985e9c5146100b6575f80fd5b346100f95760403660031901126100f9576100cf6105d1565b6100d76105e7565b601c5263052d173d60211b6008525f5260206030600c20546040519015158152f35b5f80fd5b346100f95760203660031901126100f95761012a61011b6020610637565b5f8152604051918291826105a7565b0390f35b60803660031901126100f9576101426105d1565b61014a6105e7565b6044356064359167ffffffffffffffff83116100f957366023840112156100f95782600401359367ffffffffffffffff85116100f95736602486860101116100f957610197838383610671565b813b61019f57005b5f60206101cd968060246101bb84601f19601f85011601610637565b98828a52018389013786010152610768565b005b346100f95760403660031901126100f9576101e86105d1565b6024358015158091036100f95781601c5263052d173d60211b600852335f52806030600c20555f5260018060a01b0316337f17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c3160205fa3005b346100f9575f3660031901126100f95761012a61025d6040610637565b600481526344454d4f60e01b6020820152604051918291826105a7565b346100f95760203660031901126100f9576102936105d1565b80156102c057673ec412a9852d173d60c11b601c525f52602063ffffffff601c600c205416604051908152f35b638f4eb6045f526004601cfd5b346100f95760203660031901126100f9576004355f818152673ec412a9852d173d60c11b601c5260209020810101546001600160a01b0316801561031657602090604051908152f35b63ceea21b65f526004601cfd5b61032c366105fd565b6103398183859495610671565b823b61034157005b6101cd9261034f6020610637565b925f8452610768565b346100f95760403660031901126100f9576103716105d1565b6024355f818152673ec412a9852d173d60c11b601c526020902081018101805491926001600160a01b031691606081901b6104035782179055805f52601c600c2060018154019063ffffffff82168302156103ee57555f7fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef8180a4005b67ea553b3401336cea831560021b526004601cfd5b63c991cbb15f526004601cfd5b6101cd61041c366105fd565b91610671565b60403660031901126100f9576104366105d1565b6024355f818152673ec412a9852d173d60c11b3317601c526020902081018101805491926001600160a01b039081169216908115610316578290823314331517156104a6575b600101557f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b9255f80a4005b9050815f526030600c2054156104bd57829061047c565b634b6e7f185f526004601cfd5b346100f95760203660031901126100f9576004355f818152673ec412a9852d173d60c11b601c5260209020810101805460601b1561031657600101546040516001600160a01b039091168152602090f35b346100f9575f3660031901126100f95761012a6105386040610637565b600c81526b11195b5bc810dd5c985d195960a21b6020820152604051918291826105a7565b346100f95760203660031901126100f957600435906001600160e01b0319821682036100f95760209160e01c635b5e139f8114906301ffc9a76380ac58cd82149114171715158152f35b602060409281835280519182918282860152018484015e5f828201840152601f01601f1916010190565b600435906001600160a01b03821682036100f957565b602435906001600160a01b03821682036100f957565b60609060031901126100f9576004356001600160a01b03811681036100f957906024356001600160a01b03811681036100f9579060443590565b6040519190601f01601f1916820167ffffffffffffffff81118382101761065d57604052565b634e487b7160e01b5f52604160045260245ffd5b5f838152673ec412a9852d173d60c11b3317601c52602090208301830180546001600160a01b03938416939283169281168084148102156107535750825f52816001018054803314853314171561073c575b610733575b50838318189055601c600c205f198154019055815f52601c600c2060018154019063ffffffff821684021561071e57557fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef5f80a4565b67ea553b3401336cea841560021b526004601cfd5b5f90555f6106c8565b6030600c20546106c357634b6e7f185f526004601cfd5b67ceea21b6a1148100901560021b526004601cfd5b9060a46020939460405195869463150b7a028652338787015260018060a01b03166040860152606085015260808085015280518091818060a08801526107e6575b505001905f601c8401915af1156107d8575b5163757a42ff60e11b016107cb57565b63d1a57ed65f526004601cfd5b3d156107bb573d5f823e3d90fd5b818760c08801920160045afa50805f6107a956fea26469706673582212209c5c8562ed6121a83ee9a442f292ca878aaedde6096c863511195ce2264e9e7864736f6c634300081c0033",
+    "value": "0",
+    "gas": "658008",
+    "maxFeePerGas": "98607981",
+    "maxPriorityFeePerGas": "50000000",
+    "hash": "0xe936f3d7ccc198a9747bc4762d6c35d2edf4fd8407ae95a193d1ebf4cdbe21c7"
+  },
+  "failure": "TransactionReceiptNotFoundError: Transaction receipt with hash \"0xe936f3d7ccc198a9747bc4762d6c35d2edf4fd8407ae95a193d1ebf4cdbe21c7\" could not be found. The Transaction may not be processed on a block yet.\n\nVersion: viem@2.57.17"
+}
