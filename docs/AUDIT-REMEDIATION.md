@@ -2,6 +2,8 @@
 
 **Retain concurrent purchases and the low-capital reserve. Do not describe E1 as fixed.** Work starts from `2ab49fd` on `codex/audit-remediation`; the audited `9b45f91` and its local batch remain historical evidence. The executable candidate completed the checks below with source hash `ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda`. No public-network deployment, real funds or new node broadcast is authorized.
 
+The release follow-up corrects O9's operative text: 0.001 ETH is explicitly a threshold for the named fixed-input regression, not a general bound for allowed operation. Its metric, numerical threshold and regime are unchanged. The historical requirement and rejected universal interpretation remain recorded; neither is a current promise. The updated numerical outcome proposal remains unsigned.
+
 ## Owner direction and implementation
 
 R55–R58 reject serialization and a keeper-maintenance barrier between every batch. The owner prioritizes concurrent operation and minimum defensible capital over exact purchase-time profit attribution. The existing `_collect` approximation and reserve formula remain unchanged. General acceptance of bounded approximation is **not numerical acceptance of a new drift ceiling**: the historical 0.001 ETH O9 bound has real counterexamples and is not a universal guarantee.
@@ -79,7 +81,7 @@ The source review that found no new extraction issue in the early library moves 
 
 1. Keep the current reserve and concurrent admission. The reached adversarial round trips preserve purchaser assets without the removed lifetime keeper reserve.
 2. Prefer the immutable V1 initially; higher or mutable policy quotes remain creator-funded exposure. Do not raise surcharges or hold hypothetical future draws merely to hide measured allocation drift.
-3. Propose a numerical O9 allocation policy for owner review from the full measured range. Keep the old 0.001 ETH counterexamples visible until that decision; do not call a fixed-seed pass universal acceptance.
+3. Use the corrected scenario-scoped O9 wording for owner review. Keep the measured adverse allocation differences visible; do not introduce a larger general tolerance or claim a universal 0.001 ETH bound.
 4. Offer a fresh single-draw option and disclose nonrefundable VRF costs for bulk requests. Do not weaken positive-slippage protection or automatically rebuy refunds.
 5. Complete the remaining whole-candidate audit-seal, owner numerical outcome and real-wallet/rehearsal requirements before any release decision. No canary or mainnet transaction is authorized here.
 

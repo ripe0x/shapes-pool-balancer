@@ -138,7 +138,7 @@
     },
     {
       "id": "O9",
-      "text": "The creator's profit follows the board each draw was priced on: with restocks listed while draws are in flight and the markup unchanged, the sum of profit overbooked and underbooked against that split stays under 0.001 ETH per 180 draws. A creator who raises the markup while draws are unsettled books more, taken from their own reserve (audit of 8ec98cb: 0.00276 ETH in one draw at launch scale): accepted, shown as information.",
+      "text": "Creator profit uses the current tracked-board approximation while concurrent purchases remain enabled. In the named fixed-input restock_in_flight regression only, absolute allocation error stays below 0.001 ETH over 180 draws. This is a scenario threshold, not a bound for other boards, gas changes, policy changes or purchase orderings. Other permitted sequences can overbook or underbook creator-owned operating capital; their measured drift is reported separately. Purchaser escrow, refund entitlements and actual prize backing remain protected independently of this allocation.",
       "metric": "facts.split_absolute_error_wei",
       "max": 1000000000000000,
       "regimes": [

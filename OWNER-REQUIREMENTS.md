@@ -210,3 +210,7 @@ This request supersedes R26's duplicate-largest-prize and full-future-board insu
 - R58. "Do not introduce a new purchase bottleneck or make every batch dependent on keeper maintenance. Quantify any remaining accounting drift and prove that the reduced reserve remains safe under the existing concurrency model."
 
 This rejects the proposed serialized-cohort mechanism. It does not sign revised outcomes or make the fixed O9 seed's 0.001 ETH observation a proven bound for all permitted boards and policies. Purchaser custody and refund requirements remain unchanged. Any changed numerical acceptance requires an explicit owner decision against measured results; no larger tolerance is silently substituted.
+
+## Release follow-up (owner, 2026-11-17)
+
+- R59. The owner requested completion of "dashboard/wallet interaction testing, a rehearsal of this revision, current whole-candidate audit evidence and numerical outcome approval" and requested a fix to "treating the old 0.001 ETH drift bound as universal." Scope O9's existing numerical check to its named fixed-input regression; do not present it as a general bound. Prepare the current measured approval proposal for the owner's decision. This request does not supply an outcome signature or authorize a public-network broadcast.
