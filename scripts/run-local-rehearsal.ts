@@ -372,6 +372,9 @@ async function execute() {
   // The owner authorized this local gate change, but this batch still needs its separate exact-hash approval.
   try {
     const result=execFileSync(process.execPath,['--import','tsx',join(scratch,'scripts/local-rehearsal-gate.ts'),'--plan',frozenPlanPath,'--approved-plan-hash',planHash,'--phase','prepare','--',...forgeArguments],{cwd:scratch,env:deploymentEnvironment(),encoding:'utf8'});
+    const proof=JSON.parse(result);
+    assert.equal(proof.planHash,planHash);assert.equal(proof.localPreflight.phase,'prepare');
+    assert.equal(proof.localPreflight.chainId,31337);assert.equal(proof.localPreflight.rpc,prepared.rpc);
     writeFileSync(join(dir,'local-plan-prepare.log'),result);
   } catch(error) { const e=error as any; writeFileSync(join(dir,'local-plan-prepare-failed.log'),String(e.stdout??'')+String(e.stderr??'')); throw error; }
   for(const role of Object.keys(funding) as (keyof typeof funding)[])await seed(role);

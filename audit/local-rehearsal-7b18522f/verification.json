@@ -22,5 +22,18 @@
     "No new transaction tests polling after repair.",
     "No full lifecycle, pools, draws, inventory or keeper payments reached.",
     "No further execution of repaired material is approved."
-  ]
+  ],
+  "entrypointErratum": {
+    "originalPrepareCliExecuted": false,
+    "evidence": "original-run/local-plan-prepare.log is0bytes; later deployment-broadcast.log has distinct deploy-phaseproof.",
+    "cause": "Logical absolute /var argv path differed from canonical /private/var module URL.",
+    "failingBefore": "entrypoint-before-fix.log (one failed regression,12skipped)",
+    "repairs": [
+      "realpathSync onCLIentrypoint",
+      "DriverJSONproof mustmatchplanHash,preparephase,chain31337,expectedRPCbeforefunding."
+    ],
+    "after": "13focused gate tests andtypecheck pass; entrypoint-checks.json",
+    "newTransactionsAfterRepair": 0,
+    "independentReview": "/root/remediation_review reviewed both changes; no further must-fix in scope; no RPC/sends/seal."
+  }
 }

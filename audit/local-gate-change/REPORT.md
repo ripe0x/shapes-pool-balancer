@@ -2,6 +2,8 @@
 
 **Implemented and prepared; batch approval pending. No funding or broadcasts.** Base `ff70a1550f233f3601454380d72612b0143e944b`. Owner R60 authorizes a local-only gate change, preserves production gates and requests a concrete batch for later approval.
 
+**Subsequent runtime erratum:** this is the historical preparation report. The subsequently approved7b attempt exposed a skipped absolute-path pre-funding entrypoint and a receipt-read race. See the [run report and repairs](../local-rehearsal-7b18522f/REPORT.md). Relative-path preflight tests passed, but did not cover that actual driver invocation. A failing-before real symlink regression now passes; the CLI canonicalizes its entrypoint and the driver requires a nonempty matching JSON proof before funding. Production routing remains unchanged. No historical review is promoted to cover unexecuted fixed paths.
+
 Proposed batch SHA-256: `7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236`. Canonical payload: `docs/receipts/rehearsal-04bc760-preparation/bounded-plan.json`. Full roles, decoded deployment, scenarios and limits: `docs/RELEASE-REHEARSAL.md`.
 
 ## Controls and verification

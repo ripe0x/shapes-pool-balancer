@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, it } from 'vitest';
 import { digest, validateForgeArgs, validatePlan } from './local-rehearsal-gate';
 
@@ -19,6 +20,11 @@ describe('local rehearsal gate without chain mutations',()=>{
   });
   it('rejects a stale approval before material or node access',()=>{
     assert.throws(()=>validatePlan(proposed,'0'.repeat(64)),/exact approved plan hash/);
+  });
+  it('runs the CLI through an absolute symlink instead of silently exiting successfully',()=>{
+    const alias=join(mkdtempSync(join(tmpdir(),'local-gate-entrypoint-')),'gate.ts');
+    symlinkSync(resolve(root,'scripts/local-rehearsal-gate.ts'),alias);
+    assert.throws(()=>execFileSync(process.execPath,['--import','tsx',alias,'--plan',resolve(root,'docs/receipts/rehearsal-04bc760-preparation/bounded-plan.json'),'--approved-plan-hash','0'.repeat(64),'--phase','prepare','--',...proposed.plan.forgeArguments],{cwd:root,stdio:'pipe'}));
   });
   it.each([
     ['mainnet', (p:Record<string,any>)=>{p.chainId=1;}],
@@ -40,9 +46,9 @@ describe('local rehearsal gate without chain mutations',()=>{
     ]) assert.throws(()=>validateForgeArgs(proposed.plan,args,'deploy'));
   });
   it('preserves every byte of the original production gate and Forge tail',()=>{
-    const before=execFileSync('git',['show','04bc760:script/deploy.sh'],{cwd:root,encoding:'utf8'});
     const after=readFileSync(resolve(root,'script/deploy.sh'),'utf8');
-    assert.equal(after.slice(after.indexOf('GATE=')),before.slice(before.indexOf('GATE=')));
+    // Frozen 04bc760 production tail; shallow CI checkouts need no historical commit objects.
+    assert.equal(digest(after.slice(after.indexOf('GATE='))),'34d5e5f61b2ea38bfaf92fc4cc841a5f4e113f6d53d9b47975a324e8d78a5e0d');
     assert.match(after,/unset ASSET_GATE_PASSED\s+exec forge script script\/Deploy.s.sol "\$@"/);
     assert.match(after,/--require-review/);
   });

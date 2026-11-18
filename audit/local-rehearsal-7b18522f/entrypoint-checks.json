@@ -1,0 +1,32 @@
+[
+  {
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "scripts/local-rehearsal-gate.test.ts"
+    ],
+    "exitStatus": 0,
+    "log": "entrypoint-after-fix.log"
+  },
+  {
+    "command": [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    "exitStatus": 0,
+    "log": "entrypoint-typecheck.log"
+  },
+  {
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "scripts/local-rehearsal-gate.test.ts"
+    ],
+    "exitStatus": 0,
+    "log": "entrypoint-final-tests.log",
+    "scope": "Final golden checksum uses verified04bc760productiontail without requiring historical commits in default shallowCI."
+  }
+]

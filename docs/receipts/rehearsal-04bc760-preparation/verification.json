@@ -117,7 +117,9 @@
     "buyerPaymentsWei": "0",
     "draws": 0,
     "replayedTransactions": 0,
-    "continuationAuthorized": false
+    "continuationAuthorized": false,
+    "originalPrepareCliExecuted": false,
+    "laterDeployGateExecuted": true
   },
   "limits": {
     "deposits": "6000000000000000000",
@@ -159,6 +161,7 @@
     "result": "No concrete must-fix within bounded routing review. Exact batch approval remains pending; no production seal/signature or target contract audit."
   },
   "finalTypecheckAndGateTests": "Root final typecheck and12focused gate tests pass; audit/local-gate-change/checks.json captures commands/statuses. Production no-run gate remainsINCOMPLETE for existing missing approval/review and newlystale source stamps.",
-  "currentMaterialStatus": "INVALID for further execution: driver receipt wait repaired and batch-status doc updated after stopped attempt. Canonical7b packet is retained as historical owner-approved input; do not regenerate/replay it as fresh.",
-  "runReport": "../../../audit/local-rehearsal-7b18522f/REPORT.md"
+  "currentMaterialStatus": "INVALID for further execution: receipt polling, canonical verifier entrypoint, mandatory pre-funding JSONproof and batch-status docs repaired after stopped attempt. Retained7b packet is historical, not executableapproval.",
+  "runReport": "../../../audit/local-rehearsal-7b18522f/REPORT.md",
+  "entrypointRepairEvidence": "../../../audit/local-rehearsal-7b18522f/entrypoint-checks.json"
 }
