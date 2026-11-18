@@ -250,12 +250,14 @@ missing focused cases; permanent tests now cover fee changes after proposal, nat
 upkeep, actual hostile FWA listing rollback, latched reentry/initialization attempts and same-address stale quotes.
 This is agent implementation review, not an exhaustive independent security audit or release approval.
 
-The sealed `script/deploy.sh --local-rehearsal-plan ...` route still belongs to archived **04bc760** and its interrupted
+At the reviewed `51dd7b7` revision, the sealed `script/deploy.sh --local-rehearsal-plan ...` route belongs to archived **04bc760** and its interrupted
 approved batch. It rejects this changed candidate. Its historical plan/hash, verifier, production wrapper and approval
 requirements remain intact. The affected gate tests passed **15/15** after binding both current credit and preserved concurrent-recovery evidence
 paths, including rejection of changed inputs outside the archived source seal. [Gate tests](verification/protected-revenue/local-gate-final.log).
 The passing npm rehearsal exercises the existing deployment implementation/keeper on a
-separate synthetic node; **a new candidate-specific, hash-bound full wrapper rehearsal has not run**. No old signature
+separate synthetic node; **a new candidate-specific, hash-bound full wrapper rehearsal had not run at that revision**.
+The subsequent [focused follow-up](FRONTEND-FOLLOWUP-RESULTS.md#current-candidate-wrapper-rehearsal) records the completed
+new candidate route and exact source/plan binding; it does not relabel this archived evidence. No old signature
 or report is presented as validation of this code. Production outcome approval, whole-candidate release review, real
 wallet signing and any separately authorized mainnet canary remain outside implementation completion.
 

@@ -35,6 +35,31 @@
       "result": "9 passed, 0 failed",
       "log": "ci-fork.log",
       "scope": "applicable CI fork integration, unchanged contract sources"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run test:ts",
+      "revision": "0065ec4e0356a7ecdb8765880331affafdc636e2",
+      "sourceFingerprint": "2898e8bf0fa1a537bcdfe8118c9e2d3ee87259b856b72989bc5da21c384aad45",
+      "exitStatus": 0,
+      "result": "188 passed, 4 opt-in tests skipped, 17 files",
+      "log": "test-ts-final-0065ec4.log",
+      "scope": "final frozen implementation, including all rehearsal-control repairs; three opt-in creation cases separately exercised on real owned fork"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 node --import tsx scripts/current-local-rehearsal.ts --plan /private/tmp/fwa-credit-atomic/docs/receipts/current-rehearsal/20261118195158615-0065ec4/bounded-plan.json --approved-plan-hash f622ed9c0470910d0a938f650523b610c116e9a812fc3639e80b6fecfe551955 --execute",
+      "revision": "0065ec4e0356a7ecdb8765880331affafdc636e2",
+      "exitStatus": null,
+      "result": "completed=true journal and successful console marker; 157 draws, 419 receipts, all final assertions passed",
+      "exitStatusLimitation": "Original terminal session unavailable after context continuation; OS status not recovered. Separate read-only source/receipt/pool postflight exited 0.",
+      "evidence": "../../receipts/current-rehearsal/20261118195158615-0065ec4/final-verification.json"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 node --import tsx docs/receipts/current-rehearsal/20261118195158615-0065ec4/postflight.mjs",
+      "revision": "0065ec4e0356a7ecdb8765880331affafdc636e2",
+      "exitStatus": 0,
+      "result": "146 frozen inputs, ten full artifacts and all 29 production file hashes match; 419 actual receipts and both retired pool readbacks verified",
+      "initialAttempt": "Sandbox disallowed localhost connection (EPERM); authorized outside-sandbox read-only retry succeeded. No node mutations or execution replay.",
+      "evidence": "../../receipts/current-rehearsal/20261118195158615-0065ec4/final-verification.json"
     }
   ],
   "limits": [

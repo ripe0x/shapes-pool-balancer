@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-11-18T20:27:25.820Z",
+  "revision": "0065ec4e0356a7ecdb8765880331affafdc636e2",
+  "planHash": "f622ed9c0470910d0a938f650523b610c116e9a812fc3639e80b6fecfe551955",
+  "sourceFingerprint": "2898e8bf0fa1a537bcdfe8118c9e2d3ee87259b856b72989bc5da21c384aad45",
+  "sourceCheck": "pass, 146 inputs and ten full artifact hashes",
+  "productionManifestFiles": 29,
+  "receiptsChecked": 419,
+  "expectedReverts": 1,
+  "gasWei": "270486714751984388",
+  "pools": [
+    {
+      "balancer": "0x65abd07CC5210bfff9F193252d9B965666D63315",
+      "pool": "0xEbFfd3123F95303C22B908625bCc8d730D676ef3",
+      "balance": "0",
+      "credit": "0",
+      "activeCount": 0,
+      "ownerProceeds": "0",
+      "refunds": "0"
+    },
+    {
+      "balancer": "0x40DAB025de33d6bE29DE405494aA35CF9a787623",
+      "pool": "0x50fd4B8F10e57F91b7205fe40618e4Ca0Ca10518",
+      "balance": "0",
+      "credit": "0",
+      "activeCount": 0,
+      "ownerProceeds": "0",
+      "refunds": "0"
+    }
+  ],
+  "executionCompletion": "Journal completed=true and final console marker retained; original terminal session expired before OS exit status could be recovered",
+  "validationCommandExitStatus": 0,
+  "limitations": [
+    "Read-only postflight; no execution replay",
+    "FWA protocol fees remain; no claim that FWA pool balances are zero"
+  ]
+}

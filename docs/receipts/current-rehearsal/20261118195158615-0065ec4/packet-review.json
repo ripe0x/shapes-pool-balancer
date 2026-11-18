@@ -1,0 +1,27 @@
+{
+  "planHash": "f622ed9c0470910d0a938f650523b610c116e9a812fc3639e80b6fecfe551955",
+  "sourceFingerprint": "2898e8bf0fa1a537bcdfe8118c9e2d3ee87259b856b72989bc5da21c384aad45",
+  "revision": "0065ec4e0356a7ecdb8765880331affafdc636e2",
+  "rpc": "http://127.0.0.1:18789",
+  "pid": 38404,
+  "forkBlock": "26444161",
+  "forkHash": "0x42e2df8e0e3ff9493773e68d8c878ce56573011bdcf14a7800df53a3f3b9d54a",
+  "sourceAndArtifactValidation": "pass",
+  "authority": "Current owner request R70 explicitly authorizes this fresh bounded isolated synthetic rehearsal and delegates routine choices; no historical approval/signature is inherited.",
+  "reviewer": "root",
+  "fundingTotalWei": "8630000000000000000",
+  "caps": {
+    "deposits": "2000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "5000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "1000000000000000000",
+    "draws": 160,
+    "rounds": 50,
+    "replacementCuratedNfts": 8
+  },
+  "closeoutReserveWei": "100000000000000000",
+  "perTransactionFeeCeilingWei": "20000000000",
+  "decodedDeploymentCount": 8,
+  "productionApproval": false
+}

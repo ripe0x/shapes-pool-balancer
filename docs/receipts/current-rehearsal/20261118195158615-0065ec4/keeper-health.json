@@ -1,0 +1,21 @@
+{
+  "message": "mined",
+  "balancer": "0x65abd07CC5210bfff9F193252d9B965666D63315",
+  "hash": "0x0a3781a10dced1fb6eb88405fd691a22daf27ab46388c21dfac7e0cabaebabe1",
+  "gasUsed": "859418",
+  "gasLimit": "4000000",
+  "measuredGas": "866436",
+  "rewardWei": "536946720000000",
+  "costWei": "472679900000000",
+  "netWei": "64266820000000",
+  "effectiveGasPriceWei": "550000000",
+  "gasEstimate": "937300",
+  "estimateMinusBilled": "77882",
+  "expenseGas": "860150",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "732",
+  "minimumFixedWei": "0",
+  "minimumGas": "860150",
+  "minimumRewardWei": "473082500000000",
+  "policy": "0x0176016958744B0030c96cC10896bd0817D94855"
+}
