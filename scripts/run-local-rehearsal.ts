@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, realpathSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   createPublicClient, createTestClient, createWalletClient, decodeFunctionData,
   encodeFunctionData, getContractAddress, http, keccak256, parseAbi, parseAbiItem, toHex,
@@ -38,25 +39,27 @@ const eq = (a: string, b: string) => assert.equal(a.toLowerCase(), b.toLowerCase
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
 const option = (name: string) => { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1]; };
-const route = 'gated';
-assert.ok(!flag('--route') && !flag('--owner-approved-local-deploy-waiver'), 'only the unchanged release wrapper is allowed');
+const route = 'local-rehearsal-plan';
+const frozenPlanPath=join(EVIDENCE,'bounded-plan.json');
+assert.ok(!flag('--route') && !flag('--owner-approved-local-deploy-waiver'), 'use the explicit local-plan wrapper route only');
 const gateConfig = JSON.parse(readFileSync(join(ROOT,'asset-flow.json'),'utf8'));
-delete gateConfig.approval; // the owner signature arrives later and is verified by the unchanged gate
+delete gateConfig.approval; // production approval remains separate; local execution requires exact plan approval
 const protectedPaths = [...gateConfig.source_paths,...gateConfig.evidence_paths,'keeper','shared','lib','package.json','package-lock.json','tsconfig.json','test/fixtures/keeper-policy-v1.json'];
 const git = (...a:string[]) => execFileSync('git',a,{cwd:ROOT,encoding:'utf8'});
-function sourceFingerprint(root=ROOT) {
+function sourceFingerprint(root=ROOT, archivedWrapper=false) {
   const files=execFileSync('git',['ls-files','-z','--',...gateConfig.source_paths,...gateConfig.evidence_paths],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean).sort();
-  const hash=createHash('sha256');for(const file of files){hash.update(`${file}\0`);hash.update(readFileSync(join(root,file)));hash.update('\0');}return hash.digest('hex');
+  const hash=createHash('sha256');for(const file of files){hash.update(`${file}\0`);hash.update(archivedWrapper&&file==='script/deploy.sh'?execFileSync('git',['show',`${REVISION}:script/deploy.sh`],{cwd:ROOT}):readFileSync(join(root,file)));hash.update('\0');}return hash.digest('hex');
 }
 function sourceCheck() {
   git('merge-base','--is-ancestor',REVISION,'HEAD');
-  git('diff','--exit-code','--ignore-submodules=none',REVISION,'--',...protectedPaths);
+  git('diff','--exit-code','--ignore-submodules=none',REVISION,'--',...protectedPaths,':(exclude)script/deploy.sh');
   assert.equal(git('ls-files','--others','--exclude-standard','--',...protectedPaths).trim(),'','no unreviewed protected input');
-  assert.equal(sourceFingerprint(),SOURCE_FINGERPRINT,'exact candidate production/evidence fingerprint');
+  assert.equal(sourceFingerprint(ROOT,true),SOURCE_FINGERPRINT,'exact archived inputs; only material-bound local wrapper overlay is allowed');
 }
-const materialPaths=['scripts/prepare-local-rehearsal.ts','scripts/run-local-rehearsal.ts','docs/RELEASE-REHEARSAL.md',...['deployment-actions.json','node.json','preflight.json','opening-preview.json','deployment-code-hashes.json','demo-nft.json'].map(n=>`docs/receipts/rehearsal-04bc760-preparation/${n}`)];
+const materialPaths=['script/deploy.sh','scripts/local-rehearsal-gate.ts','scripts/prepare-local-rehearsal.ts','scripts/run-local-rehearsal.ts','docs/RELEASE-REHEARSAL.md',...['deployment-actions.json','node.json','preflight.json','opening-preview.json','deployment-code-hashes.json','demo-nft.json'].map(n=>`docs/receipts/rehearsal-04bc760-preparation/${n}`)];
 const materialHashes=Object.fromEntries(materialPaths.map(path=>[path,sha(readFileSync(join(ROOT,path),'utf8'))]));
-const plan = { sourceFingerprint: SOURCE_FINGERPRINT, materialHashes, plannedDriverDraws:152, uiWrites:'not supported or authorized; separate uncompleted requirement', syntheticContributions: { initialCuratedNfts:4, replacementLimit:caps.replacementCuratedNfts, initialNotionalWei:3n*ETH/2n, replacementNotionalWei:ETH/4n, realMarketValue:'unmeasured; no creator net-profit claim' }, gateConfigHash: sha(stringify(gateConfig)), revision: REVISION, rpc: prepared.rpc, chainId: 31337, forkBlock: prepared.forkBlock, forkHash: prepared.forkHash, roles, funding, caps, route, maxFeePerGas: MAX_FEE, maxPriorityFeePerGas: TIP, perTransactionGas: MAX_TRANSACTION_GAS, closeoutGasReserveWei: EXIT_RESERVE, coordinatorException: true, timeJumpSeconds: 172801, baseline: 'natural EIP-1559', stress: ['3 gwei', '4.9 gwei', '8 gwei'], keeper: 'production Keeper class; controlled ticks and persisted health, not CLI', deployment: prepared.actions, driverHash: sha(readFileSync(import.meta.filename, 'utf8')), documentHash: sha(readFileSync(join(ROOT, 'docs/RELEASE-REHEARSAL.md'), 'utf8')) };
+const forgeArguments=['--rpc-url',prepared.rpc,'--unlocked','--sender',roles.deployer,'--with-gas-price',String(MAX_FEE),'--priority-gas-price',String(TIP),'--slow','--broadcast'];
+const plan = { repositoryRoot:ROOT, archiveRevision:REVISION, forgeArguments, sourceFingerprintScope:'archive04 before material-bound local wrapper overlay; not a new production review seal', localOverlaySourceFingerprint:sourceFingerprint(), sourceFingerprint: SOURCE_FINGERPRINT, materialHashes, plannedDriverDraws:152, uiWrites:'not supported or authorized; separate uncompleted requirement', syntheticContributions: { initialCuratedNfts:4, replacementLimit:caps.replacementCuratedNfts, initialNotionalWei:3n*ETH/2n, replacementNotionalWei:ETH/4n, realMarketValue:'unmeasured; no creator net-profit claim' }, gateConfigHash: sha(stringify(gateConfig)), revision: REVISION, rpc: prepared.rpc, chainId: 31337, forkBlock: prepared.forkBlock, forkHash: prepared.forkHash, roles, funding, caps, route, maxFeePerGas: MAX_FEE, maxPriorityFeePerGas: TIP, perTransactionGas: MAX_TRANSACTION_GAS, closeoutGasReserveWei: EXIT_RESERVE, coordinatorException: true, timeJumpSeconds: 172801, baseline: 'natural EIP-1559', stress: ['3 gwei', '4.9 gwei', '8 gwei'], keeper: 'production Keeper class; controlled ticks and persisted health, not CLI', deployment: prepared.actions, driverHash: sha(readFileSync(import.meta.filename, 'utf8')), documentHash: sha(readFileSync(join(ROOT, 'docs/RELEASE-REHEARSAL.md'), 'utf8')) };
 const planHash = sha(stringify(plan));
 const pub = createPublicClient({ transport: http(prepared.rpc, { timeout: 60_000 }), cacheTime: 0 });
 const test = createTestClient({ mode: 'anvil', transport: http(prepared.rpc, { timeout: 60_000 }) });
@@ -190,20 +193,28 @@ function stage() {
   cpSync(join(ROOT,'asset-flow.json'),join(scratch,'asset-flow.json'));
   for(const name of ['audit','docs/receipts/flow']) cpSync(join(ROOT,name),join(scratch,name),{recursive:true,filter:path=>!path.split('/').some(part=>/^\.env($|\.)/.test(part))});
   for(const name of ['out','cache']) cpSync(join(ROOT,name),join(scratch,name),{recursive:true});
-  symlinkSync(join(ROOT,'lib'),join(scratch,'lib')); symlinkSync(join(ROOT,'node_modules'),join(scratch,'node_modules'));
+  symlinkSync(join(ROOT,'lib'),join(scratch,'lib'));
+  const dependencies=realpathSync(dirname(dirname(fileURLToPath(import.meta.resolve('tsx/package.json')))));
+  assert.equal(realpathSync(dirname(dirname(fileURLToPath(import.meta.resolve('viem/package.json'))))),dependencies,'tsx and viem share the installed dependency tree');
+  symlinkSync(dependencies,join(scratch,'node_modules'));
   execFileSync('git',['init','-q'],{cwd:scratch});
   const cfg=JSON.parse(readFileSync(join(scratch,'asset-flow.json'),'utf8'));
   execFileSync('git',['add','-f','--',...cfg.source_paths,...cfg.evidence_paths],{cwd:scratch});
   assert.equal(sourceFingerprint(scratch),SOURCE_FINGERPRINT,'staged gate inputs match reviewed candidate');
   writeFileSync(join(scratch,'archive-manifest.json'),stringify({revision:REVISION,manifest,requiredEvidence:cfg.evidence_paths,sourceFingerprint:sourceFingerprint(scratch)}));
+  // Validate archive04 first; this authorized local-only overlay does not inherit its production review seal.
+  cpSync(join(ROOT,'script/deploy.sh'),join(scratch,'script/deploy.sh'));
+  cpSync(join(ROOT,'scripts/local-rehearsal-gate.ts'),join(scratch,'scripts/local-rehearsal-gate.ts'));
+  assert.equal(sourceFingerprint(scratch),plan.localOverlaySourceFingerprint,'exact local wrapper overlay fingerprint');
+  writeFileSync(join(scratch,'local-overlay.json'),stringify({archiveFingerprint:SOURCE_FINGERPRINT,localOverlayFingerprint:sourceFingerprint(scratch),wrapperHash:materialHashes['script/deploy.sh'],verifierHash:materialHashes['scripts/local-rehearsal-gate.ts']}));
   return scratch;
 }
+const deploymentEnvironment=()=>({PATH:process.env.PATH,HOME:process.env.HOME,PACKS_ADMIN:roles.packsAdmin,KEEPER_ADMIN:roles.keeperAdmin,POLICY_ADMIN:roles.policyAdmin});
 function forge(broadcast: boolean) {
-  const forgeArgs=['script/Deploy.s.sol','--rpc-url',prepared.rpc,'--unlocked','--sender',roles.deployer,'--with-gas-price',String(MAX_FEE),'--priority-gas-price',String(TIP),'--slow',...(broadcast?['--broadcast']:[])];
-  const env={PATH:process.env.PATH,HOME:process.env.HOME,PACKS_ADMIN:roles.packsAdmin,KEEPER_ADMIN:roles.keeperAdmin,POLICY_ADMIN:roles.policyAdmin};
+  const flags=broadcast?forgeArguments:forgeArguments.filter(arg=>arg!=='--broadcast');
   const command=broadcast?join(scratch,'script/deploy.sh'):'forge';
-  const argv=broadcast?forgeArgs.slice(1):['script',...forgeArgs];
-  try { const out=execFileSync(command,argv,{cwd:scratch,env,encoding:'utf8',maxBuffer:64*1024*1024}); writeFileSync(join(dir,`deployment-${broadcast?'broadcast':'simulation'}.log`),out); }
+  const argv=broadcast?['--local-rehearsal-plan',frozenPlanPath,'--approved-plan-hash',planHash,...flags]:['script','script/Deploy.s.sol',...flags];
+  try { const out=execFileSync(command,argv,{cwd:scratch,env:deploymentEnvironment(),encoding:'utf8',maxBuffer:64*1024*1024}); writeFileSync(join(dir,`deployment-${broadcast?'broadcast':'simulation'}.log`),out); }
   catch(error) { const e=error as any; writeFileSync(join(dir,`deployment-${broadcast?'broadcast':'simulation'}-failure.log`),String(e.stdout??'')+String(e.stderr??'')); throw error; }
 }
 async function deploy() {
@@ -350,17 +361,18 @@ async function closeout() {
 }
 async function execute() {
   assert.equal(option('--approved-plan-hash'),planHash,'explicit approved plan hash must match exact reviewed driver/doc/route');
+  const frozen=JSON.parse(readFileSync(frozenPlanPath,'utf8'));assert.equal(frozen.planHash,planHash);assert.equal(sha(stringify(frozen.plan)),planHash,'absolute frozen plan file matches reviewed driver');
 
   await nodeCheck(true);
   for(const action of prepared.actions)assert.ok(!(await pub.getCode({address:action.predictedAddress})), 'prepared deployment destination must remain vacant');
   for(const address of Object.values(roles)){assert.ok(!(await pub.getCode({address})));assert.equal(await pub.getBalance({address}),0n);assert.equal(await pub.getTransactionCount({address}),0);}
   dir=mkdtempSync(join(tmpdir(),'fwa-rehearsal-journal-04bc760-'));file=join(dir,'journal.json');stage();
   journal={planHash,plan,funded:{},pools:[],receipts:[],draws:[],deposits:'0',buyer:'0',edge:'0',vrf:'0',round:0,nonces:Object.fromEntries(Object.values(roles).map(address=>[address.toLowerCase(),0])),checkedBlock:prepared.forkBlock,checkedHash:prepared.forkHash,mutationCount:0,nextNft:100,curatedContributions:[],reports:[]};save();console.log(stringify({dir,scratch,planHash}));
-  // No chain mutation until existing signed outcomes, scorecards and exact-source review are accepted.
+  // The owner authorized this local gate change, but this batch still needs its separate exact-hash approval.
   try {
-    const gate=execFileSync('python3',[join(process.env.HOME!,'.agents/guidance/asset-flow-kit/asset_gate.py'),scratch,'--no-run','--require-review'],{cwd:scratch,encoding:'utf8'});
-    writeFileSync(join(dir,'release-gate-preflight.log'),gate);
-  } catch(error) { const e=error as any; writeFileSync(join(dir,'release-gate-preflight-failed.log'),String(e.stdout??'')+String(e.stderr??'')); throw error; }
+    const result=execFileSync(process.execPath,['--import','tsx',join(scratch,'scripts/local-rehearsal-gate.ts'),'--plan',frozenPlanPath,'--approved-plan-hash',planHash,'--phase','prepare','--',...forgeArguments],{cwd:scratch,env:deploymentEnvironment(),encoding:'utf8'});
+    writeFileSync(join(dir,'local-plan-prepare.log'),result);
+  } catch(error) { const e=error as any; writeFileSync(join(dir,'local-plan-prepare-failed.log'),String(e.stdout??'')+String(e.stderr??'')); throw error; }
   for(const role of Object.keys(funding) as (keyof typeof funding)[])await seed(role);
   await deploy();
   await setup(roles.creatorA,[20,...Array(15).fill(0)]);await setup(roles.creatorB,[5,3,2,...Array(13).fill(0)]);

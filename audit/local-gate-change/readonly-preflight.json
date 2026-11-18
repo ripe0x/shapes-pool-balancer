@@ -1,0 +1,62 @@
+[
+  {
+    "scope": "root",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/local-rehearsal-gate.ts",
+      "--plan",
+      "/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/docs/receipts/rehearsal-04bc760-preparation/bounded-plan.json",
+      "--approved-plan-hash",
+      "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+      "--phase",
+      "prepare",
+      "--",
+      "--rpc-url",
+      "http://127.0.0.1:18556",
+      "--unlocked",
+      "--sender",
+      "0x000000000000000000000000000000000001e001",
+      "--with-gas-price",
+      "20000000000",
+      "--priority-gas-price",
+      "50000000",
+      "--slow",
+      "--broadcast"
+    ],
+    "cwd": "/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation",
+    "exitStatus": 0,
+    "result": "{\n  \"localPreflight\": {\n    \"phase\": \"prepare\",\n    \"chainId\": 31337,\n    \"rpc\": \"http://127.0.0.1:18556\",\n    \"pid\": 50886,\n    \"block\": \"26438875\",\n    \"hash\": \"0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157\",\n    \"transactionsSent\": 0\n  },\n  \"planHash\": \"7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236\",\n  \"releaseApproval\": false\n}"
+  },
+  {
+    "scope": "scratch",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/local-rehearsal-gate.ts",
+      "--plan",
+      "/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation/docs/receipts/rehearsal-04bc760-preparation/bounded-plan.json",
+      "--approved-plan-hash",
+      "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+      "--phase",
+      "prepare",
+      "--",
+      "--rpc-url",
+      "http://127.0.0.1:18556",
+      "--unlocked",
+      "--sender",
+      "0x000000000000000000000000000000000001e001",
+      "--with-gas-price",
+      "20000000000",
+      "--priority-gas-price",
+      "50000000",
+      "--slow",
+      "--broadcast"
+    ],
+    "cwd": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-pJhkLo",
+    "exitStatus": 0,
+    "result": "{\n  \"localPreflight\": {\n    \"phase\": \"prepare\",\n    \"chainId\": 31337,\n    \"rpc\": \"http://127.0.0.1:18556\",\n    \"pid\": 50886,\n    \"block\": \"26438875\",\n    \"hash\": \"0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157\",\n    \"transactionsSent\": 0\n  },\n  \"planHash\": \"7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236\",\n  \"releaseApproval\": false\n}"
+  }
+]

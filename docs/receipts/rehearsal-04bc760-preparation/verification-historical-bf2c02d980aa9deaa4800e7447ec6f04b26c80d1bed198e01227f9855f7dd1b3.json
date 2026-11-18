@@ -1,0 +1,116 @@
+{
+  "scope": [
+    "scripts/run-local-rehearsal.ts",
+    "docs/RELEASE-REHEARSAL.md",
+    "docs/receipts/rehearsal-04bc760-preparation"
+  ],
+  "relatedRootOwnedInputs": [
+    "script/deploy.sh",
+    "scripts/local-rehearsal-gate.ts"
+  ],
+  "archiveRevision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "workspaceHead": "ff70a1550f233f3601454380d72612b0143e944b",
+  "planHash": "bf2c02d980aa9deaa4800e7447ec6f04b26c80d1bed198e01227f9855f7dd1b3",
+  "archiveSourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "localOverlaySourceFingerprint": "f248d695668453f4099024c092c4f969b6434de619919503b9f040e46fc123dc",
+  "fingerprintScope": "ca02fb... applies before the explicit local wrapper overlay only; no old production review seal is reissued",
+  "gateConfigHash": "9c3287f35dd6172b3fc358272f1efe302e56dba67f84847c4a39375be25c9a6e",
+  "unsignedOwnerOutcomeHash": "8df57bb17c80ea5175a247e74ac92e42057d6fb47a5c8fe1c7f09dd209781955",
+  "history": [
+    "bounded-plan-historical-6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c.json",
+    "verification-historical-6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c.json"
+  ],
+  "authority": {
+    "localGateChange": "Owner explicitly authorized local-only gate change; root relayed this implementation scope",
+    "batchApproval": false,
+    "fundingApproval": false,
+    "broadcastApproval": false,
+    "productionReleaseApproval": false
+  },
+  "checks": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "exitStatus": 0,
+      "result": "Integrated driver and provisional frozen root wrapper/verifier typecheck passed",
+      "evidence": [
+        "local-gate-integration-typecheck.log"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts",
+      "exitStatus": 0,
+      "result": "Current material-bound proposed packet captured to canonical absolute bounded-plan.json; no RPC or mutation",
+      "evidence": [
+        "bounded-plan.json"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --self-check",
+      "exitStatus": 0,
+      "result": "Ran once after capture: protected inputs except exact material-bound wrapper, normalized archive fingerprint, budget/custody/target/value/creation/ABI pure guards passed; no RPC or mutation",
+      "evidence": [
+        "local-gate-driver-self-check.json"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --check-stage",
+      "exitStatus": 0,
+      "result": "Ran once after capture: complete exact candidate archive and private index matched ca02fb... before overlay; live wrapper/verifier copied and separate local overlay fingerprint matched afterward; no .env copy, RPC or chain mutation",
+      "evidence": [
+        "local-gate-driver-stage-check.json"
+      ],
+      "scratch": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-CDWJPk"
+    }
+  ],
+  "retainedUnchangedEvidence": {
+    "scope": "Prior Deploy.s.sol no-broadcast simulation, decoded deployment/constructor/runtime/code-size proofs and DemoNFT compilation remain historical preparation evidence; this integration did not change candidate Deploy.s.sol or contract bytecode",
+    "files": [
+      "deployment-actions.json",
+      "deployment-code-hashes.json",
+      "runtime-hash-self-check.json",
+      "demo-nft.json",
+      "preflight.json",
+      "node.json",
+      "deploy-simulation.log"
+    ]
+  },
+  "readOnlyCliPrepare": "Pending root-owned --phase prepare check at handoff; no valid driver execute invocation is authorized",
+  "execution": {
+    "validDriverExecuteInvocations": 0,
+    "broadcasts": 0,
+    "fundingActions": 0,
+    "impersonations": 0,
+    "minedBlocks": 0,
+    "timeChanges": 0,
+    "basefeeChanges": 0,
+    "plannedDriverDraws": 152,
+    "absoluteDrawCap": 252
+  },
+  "limits": {
+    "deposits": "6000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "40000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "5000000000000000000",
+    "draws": 252,
+    "rounds": 50,
+    "replacementCuratedNfts": 252
+  },
+  "limitations": [
+    "Exact bounded batch still needs separate owner approval of this final frozen plan hash; local gate implementation approval authorizes no funding or sends.",
+    "The explicit local wrapper route replaces production asset/signature/review prerequisites only for the named isolated chain31337 plan; production normal wrapper gates remain intact and production approval/review/signature requirements are not met by this diagnostic.",
+    "Archive04 fingerprint is validated before overlay; the full deployment-tooling fingerprint intentionally changes with the local wrapper. No old production audit/review stamp is reused for it.",
+    "Full driver, dependent live simulations and actual transaction lifecycle remain unexecuted.",
+    "Whole eight-action Forge --slow child batch is checked by the parent after return, without per-deployment semantic checkpoints.",
+    "Controlled ticks of production Keeper class are not CLI/HTTP-health service evidence. No manual/UI writes or real browser-wallet signature evidence.",
+    "Coordinator impersonation is a diagnostic exception, not real oracle delivery; no coordinator or protocol funding.",
+    "Synthetic NFT contribution listing values are separate from creator cash and do not establish real creator net profit.",
+    "Natural minimum-targeted EOA deposit/open can have excess or fail, without hidden top-up.",
+    "Named fork block/time are preserved from initial preparation, not a freshly forked current block at later approval time."
+  ],
+  "thingsThatDoNotMakeSense": [
+    "A preserved preparation fork is not a newly forked current-mainnet rehearsal.",
+    "A one-wei minimum cannot be promised across separate EOA deposit/open transactions with natural basefee.",
+    "Synthetic NFT listing value is not market value or creator net profit."
+  ]
+}

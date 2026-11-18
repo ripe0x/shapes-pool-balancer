@@ -1,0 +1,13 @@
+{
+  "localPreflight": {
+    "phase": "prepare",
+    "chainId": 31337,
+    "rpc": "http://127.0.0.1:18556",
+    "pid": 50886,
+    "block": "26438875",
+    "hash": "0x57c5f1ece4c6f289ccf4e58f26f64ed83fb7402220ef3f61b54d74628e27f157",
+    "transactionsSent": 0
+  },
+  "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "releaseApproval": false
+}

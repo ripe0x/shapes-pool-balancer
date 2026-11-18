@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/audit-remediation
+
+ ✓ scripts/local-rehearsal-gate.test.ts (12 tests) 131ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  09:13:38
+   Duration  720ms (transform 26ms, setup 0ms, collect 403ms, tests 131ms, environment 0ms, prepare 30ms)
+

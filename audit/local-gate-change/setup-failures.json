@@ -1,0 +1,13 @@
+[
+  {
+    "command": "npx vitest run scripts/local-rehearsal-gate.test.ts",
+    "exitStatus": 1,
+    "result": "No test files found before scripts/**/*.test.ts was added to existing Vitest discovery. Original tool transcript retained; subsequent real focused run executes12tests."
+  },
+  {
+    "command": "read-only prepare from first scratch fwa-approved-rehearsal-04bc760-CDWJPk",
+    "exitStatus": 1,
+    "result": "Cannot find package tsx before scratch dependency resolution repair. Failure preceded RPC in scratch.",
+    "log": "scratch-readonly-preflight.log"
+  }
+]

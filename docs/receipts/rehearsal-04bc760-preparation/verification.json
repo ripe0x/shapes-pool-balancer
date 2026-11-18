@@ -1,135 +1,158 @@
 {
-  "archiveRevision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
-  "verifiedDescendantHead": "06d2e20",
-  "sourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
-  "planHash": "6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c",
-  "gateConfigHash": "9c3287f35dd6172b3fc358272f1efe302e56dba67f84847c4a39375be25c9a6e",
-  "unsignedOwnerOutcomeHash": "8df57bb17c80ea5175a247e74ac92e42057d6fb47a5c8fe1c7f09dd209781955",
   "scope": [
-    "scripts/prepare-local-rehearsal.ts",
     "scripts/run-local-rehearsal.ts",
     "docs/RELEASE-REHEARSAL.md",
     "docs/receipts/rehearsal-04bc760-preparation"
   ],
+  "relatedRootOwnedInputs": [
+    "script/deploy.sh",
+    "scripts/local-rehearsal-gate.ts"
+  ],
+  "archiveRevision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "workspaceHead": "ff70a1550f233f3601454380d72612b0143e944b",
+  "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "archiveSourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "localOverlaySourceFingerprint": "f248d695668453f4099024c092c4f969b6434de619919503b9f040e46fc123dc",
+  "fingerprintScope": "ca02fb... applies before the explicit local wrapper overlay only; no old production review seal is reissued",
+  "gateConfigHash": "9c3287f35dd6172b3fc358272f1efe302e56dba67f84847c4a39375be25c9a6e",
+  "unsignedOwnerOutcomeHash": "8df57bb17c80ea5175a247e74ac92e42057d6fb47a5c8fe1c7f09dd209781955",
+  "history": [
+    "bounded-plan-historical-6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c.json",
+    "bounded-plan-historical-bf2c02d980aa9deaa4800e7447ec6f04b26c80d1bed198e01227f9855f7dd1b3.json",
+    "verification-historical-6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c.json",
+    "verification-historical-bf2c02d980aa9deaa4800e7447ec6f04b26c80d1bed198e01227f9855f7dd1b3.json"
+  ],
+  "authority": {
+    "localGateChange": "Owner explicitly authorized local-only gate change; root relayed this implementation scope",
+    "batchApproval": false,
+    "fundingApproval": false,
+    "broadcastApproval": false,
+    "productionReleaseApproval": false
+  },
   "checks": [
-    {
-      "command": "node --import tsx scripts/prepare-local-rehearsal.ts",
-      "exitStatus": 0,
-      "result": "Initial unchanged Deploy.s.sol simulation, 7557 ms, no broadcast; unchanged node block hash/actor balances/nonces; vacant predictions",
-      "evidence": [
-        "deployment-actions.json",
-        "preflight.json",
-        "command.json",
-        "deploy-simulation.log"
-      ]
-    },
     {
       "command": "npx tsc --noEmit -p tsconfig.json",
       "exitStatus": 0,
-      "result": "Final repaired preparation/executor typecheck passed",
+      "result": "Integrated driver and provisional frozen root wrapper/verifier typecheck passed",
       "evidence": [
-        "driver-typecheck.log"
+        "local-gate-integration-typecheck.log"
       ],
-      "retainedFailures": [
-        "driver-first-typecheck-failure.log",
-        "driver-repair-first-typecheck-failure.log"
-      ]
-    },
-    {
-      "command": "node --import tsx scripts/run-local-rehearsal.ts --self-check",
-      "exitStatus": 0,
-      "result": "Final pure checks passed: exact source fingerprint, descendant/protected inputs, gas/funding caps, target/value/creation-address validators and ABI round trip; no RPC or mutations",
-      "evidence": [
-        "driver-self-check.json"
-      ]
-    },
-    {
-      "command": "node --import tsx scripts/run-local-rehearsal.ts --check-stage",
-      "exitStatus": 0,
-      "result": "Pure archive/private-index check passed, 1118 archived files, exact required scripts/test-flow-reporting.py present, no .env archive entries, staged fingerprint ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda; no RPC or chain mutations",
-      "evidence": [
-        "driver-stage-check.json"
-      ],
-      "reuseLimit": "Archive function/config/protected inputs were unchanged by subsequent custody/queue postflight assertions and UI-scope prose repairs"
-    },
-    {
-      "command": "node --import tsx scripts/prepare-local-rehearsal.ts --check /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-rehearsal-preparation-04bc760-NYQCJu > /private/tmp/fwa-rehearsal-runtime-code-reviewed.json\nnode --input-type=module <<'JS'\nimport assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';\nconst checked=JSON.parse(readFileSync('/private/tmp/fwa-rehearsal-runtime-code-reviewed.json','utf8'));\nconst hashes=JSON.parse(readFileSync('docs/receipts/rehearsal-04bc760-preparation/deployment-code-hashes.json','utf8'));\nchecked.actions.forEach((a,i)=>{assert.equal(a.runtimeCodeHash,hashes.contracts[i].runtimeCodeHash);assert.equal(a.predictedAddress,hashes.contracts[i].predictedAddress)});\nwriteFileSync('docs/receipts/rehearsal-04bc760-preparation/runtime-hash-self-check.json',JSON.stringify({result:'pass',contracts:hashes.contracts,checks:['creation bytecode matches frozen transaction input','CREATE/CREATE2 target/address/nonce/value','linked library and immutable runtime code hashes','EIP-170 runtime size'],rpcCalls:0,mutations:0},null,2)+'\\n');\nJS",
-      "exitStatus": 0,
-      "result": "Frozen creation bytecode matches artifacts; all eight linked/immutable runtime codehashes and CREATE/CREATE2 addresses/nonces/value/size checks match saved material; no RPC or mutations",
-      "evidence": [
-        "runtime-hash-self-check.json",
-        "deployment-code-hashes.json"
-      ]
-    },
-    {
-      "command": "forge inspect script/DevSetup.s.sol:DemoNFT bytecode --root /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-rehearsal-preparation-04bc760-NYQCJu",
-      "exitStatus": 0,
-      "result": "Real narrow compilation supplied DemoNFT creation bytecode/runtime, replacing reliance on ABI-only warm artifact; no RPC or chain mutations",
-      "evidence": [
-        "demo-nft.json"
-      ]
+      "applicability": "Passed before dependency-root-only stage repair; no additional typecheck was run for this small repair at root request."
     },
     {
       "command": "node --import tsx scripts/run-local-rehearsal.ts",
       "exitStatus": 0,
-      "result": "Final frozen plan/hash printed without node requests or mutations",
+      "result": "Current material-bound proposed packet captured to canonical absolute bounded-plan.json; no RPC or mutation",
       "evidence": [
         "bounded-plan.json"
       ]
     },
     {
-      "command": "node --import tsx scripts/run-local-rehearsal.ts --approved-plan-hash invalid-preparation-self-check",
-      "exitStatus": 1,
-      "result": "Expected rejection at first execution assertion, before RPC/mutation; retained earlier negative-path evidence, first hash guard unchanged in repaired executor",
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --self-check",
+      "exitStatus": 0,
+      "result": "Ran once after capture: protected inputs except exact material-bound wrapper, normalized archive fingerprint, budget/custody/target/value/creation/ABI pure guards passed; no RPC or mutation",
       "evidence": [
-        "driver-rejected-hash-final.log"
+        "local-gate-driver-self-check.json"
+      ],
+      "applicability": "Prior packet pure guards; guard implementations were unchanged by dependency-root-only stage repair; previous hash remains in the raw self-check evidence."
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --check-stage",
+      "exitStatus": 0,
+      "result": "Ran once after capture: complete exact candidate archive and private index matched ca02fb... before overlay; live wrapper/verifier copied and separate local overlay fingerprint matched afterward; no .env copy, RPC or chain mutation",
+      "evidence": [
+        "local-gate-driver-stage-check.json"
+      ],
+      "scratch": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-CDWJPk"
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts",
+      "exitStatus": 0,
+      "result": "Captured the new dependency-repair-bound plan; prior bf2c02d980aa9deaa4800e7447ec6f04b26c80d1bed198e01227f9855f7dd1b3 packet and verification preserved first; no RPC or mutations",
+      "evidence": [
+        "bounded-plan.json"
       ]
     },
     {
-      "command": "node --import tsx scripts/run-local-rehearsal.ts; node --import tsx scripts/run-local-rehearsal.ts --self-check",
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --check-stage",
       "exitStatus": 0,
-      "result": "Final formatting-only amendment: default and self-check passed; no RPC or mutation. Final plan 6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c",
+      "result": "One new pure stage proof after dependency-only repair: tsx installed root resolved with import.meta.resolve/fileURLToPath/dirname/realpath; viem resolves to the same tree; source/archive/overlay checks passed; no installs, deletions, cache modifications, RPC or chain mutations",
       "evidence": [
-        "bounded-plan.json",
-        "driver-self-check.json",
-        "reviewed-plan-before-whitespace.json"
-      ]
+        "local-gate-driver-dependency-stage-check.json"
+      ],
+      "scratch": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-pJhkLo",
+      "nodeModulesTarget": "/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules"
     }
   ],
-  "review": {
-    "report": "driver-review/repair-final/REPORT.md",
-    "originalFindings": "driver-review/REPORT.md",
-    "scope": "Independent read-only rehearsal-driver repair review, not whole-candidate audit or execution pass.",
-    "result": "Original archive and receipt-readback findings repaired; final pure checks pass, wrong-hash exits before RPC. No further concrete must-fix in scope.",
-    "reviewedPlanBeforeWhitespace": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
-    "amendment": "Exactly two trailing spaces removed from a blank line, no executable tokens changed; final plan/self-check outputs regenerated. Original reviewed plan and raw review outputs preserved.",
-    "amendmentReport": "driver-review/repair-final/WHITESPACE-AMENDMENT.md",
-    "finalPlanHash": "6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c"
+  "retainedUnchangedEvidence": {
+    "scope": "Prior Deploy.s.sol no-broadcast simulation, decoded deployment/constructor/runtime/code-size proofs and DemoNFT compilation remain historical preparation evidence; this integration did not change candidate Deploy.s.sol or contract bytecode",
+    "files": [
+      "deployment-actions.json",
+      "deployment-code-hashes.json",
+      "runtime-hash-self-check.json",
+      "demo-nft.json",
+      "preflight.json",
+      "node.json",
+      "deploy-simulation.log"
+    ]
+  },
+  "readOnlyCliPrepare": {
+    "result": "PASS from original root and dependency-repaired scratch. Only node/process/state reads; all eight actors unfunded/nonce0/codefree, eight creation destinations vacant.",
+    "evidence": "../../../audit/local-gate-change/readonly-preflight.json",
+    "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+    "block": "26438875",
+    "pid": 50886,
+    "transactionsSent": 0
   },
   "execution": {
+    "validDriverExecuteInvocations": 0,
     "broadcasts": 0,
     "fundingActions": 0,
     "impersonations": 0,
     "minedBlocks": 0,
     "timeChanges": 0,
     "basefeeChanges": 0,
-    "fullDriverRun": false,
     "plannedDriverDraws": 152,
     "absoluteDrawCap": 252
   },
+  "limits": {
+    "deposits": "6000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "40000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "5000000000000000000",
+    "draws": 252,
+    "rounds": 50,
+    "replacementCuratedNfts": 252
+  },
   "limitations": [
-    "Actual owner bounded-batch approval, valid owner SSH outcome signature, required exact-source review record and existing release-wrapper gates remain mandatory and unsatisfied; no bypass exists.",
-    "Full executor, dependent live simulations, actual funding/opening/policy/stress/closeout and real custody readbacks remain unexecuted.",
-    "Unchanged Forge --slow submits the whole eight-action deployment child batch; parent receipt/semantic checks occur after that child returns, not between its transactions.",
-    "Production Keeper class is driven through controlled ticks with persisted state/health; no CLI process or HTTP health-service rehearsal.",
-    "Manual/UI transactions are neither supported nor authorized by this driver; transaction UI and real browser-wallet confirmation remain separate uncompleted requirements.",
-    "Coordinator impersonation is a retained local diagnostic exception, not real oracle/randomness evidence; no coordinator or protocol funding is allowed.",
-    "Synthetic NFT contributions are recorded separately at stated listing values, with no measured real market value or real creator net-profit claim.",
-    "Natural minimum-targeted deposit/open transactions can have inclusion excess or fail; actual requirements/excess must be reported and no hidden top-up is allowed."
+    "Exact bounded batch still needs separate owner approval of this final frozen plan hash; local gate implementation approval authorizes no funding or sends.",
+    "The explicit local wrapper route replaces production asset/signature/review prerequisites only for the named isolated chain31337 plan; production normal wrapper gates remain intact and production approval/review/signature requirements are not met by this diagnostic.",
+    "Archive04 fingerprint is validated before overlay; the full deployment-tooling fingerprint intentionally changes with the local wrapper. No old production audit/review stamp is reused for it.",
+    "Full driver, dependent live simulations and actual transaction lifecycle remain unexecuted.",
+    "Whole eight-action Forge --slow child batch is checked by the parent after return, without per-deployment semantic checkpoints.",
+    "Controlled ticks of production Keeper class are not CLI/HTTP-health service evidence. No manual/UI writes or real browser-wallet signature evidence.",
+    "Coordinator impersonation is a diagnostic exception, not real oracle delivery; no coordinator or protocol funding.",
+    "Synthetic NFT contribution listing values are separate from creator cash and do not establish real creator net profit.",
+    "Natural minimum-targeted EOA deposit/open can have excess or fail, without hidden top-up.",
+    "Named fork block/time are preserved from initial preparation, not a freshly forked current block at later approval time."
   ],
   "thingsThatDoNotMakeSense": [
-    "The release wrapper requires signed outcomes/review before the rehearsal that contributes release evidence; this remains an explicit human prerequisite, not an inferred bypass.",
-    "Naturally moving basefee prevents a promised one-wei minimum across separate EOA deposit/open transactions.",
-    "A synthetic NFT listing value is not its real market value or evidence of creator net profit."
-  ]
+    "A preserved preparation fork is not a newly forked current-mainnet rehearsal.",
+    "A one-wei minimum cannot be promised across separate EOA deposit/open transactions with natural basefee.",
+    "Synthetic NFT listing value is not market value or creator net profit."
+  ],
+  "sourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "setupFailure": {
+    "rootReported": "Root read-only prepare verifier passed in the original worktree but failed in the first scratch before RPC with Cannot find package tsx. The worktree node_modules contained only Vite cache directories, so stage must resolve the actual installed ancestor dependency tree.",
+    "supersededPacket": "bf2c02d980aa9deaa4800e7447ec6f04b26c80d1bed198e01227f9855f7dd1b3",
+    "failedScratch": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-approved-rehearsal-04bc760-CDWJPk",
+    "logs": "Root owns and preserves its root/scratch verifier attempt logs; this repair did not overwrite them.",
+    "repair": "Only stage dependency symlink resolution and standard-library imports changed; wrapper, verifier and document unchanged."
+  },
+  "independentLocalGateReview": {
+    "report": "../../../audit/local-gate-change/review/REPORT.md",
+    "result": "No concrete must-fix within bounded routing review. Exact batch approval remains pending; no production seal/signature or target contract audit."
+  },
+  "finalTypecheckAndGateTests": "Root final typecheck and12focused gate tests pass; audit/local-gate-change/checks.json captures commands/statuses. Production no-run gate remainsINCOMPLETE for existing missing approval/review and newlystale source stamps."
 }

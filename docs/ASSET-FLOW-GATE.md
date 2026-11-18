@@ -1,8 +1,18 @@
 # Asset-flow gate
 
-`script/deploy.sh` is the deploy entry point. Its first step runs the owner's gate
+`script/deploy.sh` is the deploy entry point. Its default production route runs the owner's gate
 (`~/.agents/guidance/asset-flow-kit/asset_gate.py`) on this repository and stops unless it returns PASS. There is no
-bypass flag. `script/Deploy.s.sol` refuses chain id 1 unless `script/deploy.sh` ran the gate first.
+bypass flag for production. `script/Deploy.s.sol` refuses chain id 1 unless `script/deploy.sh` ran the gate first.
+
+## Isolated local rehearsal route (owner-authorized, 2026-11-18)
+
+The owner explicitly authorized separating this local diagnostic from production release approval. The same wrapper accepts `--local-rehearsal-plan <absolute-plan-file> --approved-plan-hash <exact-hash>` before its Forge arguments. It calls the read-only `scripts/local-rehearsal-gate.ts`, which accepts only the prepared `127.0.0.1:18556` Anvil fork on chain 31337, its recorded listener PID/process command/fork hash, named synthetic actors, exact decoded deployment and fixed budgets. Changed materials, RPCs, chain IDs, signers, destinations, funding or Forge flags stop it. It neither sets nor inherits the production `ASSET_GATE_PASSED` marker into Forge.
+
+The local driver requires the owner's separate approval of the exact frozen batch hash before funding or broadcasting. A successful read-only preflight is not that approval. It retains transaction simulation, nonce/receipt/custody readbacks, the shared 6 test ETH deposit/1 test ETH gas ceilings and the other [batch caps](RELEASE-REHEARSAL.md). The route submits the same `Deploy.s.sol`; it is not a second deployment implementation. No private key or production wallet is involved.
+
+Owner outcome signatures, completed whole-candidate review and fresh numerical release evidence remain mandatory for the default production route. The local preflight is not release acceptance and writes no review seal or signature. Changing the wrapper changes the full production source/evidence fingerprint. Old scorecards are not restamped: the local plan identifies archived contract inputs separately from the local wrapper overlay. The historical source-bound results below retain their original revision and limits.
+
+The prepared fork retains block 26,438,875 from its original preparation. Its successful future run would be a diagnostic of those pinned dependencies, not proof of current mainnet gas, oracle availability or real browser-wallet signing.
 
 ## What the gate does
 
@@ -28,7 +38,7 @@ the owner adds the `approval` block.
 | `forge create`, `cast send --create`, another script, or any tool sending the bytecode in `out/` | yes | nothing |
 | Editing `script/deploy.sh` or `script/Deploy.s.sol`, or deploying from a commit before the gate | yes | visible in `git diff` / the deployed commit only |
 | A different signers file (`ASSET_FLOW_SIGNERS`), or replacing the kit files under `~/.agents/guidance/asset-flow-kit/` | yes | the gate prints `NON-DEFAULT SIGNERS FILE`; replacing kit files shows nowhere |
-| `asset_gate.py --no-run` | no | it is not wired anywhere; `script/deploy.sh` never passes it |
+| `asset_gate.py --no-run` | no | the production wrapper never passes it; read-only reporting validation is separate |
 | Someone else deploying this public code, and any creator calling `createBalancer` on a deployed factory | yes | outside this repository; the gate covers the system deployment, not each pool |
 
 CI (`.github/workflows/ci.yml`) and Git hooks do not run the gate. The source hash covers `src`, `script`,

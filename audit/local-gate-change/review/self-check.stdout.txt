@@ -1,0 +1,16 @@
+{
+  "selfCheck": "pass",
+  "planHash": "7b18522f49bd0809180bc7643969ffcc32d07d4d44e259053d926112f244a236",
+  "route": "local-rehearsal-plan",
+  "caps": {
+    "deposits": "6000000000000000000",
+    "gas": "1000000000000000000",
+    "buyer": "40000000000000000000",
+    "edge": "1000000000000000000",
+    "vrf": "5000000000000000000",
+    "draws": 252,
+    "rounds": 50,
+    "replacementCuratedNfts": 252
+  },
+  "mutationCount": 0
+}

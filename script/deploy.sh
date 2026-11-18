@@ -5,8 +5,23 @@
 # local fork. Never pass a private key.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-# Asset-flow gate: every deployment through this script stops here unless it passes, including a review record
-# (audit/**/SOURCE_HASH) for this exact source. No bypass flag.
+# The explicit local route accepts only a reviewed, hash-bound plan for the owned isolated fork.
+if [[ "${1:-}" == "--local-rehearsal-plan" ]]; then
+    [[ $# -ge 5 && "${3:-}" == "--approved-plan-hash" ]] || { echo "local rehearsal requires a plan and approved hash" >&2; exit 1; }
+    local_plan="$2"
+    local_hash="$4"
+    shift 4
+    node --import tsx scripts/local-rehearsal-gate.ts --plan "$local_plan" --approved-plan-hash "$local_hash" --phase deploy -- "$@"
+    # Local approval must never mint the mainnet gate marker, even if inherited from the shell.
+    unset ASSET_GATE_PASSED
+    exec forge script script/Deploy.s.sol "$@"
+fi
+for argument in "$@"; do
+    case "$argument" in
+        --local-rehearsal-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
+    esac
+done
+# Production retains the full asset-flow gate, owner signature and exact-source review requirement.
 GATE="$HOME/.agents/guidance/asset-flow-kit/asset_gate.py"
 [[ -f "$GATE" ]] || { echo "asset gate missing at $GATE; refusing to deploy." >&2; exit 1; }
 python3 "$GATE" "$PWD" --require-review || { echo "asset gate not PASS (exit $?); refusing to deploy." >&2; exit 1; }

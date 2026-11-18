@@ -214,3 +214,5 @@ This rejects the proposed serialized-cohort mechanism. It does not sign revised 
 ## Release follow-up (owner, 2026-11-17)
 
 - R59. The owner requested completion of "dashboard/wallet interaction testing, a rehearsal of this revision, current whole-candidate audit evidence and numerical outcome approval" and requested a fix to "treating the old 0.001 ETH drift bound as universal." Scope O9's existing numerical check to its named fixed-input regression; do not present it as a general bound. Prepare the current measured approval proposal for the owner's decision. This request does not supply an outcome signature or authorize a public-network broadcast.
+
+- R60. "Yes, make the local-only gate change, keep production gates intact, and prepare the exact batch for my approval." (2026-11-18.) The prepared isolated local diagnostic may use its own exact-plan/process/chain/budget preflight without production outcome signatures or a completed whole-candidate review. The default production route retains those gates. This authorizes implementation and read-only preparation, not funding or broadcasting the proposed batch.

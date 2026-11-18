@@ -1,0 +1,135 @@
+{
+  "archiveRevision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "verifiedDescendantHead": "06d2e20",
+  "sourceFingerprint": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "planHash": "6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c",
+  "gateConfigHash": "9c3287f35dd6172b3fc358272f1efe302e56dba67f84847c4a39375be25c9a6e",
+  "unsignedOwnerOutcomeHash": "8df57bb17c80ea5175a247e74ac92e42057d6fb47a5c8fe1c7f09dd209781955",
+  "scope": [
+    "scripts/prepare-local-rehearsal.ts",
+    "scripts/run-local-rehearsal.ts",
+    "docs/RELEASE-REHEARSAL.md",
+    "docs/receipts/rehearsal-04bc760-preparation"
+  ],
+  "checks": [
+    {
+      "command": "node --import tsx scripts/prepare-local-rehearsal.ts",
+      "exitStatus": 0,
+      "result": "Initial unchanged Deploy.s.sol simulation, 7557 ms, no broadcast; unchanged node block hash/actor balances/nonces; vacant predictions",
+      "evidence": [
+        "deployment-actions.json",
+        "preflight.json",
+        "command.json",
+        "deploy-simulation.log"
+      ]
+    },
+    {
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "exitStatus": 0,
+      "result": "Final repaired preparation/executor typecheck passed",
+      "evidence": [
+        "driver-typecheck.log"
+      ],
+      "retainedFailures": [
+        "driver-first-typecheck-failure.log",
+        "driver-repair-first-typecheck-failure.log"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --self-check",
+      "exitStatus": 0,
+      "result": "Final pure checks passed: exact source fingerprint, descendant/protected inputs, gas/funding caps, target/value/creation-address validators and ABI round trip; no RPC or mutations",
+      "evidence": [
+        "driver-self-check.json"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --check-stage",
+      "exitStatus": 0,
+      "result": "Pure archive/private-index check passed, 1118 archived files, exact required scripts/test-flow-reporting.py present, no .env archive entries, staged fingerprint ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda; no RPC or chain mutations",
+      "evidence": [
+        "driver-stage-check.json"
+      ],
+      "reuseLimit": "Archive function/config/protected inputs were unchanged by subsequent custody/queue postflight assertions and UI-scope prose repairs"
+    },
+    {
+      "command": "node --import tsx scripts/prepare-local-rehearsal.ts --check /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-rehearsal-preparation-04bc760-NYQCJu > /private/tmp/fwa-rehearsal-runtime-code-reviewed.json\nnode --input-type=module <<'JS'\nimport assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';\nconst checked=JSON.parse(readFileSync('/private/tmp/fwa-rehearsal-runtime-code-reviewed.json','utf8'));\nconst hashes=JSON.parse(readFileSync('docs/receipts/rehearsal-04bc760-preparation/deployment-code-hashes.json','utf8'));\nchecked.actions.forEach((a,i)=>{assert.equal(a.runtimeCodeHash,hashes.contracts[i].runtimeCodeHash);assert.equal(a.predictedAddress,hashes.contracts[i].predictedAddress)});\nwriteFileSync('docs/receipts/rehearsal-04bc760-preparation/runtime-hash-self-check.json',JSON.stringify({result:'pass',contracts:hashes.contracts,checks:['creation bytecode matches frozen transaction input','CREATE/CREATE2 target/address/nonce/value','linked library and immutable runtime code hashes','EIP-170 runtime size'],rpcCalls:0,mutations:0},null,2)+'\\n');\nJS",
+      "exitStatus": 0,
+      "result": "Frozen creation bytecode matches artifacts; all eight linked/immutable runtime codehashes and CREATE/CREATE2 addresses/nonces/value/size checks match saved material; no RPC or mutations",
+      "evidence": [
+        "runtime-hash-self-check.json",
+        "deployment-code-hashes.json"
+      ]
+    },
+    {
+      "command": "forge inspect script/DevSetup.s.sol:DemoNFT bytecode --root /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-rehearsal-preparation-04bc760-NYQCJu",
+      "exitStatus": 0,
+      "result": "Real narrow compilation supplied DemoNFT creation bytecode/runtime, replacing reliance on ABI-only warm artifact; no RPC or chain mutations",
+      "evidence": [
+        "demo-nft.json"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts",
+      "exitStatus": 0,
+      "result": "Final frozen plan/hash printed without node requests or mutations",
+      "evidence": [
+        "bounded-plan.json"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts --approved-plan-hash invalid-preparation-self-check",
+      "exitStatus": 1,
+      "result": "Expected rejection at first execution assertion, before RPC/mutation; retained earlier negative-path evidence, first hash guard unchanged in repaired executor",
+      "evidence": [
+        "driver-rejected-hash-final.log"
+      ]
+    },
+    {
+      "command": "node --import tsx scripts/run-local-rehearsal.ts; node --import tsx scripts/run-local-rehearsal.ts --self-check",
+      "exitStatus": 0,
+      "result": "Final formatting-only amendment: default and self-check passed; no RPC or mutation. Final plan 6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c",
+      "evidence": [
+        "bounded-plan.json",
+        "driver-self-check.json",
+        "reviewed-plan-before-whitespace.json"
+      ]
+    }
+  ],
+  "review": {
+    "report": "driver-review/repair-final/REPORT.md",
+    "originalFindings": "driver-review/REPORT.md",
+    "scope": "Independent read-only rehearsal-driver repair review, not whole-candidate audit or execution pass.",
+    "result": "Original archive and receipt-readback findings repaired; final pure checks pass, wrong-hash exits before RPC. No further concrete must-fix in scope.",
+    "reviewedPlanBeforeWhitespace": "da615d80ddaf1d71cfb4e2c338abe895954457eef71c5bd1fa2c03b72bd15b6f",
+    "amendment": "Exactly two trailing spaces removed from a blank line, no executable tokens changed; final plan/self-check outputs regenerated. Original reviewed plan and raw review outputs preserved.",
+    "amendmentReport": "driver-review/repair-final/WHITESPACE-AMENDMENT.md",
+    "finalPlanHash": "6dfd07817664cb27beafa756785ff5452b246e0d9ef5c879515478bd9f21a31c"
+  },
+  "execution": {
+    "broadcasts": 0,
+    "fundingActions": 0,
+    "impersonations": 0,
+    "minedBlocks": 0,
+    "timeChanges": 0,
+    "basefeeChanges": 0,
+    "fullDriverRun": false,
+    "plannedDriverDraws": 152,
+    "absoluteDrawCap": 252
+  },
+  "limitations": [
+    "Actual owner bounded-batch approval, valid owner SSH outcome signature, required exact-source review record and existing release-wrapper gates remain mandatory and unsatisfied; no bypass exists.",
+    "Full executor, dependent live simulations, actual funding/opening/policy/stress/closeout and real custody readbacks remain unexecuted.",
+    "Unchanged Forge --slow submits the whole eight-action deployment child batch; parent receipt/semantic checks occur after that child returns, not between its transactions.",
+    "Production Keeper class is driven through controlled ticks with persisted state/health; no CLI process or HTTP health-service rehearsal.",
+    "Manual/UI transactions are neither supported nor authorized by this driver; transaction UI and real browser-wallet confirmation remain separate uncompleted requirements.",
+    "Coordinator impersonation is a retained local diagnostic exception, not real oracle/randomness evidence; no coordinator or protocol funding is allowed.",
+    "Synthetic NFT contributions are recorded separately at stated listing values, with no measured real market value or real creator net-profit claim.",
+    "Natural minimum-targeted deposit/open transactions can have inclusion excess or fail; actual requirements/excess must be reported and no hidden top-up is allowed."
+  ],
+  "thingsThatDoNotMakeSense": [
+    "The release wrapper requires signed outcomes/review before the rehearsal that contributes release evidence; this remains an explicit human prerequisite, not an inferred bypass.",
+    "Naturally moving basefee prevents a promised one-wei minimum across separate EOA deposit/open transactions.",
+    "A synthetic NFT listing value is not its real market value or evidence of creator net profit."
+  ]
+}

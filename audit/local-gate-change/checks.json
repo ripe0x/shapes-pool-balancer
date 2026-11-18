@@ -1,0 +1,45 @@
+[
+  {
+    "command": [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    "exitStatus": 0,
+    "seconds": 5.342,
+    "log": "typecheck.log"
+  },
+  {
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "scripts/local-rehearsal-gate.test.ts"
+    ],
+    "exitStatus": 0,
+    "seconds": 1.185,
+    "log": "focused-tests.log"
+  },
+  {
+    "command": [
+      "bash",
+      "-n",
+      "script/deploy.sh"
+    ],
+    "exitStatus": 0,
+    "seconds": 0.006,
+    "log": "shell-syntax.log"
+  },
+  {
+    "command": [
+      "python3",
+      "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py",
+      ".",
+      "--no-run",
+      "--require-review"
+    ],
+    "exitStatus": 2,
+    "seconds": 0.047,
+    "log": "production-gate-readonly.log"
+  }
+]

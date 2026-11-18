@@ -1,5 +1,11 @@
 # Mainnet deployment readiness
 
+## Local gate separation (2026-11-18)
+
+The owner authorized a local-only gate change and preparation of the exact batch for a later decision. The [local rehearsal route](ASSET-FLOW-GATE.md) removes production outcome-signature/whole-review prerequisites only for the hash-bound owned Anvil diagnostic. The default production gate retains both. No batch approval, funding or broadcast follows from implementation authority. [The concrete batch](RELEASE-REHEARSAL.md) remains proposed until the owner approves its final hash.
+
+Production contracts, custody, reserves and policy economics are unchanged. Historical contract verification remains scoped to its original inputs; the changed wrapper has a separate full source fingerprint and no old audit/scorecard stamps are copied onto it. Whole-candidate review, numerical acceptance and real wallet/UI transaction evidence remain open production requirements.
+
 ## Release follow-up (`04bc760` production inputs, 2026-11-17)
 
 **Blocked, not release-ready.** The [interrupted review status](../audit/release-04bc760-interrupted/STATUS.md) preserves independent execution, failed diagnostics and unfinished coverage. Both whole-candidate reviewers were stopped by platform filtering; no completed-review seal is supplied. The previously passing 501-test Foundry campaign, 125 TypeScript tests and 25 fixed numerical regimes remain evidence for unchanged inputs, not replacements for this review.
