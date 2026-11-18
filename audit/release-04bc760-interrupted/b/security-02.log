@@ -1,0 +1,38 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 7.43s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 10 tests for audit-output-b/SecurityB.t.sol:SecurityB
+[PASS] testSecurityAtomicRewardFloorRevertsWork() (gas: 21246239)
+[PASS] testSecurityCollectionHookCannotReenterGuardedMoney() (gas: 17706970)
+[PASS] testSecurityFactoryDefaultDoesNotChangeExistingAssets() (gas: 19887076)
+[PASS] testSecurityFailedDeliveryOnlyBuyerRefundThenCreatorRecovery() (gas: 19771591)
+[PASS] testSecurityHostilePolicyBoundAndNoOpCannotDrain() (gas: 17628723)
+Logs:
+  hostilePolicyLowGasActualPay: 104052920000000
+
+[PASS] testSecurityPageApprovalRevokedByCreatorTransfer() (gas: 13232964)
+[PASS] testSecurityPlanAndMarkupHardBounds() (gas: 1398358)
+[PASS] testSecurityPolicyDelayDisableAndCreatorTransferInvalidate() (gas: 13687551)
+[PASS] testSecurityPolicyFailurePreservesUnpaidRecovery() (gas: 17615768)
+[PASS] testSecurityUnknownCallerCannotMoveAssetsOrRights() (gas: 16242919)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 368.34ms (188.31ms CPU time)
+
+Ran 1 test suite in 706.29ms (368.34ms CPU time): 10 tests passed, 0 failed, 0 skipped (10 total tests)

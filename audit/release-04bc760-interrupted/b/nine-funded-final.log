@@ -1,0 +1,30 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.15s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 1 test for audit-output-b/StressB.t.sol:StressB
+[PASS] testStressNineConcurrentDrawsKeepersOnlyAndCloseHold() (gas: 43739026)
+Logs:
+  requiredVoluntaryServiceDonation: 1687338994884955013
+  nineDrawClosedHold: 12600000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 364.35ms (56.80ms CPU time)
+
+Ran 1 test suite in 664.34ms (364.35ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

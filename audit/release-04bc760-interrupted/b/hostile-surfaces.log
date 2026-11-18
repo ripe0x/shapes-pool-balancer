@@ -1,0 +1,29 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.52s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 4 tests for audit-output-b/HostileSurfacesB.t.sol:HostileSurfacesB
+[PASS] testSecurityCollectionCanBuyInPullHookWithoutCrossingCustody() (gas: 20186445)
+[PASS] testSecurityGasBurnCollectionQuarantinedWithinRealProcessor() (gas: 19601142)
+[PASS] testSecurityPolicyReturndataBombBoundedAndRecoverable() (gas: 18174698)
+[PASS] testSecurityPolicyWritesDeniedByStaticExecution() (gas: 18271483)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 505.58ms (212.63ms CPU time)
+
+Ran 1 test suite in 829.57ms (505.58ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

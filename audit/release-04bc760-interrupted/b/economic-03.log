@@ -1,0 +1,112 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 31 files with Solc 0.8.28
+Compiling 66 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.00s
+Solc 0.8.28 finished in 7.85s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 7 tests for audit-output-b/IndependentB.t.sol:IndependentB
+[PASS] testEconomicConcurrentBurstOutOfOrderDelivery() (gas: 43594755)
+Logs:
+  concurrent burst settled
+  liquid: 3291988879847411555
+  profit: 11908158557839936
+  required: 3680000000000000
+  listedFutureFees: 38225000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 5510052727370575
+
+[PASS] testEconomicExpiredDrawCloseProfitCannotTakeRefund() (gas: 38636465)
+Logs:
+  expired refunded close
+  liquid: 1268290600000000
+  profit: 0
+  required: 0
+  listedFutureFees: 38225000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+
+[FAIL: EvmError: OutOfGas] testEconomicGasCapQuiet() (block: 26382349) (gas: 1073720760)
+[PASS] testEconomicGasSpikeAndOneLargeWin() (gas: 41718854)
+Logs:
+  large win at gas spike
+  liquid: 2755674001654322256
+  profit: 2347951996815111
+  required: 16450000000000000
+  listedFutureFees: 22790000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 1076105445216112
+
+[PASS] testEconomicManufacturedUnlistRelistCoalition() (gas: 17219952)
+Logs:
+  creatorPoolLost: 1070934240000000
+  keeperEarned: 70934240000000
+
+[PASS] testEconomicMinimumZeroDemandRoundTrip() (gas: 16073316)
+Logs:
+  minimum zero demand after setup
+  liquid: 9508079150000000
+  profit: 0
+  required: 3680000000000000
+  listedFutureFees: 13900000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+  creatorReturned: 209508079150000000
+  keeperPaid: 6091920850000000
+
+[FAIL: EvmError: Revert] testEconomicNormalQuiet() (block: 26382349) (gas: 1073282179)
+Suite result: FAILED. 5 passed; 2 failed; 0 skipped; finished in 2.27s (3.65s CPU time)
+
+Ran 1 test suite in 2.59s (2.27s CPU time): 5 tests passed, 2 failed, 0 skipped (7 total tests)
+
+Failing tests:
+Encountered 2 failing tests in audit-output-b/IndependentB.t.sol:IndependentB
+[FAIL: EvmError: OutOfGas] testEconomicGasCapQuiet() (block: 26382349) (gas: 1073720760)
+[FAIL: EvmError: Revert] testEconomicNormalQuiet() (block: 26382349) (gas: 1073282179)
+
+Encountered a total of 2 failing tests, 5 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

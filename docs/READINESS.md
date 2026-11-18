@@ -1,5 +1,13 @@
 # Mainnet deployment readiness
 
+## Release follow-up (`04bc760` production inputs, 2026-11-17)
+
+**Blocked, not release-ready.** The [interrupted review status](../audit/release-04bc760-interrupted/STATUS.md) preserves independent execution, failed diagnostics and unfinished coverage. Both whole-candidate reviewers were stopped by platform filtering; no completed-review seal is supplied. The previously passing 501-test Foundry campaign, 125 TypeScript tests and 25 fixed numerical regimes remain evidence for unchanged inputs, not replacements for this review.
+
+O9 now explicitly scopes 0.001 ETH to its fixed regression. O2/O8/O11 wording also distinguishes reference scenarios from general promises, with all existing numerical thresholds and regime memberships unchanged. An independent adverse gas sequence has a **0.018420439573763843 ETH surcharge-only maintenance loss** despite positive gross creator recovery and zero residual purchaser obligations. The [numerical proposal](RELEASE-OUTCOME-PROPOSAL.md) asks the owner to accept conditional economics; no signature or general loss tolerance is inferred.
+
+Read-only dashboard interactions were exercised against the existing local legacy pool: discovery, actual inventory, separate cash/backing/profit/reserve/expected-fee figures, policy/default quotes, candidate validation and missing-view compatibility. [Screenshots and readback](receipts/release-ui/REPORT.md) retain exact limits. Real extension-wallet connection remains at the user handoff; no signature or UI transaction was completed. The [new rehearsal](RELEASE-REHEARSAL.md) has only deployment simulation/preparation evidence. No fresh funding or broadcast occurred; its production wrapper still requires genuine owner approval and completed current review evidence. These gaps remain open.
+
 ## Current remediation candidate (base `2ab49fd`, 2026-11-17)
 
 **No mainnet deployment or real-fund spending is authorized.** [AUDIT-REMEDIATION.md](AUDIT-REMEDIATION.md) is the current change/economic scorecard. R55–R58 retain concurrent requests and approximate current-board creator allocation; exact attribution is not being purchased with serialization, mandatory maintenance between batches, zero creator credit or a larger reserve.

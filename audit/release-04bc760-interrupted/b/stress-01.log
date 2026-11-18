@@ -1,0 +1,48 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.27s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 5 tests for audit-output-b/StressB.t.sol:StressB
+[PASS] testEconomicHostilePolicyCreatorBuyerKeeperCoalition() (gas: 19077289)
+Logs:
+  coalitionLostExcludingTransactionGas: 1861988763407404
+  FWAedge: 721588763407404
+  VRFfee: 140400000000000
+  mintFee: 1000000000000000
+
+[FAIL: dXg8; counterexample: calldata=0xd195df3d00000000000000000000000000000000000000000000000000000000000059e0 args=[23008 [2.3e4]]] testFuzzReachableAccountingAfterConcurrentActions(uint64) (block: 26382349) (runs: 2, μ: 26349108, ~: 26349108)
+[PASS] testStressLowGasPaidAttemptCannotGetPaidForFailure() (gas: 40024879)
+[FAIL: dXg8] testStressNineConcurrentDrawsKeepersOnlyAndCloseHold() (block: 26382349) (gas: 32777502)
+[PASS] testStressStoredServiceWordRedeliveryAndReplay() (gas: 18572735)
+Suite result: FAILED. 3 passed; 2 failed; 0 skipped; finished in 383.84ms (226.95ms CPU time)
+
+Ran 1 test suite in 711.56ms (383.84ms CPU time): 3 tests passed, 2 failed, 0 skipped (5 total tests)
+
+Failing tests:
+Encountered 2 failing tests in audit-output-b/StressB.t.sol:StressB
+[FAIL: dXg8; counterexample: calldata=0xd195df3d00000000000000000000000000000000000000000000000000000000000059e0 args=[23008 [2.3e4]]] testFuzzReachableAccountingAfterConcurrentActions(uint64) (block: 26382349) (runs: 2, μ: 26349108, ~: 26349108)
+[FAIL: dXg8] testStressNineConcurrentDrawsKeepersOnlyAndCloseHold() (block: 26382349) (gas: 32777502)
+
+Encountered a total of 2 failing tests, 3 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
+
+Fuzz seed: 0xc4236989fdf04e41a5e4afe63e2c3e6f8cc14a3dfd90a90a59f00b9c809c97b2 (use `--fuzz-seed` to reproduce)

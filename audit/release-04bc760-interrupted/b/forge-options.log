@@ -1,0 +1,58 @@
+43:          - auto:   Intelligently guess whether to use color output (default)
+44-          - always: Force color output
+45-          - never:  Force disable color output
+46-
+--
+86:          - auto:       Select horizontal or vertical layout from the terminal size
+87-          - horizontal: Force the two-column debugger layout
+88-          - vertical:   Force the single-column debugger layout
+89-
+--
+156:          Number of workers to use for invariant test campaigns, or `auto` to derive from `--jobs`
+157-          
+158-          [env: FOUNDRY_INVARIANT_WORKERS=]
+159-
+--
+549:          output directory. Disables the regular fuzz/invariant campaign and skips unit tests
+550-
+551-      --showmap-per-input
+552-          Emit one showmap file per corpus entry (default: one aggregated file per test)
+--
+574:      --match-test <REGEX>
+575-          Only run test functions matching the specified regex pattern
+576-          
+577-          [alias: --mt]
+--
+579:      --no-match-test <REGEX>
+580-          Only run test functions that do not match the specified regex pattern
+581-          
+582-          [alias: --nmt]
+--
+631:          Disable automatic proxy detection.
+632-          
+633-          Use this in sandboxed environments (e.g., Cursor IDE sandbox, macOS App Sandbox) where
+634-          system proxy detection causes crashes. When enabled, HTTP_PROXY/HTTPS_PROXY environment
+--
+780:      --skip <SKIP>...
+781-          Skip building files whose names contain the given filter.
+782-          
+783-          `test` and `script` are aliases for `.t.sol` and `.s.sol`.
+--
+808:      --no-auto-detect
+809:          Do not auto-detect the `solc` version
+810-
+811-      --use <SOLC_VERSION>
+812-          Specify the solc version, or a path to a local solc, to build with.
+--
+816:      --offline
+817-          Do not access the network.
+818-          
+819:          Missing solc versions will not be installed.
+820-
+821-      --use-literal-content
+822-          Changes compilation to only use literal content and not URLs
+--
+938:          If all previously failed tests pass, the full test suite will be run automatically. This
+939-          is particularly useful for TDD workflows where you want fast feedback on failures.
+940-
+941-      --watch-delay <DELAY>

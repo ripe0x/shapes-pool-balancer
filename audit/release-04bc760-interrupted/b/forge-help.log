@@ -1,0 +1,1 @@
+agent-guard: refused 'forge test --help'. a whole-suite test run happens once, on the frozen release candidate, and carries CANDIDATE_RUN=1. per change, run only the tests of the files you touched (forge test --match-path <files>, vitest run <files>).

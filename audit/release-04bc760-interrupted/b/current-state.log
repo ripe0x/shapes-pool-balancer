@@ -1,0 +1,31 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.56s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 1 test for audit-output-b/CurrentStateB.t.sol:CurrentStateB
+[PASS] testCurrentDependencyDriftRealLifecycle() (gas: 25624960)
+Logs:
+  currentBlock: 26438915
+  currentTimestamp: 1794968471
+  currentBasefee: 134302715
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 11.10s (10.25s CPU time)
+
+Ran 1 test suite in 11.44s (11.10s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

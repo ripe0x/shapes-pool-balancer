@@ -1,0 +1,39 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.79s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 2 tests for audit-output-b/StressB.t.sol:StressB
+[PASS] testFuzzReachableAccountingAfterConcurrentActions(uint64) (runs: 64, μ: 27623315, ~: 28184907)
+[FAIL: assertion failed: 12600000000000000 != 13140000000000000] testStressNineConcurrentDrawsKeepersOnlyAndCloseHold() (block: 26382349) (gas: 34613879)
+Logs:
+  requiredVoluntaryServiceDonation: 1687338994884955013
+
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 2.47s (2.20s CPU time)
+
+Ran 1 test suite in 2.87s (2.47s CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit-output-b/StressB.t.sol:StressB
+[FAIL: assertion failed: 12600000000000000 != 13140000000000000] testStressNineConcurrentDrawsKeepersOnlyAndCloseHold() (block: 26382349) (gas: 34613879)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

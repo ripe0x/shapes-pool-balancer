@@ -79,6 +79,8 @@ The source review that found no new extraction issue in the early library moves 
 
 ## Recommendations
 
+Release follow-up: [current independent evidence](../audit/release-04bc760-interrupted/STATUS.md) records interrupted whole-candidate reviews, including a real gas-transition surcharge shortfall and a passing minimum-capital comparison with different inventory/cash behavior. [The numerical proposal](RELEASE-OUTCOME-PROPOSAL.md) scopes reference checks explicitly; it is unsigned. Interactive read-only dashboard checks are now recorded in [UI evidence](receipts/release-ui/REPORT.md), superseding the earlier browser-unavailable limitation for those checks only. Browser-wallet signing and a rehearsal of the repaired bytecode remain incomplete.
+
 1. Keep the current reserve and concurrent admission. The reached adversarial round trips preserve purchaser assets without the removed lifetime keeper reserve.
 2. Prefer the immutable V1 initially; higher or mutable policy quotes remain creator-funded exposure. Do not raise surcharges or hold hypothetical future draws merely to hide measured allocation drift.
 3. Use the corrected scenario-scoped O9 wording for owner review. Keep the measured adverse allocation differences visible; do not introduce a larger general tolerance or claim a universal 0.001 ETH bound.

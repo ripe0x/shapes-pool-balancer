@@ -1,0 +1,53 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.08s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 2 tests for audit-output-b/RefundAndRecoveryB.t.sol:RefundAndRecoveryB
+[FAIL: assertion failed: 83873 > 80000] testEconomicBurstRefundAllowanceMeasured() (block: 26382349) (gas: 330038730)
+Logs:
+  fulfilledDraws: 180
+  slippageRefundDraws: 0
+  totalAppliedRefundGas: 15097273
+  refundGasPerDraw: 83873
+  measuredGasPerDraw: 395943
+  billedGasPerDraw: 335495
+  recordedKeeperPay: 377949555000000000
+
+[PASS] testGasReceiptRefundInterpretation() (gas: 554301)
+Logs:
+  gasReturnAbiBytes: 160
+  witnessOperationGas: 50513
+  witnessBilledGas: 57452
+  witnessAppliedRefund: 14363
+
+Suite result: FAILED. 1 passed; 1 failed; 0 skipped; finished in 765.01ms (449.83ms CPU time)
+
+Ran 1 test suite in 1.11s (765.01ms CPU time): 1 tests passed, 1 failed, 0 skipped (2 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit-output-b/RefundAndRecoveryB.t.sol:RefundAndRecoveryB
+[FAIL: assertion failed: 83873 > 80000] testEconomicBurstRefundAllowanceMeasured() (block: 26382349) (gas: 330038730)
+
+Encountered a total of 1 failing tests, 1 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

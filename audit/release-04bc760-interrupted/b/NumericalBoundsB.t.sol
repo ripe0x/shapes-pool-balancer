@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+import {IndependentB} from "./IndependentB.t.sol";
+contract NumericalBoundsB is IndependentB {
+ function testEconomicO2AllowedBoardExceedsGlobalNumber() public {fees(0.1 gwei);start(1000,12 ether,2500);assertEq(balancer.listedRestockFees(),0.335 ether);assertGt(balancer.listedRestockFees(),0.26 ether);emit log_named_uint("O2allowedBoardListedFees",balancer.listedRestockFees());emit log_named_uint("liquidETH",address(balancer).balance);unwind();}
+ function testEconomicO8HundredPercentMarkupExceedsTwelvePercentNumber() public {start(20,1 ether,10000);uint w=wordForSlot(2);uint proceedsExpected=pool.weightedBackingTotal()/pool.totalWeight();uint[] memory req=buy(buyer,1);fulfill(req[0],w);uint beforeProfit=balancer.profit();balancer.collectProceeds();uint credited=balancer.profit()-beforeProfit;assertGt(credited*10000/proceedsExpected,1200);emit log_named_uint("O8profitBpsAt100PercentMarkup",credited*10000/proceedsExpected);emit log_named_uint("O8profitWeiAt100PercentMarkup",credited);quiesce();unwind();}
+ function testEconomicO9ConcurrentNewListingsBookOldZeroProfitDraw() public {start(20,2 ether,1000);uint beforeProfit=balancer.profit();uint w=wordForSlot(2);uint[] memory req=buy(buyer,1);vm.prank(creator);balancer.configure(10000,40);quiesce();assertEq(balancer.getActiveShapes()[0],40);assertGt(pool.activeListingCount(),0);assertEq(pool.unsettledAcquisitionCount(),1);fulfill(req[0],w);balancer.collectProceeds();uint drift=balancer.profit()-beforeProfit;assertGt(drift,0.001 ether);emit log_named_uint("O9oldBoardProfitEntitlement",0);emit log_named_uint("O9creditedFromLaterListings",drift);quiesce();unwind();}
+}

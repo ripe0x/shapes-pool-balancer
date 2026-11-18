@@ -1,0 +1,74 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.56s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 5 tests for audit-output-b/RemainingRequirementsB.t.sol:RemainingRequirementsB
+[PASS] testEconomicDisableReleasesHoldThenBuyerUnpaidRecovery() (gas: 17009373)
+[PASS] testEconomicPolicyActivationCannotSpendBookedProfit() (gas: 19205719)
+Logs:
+  activationProtectedProfit: 8990247828667852
+  activationNewRequirement: 27265000000000000
+
+[PASS] testEconomicQuietHalfGwei() (gas: 1206293032)
+Logs:
+  regime after play
+  liquid: 4158518859906815980
+  profit: 424818062784559980
+  required: 3680000000000000
+  listedFutureFees: 38225000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 198361898185340700
+  basefee: 500000000
+  draws: 180
+  buyerPaid: 4397259861892156680
+  buyerShapeBacking: 2730000000000000000
+  playKeeperPaid: 102013560550000000
+  requestBoardSurchargeReceived: 141229186705695960
+  playerRatioMaxBps: 15526
+  creatorCloseoutReturn: 5858518859906815980
+
+[PASS] testEconomicQuietTwoGwei() (gas: 1207387626)
+Logs:
+  regime after play
+  liquid: 3999331908324335120
+  profit: 432512921038221900
+  required: 11365000000000000
+  listedFutureFees: 110000000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 215152827516216720
+  basefee: 1950000000
+  draws: 180
+  buyerPaid: 5360609377840551840
+  buyerShapeBacking: 2930000000000000000
+  playKeeperPaid: 352877212000000000
+  requestBoardSurchargeReceived: 406090131249374460
+  playerRatioMaxBps: 18591
+  creatorCloseoutReturn: 5699331908324335120
+
+[PASS] testSecurityFactoryPolicyAdminHandoffCancelsQueuedDefault() (gas: 16305269)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.35s (4.10s CPU time)
+
+Ran 1 test suite in 2.72s (2.35s CPU time): 5 tests passed, 0 failed, 0 skipped (5 total tests)

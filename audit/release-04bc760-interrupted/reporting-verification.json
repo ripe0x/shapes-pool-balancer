@@ -1,0 +1,23 @@
+{
+  "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "sourceHash": "ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda",
+  "outcomesHash": "8df57bb17c80ea5175a247e74ac92e42057d6fb47a5c8fe1c7f09dd209781955",
+  "unchangedNumericalAssertions": 16,
+  "unchangedRequiredRegimes": 25,
+  "scope": "Reporting text/reference membership only; no regenerated execution or audit completion.",
+  "gate": {
+    "command": "python3 /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py . --no-run --require-review",
+    "exitStatus": 2,
+    "result": "INCOMPLETE: approval hash absent or changed; no exact-source review record. Existing 25 regime numeric assertions pass."
+  },
+  "limitations": [
+    "Independent adverse surcharge-only coverage assertion fails; not part of the fixed 25 scenarios.",
+    "No outcome signature or review seal created.",
+    "Production bytecode and prior implementation verification unchanged."
+  ],
+  "independentReportingReview": {
+    "reviewer": "/root/remediation_review",
+    "result": "No material inaccuracies found. Normalized configuration excluding wording is identical to HEAD; metrics, limits, regime memberships and remaining settings preserved. Proposal hash and amounts match existing logs.",
+    "scope": "Read-only reporting consistency; no contracts/source investigation, RPC, test execution, signature or whole-audit seal."
+  }
+}

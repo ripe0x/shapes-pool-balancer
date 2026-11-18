@@ -1,0 +1,40 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.90s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 3 tests for audit-output-b/NumericalBoundsB.t.sol:NumericalBoundsB
+[PASS] testEconomicO2AllowedBoardExceedsGlobalNumber() (gas: 628933320)
+Logs:
+  O2allowedBoardListedFees: 335000000000000000
+  liquidETH: 902870241200000000
+
+[PASS] testEconomicO8HundredPercentMarkupExceedsTwelvePercentNumber() (gas: 18502587)
+Logs:
+  O8profitBpsAt100PercentMarkup: 3950
+  O8profitWeiAt100PercentMarkup: 8990247828667852
+
+[PASS] testEconomicO9ConcurrentNewListingsBookOldZeroProfitDraw() (gas: 29916387)
+Logs:
+  O9oldBoardProfitEntitlement: 0
+  O9creditedFromLaterListings: 2695723950689761
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.15s (907.86ms CPU time)
+
+Ran 1 test suite in 1.48s (1.15s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)

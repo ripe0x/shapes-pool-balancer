@@ -1,0 +1,174 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 8.53s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 10 tests for audit-output-b/RegimeTransitionsB.t.sol:RegimeTransitionsB
+[PASS] testEconomicConcurrentBurstOutOfOrderDelivery() (gas: 43594541)
+Logs:
+  concurrent burst settled
+  liquid: 3291988879847411555
+  profit: 11908158557839936
+  required: 3680000000000000
+  listedFutureFees: 38225000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 5510052727370575
+
+[PASS] testEconomicExpiredDrawCloseProfitCannotTakeRefund() (gas: 38636319)
+Logs:
+  expired refunded close
+  liquid: 1268290600000000
+  profit: 0
+  required: 0
+  listedFutureFees: 38225000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+
+[PASS] testEconomicGasCapQuiet() (gas: 1205374699)
+Logs:
+  regime after play
+  liquid: 3982340112958016700
+  profit: 447371498966551380
+  required: 16450000000000000
+  listedFutureFees: 258500000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 249379095647900700
+  basefee: 4950000000
+  draws: 180
+  buyerPaid: 7342961008605917400
+  buyerShapeBacking: 3040000000000000000
+  playKeeperPaid: 863271990000000000
+  requestBoardSurchargeReceived: 952845126152445360
+  playerRatioMaxBps: 24620
+  creatorCloseoutReturn: 5682340112958016700
+
+[PASS] testEconomicGasSpikeAndOneLargeWin() (gas: 41717922)
+Logs:
+  large win at gas spike
+  liquid: 2755674001654322256
+  profit: 2347951996815111
+  required: 16450000000000000
+  listedFutureFees: 22790000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 1076105445216112
+
+[FAIL: assertion failed: 293190673676236157 < 311611769800000000] testEconomicGasSpikeRoundTrip180NoCreatorTopup() (block: 26382349) (gas: 1266315970)
+Logs:
+  gasSpikeSurchargeReceived: 293190673676236157
+  gasSpikeKeeperPaid: 311611769800000000
+  gasSpikeLaterNormalPriceRatioBps: 16870
+
+[PASS] testEconomicManufacturedUnlistRelistCoalition() (gas: 17219753)
+Logs:
+  creatorPoolLost: 1070934240000000
+  keeperEarned: 70934240000000
+
+[PASS] testEconomicMinimum180NoETHTopups() (gas: 713726164)
+Logs:
+  minimumOperatingETHTopups: 0
+  minimumPlayKeeperPaid: 96659004250000000
+  minimumSurchargeReceived: 125011273248811620
+  minimum after 180
+  liquid: 613801269080180440
+  profit: 269808503414701320
+  required: 3680000000000000
+  listedFutureFees: 13900000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 134047609709008860
+  minimumCreatorCloseout: 813801269080180440
+
+[PASS] testEconomicMinimumZeroDemandRoundTrip() (gas: 16073117)
+Logs:
+  minimum zero demand after setup
+  liquid: 9508079150000000
+  profit: 0
+  required: 3680000000000000
+  listedFutureFees: 13900000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+  creatorReturned: 209508079150000000
+  keeperPaid: 6091920850000000
+
+[PASS] testEconomicNFTDominatedAssignedValuesPayRealMaintenance() (gas: 2606703002)
+Logs:
+  NFTDominatedSurchargeReceived: 299999999999999880
+  NFTDominatedKeeperPaid: 394707375000000000
+  NFTDominatedPlayServiceLoss: 94707375000000120
+  100 curated assigned 0.05 ETH each, 20 small Shapes
+  liquid: 10654359955957446640
+  profit: 95744680851063780
+  required: 16450000000000000
+  listedFutureFees: 94000000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 348510638297872260
+
+[PASS] testEconomicNormalQuiet() (gas: 1205446087)
+Logs:
+  regime after play
+  liquid: 3897343933278006080
+  profit: 422631359426719980
+  required: 1560000000000000
+  listedFutureFees: 18425000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 193698980138900160
+  basefee: 100000000
+  draws: 180
+  buyerPaid: 4130858582916906240
+  buyerShapeBacking: 2980000000000000000
+  playKeeperPaid: 33279612250000000
+  requestBoardSurchargeReceived: 68089991925081240
+  playerRatioMaxBps: 14661
+  creatorCloseoutReturn: 5597343933278006080
+
+Suite result: FAILED. 9 passed; 1 failed; 0 skipped; finished in 16.29s (24.88s CPU time)
+
+Ran 1 test suite in 16.63s (16.29s CPU time): 9 tests passed, 1 failed, 0 skipped (10 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit-output-b/RegimeTransitionsB.t.sol:RegimeTransitionsB
+[FAIL: assertion failed: 293190673676236157 < 311611769800000000] testEconomicGasSpikeRoundTrip180NoCreatorTopup() (block: 26382349) (gas: 1266315970)
+
+Encountered a total of 1 failing tests, 9 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

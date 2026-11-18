@@ -1,0 +1,23 @@
+{
+  "revision": "04bc760d506fd29329a3a819c7f2e4a1480377dd",
+  "uiUrl": "http://127.0.0.1:5182/",
+  "rpc": "http://127.0.0.1:18554",
+  "chainId": 31337,
+  "block": "26438542",
+  "basefee": "80000000",
+  "quoteGasPrice": "130000000",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "pool": "0x6C3a53086bD4bed5Ec4BA9AF19255Cd017092E19",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "balance": "2717027343900840816",
+  "profit": "25595355148303397",
+  "operatingETH": "2691431988752537419",
+  "reserve": "1454000000000000",
+  "surplus": "2715573343900840816",
+  "listedFees": "3170000000000000",
+  "restockFee": "317000000000000",
+  "paidUpkeep": true,
+  "active": "12",
+  "contractRevision": "9b45f915fcaa27bc24d6125cf4a0062117ef576c",
+  "mode": "read-only legacy compatibility with synthetic development connection; not a new-contract rehearsal or real extension-wallet signature"
+}

@@ -1,0 +1,110 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.54s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 6 tests for audit-output-b/AdditionalEconomicB.t.sol:AdditionalEconomicB
+[PASS] testEconomicAllPackSizesRedeemAtExactBacking() (gas: 12830566)
+Logs:
+  all pack denominations
+  liquid: 4977275319350000000
+  profit: 0
+  required: 3680000000000000
+  listedFutureFees: 12510000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+
+[PASS] testEconomicHighestDenominationRoundTrip() (gas: 4927037)
+Logs:
+  one 100 ETH prize
+  liquid: 994157940000000000
+  profit: 0
+  required: 16450000000000000
+  listedFutureFees: 4700000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+
+[PASS] testEconomicMinimumPartialLargeWinThenDropAndTopup() (gas: 20979463)
+Logs:
+  minimum large win remains depleted
+  liquid: 37863876389083646
+  profit: 1582025112704235
+  required: 505420000000000000
+  listedFutureFees: 13900000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 779289331954182
+  funded topup restored large prize
+  liquid: 5513587912704235
+  profit: 1582025112704235
+  required: 3680000000000000
+  listedFutureFees: 14595000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 779289331954182
+
+[PASS] testEconomicPolicySwitchInFlightNeverReprices() (gas: 43036668)
+Logs:
+  policy changed outstanding draws
+  liquid: 3260194829168964622
+  profit: 4720200697606223
+  required: 3680000000000000
+  listedFutureFees: 139530000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 2204021090948230
+
+[FAIL: assertion failed: 3 != 0] testEconomicSmallestLargestCountsAndDenominationBounds() (block: 26382349) (gas: 5529713)
+[PASS] testEconomicThousandBottomHeavyRoundTrip() (gas: 629110031)
+Logs:
+  1000 lowest denominations fully stocked
+  liquid: 902870241200000000
+  profit: 0
+  required: 1560000000000000
+  listedFutureFees: 335000000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 0
+
+Suite result: FAILED. 5 passed; 1 failed; 0 skipped; finished in 42.41s (42.15s CPU time)
+
+Ran 1 test suite in 42.76s (42.41s CPU time): 5 tests passed, 1 failed, 0 skipped (6 total tests)
+
+Failing tests:
+Encountered 1 failing test in audit-output-b/AdditionalEconomicB.t.sol:AdditionalEconomicB
+[FAIL: assertion failed: 3 != 0] testEconomicSmallestLargestCountsAndDenominationBounds() (block: 26382349) (gas: 5529713)
+
+Encountered a total of 1 failing tests, 5 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

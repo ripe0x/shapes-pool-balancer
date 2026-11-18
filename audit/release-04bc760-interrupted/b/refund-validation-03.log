@@ -1,0 +1,51 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 6.16s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 2 tests for audit-output-b/RefundAndRecoveryB.t.sol:RefundAndRecoveryB
+[PASS] testEconomicBurstRefundAllowanceMeasured() (gas: 309070096)
+Logs:
+  fulfilledDraws: 180
+  slippageRefundDraws: 0
+  totalAppliedRefundGas: 15097273
+  refundGasPerDraw: 83873
+  measuredGasPerDraw: 395943
+  billedGasPerDraw: 335495
+  recordedKeeperPay: 377949555000000000
+  paidProcessingCalls: 72
+  totalMeasuredGas: 71269911
+  totalBilledGas: 60389250
+  O1RetainedRefundGasPerDraw: 60448
+  overheadAllowanceGasPerDraw: 20000
+  cashAboveGasAndServiceWei: 72403305000000000
+  creatorCloseoutReturn: 5858398192958016700
+
+[PASS] testGasReceiptRefundInterpretation() (gas: 554304)
+Logs:
+  gasReturnAbiBytes: 160
+  witnessOperationGas: 50513
+  witnessBilledGas: 57452
+  witnessAppliedRefund: 14363
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 826.21ms (493.69ms CPU time)
+
+Ran 1 test suite in 1.21s (826.21ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

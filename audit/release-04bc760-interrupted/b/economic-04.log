@@ -1,0 +1,69 @@
+Compiling 31 files with Solc 0.8.28
+Compiling 66 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.15s
+Solc 0.8.28 finished in 8.38s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:100:13:
+    |
+100 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:113:9:
+    |
+113 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> audit-output-b/IndependentB.t.sol:12:20:
+   |
+12 | contract WitnessB {function check(uint f,uint g) external {require(block.basefee==f && tx.gasprice==g,"executed fees");}}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Ran 2 tests for audit-output-b/IndependentB.t.sol:IndependentB
+[PASS] testEconomicGasCapQuiet() (gas: 1205971102)
+Logs:
+  regime after play
+  liquid: 3982340112958016700
+  profit: 447371498966551380
+  required: 16450000000000000
+  listedFutureFees: 258500000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 249379095647900700
+  basefee: 4950000000
+  draws: 180
+  buyerPaid: 7342961008605917400
+  buyerShapeBacking: 3040000000000000000
+  playKeeperPaid: 863271990000000000
+  requestBoardSurchargeReceived: 952845126152445360
+  playerRatioMaxBps: 24620
+  creatorCloseoutReturn: 5682340112958016700
+
+[PASS] testEconomicNormalQuiet() (gas: 1206025770)
+Logs:
+  regime after play
+  liquid: 3897343933278006080
+  profit: 422631359426719980
+  required: 1560000000000000
+  listedFutureFees: 18425000000000000
+  ownerProceeds: 0
+  escrow: 0
+  deliveryEscrow: 0
+  refundCredit: 0
+  FWAedge: 193698980138900160
+  basefee: 100000000
+  draws: 180
+  buyerPaid: 4130858582916906240
+  buyerShapeBacking: 2980000000000000000
+  playKeeperPaid: 33279612250000000
+  requestBoardSurchargeReceived: 68089991925081240
+  playerRatioMaxBps: 14661
+  creatorCloseoutReturn: 5597343933278006080
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 3.76s (6.71s CPU time)
+
+Ran 1 test suite in 4.09s (3.76s CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

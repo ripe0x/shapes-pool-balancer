@@ -1,0 +1,19 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/shapes-release-b-04bc760/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.01s
+Error: Compiler run failed:
+Error: Yul exception:Cannot swap Variable _459 with Variable expr_component_127: too deep in the stack by 1 slots in [ var_weights_1 _459 var_ratioMax_1 expr_65 cleaned_80 expr_mpos_15 var_surchargeReceived_1 cleaned_79 expr_66 var_receivedBacking_1 size_19 var_i_4 var_i_5 var_weightedPrice_1 var_backed_1 expr_component_125 expr_component_126 _460 expr_component_127 ]
+memoryguard was present.

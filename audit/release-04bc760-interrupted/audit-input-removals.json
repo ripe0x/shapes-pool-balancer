@@ -1,0 +1,22 @@
+{
+  "candidate": "04bc760",
+  "removed": [
+    "audit",
+    "docs",
+    "test/audit",
+    "test/scenario",
+    "test/AllocationConcurrency.t.sol",
+    "test/BatchSlippage.t.sol",
+    "test/PolicyPreview.t.sol",
+    "test/SelectableInventory.t.sol",
+    "test/PolicyEconomicReview.t.sol",
+    "test/PolicySecurityReview.t.sol",
+    "test/ReserveEconomicReview.t.sol",
+    "test/ReserveSecurityReview.t.sol",
+    "test/ReserveCapital.t.sol",
+    "test/ReserveCapitalMatrix.t.sol",
+    "test/fixtures/keeper-policy-money-path.json",
+    "scripts/approved-local-rehearsal.ts"
+  ],
+  "separation": "uninformed, not blind; unrestricted host tools remain available; no prior notes/reports/test artifacts copied"
+}

@@ -1,0 +1,272 @@
+[
+  {
+    "path": "AdditionalEconomicB.t.sol",
+    "sha256": "19d4293e16eff843217dd5f9ce7935ef915fdf184ab62d1b66f170fdce8cafd2",
+    "bytes": 4089
+  },
+  {
+    "path": "COMMANDS.md",
+    "sha256": "fe1352e51d6ca0b5bbf6b35f922a87e99304ff114ec9973a832e235167f9c2af",
+    "bytes": 750
+  },
+  {
+    "path": "CurrentStateB.t.sol",
+    "sha256": "1b7c83298abe6f8d4643341d57204cda953c67c7521d7ec2a82e7911d6e62adf",
+    "bytes": 1484
+  },
+  {
+    "path": "GasSpikeValidatedB.t.sol",
+    "sha256": "0af118c701b6149d5dae6532d33e89dc5d951b6e34817de48256de45cc35222c",
+    "bytes": 3694
+  },
+  {
+    "path": "HostileSurfacesB.t.sol",
+    "sha256": "41131ed13669fc247fcc6d0cb45139509ec0dd517e175e1bb5237c93245b5a80",
+    "bytes": 3748
+  },
+  {
+    "path": "IndependentB.t.sol",
+    "sha256": "6507cbf07aaac31fa7469bafce1b10f6eaef823c9faec3ad2f4ad4de26382b66",
+    "bytes": 10611
+  },
+  {
+    "path": "MinimumClaimComparisonB.t.sol",
+    "sha256": "02e9200ed1360192a8ac661c3268ba1996ed2dd082e3c6ef8421e65fb91b94cc",
+    "bytes": 5843
+  },
+  {
+    "path": "NeutralB.t.sol",
+    "sha256": "98de6b14f0c129565b2f61376894bd885d9b63b913f5110e4574c64a15991e8d",
+    "bytes": 489
+  },
+  {
+    "path": "NumericalBoundsB.t.sol",
+    "sha256": "e93acfb7deeed411bd19f0712c2bef6aae82908faa36f2ef21ca4e9ef9215e8b",
+    "bytes": 1694
+  },
+  {
+    "path": "O1-validation.md",
+    "sha256": "673e110b8332c7a540ce2456585f396909605c59043c50e385f7699d61ef4033",
+    "bytes": 1447
+  },
+  {
+    "path": "RefundAndRecoveryB.t.sol",
+    "sha256": "04934e52cd315175b09af92e9cf383fa88bb2d24248dcea4b2521e64974c6c88",
+    "bytes": 6091
+  },
+  {
+    "path": "RegimeTransitionsB.t.sol",
+    "sha256": "ba5d767feceb48c6df7f82627a554d84a9ed36deefa11db29bafe8695a741e91",
+    "bytes": 2285
+  },
+  {
+    "path": "RemainingRequirementsB.t.sol",
+    "sha256": "715323a45620203f7a40653a2eb3fcc7ee8efc521b4e208492a1634f94d08cec",
+    "bytes": 2873
+  },
+  {
+    "path": "SecurityB.t.sol",
+    "sha256": "9d2750d31cf60e685c30b24a0b94e6a52205896b1a29eaf14a03b08fabe5eaf9",
+    "bytes": 8855
+  },
+  {
+    "path": "StagingAndReceiverB.t.sol",
+    "sha256": "cb415f026a633f2ed5274d3458c17a1351990617cab0c9285636503b3f795982",
+    "bytes": 1737
+  },
+  {
+    "path": "StressB.t.sol",
+    "sha256": "5cd71a79927480f0436ab02da713eb69ab6d3e03d69705a045c4639d854392ed",
+    "bytes": 7018
+  },
+  {
+    "path": "additional-economic-01.log",
+    "sha256": "dccd26e4c13555c055c71e912daecd4ffa8254e0a26b60224797a3f9c45f305e",
+    "bytes": 3511
+  },
+  {
+    "path": "blockscout-skill.md",
+    "sha256": "1244189f0de456c613ed743ea9d5da87287d6962fed93510936b4dcf44c1e1db",
+    "bytes": 29158
+  },
+  {
+    "path": "current-state.log",
+    "sha256": "87125dbd287cf39f6f49d5fa5abb360eec15c4f261f6dc570e6334755fde0602",
+    "bytes": 1266
+  },
+  {
+    "path": "derived-map.md",
+    "sha256": "93c3ddb9eeb42bb4a8c3aca9e18b14e107120a3a201c18e3c716769a39acf930",
+    "bytes": 2913
+  },
+  {
+    "path": "economic-01.log",
+    "sha256": "e73709075adce959ef2a06f6442fb0d347033dfc06c21e8e9a1e19beb6c68ca2",
+    "bytes": 5070
+  },
+  {
+    "path": "economic-02.log",
+    "sha256": "d7dab7781d5a70b8365fd50adac30821a2518a05d19fc107c2f6ce31631416c4",
+    "bytes": 1858
+  },
+  {
+    "path": "economic-03.log",
+    "sha256": "51e95114fdba4769d300f580fcfdafd54dd93116e1ce447ea905983265d8f353",
+    "bytes": 4642
+  },
+  {
+    "path": "economic-04.log",
+    "sha256": "4f1387db096c58e21660a4e2192cd625661ea9b3023871443b849ee10dd78bde",
+    "bytes": 2317
+  },
+  {
+    "path": "forge-help.log",
+    "sha256": "c7cb5d71c4a18d0133fef77b3d5a1dca30f43605d6a5546d97ea8ffa0ccf73d7",
+    "bytes": 252
+  },
+  {
+    "path": "forge-options.log",
+    "sha256": "f1092824040fa1451da40d54c31f3c53eebe69b20c01ad58fe9602b291bca20f",
+    "bytes": 2272
+  },
+  {
+    "path": "gas-spike-validated.log",
+    "sha256": "191efe60f5c1b68b0f97da439aec06ef8b52834195192727808cc56f65c2e6e2",
+    "bytes": 2497
+  },
+  {
+    "path": "hostile-surfaces.log",
+    "sha256": "6248c98becc6d4d375792c72a7ab9df9fc9107e652cf4e37f8c3f25c825e4aa2",
+    "bytes": 1448
+  },
+  {
+    "path": "minimum-claims-comparison.log",
+    "sha256": "301e6168c6b24985e023a9be360e84b1341e8ef49b5ad04a1c5a8c31d8c657fd",
+    "bytes": 2097
+  },
+  {
+    "path": "nine-funded-final.log",
+    "sha256": "da57bcf2dbfd0f2a39f4c2564df55aa7a618c84ffa8ad63743bcb27d162bff82",
+    "bytes": 1286
+  },
+  {
+    "path": "nine-trace.log",
+    "sha256": "807098d649cc4470db7c7ba622b051da31bb5ed437520f8b343b55f10d5497a6",
+    "bytes": 380375
+  },
+  {
+    "path": "numerical-bounds-01.log",
+    "sha256": "7dacd199c09e58699db97f775532e9cbd760b1f1db0415cb6e30ccb976c2c924",
+    "bytes": 1625
+  },
+  {
+    "path": "preflight-network.log",
+    "sha256": "275f4a61bb8743508590bc4bfb8e8c4724ad57720c64267f0ba46f05a392dfa2",
+    "bytes": 2225
+  },
+  {
+    "path": "preflight.log",
+    "sha256": "21005350b166b75a7cc603151055be77bc3add094ff6ca799b8050cd42703c52",
+    "bytes": 1760
+  },
+  {
+    "path": "refund-recovery-01.log",
+    "sha256": "ce0deceefb3385d7805f0bb6b3f4986fbbb4dddce34cca31115184b5b6f3a312",
+    "bytes": 2153
+  },
+  {
+    "path": "refund-validation-02.log",
+    "sha256": "6fcd0426e6fc96ed41df34c387630a6f43a2680f187fa3f5a6a80daea91184ea",
+    "bytes": 2212
+  },
+  {
+    "path": "refund-validation-03.log",
+    "sha256": "4e9542155a1ff803e6eda0d712ddab0c0b16db7652fead90f157884c737e4a0a",
+    "bytes": 1960
+  },
+  {
+    "path": "regime-transitions.log",
+    "sha256": "03521cd654a74ea5cd3702586855f29b975c45307e4e3fc247f7a1b49c3e8a57",
+    "bytes": 5461
+  },
+  {
+    "path": "remaining-requirements.log",
+    "sha256": "a11bbadbd37c227bac27c2fe77678130fce5141d157e4acfa7b6ad760508b062",
+    "bytes": 2614
+  },
+  {
+    "path": "security-01.log",
+    "sha256": "bc6c5c155d224862856d1651272f8d4909cc7f376a1825b50fed557c51ae7674",
+    "bytes": 2374
+  },
+  {
+    "path": "security-02.log",
+    "sha256": "231b8f0c54baf4d0ec6a6a97b52002cb477fc19b73deb9a3f6a982bf7490c3a5",
+    "bytes": 1919
+  },
+  {
+    "path": "staging-receiver.log",
+    "sha256": "7e279e61d12a5d4852599f9a9a1e50f0df03821a0e5f25158cdc0b92a7a1800d",
+    "bytes": 1345
+  },
+  {
+    "path": "stress-01.log",
+    "sha256": "e5dba4b857bbd03154747ccaf4b71d6581dbce373ba7c7b4709ff112653a2959",
+    "bytes": 2600
+  },
+  {
+    "path": "stress-02.log",
+    "sha256": "db4d7539c0f3d62bccbc352e616f24232624b957f93482c100eb94a102d8a2bd",
+    "bytes": 1877
+  },
+  {
+    "path": "toolchain.log",
+    "sha256": "a8d65e35284104625d405209e47c2066fb3ec45dd5fe1fc5765dd6193a9b2705",
+    "bytes": 155
+  },
+  {
+    "path": "verified-Factory.sol.txt",
+    "sha256": "a1fb69149b5a7aed4f215753c53e3e172495b1ac2873830d544452f2c4813eb6",
+    "bytes": 36843
+  },
+  {
+    "path": "verified-Shapes.sol.txt",
+    "sha256": "9bc314b0273cd23d0a185c346369139ab1ab3afbd2dce1f82b33134b59d8221c",
+    "bytes": 49542
+  },
+  {
+    "path": "verified-StandardPool.sol.txt",
+    "sha256": "98878142a0be719869f1f7557b3686c1c9f8e45145e80eca7e25e1f7a576331a",
+    "bytes": 95281
+  },
+  {
+    "path": "verified-VRFService.sol.txt",
+    "sha256": "883bde95ff674578baa3381f23d839e3d6fb23db6cfc4ec3c2f3b75cafa7ab96",
+    "bytes": 38240
+  },
+  {
+    "path": "versions/IndependentB-before-NFT-retention.sol.txt",
+    "sha256": "73e18171de015deee9648ea227c9db43c11879e48819a630368ffb910e3e8e6f",
+    "bytes": 10653
+  },
+  {
+    "path": "versions/RefundAndRecoveryB-01.sol.txt",
+    "sha256": "a747554be5db294344b6637898e00fee1005e954710b20a8b4e5dcc2d45747cf",
+    "bytes": 3628
+  },
+  {
+    "path": "versions/RefundAndRecoveryB-raw-refund-candidate.sol.txt",
+    "sha256": "4467328d4cb9b3691949b4ee4e9509e8bf6e0defd950059110a21fa04e2ca967",
+    "bytes": 5282
+  },
+  {
+    "path": "versions/RegimeTransitionsB-raw-01.sol.txt",
+    "sha256": "ba5d767feceb48c6df7f82627a554d84a9ed36deefa11db29bafe8695a741e91",
+    "bytes": 2285
+  },
+  {
+    "path": "versions/StressB-01.sol.txt",
+    "sha256": "29386b803db37e876aa0630eb7713a8bc49fdb5a7488e628de278745c20f5a9d",
+    "bytes": 5356
+  }
+]
