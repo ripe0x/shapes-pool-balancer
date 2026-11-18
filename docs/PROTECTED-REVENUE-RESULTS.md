@@ -1,5 +1,11 @@
 # Protected collected revenue and atomic creation
 
+The original implementation and measurements below belong to `51dd7b7` and its unchanged component inputs
+([original source manifest](https://github.com/ripe0x/shapes-pool-balancer/blob/51dd7b7c3b300eee9a0279127e08021230539030/docs/verification/protected-revenue/manifest.json)).
+The [focused frontend follow-up and fresh candidate rehearsal](FRONTEND-FOLLOWUP-RESULTS.md) records subsequent work;
+the refreshed [manifest](verification/protected-revenue/manifest.json) binds the final production source, including
+new frontend helpers. Historical tests and archived rehearsal approvals are not relabeled as new executions.
+
 Implementation candidate, 2026-11-18. Branch `codex/creator-credit-atomic`, based on current main
 `2f83f9a412a2f0b9de00a72af3bec5e86f57fb73`. A remote main read confirmed that revision at task start;
 there were no newer mainline fixes to reconcile. The original audit checkout and its unrelated work were preserved.
@@ -45,7 +51,7 @@ approvals were preserved as history.
 Routine decisions: use uint256 credit; retain `settingsHash()` solely as the existing journal's policy-generation
 identity (no settings interpretation); store the reviewed initial mint-fee cap exactly and reject a live fee above it;
 use creator withdrawal followed by a normal deposit for voluntary reinvestment. No new migration, indexing or multicall
-framework was added. `OWNER-REQUIREMENTS.md` R59–R66 supersede conflicting historical economics without forging a new
+framework was added. `OWNER-REQUIREMENTS.md` R62–R69 supersede conflicting historical economics without forging a new
 release signature.
 
 ## Production source and runtime size
@@ -175,10 +181,15 @@ working production source rather than falsely attributing execution to unchanged
 
 A separate **97-receipt** local run covered expiry/refund, Shape win/redeem, curated win/return, unlist/restock and failed
 NFT delivery/refund/recovery, then closed/unlisted/claimed/retired each pool. Each received 1 synthetic ETH creator
-capital and no additional capital; ending Balancer balances were zero. At basefee 0.0005 gwei/bid 0.001 gwei, actual
-expiry reward was **0.000050253116 ETH**: buyer+keeper gained **0.000047094427 ETH**, funded by creator operating cash,
-while the combined creator/buyer/keeper cycle lost **0.000003158689 ETH** including gas/VRF. This is a bounded existing
-work-incentive subsidy, not a security-accounting loss or universal loss-free keeper claim. Across the complete run,
+capital and no additional capital; ending Balancer balances were zero. The low-gas expiry experiment installed the
+creator-selected `ReserveReviewMaxPolicy`, used its maximum-paying behavior, withheld randomness delivery and advanced
+past the expiry timeout. At basefee **0.0005 gwei** and bid **0.001 gwei**, the actual expiry reward was
+**0.000050253116 ETH**. The buyer plus keeper gained **0.000047094427 ETH**, funded by creator operating cash.
+The combined creator/buyer/keeper cycle lost **0.000003158689 ETH** including gas/VRF. These transfers and gas costs
+are real local execution evidence of a subsidy under that selected policy and missing-randomness conditions. They do
+not establish that an outside buyer can force expiry while the oracle operates normally. The combined loss reconciles
+costs; including the creator does not neutralize the outsider gain paid from that creator's operating funds or establish
+protection of the creator. Across the complete run,
 actor gas was **0.000085179558 ETH** and coalition loss **0.103402950772953270 ETH**, reconciling gas, mint, VRF and FWA
 fees exactly. [Full receipts](verification/protected-revenue/receipt-economics.log),
 [cycle summaries](verification/protected-revenue/receipt-economics-summary.json).
@@ -260,6 +271,7 @@ not mainnet explorer transactions. Retained local nodes/previews are task fixtur
 - Quote/trace estimates sometimes understated billed keeper gas (rehearsal worst estimate −563,808 gas; worst trace
   expense −172,279). Aggregate keeper results were positive, but individual inclusion/work changes can still cost the
   operator gas. Atomic payment floors bound accepted compensation, not every failed attempt's loss.
-- The existing flat work incentive can subsidize buyer/keeper manufactured expiry work from creator operating cash at
-  very low gas. The measured amount and whole-coalition loss are separated above; caps are not a universal profitability
-  guarantee. No new economic outcome approval or public launch authority is implied.
+- With creator-selected `ReserveReviewMaxPolicy` at its maximum-paying behavior, deliberately withheld randomness and
+  expiry past the timeout, buyer plus keeper gained **0.000047094427 ETH** from creator operating cash at the stated
+  low gas prices. The combined loss is accounting evidence, not creator protection. This experiment does not establish
+  buyer-forced expiry with a normally operating oracle. No new economic outcome approval or public launch authority is implied.

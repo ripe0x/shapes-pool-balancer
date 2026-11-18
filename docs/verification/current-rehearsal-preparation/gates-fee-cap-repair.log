@@ -1,0 +1,13 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 647ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  340ms
+ ✓ scripts/current-local-rehearsal.test.ts (16 tests) 946ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  850ms
+
+ Test Files  2 passed (2)
+      Tests  31 passed (31)
+   Start at  14:23:46
+   Duration  1.27s (transform 103ms, setup 0ms, collect 557ms, tests 1.59s, environment 0ms, prepare 63ms)
+

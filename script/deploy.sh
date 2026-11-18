@@ -16,9 +16,19 @@ if [[ "${1:-}" == "--local-rehearsal-plan" ]]; then
     unset ASSET_GATE_PASSED
     exec forge script script/Deploy.s.sol "$@"
 fi
+# Fresh protected-revenue candidate: independent packet and owned-node proof, never an archived approval.
+if [[ "${1:-}" == "--current-local-rehearsal-plan" ]]; then
+    [[ $# -ge 5 && "${3:-}" == "--approved-plan-hash" ]] || { echo "current rehearsal requires its exact frozen plan and hash" >&2; exit 1; }
+    current_plan="$2"
+    current_hash="$4"
+    shift 4
+    node --import tsx scripts/current-local-rehearsal.ts --plan "$current_plan" --approved-plan-hash "$current_hash" --phase deploy -- "$@"
+    unset ASSET_GATE_PASSED
+    exec forge script script/Deploy.s.sol "$@"
+fi
 for argument in "$@"; do
     case "$argument" in
-        --local-rehearsal-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
+        --local-rehearsal-plan*|--current-local-rehearsal-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
     esac
 done
 # Production retains the full asset-flow gate, owner signature and exact-source review requirement.

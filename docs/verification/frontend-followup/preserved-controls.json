@@ -1,0 +1,15 @@
+{
+  "productionGateTailSha256": "a51906e7c2f615b268216a9c0ae18f0e91d18c8e9020a7cb980128038d77bc6a",
+  "productionTailUnchanged": true,
+  "archivedPathsUnchanged": [
+    "docs/receipts/rehearsal-04bc760-preparation",
+    "scripts/run-local-rehearsal.ts",
+    "scripts/approved-local-rehearsal.ts",
+    "scripts/local-rehearsal-gate.ts",
+    "audit/local-rehearsal-7b18522f"
+  ],
+  "uniqueRequirementDefinitions": 64,
+  "newRevenueIdentifiers": "R62\u2013R69",
+  "historicalR59R60R61": "byte-identical",
+  "followupAuthorization": "R70"
+}

@@ -1,0 +1,17 @@
+TRANSCRIPTION OF CAPTURED TOOL RESULT; NOT A NEW EXECUTION
+Working directory: /private/tmp/fwa-credit-atomic
+Command: CREATION_RECOVERY_RPC=http://127.0.0.1:18766 ./node_modules/.bin/vitest run app/src/creation.test.ts
+Exit status: 0
+Original output:
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/creation.test.ts (12 tests) 151ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  14:27:14
+   Duration  526ms (transform 53ms, setup 0ms, collect 144ms, tests 151ms, environment 0ms, prepare 28ms)
+
+Scope: existing local fork 127.0.0.1:18766; read-only calls and receipt-only failure injection; no node mutations.
+Test source SHA256 after run: 9e9f4847e9d782fd20d7deb6258bd63b2de7154eac13b3f90c132c5dfce9a90a

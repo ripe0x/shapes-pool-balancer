@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 571ms
+ ✓ scripts/current-local-rehearsal.test.ts (15 tests) 870ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  774ms
+
+ Test Files  2 passed (2)
+      Tests  30 passed (30)
+   Start at  14:19:46
+   Duration  1.18s (transform 99ms, setup 0ms, collect 532ms, tests 1.44s, environment 0ms, prepare 62ms)
+

@@ -1,0 +1,64 @@
+TRANSCRIBED TOOL OUTPUT, NOT THE ORIGINAL LOG FILE
+
+Recorded retrospectively from the tool output retained in this agent's conversation.
+The original /private/tmp/fwa-current-rehearsal-gates.log was overwritten by the repaired focused run.
+Initial command: node --import tsx node_modules/vitest/vitest.mjs run scripts/current-local-rehearsal.test.ts scripts/local-rehearsal-gate.test.ts
+Initial Vitest result: 29 passed, 1 failed. The initial Vitest process exit status was not separately retained by the shell that printed its log; no exit status is reconstructed here.
+
+Context: this was a read-only/pure control test, before preparation. No fresh candidate node had been created, funded, unlocked, mined or sent a transaction. The rejecting check was dependencyState(), used both by sourceCheck() and preparation; the failing source-binding test reached the missing nested dependency identity before any preparation/node API.
+
+Exact excerpt from the earlier tool output:
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ❯ scripts/current-local-rehearsal.test.ts (15 tests | 1 failed) 416ms
+   ✓ current local rehearsal control inputs, without node mutation > keeps the fixed scope separate from any deployment or owner approval 11ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects mainnet independent of a plan hash 10ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects testnet independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects remote RPC independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects old owned node independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects arbitrary signer independent of a plan hash 7ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects higher spending independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects second time jump independent of a plan hash 6ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different negative action independent of a plan hash 9ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different action count independent of a plan hash 7ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects parent-path evidence independent of a plan hash 10ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects stale approval before touching a node or preparation file 8ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects altered command arguments, signer, relay and resume paths 6ms
+   × current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs 292ms
+     → initialized pinned submodules
+   ✓ current local rehearsal control inputs, without node mutation > preserves the production gate tail exactly and requires an explicit new local route 23ms
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 581ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/current-local-rehearsal.test.ts > current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs
+AssertionError: initialized pinned submodules
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ scripts/current-local-rehearsal.ts:34:224
+
+ ❯ dependencyState scripts/current-local-rehearsal.ts:34:209
+ ❯ scripts/current-local-rehearsal.test.ts:39:109
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 29 passed (30)
+   Start at  14:12:07
+   Duration  1.13s (transform 106ms, setup 0ms, collect 606ms, tests 997ms, environment 0ms, prepare 72ms)
+
+Exact subsequent diagnostic output (before metadata repair):
+
+ dc647cc030d9d65910d8f1172a0cde48d7106e32 lib/forge-std (v1.17.0-10-gdc647cc)
+ 3a463f750eee56b0ca175999f184a32909173780 lib/shape-packs (remotes/origin/main-1-g3a463f7)
+-1b84c102a6603ca9751d863ff259b08870d22a6b lib/shape-packs/lib/shapes
+ acd959aa4bd04720d640bf4e6a5c71037510cc4b lib/solady (v0.1.26)
+
+The nested source directory existed, but lacked .git metadata in the temporary copy. Parent subsequently attached local shared metadata for the exact existing commit, with no dependency source-byte changes. The independently recorded before/after source-tree identity is docs/verification/frontend-followup/nested-dependency-identity.json. The rejection was preserved rather than weakening the initialized/pinned dependency requirement. The corrected gate suite passed 30/30; those actual later outputs remain separate evidence.

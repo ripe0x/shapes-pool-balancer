@@ -1,0 +1,44 @@
+{
+  "reviewedBase": "51dd7b7c3b300eee9a0279127e08021230539030",
+  "frontendCommit": "895de04",
+  "checks": [
+    {
+      "command": "CANDIDATE_RUN=1 npm run test:ts",
+      "exitStatus": 0,
+      "result": "186 passed, 2 skipped, 17 files",
+      "log": "test-ts.log",
+      "scope": "initial coherent follow-up; subsequent receipt test additions and rehearsal-control repairs have separate affected checks"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run typecheck",
+      "exitStatus": 0,
+      "result": "pass on final implementation inputs",
+      "log": "typecheck-final.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run build:app",
+      "exitStatus": 0,
+      "result": "pass; existing >500kB chunk warning retained",
+      "log": "build-app.log",
+      "scope": "production app source unchanged since this build"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge build --sizes",
+      "exitStatus": 0,
+      "result": "PoolBalancer runtime 20,516 bytes; 4,060 bytes belowEIP-170",
+      "log": "sizes.log",
+      "scope": "Solidity/compiler/profile unchanged"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-path test/Fork.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349",
+      "exitStatus": 0,
+      "result": "9 passed, 0 failed",
+      "log": "ci-fork.log",
+      "scope": "applicable CI fork integration, unchanged contract sources"
+    }
+  ],
+  "limits": [
+    "Local synthetic transactions and controlled callbacks are not mainnet transactions or live oracle evidence.",
+    "Original broad contract/economic campaigns retain their component source scope; no unrelated audit campaign repeated."
+  ]
+}

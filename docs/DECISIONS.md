@@ -724,7 +724,7 @@ Owner: "Yes, build it", on the recommended fix set for the round 8 audit (`audit
 
 99. **Protected collected revenue and atomic creation (2026-11-18).**
 
-Owner implementation brief settles R59–R66. Stored creatorRevenueBps and creatorCredit replace current-inventory
+Owner implementation brief settles R62–R69. Stored creatorRevenueBps and creatorCredit replace current-inventory
 attribution, profitShareSum, historical allocation markup and listedFees. Both paid and unpaid spending protect credit;
 closing does not erase it. Existing-credit claims skip every external read. Collection is explicit and independent.
 The payout rate changes only through a creator transaction collecting old available proceeds first; later collections

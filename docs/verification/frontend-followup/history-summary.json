@@ -1,0 +1,45 @@
+{
+  "started": 1795028581152,
+  "observed": 1795028642741,
+  "transportTimeoutMs": 60000,
+  "historyDelayMs": 35000,
+  "pool": "0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def",
+  "outcome": "Overall ETH result visible while queued history refresh loads",
+  "firstCompletedHistoryRpc": {
+    "started": 1795028580973,
+    "completed": 1795028625147,
+    "delay": 35000,
+    "requests": [
+      {
+        "method": "eth_getLogs",
+        "address": "0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def",
+        "toBlock": "0x1929038"
+      }
+    ],
+    "results": []
+  },
+  "currentSnapshotReadTimesBeforeCompletion": [
+    1795028595924,
+    1795028595936,
+    1795028610932,
+    1795028610949
+  ],
+  "currentSnapshotReadCountBeforeCompletion": 4,
+  "sourceSha256": {
+    "app/src/App.tsx": "4c9d3d1c5ec069d25c747ca201d745bfd17790479089d2299375ad666838ebcf",
+    "app/src/refresh.ts": "f2d54c75eccfbce7c1a88818ea77ea51091e564e97e28ea4deb69f69159c35f1",
+    "app/src/creation.ts": "ea870fd6b96a7c5cb910bf636958eea76a8e42fedc45efd267212cadb3f5113c",
+    "app/src/revenue-rate.ts": "8d9a21e4393939f17c7df13464d4258c3402b04f3361798d12a51da248e27c48"
+  },
+  "interveningCurrentPollingCycles": 2,
+  "currentBlockReadGroups": [
+    [
+      1795028595924,
+      1795028595936
+    ],
+    [
+      1795028610932,
+      1795028610949
+    ]
+  ]
+}

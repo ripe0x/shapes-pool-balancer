@@ -1,0 +1,15 @@
+{"upstream": "http://127.0.0.1:18766", "port": "18816", "chainId": 31337, "balancers": ["0xe3A3964AbA41Ef9f247ba4063eD1B07220e93def"], "node": {"currentBlockNumber": "0x192903b", "currentBlockTimestamp": 1794299729, "currentBlockHash": "0xb3d5784af89e78f3c23b89017db9d98f8e378c4547eee11d8c53dc2c4624f66e", "hardFork": "Bpo2", "transactionOrder": "fees", "environment": {"baseFee": "0x251e5", "chainId": 31337, "gasLimit": "0x3938700", "gasPrice": "0x3b9d1be5"}, "forkConfig": {"forkUrl": "https://mainnet.gateway.tenderly.co", "forkBlockNumber": 26382349, "forkRetryBackoff": 1000}, "network": "ethereum"}}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028848562}
+{"started": 1795028876840, "completed": 1795028876841, "delay": 0, "requests": [{"method": "eth_sendTransaction", "to": "0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455"}], "results": [{"jsonrpc": "2.0", "id": 211, "result": "0x7969b3da151918aa8e4930722e81bce516b6c329ad8b5469a47640497ca3f8be"}]}
+{"started": 1795028877797, "completed": 1795028877798, "delay": 0, "requests": [{"method": "eth_sendTransaction", "to": "0xCd171B437d9329C2654128645944fbC05C9AA2BF"}], "results": [{"jsonrpc": "2.0", "id": 221, "result": "0x7656aec1be1ef7604eeeb919e69c286969d3b0ff1f24ee4ca1192cda3165248e"}]}
+{"method": "eth_getTransactionReceipt", "reason": "creation receipt", "hash": "0x7656aec1be1ef7604eeeb919e69c286969d3b0ff1f24ee4ca1192cda3165248e", "at": 1795028877801}
+{"method": "eth_getTransactionReceipt", "reason": "creation receipt", "hash": "0x7656aec1be1ef7604eeeb919e69c286969d3b0ff1f24ee4ca1192cda3165248e", "at": 1795028877806}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028877811}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028882816}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028887816}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028892815}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028893689}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028893702}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028897291}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028897292}
+{"method": "eth_call", "reason": "creation verification", "to": "0xca11bde05977b3631167028862be2a173976ca11", "selector": "0x82ad56cb", "at": 1795028902301}

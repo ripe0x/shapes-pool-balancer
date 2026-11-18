@@ -1,4 +1,4 @@
-import { BaseError, UserRejectedRequestError, createPublicClient, http, type Address } from 'viem';
+import { BaseError, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, createPublicClient, custom, http, type Address } from 'viem';
 import { describe, expect, it } from 'vitest';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, recoverCreation, sameCreation, submitCreation, type CreationAttempt } from './creation';
 
@@ -137,4 +137,64 @@ it.skipIf(!rpc)('recovers the real creator pool without relying on its receipt a
   expect(await recoverCreation(pub, actual, context)).toBe('confirmed');
   expect(await recoverCreation(pub, { ...actual, config: { ...actual.config, creatorRevenueBps: 1235 } }, context)).toBe('mismatch');
   expect(await recoverCreation(pub, actual, { ...context, creator: attempt.factory })).toBe('context');
+});
+
+// Public facts from docs/verification/frontend-followup/creation-readback.json.
+// This transaction was already broadcast and mined by the real browser flow; these tests never submit it again.
+const minedAttempt: CreationAttempt = {
+  ...attempt,
+  predicted: '0xA3d5312103C3f64506A914BcA71768b7695297A0',
+  hash: '0x090688e3bf5d6728b36d8d6ac952b123d880f8b7a29526035884f30dae616803',
+  salt: '0xf0f73c0fecaa42e9d1596e10499921da71cb7ccb796470bbe380d58414492927',
+  config: { ...attempt.config, target: '66902235595591869424607154817945088813236234' },
+  curated: [{ collection: '0x7de7BC53e06f8549c6F89AEE3F59cD605c97c455', tokenId: '2026111802', base: '250000000000000000' }],
+  value: '536112000000000000',
+};
+
+describe.skipIf(!rpc)('mined atomic creation with unavailable receipt confirmation', () => {
+  for (const failure of ['throw', 'timeout'] as const) {
+    it(`retains and recovers the actual mined creation after viem receipt ${failure}, without another wallet call`, async () => {
+      const real = createPublicClient({ transport: http(rpc, { retryCount: 0 }), cacheTime: 0 });
+      const hash = minedAttempt.hash!;
+      const receipt = await real.getTransactionReceipt({ hash });
+      expect(receipt.status).toBe('success');
+      expect(receipt.from.toLowerCase()).toBe(minedAttempt.creator.toLowerCase());
+      expect(receipt.to?.toLowerCase()).toBe(minedAttempt.factory.toLowerCase());
+      const transaction = await real.getTransaction({ hash });
+      expect(transaction.value).toBe(BigInt(minedAttempt.value));
+
+      let receiptCalls = 0;
+      const unavailable = createPublicClient({ cacheTime: 0, transport: custom({
+        request: async (request) => {
+          if (request.method === 'eth_getTransactionReceipt') {
+            receiptCalls++;
+            if (failure === 'throw') throw new Error('receipt RPC deliberately unavailable');
+            return new Promise<never>(() => {});
+          }
+          // Every successful external answer comes unchanged from the real fork node.
+          return real.transport.request(request);
+        },
+      }, { retryCount: 0 }) });
+      const confirmationError = await unavailable.waitForTransactionReceipt({
+        hash, pollingInterval: 10, timeout: failure === 'timeout' ? 100 : 2000,
+      }).then(() => { throw new Error('unavailable receipt unexpectedly confirmed'); }, error => error);
+      expect(receiptCalls).toBeGreaterThan(0);
+      if (failure === 'timeout') expect(confirmationError).toBeInstanceOf(WaitForTransactionReceiptTimeoutError);
+      else {
+        expect(confirmationError).not.toBeInstanceOf(WaitForTransactionReceiptTimeoutError);
+        expect(String(confirmationError)).toContain('receipt RPC deliberately unavailable');
+      }
+      expect(creationNotSubmitted(confirmationError)).toBe(false);
+
+      // Model the persisted attempt after refresh, including its already returned real transaction hash.
+      const restored = JSON.parse(JSON.stringify(minedAttempt)) as CreationAttempt;
+      expect(restored).toEqual(minedAttempt);
+      let walletCalls = 0;
+      const tracking = { existing: () => restored, store: () => { throw new Error('must retain attempt'); }, reject: () => { throw new Error('must retain attempt'); } };
+      await expect(submitCreation(restored, async () => { walletCalls++; throw new Error('wallet must not be reached'); }, tracking)).rejects.toThrow('still needs confirmation');
+      expect(walletCalls).toBe(0);
+      expect(await recoverCreation(unavailable, restored, context)).toBe('confirmed');
+      expect(tracking.existing()).toEqual(minedAttempt);
+    });
+  }
 });

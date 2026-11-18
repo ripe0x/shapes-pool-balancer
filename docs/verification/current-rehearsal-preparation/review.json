@@ -1,0 +1,17 @@
+{
+  "controllerSha256": "1fcb9b44188ae26e09c8cb3fe8f707c347ac6aa1d9ea429505761920c8614ddb",
+  "gateTestSha256": "99acc7088091e99bb6499818fa9d33b7692ce324636a55177161fcbac0382875",
+  "keeperDriverSha256": "44da2916251d4b82771fdaec5d8c508cfbbdc050e141bd1f4a942122793c02f8",
+  "independentGateReview": "frontend",
+  "leadLifecycleReview": "root",
+  "resolvedFindings": [
+    "pre-activation edge estimate replaced by receipt-block request pricing and actual fee/debit events",
+    "negative probe now shares 20 gwei budget guard before broadcasting"
+  ],
+  "validation": "31 current and legacy gate tests pass; affected solc-binding case passes; final typecheck passes",
+  "limitations": [
+    "Controlled Keeper ticks do not test CLI timing.",
+    "Controlled real coordinator callbacks do not test live randomness.",
+    "No new forced hostile-NFT delivery or trusted-Shape delivery-failure branch."
+  ]
+}
