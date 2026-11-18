@@ -63,7 +63,15 @@ export function copyStagedDependencies(p: any, dir: string) {
     return assertStagedDependencies(p, dir);
 }
 export function runtimeState() {
-    const binaries = [process.execPath, ...['forge', 'anvil'].map(name => execFileSync('which', [name], { encoding: 'utf8' }).trim()), join(homedir(), '.svm', '0.8.28', 'solc-0.8.28')];
+    const forge = execFileSync('which', ['forge'], { encoding: 'utf8' }).trim();
+    const binaries = [process.execPath, forge, execFileSync('which', ['anvil'], { encoding: 'utf8' }).trim(), join(homedir(), '.svm', '0.8.28', 'solc-0.8.28')];
+    if (basename(realpathSync(forge)) === 'agent-guard') {
+        // The installed guard skips its own directory before dispatch. Hash its target without invoking or bypassing it.
+        const guardDirectory = realpathSync(dirname(forge));
+        const delegated = execFileSync('which', ['-a', 'forge'], { encoding: 'utf8' }).trim().split('\n').find(path => realpathSync(dirname(path)) !== guardDirectory);
+        assert.ok(delegated, 'guarded Forge has an identifiable delegated executable');
+        binaries.push(delegated);
+    }
     return { node: process.version, binaries: binaries.map(path => ({ path: realpathSync(path), sha256: digest(readFileSync(path)) })), installedLock: digest(readFileSync(join(ROOT, 'node_modules/.package-lock.json'))) };
 }
 export function sourceCheck(p: any, executedRoot = ROOT) {

@@ -22,5 +22,12 @@
     "boundDependencyPathsCovered": 58,
     "validation": "32 focused current and legacy gate tests pass; final staging typecheck passes",
     "limits": "Preparation02 must still establish exact artifact identity; no source/artifact waiver."
+  },
+  "delegatedForgeBinding": {
+    "controllerSha256": "c1b543d854dfe21271f08940c9d48db545b18f0e0b428d5c85dcec5c29a54266",
+    "testSha256": "0657b34274e8a169b4ed9c0f697e21ef23ddfccdd24f4d9a93dae9dd21e22c83",
+    "reviewer": "root",
+    "findingResolved": "Actual Forge executable behind the unchanged mandatory guard is now hashed in addition to the guard; invocations still use the guard.",
+    "validation": "Affected source-binding case and typecheck pass; no broadcasts."
   }
 }
