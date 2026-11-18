@@ -1,0 +1,89 @@
+{
+  "revision": "9b45f915fcaa27bc24d6125cf4a0062117ef576c",
+  "checkedUTC": "2026-11-18T00:12:00.897Z",
+  "chainId": 31337,
+  "forkBlock": 26437802,
+  "head": "26438542",
+  "journalSha256": "bdcd85a889b25760604eb186427d87663c7116ca0433f84d4e7d133baceb5352",
+  "readOnly": true,
+  "passed": true,
+  "receipts": 286,
+  "rounds": 50,
+  "draws": 152,
+  "outcomes": {
+    "fulfilled": 65,
+    "refunded": 87,
+    "refundCreditWei": "2400431303075223482"
+  },
+  "depositWei": "6000000000000000000",
+  "totalGasWei": "203466407875872872",
+  "maxTransactionGasLimit": "7023660",
+  "gasByCategoryWei": {
+    "deployment": "1357083859913650",
+    "setup": "358972605959222",
+    "coordinator-exception": "76432203700000000",
+    "buyer": "86570530940000000",
+    "keeper": "38673351490000000",
+    "service-retry": "43807600000000",
+    "creator": "30457680000000"
+  },
+  "transactionsByCategory": {
+    "deployment": 8,
+    "setup": 18,
+    "coordinator-exception": 152,
+    "buyer": 50,
+    "keeper": 54,
+    "service-retry": 1,
+    "creator": 3
+  },
+  "runtimeBytes": 24449,
+  "keeperBalanceWei": "1007082730460000000",
+  "pools": [
+    {
+      "creator": "0x000000000000000000000000000000000001d005",
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "pool": "0x6C3a53086bD4bed5Ec4BA9AF19255Cd017092E19",
+      "demo": "0x056adF8a4dAFa52a57Bd9ee136ee0DF823F1C833",
+      "issuedDraws": "75",
+      "acquisitionEscrowTotal": "0",
+      "deliveryEscrowTotal": "0",
+      "acquisitionRefundCreditTotal": "1260299891746668665",
+      "accruedProtocolFees": "37741813727542024",
+      "ownerProceeds": "0",
+      "unsettledAcquisitionCount": "0",
+      "fwaBalance": "1298041705474210689",
+      "balancerBalance": "2717027343900840816",
+      "profit": "25595355148303397",
+      "requiredReserve": "1454000000000000",
+      "withdrawableSurplus": "2715573343900840816",
+      "admissionStatus": 0,
+      "keeperPolicy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+    },
+    {
+      "creator": "0x000000000000000000000000000000000001d006",
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "pool": "0x6A943251eBfde73b7F78fEC7DF852b80a0C9771c",
+      "demo": "0x8CeB86ca2543ED1C14B9180C979606fa6eDA54b7",
+      "issuedDraws": "77",
+      "acquisitionEscrowTotal": "0",
+      "deliveryEscrowTotal": "0",
+      "acquisitionRefundCreditTotal": "1140131411328554817",
+      "accruedProtocolFees": "47808684313804155",
+      "ownerProceeds": "0",
+      "unsettledAcquisitionCount": "0",
+      "fwaBalance": "1187940095642358972",
+      "balancerBalance": "2933226534976083407",
+      "profit": "20492628305502233",
+      "requiredReserve": "1454000000000000",
+      "withdrawableSurplus": "2931772534976083407",
+      "admissionStatus": 0,
+      "keeperPolicy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+    }
+  ],
+  "limitations": [
+    "Independent receipt/readback calculation by lead, not an independent security audit",
+    "No request-board creator entitlement reconciliation; E1 remains open",
+    "No actual surcharge-receipt coverage calculation; E2 remains open",
+    "No refund withdrawals, closing, retirement, policy changes or real-wallet transactions in this batch"
+  ]
+}

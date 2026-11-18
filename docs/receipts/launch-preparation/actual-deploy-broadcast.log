@@ -1,0 +1,36 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Return ==
+factory: contract BalancerFactory 0xb69Fc6ce7E4960df41CCAe80838FeeafB6F37A43
+impl: contract PoolBalancer 0x1e3D34DEda8B5017033552541f8ba90771201Dc8
+packs: address 0x9AD841a3D1D58AB3D3FDf343Dc8d75a87cc1EFaC
+
+== Logs ==
+  PoolBalancer implementation 0x1e3D34DEda8B5017033552541f8ba90771201Dc8
+  BalancerFactory 0xb69Fc6ce7E4960df41CCAe80838FeeafB6F37A43
+  Packs 0x9AD841a3D1D58AB3D3FDf343Dc8d75a87cc1EFaC
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 0.5 gwei
+
+Estimated total gas used for script: 21648362
+
+Estimated amount required: 0.010824181 ETH
+
+==========================
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/broadcast/Deploy.s.sol/31337/run-latest.json
+
+Sensitive values saved to: /private/tmp/launch-prep-deploy-9hvd2spp/cache/Deploy.s.sol/31337/run-latest.json
+

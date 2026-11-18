@@ -1,0 +1,4 @@
+TypeError: Cannot read properties of undefined (reading 'length')
+    at setupPool (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:181:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:350:50)

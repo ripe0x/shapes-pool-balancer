@@ -1,0 +1,38 @@
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xadd7360ce6b6857e0b94191aac51040e8db39c0dc86030ee6fcdf40e6cca4823",
+  "nonce": 4,
+  "gasEstimate": "919384",
+  "expenseGas": "836914",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156817090000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "108798820000000",
+  "expectedNetWei": "48018270000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xadd7360ce6b6857e0b94191aac51040e8db39c0dc86030ee6fcdf40e6cca4823",
+  "gasUsed": "836124",
+  "gasLimit": "4000000",
+  "measuredGas": "848571",
+  "rewardWei": "156814230000000",
+  "costWei": "108696120000000",
+  "netWei": "48118110000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "919384",
+  "estimateMinusBilled": "83260",
+  "expenseGas": "836914",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+Recovered original authenticated word and actual keeper reconciliation; round0 completed without repurchase.

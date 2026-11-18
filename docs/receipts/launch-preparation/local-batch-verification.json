@@ -1,0 +1,261 @@
+{
+  "revision": "9b45f915fcaa27bc24d6125cf4a0062117ef576c",
+  "preparationHead": "bfc0b9e5394fecf1bcdb1ded3b93c107d0e7f21e",
+  "scope": "Review supplied audit, then explicitly approved local-only diagnostic batch. No production remediation or release approval.",
+  "sourceUnchangedPaths": [
+    "src",
+    "keeper",
+    "shared",
+    "script",
+    "app",
+    "test",
+    "foundry.toml",
+    "package.json",
+    "package-lock.json",
+    "asset-flow.json",
+    "OWNER-REQUIREMENTS.md"
+  ],
+  "records": [
+    {
+      "file": "rehearsal-attempt-01.log",
+      "exitStatus": 1,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --rounds 50",
+      "result": "Dry decoder args undefined; no pool setup broadcast; nonce/code readback retained",
+      "sha256": "7e0339379fa6d428bbde0dae0490058abd4a9753515df045036a730a7e886f7f"
+    },
+    {
+      "file": "rehearsal-run-02.log",
+      "exitStatus": 1,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --rounds 50",
+      "result": "First authenticated word stored but under-gassed callback not forwarded; original draw not repurchased",
+      "sha256": "a7f64d19ca60147f13442a55e6afa9d7049f03b602f0b979e861b4b4040a370a"
+    },
+    {
+      "file": "rehearsal-stored-word-recovery.log",
+      "exitStatus": 0,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --recover-stored-first-word",
+      "result": "Real permissionless service retry delivered the same stored word; original round0 completed",
+      "sha256": "cd5c9f0d62e71ea2eee48ebed3795a3983c3eb4d4c4880b0dd50f779e4024c12"
+    },
+    {
+      "file": "rehearsal-run-03.log",
+      "exitStatus": 1,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --rounds 50",
+      "result": "Harness incorrectly required every draw to win; two actual positive-slippage refunds",
+      "sha256": "c58767a45cce7f0289f7225d669a32e203ae53de21a33a060bf252a3634af840"
+    },
+    {
+      "file": "rehearsal-refund-verification.log",
+      "exitStatus": 0,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --verify-observed-refunds",
+      "result": "Read-only exact event/credit verification; no replay or new transaction",
+      "sha256": "4559b2c0fc7a4164955be0f5f7a41adf8a8c6acdc5537fccaf8767462404b2de"
+    },
+    {
+      "file": "rehearsal-run-04.log",
+      "exitStatus": 1,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --rounds 50",
+      "result": "Viem receipt watcher timeout on actually mined callback; original receipt preserved",
+      "sha256": "86f9a1c8b3bc45c56de8667856ab614a512b0a5744518a927af960e29770401a"
+    },
+    {
+      "file": "rehearsal-receipt-recovery.log",
+      "exitStatus": 0,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --recover-mined-callback",
+      "result": "Canonical mined receipt recorded; only last pending original batch request delivered; no repurchase",
+      "sha256": "6f1f7352bd18ac059507f487fba906b7da382ce76f907f851ed7f844b339c6f5"
+    },
+    {
+      "file": "rehearsal-run-05.log",
+      "exitStatus": 0,
+      "command": "npx tsx scripts/approved-local-rehearsal.ts --rounds 50",
+      "result": "Completed remaining rounds through50 and full diagnostic assertions",
+      "sha256": "0b80f647948784528334363047016e8db1466692ec0b9435b7d6df992b3bf255"
+    },
+    {
+      "file": "rehearsal-typecheck.log",
+      "exitStatus": 0,
+      "command": "npm run typecheck",
+      "result": "Final two local-only scripts typecheck; production unchanged",
+      "sha256": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c"
+    },
+    {
+      "file": "rehearsal-final-readback.log",
+      "exitStatus": 0,
+      "command": "npx tsx scripts/approved-local-readback.ts",
+      "result": "Read-only canonical verification of every receipt, actual issued sequence, FWA bucket and authority/size/budget",
+      "sha256": "2bcbec9838195bd3d6af6d63072f8c90bf1d089dd41b195e96506c871fc8fe5f"
+    }
+  ],
+  "deployment": "actual-deployment.json",
+  "finalReadback": "final-readback.json",
+  "actualReceiptJournal": "rehearsal-receipts.json",
+  "limits": {
+    "poolDepositsWei": "6000000000000000000",
+    "gasExpenseWei": "1000000000000000000",
+    "rounds": 50,
+    "draws": 252
+  },
+  "limitations": [
+    "Resumed run after four harness failures; not a clean first pass",
+    "No independent reproduction of audit finding experiments",
+    "No minimum-capital, closing, retirement, policy-change, curated-win, Pack, real-wallet, CLI-launch or reorg proof in this batch",
+    "Synthetic actors and deterministic coordinator exception; no protocol balance/storage overrides",
+    "Forced gas levels not proof of EIP1559 reachability",
+    "Current audit economic defects and unsigned outcomes remain release blockers"
+  ],
+  "files": [
+    {
+      "file": "actual-deploy-broadcast.log",
+      "sha256": "06d7cae9e6b84757245fbeecd825febfd5a9ae77f3e8631db2867b59c5dafb65"
+    },
+    {
+      "file": "actual-deploy-dry.log",
+      "sha256": "53d2b68759a526688ebf6feed733cd40fecd602b1baa1b4fc716213d30b8d7ee"
+    },
+    {
+      "file": "actual-deploy-reservation.json",
+      "sha256": "27d9d2990a3b968047977647800391794f8ac47866a50d8563767f1190907861"
+    },
+    {
+      "file": "actual-deployment.json",
+      "sha256": "d3de5d7517c02c95cc0942c2c0df37200d4a8e949e482cc3704540782ff3e2a3"
+    },
+    {
+      "file": "approved-batch.json",
+      "sha256": "be946fe3c7b685a14535cb72a4bce121d2bb7e2da075ca069f467cccbda18634"
+    },
+    {
+      "file": "deploy-simulation-command.json",
+      "sha256": "8251f047034f0e98da1e5ec16032b78f1bd5f4c322ceb5b3873c374474d63a99"
+    },
+    {
+      "file": "deployment-actions.json",
+      "sha256": "c57c988bef01a13ea41a8f66e28cc9891f1140f89af4fad6660d13c207abdbb6"
+    },
+    {
+      "file": "final-readback.json",
+      "sha256": "ff26fa45ab75cc8bcfcec6498cfb78e5f18bda5acd086c63db0e1dbc2c93d7f4"
+    },
+    {
+      "file": "fork-source.json",
+      "sha256": "2370962b33ea1e327c9930b9db56cc5fb29526d1e65239011c2d5e3ec9c1756c"
+    },
+    {
+      "file": "keeper-gas-regimes.json",
+      "sha256": "38da469926a3d61e17e1fd151c4b333239a7d0fa525407a0d057fb2068ba0761"
+    },
+    {
+      "file": "launch-preparation-deploy-simulation-final.log",
+      "sha256": "2d4e14fda9d220b9fe82aa8fd1f5f069d901dcf14a8dc39f88ef807510fc7e09"
+    },
+    {
+      "file": "launch-preparation-deploy-simulation-rebuilt.log",
+      "sha256": "d7a4abefccec981d4b1242c9c5f5c125d0330858dbd1294837a7aac9c15022d5"
+    },
+    {
+      "file": "launch-preparation-deploy-simulation.log",
+      "sha256": "090611a66c03f3225128cfbc3abfc8f022f9e888dedd04af3bde1ebb74b1e853"
+    },
+    {
+      "file": "local-actors.json",
+      "sha256": "85fd6b1c9052c54f8a4946b796515807243dc6100d7b2512c098bd9f5547618e"
+    },
+    {
+      "file": "local-preflight.json",
+      "sha256": "47d23b8c374caa008588ac8453aac1845e670cc6e161dbf303e65b1777efb7cf"
+    },
+    {
+      "file": "no-broadcast-readback.json",
+      "sha256": "0b0aac7e473d9ab8b4c966e273feaa84d7587b92c217d1351f10cdf656fff191"
+    },
+    {
+      "file": "rehearsal-attempt-01.log",
+      "sha256": "7e0339379fa6d428bbde0dae0490058abd4a9753515df045036a730a7e886f7f"
+    },
+    {
+      "file": "rehearsal-before-arg-decode-fix.json",
+      "sha256": "53e6cf223448cb9b91d83461aa65a03505d3c5e13a3a712a26a0378cafd92dc9"
+    },
+    {
+      "file": "rehearsal-before-delivery-recovery.json",
+      "sha256": "14b28197870a4bddb89274c069d1eab4ef0aa6b95c9dea5137512311aebcad75"
+    },
+    {
+      "file": "rehearsal-before-receipt-recovery.json",
+      "sha256": "db7ec225bf9602cbcad336544752fb82223afcb2f081ef8f88ad6a732164d049"
+    },
+    {
+      "file": "rehearsal-before-refund-verification.json",
+      "sha256": "42a587d4a8f3237f3faf64d3d540cb6cfcddb1f7e71b6baf77e696063a3b02e0"
+    },
+    {
+      "file": "rehearsal-final-readback.log",
+      "sha256": "2bcbec9838195bd3d6af6d63072f8c90bf1d089dd41b195e96506c871fc8fe5f"
+    },
+    {
+      "file": "rehearsal-keeper-state.json",
+      "sha256": "11bac2c444ecf72d8728805037a9ade0db313b7bc5473fa9d0ae8607d516e1f5"
+    },
+    {
+      "file": "rehearsal-receipt-recovery.log",
+      "sha256": "6f1f7352bd18ac059507f487fba906b7da382ce76f907f851ed7f844b339c6f5"
+    },
+    {
+      "file": "rehearsal-receipts.json",
+      "sha256": "bdcd85a889b25760604eb186427d87663c7116ca0433f84d4e7d133baceb5352"
+    },
+    {
+      "file": "rehearsal-refund-verification.log",
+      "sha256": "4559b2c0fc7a4164955be0f5f7a41adf8a8c6acdc5537fccaf8767462404b2de"
+    },
+    {
+      "file": "rehearsal-run-02.log",
+      "sha256": "a7f64d19ca60147f13442a55e6afa9d7049f03b602f0b979e861b4b4040a370a"
+    },
+    {
+      "file": "rehearsal-run-03.log",
+      "sha256": "c58767a45cce7f0289f7225d669a32e203ae53de21a33a060bf252a3634af840"
+    },
+    {
+      "file": "rehearsal-run-04.log",
+      "sha256": "86f9a1c8b3bc45c56de8667856ab614a512b0a5744518a927af960e29770401a"
+    },
+    {
+      "file": "rehearsal-run-05.log",
+      "sha256": "0b80f647948784528334363047016e8db1466692ec0b9435b7d6df992b3bf255"
+    },
+    {
+      "file": "rehearsal-stored-word-recovery.log",
+      "sha256": "cd5c9f0d62e71ea2eee48ebed3795a3983c3eb4d4c4880b0dd50f779e4024c12"
+    },
+    {
+      "file": "rehearsal-typecheck.log",
+      "sha256": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c"
+    },
+    {
+      "file": "setup-0x000000000000000000000000000000000001d005-broadcast.log",
+      "sha256": "e958c5f98c42f7a15a4ff23cc52d4e2dc7efa58d6bb35214b15fda05108c847e"
+    },
+    {
+      "file": "setup-0x000000000000000000000000000000000001d005-dry-run.log",
+      "sha256": "d1f8eb3276e2340059725581bbc21bd68c82c0d4cc04474406828483df8d6ca7"
+    },
+    {
+      "file": "setup-0x000000000000000000000000000000000001d006-broadcast.log",
+      "sha256": "673a6581f78bd764a7afa5832e664f671f8ca160e0a7c38083328e9f768ab72e"
+    },
+    {
+      "file": "setup-0x000000000000000000000000000000000001d006-dry-run.log",
+      "sha256": "8518eba829a5db1541c2f25adf9d5920428a2ed8c804de99c1617812b439509b"
+    },
+    {
+      "file": "simulation-actor.json",
+      "sha256": "e92155b18c5c2a7e1f3568233801e4273954ac111f45c8c8c05ed8dc6d53e038"
+    },
+    {
+      "file": "verification.json",
+      "sha256": "a79e6d517b9bf9bd36275ebd8361722f144fb29043ec241a1305347b5951a1c4"
+    }
+  ]
+}

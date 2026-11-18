@@ -1,0 +1,8 @@
+{
+  "reason": "real FWA slippage refunds and exact purchaser credits verified; no transaction or replay",
+  "outcomes": {
+    "fulfilled": 4,
+    "refunded": 2,
+    "refundCreditWei": "54274441570299020"
+  }
+}

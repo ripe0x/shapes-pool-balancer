@@ -1,0 +1,169 @@
+{
+  "message": "discovered",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "block": "26437814"
+}
+{
+  "message": "discovered",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "block": "26437824"
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xdc408cbae9a670889eb8629ffcadf201db7bd5f1698b8b1c81aba108e5ffd65b",
+  "nonce": 0,
+  "gasEstimate": "2700807",
+  "expenseGas": "2629302",
+  "expenseSource": "trace",
+  "expectedRewardWei": "444763900000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1676922",
+  "minimumRewardWei": "217999860000000",
+  "expectedExpenseWei": "341809260000000",
+  "expectedNetWei": "102954640000000"
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x58426480040f769fdecf70dda0f529c31a368685128b2c52400a47eb4ceb47e6",
+  "nonce": 1,
+  "gasEstimate": "2700870",
+  "expenseGas": "2629364",
+  "expenseSource": "trace",
+  "expectedRewardWei": "444771960000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1676984",
+  "minimumRewardWei": "218007920000000",
+  "expectedExpenseWei": "341817320000000",
+  "expectedNetWei": "102954640000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xdc408cbae9a670889eb8629ffcadf201db7bd5f1698b8b1c81aba108e5ffd65b",
+  "gasUsed": "2628742",
+  "gasLimit": "4000000",
+  "measuredGas": "2602202",
+  "rewardWei": "444786260000000",
+  "costWei": "341736460000000",
+  "netWei": "103049800000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "2700807",
+  "estimateMinusBilled": "72065",
+  "expenseGas": "2629302",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "560",
+  "minimumFixedWei": "0",
+  "minimumGas": "1676922",
+  "minimumRewardWei": "217999860000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xa551e971b00fd9bcc577aa6487d5a78c4539a394ec8a3f1a043da0c0d32ab03e",
+  "nonce": 2,
+  "gasEstimate": "2633813",
+  "expenseGas": "2560555",
+  "expenseSource": "trace",
+  "expectedRewardWei": "436190790000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1608175",
+  "minimumRewardWei": "209062750000000",
+  "expectedExpenseWei": "332872150000000",
+  "expectedNetWei": "103318640000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x58426480040f769fdecf70dda0f529c31a368685128b2c52400a47eb4ceb47e6",
+  "gasUsed": "2628704",
+  "gasLimit": "4000000",
+  "measuredGas": "2602164",
+  "rewardWei": "444781320000000",
+  "costWei": "341731520000000",
+  "netWei": "103049800000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "2700870",
+  "estimateMinusBilled": "72166",
+  "expenseGas": "2629364",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "660",
+  "minimumFixedWei": "0",
+  "minimumGas": "1676984",
+  "minimumRewardWei": "218007920000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x3e734c31ea21021fadb21fd1506f456ef3b42bf5276cc3bce142101e65cd79a8",
+  "nonce": 3,
+  "gasEstimate": "2633831",
+  "expenseGas": "2560572",
+  "expenseSource": "trace",
+  "expectedRewardWei": "436193000000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1608192",
+  "minimumRewardWei": "209064960000000",
+  "expectedExpenseWei": "332874360000000",
+  "expectedNetWei": "103318640000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xa551e971b00fd9bcc577aa6487d5a78c4539a394ec8a3f1a043da0c0d32ab03e",
+  "gasUsed": "2559823",
+  "gasLimit": "4000000",
+  "measuredGas": "2536083",
+  "rewardWei": "436190790000000",
+  "costWei": "332776990000000",
+  "netWei": "103413800000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "2633813",
+  "estimateMinusBilled": "73990",
+  "expenseGas": "2560555",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "732",
+  "minimumFixedWei": "0",
+  "minimumGas": "1608175",
+  "minimumRewardWei": "209062750000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x3e734c31ea21021fadb21fd1506f456ef3b42bf5276cc3bce142101e65cd79a8",
+  "gasUsed": "2559826",
+  "gasLimit": "4000000",
+  "measuredGas": "2536098",
+  "rewardWei": "436192740000000",
+  "costWei": "332777380000000",
+  "netWei": "103415360000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "2633831",
+  "estimateMinusBilled": "74005",
+  "expenseGas": "2560572",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "746",
+  "minimumFixedWei": "0",
+  "minimumGas": "1608192",
+  "minimumRewardWei": "209064960000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+AssertionError [ERR_ASSERTION]: full target and pending reconciliation not restored within 24 actual keeper ticks
+    at settle (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:257:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:382:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: undefined,
+  operator: 'fail',
+  diff: 'simple'
+}

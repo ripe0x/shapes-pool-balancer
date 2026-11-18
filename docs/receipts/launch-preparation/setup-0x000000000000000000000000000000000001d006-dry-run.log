@@ -1,0 +1,28 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Balancer 0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c
+  Pool 0x6A943251eBfde73b7F78fEC7DF852b80a0C9771c
+  DemoNFT 0x8CeB86ca2543ED1C14B9180C979606fa6eDA54b7
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 0.5 gwei
+
+Estimated total gas used for script: 4953014
+
+Estimated amount required: 0.002476507 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/broadcast/DevSetup.s.sol/31337/dry-run/run-latest.json
+
+Sensitive values saved to: /private/tmp/launch-prep-deploy-9hvd2spp/cache/DevSetup.s.sol/31337/dry-run/run-latest.json
+

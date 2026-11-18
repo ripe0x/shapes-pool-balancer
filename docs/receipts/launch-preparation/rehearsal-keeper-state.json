@@ -1,0 +1,2132 @@
+{
+  "lastScanned": "26438542",
+  "balancers": [
+    "0xf2295c51bB08056109eC2e125941569717965F16",
+    "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c"
+  ],
+  "pending": {},
+  "accounting": {},
+  "receipts": [
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 0,
+      "hash": "0xdc408cbae9a670889eb8629ffcadf201db7bd5f1698b8b1c81aba108e5ffd65b",
+      "block": "26437834",
+      "blockHash": "0x89f7ba8ba64d532e8aee93cacbfd867cc15893919cce239c998ec8b3a94f2805",
+      "status": "success",
+      "cost": "341736460000000",
+      "reward": "444786260000000",
+      "pending": {
+        "hashes": [
+          "0xdc408cbae9a670889eb8629ffcadf201db7bd5f1698b8b1c81aba108e5ffd65b"
+        ],
+        "nonce": 0,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1676922",
+        "offers": {
+          "0xdc408cbae9a670889eb8629ffcadf201db7bd5f1698b8b1c81aba108e5ffd65b": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1676922",
+            "gas": "4000000",
+            "estimate": "2700807",
+            "expenseGas": "2629302",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "2700807",
+        "expenseGas": "2629302",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437833",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 1,
+      "hash": "0x58426480040f769fdecf70dda0f529c31a368685128b2c52400a47eb4ceb47e6",
+      "block": "26437835",
+      "blockHash": "0x306d6416be5d499a4e5c5d90f8c0e74999d1e80aa65f41e811c9098cf55aca56",
+      "status": "success",
+      "cost": "341731520000000",
+      "reward": "444781320000000",
+      "pending": {
+        "hashes": [
+          "0x58426480040f769fdecf70dda0f529c31a368685128b2c52400a47eb4ceb47e6"
+        ],
+        "nonce": 1,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1676984",
+        "offers": {
+          "0x58426480040f769fdecf70dda0f529c31a368685128b2c52400a47eb4ceb47e6": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1676984",
+            "gas": "4000000",
+            "estimate": "2700870",
+            "expenseGas": "2629364",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "2700870",
+        "expenseGas": "2629364",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437833",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 2,
+      "hash": "0xa551e971b00fd9bcc577aa6487d5a78c4539a394ec8a3f1a043da0c0d32ab03e",
+      "block": "26437837",
+      "blockHash": "0x08bd302a05356f716eaeb3d1171141a8d15c46f4c64cf01182175e3b76ed3c77",
+      "status": "success",
+      "cost": "332776990000000",
+      "reward": "436190790000000",
+      "pending": {
+        "hashes": [
+          "0xa551e971b00fd9bcc577aa6487d5a78c4539a394ec8a3f1a043da0c0d32ab03e"
+        ],
+        "nonce": 2,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1608175",
+        "offers": {
+          "0xa551e971b00fd9bcc577aa6487d5a78c4539a394ec8a3f1a043da0c0d32ab03e": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1608175",
+            "gas": "4000000",
+            "estimate": "2633813",
+            "expenseGas": "2560555",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "2633813",
+        "expenseGas": "2560555",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437836",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 3,
+      "hash": "0x3e734c31ea21021fadb21fd1506f456ef3b42bf5276cc3bce142101e65cd79a8",
+      "block": "26437838",
+      "blockHash": "0xde2acdb8fe04cf5bb94a5505bc850c0e953438afc1adb1741598d199715abcb9",
+      "status": "success",
+      "cost": "332777380000000",
+      "reward": "436192740000000",
+      "pending": {
+        "hashes": [
+          "0x3e734c31ea21021fadb21fd1506f456ef3b42bf5276cc3bce142101e65cd79a8"
+        ],
+        "nonce": 3,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1608192",
+        "offers": {
+          "0x3e734c31ea21021fadb21fd1506f456ef3b42bf5276cc3bce142101e65cd79a8": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1608192",
+            "gas": "4000000",
+            "estimate": "2633831",
+            "expenseGas": "2560572",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "2633831",
+        "expenseGas": "2560572",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437836",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 4,
+      "hash": "0xadd7360ce6b6857e0b94191aac51040e8db39c0dc86030ee6fcdf40e6cca4823",
+      "block": "26437874",
+      "blockHash": "0xda30936cc294ccd4ca13790c9aa5762f970151a620060f543970dc9cb90c9227",
+      "status": "success",
+      "cost": "108696120000000",
+      "reward": "156814230000000",
+      "pending": {
+        "hashes": [
+          "0xadd7360ce6b6857e0b94191aac51040e8db39c0dc86030ee6fcdf40e6cca4823"
+        ],
+        "nonce": 4,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xadd7360ce6b6857e0b94191aac51040e8db39c0dc86030ee6fcdf40e6cca4823": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "919384",
+            "expenseGas": "836914",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "919384",
+        "expenseGas": "836914",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437873",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 5,
+      "hash": "0x5c23814a5d80545e74e06b6ba44a2587f9fd884d1f29bebc748e248664ad6d7b",
+      "block": "26437888",
+      "blockHash": "0x79ea78ebbe17f71aae79f01e1269740dfde9c3df982476184377def52e5da458",
+      "status": "success",
+      "cost": "168174240000000",
+      "reward": "258504300000000",
+      "pending": {
+        "hashes": [
+          "0x5c23814a5d80545e74e06b6ba44a2587f9fd884d1f29bebc748e248664ad6d7b"
+        ],
+        "nonce": 5,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "341983",
+        "offers": {
+          "0x5c23814a5d80545e74e06b6ba44a2587f9fd884d1f29bebc748e248664ad6d7b": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "341983",
+            "gas": "4000000",
+            "estimate": "1401567",
+            "expenseGas": "1294363",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1401567",
+        "expenseGas": "1294363",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437887",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 6,
+      "hash": "0x4c9286081f4fee0db047f4cfebf1d863bfe3cf3adcc84fdf96b950f38fbbd07f",
+      "block": "26437901",
+      "blockHash": "0x98c5ff8b1438055c0fc4f1065d4ff8a33f8d78d8f3fba0195ab7e21abfeb3d09",
+      "status": "success",
+      "cost": "113129250000000",
+      "reward": "201247230000000",
+      "pending": {
+        "hashes": [
+          "0x4c9286081f4fee0db047f4cfebf1d863bfe3cf3adcc84fdf96b950f38fbbd07f"
+        ],
+        "nonce": 6,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x4c9286081f4fee0db047f4cfebf1d863bfe3cf3adcc84fdf96b950f38fbbd07f": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "953965",
+            "expenseGas": "870954",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "953965",
+        "expenseGas": "870954",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437900",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 7,
+      "hash": "0x8b098901fdf2c38125802505d216ba6960c4e0eb2cf8d437c6d27e3144dd9d99",
+      "block": "26437915",
+      "blockHash": "0xf8110e748271048eb53cc47724ad8878bc9baedb66e1505229a7a97544a73bb9",
+      "status": "success",
+      "cost": "166894000000000",
+      "reward": "257243300000000",
+      "pending": {
+        "hashes": [
+          "0x8b098901fdf2c38125802505d216ba6960c4e0eb2cf8d437c6d27e3144dd9d99"
+        ],
+        "nonce": 7,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "332190",
+        "offers": {
+          "0x8b098901fdf2c38125802505d216ba6960c4e0eb2cf8d437c6d27e3144dd9d99": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "332190",
+            "gas": "4000000",
+            "estimate": "1391619",
+            "expenseGas": "1284570",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1391619",
+        "expenseGas": "1284570",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437914",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 8,
+      "hash": "0x0ecdfc3335f199b7fe01b52cd4ba11695f9871be45946655797606a869537cb1",
+      "block": "26437927",
+      "blockHash": "0x53ade1331185d15cb530d7bcacecd5c576aeccbe10cd47d02247294e24b77683",
+      "status": "success",
+      "cost": "110926530000000",
+      "reward": "179025270000000",
+      "pending": {
+        "hashes": [
+          "0x0ecdfc3335f199b7fe01b52cd4ba11695f9871be45946655797606a869537cb1"
+        ],
+        "nonce": 8,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x0ecdfc3335f199b7fe01b52cd4ba11695f9871be45946655797606a869537cb1": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "936814",
+            "expenseGas": "854071",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "936814",
+        "expenseGas": "854071",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437926",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 9,
+      "hash": "0xe5f56f639bf63265a6b541cfec71ffe0d93ba9eb11282260e8752ec64fd7f0a7",
+      "block": "26437939",
+      "blockHash": "0x00cd8a036f8bf69819f898de67dcb480986ba4e1aad7eb0f9c03bdfc12592fa4",
+      "status": "success",
+      "cost": "110910150000000",
+      "reward": "179028130000000",
+      "pending": {
+        "hashes": [
+          "0xe5f56f639bf63265a6b541cfec71ffe0d93ba9eb11282260e8752ec64fd7f0a7"
+        ],
+        "nonce": 9,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xe5f56f639bf63265a6b541cfec71ffe0d93ba9eb11282260e8752ec64fd7f0a7": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "936663",
+            "expenseGas": "853923",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "936663",
+        "expenseGas": "853923",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437938",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 10,
+      "hash": "0xd5c27a4b5244bc40082e2ade6608e7cde06572375f2e4b79f8c2fa267e4134ea",
+      "block": "26437953",
+      "blockHash": "0x256acc9dbec9e47b3648024740761bdd02dbe84631b4958fb4721e342a896ccb",
+      "status": "success",
+      "cost": "115341070000000",
+      "reward": "223459050000000",
+      "pending": {
+        "hashes": [
+          "0xd5c27a4b5244bc40082e2ade6608e7cde06572375f2e4b79f8c2fa267e4134ea"
+        ],
+        "nonce": 10,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xd5c27a4b5244bc40082e2ade6608e7cde06572375f2e4b79f8c2fa267e4134ea": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "971266",
+            "expenseGas": "887985",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "971266",
+        "expenseGas": "887985",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437952",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 11,
+      "hash": "0xe3b420e8f6e985ac6f4454de97f33de2d8b42d0c95102c0bc5d1726982f6f8f2",
+      "block": "26437968",
+      "blockHash": "0xdfae38c1170e6b89e12f22e65b4653820938bf3b700693970b43edf4080abb83",
+      "status": "success",
+      "cost": "113143420000000",
+      "reward": "201242160000000",
+      "pending": {
+        "hashes": [
+          "0xe3b420e8f6e985ac6f4454de97f33de2d8b42d0c95102c0bc5d1726982f6f8f2"
+        ],
+        "nonce": 11,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xe3b420e8f6e985ac6f4454de97f33de2d8b42d0c95102c0bc5d1726982f6f8f2": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "954070",
+            "expenseGas": "871058",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "954070",
+        "expenseGas": "871058",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437967",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 12,
+      "hash": "0xf45d2111ced47ab587a842c740258dd4aab8997c85377233fb2d663227d1c32f",
+      "block": "26437983",
+      "blockHash": "0x966bcbcdace1174d8a48f0d0184b482af62037f67804736f37ee4fcb49dda351",
+      "status": "success",
+      "cost": "117552240000000",
+      "reward": "245670220000000",
+      "pending": {
+        "hashes": [
+          "0xf45d2111ced47ab587a842c740258dd4aab8997c85377233fb2d663227d1c32f"
+        ],
+        "nonce": 12,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xf45d2111ced47ab587a842c740258dd4aab8997c85377233fb2d663227d1c32f": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988545",
+            "expenseGas": "904994",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988545",
+        "expenseGas": "904994",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437982",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 13,
+      "hash": "0x565dc71669ca2a2d3fe7bf130e954b2d861a12c79cdadf5f967cc5bc8cbae524",
+      "block": "26437998",
+      "blockHash": "0xa765aa0e8d13338db3af1b64999c6d24bee3f1d2daf17573a7f6d74f8c290926",
+      "status": "success",
+      "cost": "117571480000000",
+      "reward": "245670220000000",
+      "pending": {
+        "hashes": [
+          "0x565dc71669ca2a2d3fe7bf130e954b2d861a12c79cdadf5f967cc5bc8cbae524"
+        ],
+        "nonce": 13,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x565dc71669ca2a2d3fe7bf130e954b2d861a12c79cdadf5f967cc5bc8cbae524": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988718",
+            "expenseGas": "905164",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988718",
+        "expenseGas": "905164",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26437997",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 14,
+      "hash": "0x48243d646a462c66048c4080656188461b505775f3d5c9f374daf7900637bab2",
+      "block": "26438009",
+      "blockHash": "0xf756854e97d5f316cf5056daf3283fff8ec0ffc55993427718116668d4d2dfe6",
+      "status": "success",
+      "cost": "107454360000000",
+      "reward": "155553230000000",
+      "pending": {
+        "hashes": [
+          "0x48243d646a462c66048c4080656188461b505775f3d5c9f374daf7900637bab2"
+        ],
+        "nonce": 14,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x48243d646a462c66048c4080656188461b505775f3d5c9f374daf7900637bab2": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "909590",
+            "expenseGas": "827273",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "909590",
+        "expenseGas": "827273",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438008",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 15,
+      "hash": "0xa543d872a526b34ab316f55341c44dbeeca401cf50c04b5c3b009058f768dbb7",
+      "block": "26438023",
+      "blockHash": "0xb2811293df31127d0bc2eaebdf45273fe86367488adc5f1304cf2cc48216811f",
+      "status": "success",
+      "cost": "115351730000000",
+      "reward": "223450470000000",
+      "pending": {
+        "hashes": [
+          "0xa543d872a526b34ab316f55341c44dbeeca401cf50c04b5c3b009058f768dbb7"
+        ],
+        "nonce": 15,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xa543d872a526b34ab316f55341c44dbeeca401cf50c04b5c3b009058f768dbb7": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "971416",
+            "expenseGas": "888133",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "971416",
+        "expenseGas": "888133",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438022",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 16,
+      "hash": "0x2a2ab525122c68483cedee7bd3cb3c9b208faf0df436ec1d89b0e5bc21514897",
+      "block": "26438035",
+      "blockHash": "0x531e4d9c2bb68c583fe17623a7d40dcff4d572047d6060f4b880308c986eb8aa",
+      "status": "success",
+      "cost": "107823430000000",
+      "reward": "155558300000000",
+      "pending": {
+        "hashes": [
+          "0x2a2ab525122c68483cedee7bd3cb3c9b208faf0df436ec1d89b0e5bc21514897"
+        ],
+        "nonce": 16,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x2a2ab525122c68483cedee7bd3cb3c9b208faf0df436ec1d89b0e5bc21514897": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "909636",
+            "expenseGas": "830118",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "909636",
+        "expenseGas": "830118",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438034",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 17,
+      "hash": "0x96785d6f616070fddcf7f80fd0bd7f1ec9abb14a98c4266f629fc7af30c20733",
+      "block": "26438047",
+      "blockHash": "0x9b2ccfb14a18e4909606fa0699a18c756319b10977d905298e47f2ce20ff70b2",
+      "status": "success",
+      "cost": "110929390000000",
+      "reward": "179028130000000",
+      "pending": {
+        "hashes": [
+          "0x96785d6f616070fddcf7f80fd0bd7f1ec9abb14a98c4266f629fc7af30c20733"
+        ],
+        "nonce": 17,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x96785d6f616070fddcf7f80fd0bd7f1ec9abb14a98c4266f629fc7af30c20733": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "936814",
+            "expenseGas": "854071",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "936814",
+        "expenseGas": "854071",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438046",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 18,
+      "hash": "0x75844919ab4346fa6d68d9ed410852f901b2f0354406c20a93ba7e7728c78209",
+      "block": "26438058",
+      "blockHash": "0x2100d5503d1132df166d3a234bcf25e15650daa5fa13e97d5b985d6cbc9e7b8e",
+      "status": "success",
+      "cost": "109079360000000",
+      "reward": "156814230000000",
+      "pending": {
+        "hashes": [
+          "0x75844919ab4346fa6d68d9ed410852f901b2f0354406c20a93ba7e7728c78209"
+        ],
+        "nonce": 18,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x75844919ab4346fa6d68d9ed410852f901b2f0354406c20a93ba7e7728c78209": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "919512",
+            "expenseGas": "839840",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "919512",
+        "expenseGas": "839840",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438057",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 19,
+      "hash": "0xbe8dc9f6121219c2bc397f2f985a655ed59cf8b2040e989d13e475c789412b2e",
+      "block": "26438071",
+      "blockHash": "0x3b91ff930ccfeb157dc8d7b1dbe5b5f1544a9daa7dca1f1cea5267d193f458da",
+      "status": "success",
+      "cost": "224586050000000",
+      "reward": "356424110000000",
+      "pending": {
+        "hashes": [
+          "0xbe8dc9f6121219c2bc397f2f985a655ed59cf8b2040e989d13e475c789412b2e"
+        ],
+        "nonce": 19,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "775959",
+        "offers": {
+          "0xbe8dc9f6121219c2bc397f2f985a655ed59cf8b2040e989d13e475c789412b2e": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "775959",
+            "gas": "4000000",
+            "estimate": "1854216",
+            "expenseGas": "1728339",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1854216",
+        "expenseGas": "1728339",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438070",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 20,
+      "hash": "0xe547371143123682d15610ecbf9307177f9f30c7562eb8c1a1256b087fa4d309",
+      "block": "26438086",
+      "blockHash": "0x2f7460d93a7522c5ac89b5cbc4a7362b57d59252c8cc208a7b5c1678cda8c588",
+      "status": "success",
+      "cost": "168927980000000",
+      "reward": "298530040000000",
+      "pending": {
+        "hashes": [
+          "0xe547371143123682d15610ecbf9307177f9f30c7562eb8c1a1256b087fa4d309"
+        ],
+        "nonce": 20,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "347815",
+        "offers": {
+          "0xe547371143123682d15610ecbf9307177f9f30c7562eb8c1a1256b087fa4d309": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "347815",
+            "gas": "4000000",
+            "estimate": "1401803",
+            "expenseGas": "1300195",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1401803",
+        "expenseGas": "1300195",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438085",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 21,
+      "hash": "0x9c3d80fa607600e6bd591183376c56f286e0b2e8feeb7914cf0a1bed7d5a51d7",
+      "block": "26438101",
+      "blockHash": "0x95df34daed0418e3675530125677bef0d089ef68424eea73fc58068829598b68",
+      "status": "success",
+      "cost": "226143970000000",
+      "reward": "398346030000000",
+      "pending": {
+        "hashes": [
+          "0x9c3d80fa607600e6bd591183376c56f286e0b2e8feeb7914cf0a1bed7d5a51d7"
+        ],
+        "nonce": 21,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "787882",
+        "offers": {
+          "0x9c3d80fa607600e6bd591183376c56f286e0b2e8feeb7914cf0a1bed7d5a51d7": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "787882",
+            "gas": "4000000",
+            "estimate": "1869173",
+            "expenseGas": "1740262",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1869173",
+        "expenseGas": "1740262",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438100",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 22,
+      "hash": "0xd7834cc740790dff0adf5cb47a786c19fb4f7adea9468dc34cfbfed3d6f499fc",
+      "block": "26438116",
+      "blockHash": "0x38a32c61da93efeb0f02110564ce19a4b2e6f0c8b359d5758f372c37bcd5a1b5",
+      "status": "success",
+      "cost": "117576550000000",
+      "reward": "245675290000000",
+      "pending": {
+        "hashes": [
+          "0xd7834cc740790dff0adf5cb47a786c19fb4f7adea9468dc34cfbfed3d6f499fc"
+        ],
+        "nonce": 22,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xd7834cc740790dff0adf5cb47a786c19fb4f7adea9468dc34cfbfed3d6f499fc": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988718",
+            "expenseGas": "905164",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988718",
+        "expenseGas": "905164",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438115",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 23,
+      "hash": "0x364f095c1f5f05514e86315643d1b65ba53e52858feb7fb5f042b83d843700cc",
+      "block": "26438127",
+      "blockHash": "0x013102382b2affd025fcc19bde30774dbc5fbf869322e2fdbe18b8e742be723c",
+      "status": "success",
+      "cost": "108715360000000",
+      "reward": "156814230000000",
+      "pending": {
+        "hashes": [
+          "0x364f095c1f5f05514e86315643d1b65ba53e52858feb7fb5f042b83d843700cc"
+        ],
+        "nonce": 23,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x364f095c1f5f05514e86315643d1b65ba53e52858feb7fb5f042b83d843700cc": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "919512",
+            "expenseGas": "837040",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "919512",
+        "expenseGas": "837040",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438126",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 24,
+      "hash": "0x38686b66c958d0f25940248852dd9e83df9e8f8d5f8f97eb5a3024ade8a1c192",
+      "block": "26438141",
+      "blockHash": "0x111f239df9329b589a49f9ccf9f3696a1c63b4ad0a38d3a597135068f2edcdde",
+      "status": "success",
+      "cost": "2715113050000000",
+      "reward": "2987932150000000",
+      "pending": {
+        "hashes": [
+          "0x38686b66c958d0f25940248852dd9e83df9e8f8d5f8f97eb5a3024ade8a1c192"
+        ],
+        "nonce": 24,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "850933",
+        "offers": {
+          "0x38686b66c958d0f25940248852dd9e83df9e8f8d5f8f97eb5a3024ade8a1c192": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "850933",
+            "gas": "4000000",
+            "estimate": "968572",
+            "expenseGas": "890933",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "968572",
+        "expenseGas": "890933",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438140",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 25,
+      "hash": "0x02c7bf266fb1dd674b8b9c042237a49ee7c394db36e1a749231989ccc673b334",
+      "block": "26438152",
+      "blockHash": "0x5e047a00bc1ad485931c8108f7a1ef34265c945caeb5256407c47cb697d3479c",
+      "status": "success",
+      "cost": "2559279400000000",
+      "reward": "2772101550000000",
+      "pending": {
+        "hashes": [
+          "0x02c7bf266fb1dd674b8b9c042237a49ee7c394db36e1a749231989ccc673b334"
+        ],
+        "nonce": 25,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "799879",
+        "offers": {
+          "0x02c7bf266fb1dd674b8b9c042237a49ee7c394db36e1a749231989ccc673b334": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "799879",
+            "gas": "4000000",
+            "estimate": "916708",
+            "expenseGas": "839879",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "916708",
+        "expenseGas": "839879",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438151",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 26,
+      "hash": "0x7516faf26ce13fcd7781d25ab307a183aa70376527e775550aa30d9034ea1f08",
+      "block": "26438167",
+      "blockHash": "0xc8f68b96d0b7dcd188ba13ad0d4c43172ef3380ea362f71c47d3b407c3bd80ce",
+      "status": "success",
+      "cost": "2775597600000000",
+      "reward": "3068416700000000",
+      "pending": {
+        "hashes": [
+          "0x7516faf26ce13fcd7781d25ab307a183aa70376527e775550aa30d9034ea1f08"
+        ],
+        "nonce": 26,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "870764",
+        "offers": {
+          "0x7516faf26ce13fcd7781d25ab307a183aa70376527e775550aa30d9034ea1f08": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "870764",
+            "gas": "4000000",
+            "estimate": "988718",
+            "expenseGas": "910764",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988718",
+        "expenseGas": "910764",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438166",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 27,
+      "hash": "0x447413ed712a5e62410a9cfe69aa67ab0a45211e330bdec88783230d1cf5ce27",
+      "block": "26438180",
+      "blockHash": "0xf2ee2df456957ef01be5364ae5599bd88c182efb213fb93a698661310b45e77a",
+      "status": "success",
+      "cost": "2663168500000000",
+      "reward": "2915987600000000",
+      "pending": {
+        "hashes": [
+          "0x447413ed712a5e62410a9cfe69aa67ab0a45211e330bdec88783230d1cf5ce27"
+        ],
+        "nonce": 27,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "833902",
+        "offers": {
+          "0x447413ed712a5e62410a9cfe69aa67ab0a45211e330bdec88783230d1cf5ce27": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "833902",
+            "gas": "4000000",
+            "estimate": "951271",
+            "expenseGas": "873902",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "951271",
+        "expenseGas": "873902",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438179",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 28,
+      "hash": "0x7f93ce703172d04e95c349a416587e3a494b8d4bca782ed8bd930ddce24b8321",
+      "block": "26438194",
+      "blockHash": "0xc6b67251d7d0014857fb2fb9200c3c0bf895c1c4e94aa1fb028a5a11691cd6e5",
+      "status": "success",
+      "cost": "115360310000000",
+      "reward": "223095050000000",
+      "pending": {
+        "hashes": [
+          "0x7f93ce703172d04e95c349a416587e3a494b8d4bca782ed8bd930ddce24b8321"
+        ],
+        "nonce": 28,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x7f93ce703172d04e95c349a416587e3a494b8d4bca782ed8bd930ddce24b8321": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "968504",
+            "expenseGas": "888066",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "968504",
+        "expenseGas": "888066",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438193",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 29,
+      "hash": "0x35991395df070e0da9ce8196bff5af6ceac57328a491379effeaf8a2b10bcfd8",
+      "block": "26438205",
+      "blockHash": "0x4a7345fabdd0f8f7f70f02a4d3378c7fe4385d4ad6fd05bfe88df70c68f0e7d4",
+      "status": "success",
+      "cost": "109079360000000",
+      "reward": "156450230000000",
+      "pending": {
+        "hashes": [
+          "0x35991395df070e0da9ce8196bff5af6ceac57328a491379effeaf8a2b10bcfd8"
+        ],
+        "nonce": 29,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x35991395df070e0da9ce8196bff5af6ceac57328a491379effeaf8a2b10bcfd8": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "916668",
+            "expenseGas": "839840",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "916668",
+        "expenseGas": "839840",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438204",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 30,
+      "hash": "0xb4f0682ce2f2b5f367fa9e1639779dafbb025389ab9c3c0fc2d5cf2b2730635c",
+      "block": "26438220",
+      "blockHash": "0xe24698d54dd981e1dedc3da6c247aa7383476f1efa3da0d5e87945f7462cbb0b",
+      "status": "success",
+      "cost": "117568620000000",
+      "reward": "245667360000000",
+      "pending": {
+        "hashes": [
+          "0xb4f0682ce2f2b5f367fa9e1639779dafbb025389ab9c3c0fc2d5cf2b2730635c"
+        ],
+        "nonce": 30,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xb4f0682ce2f2b5f367fa9e1639779dafbb025389ab9c3c0fc2d5cf2b2730635c": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988740",
+            "expenseGas": "905186",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988740",
+        "expenseGas": "905186",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438219",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 31,
+      "hash": "0xad206cb1459475bd6eb31a4e6685e0107ba803f73a25651f80ece8d42abb9dd1",
+      "block": "26438232",
+      "blockHash": "0x5bf9bf4d6a71f514b4c53572e538330c01fac3ded5cb53b45a7ce526c89e9c0a",
+      "status": "success",
+      "cost": "168168520000000",
+      "reward": "258498580000000",
+      "pending": {
+        "hashes": [
+          "0xad206cb1459475bd6eb31a4e6685e0107ba803f73a25651f80ece8d42abb9dd1"
+        ],
+        "nonce": 31,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "341999",
+        "offers": {
+          "0xad206cb1459475bd6eb31a4e6685e0107ba803f73a25651f80ece8d42abb9dd1": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "341999",
+            "gas": "4000000",
+            "estimate": "1401584",
+            "expenseGas": "1294379",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1401584",
+        "expenseGas": "1294379",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438231",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 32,
+      "hash": "0x9889b38280c0d152cd42ecd1c44ca61f510baa9ca2691394a4f1300ded93520f",
+      "block": "26438243",
+      "blockHash": "0xfb9a119a595914fd6b3b5fee1f2e2b6a9821eec76e86b384f8e088e8d223353a",
+      "status": "success",
+      "cost": "4153693500000000",
+      "reward": "4474175350000000",
+      "pending": {
+        "hashes": [
+          "0x9889b38280c0d152cd42ecd1c44ca61f510baa9ca2691394a4f1300ded93520f"
+        ],
+        "nonce": 32,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "799818",
+        "offers": {
+          "0x9889b38280c0d152cd42ecd1c44ca61f510baa9ca2691394a4f1300ded93520f": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "799818",
+            "gas": "4000000",
+            "estimate": "916646",
+            "expenseGas": "839818",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "916646",
+        "expenseGas": "839818",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438242",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 33,
+      "hash": "0x908bacd29dafb077f4b20f44856bf35413e7bcd64b8508861a355f9fc5c958b5",
+      "block": "26438255",
+      "blockHash": "0x03cc09c53ccca1a879768193d8baf956e565604d4e9c328110ec39191a2dd558",
+      "status": "success",
+      "cost": "4237888050000000",
+      "reward": "4578364950000000",
+      "pending": {
+        "hashes": [
+          "0x908bacd29dafb077f4b20f44856bf35413e7bcd64b8508861a355f9fc5c958b5"
+        ],
+        "nonce": 33,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "816849",
+        "offers": {
+          "0x908bacd29dafb077f4b20f44856bf35413e7bcd64b8508861a355f9fc5c958b5": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "816849",
+            "gas": "4000000",
+            "estimate": "933947",
+            "expenseGas": "856849",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "933947",
+        "expenseGas": "856849",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438254",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 34,
+      "hash": "0x6df910f6d4ff90a748b638580661705de300e6b6ca2ed0a8a829e9f46a09dceb",
+      "block": "26438268",
+      "blockHash": "0x6e062635494efe2617d2d32f1c9dd68e3d3b1bc713f45108930149c75c8a5965",
+      "status": "success",
+      "cost": "6324085350000000",
+      "reward": "6775842250000000",
+      "pending": {
+        "hashes": [
+          "0x6df910f6d4ff90a748b638580661705de300e6b6ca2ed0a8a829e9f46a09dceb"
+        ],
+        "nonce": 34,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1238342",
+        "offers": {
+          "0x6df910f6d4ff90a748b638580661705de300e6b6ca2ed0a8a829e9f46a09dceb": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1238342",
+            "gas": "4000000",
+            "estimate": "1376759",
+            "expenseGas": "1278342",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1376759",
+        "expenseGas": "1278342",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438267",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 35,
+      "hash": "0xef6a23a52ed7027d9b96d0e6c3d6ca75b0ce2333f489fd25c29c08a2d58830be",
+      "block": "26438283",
+      "blockHash": "0x53897d24acca5f4ea7a4348b161bcf0b99c3b44c128175a0f17087381e0aa057",
+      "status": "success",
+      "cost": "6430594500000000",
+      "reward": "6936211400000000",
+      "pending": {
+        "hashes": [
+          "0xef6a23a52ed7027d9b96d0e6c3d6ca75b0ce2333f489fd25c29c08a2d58830be"
+        ],
+        "nonce": 35,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1259926",
+        "offers": {
+          "0xef6a23a52ed7027d9b96d0e6c3d6ca75b0ce2333f489fd25c29c08a2d58830be": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1259926",
+            "gas": "4000000",
+            "estimate": "1401530",
+            "expenseGas": "1299926",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1401530",
+        "expenseGas": "1299926",
+        "expenseSource": "trace",
+        "maxFeePerGas": "5000000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438282",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 36,
+      "hash": "0x261758205e1a3b943a12ca7013b1d6ae0001fb5948a54f1ecd39e20308d01fda",
+      "block": "26438298",
+      "blockHash": "0xacbe4f0531acb1cf9f5716059671cb1f329d090d68eea4a961e87dd1b7f07ba1",
+      "status": "success",
+      "cost": "117571480000000",
+      "reward": "245670220000000",
+      "pending": {
+        "hashes": [
+          "0x261758205e1a3b943a12ca7013b1d6ae0001fb5948a54f1ecd39e20308d01fda"
+        ],
+        "nonce": 36,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x261758205e1a3b943a12ca7013b1d6ae0001fb5948a54f1ecd39e20308d01fda": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988756",
+            "expenseGas": "905202",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988756",
+        "expenseGas": "905202",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438297",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 37,
+      "hash": "0x04108c28ce813ca28ddcd088177a70abd1f60be8bed4e25e11acb6cea702dc6f",
+      "block": "26438310",
+      "blockHash": "0x6042d19d1f299b1bdd124fb7c43fc71354db5f879dee92b570f02d5a06f60f27",
+      "status": "success",
+      "cost": "107815500000000",
+      "reward": "155186370000000",
+      "pending": {
+        "hashes": [
+          "0x04108c28ce813ca28ddcd088177a70abd1f60be8bed4e25e11acb6cea702dc6f"
+        ],
+        "nonce": 37,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x04108c28ce813ca28ddcd088177a70abd1f60be8bed4e25e11acb6cea702dc6f": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "906814",
+            "expenseGas": "830140",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "906814",
+        "expenseGas": "830140",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438309",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 38,
+      "hash": "0xb87cb183ee7f62c3a357fc57e6bbfb1fcb2e37a9f13170a7caa12ca0524492bf",
+      "block": "26438324",
+      "blockHash": "0xb936b7bcf68ba3cd2a07e3551c2cab386078397b3eeae696ac23d04b49f2c93d",
+      "status": "success",
+      "cost": "168913550000000",
+      "reward": "298151610000000",
+      "pending": {
+        "hashes": [
+          "0xb87cb183ee7f62c3a357fc57e6bbfb1fcb2e37a9f13170a7caa12ca0524492bf"
+        ],
+        "nonce": 38,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "347798",
+        "offers": {
+          "0xb87cb183ee7f62c3a357fc57e6bbfb1fcb2e37a9f13170a7caa12ca0524492bf": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "347798",
+            "gas": "4000000",
+            "estimate": "1398941",
+            "expenseGas": "1300178",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1398941",
+        "expenseGas": "1300178",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438323",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 39,
+      "hash": "0x2f1a9ff326f32cb3aac13873273c3827fe10ffa44bc31223e51b2e9e8641cfd4",
+      "block": "26438342",
+      "blockHash": "0x01209f14b2ae032d90dde881db69b0ddea9c7510980c14a3435f6d0862f35ba6",
+      "status": "success",
+      "cost": "117207480000000",
+      "reward": "245670220000000",
+      "pending": {
+        "hashes": [
+          "0x2f1a9ff326f32cb3aac13873273c3827fe10ffa44bc31223e51b2e9e8641cfd4"
+        ],
+        "nonce": 39,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x2f1a9ff326f32cb3aac13873273c3827fe10ffa44bc31223e51b2e9e8641cfd4": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988740",
+            "expenseGas": "905186",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988740",
+        "expenseGas": "905186",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438341",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 40,
+      "hash": "0x88543ec444c5bee3527132a27409c567bd801b2a468ddd86cb296ad6b82a9eee",
+      "block": "26438360",
+      "blockHash": "0x8a53eaf2871910391488b7f8cc40c8a7f3511199b2bb0c11b3d31124197d2d51",
+      "status": "success",
+      "cost": "172137290000000",
+      "reward": "321375350000000",
+      "pending": {
+        "hashes": [
+          "0x88543ec444c5bee3527132a27409c567bd801b2a468ddd86cb296ad6b82a9eee"
+        ],
+        "nonce": 40,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "372507",
+        "offers": {
+          "0x88543ec444c5bee3527132a27409c567bd801b2a468ddd86cb296ad6b82a9eee": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "372507",
+            "gas": "4000000",
+            "estimate": "1424043",
+            "expenseGas": "1324887",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "1424043",
+        "expenseGas": "1324887",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438359",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 41,
+      "hash": "0xcbdb6b30e3eed0590cf8080b139964b21ca677444016d9d8b55faca8d6c54fa9",
+      "block": "26438376",
+      "blockHash": "0xe003a5c2ec928a84a63f696b15ccea96df1ed32b23631da8adc23f504f80bd16",
+      "status": "success",
+      "cost": "113140560000000",
+      "reward": "201239300000000",
+      "pending": {
+        "hashes": [
+          "0xcbdb6b30e3eed0590cf8080b139964b21ca677444016d9d8b55faca8d6c54fa9"
+        ],
+        "nonce": 41,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xcbdb6b30e3eed0590cf8080b139964b21ca677444016d9d8b55faca8d6c54fa9": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "954115",
+            "expenseGas": "871102",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "954115",
+        "expenseGas": "871102",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438375",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 42,
+      "hash": "0x12ccae6f2bd79078c6deb89ef02f99c02dc2fa4303c72ee0ebc81a7b6163d49a",
+      "block": "26438394",
+      "blockHash": "0x0a4694a524a5c1426a93e9d95536cfb8fbe920a52bf1bd11a32b47f9cf9b8269",
+      "status": "success",
+      "cost": "117571480000000",
+      "reward": "245670220000000",
+      "pending": {
+        "hashes": [
+          "0x12ccae6f2bd79078c6deb89ef02f99c02dc2fa4303c72ee0ebc81a7b6163d49a"
+        ],
+        "nonce": 42,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x12ccae6f2bd79078c6deb89ef02f99c02dc2fa4303c72ee0ebc81a7b6163d49a": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "988718",
+            "expenseGas": "905164",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "988718",
+        "expenseGas": "905164",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438393",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 43,
+      "hash": "0xbb141607df41b8c864dd16cfc57b452703a56c0170fd63a29b094b21a9ed6afa",
+      "block": "26438407",
+      "blockHash": "0x9f4397d5e44b0209cbd46ccadbc1caa4e6a194660b46a72b2771ab95a0aa14b5",
+      "status": "success",
+      "cost": "113148490000000",
+      "reward": "200883230000000",
+      "pending": {
+        "hashes": [
+          "0xbb141607df41b8c864dd16cfc57b452703a56c0170fd63a29b094b21a9ed6afa"
+        ],
+        "nonce": 43,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xbb141607df41b8c864dd16cfc57b452703a56c0170fd63a29b094b21a9ed6afa": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "951271",
+            "expenseGas": "871102",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "951271",
+        "expenseGas": "871102",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438406",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 44,
+      "hash": "0x55c317dee1c6c0864469523ba376f743e52cef5f73f111fa5cfd3ed3e71ecd2f",
+      "block": "26438419",
+      "blockHash": "0x797cc28cfda1bab66b56f0eaee069d3aca244c55203926c7ed167384ed310bd4",
+      "status": "success",
+      "cost": "108720430000000",
+      "reward": "156819300000000",
+      "pending": {
+        "hashes": [
+          "0x55c317dee1c6c0864469523ba376f743e52cef5f73f111fa5cfd3ed3e71ecd2f"
+        ],
+        "nonce": 44,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x55c317dee1c6c0864469523ba376f743e52cef5f73f111fa5cfd3ed3e71ecd2f": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "919535",
+            "expenseGas": "837062",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "919535",
+        "expenseGas": "837062",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438418",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 45,
+      "hash": "0xce4e3d44045838bd0c096f0c8b9432bbede609b8a20213d160b1fe71b7ae860e",
+      "block": "26438434",
+      "blockHash": "0xb407f9d8b8e84ba181bbfa5c51accde615b3caae5ee17c938d8b8e261dccd0db",
+      "status": "success",
+      "cost": "117571480000000",
+      "reward": "245306220000000",
+      "pending": {
+        "hashes": [
+          "0xce4e3d44045838bd0c096f0c8b9432bbede609b8a20213d160b1fe71b7ae860e"
+        ],
+        "nonce": 45,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xce4e3d44045838bd0c096f0c8b9432bbede609b8a20213d160b1fe71b7ae860e": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "985896",
+            "expenseGas": "905186",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "985896",
+        "expenseGas": "905186",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438433",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 46,
+      "hash": "0xca6e5054c53952c1e0ab93503849d3395e332dbde12536514e7ee51234a48db3",
+      "block": "26438446",
+      "blockHash": "0x17431ed88b1e05136621dc34f395fa4de4d38b0fac60aa615727f557bf0eb5bf",
+      "status": "success",
+      "cost": "110929390000000",
+      "reward": "178664130000000",
+      "pending": {
+        "hashes": [
+          "0xca6e5054c53952c1e0ab93503849d3395e332dbde12536514e7ee51234a48db3"
+        ],
+        "nonce": 46,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xca6e5054c53952c1e0ab93503849d3395e332dbde12536514e7ee51234a48db3": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "933992",
+            "expenseGas": "854093",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "933992",
+        "expenseGas": "854093",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438445",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 47,
+      "hash": "0x8987ef3f28967ec5c00050913b2164e1e771019e46d8298d222a024e878b1508",
+      "block": "26438461",
+      "blockHash": "0x8ca6d8676fe2610f527b2bf47d0f5800c16ae85678088f268b4c533796adf7fb",
+      "status": "success",
+      "cost": "279329180000000",
+      "reward": "473403240000000",
+      "pending": {
+        "hashes": [
+          "0x8987ef3f28967ec5c00050913b2164e1e771019e46d8298d222a024e878b1508"
+        ],
+        "nonce": 47,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "1197060",
+        "offers": {
+          "0x8987ef3f28967ec5c00050913b2164e1e771019e46d8298d222a024e878b1508": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "1197060",
+            "gas": "4000000",
+            "estimate": "2302890",
+            "expenseGas": "2149440",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "2302890",
+        "expenseGas": "2149440",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438460",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 48,
+      "hash": "0x4163397fa2be158445cd711da3a436657b4fc0b169ccdb60d15599047555d415",
+      "block": "26438473",
+      "blockHash": "0x3582478e560127466bd47e8846bc6bea6dbdd1365a6671397b0e3dbbba454ecc",
+      "status": "success",
+      "cost": "107821220000000",
+      "reward": "155556090000000",
+      "pending": {
+        "hashes": [
+          "0x4163397fa2be158445cd711da3a436657b4fc0b169ccdb60d15599047555d415"
+        ],
+        "nonce": 48,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x4163397fa2be158445cd711da3a436657b4fc0b169ccdb60d15599047555d415": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "909590",
+            "expenseGas": "830073",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "909590",
+        "expenseGas": "830073",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438472",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 49,
+      "hash": "0x840026a58e48e8a30bdf896a7a0b30fd44f30f4f414855428514b84010638642",
+      "block": "26438487",
+      "blockHash": "0x3e9daa43283f1654823d4255479805d6358eba7346a0c606f4b752c23474e803",
+      "status": "success",
+      "cost": "115360310000000",
+      "reward": "223459050000000",
+      "pending": {
+        "hashes": [
+          "0x840026a58e48e8a30bdf896a7a0b30fd44f30f4f414855428514b84010638642"
+        ],
+        "nonce": 49,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0x840026a58e48e8a30bdf896a7a0b30fd44f30f4f414855428514b84010638642": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "971416",
+            "expenseGas": "888133",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "971416",
+        "expenseGas": "888133",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438486",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 50,
+      "hash": "0xc9c6ab15e8134f65a97950d0bb766ee7d25d1ee3101bde48b019d12b438fda60",
+      "block": "26438502",
+      "blockHash": "0x39f464ea666c430261f3d1989d88078259c2b76152dd3699d2eaa65902ebee90",
+      "status": "success",
+      "cost": "116307620000000",
+      "reward": "244406360000000",
+      "pending": {
+        "hashes": [
+          "0xc9c6ab15e8134f65a97950d0bb766ee7d25d1ee3101bde48b019d12b438fda60"
+        ],
+        "nonce": 50,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xc9c6ab15e8134f65a97950d0bb766ee7d25d1ee3101bde48b019d12b438fda60": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "978841",
+            "expenseGas": "895442",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "978841",
+        "expenseGas": "895442",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438501",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 51,
+      "hash": "0xeaae7101bcfa6019b9e0dc033f602c5cd244858e3c572a56279c13a5b667a8ee",
+      "block": "26438514",
+      "blockHash": "0xfaa9611cfe28cf391ac4fdfd8842ccfdfb3813ba950c71605cafd464d81082fd",
+      "status": "success",
+      "cost": "110929390000000",
+      "reward": "179028130000000",
+      "pending": {
+        "hashes": [
+          "0xeaae7101bcfa6019b9e0dc033f602c5cd244858e3c572a56279c13a5b667a8ee"
+        ],
+        "nonce": 51,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xeaae7101bcfa6019b9e0dc033f602c5cd244858e3c572a56279c13a5b667a8ee": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "936791",
+            "expenseGas": "854049",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "936791",
+        "expenseGas": "854049",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438513",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "nonce": 52,
+      "hash": "0xbfd736349eef9a513538b5e33e933f6306c6da6e01fbe76c0fab9322ac74ac09",
+      "block": "26438527",
+      "blockHash": "0xb468e2a436f4b77db687380fdb765cf19ccc449c0511175c22471f558630021e",
+      "status": "success",
+      "cost": "111887490000000",
+      "reward": "199986230000000",
+      "pending": {
+        "hashes": [
+          "0xbfd736349eef9a513538b5e33e933f6306c6da6e01fbe76c0fab9322ac74ac09"
+        ],
+        "nonce": 52,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xbfd736349eef9a513538b5e33e933f6306c6da6e01fbe76c0fab9322ac74ac09": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "944261",
+            "expenseGas": "861402",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "944261",
+        "expenseGas": "861402",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438526",
+        "replacements": 0
+      }
+    },
+    {
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "nonce": 53,
+      "hash": "0xd7aa0099e9a88faf0ea16943eef86c1c86f1c9e62d4f85f7ac043cb4a27cdc83",
+      "block": "26438538",
+      "blockHash": "0xa793d0b106f10a637a4951fc75e7acfad196942f5b7c65a2c0548e814b6c21cc",
+      "status": "success",
+      "cost": "109443360000000",
+      "reward": "156814230000000",
+      "pending": {
+        "hashes": [
+          "0xd7aa0099e9a88faf0ea16943eef86c1c86f1c9e62d4f85f7ac043cb4a27cdc83"
+        ],
+        "nonce": 53,
+        "settingsHash": "0x98b9291d81233bf7e0aab5d608f3c93b99791d7b63319c446784decdf95a062f",
+        "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+        "minimumReward": "0",
+        "minimumGas": "0",
+        "offers": {
+          "0xd7aa0099e9a88faf0ea16943eef86c1c86f1c9e62d4f85f7ac043cb4a27cdc83": {
+            "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+            "minimumReward": "0",
+            "minimumGas": "0",
+            "gas": "4000000",
+            "estimate": "919512",
+            "expenseGas": "842640",
+            "expenseSource": "trace"
+          }
+        },
+        "gas": "4000000",
+        "estimate": "919512",
+        "expenseGas": "842640",
+        "expenseSource": "trace",
+        "maxFeePerGas": "210000000",
+        "maxPriorityFeePerGas": "50000000",
+        "sentBlock": "26438537",
+        "replacements": 0
+      }
+    }
+  ],
+  "accountingCoverage": "journal",
+  "journalPrunedThrough": "0",
+  "stats": {
+    "sent": 54,
+    "mined": 54,
+    "reverted": 0,
+    "replaced": 0,
+    "skippedUnprofitable": 0,
+    "spentWei": "38673351490000000",
+    "earnedWei": "45756081950000000"
+  },
+  "accountingAnchor": {
+    "block": "26438542",
+    "hash": "0x193eb2bde3181d54e2a14be135fa7c825e4ffc30943fbb2cd083db6bb1406fa6"
+  }
+}

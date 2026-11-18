@@ -1,0 +1,126 @@
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x8b098901fdf2c38125802505d216ba6960c4e0eb2cf8d437c6d27e3144dd9d99",
+  "nonce": 7,
+  "gasEstimate": "1391619",
+  "expenseGas": "1284570",
+  "expenseSource": "trace",
+  "expectedRewardWei": "257248240000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "332190",
+  "minimumRewardWei": "43184700000000",
+  "expectedExpenseWei": "166994100000000",
+  "expectedNetWei": "90254140000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x8b098901fdf2c38125802505d216ba6960c4e0eb2cf8d437c6d27e3144dd9d99",
+  "gasUsed": "1283800",
+  "gasLimit": "4000000",
+  "measuredGas": "1313410",
+  "rewardWei": "257243300000000",
+  "costWei": "166894000000000",
+  "netWei": "90349300000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1391619",
+  "estimateMinusBilled": "107819",
+  "expenseGas": "1284570",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "770",
+  "minimumFixedWei": "0",
+  "minimumGas": "332190",
+  "minimumRewardWei": "43184700000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 4/50, draws 8
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x0ecdfc3335f199b7fe01b52cd4ba11695f9871be45946655797606a869537cb1",
+  "nonce": 8,
+  "gasEstimate": "936814",
+  "expenseGas": "854071",
+  "expenseSource": "trace",
+  "expectedRewardWei": "179028130000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111029230000000",
+  "expectedNetWei": "67998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x0ecdfc3335f199b7fe01b52cd4ba11695f9871be45946655797606a869537cb1",
+  "gasUsed": "853281",
+  "gasLimit": "4000000",
+  "measuredGas": "865579",
+  "rewardWei": "179025270000000",
+  "costWei": "110926530000000",
+  "netWei": "68098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "936814",
+  "estimateMinusBilled": "83533",
+  "expenseGas": "854071",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 5/50, draws 10
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xe5f56f639bf63265a6b541cfec71ffe0d93ba9eb11282260e8752ec64fd7f0a7",
+  "nonce": 9,
+  "gasEstimate": "936663",
+  "expenseGas": "853923",
+  "expenseSource": "trace",
+  "expectedRewardWei": "179028130000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111009990000000",
+  "expectedNetWei": "68018140000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xe5f56f639bf63265a6b541cfec71ffe0d93ba9eb11282260e8752ec64fd7f0a7",
+  "gasUsed": "853155",
+  "gasLimit": "4000000",
+  "measuredGas": "865601",
+  "rewardWei": "179028130000000",
+  "costWei": "110910150000000",
+  "netWei": "68117980000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "936663",
+  "estimateMinusBilled": "83508",
+  "expenseGas": "853923",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 6/50, draws 12
+WaitForTransactionReceiptTimeoutError: Timed out while waiting for transaction with hash "0xb0893a7ea801f40afad9ca082b2dc3ac6fde4b54e9779cefd0d9aa94b0ec346e" to be confirmed.
+
+Version: viem@2.57.17
+    at Timeout.<anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/waitForTransactionReceipt.ts:248:16)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7) {
+  details: undefined,
+  docsPath: undefined,
+  metaMessages: undefined,
+  shortMessage: 'Timed out while waiting for transaction with hash "0xb0893a7ea801f40afad9ca082b2dc3ac6fde4b54e9779cefd0d9aa94b0ec346e" to be confirmed.',
+  version: '2.57.17'
+}

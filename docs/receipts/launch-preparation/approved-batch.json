@@ -1,0 +1,25 @@
+{
+  "approval": "Owner explicitly approved local-only rehearsal",
+  "rpc": "http://127.0.0.1:18554",
+  "chainId": 31337,
+  "forkBlock": 26437802,
+  "startBlock": "26437802",
+  "deployerNonce": 0,
+  "implementation": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+  "factoryFlags": [
+    false,
+    true,
+    false
+  ],
+  "coordinator": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "coordinatorBalanceWei": "263860962677912232163",
+  "limits": {
+    "poolDepositsWei": "6000000000000000000",
+    "gasExpenseWei": "1000000000000000000",
+    "rounds": 50,
+    "draws": 252,
+    "buyers": 52
+  },
+  "protocolBalanceOverrides": false,
+  "startUTC": "2026-11-17T23:46:38.137Z"
+}

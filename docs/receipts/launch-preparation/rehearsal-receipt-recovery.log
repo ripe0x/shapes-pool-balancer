@@ -1,0 +1,45 @@
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xd5c27a4b5244bc40082e2ade6608e7cde06572375f2e4b79f8c2fa267e4134ea",
+  "nonce": 10,
+  "gasEstimate": "971266",
+  "expenseGas": "887985",
+  "expenseSource": "trace",
+  "expectedRewardWei": "223456190000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "115438050000000",
+  "expectedNetWei": "108018140000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xd5c27a4b5244bc40082e2ade6608e7cde06572375f2e4b79f8c2fa267e4134ea",
+  "gasUsed": "887239",
+  "gasLimit": "4000000",
+  "measuredGas": "899685",
+  "rewardWei": "223459050000000",
+  "costWei": "115341070000000",
+  "netWei": "108117980000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "971266",
+  "estimateMinusBilled": "84027",
+  "expenseGas": "887985",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "746",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+{
+  "reason": "mined callback receipt reconciled; only remaining original request delivered; no repurchase",
+  "outcomes": {
+    "fulfilled": 9,
+    "refunded": 7,
+    "refundCreditWei": "189960545496046570"
+  }
+}

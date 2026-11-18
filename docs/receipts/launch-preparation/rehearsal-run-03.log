@@ -1,0 +1,89 @@
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x5c23814a5d80545e74e06b6ba44a2587f9fd884d1f29bebc748e248664ad6d7b",
+  "nonce": 5,
+  "gasEstimate": "1401567",
+  "expenseGas": "1294363",
+  "expenseSource": "trace",
+  "expectedRewardWei": "258502090000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "341983",
+  "minimumRewardWei": "44457790000000",
+  "expectedExpenseWei": "168267190000000",
+  "expectedNetWei": "90234900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x5c23814a5d80545e74e06b6ba44a2587f9fd884d1f29bebc748e248664ad6d7b",
+  "gasUsed": "1293648",
+  "gasLimit": "4000000",
+  "measuredGas": "1323110",
+  "rewardWei": "258504300000000",
+  "costWei": "168174240000000",
+  "netWei": "90330060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1401567",
+  "estimateMinusBilled": "107919",
+  "expenseGas": "1294363",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "715",
+  "minimumFixedWei": "0",
+  "minimumGas": "341983",
+  "minimumRewardWei": "44457790000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 2/50, draws 3
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x4c9286081f4fee0db047f4cfebf1d863bfe3cf3adcc84fdf96b950f38fbbd07f",
+  "nonce": 6,
+  "gasEstimate": "953965",
+  "expenseGas": "870954",
+  "expenseSource": "trace",
+  "expectedRewardWei": "201242160000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "113224020000000",
+  "expectedNetWei": "88018140000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x4c9286081f4fee0db047f4cfebf1d863bfe3cf3adcc84fdf96b950f38fbbd07f",
+  "gasUsed": "870225",
+  "gasLimit": "4000000",
+  "measuredGas": "882671",
+  "rewardWei": "201247230000000",
+  "costWei": "113129250000000",
+  "netWei": "88117980000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "953965",
+  "estimateMinusBilled": "83740",
+  "expenseGas": "870954",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "729",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+AssertionError [ERR_ASSERTION]: every expected deterministic word fulfilled
+
+4 !== 2
+
+    at verifyDraws (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:289:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/.worktrees/launch-preparation/scripts/approved-local-rehearsal.ts:408:22) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 4,
+  expected: 2,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

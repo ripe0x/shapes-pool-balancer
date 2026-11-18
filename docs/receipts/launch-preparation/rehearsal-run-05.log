@@ -1,0 +1,2047 @@
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xe3b420e8f6e985ac6f4454de97f33de2d8b42d0c95102c0bc5d1726982f6f8f2",
+  "nonce": 11,
+  "gasEstimate": "954070",
+  "expenseGas": "871058",
+  "expenseSource": "trace",
+  "expectedRewardWei": "201236440000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "113237540000000",
+  "expectedNetWei": "87998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xe3b420e8f6e985ac6f4454de97f33de2d8b42d0c95102c0bc5d1726982f6f8f2",
+  "gasUsed": "870334",
+  "gasLimit": "4000000",
+  "measuredGas": "882632",
+  "rewardWei": "201242160000000",
+  "costWei": "113143420000000",
+  "netWei": "88098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "954070",
+  "estimateMinusBilled": "83736",
+  "expenseGas": "871058",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "724",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 8/50, draws 19
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xf45d2111ced47ab587a842c740258dd4aab8997c85377233fb2d663227d1c32f",
+  "nonce": 12,
+  "gasEstimate": "988545",
+  "expenseGas": "904994",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245667360000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117649220000000",
+  "expectedNetWei": "128018140000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xf45d2111ced47ab587a842c740258dd4aab8997c85377233fb2d663227d1c32f",
+  "gasUsed": "904248",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "245670220000000",
+  "costWei": "117552240000000",
+  "netWei": "128117980000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988545",
+  "estimateMinusBilled": "84297",
+  "expenseGas": "904994",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "746",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 9/50, draws 24
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x565dc71669ca2a2d3fe7bf130e954b2d861a12c79cdadf5f967cc5bc8cbae524",
+  "nonce": 13,
+  "gasEstimate": "988718",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245670220000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117671320000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x565dc71669ca2a2d3fe7bf130e954b2d861a12c79cdadf5f967cc5bc8cbae524",
+  "gasUsed": "904396",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "245670220000000",
+  "costWei": "117571480000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988718",
+  "estimateMinusBilled": "84322",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 10/50, draws 29
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x48243d646a462c66048c4080656188461b505775f3d5c9f374daf7900637bab2",
+  "nonce": 14,
+  "gasEstimate": "909590",
+  "expenseGas": "827273",
+  "expenseSource": "trace",
+  "expectedRewardWei": "155544520000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "107545490000000",
+  "expectedNetWei": "47999030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x48243d646a462c66048c4080656188461b505775f3d5c9f374daf7900637bab2",
+  "gasUsed": "826572",
+  "gasLimit": "4000000",
+  "measuredGas": "838871",
+  "rewardWei": "155553230000000",
+  "costWei": "107454360000000",
+  "netWei": "48098870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "909590",
+  "estimateMinusBilled": "83018",
+  "expenseGas": "827273",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "701",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 11/50, draws 30
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xa543d872a526b34ab316f55341c44dbeeca401cf50c04b5c3b009058f768dbb7",
+  "nonce": 15,
+  "gasEstimate": "971416",
+  "expenseGas": "888133",
+  "expenseSource": "trace",
+  "expectedRewardWei": "223456190000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "115457290000000",
+  "expectedNetWei": "107998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xa543d872a526b34ab316f55341c44dbeeca401cf50c04b5c3b009058f768dbb7",
+  "gasUsed": "887321",
+  "gasLimit": "4000000",
+  "measuredGas": "899619",
+  "rewardWei": "223450470000000",
+  "costWei": "115351730000000",
+  "netWei": "108098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "971416",
+  "estimateMinusBilled": "84095",
+  "expenseGas": "888133",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "812",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 12/50, draws 34
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x2a2ab525122c68483cedee7bd3cb3c9b208faf0df436ec1d89b0e5bc21514897",
+  "nonce": 16,
+  "gasEstimate": "909636",
+  "expenseGas": "830118",
+  "expenseSource": "trace",
+  "expectedRewardWei": "155550370000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "107915340000000",
+  "expectedNetWei": "47635030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x2a2ab525122c68483cedee7bd3cb3c9b208faf0df436ec1d89b0e5bc21514897",
+  "gasUsed": "829411",
+  "gasLimit": "4000000",
+  "measuredGas": "838910",
+  "rewardWei": "155558300000000",
+  "costWei": "107823430000000",
+  "netWei": "47734870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "909636",
+  "estimateMinusBilled": "80225",
+  "expenseGas": "830118",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "707",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 13/50, draws 35
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x96785d6f616070fddcf7f80fd0bd7f1ec9abb14a98c4266f629fc7af30c20733",
+  "nonce": 17,
+  "gasEstimate": "936814",
+  "expenseGas": "854071",
+  "expenseSource": "trace",
+  "expectedRewardWei": "179028130000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111029230000000",
+  "expectedNetWei": "67998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x96785d6f616070fddcf7f80fd0bd7f1ec9abb14a98c4266f629fc7af30c20733",
+  "gasUsed": "853303",
+  "gasLimit": "4000000",
+  "measuredGas": "865601",
+  "rewardWei": "179028130000000",
+  "costWei": "110929390000000",
+  "netWei": "68098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "936814",
+  "estimateMinusBilled": "83511",
+  "expenseGas": "854071",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 14/50, draws 37
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x75844919ab4346fa6d68d9ed410852f901b2f0354406c20a93ba7e7728c78209",
+  "nonce": 18,
+  "gasEstimate": "919512",
+  "expenseGas": "839840",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156814230000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "109179200000000",
+  "expectedNetWei": "47635030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x75844919ab4346fa6d68d9ed410852f901b2f0354406c20a93ba7e7728c78209",
+  "gasUsed": "839072",
+  "gasLimit": "4000000",
+  "measuredGas": "848571",
+  "rewardWei": "156814230000000",
+  "costWei": "109079360000000",
+  "netWei": "47734870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "919512",
+  "estimateMinusBilled": "80440",
+  "expenseGas": "839840",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 15/50, draws 38
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xbe8dc9f6121219c2bc397f2f985a655ed59cf8b2040e989d13e475c789412b2e",
+  "nonce": 19,
+  "gasEstimate": "1854216",
+  "expenseGas": "1728339",
+  "expenseSource": "trace",
+  "expectedRewardWei": "356426970000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "775959",
+  "minimumRewardWei": "100874670000000",
+  "expectedExpenseWei": "224684070000000",
+  "expectedNetWei": "131742900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xbe8dc9f6121219c2bc397f2f985a655ed59cf8b2040e989d13e475c789412b2e",
+  "gasUsed": "1727585",
+  "gasLimit": "4000000",
+  "measuredGas": "1768647",
+  "rewardWei": "356424110000000",
+  "costWei": "224586050000000",
+  "netWei": "131838060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1854216",
+  "estimateMinusBilled": "126631",
+  "expenseGas": "1728339",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "754",
+  "minimumFixedWei": "0",
+  "minimumGas": "775959",
+  "minimumRewardWei": "100874670000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 16/50, draws 41
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xe547371143123682d15610ecbf9307177f9f30c7562eb8c1a1256b087fa4d309",
+  "nonce": 20,
+  "gasEstimate": "1401803",
+  "expenseGas": "1300195",
+  "expenseSource": "trace",
+  "expectedRewardWei": "298532250000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "347815",
+  "minimumRewardWei": "45215950000000",
+  "expectedExpenseWei": "169025350000000",
+  "expectedNetWei": "129506900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xe547371143123682d15610ecbf9307177f9f30c7562eb8c1a1256b087fa4d309",
+  "gasUsed": "1299446",
+  "gasLimit": "4000000",
+  "measuredGas": "1323308",
+  "rewardWei": "298530040000000",
+  "costWei": "168927980000000",
+  "netWei": "129602060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1401803",
+  "estimateMinusBilled": "102357",
+  "expenseGas": "1300195",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "749",
+  "minimumFixedWei": "0",
+  "minimumGas": "347815",
+  "minimumRewardWei": "45215950000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 17/50, draws 45
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x9c3d80fa607600e6bd591183376c56f286e0b2e8feeb7914cf0a1bed7d5a51d7",
+  "nonce": 21,
+  "gasEstimate": "1869173",
+  "expenseGas": "1740262",
+  "expenseSource": "trace",
+  "expectedRewardWei": "398340960000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "787882",
+  "minimumRewardWei": "102424660000000",
+  "expectedExpenseWei": "226234060000000",
+  "expectedNetWei": "172106900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x9c3d80fa607600e6bd591183376c56f286e0b2e8feeb7914cf0a1bed7d5a51d7",
+  "gasUsed": "1739569",
+  "gasLimit": "4000000",
+  "measuredGas": "1783431",
+  "rewardWei": "398346030000000",
+  "costWei": "226143970000000",
+  "netWei": "172202060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1869173",
+  "estimateMinusBilled": "129604",
+  "expenseGas": "1740262",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "693",
+  "minimumFixedWei": "0",
+  "minimumGas": "787882",
+  "minimumRewardWei": "102424660000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 18/50, draws 50
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xd7834cc740790dff0adf5cb47a786c19fb4f7adea9468dc34cfbfed3d6f499fc",
+  "nonce": 22,
+  "gasEstimate": "988718",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245670220000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117671320000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xd7834cc740790dff0adf5cb47a786c19fb4f7adea9468dc34cfbfed3d6f499fc",
+  "gasUsed": "904435",
+  "gasLimit": "4000000",
+  "measuredGas": "916733",
+  "rewardWei": "245675290000000",
+  "costWei": "117576550000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988718",
+  "estimateMinusBilled": "84283",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "729",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 19/50, draws 55
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x364f095c1f5f05514e86315643d1b65ba53e52858feb7fb5f042b83d843700cc",
+  "nonce": 23,
+  "gasEstimate": "919512",
+  "expenseGas": "837040",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156814230000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "108815200000000",
+  "expectedNetWei": "47999030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x364f095c1f5f05514e86315643d1b65ba53e52858feb7fb5f042b83d843700cc",
+  "gasUsed": "836272",
+  "gasLimit": "4000000",
+  "measuredGas": "848571",
+  "rewardWei": "156814230000000",
+  "costWei": "108715360000000",
+  "netWei": "48098870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "919512",
+  "estimateMinusBilled": "83240",
+  "expenseGas": "837040",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 20/50, draws 56
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x38686b66c958d0f25940248852dd9e83df9e8f8d5f8f97eb5a3024ade8a1c192",
+  "nonce": 24,
+  "gasEstimate": "968572",
+  "expenseGas": "890933",
+  "expenseSource": "trace",
+  "expectedRewardWei": "2987932150000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "850933",
+  "minimumRewardWei": "2595345650000000",
+  "expectedExpenseWei": "2717345650000000",
+  "expectedNetWei": "270586500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x38686b66c958d0f25940248852dd9e83df9e8f8d5f8f97eb5a3024ade8a1c192",
+  "gasUsed": "890201",
+  "gasLimit": "4000000",
+  "measuredGas": "896863",
+  "rewardWei": "2987932150000000",
+  "costWei": "2715113050000000",
+  "netWei": "272819100000000",
+  "effectiveGasPriceWei": "3050000000",
+  "gasEstimate": "968572",
+  "estimateMinusBilled": "78371",
+  "expenseGas": "890933",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "732",
+  "minimumFixedWei": "0",
+  "minimumGas": "850933",
+  "minimumRewardWei": "2595345650000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 21/50, draws 60
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x02c7bf266fb1dd674b8b9c042237a49ee7c394db36e1a749231989ccc673b334",
+  "nonce": 25,
+  "gasEstimate": "916708",
+  "expenseGas": "839879",
+  "expenseSource": "trace",
+  "expectedRewardWei": "2772220500000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "799879",
+  "minimumRewardWei": "2439630950000000",
+  "expectedExpenseWei": "2561630950000000",
+  "expectedNetWei": "210589550000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x02c7bf266fb1dd674b8b9c042237a49ee7c394db36e1a749231989ccc673b334",
+  "gasUsed": "839108",
+  "gasLimit": "4000000",
+  "measuredGas": "845771",
+  "rewardWei": "2772101550000000",
+  "costWei": "2559279400000000",
+  "netWei": "212822150000000",
+  "effectiveGasPriceWei": "3050000000",
+  "gasEstimate": "916708",
+  "estimateMinusBilled": "77600",
+  "expenseGas": "839879",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "771",
+  "minimumFixedWei": "0",
+  "minimumGas": "799879",
+  "minimumRewardWei": "2439630950000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 22/50, draws 61
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x7516faf26ce13fcd7781d25ab307a183aa70376527e775550aa30d9034ea1f08",
+  "nonce": 26,
+  "gasEstimate": "988718",
+  "expenseGas": "910764",
+  "expenseSource": "trace",
+  "expectedRewardWei": "3068416700000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "870764",
+  "minimumRewardWei": "2655830200000000",
+  "expectedExpenseWei": "2777830200000000",
+  "expectedNetWei": "290586500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x7516faf26ce13fcd7781d25ab307a183aa70376527e775550aa30d9034ea1f08",
+  "gasUsed": "910032",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "3068416700000000",
+  "costWei": "2775597600000000",
+  "netWei": "292819100000000",
+  "effectiveGasPriceWei": "3050000000",
+  "gasEstimate": "988718",
+  "estimateMinusBilled": "78686",
+  "expenseGas": "910764",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "732",
+  "minimumFixedWei": "0",
+  "minimumGas": "870764",
+  "minimumRewardWei": "2655830200000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 23/50, draws 66
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x447413ed712a5e62410a9cfe69aa67ab0a45211e330bdec88783230d1cf5ce27",
+  "nonce": 27,
+  "gasEstimate": "951271",
+  "expenseGas": "873902",
+  "expenseSource": "trace",
+  "expectedRewardWei": "2915987600000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "833902",
+  "minimumRewardWei": "2543401100000000",
+  "expectedExpenseWei": "2665401100000000",
+  "expectedNetWei": "250586500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x447413ed712a5e62410a9cfe69aa67ab0a45211e330bdec88783230d1cf5ce27",
+  "gasUsed": "873170",
+  "gasLimit": "4000000",
+  "measuredGas": "879832",
+  "rewardWei": "2915987600000000",
+  "costWei": "2663168500000000",
+  "netWei": "252819100000000",
+  "effectiveGasPriceWei": "3050000000",
+  "gasEstimate": "951271",
+  "estimateMinusBilled": "78101",
+  "expenseGas": "873902",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "732",
+  "minimumFixedWei": "0",
+  "minimumGas": "833902",
+  "minimumRewardWei": "2543401100000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 24/50, draws 69
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x7f93ce703172d04e95c349a416587e3a494b8d4bca782ed8bd930ddce24b8321",
+  "nonce": 28,
+  "gasEstimate": "968504",
+  "expenseGas": "888066",
+  "expenseSource": "trace",
+  "expectedRewardWei": "223083480000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "115448580000000",
+  "expectedNetWei": "107634900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x7f93ce703172d04e95c349a416587e3a494b8d4bca782ed8bd930ddce24b8321",
+  "gasUsed": "887387",
+  "gasLimit": "4000000",
+  "measuredGas": "896885",
+  "rewardWei": "223095050000000",
+  "costWei": "115360310000000",
+  "netWei": "107734740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "968504",
+  "estimateMinusBilled": "81117",
+  "expenseGas": "888066",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "679",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 25/50, draws 73
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x35991395df070e0da9ce8196bff5af6ceac57328a491379effeaf8a2b10bcfd8",
+  "nonce": 29,
+  "gasEstimate": "916668",
+  "expenseGas": "839840",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156450230000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "109179200000000",
+  "expectedNetWei": "47271030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x35991395df070e0da9ce8196bff5af6ceac57328a491379effeaf8a2b10bcfd8",
+  "gasUsed": "839072",
+  "gasLimit": "4000000",
+  "measuredGas": "845771",
+  "rewardWei": "156450230000000",
+  "costWei": "109079360000000",
+  "netWei": "47370870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "916668",
+  "estimateMinusBilled": "77596",
+  "expenseGas": "839840",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 26/50, draws 74
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xb4f0682ce2f2b5f367fa9e1639779dafbb025389ab9c3c0fc2d5cf2b2730635c",
+  "nonce": 30,
+  "gasEstimate": "988740",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245673080000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117674180000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xb4f0682ce2f2b5f367fa9e1639779dafbb025389ab9c3c0fc2d5cf2b2730635c",
+  "gasUsed": "904374",
+  "gasLimit": "4000000",
+  "measuredGas": "916672",
+  "rewardWei": "245667360000000",
+  "costWei": "117568620000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988740",
+  "estimateMinusBilled": "84366",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "812",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 27/50, draws 79
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xad206cb1459475bd6eb31a4e6685e0107ba803f73a25651f80ece8d42abb9dd1",
+  "nonce": 31,
+  "gasEstimate": "1401584",
+  "expenseGas": "1294379",
+  "expenseSource": "trace",
+  "expectedRewardWei": "258504170000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "341999",
+  "minimumRewardWei": "44459870000000",
+  "expectedExpenseWei": "168269270000000",
+  "expectedNetWei": "90234900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xad206cb1459475bd6eb31a4e6685e0107ba803f73a25651f80ece8d42abb9dd1",
+  "gasUsed": "1293604",
+  "gasLimit": "4000000",
+  "measuredGas": "1323066",
+  "rewardWei": "258498580000000",
+  "costWei": "168168520000000",
+  "netWei": "90330060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1401584",
+  "estimateMinusBilled": "107980",
+  "expenseGas": "1294379",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "775",
+  "minimumFixedWei": "0",
+  "minimumGas": "341999",
+  "minimumRewardWei": "44459870000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 28/50, draws 81
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x9889b38280c0d152cd42ecd1c44ca61f510baa9ca2691394a4f1300ded93520f",
+  "nonce": 32,
+  "gasEstimate": "916646",
+  "expenseGas": "839818",
+  "expenseSource": "trace",
+  "expectedRewardWei": "4473957550000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "799818",
+  "minimumRewardWei": "3959099100000000",
+  "expectedExpenseWei": "4157099100000000",
+  "expectedNetWei": "316858450000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x9889b38280c0d152cd42ecd1c44ca61f510baa9ca2691394a4f1300ded93520f",
+  "gasUsed": "839130",
+  "gasLimit": "4000000",
+  "measuredGas": "845793",
+  "rewardWei": "4474175350000000",
+  "costWei": "4153693500000000",
+  "netWei": "320481850000000",
+  "effectiveGasPriceWei": "4950000000",
+  "gasEstimate": "916646",
+  "estimateMinusBilled": "77516",
+  "expenseGas": "839818",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "688",
+  "minimumFixedWei": "0",
+  "minimumGas": "799818",
+  "minimumRewardWei": "3959099100000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 29/50, draws 82
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x908bacd29dafb077f4b20f44856bf35413e7bcd64b8508861a355f9fc5c958b5",
+  "nonce": 33,
+  "gasEstimate": "933947",
+  "expenseGas": "856849",
+  "expenseSource": "trace",
+  "expectedRewardWei": "4578256050000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "816849",
+  "minimumRewardWei": "4043402550000000",
+  "expectedExpenseWei": "4241402550000000",
+  "expectedNetWei": "336853500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x908bacd29dafb077f4b20f44856bf35413e7bcd64b8508861a355f9fc5c958b5",
+  "gasUsed": "856139",
+  "gasLimit": "4000000",
+  "measuredGas": "862801",
+  "rewardWei": "4578364950000000",
+  "costWei": "4237888050000000",
+  "netWei": "340476900000000",
+  "effectiveGasPriceWei": "4950000000",
+  "gasEstimate": "933947",
+  "estimateMinusBilled": "77808",
+  "expenseGas": "856849",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "710",
+  "minimumFixedWei": "0",
+  "minimumGas": "816849",
+  "minimumRewardWei": "4043402550000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 30/50, draws 84
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x6df910f6d4ff90a748b638580661705de300e6b6ca2ed0a8a829e9f46a09dceb",
+  "nonce": 34,
+  "gasEstimate": "1376759",
+  "expenseGas": "1278342",
+  "expenseSource": "trace",
+  "expectedRewardWei": "6775926400000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1238342",
+  "minimumRewardWei": "6129792900000000",
+  "expectedExpenseWei": "6327792900000000",
+  "expectedNetWei": "448133500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x6df910f6d4ff90a748b638580661705de300e6b6ca2ed0a8a829e9f46a09dceb",
+  "gasUsed": "1277593",
+  "gasLimit": "4000000",
+  "measuredGas": "1298655",
+  "rewardWei": "6775842250000000",
+  "costWei": "6324085350000000",
+  "netWei": "451756900000000",
+  "effectiveGasPriceWei": "4950000000",
+  "gasEstimate": "1376759",
+  "estimateMinusBilled": "99166",
+  "expenseGas": "1278342",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "749",
+  "minimumFixedWei": "0",
+  "minimumGas": "1238342",
+  "minimumRewardWei": "6129792900000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 31/50, draws 87
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xef6a23a52ed7027d9b96d0e6c3d6ca75b0ce2333f489fd25c29c08a2d58830be",
+  "nonce": 35,
+  "gasEstimate": "1401530",
+  "expenseGas": "1299926",
+  "expenseSource": "trace",
+  "expectedRewardWei": "6936627200000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1259926",
+  "minimumRewardWei": "6236633700000000",
+  "expectedExpenseWei": "6434633700000000",
+  "expectedNetWei": "501993500000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xef6a23a52ed7027d9b96d0e6c3d6ca75b0ce2333f489fd25c29c08a2d58830be",
+  "gasUsed": "1299110",
+  "gasLimit": "4000000",
+  "measuredGas": "1322972",
+  "rewardWei": "6936211400000000",
+  "costWei": "6430594500000000",
+  "netWei": "505616900000000",
+  "effectiveGasPriceWei": "4950000000",
+  "gasEstimate": "1401530",
+  "estimateMinusBilled": "102420",
+  "expenseGas": "1299926",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "816",
+  "minimumFixedWei": "0",
+  "minimumGas": "1259926",
+  "minimumRewardWei": "6236633700000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 32/50, draws 92
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x261758205e1a3b943a12ca7013b1d6ae0001fb5948a54f1ecd39e20308d01fda",
+  "nonce": 36,
+  "gasEstimate": "988756",
+  "expenseGas": "905202",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245675160000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117676260000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x261758205e1a3b943a12ca7013b1d6ae0001fb5948a54f1ecd39e20308d01fda",
+  "gasUsed": "904396",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "245670220000000",
+  "costWei": "117571480000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988756",
+  "estimateMinusBilled": "84360",
+  "expenseGas": "905202",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "806",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 33/50, draws 97
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x04108c28ce813ca28ddcd088177a70abd1f60be8bed4e25e11acb6cea702dc6f",
+  "nonce": 37,
+  "gasEstimate": "906814",
+  "expenseGas": "830140",
+  "expenseSource": "trace",
+  "expectedRewardWei": "155189230000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "107918200000000",
+  "expectedNetWei": "47271030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x04108c28ce813ca28ddcd088177a70abd1f60be8bed4e25e11acb6cea702dc6f",
+  "gasUsed": "829350",
+  "gasLimit": "4000000",
+  "measuredGas": "836049",
+  "rewardWei": "155186370000000",
+  "costWei": "107815500000000",
+  "netWei": "47370870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "906814",
+  "estimateMinusBilled": "77464",
+  "expenseGas": "830140",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 34/50, draws 98
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xb87cb183ee7f62c3a357fc57e6bbfb1fcb2e37a9f13170a7caa12ca0524492bf",
+  "nonce": 38,
+  "gasEstimate": "1398941",
+  "expenseGas": "1300178",
+  "expenseSource": "trace",
+  "expectedRewardWei": "298166040000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "347798",
+  "minimumRewardWei": "45213740000000",
+  "expectedExpenseWei": "169023140000000",
+  "expectedNetWei": "129142900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xb87cb183ee7f62c3a357fc57e6bbfb1fcb2e37a9f13170a7caa12ca0524492bf",
+  "gasUsed": "1299335",
+  "gasLimit": "4000000",
+  "measuredGas": "1320397",
+  "rewardWei": "298151610000000",
+  "costWei": "168913550000000",
+  "netWei": "129238060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1398941",
+  "estimateMinusBilled": "99606",
+  "expenseGas": "1300178",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "843",
+  "minimumFixedWei": "0",
+  "minimumGas": "347798",
+  "minimumRewardWei": "45213740000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 35/50, draws 102
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x2f1a9ff326f32cb3aac13873273c3827fe10ffa44bc31223e51b2e9e8641cfd4",
+  "nonce": 39,
+  "gasEstimate": "988740",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245673080000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117674180000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x2f1a9ff326f32cb3aac13873273c3827fe10ffa44bc31223e51b2e9e8641cfd4",
+  "gasUsed": "901596",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "245670220000000",
+  "costWei": "117207480000000",
+  "netWei": "128462740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988740",
+  "estimateMinusBilled": "87144",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "3590",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 36/50, draws 107
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x88543ec444c5bee3527132a27409c567bd801b2a468ddd86cb296ad6b82a9eee",
+  "nonce": 40,
+  "gasEstimate": "1424043",
+  "expenseGas": "1324887",
+  "expenseSource": "trace",
+  "expectedRewardWei": "321378210000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "372507",
+  "minimumRewardWei": "48425910000000",
+  "expectedExpenseWei": "172235310000000",
+  "expectedNetWei": "149142900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x88543ec444c5bee3527132a27409c567bd801b2a468ddd86cb296ad6b82a9eee",
+  "gasUsed": "1324133",
+  "gasLimit": "4000000",
+  "measuredGas": "1345195",
+  "rewardWei": "321375350000000",
+  "costWei": "172137290000000",
+  "netWei": "149238060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "1424043",
+  "estimateMinusBilled": "99910",
+  "expenseGas": "1324887",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "754",
+  "minimumFixedWei": "0",
+  "minimumGas": "372507",
+  "minimumRewardWei": "48425910000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 37/50, draws 112
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xcbdb6b30e3eed0590cf8080b139964b21ca677444016d9d8b55faca8d6c54fa9",
+  "nonce": 41,
+  "gasEstimate": "954115",
+  "expenseGas": "871102",
+  "expenseSource": "trace",
+  "expectedRewardWei": "201242160000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "113243260000000",
+  "expectedNetWei": "87998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xcbdb6b30e3eed0590cf8080b139964b21ca677444016d9d8b55faca8d6c54fa9",
+  "gasUsed": "870312",
+  "gasLimit": "4000000",
+  "measuredGas": "882610",
+  "rewardWei": "201239300000000",
+  "costWei": "113140560000000",
+  "netWei": "88098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "954115",
+  "estimateMinusBilled": "83803",
+  "expenseGas": "871102",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 38/50, draws 115
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "baseFeeGwei": 8
+}
+{
+  "message": "skip: basefee above bid cap",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "baseFeeGwei": 8
+}
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x12ccae6f2bd79078c6deb89ef02f99c02dc2fa4303c72ee0ebc81a7b6163d49a",
+  "nonce": 42,
+  "gasEstimate": "988718",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245670220000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117671320000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x12ccae6f2bd79078c6deb89ef02f99c02dc2fa4303c72ee0ebc81a7b6163d49a",
+  "gasUsed": "904396",
+  "gasLimit": "4000000",
+  "measuredGas": "916694",
+  "rewardWei": "245670220000000",
+  "costWei": "117571480000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "988718",
+  "estimateMinusBilled": "84322",
+  "expenseGas": "905164",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 39/50, draws 120
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xbb141607df41b8c864dd16cfc57b452703a56c0170fd63a29b094b21a9ed6afa",
+  "nonce": 43,
+  "gasEstimate": "951271",
+  "expenseGas": "871102",
+  "expenseSource": "trace",
+  "expectedRewardWei": "200878160000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "113243260000000",
+  "expectedNetWei": "87634900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xbb141607df41b8c864dd16cfc57b452703a56c0170fd63a29b094b21a9ed6afa",
+  "gasUsed": "870373",
+  "gasLimit": "4000000",
+  "measuredGas": "879871",
+  "rewardWei": "200883230000000",
+  "costWei": "113148490000000",
+  "netWei": "87734740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "951271",
+  "estimateMinusBilled": "80898",
+  "expenseGas": "871102",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "729",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 40/50, draws 123
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x55c317dee1c6c0864469523ba376f743e52cef5f73f111fa5cfd3ed3e71ecd2f",
+  "nonce": 44,
+  "gasEstimate": "919535",
+  "expenseGas": "837062",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156817090000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "108818060000000",
+  "expectedNetWei": "47999030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x55c317dee1c6c0864469523ba376f743e52cef5f73f111fa5cfd3ed3e71ecd2f",
+  "gasUsed": "836311",
+  "gasLimit": "4000000",
+  "measuredGas": "848610",
+  "rewardWei": "156819300000000",
+  "costWei": "108720430000000",
+  "netWei": "48098870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "919535",
+  "estimateMinusBilled": "83224",
+  "expenseGas": "837062",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "751",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 41/50, draws 124
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xce4e3d44045838bd0c096f0c8b9432bbede609b8a20213d160b1fe71b7ae860e",
+  "nonce": 45,
+  "gasEstimate": "985896",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expectedRewardWei": "245309080000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "117674180000000",
+  "expectedNetWei": "127634900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xce4e3d44045838bd0c096f0c8b9432bbede609b8a20213d160b1fe71b7ae860e",
+  "gasUsed": "904396",
+  "gasLimit": "4000000",
+  "measuredGas": "913894",
+  "rewardWei": "245306220000000",
+  "costWei": "117571480000000",
+  "netWei": "127734740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "985896",
+  "estimateMinusBilled": "81500",
+  "expenseGas": "905186",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 42/50, draws 129
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xca6e5054c53952c1e0ab93503849d3395e332dbde12536514e7ee51234a48db3",
+  "nonce": 46,
+  "gasEstimate": "933992",
+  "expenseGas": "854093",
+  "expenseSource": "trace",
+  "expectedRewardWei": "178666990000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111032090000000",
+  "expectedNetWei": "67634900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xca6e5054c53952c1e0ab93503849d3395e332dbde12536514e7ee51234a48db3",
+  "gasUsed": "853303",
+  "gasLimit": "4000000",
+  "measuredGas": "862801",
+  "rewardWei": "178664130000000",
+  "costWei": "110929390000000",
+  "netWei": "67734740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "933992",
+  "estimateMinusBilled": "80689",
+  "expenseGas": "854093",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "790",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 43/50, draws 131
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x8987ef3f28967ec5c00050913b2164e1e771019e46d8298d222a024e878b1508",
+  "nonce": 47,
+  "gasEstimate": "2302890",
+  "expenseGas": "2149440",
+  "expenseSource": "trace",
+  "expectedRewardWei": "473406100000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "1197060",
+  "minimumRewardWei": "155617800000000",
+  "expectedExpenseWei": "279427200000000",
+  "expectedNetWei": "193978900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x8987ef3f28967ec5c00050913b2164e1e771019e46d8298d222a024e878b1508",
+  "gasUsed": "2148686",
+  "gasLimit": "4000000",
+  "measuredGas": "2206948",
+  "rewardWei": "473403240000000",
+  "costWei": "279329180000000",
+  "netWei": "194074060000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "2302890",
+  "estimateMinusBilled": "154204",
+  "expenseGas": "2149440",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "754",
+  "minimumFixedWei": "0",
+  "minimumGas": "1197060",
+  "minimumRewardWei": "155617800000000",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 44/50, draws 136
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x4163397fa2be158445cd711da3a436657b4fc0b169ccdb60d15599047555d415",
+  "nonce": 48,
+  "gasEstimate": "909590",
+  "expenseGas": "830073",
+  "expenseSource": "trace",
+  "expectedRewardWei": "155544520000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "107909490000000",
+  "expectedNetWei": "47635030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0x4163397fa2be158445cd711da3a436657b4fc0b169ccdb60d15599047555d415",
+  "gasUsed": "829394",
+  "gasLimit": "4000000",
+  "measuredGas": "838893",
+  "rewardWei": "155556090000000",
+  "costWei": "107821220000000",
+  "netWei": "47734870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "909590",
+  "estimateMinusBilled": "80196",
+  "expenseGas": "830073",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "679",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 45/50, draws 137
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0x840026a58e48e8a30bdf896a7a0b30fd44f30f4f414855428514b84010638642",
+  "nonce": 49,
+  "gasEstimate": "971416",
+  "expenseGas": "888133",
+  "expenseSource": "trace",
+  "expectedRewardWei": "223456190000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "115457290000000",
+  "expectedNetWei": "107998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0x840026a58e48e8a30bdf896a7a0b30fd44f30f4f414855428514b84010638642",
+  "gasUsed": "887387",
+  "gasLimit": "4000000",
+  "measuredGas": "899685",
+  "rewardWei": "223459050000000",
+  "costWei": "115360310000000",
+  "netWei": "108098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "971416",
+  "estimateMinusBilled": "84029",
+  "expenseGas": "888133",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "746",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 46/50, draws 141
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xc9c6ab15e8134f65a97950d0bb766ee7d25d1ee3101bde48b019d12b438fda60",
+  "nonce": 50,
+  "gasEstimate": "978841",
+  "expenseGas": "895442",
+  "expenseSource": "trace",
+  "expectedRewardWei": "244406360000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "116407460000000",
+  "expectedNetWei": "127998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xc9c6ab15e8134f65a97950d0bb766ee7d25d1ee3101bde48b019d12b438fda60",
+  "gasUsed": "894674",
+  "gasLimit": "4000000",
+  "measuredGas": "906972",
+  "rewardWei": "244406360000000",
+  "costWei": "116307620000000",
+  "netWei": "128098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "978841",
+  "estimateMinusBilled": "84167",
+  "expenseGas": "895442",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 47/50, draws 146
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xeaae7101bcfa6019b9e0dc033f602c5cd244858e3c572a56279c13a5b667a8ee",
+  "nonce": 51,
+  "gasEstimate": "936791",
+  "expenseGas": "854049",
+  "expenseSource": "trace",
+  "expectedRewardWei": "179025270000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111026370000000",
+  "expectedNetWei": "67998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xeaae7101bcfa6019b9e0dc033f602c5cd244858e3c572a56279c13a5b667a8ee",
+  "gasUsed": "853303",
+  "gasLimit": "4000000",
+  "measuredGas": "865601",
+  "rewardWei": "179028130000000",
+  "costWei": "110929390000000",
+  "netWei": "68098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "936791",
+  "estimateMinusBilled": "83488",
+  "expenseGas": "854049",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "746",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 48/50, draws 148
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xbfd736349eef9a513538b5e33e933f6306c6da6e01fbe76c0fab9322ac74ac09",
+  "nonce": 52,
+  "gasEstimate": "944261",
+  "expenseGas": "861402",
+  "expenseSource": "trace",
+  "expectedRewardWei": "199981160000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "111982260000000",
+  "expectedNetWei": "87998900000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+  "hash": "0xbfd736349eef9a513538b5e33e933f6306c6da6e01fbe76c0fab9322ac74ac09",
+  "gasUsed": "860673",
+  "gasLimit": "4000000",
+  "measuredGas": "872971",
+  "rewardWei": "199986230000000",
+  "costWei": "111887490000000",
+  "netWei": "88098740000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "944261",
+  "estimateMinusBilled": "83588",
+  "expenseGas": "861402",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "729",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 49/50, draws 151
+{
+  "message": "sent performUpkeep",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf",
+  "hash": "0xd7aa0099e9a88faf0ea16943eef86c1c86f1c9e62d4f85f7ac043cb4a27cdc83",
+  "nonce": 53,
+  "gasEstimate": "919512",
+  "expenseGas": "842640",
+  "expenseSource": "trace",
+  "expectedRewardWei": "156814230000000",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "expectedExpenseWei": "109543200000000",
+  "expectedNetWei": "47271030000000"
+}
+{
+  "message": "mined",
+  "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+  "hash": "0xd7aa0099e9a88faf0ea16943eef86c1c86f1c9e62d4f85f7ac043cb4a27cdc83",
+  "gasUsed": "841872",
+  "gasLimit": "4000000",
+  "measuredGas": "848571",
+  "rewardWei": "156814230000000",
+  "costWei": "109443360000000",
+  "netWei": "47370870000000",
+  "effectiveGasPriceWei": "130000000",
+  "gasEstimate": "919512",
+  "estimateMinusBilled": "77640",
+  "expenseGas": "842640",
+  "expenseSource": "trace",
+  "expenseMinusBilled": "768",
+  "minimumFixedWei": "0",
+  "minimumGas": "0",
+  "minimumRewardWei": "0",
+  "policy": "0x058b476B600E8F3d66c84cE874Eb131EEaCddBdf"
+}
+completed local diagnostic round 50/50, draws 152
+{
+  "diagnosticOnly": true,
+  "revision": "9b45f915fcaa27bc24d6125cf4a0062117ef576c",
+  "rpc": "http://127.0.0.1:18554",
+  "forkBlock": "26437802",
+  "rounds": 50,
+  "draws": 152,
+  "drawOutcomes": {
+    "fulfilled": 65,
+    "refunded": 87,
+    "refundCreditWei": "2400431303075223482"
+  },
+  "keeperMode": "real Keeper class, controlled ticks and guarded signer; not a CLI launcher repeat",
+  "journalWindowBlocks": 4096,
+  "gasByActorCategoryWei": {
+    "deployment": "1357083859913650",
+    "setup": "358972605959222",
+    "keeper": "38673351490000000",
+    "buyer": "86570530940000000",
+    "coordinator-exception": "76432203700000000",
+    "service-retry": "43807600000000",
+    "creator": "30457680000000"
+  },
+  "totalGasWei": "203466407875872872",
+  "keeper": {
+    "netWei": "7082730460000000",
+    "rewardWei": "45756081950000000",
+    "gasWei": "38673351490000000",
+    "externalIn": "0",
+    "externalOut": "0",
+    "coverage": "journal"
+  },
+  "restarts": 2,
+  "periods": {
+    "normal": 38,
+    "below": 4,
+    "near": 4,
+    "above": 4
+  },
+  "creatorMarkupChanges": 2,
+  "curatedRelistings": 0,
+  "creatorPriceEdits": 1,
+  "pools": [
+    {
+      "creator": "0x000000000000000000000000000000000001d005",
+      "balancer": "0xf2295c51bB08056109eC2e125941569717965F16",
+      "pool": "0x6C3a53086bD4bed5Ec4BA9AF19255Cd017092E19",
+      "demo": "0x056adF8a4dAFa52a57Bd9ee136ee0DF823F1C833",
+      "balance": "2717027343900840816",
+      "profit": "25595355148303397",
+      "reserve": "1454000000000000",
+      "surplus": "2715573343900840816",
+      "fwaOwnerProceeds": "0",
+      "actualBacking": "400000000000000000",
+      "activeCounts": [
+        5,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "listings": [
+        {
+          "id": "1",
+          "kind": 1,
+          "denom": 0,
+          "base": "251000000000000000",
+          "price": "251000000000000000",
+          "collection": "0x056adF8a4dAFa52a57Bd9ee136ee0DF823F1C833",
+          "tokenId": "1"
+        },
+        {
+          "id": "2",
+          "kind": 1,
+          "denom": 0,
+          "base": "500000000000000000",
+          "price": "500000000000000000",
+          "collection": "0x056adF8a4dAFa52a57Bd9ee136ee0DF823F1C833",
+          "tokenId": "2"
+        },
+        {
+          "id": "15",
+          "kind": 2,
+          "denom": 2,
+          "base": "116000000000000000",
+          "price": "116317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1152"
+        },
+        {
+          "id": "27",
+          "kind": 2,
+          "denom": 2,
+          "base": "116000000000000000",
+          "price": "116317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1182"
+        },
+        {
+          "id": "21",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1171"
+        },
+        {
+          "id": "38",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1205"
+        },
+        {
+          "id": "39",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1207"
+        },
+        {
+          "id": "34",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1199"
+        },
+        {
+          "id": "35",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1202"
+        },
+        {
+          "id": "36",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1203"
+        },
+        {
+          "id": "37",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1204"
+        },
+        {
+          "id": "41",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1210"
+        }
+      ]
+    },
+    {
+      "creator": "0x000000000000000000000000000000000001d006",
+      "balancer": "0xb0adFaEA531102f6dE3FeAffAF51bE850A283F2c",
+      "pool": "0x6A943251eBfde73b7F78fEC7DF852b80a0C9771c",
+      "demo": "0x8CeB86ca2543ED1C14B9180C979606fa6eDA54b7",
+      "balance": "2933226534976083407",
+      "profit": "20492628305502233",
+      "reserve": "1454000000000000",
+      "surplus": "2931772534976083407",
+      "fwaOwnerProceeds": "0",
+      "actualBacking": "400000000000000000",
+      "activeCounts": [
+        5,
+        3,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "listings": [
+        {
+          "id": "1",
+          "kind": 1,
+          "denom": 0,
+          "base": "250000000000000000",
+          "price": "250000000000000000",
+          "collection": "0x8CeB86ca2543ED1C14B9180C979606fa6eDA54b7",
+          "tokenId": "1"
+        },
+        {
+          "id": "2",
+          "kind": 1,
+          "denom": 0,
+          "base": "500000000000000000",
+          "price": "500000000000000000",
+          "collection": "0x8CeB86ca2543ED1C14B9180C979606fa6eDA54b7",
+          "tokenId": "2"
+        },
+        {
+          "id": "44",
+          "kind": 2,
+          "denom": 0,
+          "base": "12000000000000000",
+          "price": "12317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1200"
+        },
+        {
+          "id": "10",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1144"
+        },
+        {
+          "id": "26",
+          "kind": 2,
+          "denom": 2,
+          "base": "111000000000000000",
+          "price": "111317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1166"
+        },
+        {
+          "id": "47",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1208"
+        },
+        {
+          "id": "11",
+          "kind": 2,
+          "denom": 2,
+          "base": "116000000000000000",
+          "price": "116317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1145"
+        },
+        {
+          "id": "8",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1142"
+        },
+        {
+          "id": "9",
+          "kind": 2,
+          "denom": 1,
+          "base": "58500000000000000",
+          "price": "58817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1143"
+        },
+        {
+          "id": "32",
+          "kind": 2,
+          "denom": 0,
+          "base": "12000000000000000",
+          "price": "12317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1178"
+        },
+        {
+          "id": "42",
+          "kind": 2,
+          "denom": 0,
+          "base": "12000000000000000",
+          "price": "12317000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1192"
+        },
+        {
+          "id": "48",
+          "kind": 2,
+          "denom": 0,
+          "base": "12500000000000000",
+          "price": "12817000000000000",
+          "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "tokenId": "1211"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "3 ETH per pool overfunded plumbing diagnostic; not minimum-capital proof",
+    "Forced fee steps do not prove EIP-1559 reachability",
+    "Owner-retained deterministic coordinator impersonation; no real VRF timing/failure proof",
+    "No real extension wallet or site publication proof",
+    "Audit findings remain open; not release proof"
+  ],
+  "thingsThatDontMakeSense": []
+}
