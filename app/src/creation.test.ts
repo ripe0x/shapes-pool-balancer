@@ -1,0 +1,140 @@
+import { BaseError, UserRejectedRequestError, createPublicClient, http, type Address } from 'viem';
+import { describe, expect, it } from 'vitest';
+import { canRetryCreation, creationContextMatches, creationNotSubmitted, recoverCreation, sameCreation, submitCreation, type CreationAttempt } from './creation';
+
+const attempt: CreationAttempt = {
+  chainId: 31337,
+  factory: '0xCd171B437d9329C2654128645944fbC05C9AA2BF',
+  creator: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+  salt: `0x${'01'.repeat(32)}`,
+  predicted: '0xA54AF51f57035550af3b9bbCf1fD298a0C1c2626',
+  config: { markupBps: 2500, creatorRevenueBps: 1234, target: '0', mintFeeCap: '1000000000000000' },
+  curated: [],
+  value: '0',
+};
+const context = { chainId: attempt.chainId, factory: attempt.factory, creator: attempt.creator };
+
+describe('atomic creation submission identity', () => {
+  it('retains the same attempt when its transaction hash arrives', () => {
+    expect(sameCreation(attempt, { ...attempt, hash: `0x${'02'.repeat(32)}` })).toBe(true);
+    for (const other of [{ ...attempt, chainId: 1 }, { ...attempt, creator: attempt.factory },
+      { ...attempt, factory: attempt.creator }, { ...attempt, salt: `0x${'03'.repeat(32)}` as const },
+      { ...attempt, value: '1' }, { ...attempt, config: { ...attempt.config, creatorRevenueBps: 10000 } },
+      { ...attempt, curated: [{ collection: attempt.factory, tokenId: '1', base: '1' }] }]) {
+      expect(sameCreation(attempt, other)).toBe(false);
+    }
+  });
+
+  it('requires the creating account, chain and factory before opening or clearing a saved attempt', () => {
+    expect(creationContextMatches(attempt, context)).toBe(true);
+    expect(creationContextMatches(attempt, { ...context, creator: attempt.creator.toLowerCase() as Address })).toBe(true);
+    for (const other of [{ ...context, chainId: 1 }, { ...context, creator: undefined },
+      { ...context, creator: attempt.factory }, { ...context, factory: attempt.creator }]) {
+      expect(creationContextMatches(attempt, other)).toBe(false);
+    }
+  });
+
+  it('distinguishes explicit wallet rejection from an uncertain submission or receipt timeout', () => {
+    const rejected = new UserRejectedRequestError(new Error('user cancelled'));
+    expect(creationNotSubmitted(rejected)).toBe(true);
+    expect(creationNotSubmitted(new BaseError('wallet failed', { cause: rejected }))).toBe(true);
+    expect(creationNotSubmitted({ code: 4001 })).toBe(true);
+    for (const failure of [new Error('timeout'), new Error('receipt unavailable'), { code: -32000 }]) {
+      expect(creationNotSubmitted(failure)).toBe(false);
+    }
+  });
+});
+
+describe('creation-only submission orchestration', () => {
+  // Program callbacks model persistence; the wallet boundary supplies failures only, never fabricated successful answers.
+  const tracking = () => {
+    let saved: CreationAttempt | undefined;
+    return {
+      existing: () => saved,
+      store: (a: CreationAttempt) => { saved = a; },
+      reject: (a: CreationAttempt) => { if (sameCreation(saved, a)) saved = undefined; },
+    };
+  };
+
+  it('keeps preparation failures retryable because no wallet submission was attempted', async () => {
+    const state = tracking();
+    let writes = 0;
+    await expect(submitCreation(attempt, async () => { writes++; throw new Error('simulation failed'); }, state)).rejects.toThrow('simulation failed');
+    expect(state.existing()).toBeUndefined();
+    await expect(submitCreation(attempt, async () => { writes++; throw new Error('simulation failed'); }, state)).rejects.toThrow('simulation failed');
+    expect(writes).toBe(2);
+  });
+
+  it('clears an explicitly rejected wallet submission and preserves its legitimate retry', async () => {
+    const state = tracking();
+    const write = async (beforeWallet: () => void) => {
+      beforeWallet();
+      throw new UserRejectedRequestError(new Error('user cancelled'));
+    };
+    await expect(submitCreation(attempt, write, state)).rejects.toBeInstanceOf(UserRejectedRequestError);
+    expect(state.existing()).toBeUndefined();
+    await expect(submitCreation(attempt, write, state)).rejects.toBeInstanceOf(UserRejectedRequestError);
+  });
+
+  it('never resubmits a wallet call whose outcome is unknown, including after state serialization', async () => {
+    const state = tracking();
+    let writes = 0;
+    const write = async (beforeWallet: () => void) => {
+      beforeWallet(); writes++;
+      throw new Error('RPC timed out after submission');
+    };
+    await expect(submitCreation(attempt, write, state)).rejects.toThrow('timed out');
+    expect(state.existing()).toEqual(attempt);
+    const restored = JSON.parse(JSON.stringify(state.existing())) as CreationAttempt;
+    const afterRefresh = { ...state, existing: () => restored };
+    await expect(submitCreation(attempt, write, afterRefresh)).rejects.toThrow('still needs confirmation');
+    expect(writes).toBe(1);
+    for (const outcome of ['unknown', 'pending', 'context', 'mismatch', 'confirmed'] as const) {
+      expect(canRetryCreation(outcome, restored, context)).toBe(false);
+    }
+    // The outcome is program state here. Only real receipt reads in recoverCreation can establish an actual revert.
+    expect(canRetryCreation('reverted', restored, context)).toBe(true);
+    expect(canRetryCreation('reverted', restored, { ...context, creator: attempt.factory })).toBe(false);
+  });
+
+  it('rechecks saved submissions after preparation, before reaching the wallet', async () => {
+    const state = tracking();
+    let walletCalls = 0;
+    const other = { ...attempt, salt: `0x${'04'.repeat(32)}` as const };
+    await expect(submitCreation(attempt, async (beforeWallet) => {
+      state.store(other);
+      beforeWallet();
+      walletCalls++;
+      throw new Error('wallet must not be reached');
+    }, state)).rejects.toThrow('still needs confirmation');
+    expect(walletCalls).toBe(0);
+    expect(state.existing()).toEqual(other);
+  });
+});
+
+describe('creation lookup failure', () => {
+  it('retains unknown submissions when the RPC cannot establish their outcome', async () => {
+    const pub = createPublicClient({ transport: http('http://127.0.0.1:1', { retryCount: 0, timeout: 100 }) });
+    expect(await recoverCreation(pub, attempt, context)).toBe('unknown');
+  });
+
+  it('does not contact another context to resolve or clear the saved submission', async () => {
+    let calls = 0;
+    // Failure injection only: no successful chain response is supplied by this client.
+    const unavailable = { getChainId: async () => { calls++; throw new Error('RPC unavailable'); } };
+    expect(await recoverCreation(unavailable as never, attempt, { ...context, chainId: 1 })).toBe('context');
+    expect(calls).toBe(0);
+  });
+});
+
+const rpc = process.env.CREATION_RECOVERY_RPC;
+// Successful answers below come only from the retained real FWA fork and its actually deployed atomic pool.
+it.skipIf(!rpc)('recovers the real creator pool without relying on its receipt and rejects a different reviewed design', async () => {
+  const pub = createPublicClient({ transport: http(rpc), cacheTime: 0 });
+  const { poolBalancerAbi } = await import('../../shared/abi');
+  const target = await pub.readContract({ address: attempt.predicted, abi: poolBalancerAbi, functionName: 'target' });
+  const actual = { ...attempt, config: { ...attempt.config, target: String(target) } };
+  expect(await recoverCreation(pub, actual, context)).toBe('confirmed');
+  expect(await recoverCreation(pub, { ...actual, config: { ...actual.config, creatorRevenueBps: 1235 } }, context)).toBe('mismatch');
+  expect(await recoverCreation(pub, actual, { ...context, creator: attempt.factory })).toBe('context');
+});

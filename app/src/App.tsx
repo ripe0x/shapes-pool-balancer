@@ -10,11 +10,14 @@ import {
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { prepareWrite } from './tx';
+import { canRetryCreation, creationContextMatches, recoverCreation, sameCreation, submitCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { policyAbi, policyEconomics } from './policy';
 import { activationBatch, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
+import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
+import { effectiveRevenueBps } from './revenue-rate';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
@@ -74,8 +77,8 @@ const liveVrfFee = (pub: NonNullable<ReturnType<typeof usePublicClient>>) =>
 
 function useBalancer(b?: Address) {
   const pub = usePublicClient();
-  const [data, setData] = useState<Awaited<ReturnType<typeof load>>>();
-  const [error, setError] = useState<string>();
+  const [current, setCurrent] = useState<{ client: typeof pub; snapshot: Awaited<ReturnType<typeof load>> }>();
+  const [failure, setFailure] = useState<{ client: typeof pub; balancer: Address; message: string }>();
   const load = useCallback(async () => {
     if (!pub || !b) throw new Error('no client');
     const block = await pub.getBlock();
@@ -134,21 +137,51 @@ function useBalancer(b?: Address) {
       keepersRestricted, keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, recommendedPolicy, factoryAddr, blockNumber,
     };
   }, [pub, b]);
-  const refresh = useCallback(() => {
-    if (!b) return;
-    load().then((d) => { setData(d); setError(undefined); }).catch((e) => setError(String(e.shortMessage ?? e.message ?? e)));
-  }, [load, b]);
-  useEffect(() => { refresh(); const t = setInterval(refresh, 15_000); return () => clearInterval(t); }, [refresh]);
-  const [history, setHistory] = useState<{ pending: Listing[]; ledger?: Ledger; historyError?: string; historyLoading: boolean; historyBalancer?: Address }>({ pending: [], historyLoading: true });
+  type Snapshot = Awaited<ReturnType<typeof load>>;
+  type HistoryInput = Parameters<typeof loadHistory>[1];
+  type HistoryValue = Awaited<ReturnType<typeof loadHistory>>;
+  const currentRefresh = useRef<ReturnType<typeof createLatestRefresh<void, Snapshot>>>();
+  const historyRefresh = useRef<ReturnType<typeof createLatestRefresh<HistoryInput, HistoryValue>>>();
+  const data = current && current.client === pub && current.snapshot.balancer === b ? current.snapshot : undefined;
+  const error = failure && failure.client === pub && failure.balancer === b ? failure.message : undefined;
+  const refresh = useCallback(() => currentRefresh.current?.request(), []);
+
   useEffect(() => {
-    if (!pub || !data) return;
-    let current = true;
-    setHistory((h) => h.historyBalancer === data.balancer ? { ...h, historyLoading: true, historyError: undefined } : { pending: [], historyLoading: true, historyBalancer: data.balancer });
-    loadHistory(pub, data).then((result) => { if (current) setHistory({ ...result, historyLoading: false, historyBalancer: data.balancer }); })
-      .catch((e) => { if (current) setHistory((h) => ({ ...h, historyLoading: false, historyError: explain(e), historyBalancer: data.balancer })); });
-    return () => { current = false; };
-  }, [pub, data]);
-  return { data: data && { ...data, ...(history.historyBalancer === data.balancer ? history : { pending: [] as Listing[], ledger: undefined, historyLoading: true, historyError: undefined }) }, error, refresh };
+    if (!pub || !b) return;
+    const queue = createLatestRefresh<void, Snapshot>(() => load(), (event) => {
+      if (event.state === 'ready') { setCurrent({ client: pub, snapshot: event.value }); setFailure(undefined); }
+      if (event.state === 'error') setFailure({ client: pub, balancer: b, message: explain(event.error) });
+    });
+    currentRefresh.current = queue;
+    queue.request();
+    const timer = setInterval(() => queue.request(), 15_000);
+    return () => {
+      clearInterval(timer); queue.dispose();
+      if (currentRefresh.current === queue) currentRefresh.current = undefined;
+    };
+  }, [pub, b, load]);
+
+  const [history, setHistory] = useState<{
+    client?: typeof pub; balancer?: Address; state: RefreshState<HistoryInput, HistoryValue>;
+  }>({ state: { loading: true } });
+  useEffect(() => {
+    if (!pub || !b) return;
+    setHistory({ client: pub, balancer: b, state: { loading: true } });
+    const queue = createLatestRefresh<HistoryInput, HistoryValue>((snapshot) => loadHistory(pub, snapshot), (event) => {
+      setHistory((h) => h.client === pub && h.balancer === b ? { ...h, state: applyRefreshEvent(h.state, event) } : h);
+    });
+    historyRefresh.current = queue;
+    return () => {
+      queue.dispose();
+      if (historyRefresh.current === queue) historyRefresh.current = undefined;
+    };
+  }, [pub, b]);
+  useEffect(() => { if (data) historyRefresh.current?.request(data); }, [data]);
+  const historical = history.client === pub && history.balancer === b ? history.state : undefined;
+  return { data: data && { ...data, pending: historical?.value?.pending ?? [], ledger: historical?.value?.ledger,
+    historyLoading: historical?.loading ?? true,
+    historyError: historical?.error === undefined ? undefined : explain(historical.error),
+  }, error, refresh };
 }
 
 async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>, d: {
@@ -200,14 +233,17 @@ function useTx(onDone: () => void) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
-  const write = (async (params: Record<string, unknown>) =>
-    writeContractAsync((await prepareWrite(pub!, address, params)) as never)) as typeof writeContractAsync;
+  const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
+    const prepared = await prepareWrite(pub!, address, params);
+    beforeWallet?.();
+    return writeContractAsync(prepared as never);
+  }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last failure, readable right after `send` resolves (state updates land a render later).
   const failure = useRef<string>();
   // A step may carry its own label (shown as "label (2 of 5)") and may return undefined to skip itself.
-  const send = async (label: string, calls: Step[]) => {
+  const send = async (label: string, calls: Step[], confirmationTimeout?: number) => {
     let current = label;
     setBusy(label);
     setMsg(undefined);
@@ -218,7 +254,7 @@ function useTx(onDone: () => void) {
         setBusy(Array.isArray(c) && calls.length > 1 ? `${name} (${k + 1} of ${calls.length})` : name);
         const hash = await run();
         if (!hash) continue;
-        const rc = await pub!.waitForTransactionReceipt({ hash });
+        const rc = await pub!.waitForTransactionReceipt({ hash, ...(confirmationTimeout === undefined ? {} : { timeout: confirmationTimeout }) });
         if (rc.status !== 'success') throw new Error(`${name} reverted`);
       }
       setMsg({ ok: true, text: `${label}: confirmed` });
@@ -358,13 +394,13 @@ export function App() {
     // Connecting from the preview continues the design being worked on, even for a wallet that already has pools.
     // Otherwise: no pools opens a new one, one pool opens it, several open the list.
     const intent = takeConnectIntent();
-    setPage((p) => p === 'pool' ? p : intent ? 'new' : p ?? (!list.length ? 'new' : list.length === 1 ? 'pool' : 'list'));
+    setPage((p) => p === 'pool' ? p : loadDraft()?.creation || intent ? 'new' : p ?? (!list.length ? 'new' : list.length === 1 ? 'pool' : 'list'));
     setLoaded(true);
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
   const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
-  useEffect(() => { setLoaded(false); setPage(undefined); setSelected(undefined); reload(); }, [reload]);
+  useEffect(() => { setLoaded(false); setPage(loadDraft()?.creation ? 'new' : undefined); setSelected(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -374,7 +410,7 @@ export function App() {
   }, [pub]);
 
   const dev = connectors.filter((c) => c.type === 'mock');
-  const fresh = !isConnected || (loaded && page === 'new');
+  const fresh = !isConnected || (page === 'new' && (loaded || !!loadDraft()?.creation));
   const open = (b: Address) => { setTab('overview'); setSelected(b); setPage('pool'); };
   const openAddress = async () => {
     if (!pub || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)) return;
@@ -527,11 +563,24 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
 type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
 /** Design work before submission, retained across wallet connection and reloads. */
-type Draft = { creatorRevenueBps?: number; markup: number; small?: number; style?: Style | null; bonus?: Counts; nfts?: DraftNft[] };
+type Draft = { salt?: Hash; creation?: CreationAttempt; creatorRevenueBps?: number; markup: number; small?: number; style?: Style | null; bonus?: Counts; nfts?: DraftNft[] };
 const draftKey = () => 'pool-design-draft';
 const loadDraft = (): Draft | undefined => { try { return JSON.parse(localStorage.getItem(draftKey()) ?? 'null') ?? undefined; } catch { return undefined; } };
-const saveDraft = (x: Draft) => { try { localStorage.setItem(draftKey(), JSON.stringify(x)); } catch { /* storage unavailable */ } };
-const clearDraft = () => { try { localStorage.removeItem(draftKey()); } catch { /* storage unavailable */ } };
+const saveDraft = (x: Draft) => { try { localStorage.setItem(draftKey(), JSON.stringify({ ...x, creation: loadDraft()?.creation })); } catch { /* storage unavailable */ } };
+const clearDraft = () => { try { if (!loadDraft()?.creation) localStorage.removeItem(draftKey()); } catch { /* storage unavailable */ } };
+const storeCreation = (attempt: CreationAttempt) => {
+  const draft = loadDraft();
+  if (!draft) throw new Error('Save the design before submitting creation.');
+  if (draft.creation && !sameCreation(draft.creation, attempt)) throw new Error('Another creation still needs confirmation.');
+  // Persistence must succeed before asking the wallet to submit.
+  localStorage.setItem(draftKey(), JSON.stringify({ ...draft, creation: attempt }));
+};
+const forgetCreation = (attempt: CreationAttempt) => {
+  const draft = loadDraft();
+  if (!sameCreation(draft?.creation, attempt)) return false;
+  localStorage.setItem(draftKey(), JSON.stringify({ ...draft, creation: undefined }));
+  return true;
+};
 const INTENT_KEY = 'connect-from-preview';
 const markConnectIntent = () => { try { sessionStorage.setItem(INTENT_KEY, '1'); } catch { /* storage unavailable */ } };
 const takeConnectIntent = () => { try { const v = sessionStorage.getItem(INTENT_KEY); sessionStorage.removeItem(INTENT_KEY); return !!v; } catch { return false; } };
@@ -556,6 +605,45 @@ type Prereq = { creation: boolean; impl: boolean };
 function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onCreated: Create['onCreated'] }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
+  const { chainId: walletChainId } = useAccount();
+  const [attempt, setAttempt] = useState<CreationAttempt | undefined>(() => loadDraft()?.creation);
+  const [outcome, setOutcome] = useState<CreationOutcome>('unknown');
+  const [checking, setChecking] = useState(false);
+  const [recheck, setRecheck] = useState(0);
+  const created = useRef(onCreated);
+  created.current = onCreated;
+  const recoveryContext = useRef({ chainId: walletChainId, creator: me, factory: FACTORY, pub });
+  recoveryContext.current = { chainId: walletChainId, creator: me, factory: FACTORY, pub };
+  const trackCreation = (next: CreationAttempt) => { storeCreation(next); setAttempt(next); };
+  const rejectCreation = (rejected: CreationAttempt) => { if (forgetCreation(rejected)) setAttempt(undefined); };
+  useEffect(() => {
+    if (!pub || !attempt || tx.busy) return;
+    let current = true;
+    let inFlight = false;
+    const check = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      setChecking(true);
+      try {
+        const next = await recoverCreation(pub, attempt, { chainId: walletChainId, creator: me, factory: FACTORY });
+        if (!current || recoveryContext.current.pub !== pub) return;
+        if (!creationContextMatches(attempt, recoveryContext.current)) { setOutcome('context'); return; }
+        setOutcome(next);
+        if (next === 'confirmed' && forgetCreation(attempt)) {
+          clearDraft();
+          created.current(attempt.predicted);
+        }
+      } catch {
+        if (current) setOutcome('unknown');
+      } finally {
+        inFlight = false;
+        if (current) setChecking(false);
+      }
+    };
+    void check();
+    const timer = setInterval(() => void check(), 5_000);
+    return () => { current = false; clearInterval(timer); };
+  }, [pub, attempt, walletChainId, me, recheck, tx.busy]);
   const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint }>();
   const [loadError, setLoadError] = useState<string>();
   const [wallet, setWallet] = useState<bigint>();
@@ -573,10 +661,23 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     })().catch((e) => setLoadError(explain(e)));
   }, [pub]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
+  if (attempt) return <main className="page narrow-page">
+    <h1 className="title t2">Pool creation</h1>
+    <p className="lead">{outcome === 'context' ? 'Reconnect the creating account and network to verify this pool.'
+      : outcome === 'reverted' ? 'Creation reverted. Your saved design can be retried.'
+        : outcome === 'mismatch' ? 'The pool does not match the submitted design. Check it before continuing.'
+          : outcome === 'pending' ? 'Creation is pending.' : 'Creation confirmation is unavailable. Check the existing submission before trying again.'}</p>
+    <p className="note">Account {attempt.creator} · Chain {attempt.chainId}</p>
+    <p className="note">Predicted pool {attempt.predicted}</p>
+    {attempt.hash && <p className="note mono">Transaction {attempt.hash}</p>}
+    <button className="btn" disabled={checking} onClick={() => setRecheck((n) => n + 1)}>{checking ? 'Checking…' : 'Check creation'}</button>
+    {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY }) && <button className="btn sec" onClick={() => rejectCreation(attempt)}>Return to saved design</button>}
+    {(tx.busy || tx.msg) && <p className="txline">{tx.busy ? `${tx.busy}…` : tx.msg?.text}</p>}
+  </main>;
   if (!live) return <main className="page"><p className="lead">{loadError ?? 'Loading current fees…'}</p></main>;
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: live.mintFee, ...live } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated }} />;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -636,7 +737,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void };
 
 /**
  * One Design page for every stage: a preview before connecting (no NFTs until a wallet is connected), a pool about to be created
@@ -668,7 +769,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
-  const [revenueRate, setRevenueRate] = useState<number | undefined>(has ? d.creatorRevenueBps : draft?.creatorRevenueBps);
+  const [revenueRate, setRevenueRate] = useState<number | undefined>(draft?.creatorRevenueBps);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
   // The number of 0.01 ETH Shapes; a style scales its other Shapes with it. At least one, so a style never collapses
@@ -682,7 +783,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  const salt = useMemo(() => `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as `0x${string}`, []);
+  const salt = useMemo(() => draft?.salt ?? `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as Hash, []);
+  const creationStarting = useRef(false);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
   const markupBps = Math.round(markup * 100);
   // Actual FWA prices of the Shape prizes listed now, by size: the current (saved) board is priced on these, a
@@ -722,11 +824,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // design prices the new Shapes at the current markup instead.
   const inputs: DesignInputs = has && !edited ? { ...base, shapePrices: livePrices } : base;
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
-  const reviewedRate = revenueRate ?? suggestedRate;
+  const reviewedRate = effectiveRevenueBps(fresh ? undefined : d.creatorRevenueBps, revenueRate, suggestedRate);
   const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
   const change = <T,>(set: (v: T) => void) => (v: T) => { setEdited(true); set(v); };
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
-  const current = (): Draft => ({ creatorRevenueBps: revenueRate, markup, small, style: style ?? null, bonus: custom, nfts });
+  const current = (): Draft => ({ salt, creatorRevenueBps: revenueRate, markup, small, style: style ?? null, bonus: custom, nfts });
   useEffect(() => {
     if (fresh) saveDraft(current());
   }, [has, markup, small, style, custom, nfts, revenueRate]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -897,31 +999,47 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // On a configured pool: the saved design next to the one being edited.
   // The "Now" column is the board as listed: the saved markup and each Shape's actual FWA price.
   const run = async () => {
-    if (!pub || !me) return;
-    if (blocked) return;
-    if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
-    const balancer = mode === 'new'
-      ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
-      : d.balancer;
-    const refused = await refusedApprovals(pub, me, balancer, toList);
-    setRefused(refused.length ? `This pool cannot list ${refused.join(', ')}: the collection does not let this pool take the NFT. Choose another NFT.` : undefined);
-    if (refused.length) return;
-    const B = { address: balancer, abi: poolBalancerAbi } as const;
-    const steps: Step[] = [];
-    steps.push(...approveSteps(pub, tx, me, balancer, toList));
+    if (!pub || !me || blocked) return;
     if (mode === 'new') {
-      steps.push(['Create and stock pool', () => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
-        args: [salt, { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee }, toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }))], value: deposit })]);
-    } else {
-      if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
-      steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
-      if (shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 6)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
-      if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
-      steps.push(upkeepStep(pub, tx, me, balancer));
+      const saved = loadDraft()?.creation;
+      if (saved) { create?.resumeCreation(saved); return; }
+      if (creationStarting.current) return;
+      creationStarting.current = true;
     }
-    const ok = await tx.send(mode === 'new' ? 'Create pool' : 'Save', steps);
-    if (ok) { clearDraft(); setNfts([]); }
-    if (mode === 'new' && ok) create?.onCreated(balancer);
+    try {
+      if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
+      const balancer = mode === 'new'
+        ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
+        : d.balancer;
+      const refused = await refusedApprovals(pub, me, balancer, toList);
+      setRefused(refused.length ? `This pool cannot list ${refused.join(', ')}: the collection does not let this pool take the NFT. Choose another NFT.` : undefined);
+      if (refused.length) return;
+      const B = { address: balancer, abi: poolBalancerAbi } as const;
+      const steps: Step[] = [];
+      steps.push(...approveSteps(pub, tx, me, balancer, toList));
+      if (mode === 'new') {
+        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee };
+        const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
+        const attempt: CreationAttempt = { chainId: chain.id, factory: FACTORY, creator: me, salt, predicted: balancer,
+          config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
+          curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
+        saveDraft(current());
+        steps.push(['Create and stock pool', () => submitCreation(attempt,
+          (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
+            args: [salt, config, curated], value: deposit }, beforeWallet),
+          { existing: () => loadDraft()?.creation, store: create!.trackCreation, reject: create!.rejectCreation })]);
+      } else {
+        if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
+        steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
+        if (shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 6)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
+        if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
+        steps.push(upkeepStep(pub, tx, me, balancer));
+      }
+      const ok = await tx.send(mode === 'new' ? 'Create pool' : 'Save', steps, mode === 'new' ? 15_000 : undefined);
+      if (mode !== 'new' && ok) { clearDraft(); setNfts([]); }
+    } finally {
+      creationStarting.current = false;
+    }
   };
 
   const save = mode === 'preview' ? (
