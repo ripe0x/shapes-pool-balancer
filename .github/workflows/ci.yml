@@ -1,30 +1,65 @@
 name: ci
-on:
-  pull_request:
-    paths-ignore:
-      - '**.md'
-  push:
-    paths-ignore:
-      - '**.md'
+on: [pull_request, push]
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Decide whether full checks are needed
+        id: changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let files;
+            let limit;
+            if (context.eventName === 'pull_request') {
+              files = await github.paginate(github.rest.pulls.listFiles, {
+                owner, repo, pull_number: context.payload.pull_request.number, per_page: 100
+              });
+              limit = 3000;
+            } else {
+              const before = context.payload.before;
+              const base = !before || /^0+$/.test(before)
+                ? context.payload.repository.default_branch : before;
+              const { data } = await github.rest.repos.compareCommitsWithBasehead({
+                owner, repo, basehead: `${base}...${context.sha}`
+              });
+              files = data.files ?? [];
+              limit = 300;
+            }
+            // GitHub caps PR file lists at 3,000 and commit comparisons at 300.
+            const full = files.length === 0 || files.length >= limit ||
+              files.some(({ filename, previous_filename }) =>
+                !filename.endsWith('.md') ||
+                (previous_filename && !previous_filename.endsWith('.md')));
+            core.setOutput('full', String(full));
       - uses: actions/checkout@v4
+        if: steps.changes.outputs.full == 'true'
         with:
           submodules: recursive
       # Pinned: gas evidence (refunds kept per draw, O1) differs between Foundry versions.
       - uses: foundry-rs/foundry-toolchain@v1
+        if: steps.changes.outputs.full == 'true'
         with:
           version: v1.8.1
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.full == 'true'
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: forge build --sizes
-      - run: npm run typecheck
-      - run: npx vitest run
+      - if: steps.changes.outputs.full == 'true'
+        run: npm ci
+      - if: steps.changes.outputs.full == 'true'
+        run: forge build --sizes
+      - if: steps.changes.outputs.full == 'true'
+        run: npm run typecheck
+      - if: steps.changes.outputs.full == 'true'
+        run: npx vitest run
       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
-      - run: forge test --match-path test/Fork.t.sol
-      - run: forge test --match-path test/scenario/FlowBreakdown.t.sol --match-test test_evidence_recordsCuratedProofRefusalsAndPublicRecovery
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/Fork.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/scenario/FlowBreakdown.t.sol --match-test test_evidence_recordsCuratedProofRefusalsAndPublicRecovery
