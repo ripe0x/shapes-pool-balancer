@@ -27,3 +27,4 @@ jobs:
       - run: npx vitest run
       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
       - run: forge test --match-path test/Fork.t.sol
+      - run: forge test --match-path test/scenario/FlowBreakdown.t.sol --match-test test_evidence_recordsCuratedProofRefusalsAndPublicRecovery

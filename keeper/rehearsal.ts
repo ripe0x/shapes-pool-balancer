@@ -508,6 +508,54 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
             assert.ok(state === 3 || state === 4, 'only actual delivery, expiry or slippage refund is final');
         draw.outcome = state;
     } run.save(); }
+    async function recoverCuratedProof(x: any) {
+        assert.equal(x, run.journal.pools[p.scenario.curatedProofRecovery.pool]);
+        assert.equal(await poolRead<bigint>(x.pool, 'unsettledAcquisitionCount'), 0n);
+        assert.equal(await read<bigint>(x.balancer, 'reconciledSequence'), 0n, 'the two real Shape wins remain unreconciled');
+        assert.equal(await poolRead<bigint>(x.pool, 'lastIssuedSequence'), 2n);
+        const witnessEvent = parseAbiItem('event CuratedWitnessRefreshed(uint256 indexed listingId,uint256 slot)');
+        const witnesses = await run.pub.getLogs({ address: x.balancer, event: witnessEvent, fromBlock: BigInt(p.forkBlock), toBlock: 'latest' });
+        assert.equal(witnesses.length, 1, 'the original creation proof is still the only witness');
+        const curated = [];
+        for (const id of await read<bigint[]>(x.balancer, 'getActiveIds')) {
+            const item = await read<any[]>(x.balancer, 'items', [id]);
+            if (Number(item[0]) === 1)
+                curated.push({ id, base: item[3] as bigint, listing: await poolRead<any[]>(x.pool, 'listings', [id]) });
+        }
+        assert.equal(curated.length, 2);
+        const withdrawn = curated.find(c => c.id === witnesses[0].args.listingId)!;
+        assert.ok(withdrawn);
+        const survivor = curated.find(c => c.id !== withdrawn.id)!;
+        assert.ok(survivor.listing[6] > 0n && Number(survivor.listing[7]) === 1, 'the replacement proof is already active; FIFO activation is unnecessary');
+        await sent(x, 'withdrawCurated', [withdrawn.id, x.creator]);
+        eqPrepared(await run.read<Address>(withdrawn.listing[0], erc721Abi, 'ownerOf', [withdrawn.listing[3]]), x.creator);
+        const active = await poolRead<bigint>(x.pool, 'activeListingCount'), trackedShapes = await read<bigint>(x.balancer, 'listedShapePrizes');
+        assert.ok(active <= trackedShapes, 'unreconciled wins make the active-count shortcut inconclusive');
+        assert.equal(await read<number>(x.balancer, 'admissionStatus'), 7);
+        assert.equal(await read<boolean>(x.balancer, 'canPurchase', [r.buyer]), false);
+        note('curated-proof-required-pause', { balancer: x.balancer, status: 7, withdrawnWitness: withdrawn.id, activeCurated: survivor.id, activeListings: active, trackedShapes, unsettled: 0, reconciledSequence: 0 });
+        const protectedState = () => Promise.all([run.pub.getBalance({ address: x.balancer }), read<bigint>(x.balancer, 'creatorCredit'), read<Hex>(x.balancer, 'settingsHash'), read<bigint>(x.balancer, 'reconciledSequence'), run.pub.getBalance({ address: r.keeper })]);
+        const before = await protectedState(), caller = r[p.scenario.curatedProofRecovery.callerRole], callerCash = await run.pub.getBalance({ address: caller });
+        const refreshed = await run.send(caller, x.balancer, poolBalancerAbi, 'refreshCuratedWitness', [survivor.id], 0n, 'caller-paid-curated-proof');
+        const proofs = refreshed.logs.filter(log => log.address.toLowerCase() === x.balancer.toLowerCase() && log.topics[0] === keccak256(toHex('CuratedWitnessRefreshed(uint256,uint256)')))
+            .map(log => decodeEventLog({ abi: [witnessEvent], topics: log.topics, data: log.data }).args);
+        assert.equal(proofs.length, 1);
+        assert.equal(proofs[0].listingId, survivor.id);
+        assert.equal(proofs[0].slot, survivor.listing[6]);
+        assert.deepEqual(await protectedState(), before, 'proof refresh moves no pool funds, credit, keeper reward, settings or reconciliation');
+        const callerGas = refreshed.gasUsed * refreshed.effectiveGasPrice;
+        assert.equal(await run.pub.getBalance({ address: caller }), callerCash - callerGas, 'the independent caller pays its own proof gas');
+        assert.equal(await read<number>(x.balancer, 'admissionStatus'), 0);
+        assert.equal(await read<boolean>(x.balancer, 'canPurchase', [r.buyer]), true);
+        const resumed = await request(x, p.scenario.curatedProofRecovery.resumedDraws, 'after-curated-proof-refresh');
+        assert.equal(await poolRead<bigint>(x.pool, 'unsettledAcquisitionCount'), 1n, 'a real purchase resumes before any upkeep');
+        note('caller-paid-curated-proof-recovery', { balancer: x.balancer, caller, listingId: survivor.id, transaction: refreshed.transactionHash, gasWei: callerGas, status: 0, activationRequired: false, resumedRequest: resumed[0].id });
+        await deliver(x, resumed[0], 0, false);
+        // Restore the same NFT and price before ordinary rounds; no target, policy or funding changes.
+        await run.send(x.creator, withdrawn.listing[0], erc721Abi, 'approve', [x.balancer, withdrawn.listing[3]]);
+        await sent(x, 'listCuratedBatch', [[{ collection: withdrawn.listing[0], tokenId: withdrawn.listing[3], base: withdrawn.base }]]);
+        eqPrepared(await run.read<Address>(withdrawn.listing[0], erc721Abi, 'ownerOf', [withdrawn.listing[3]]), x.pool);
+    }
     // Fifty existing 1..5-draw rounds with controlled choices preserve the one-ETH prize for the explicit deficit case.
     for (let round = 0; round < Number(p.caps.rounds); round++) {
         const period = basefeeFor(round);
@@ -522,7 +570,9 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
         }
         const sentBefore = run.keeper.state.stats.sent;
         for (const draw of draws)
-            await deliver(x, draw, 0, period.period !== 'above');
+            await deliver(x, draw, 0, period.period !== 'above' && round !== p.scenario.curatedProofRecovery.round);
+        if (round === p.scenario.curatedProofRecovery.round)
+            await recoverCuratedProof(x);
         if (period.period === 'above') {
             await run.tick();
             assert.equal(run.keeper.state.stats.sent, sentBefore, 'real Keeper waits above selected-policy reimbursement');

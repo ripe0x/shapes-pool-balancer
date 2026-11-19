@@ -18,7 +18,7 @@ const ETH = 10n ** 18n;
 export const ROLES = Object.fromEntries(['deployer', 'packsAdmin', 'keeperAdmin', 'policyAdmin', 'creatorA', 'creatorB', 'keeper', 'buyer'].map((name, i) => [name, `0x${(0x1e001 + i).toString(16).padStart(40, '0')}`])) as Record<string, Address>;
 export const FUNDING = { deployer: ETH, packsAdmin: ETH / 100n, keeperAdmin: ETH / 100n, policyAdmin: ETH / 100n, creatorA: 17n * ETH / 10n, creatorB: 7n * ETH / 10n, keeper: ETH / 5n, buyer: 5n * ETH };
 export const CAPS = { deposits: 2n * ETH, gas: ETH, buyer: 5n * ETH, edge: ETH, vrf: ETH, draws: 160, rounds: 50, replacementCuratedNfts: 8 };
-export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', timeJumpSeconds: 172801, maximumTimeJumps: 1, maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
+export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', timeJumpSeconds: 172801, maximumTimeJumps: 1, maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), curatedProofRecovery: { round: 0, pool: 0, callerRole: 'buyer', maximumRefreshes: 1, resumedDraws: 1 }, creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
 const PREFIX = 'docs/receipts/current-rehearsal/';
 const INPUTS = ['src', 'script', 'keeper', 'shared', 'app', 'scripts', 'test', 'foundry.toml', 'package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.gitmodules', '.gitignore', 'asset-flow.json', 'OWNER-REQUIREMENTS.md', 'README.md', 'docs/SPEC.md', 'docs/OPERATIONS.md', 'docs/KEEPER-POLICIES.md', 'docs/RESERVES.md'];
 const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
@@ -310,6 +310,13 @@ export class CurrentRehearsal {
                 eq(actor, ROLES.keeper);
             else if (fn === 'activateKeeperPolicy')
                 assert.ok(role === 'keeper' || actor.toLowerCase() === pool.creator.toLowerCase());
+            else if (fn === 'refreshCuratedWitness') {
+                eq(actor, ROLES[SCENARIO.curatedProofRecovery.callerRole]);
+                assert.equal(pool, this.journal.pools[SCENARIO.curatedProofRecovery.pool]);
+                assert.equal(args.length, 1);
+                assert.ok(typeof args[0] === 'bigint' && args[0] > 0n, 'one positive listing ID');
+                assert.ok(this.journal.receipts.filter((r: any) => r.function === fn).length < SCENARIO.curatedProofRecovery.maximumRefreshes, 'one planned caller-paid proof refresh');
+            }
             else {
                 eq(actor, pool.creator);
                 assert.ok(['collectProceeds', 'configure', 'listCuratedBatch', 'updateCuratedPrice', 'open', 'close', 'retire', 'withdrawCurated', 'unlistShapes', 'claimSurplus', 'proposeKeeperPolicy', 'cancelKeeperPolicy', 'setPaidUpkeepEnabled', 'setCreatorRevenueBps', 'performUpkeepUnpaid'].includes(fn));

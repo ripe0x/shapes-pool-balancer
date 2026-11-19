@@ -14,7 +14,8 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         validateCurrentBounds(p);
         validateCurrentForgeArguments(p, p.forgeArguments);
         // These are local plan-input values, not fabricated successful RPC answers or a deployment claim.
-        assert.ok(p.caps.draws >= 150 + 7);
+        assert.ok(p.caps.draws >= 150 + 7 + p.scenario.curatedProofRecovery.resumedDraws);
+        assert.equal(p.scenario.curatedProofRecovery.maximumRefreshes, 1);
         assert.equal(p.scenario.creationReceiptProbe.expectedReceipt, 'reverted');
         assert.equal(p.scenario.initialDeposits.map(BigInt).reduce((a, b) => a + b, 0n), BigInt(p.caps.deposits));
     });
@@ -25,6 +26,8 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         ['higher spending', (p: any) => p.caps = { ...p.caps, gas: '2000000000000000000' }],
         ['second time jump', (p: any) => p.scenario = { ...p.scenario, maximumTimeJumps: 2 }],
         ['different negative action', (p: any) => p.scenario = { ...p.scenario, creationReceiptProbe: { ...p.scenario.creationReceiptProbe, valueWei: '1' } }],
+        ['repeated proof recovery', (p: any) => p.scenario = { ...p.scenario, curatedProofRecovery: { ...p.scenario.curatedProofRecovery, maximumRefreshes: 2 } }],
+        ['keeper-paid proof recovery', (p: any) => p.scenario = { ...p.scenario, curatedProofRecovery: { ...p.scenario.curatedProofRecovery, callerRole: 'keeper' } }],
         ['different action count', (p: any) => p.deployment = p.deployment.slice(1)],
         ['parent-path evidence', (p: any) => p.evidenceDirectory = join(ROOT, 'docs/receipts/current-rehearsal/../old')],
     ])('rejects %s independent of a plan hash', (_name, edit) => {
@@ -42,6 +45,25 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         assert.throws(() => validate.call(state,1n,20_000_000_001n), /per-transaction fee ceiling/);
         assert.throws(() => validate.call({...state,gas:()=>850_000_000_000_000_000n},5_000_000n,20_000_000_000n), /retained closeout reserve/);
         assert.doesNotThrow(() => validate.call({...state,closing:true,gas:()=>900_000_000_000_000_000n},5_000_000n,20_000_000_000n));
+    });
+    it('limits proof recovery to one buyer-paid, zero-value refresh of the planned pool', () => {
+        // Exercise the pre-submission permission boundary directly, without a node or fabricated RPC result.
+        const permit = Reflect.get(CurrentRehearsal.prototype, 'permitted') as (...args: unknown[]) => void;
+        const first = { creator: ROLES.creatorA, balancer: '0x000000000000000000000000000000000000a001', pool: '0x000000000000000000000000000000000000a002' };
+        const second = { creator: ROLES.creatorB, balancer: '0x000000000000000000000000000000000000b001', pool: '0x000000000000000000000000000000000000b002' };
+        const state = { journal: { pools: [first, second], receipts: [] as { function: string }[] } };
+        const refresh = (actor = ROLES.buyer, to = first.balancer, args: unknown[] = [2n], value = 0n) => permit.call(state, actor, to, 'refreshCuratedWitness', args, value);
+        assert.doesNotThrow(() => refresh());
+        for (const actor of [ROLES.creatorA, ROLES.keeper, ROLES.creatorB])
+            assert.throws(() => refresh(actor));
+        assert.throws(() => refresh(ROLES.buyer, second.balancer));
+        for (const args of [[], [2n, 3n], ['2'], [2], [0n], [-1n]])
+            assert.throws(() => refresh(ROLES.buyer, first.balancer, args));
+        assert.throws(() => refresh(ROLES.buyer, first.balancer, [2n], 1n));
+        assert.throws(() => permit.call(state, ROLES.buyer, first.balancer, 'listCuratedBatch', [[]], 0n));
+        assert.throws(() => permit.call(state, ROLES.buyer, first.pool, 'activateListings', [1n], 0n));
+        state.journal.receipts.push({ function: 'refreshCuratedWitness' });
+        assert.throws(() => refresh(), /one planned caller-paid proof refresh/);
     });
     it('rejects stale approval before touching a node or preparation file', () => {
         const p: any = { ...bounds(), forgeArguments: [] };
