@@ -1,0 +1,75 @@
+{
+ "source": "forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 (existing anvil fork, chain 31337, fork of mainnet block 26418101) --sender 0x...1D001, no --broadcast",
+ "placeholder_admins": {
+  "PACKS_ADMIN": "0x000000000000000000000000000000000001d002",
+  "KEEPER_ADMIN": "0x000000000000000000000000000000000001d003",
+  "POLICY_ADMIN": "0x000000000000000000000000000000000001D004"
+ },
+ "transactions": [
+  {
+   "type": "CREATE2",
+   "contract": "KeeperPolicyCalls",
+   "address": "0x1601a841c2c86f6ac574279b87f1168ff284b8fb",
+   "senderNonceOffset": 0,
+   "gasLimit": 1608471,
+   "initcodeSha256": "69a77332afb8ad0b1ea193853af058355295da8552e236e95c8b551cec71b06d"
+  },
+  {
+   "type": "CREATE2",
+   "contract": "PoolPage",
+   "address": "0x67c828ad820490c02cdcbbccc3a303c64207fbcf",
+   "senderNonceOffset": 1,
+   "gasLimit": 431388,
+   "initcodeSha256": "090ef15530016e2ca6526c5664a6d24fe7d669b700c39fda63052d932aafa09c"
+  },
+  {
+   "type": "CREATE2",
+   "contract": "PoolInventory",
+   "address": "0x9154504fb111544725bbb593b813fa106fdcff9e",
+   "senderNonceOffset": 2,
+   "gasLimit": 3536364,
+   "initcodeSha256": "8f23ff9918d9f26b2035a5b0ce597db10394faa4e98f7a13c6315443e561b693"
+  },
+  {
+   "type": "CREATE",
+   "contract": "ShapePackRenderer",
+   "address": "0x201cf7b8c610ad5603bd7a8c543429bfce02d9f0",
+   "senderNonceOffset": 3,
+   "gasLimit": 2703828,
+   "initcodeSha256": "456fc9de4cef9262ad8e97e50db70d9755fdd077309cd87fe049a0a0f32d8f1d"
+  },
+  {
+   "type": "CREATE",
+   "contract": "ShapePacks",
+   "address": "0x9ad841a3d1d58ab3d3fdf343dc8d75a87cc1efac",
+   "senderNonceOffset": 4,
+   "gasLimit": 5562551,
+   "initcodeSha256": "ad5a884d7efc2ede1ebd382d1d59a9949075c66a3172c9f7347bbe58990f915e"
+  },
+  {
+   "type": "CREATE",
+   "contract": "PoolBalancer",
+   "address": "0x1e3d34deda8b5017033552541f8ba90771201dc8",
+   "senderNonceOffset": 5,
+   "gasLimit": 5912115,
+   "initcodeSha256": "a149206555cf2bfdfe948cd30ee8696bbad4709d6322f1831c88d7a08f346d86"
+  },
+  {
+   "type": "CREATE",
+   "contract": "KeeperPolicyV1",
+   "address": "0x058b476b600e8f3d66c84ce874eb131eeacddbdf",
+   "senderNonceOffset": 6,
+   "gasLimit": 301901,
+   "initcodeSha256": "56c65c8c7fcd718f7feca4001d106cff9143da496c97e51b22e13d56dc73eead"
+  },
+  {
+   "type": "CREATE",
+   "contract": "BalancerFactory",
+   "address": "0xb69fc6ce7e4960df41ccae80838feeafb6f37a43",
+   "senderNonceOffset": 7,
+   "gasLimit": 1167028,
+   "initcodeSha256": "a56d776d5ce05c22d0cd8bed1c1325e4d9bdbca6d42eda07f83a2397f0b1441f"
+  }
+ ],
+ "gasLimitTotal": 21223646
+}

@@ -1,0 +1,36 @@
+No files changed, compilation skipped
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/shapes-mainnet-deployment-e60239/foundry-pp/DeployHelper46.sol
+ - /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/shapes-mainnet-deployment-e60239/foundry-pp/DeployHelper48.sol
+Script ran successfully.
+
+== Return ==
+factory: contract BalancerFactory 0xb69Fc6ce7E4960df41CCAe80838FeeafB6F37A43
+impl: contract PoolBalancer 0x1e3D34DEda8B5017033552541f8ba90771201Dc8
+packs: address 0x9AD841a3D1D58AB3D3FDf343Dc8d75a87cc1EFaC
+
+== Logs ==
+  PoolBalancer implementation 0x1e3D34DEda8B5017033552541f8ba90771201Dc8
+  BalancerFactory 0xb69Fc6ce7E4960df41CCAe80838FeeafB6F37A43
+  Packs 0x9AD841a3D1D58AB3D3FDf343Dc8d75a87cc1EFaC
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 1 gwei
+
+Estimated total gas used for script: 21223646
+
+Estimated amount required: 0.021223646 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/shapes-mainnet-deployment-e60239/broadcast/Deploy.s.sol/31337/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/shapes-mainnet-deployment-e60239/cache/Deploy.s.sol/31337/dry-run/run-latest.json
+
