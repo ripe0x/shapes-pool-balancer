@@ -61,3 +61,5 @@ jobs:
       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
       - if: steps.changes.outputs.full == 'true'
         run: forge test --match-path test/Fork.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/scenario/FlowBreakdown.t.sol --match-test test_evidence_recordsCuratedProofRefusalsAndPublicRecovery

@@ -121,7 +121,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal fulfilled;
     uint256 internal expired;
     uint256 internal refused;
-    uint256[7] internal refusedBy;
+    uint256[8] internal refusedBy;
     uint256 internal buyReverts;
     uint256 internal firstBuyRevert;
     uint256 internal maxUnsettled;
@@ -796,6 +796,61 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _done("restock_in_flight", a, x);
     }
 
+    /// @dev Reach a real proof pause through FWA expiry and staging, then exercise the scenario recorder and the
+    ///      caller-paid recovery path. Ordinary economic regimes do not perform this recovery automatically.
+    function test_evidence_recordsCuratedProofRefusalsAndPublicRecovery() public {
+        vm.fee(BASEFEE);
+        vm.txGasPrice(BASEFEE + TIP);
+        createBalancer(2 ether);
+        configure(plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        uint256 originalCurated = listCurated(1, NFT_VALUE);
+        vm.prank(creator);
+        balancer.open();
+        fillUp();
+        buy(buyer, 1);
+
+        configure(plan([uint256(32), 0, 0, 0, 0, 0, 0, 0, 0]));
+        upkeep(); upkeep(); upkeep();
+        uint256 stagedCurated = listCurated(2, NFT_VALUE);
+        vm.roll(block.number + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
+        upkeep();
+        vm.prank(creator);
+        balancer.withdrawCurated(originalCurated, creator);
+        assertEq(pool.unsettledAcquisitionCount(), 0);
+        assertEq(pool.activeListingCount(), 20);
+        assertEq(balancer.listedShapePrizes(), 32);
+        (,,,,,, uint256 slot, uint8 status) = pool.listings(stagedCurated);
+        assertEq(slot, 0);
+        assertEq(status, 5, "sole curated NFT is staged behind twelve Shapes");
+        assertEq(balancer.admissionStatus(), 7);
+        assertFalse(balancer.canPurchase(buyer));
+        _refused(1);
+        _refused(5);
+        assertEq(refused, 6);
+        assertEq(refusedBy[7], 6, "single and batch refusals retain the proof-required reason");
+        assertEq(refusedBy[6], 0);
+        assertEq(phaseRefused[0], 6);
+        vm.prank(stranger);
+        vm.expectRevert(PoolInventory.InvalidItem.selector);
+        balancer.refreshCuratedWitness(stagedCurated);
+
+        uint256 fund = address(balancer).balance;
+        uint256 credit = balancer.creatorCredit();
+        uint256 allowance = balancer.keeperAllowance();
+        uint256 keeperCash = keeper.balance;
+        vm.prank(stranger);
+        pool.activateListings(13);
+        vm.prank(stranger);
+        assertTrue(balancer.refreshCuratedWitness(stagedCurated));
+        assertEq(address(balancer).balance, fund, "proof recovery needs no new pool capital");
+        assertEq(balancer.creatorCredit(), credit);
+        assertEq(balancer.keeperAllowance(), allowance);
+        assertEq(keeper.balance, keeperCash, "proof recovery creates no keeper compensation");
+        assertEq(balancer.admissionStatus(), 0);
+        buy(buyer, 1);
+        assertEq(pool.unsettledAcquisitionCount(), 1, "the buyer resumes after public proof recovery");
+    }
+
     function test_evidence_selectedListingFeeIsNotRealizedIncome() public {
         baseFeeRegime = CAP_FEE;
         uint256[16] memory c;
@@ -884,9 +939,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         // absolute amounts, computed here rather than read back from the Balancer
         assertEq(mintFees, unitsListed * 0.001 ether, "Shapes mint fee: 0.001 ETH per Shape minted");
         assertEq(backingMinted, backingRedeemed + backingWon + _backingListed(), "every minted wei of backing is listed, won or redeemed");
-        uint256 n = 66;
+        uint256 n = 67;
         Fact[] memory f = new Fact[](n + extra.length);
         f[65] = Fact("creator_credit_error_wei", creditOver + creditUnder);
+        f[66] = Fact("refused_curated_proof_required", refusedBy[7]);
         f[0] = Fact("draws_requested", requested);
         f[1] = Fact("draws_fulfilled", fulfilled);
         f[2] = Fact("draws_expired", expired);

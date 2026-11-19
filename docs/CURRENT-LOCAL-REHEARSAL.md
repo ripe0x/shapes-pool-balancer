@@ -33,7 +33,7 @@ The execution controller supplies the same packet/hash to the explicit canonical
 | Buyer edge and VRF sublimits | 1 ETH each, within buyer payments |
 | Fee cap | 20 gwei maximum; 0.05 gwei priority |
 | Per transaction gas | 16,777,216 |
-| Draws | 160 maximum; 157 planned |
+| Draws | 160 maximum; 158 planned |
 | Main exercise | 50 rounds, 150 draws, plus declared lifecycle probes |
 | Time changes | One 172,801-second policy-delay jump; at most 1,000 mined timing blocks |
 | Negative creation | One value-zero transaction, 5,000,000 gas maximum, rate 10,001 bps |
@@ -43,6 +43,8 @@ Only external synthetic actors are funded. The real integrated FWA, Shapes, rand
 ## Acceptance and limits
 
 The fresh driver covers approvals and atomic creation with no minting, bounded paid fill, separate concurrent purchases, replenishment while another draw remains pending, actual draw delivery, explicit collection under the stored rate, credit claims while the one-ETH prize remains unfunded, creator-selected replacement policy without `settings()`, activation with an inventory deficit, and unpaid protection at zero operating cash. It also exercises a real pending and then reverted factory transaction through the production creation-recovery helper before the normal valid atomic creation. Rate 10,001 encodes as `uint16` but is rejected by the real initializer; the failed transaction must move no NFT and leave no registered clone.
+
+The first round leaves two completed shape draws unreconciled and withdraws the original curated witness, reaching admission status 7 while another curated nft remains active. The buyer pays for one proof refresh, then completes a real resumed purchase before upkeep. The driver verifies that the refresh changes no pool funds, creator credit, keeper balance, settings or reconciliation, and restores the withdrawn nft at its original price. The Solidity scenario separately covers public activation when the replacement curated nft is still staged.
 
 Closeout includes a real draw fulfilled after closing, a separate real selection timeout and purchaser refund withdrawal, queue settlement, unsold curated NFT return, Shape/Pack backing redemption, final creator claims and retirement. Actual FWA cash must equal its owner proceeds, purchaser escrows/refunds and protocol-fee obligations. Each Balancer's full cash cycle and collection-based credit are replayed from actual events and close exactly to the wei. Keeper rewards and all keeper gas reconcile with the real account balance.
 
