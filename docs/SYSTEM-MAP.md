@@ -8,6 +8,7 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Actor | Brings | Takes |
 | --- | --- | --- |
 | Creator | ETH deposits, curated NFTs | claims (`claimSurplus`), NFTs back, everything at closeout |
+| Other ETH contributor | ETH by `depositETH()` or plain transfer; a predicted-address pre-fund enters the pool only if the clone deploys there | no protocol refund, recovery or withdrawal claim; recorded address is attribution only |
 | Players | draw price + FWA randomness fee, paid to the FWA pool | a prize or the applicable timeout, slippage or failed-delivery refund entitlement |
 | Keepers (anyone, or the factory's approved list) | gas for `performUpkeep` | a bounded reward per call |
 | Keeper admin | nothing | nothing (controls the keeper list only) |
@@ -35,7 +36,7 @@ Keeper pay has no custodial bucket of its own: it spends the creator operating f
 
 | # | Flow | Trigger | Reverses? |
 | --- | --- | --- | --- |
-| 1 | Creator -> Balancer: deposit | creator (`createBalancer`, `depositETH`, plain send) | yes, by `claimSurplus` down to the reserve while open; fully after `close` |
+| 1 | Any sender -> Balancer: capital contribution | creator (`createBalancer`) or anyone (`depositETH`, plain send, including to a predicted address if the clone later deploys there) | no sender claim after funding enters the pool; the current creator may claim available surplus under the reserve, immediately if available |
 | 2 | Player -> FWA pool: draw price | player buys on FWA; the Balancer's gate must admit it | applicable expiry/slippage refund credit, or failed-delivery refund under FWA timing |
 | 3 | Player -> FWA randomness service: fee | same purchase | no, including refunded acquisitions |
 | 4 | FWA escrow -> fixed request-board owner base and protocol edge | successful actual prize delivery | no; surcharge is a component of that owner base, not the selected prize fee |

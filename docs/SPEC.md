@@ -42,8 +42,12 @@ for its Shapes and Draw Packs. Nothing can ever change the operator, enable toke
 | FWA pool | calls `canPurchase` (view) |
 
 The keeper's only payout is a bounded reward to `msg.sender` of `performUpkeep`. Curated and untracked NFTs go only to a
-creator-chosen address; prizes go only to the FWA pool or are redeemed into the Balancer. ETH deposited or sent to the
-Balancer by anyone, and NFTs sent to it directly, belong to the creator; there is no contributor refund.
+creator-chosen address; prizes go only to the FWA pool or are redeemed into the Balancer. ETH sent to a deployed
+Balancer through `depositETH()` or a plain transfer by anyone is irrevocable pool capital. A predeployment transfer
+to its predicted address becomes pool capital if the clone is later deployed there; until then it is not spendable by
+the pool, and deployment is not guaranteed. The sender receives no refund, recovery or withdrawal claim, contributor
+share or creator revenue credit. The current creator may claim available surplus under the existing reserve rules,
+immediately if available. NFTs sent directly to the Balancer belong to the creator.
 
 ## Atomic creation
 
@@ -136,6 +140,9 @@ withdrawableSurplus = C + max(O - requiredReserve, 0)
 The stored rate is 0 to 10,000 bps, inclusive. Rounding residue stays operating cash; there is no fractional carry.
 At 100%, collections add no new operating revenue. Deposits, direct sends, unsold Shape/Pack redemptions, recovered
 backing, expected fees, uncollected proceeds and purchaser escrow/refunds create no credit, whether open or closed.
+Contributor addresses in deposit events and the dashboard are attribution only. Contributions remain capital transfers
+outside the pool-lifetime operating result and create no holding period before surplus becomes claimable by the current
+creator. The creator may voluntarily return available funds to a sender; the protocol gives the sender no return claim.
 Both paid and unpaid inventory work and keeper payments spend only operating cash. Credit is never clipped to cover
 spending. Collection remains a separate permissionless transaction, independent of maintenance affordability.
 

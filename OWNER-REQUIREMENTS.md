@@ -266,3 +266,17 @@ historical. This implementation authority does not sign new release outcomes or 
 
 - R71. "Implement E1, S2 and the dashboard fix in a new PR. Use pool-lifetime operating results, preserve donor and policy rights, and verify admission safety, liveness and gas limits. Don't merge or deploy." E1 and S2 refer to the staged-curated admission and generic wallet-confirmation findings in the supplied independent audit of `cc35dce026d42e5263997f54531015367e98d866`. This is focused implementation authority, not a new release outcome signature or permission for a deployment.
 - R72. The owner explicitly selected "Approve bounded proof refresh" after review of the admission tradeoff: retain the **100,000-gas** FWA hook, uncapped curated inventory, direct FWA purchases and concurrent draws. Losing the cached curated witness may pause purchases until any caller proves another active curated listing in **one nonpayable transaction**. Staged-only curated inventory first needs public FWA activation. The caller bears gas; pool funds, keeper rewards, donor rights and policy rights do not change. This narrowly supersedes earlier no-synchronization language for ambiguous curated-presence proof. It does not serialize batches or require keeper maintenance after each batch.
+
+## ETH contributions (owner, 2026-11-19)
+
+- R73. ETH sent to a deployed Balancer through `depositETH()` or a plain transfer, including by a non-creator,
+  is an **irrevocable contribution to pool capital**. ETH sent to its predicted address before deployment becomes
+  pool capital under the same rule **if the clone is later deployed there**; until then no Balancer holds it, and
+  deployment is not guaranteed. The sender receives no creator revenue credit, contributor share, refund entitlement,
+  protocol withdrawal or recovery claim, or withdrawal authority. The pool may use the funds under its existing rules.
+  The current creator may claim available surplus under the protected-credit and reserve rules, immediately if surplus
+  exists; there is no promised holding period. A contributor address in an event or dashboard is attribution only.
+  Contributions are capital transfers excluded from the dashboard's operating result. The creator may voluntarily
+  return available funds, but the sender cannot require it through the protocol. This clarifies and supersedes any
+  suggestion in R71 or R72 that “preserve donor rights” grants a donor refund or withdrawal right; it leaves purchaser
+  refunds, creator credit and keeper/policy rights unchanged. No new numerical outcome is approved.
