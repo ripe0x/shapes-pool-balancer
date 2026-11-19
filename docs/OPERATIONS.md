@@ -32,7 +32,7 @@ If no curated item is active, let pending requests become ready or expire and pr
 
 ## Dashboard results and transaction confirmation
 
-**Pool lifetime operating ETH result** is owner proceeds less Shape/Pack backing won, Shapes mint fees and keeper pay. It includes previous creators' activity and excludes capital transfers, wallet gas and curated NFT valuations. Deposits and withdrawal recipients are listed by address. Holdings and unattributed reconciliation are separate; an eventless ETH transfer is not inferred to be personal profit or a refundable donor balance. Asset rights are unchanged.
+**Pool lifetime operating ETH result** is owner proceeds less Shape/Pack backing won, Shapes mint fees and keeper pay. It includes previous creators' activity and excludes capital transfers, wallet gas and curated NFT valuations. Deposits and withdrawal recipients are listed by address for attribution only. All `depositETH()` and plain ETH contributions are irrevocable pool capital: the sender gets no protocol recovery or withdrawal claim, and the current creator may withdraw available surplus under the reserve rules without a holding period. Holdings and unattributed reconciliation are separate; an eventless ETH transfer is not inferred to be personal profit or a refundable donor balance.
 
 Generic wallet actions confirm only when the included successful transaction matches the reviewed chain, sender, destination, calldata and value. Fee-only repricing is accepted. Cancellation, changed intent, revert and unavailable confirmation stop dependent steps. A failed lookup is unverified, not a successful action. Atomic creation retains its separate persisted, factory-and-pool-verified recovery path.
 
