@@ -138,8 +138,9 @@ contract ReserveCapitalTest is ForkBase {
         vm.prank(creator); balancer.claimSurplus(free,creator);
         uint256[] memory first = buy(buyer,5);
         // Deliver non-head words first: the real service releases VRF coverage while FWA waits for its queue head.
-        for (uint256 i=1;i<5;++i) fulfill(first[i],0);
-        fulfill(first[0],0);
+        // Slot 2 is a Shape: word 0 would win the only curated NFT, and admission must then refuse (status 7).
+        for (uint256 i=1;i<5;++i) fulfill(first[i],wordForSlot(2));
+        fulfill(first[0],wordForSlot(2));
         assertEq(pool.unsettledAcquisitionCount(),4);
         uint256 price = pool.acquisitionFee();
         buy(buyer,5);
