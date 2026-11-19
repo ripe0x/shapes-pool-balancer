@@ -1,4 +1,4 @@
-import type { Address, PublicClient } from 'viem';
+import { encodeFunctionData, type Address, type Hash, type Hex, type PublicClient, type Transaction, type TransactionReceipt } from 'viem';
 
 type Client = Pick<PublicClient, 'simulateContract' | 'estimateContractGas' | 'estimateFeesPerGas' | 'chain'>;
 type Params = Record<string, unknown> & { gas?: bigint; maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint };
@@ -27,4 +27,54 @@ export async function prepareWrite<P extends Params>(
   await client.simulateContract(call);
   const gas = params.gas ?? ((await client.estimateContractGas(call)) * GAS_MARGIN_NUM) / GAS_MARGIN_DEN;
   return { ...priced, account, chainId: client.chain?.id, gas };
+}
+
+export interface TransactionIntent { chainId: number; from: Address; to: Address; input: Hex; value: bigint }
+
+/** Capture the simulated intent before the wallet can change its selected account or transaction fields. */
+export function reviewedIntent(prepared: Record<string, unknown>): TransactionIntent {
+  if (typeof prepared.account !== 'string' || typeof prepared.address !== 'string' || typeof prepared.chainId !== 'number') {
+    throw new Error('The reviewed account and network are unavailable.');
+  }
+  return { chainId: prepared.chainId, from: prepared.account as Address, to: prepared.address as Address,
+    input: encodeFunctionData(prepared as Parameters<typeof encodeFunctionData>[0]), value: (prepared.value as bigint | undefined) ?? 0n };
+}
+
+export function assertTransactionIntent(intent: TransactionIntent, transaction: Pick<Transaction, 'from' | 'to' | 'input' | 'value'>) {
+  if (transaction.from.toLowerCase() !== intent.from.toLowerCase() || transaction.to?.toLowerCase() !== intent.to.toLowerCase()
+    || transaction.input !== intent.input || transaction.value !== intent.value) {
+    throw new Error('The action was cancelled or replaced by a different transaction.');
+  }
+}
+
+type ConfirmationClient = Pick<PublicClient, 'getChainId' | 'getTransaction' | 'waitForTransactionReceipt'>;
+
+export async function verifyActionReceipt(pub: Pick<ConfirmationClient, 'getChainId' | 'getTransaction'>,
+  receipt: TransactionReceipt, intent: TransactionIntent) {
+  if (receipt.status !== 'success') throw new Error('Transaction reverted.');
+  if (await pub.getChainId() !== intent.chainId) throw new Error('Confirmation is unverified: the network does not match the reviewed action.');
+  const transaction = await pub.getTransaction({ hash: receipt.transactionHash }).catch(() => undefined);
+  if (!transaction || transaction.hash !== receipt.transactionHash || transaction.blockHash !== receipt.blockHash
+    || transaction.blockNumber !== receipt.blockNumber) {
+    throw new Error('Confirmation is unverified: the included transaction is unavailable.');
+  }
+  assertTransactionIntent(intent, transaction);
+}
+
+export async function confirmAction(pub: ConfirmationClient, hash: Hash, intent: TransactionIntent, timeout?: number) {
+  const receipt = await pub.waitForTransactionReceipt({ hash, ...(timeout === undefined ? {} : { timeout }) });
+  await verifyActionReceipt(pub, receipt, intent);
+}
+
+export type TransactionStep = (() => Promise<Hash | undefined>) | [string, () => Promise<Hash | undefined>];
+
+/** A confirmation failure stops dependent wallet actions and caller success effects. */
+export async function runTransactionSteps(label: string, steps: TransactionStep[],
+  onStep: (name: string, index: number) => void, confirm: (hash: Hash) => Promise<void>) {
+  for (const [index, step] of steps.entries()) {
+    const [name, run] = Array.isArray(step) ? step : [label, step];
+    onStep(name, index);
+    const hash = await run();
+    if (hash) await confirm(hash);
+  }
 }

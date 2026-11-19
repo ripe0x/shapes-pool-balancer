@@ -1,0 +1,103 @@
+{
+  "baseRevision": "cc35dce026d42e5263997f54531015367e98d866",
+  "branch": "codex/audit-admission-confirmations",
+  "sourceManifest": "manifest.json",
+  "toolchain": {
+    "node": "22.19.0",
+    "forge": "1.8.1",
+    "forgeCommit": "982849d3140c01fd3b72905759581a132df7aa98",
+    "solc": "0.8.28",
+    "vitest": "3.2.7"
+  },
+  "checks": [
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-path test/CuratedAdmission.t.sol --match-test test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase -vv",
+      "exit": 1,
+      "result": "Expected failing-before admission0!=3",
+      "log": "e1-before.log",
+      "testSource": "E1-before.sol",
+      "testSha256": "09547e1cce45f08271fca8553b968dd380227f12e9b36819c150f3160265a5e3"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-contract 'CuratedAdmissionTest|SelectableInventoryTest' -vv",
+      "exit": 1,
+      "result": "11 passed / 3 real VRF coverage reverts; existing SelectableInventory7 passed",
+      "log": "admission-focused-initial-failed.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-contract CuratedAdmissionTest --match-test test_fourOutstandingRequestsStillAdmitAnotherFiveRequestBatch -vvvv",
+      "exit": 1,
+      "result": "Traced service coverage shortage after successful hook; no broadcasts",
+      "log": "vrf-coverage-diagnostic.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-contract CuratedAdmissionTest -vv",
+      "exit": 0,
+      "result": "7 passed, real sponsor transfer and fully cold implementation accounts",
+      "log": "admission-corrected.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge test --match-contract '^(ForkScenarioTest|ConcurrentRecoveryTest|ProtectedRevenueAtomicTest|ProcessQueueTest|ParityFixture|GasBench)$' -vv",
+      "exit": 0,
+      "result": "53 passed across6 affected suites; legacy controlled-callback limitations retained",
+      "log": "contracts-affected.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 forge build --sizes",
+      "exit": 0,
+      "result": "Compiled56 files in217.81s; runtime sizes under EIP-170",
+      "log": "build-sizes.log"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit": 0,
+      "log": "typecheck.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 npm run build:app",
+      "exit": 0,
+      "result": "18.71s; existing warnings",
+      "log": "build-app.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 ACTION_CONFIRMATION_RPC=http://127.0.0.1:18795 npm run test:ts",
+      "exit": 1,
+      "result": "198passed /1timeout /6skipped while app/contract work ran concurrently",
+      "log": "test-ts-initial-timeout.log"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 ACTION_CONFIRMATION_RPC=http://127.0.0.1:18795 npm run test:ts -- --maxWorkers=2",
+      "exit": 0,
+      "result": "199passed /6opt-in skipped;4.65s, no timeout bound raised",
+      "log": "test-ts.log"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit": 2,
+      "result": "Raw captured browser/console text contains trailing spaces and blank EOF lines; preserved byte-for-byte as evidence, not a product/test failure."
+    },
+    {
+      "command": "git diff --cached --check -- . ':(exclude)docs/verification/audit-followup/*.log' ':(exclude)docs/verification/audit-followup/*.txt'",
+      "exit": 0,
+      "result": "Source, tests, documentation and structured evidence pass whitespace review."
+    }
+  ],
+  "browser": {
+    "preview": "http://127.0.0.1:5212",
+    "rpc": "http://127.0.0.1:18795",
+    "chainId": 31337,
+    "broadcasts": 0,
+    "results": "4 retrospective receipt cases passed; real lifetime dashboard rendered",
+    "limitations": "No wallet-extension Cancel-button flow; new proof refresh not broadcast or browser-tested against a fresh deployment"
+  },
+  "requirements": {
+    "uniqueDefinitions": 66,
+    "added": [
+      "R71",
+      "R72"
+    ],
+    "historicalDefinitionsUnchanged": true
+  },
+  "rights": "No donor, creator-credit, policy, keeper-eligibility, settlement or refund right changed",
+  "release": "No merge, deployment, real spending, production configuration change or production outcome approval; historical evidence retains original scope"
+}

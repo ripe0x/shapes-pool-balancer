@@ -1,0 +1,174 @@
+{
+  "productionSourceFingerprint": "f45cf780c6a9eeac2326a85df1c10391497eb9c9541f769b69f34f243d388acc",
+  "compilerProfile": "foundry.toml: default viaIR50/Cancun; Packs viaIR20",
+  "artifacts": {
+    "out/KeeperPolicyCalls.sol/KeeperPolicyCalls.json": {
+      "sha256": "a19b42ff34074013f7d7dffc2b07a893146f763a6973406c4f83b2bdc5412452",
+      "runtimeTemplateBytes": 4833,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 3,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/PoolPage.sol/PoolPage.json": {
+      "sha256": "cb7b80a6aceb7f839ed1b22ef0700de0747ee1e450298a84bddd11bb2185e580",
+      "runtimeTemplateBytes": 1194,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 4,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/PoolInventory.sol/PoolInventory.json": {
+      "sha256": "fe9329be96ee0d9c3c8ffbabf2fa1f53d2c00916046ba165e75b5b394f50fe6a",
+      "runtimeTemplateBytes": 11574,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 11,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/ShapePackRenderer.sol/ShapePackRenderer.json": {
+      "sha256": "b2bc785962aa79194c377c3bf6f46b3c805b5a5f3a712ac36a9fcf156e8a3a97",
+      "runtimeTemplateBytes": 9354,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 20
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 18,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/ShapePacks.sol/ShapePacks.json": {
+      "sha256": "454ec6e584de4d167e8bcb41f74736c15aece1e252cdc8f38e43d974f7eb7bbd",
+      "runtimeTemplateBytes": 17768,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 20
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 26,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/PoolBalancer.sol/PoolBalancer.json": {
+      "sha256": "a5bc5cdc28371a34522124179ff3fce4a887dbad5fe53734148ee51d12c03615",
+      "runtimeTemplateBytes": 20492,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 11,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/KeeperPolicyV1.sol/KeeperPolicyV1.json": {
+      "sha256": "f62fae9bd2a3c9f81891fd0ce6da057c76308de3acff35e3ac890c71f3f3bd30",
+      "runtimeTemplateBytes": 829,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 2,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/BalancerFactory.sol/BalancerFactory.json": {
+      "sha256": "f6697f378cfb6dfe05768ccf9a846fdb8542b1412bd327a8284b254568b45d59",
+      "runtimeTemplateBytes": 3501,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 13,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/DevSetup.s.sol/DemoNFT.json": {
+      "sha256": "04684cdf7d3fd120fa6e04cc2d165131e092796ae52d4f375d10efd1ed80b67e",
+      "runtimeTemplateBytes": 2096,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 30,
+      "transformedTestImports": [],
+      "virtualTestInputs": []
+    },
+    "out/Settings.t.sol/KeeperPolicyV2.json": {
+      "sha256": "b7dc8f36f5a96daa0f8e03fb01f19f5903141c6aaa8281f5e92e3f198f830e3a",
+      "runtimeTemplateBytes": 658,
+      "compiler": "0.8.28+commit.7893614a",
+      "optimizer": {
+        "enabled": true,
+        "runs": 50
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "verifiedRawSourceCount": 37,
+      "transformedTestImports": [
+        {
+          "source": "test/utils/ForkBase.sol",
+          "rawFileKeccak256": "0x81ab7bcd4174fbee180334ba53e84b06e4dec0f1e6d44c97e5f312886518ee8b",
+          "compilerMetadataKeccak256": "0xdf6a3f94ac1c74f1b3daf254cd645a08c563f91a74a598f8bbcf54655030df51"
+        }
+      ],
+      "virtualTestInputs": [
+        {
+          "source": "foundry-pp/DeployHelper46.sol",
+          "keccak256": "0x361614d529461750d83168871a005554ae09db60c9d5b40f0313c2616fe4757f"
+        },
+        {
+          "source": "foundry-pp/DeployHelper48.sol",
+          "keccak256": "0x8ab0f8311501756976157d5100b3722195b9f5b3fbde6283164bb03ce6f371a3"
+        }
+      ]
+    }
+  },
+  "generatedAbiMatches": true,
+  "initialChecks": [
+    {
+      "exit": 1,
+      "result": "Raw-source equality failed for test-only ForkBase import in KeeperPolicyV2; all production artifacts matched."
+    },
+    {
+      "exit": 1,
+      "result": "Strict file-existence check identified foundry-pp virtual inputs in that same test artifact."
+    }
+  ],
+  "testPreprocessingLimit": "Cache preprocessed=true, generated VmContractHelper62 and installed DynamicTestLinkingPreprocessor point to Foundry test preprocessing. Exact transformed/virtual input text is not retained in minimal build-info; no fresh reconstruction is claimed. Production artifacts have no such missing or mismatched sources.",
+  "note": "Compiled template hashes, not deployment readbacks. KeeperPolicyV2 is a test/E2E/rehearsal input, not a production deployment. Full artifacts remain build outputs rather than committed evidence. No rehearsal is executed by this record."
+}

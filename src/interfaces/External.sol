@@ -101,6 +101,7 @@ interface IFWAPool {
     function totalWeight() external view returns (uint256);
     function weightedBackingTotal() external view returns (uint256);
     function activeListingCount() external view returns (uint256);
+    function slotToListing(uint256 slot) external view returns (uint256);
     function reservedStagedCount() external view returns (uint256);
     function acquisitionFee() external view returns (uint256);
     function ownerProceeds() external view returns (uint256);

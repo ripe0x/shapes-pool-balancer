@@ -22,6 +22,8 @@ claimable during depletion; operating capital above the full reserve is separate
 
 See [protected-revenue implementation evidence](docs/PROTECTED-REVENUE-RESULTS.md), [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
 
+The [focused audit follow-up](docs/AUDIT-FOLLOWUP-RESULTS.md) covers current curated-presence proofs, generic transaction confirmation and pool-lifetime dashboard reporting. Curated proof loss can pause purchases until a permissionless refresh; concurrent draws and asset rights remain unchanged.
+
 ## Layout
 
 ```

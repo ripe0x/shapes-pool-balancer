@@ -1,0 +1,30 @@
+{
+  "kind": "independent delegated static source review, informed by the supplied findings",
+  "scope": "E1 safety/rights/liveness/gas architecture, S2 intent confirmation/callers, lifetime ledger; focused test amendments",
+  "findings": [
+    {
+      "finding": "Pool-list HEADS lacked status 7",
+      "status": "fixed before final source checks"
+    }
+  ],
+  "remainingActionableFindings": [],
+  "reviewedSha256": {
+    "src/PoolInventory.sol": "54cf259591bb438a119e5b1ab30c0bfdb62725668f788e957e295cab570425ee",
+    "src/PoolBalancer.sol": "42430ad282d6d73520e6dfb4572c88252fc32562a6ba4c0756d4943a499221ce",
+    "src/interfaces/External.sol": "cd5206bcecb6eec98311d921d66b43a5b224144adac26c3837b8bebb436f6666",
+    "app/src/App.tsx": "f9ca35d8fe27acc7558aa8c58141922186effe77257368c120028fe35567287a",
+    "app/src/inventory.ts": "4f5a800b89d37a2e83582ee0b45d80c19f2238e0e10882f1742b59d83c567e16",
+    "app/src/inventory.test.ts": "228ffb9382865ce6307fc812c08426ed380a1ba8b15eb3e5755b13868b4183b7",
+    "app/src/ledger.ts": "70f35d7946a4ae349d0412311acddcbdb8cab7fa7d974fb9bb63f85ed1e10ad4",
+    "app/src/ledger.test.ts": "91dc72d87341821411f5b9b477a00b06574b6d90ce7897d350b72b3fad3a4c38",
+    "app/src/tx.ts": "e8c4ee863e31543e7400ac2f4662c8d82c20d2e70c2885e06b35daa5a6be3b3b",
+    "app/src/tx-intent.test.ts": "44f0a7961af90c47a0e5e7bc926f5bf3d8756080236d8537c3ed8603f8f57903",
+    "test/CuratedAdmission.t.sol": "2cd14f9ce5a3d9978edbd973eefc162dbd2cef049432b0389be5b740b76e201e"
+  },
+  "limits": [
+    "No separate runtime execution by reviewer",
+    "Successful curated-win invalidation uses pinned FWA removal source; new tests do not impersonate oracle",
+    "Test funding isolates admission from VRF service liquidity",
+    "Foundry transformed test input text not reconstructed"
+  ]
+}

@@ -4,6 +4,8 @@ interface ListingState { kind: number; denom: number; state: number; fwaStatus: 
 
 export const isSelectable = (listing: ListingState) => listing.state === 1 && listing.fwaStatus === 1;
 export const isStaged = (listing: ListingState) => listing.state === 1 && listing.fwaStatus === 5;
+export const curatedWitness = <T extends ListingState>(listings: readonly T[]) =>
+  listings.find((listing) => listing.kind === 1 && isSelectable(listing));
 // FWA retains custody of staged prizes and prizes awaiting delivery or post-refund recovery.
 export const isHeld = (listing: ListingState) => [1, 5, 6, 7].includes(listing.fwaStatus);
 export const listedShapeCounts = (listings: readonly ListingState[], status = 1): Counts => {
