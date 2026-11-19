@@ -1,5 +1,11 @@
 name: ci
-on: [pull_request, push]
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  push:
+    paths-ignore:
+      - '**.md'
 jobs:
   check:
     runs-on: ubuntu-latest
