@@ -1,3 +1,5 @@
+**Current release status (2026-11-19): see [RELEASE-RECORD.md](RELEASE-RECORD.md).** Everything below is history for its named revision.
+
 # Current implementation status: focused audit follow-up, 2026-11-18
 
 The new candidate repairs curated-presence admission, generic transaction confirmation and pool-lifetime dashboard

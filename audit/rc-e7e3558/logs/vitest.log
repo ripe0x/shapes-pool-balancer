@@ -1,0 +1,33 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/shapes-mainnet-deployment-e60239
+
+ ✓ app/src/refresh.test.ts (9 tests) 25ms
+ ✓ shared/planner.test.ts (29 tests) 13ms
+ ✓ app/src/errors.test.ts (3 tests) 13ms
+ ✓ app/src/revenue-rate.test.ts (6 tests) 4ms
+ ✓ keeper/keeper.test.ts (15 tests) 5ms
+ ✓ app/src/tx-intent.test.ts (5 tests | 1 skipped) 5ms
+ ✓ shared/design.test.ts (13 tests) 21ms
+ ✓ shared/policy-money-path.test.ts (1 test) 26ms
+ ✓ app/src/inventory.test.ts (4 tests) 3ms
+ ✓ shared/policy-simulation.test.ts (14 tests) 95ms
+ ✓ app/src/policy.test.ts (2 tests | 1 skipped) 24ms
+ ✓ app/src/wallet.test.ts (4 tests) 84ms
+ ✓ shared/reserve-capital.test.ts (42 tests) 81ms
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 99ms
+ ✓ app/src/tx.test.ts (6 tests) 76ms
+ ✓ app/src/ledger.test.ts (4 tests) 4ms
+ ✓ shared/policy-quotes.test.ts (1 test) 4ms
+ ↓ app/src/creation-replacement.test.ts (2 tests | 2 skipped)
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 2425ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  1400ms
+   ✓ local rehearsal gate without chain mutations > runs the CLI through an absolute symlink instead of silently exiting successfully  588ms
+ ✓ scripts/current-local-rehearsal.test.ts (24 tests) 9452ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  4185ms
+   ✓ current local rehearsal control inputs, without node mutation > stages real pinned dependency source bytes without library symlinks or Git metadata  3087ms
+
+ Test Files  19 passed | 1 skipped (20)
+      Tests  205 passed | 7 skipped (212)
+   Start at  12:11:59
+   Duration  10.86s (transform 1.52s, setup 0ms, collect 14.09s, tests 12.46s, environment 2ms, prepare 2.01s)
+
