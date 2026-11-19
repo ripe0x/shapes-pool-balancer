@@ -7,7 +7,7 @@ import { createServer } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPublicClient, createTestClient, createWalletClient, decodeFunctionData, encodeFunctionData, decodeErrorResult, getContractAddress, http, keccak256, type Address, type Hash, type Hex } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, decodeFunctionData, encodeFunctionData, decodeErrorResult, getContractAddress, http, keccak256, TransactionReceiptNotFoundError, WaitForTransactionReceiptTimeoutError, type Address, type Hash, type Hex } from 'viem';
 import { verifyActions } from './prepare-local-rehearsal';
 import { recoverCreation, canRetryCreation, type CreationAttempt } from '../app/src/creation';
 import { Keeper, MAX_TRANSACTION_GAS } from '../keeper/keeper';
@@ -353,8 +353,27 @@ export class CurrentRehearsal {
         assert.ok(fn === 'rawFulfillRandomWords' || fn === 'deliverRandomness');
         eq(actor, fn === 'rawFulfillRandomWords' ? this.journal.coordinator : ROLES.buyer);
     }
+    private async waitForReceipt(hash: Hash) {
+        const deadline = Date.now() + 60000;
+        // An idle automining fork may index its receipt without producing another block notification.
+        while (Date.now() < deadline) {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                return await Promise.race([
+                    this.pub.getTransactionReceipt({ hash }),
+                    new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new WaitForTransactionReceiptTimeoutError({ hash })), deadline - Date.now()); }),
+                ]);
+            } catch (error) {
+                if (!(error instanceof TransactionReceiptNotFoundError)) throw error;
+            } finally {
+                clearTimeout(timer);
+            }
+            await new Promise(resolve => setTimeout(resolve, Math.min(100, Math.max(0, deadline - Date.now()))));
+        }
+        throw new WaitForTransactionReceiptTimeoutError({ hash });
+    }
     private async record(hash: Hash, actor: Address, nonce: number, input: Hex, value: bigint, to: Address | undefined, fn: string, category: string, gas: bigint, expectedStatus: 'success' | 'reverted' = 'success') {
-        const receipt = await this.pub.waitForTransactionReceipt({ hash, timeout: 60000, pollingInterval: 100 });
+        const receipt = await this.waitForReceipt(hash);
         const [tx, block] = await Promise.all([this.pub.getTransaction({ hash }), this.pub.getBlock({ blockNumber: receipt.blockNumber })]);
         if (this.journal.inFlight) {
             this.journal.inFlight.observedReceipt = { ...receipt, transaction: tx, basefee: block.baseFeePerGas };
