@@ -1,0 +1,42 @@
+{
+  "rpcUrl": "https://mainnet.gateway.tenderly.co",
+  "chainId": 1,
+  "budgetWei": "50000000000000000",
+  "accounts": {
+    "deployer": { "address": "<owner-chosen>", "startNonce": null },
+    "packsAdmin": { "address": "<owner-chosen>", "startNonce": null },
+    "keeperAdmin": { "address": "<owner-chosen>", "startNonce": null },
+    "policyAdmin": { "address": "<owner-chosen>", "startNonce": null },
+    "creator": { "address": "<owner-chosen>", "startNonce": null },
+    "keeper": { "address": "<owner-chosen>", "startNonce": null }
+  },
+  "keeperStateFile": "keeper/state-canary.json",
+  "pool": {
+    "curatedCollection": "<owner-chosen>",
+    "curatedTokenId": "<owner-chosen>",
+    "curatedListingPriceWei": "<owner-chosen>",
+    "markupBps": "<owner-chosen>",
+    "creatorRevenueBps": "<owner-chosen>",
+    "target": "20",
+    "targetMeaning": "20 x 0.01 ETH Shapes (denomination 0 count 20)",
+    "mintFeeCapWei": "1000000000000000",
+    "salt": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "maxPoolDepositWei": "250000000000000000"
+  },
+  "actions": [
+    { "id": "deploy", "account": "deployer", "gasLimit": "21223646", "maxFeePerGas": "1500000000" },
+    { "id": "keeper-approve", "account": "keeperAdmin", "gasLimit": "80000", "maxFeePerGas": "1500000000" },
+    { "id": "keeper-restrict", "account": "keeperAdmin", "gasLimit": "60000", "maxFeePerGas": "1500000000" },
+    { "id": "nft-approve", "account": "creator", "gasLimit": "65000", "maxFeePerGas": "1500000000" },
+    { "id": "create", "account": "creator", "gasLimit": "3500000", "maxFeePerGas": "1500000000" },
+    { "id": "keeper-run", "account": "keeper", "gasLimit": "0", "maxFeePerGas": "0" },
+    { "id": "close", "account": "creator", "gasLimit": "75000", "maxFeePerGas": "1500000000" },
+    { "id": "closeout-upkeep-1", "account": "creator", "gasLimit": "250000", "maxFeePerGas": "1500000000" },
+    { "id": "closeout-upkeep-2", "account": "creator", "gasLimit": "250000", "maxFeePerGas": "1500000000" },
+    { "id": "unlist", "account": "creator", "gasLimit": "3400000", "maxFeePerGas": "1500000000" },
+    { "id": "withdraw-curated", "account": "creator", "gasLimit": "450000", "maxFeePerGas": "1500000000" },
+    { "id": "collect", "account": "creator", "gasLimit": "100000", "maxFeePerGas": "1500000000" },
+    { "id": "claim", "account": "creator", "gasLimit": "110000", "maxFeePerGas": "1500000000" },
+    { "id": "retire", "account": "creator", "gasLimit": "70000", "maxFeePerGas": "1500000000" }
+  ]
+}

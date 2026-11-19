@@ -101,6 +101,9 @@ export interface KeeperConfig {
   maxReplacements?: number;
   logChunk?: bigint;
   log?: (msg: string, extra?: Record<string, unknown>) => void;
+  /** Optional operator spending guard (scripts/canary-guard.ts). Called before every send and fee replacement with the
+   *  transaction's maximum and this keeper's unconfirmed sends; false withholds the transaction. */
+  beforeSend?: (next: { gas: bigint; maxFeePerGas: bigint; nonce: number }, inFlight: { account: Address; nonce: number; gas: bigint; maxFeePerGas: bigint }[]) => Promise<boolean>;
 }
 
 interface Offer { policy?: Address; minimumReward?: string; minimumGas?: string; gas: string; estimate: string; expenseGas?: string; expenseSource?: 'trace' | 'estimate' }
@@ -137,7 +140,7 @@ export class Keeper {
   private traceAvailable = true;
   private blockHashes = new Map<string, Hash>();
   private accountingErrors: Record<string, string> = {};
-  private readonly c: Required<Omit<KeeperConfig, 'log'>> & Pick<KeeperConfig, 'log'>;
+  private readonly c: Required<Omit<KeeperConfig, 'log' | 'beforeSend'>> & Pick<KeeperConfig, 'log' | 'beforeSend'>;
 
   constructor(cfg: KeeperConfig) {
     this.c = { reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
@@ -332,6 +335,7 @@ export class Keeper {
     }
     const { reward, gasEstimate, expenseGas, expenseSource, minimumReward, minimumGas, gas } = quote;
     const nonce = await this.pub.getTransactionCount({ address: this.address, blockTag: 'pending' });
+    if (!(await this.allowed({ gas, maxFeePerGas, nonce }))) return false;
     this.state.pending[b] = { hashes: [], nonce, settingsHash: context.settingsHash, policy: context.policy, minimumReward: minimumReward.toString(), minimumGas: minimumGas.toString(), offers: {}, gas: gas.toString(), estimate: gasEstimate.toString(), expenseGas: expenseGas.toString(), expenseSource, maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas: priority.toString(), sentBlock: head.toString(), replacements: 0 };
     this.save();
     // A lost response may still have broadcast. Preserve its nonce until receipts or eviction establish its fate.
@@ -342,6 +346,16 @@ export class Keeper {
     this.state.stats.sent++;
     this.log('sent performUpkeep', { balancer: b, policy: context.policy, hash, nonce, gasEstimate: gasEstimate.toString(), expenseGas: expenseGas.toString(), expenseSource, expectedRewardWei: reward.toString(), minimumFixedWei: minimumReward.toString(), minimumGas: minimumGas.toString(), minimumRewardWei: paymentAt({ minimumReward, minimumGas }, baseFee + priority).toString(), expectedExpenseWei: (expenseGas * (baseFee + priority) + this.c.operatingCostWei).toString(), expectedNetWei: (reward - expenseGas * (baseFee + priority) - this.c.operatingCostWei).toString() });
     return true;
+  }
+
+  /** The operator guard's verdict; without a guard every send is allowed. */
+  private async allowed(next: { gas: bigint; maxFeePerGas: bigint; nonce: number }): Promise<boolean> {
+    if (!this.c.beforeSend) return true;
+    const inFlight = [...Object.values(this.state.pending), ...Object.values(this.state.accounting).map((r) => r.pending)]
+      .map((p) => ({ account: this.address, nonce: p.nonce, gas: BigInt(p.gas), maxFeePerGas: BigInt(p.maxFeePerGas) }));
+    const ok = await this.c.beforeSend(next, inFlight);
+    if (!ok) this.log('withheld by spending guard', { nonce: next.nonce, maxCostWei: (next.gas * next.maxFeePerGas).toString() });
+    return ok;
   }
 
   private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint, settingsHash: Hash, minimumReward: bigint, minimumGas: bigint) {
@@ -529,6 +543,7 @@ export class Keeper {
         this.log('waiting: replacement unprofitable at current gas', { balancer: b });
         return true;
       }
+      if (!(await this.allowed({ gas: quote.gas, maxFeePerGas: max, nonce: p.nonce }))) return true;
       const hash = await this.send(b, p.nonce, max, prio, quote.gas, context.settingsHash, quote.minimumReward, quote.minimumGas);
       p.hashes.push(hash);
       p.settingsHash = context.settingsHash;
@@ -606,6 +621,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // KEEPER_PRIVATE_KEY is read from the environment only and never written anywhere.
   const pk = process.env.KEEPER_PRIVATE_KEY as `0x${string}` | undefined;
   const account = pk ? privateKeyToAccount(pk) : (env('KEEPER_ADDRESS') as Address);
+  const plan = process.env.CANARY_PLAN;
+  const canary = plan ? await import('../scripts/canary-guard') : undefined;
+  const guard = canary && plan ? new canary.CanaryGuard(canary.loadPlan(plan)) : undefined;
+  const address = typeof account === 'string' ? account : account.address;
+  if (guard && !guard.plan.accounts.keeper) throw new Error('CANARY_PLAN has no keeper account');
+  if (guard && guard.plan.accounts.keeper.address.toLowerCase() !== address.toLowerCase()) throw new Error('CANARY_PLAN keeper account differs from this signer');
   const k = new Keeper({
     rpcUrl: env('RPC_URL', 'https://mainnet.gateway.tenderly.co'),
     factory: env('FACTORY') as Address,
@@ -617,6 +638,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     // Explicit operator subsidy allowance against the conservative execution budget; actual spend is in receipts.
     maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
     operatingCostWei: BigInt(env('OPERATING_COST_WEI', '0')),
+    beforeSend: guard?.keeperHook(address, 'keeper-run', (m, e) => console.log(JSON.stringify({ t: new Date().toISOString(), msg: m, ...e }))),
   });
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));
   process.on('SIGINT', () => { k.save(); process.exit(0); });

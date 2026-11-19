@@ -1,3 +1,9 @@
+> **Correction (2026-11-19). Historical lane report; [REPORT.md](REPORT.md) is authoritative.** (1) The "~75 min"
+> phase table is wrong: harness wall clock was 9.4 min (follow-up 4.2 min). (2) The `quiet` destination list below omits
+> 1.7 ETH of Shape/Pack backing still listed and 0.196809999707904070 ETH held by FWA; the full list is in REPORT.md.
+> (3) "no supplied randomness" is wrong: fork tests deliver selected words by impersonating the real VRF coordinator
+> (owner-approved exception). Live oracle delivery was not tested.
+
 # Independent Release Review (Lane A, informed) — shapes-pool-balancer
 
 **Target (immutable):** e7e3558f4d0de3e30d24f92f3b0e2dbdde664028 of ripe0x/shapes-pool-balancer, at /private/tmp/shapes-review-A-e7e3558.
