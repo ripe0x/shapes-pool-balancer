@@ -9,12 +9,13 @@ import {
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { prepareWrite } from './tx';
+import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, type TransactionIntent, type TransactionStep } from './tx';
+import { poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
 import { policyAbi, policyEconomics } from './policy';
-import { activationBatch, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
+import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
 import { effectiveRevenueBps } from './revenue-rate';
@@ -26,7 +27,7 @@ const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'fun
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const CREATOR_TRANSFERRED = parseAbiItem('event CreatorTransferred(address indexed oldCreator, address indexed newCreator)');
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
-/** Events that move the creator's ETH, for the lifetime ledger on Overview. */
+/** Pool lifetime activity, independent of the current creator or connected viewer. */
 const LEDGER = [
   DRAWN,
   parseAbiItem('event Deposited(address indexed from, uint256 amount)'),
@@ -38,11 +39,7 @@ const LEDGER = [
   parseAbiItem('event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price)'),
 ] as const;
 
-/** The creator's ETH since the pool was created, from its events. `held` is everything still theirs in the pool: its
- *  balance, the backing of its prizes (listed, or drawn but not delivered) and sales FWA holds for it. Overall ETH result = taken
- *  out + held - put in, which equals sales - prizes won - mint fees - keeper pay, plus ETH sent to the pool directly
- *  (`other`). Curated NFTs won are counted apart: they are not ETH. */
-interface Ledger { putIn: bigint; takenOut: bigint; held: bigint; earned: bigint; sales: bigint; prizesWon: bigint; mintFees: bigint; keeperPay: bigint; other: bigint; nftsWon: number; nftValues: bigint }
+type Ledger = ReturnType<typeof poolEthLedger> & { throughBlock: bigint; nftsWon: number; nftValues: bigint };
 const L_DELIVERY_PENDING = 6;
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
@@ -56,6 +53,7 @@ export const STATUS: Record<number, string> = {
   4: 'Busy: draws settling',
   5: 'Shapes mint fee rose',
   6: 'Prizes running low',
+  7: 'Curated proof needs refresh',
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -204,8 +202,10 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     for (const l of events) if (l.eventName === 'CuratedListed' || l.eventName === 'CuratedRepriced') values.set((l.args as { listingId: bigint }).listingId, (l.args as { base: bigint }).base);
     const nftWins = drawn.filter((l) => l.args.kind === 1 && l.args.delivered);
     const backingOf = (ls: Listing[]) => ls.filter((l) => l.kind === 2).reduce((t, l) => t + DENOMS[l.denom], 0n);
-    const putIn = sum('Deposited', (a) => a.amount as bigint); // includes the deposit made at creation
-    const takenOut = sum('SurplusClaimed', (a) => a.amount as bigint);
+    const capitalFlows = (name: string, participant: string) => events.filter((l) => l.eventName === name).map((l) => {
+      const args = l.args as Record<string, unknown>;
+      return { participant: args[participant] as Address, amount: args.amount as bigint };
+    });
     // FWA status 1 is selectable, 5 staged, 6 a failed delivery awaiting retry or refund, 7 refunded (the creator recovers it). Any
     // other status on a prize the Balancer still tracks means FWA delivered it: before upkeep reconciled the draw, or
     // on a retry after a failed delivery (which the Balancer never revisits).
@@ -218,10 +218,10 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     const prizesWon = drawn.filter((l) => l.args.kind === 2 && l.args.delivered).reduce((t, l) => t + DENOMS[l.args.denom!], 0n) + backingOf(delivered);
     const mintFees = sum('ShapesMinted', (a) => (a.cost as bigint) - (a.quantity as bigint) * DENOMS[Number(a.denom)]);
     const keeperPay = sum('KeeperPaid', (a) => a.amount as bigint);
-    const earned = takenOut + held - putIn;
     const ledger: Ledger = {
-      putIn, takenOut, held, earned, sales, prizesWon, mintFees, keeperPay,
-      other: earned - (sales - prizesWon - mintFees - keeperPay),
+      throughBlock: blockNumber,
+      ...poolEthLedger({ deposits: capitalFlows('Deposited', 'from'), withdrawals: capitalFlows('SurplusClaimed', 'to'),
+        held, sales, prizesWon, mintFees, keeperPay }),
       nftsWon: nftWins.length + deliveredNfts.length,
       nftValues: nftWins.reduce((t, l) => t + (values.get(l.args.listingId!) ?? 0n), 0n) + deliveredNfts.reduce((t, l) => t + l.base, 0n),
     };
@@ -232,11 +232,15 @@ function useTx(onDone: () => void) {
   const pub = usePublicClient();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const submitted = useRef<{ hash: Hash; intent: TransactionIntent }>();
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
   const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
     const prepared = await prepareWrite(pub!, address, params);
+    const intent = reviewedIntent(prepared);
     beforeWallet?.();
-    return writeContractAsync(prepared as never);
+    const hash = await writeContractAsync(prepared as never);
+    submitted.current = { hash, intent };
+    return hash;
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
@@ -248,15 +252,15 @@ function useTx(onDone: () => void) {
     setBusy(label);
     setMsg(undefined);
     try {
-      for (const [k, c] of calls.entries()) {
-        const [name, run] = Array.isArray(c) ? c : [label, c];
+      await runTransactionSteps(label, calls, (name, k) => {
         current = name;
-        setBusy(Array.isArray(c) && calls.length > 1 ? `${name} (${k + 1} of ${calls.length})` : name);
-        const hash = await run();
-        if (!hash) continue;
-        const rc = await pub!.waitForTransactionReceipt({ hash, ...(confirmationTimeout === undefined ? {} : { timeout: confirmationTimeout }) });
-        if (rc.status !== 'success') throw new Error(`${name} reverted`);
-      }
+        setBusy(Array.isArray(calls[k]) && calls.length > 1 ? `${name} (${k + 1} of ${calls.length})` : name);
+      }, async (hash) => {
+        const reviewed = submitted.current;
+        if (reviewed?.hash !== hash) throw new Error('Confirmation is unverified: the reviewed transaction is unavailable.');
+        await confirmAction(pub!, hash, reviewed.intent, confirmationTimeout);
+        if (submitted.current === reviewed) submitted.current = undefined;
+      });
       setMsg({ ok: true, text: `${label}: confirmed` });
       failure.current = undefined;
       return true;
@@ -272,7 +276,7 @@ function useTx(onDone: () => void) {
   return { send, busy, msg, write, failure };
 }
 
-type Step = (() => Promise<Hash | undefined>) | [string, () => Promise<Hash | undefined>];
+type Step = TransactionStep;
 type D = NonNullable<ReturnType<typeof useBalancer>['data']>;
 type Tx = ReturnType<typeof useTx>;
 const activateListings = (d: D, tx: Tx) => tx.send('Activate staged listings', [() => {
@@ -303,7 +307,7 @@ const mixText = (c: Counts) => {
 const poolName = (d: D) => d.ensName ?? `Pool ${short(d.balancer)}`;
 
 /** One sentence for the pool's state, and the action or tab that resolves it. */
-function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'open' | Tab; label?: string } {
+function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | Tab; label?: string } {
   if (d.retired) return { head: 'Retired.', body: 'The pool no longer sells draws. Withdrawals still work.' };
   const fund = d.balance - d.creatorCredit;
   const shortfall = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
@@ -311,12 +315,17 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
   const listed = listedShapeCounts(d.listings);
   const missing = target.reduce((total, n, i) => total + Math.max(0, n - listed[i]), 0);
   const staged = d.listings.filter(isStaged).length;
-  if (d.enabled && staged > 0 && (shortfall === 0n || [2, 3, 6].includes(d.admission))) {
+  if (d.admission === 7 && curatedWitness(d.listings)) {
+    return { head: 'Curated proof needs refresh.', body: 'Purchases are paused.', act: 'proof' };
+  }
+  if (d.enabled && staged > 0 && (shortfall === 0n || [2, 3, 6, 7].includes(d.admission))) {
     return d.unsettled > 0n
       ? { head: d.admission === 0 ? 'Open · prizes staged.' : 'Waiting for draws.', body: `${staged} prize${staged === 1 ? ' is' : 's are'} staged until draws settle.` }
       : { head: d.admission === 0 ? 'Open · prizes await activation.' : 'Inventory awaits activation.', body: `${staged} prize${staged === 1 ? ' is' : 's are'} staged.`, act: 'activate' };
   }
   switch (d.admission) {
+    case 7: return { head: 'No curated NFT is selectable.', body: 'Purchases are paused.',
+      ...(d.upkeep.needed ? { act: 'upkeep' as const } : { act: 'nfts' as const, label: 'View NFTs' }) };
     case 0: return missing > 0
       ? { head: 'Open · partially stocked.', body: `${missing} target prize${missing === 1 ? ' is' : 's are'} missing. Draws use the current inventory and odds.`, ...(d.upkeep.needed ? { act: 'upkeep' as const } : {}) }
       : shortfall > 0n
@@ -472,7 +481,7 @@ export function App() {
 }
 
 /** The current admission state shown in the pool list. */
-const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes' };
+const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes', 7: 'Paused: curated proof' };
 
 /** Every pool this wallet created, with its state and ETH, and the way to start another. */
 function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
@@ -518,6 +527,11 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
   const tabs: Tab[] = ['overview', 'nfts', 'mix', 'settings'];
   const upkeep = () => tx.send('Run unpaid maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
   const action = st.act === 'activate' ? <button className="link" disabled={!!tx.busy} onClick={() => activateListings(d, tx)}>Activate staged listings</button>
+    : st.act === 'proof' ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Refresh curated proof', [() => {
+      const witness = curatedWitness(d.listings);
+      if (!witness) throw new Error('No selectable curated listing is available.');
+      return tx.write({ ...B, functionName: 'refreshCuratedWitness', args: [witness.id] });
+    }])}>Refresh curated proof</button>
     : st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run unpaid maintenance</button>
     : st.act === 'open' && isCreator ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>
       : st.act && st.act !== tab && st.act !== 'open' ? <button className="link" onClick={() => setTab(st.act as Tab)}>{st.label}</button>
@@ -1509,8 +1523,8 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   // What the withdrawable ETH is, as the contract counts it: withdrawals spend accrued creator earnings first.
   const withdrawSplit = (d.surplus ?? d.creatorCredit) === 0n ? 'No funds available.'
     : d.creatorCredit === 0n ? 'Excess operating capital.'
-      : d.creatorCredit >= (d.surplus ?? d.creatorCredit) ? 'Your earnings.'
-        : `${eth(d.creatorCredit)} ETH of earnings and ${eth((d.surplus ?? d.creatorCredit) - d.creatorCredit)} ETH of your deposit the pool does not need.`;
+      : d.creatorCredit >= (d.surplus ?? d.creatorCredit) ? 'Accrued revenue share.'
+        : `${eth(d.creatorCredit)} ETH of accrued revenue share and ${eth((d.surplus ?? d.creatorCredit) - d.creatorCredit)} ETH of excess operating capital.`;
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
   const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
@@ -1566,15 +1580,15 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
 
       <section className="sticky">
         <div className="result-block" style={{ paddingTop: 0 }}>
-          <h2 className="h3">Your ETH</h2>
+          <h2 className="h3">Pool ETH</h2>
           {!d.paidUpkeepEnabled && <p className="note" style={{ marginBottom: 12 }}>Paid upkeep is disabled. Maintenance needs an unpaid caller.</p>}
           <div className="kv"><span className="k">Selectable prize backing</span><span>{eth(backing, 6)} ETH</span></div>
           {stagedBacking > 0n && <div className="kv"><span className="k">Staged prize backing</span><span>{eth(stagedBacking, 6)} ETH</span></div>}
           <div className="kv"><span className="k">Operating ETH</span><span>{eth(fund, 6)} ETH</span></div>
-          <div className="kv"><span className="k">Accrued creator earnings</span><span>{eth(d.creatorCredit, 6)} ETH</span></div>
+          <div className="kv"><span className="k">Accrued revenue share</span><span>{eth(d.creatorCredit, 6)} ETH</span></div>
           <div className="kv"><span className="k">Creator revenue share</span><span>{d.creatorRevenueBps / 100}%</span></div>
-          {isCreator && <button className="btn" disabled={!!tx.busy || d.creatorCredit === 0n} onClick={() => tx.send('Claim earnings', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [d.creatorCredit, me] })])}>Claim {eth(d.creatorCredit, 6)} ETH earnings</button>}
-          {d.surplus === undefined && <p className="note">Operating surplus unavailable. Accrued earnings remain claimable.</p>}
+          {isCreator && <button className="btn" disabled={!!tx.busy || d.creatorCredit === 0n} onClick={() => tx.send('Claim revenue share', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [d.creatorCredit, me] })])}>Claim {eth(d.creatorCredit, 6)} ETH revenue share</button>}
+          {d.surplus === undefined && <p className="note">Operating surplus unavailable. Accrued revenue share remains claimable.</p>}
           <div className="kv"><span className="k">Required operating reserve</span><span>{d.required === undefined ? 'Unavailable' : eth(d.required, 6)} ETH</span></div>
           <div className="kv"><span className="k">Available to withdraw</span><span>{eth(d.surplus ?? d.creatorCredit, 6)} ETH</span></div>
           {short_ > 0n && <div className="kv"><span className="k error">Below the operating requirement</span><span className="error">{eth(short_, 6)} ETH</span></div>}
@@ -1608,21 +1622,29 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         </div>
 
         <div className="result-block">
-          <h2 className="h3">Revenue and overall results</h2>
-          {d.historyLoading && <p className="note">Loading historical earnings…</p>}
-          {d.historyError && <p className="note error">Historical earnings unavailable: {d.historyError}</p>}
+          <h2 className="h3">Pool lifetime results</h2>
+          {d.historyLoading && <p className="note">Updating pool history…</p>}
+          {d.historyError && <p className="note error">Pool history unavailable: {d.historyError}</p>}
           {d.ledger && <>
+          <p className="note">Through block {String(d.ledger.throughBlock)}.</p>
           <div className="earned">
-            <span className="note">Overall ETH result</span>
-            <div><span className={`figure-s${d.ledger.earned < 0n ? ' error' : ''}`}>{d.ledger.earned < 0n ? '−' : '+'}{eth(d.ledger.earned < 0n ? -d.ledger.earned : d.ledger.earned, 5)}</span><span className="unit">ETH</span></div>
-            <p className="note">You put in {eth(d.ledger.putIn)} ETH and took out {eth(d.ledger.takenOut)} ETH; {eth(d.ledger.held)} ETH is yours in the pool.</p>
+            <span className="note">Pool operating ETH result</span>
+            <div><span className={`figure-s${d.ledger.operatingResult < 0n ? ' error' : ''}`}>{d.ledger.operatingResult < 0n ? '−' : '+'}{eth(d.ledger.operatingResult < 0n ? -d.ledger.operatingResult : d.ledger.operatingResult, 5)}</span><span className="unit">ETH</span></div>
+            <p className="note">Excludes capital transfers, wallet gas and curated NFT values. Includes activity under previous creators.</p>
           </div>
           <div className="kv"><span className="k">Draw sales</span><span>+{eth(d.ledger.sales, 5)} ETH</span></div>
           <div className="kv"><span className="k">Prizes won by players</span><span>−{eth(d.ledger.prizesWon, 5)} ETH</span></div>
           <div className="kv"><span className="k">Shapes mint fees</span><span>−{eth(d.ledger.mintFees, 5)} ETH</span></div>
           <div className="kv"><span className="k">Keeper pay</span><span>−{eth(d.ledger.keeperPay, 5)} ETH</span></div>
-          {d.ledger.other !== 0n && <div className="kv"><span className="k">ETH sent to the pool directly</span><span>{d.ledger.other < 0n ? '−' : '+'}{eth(d.ledger.other < 0n ? -d.ledger.other : d.ledger.other, 5)} ETH</span></div>}
-          {d.ledger.nftsWon > 0 && <p className="note" style={{ marginTop: 10 }}>Players won {d.ledger.nftsWon === 1 ? 'one of your NFTs' : `${word(d.ledger.nftsWon)} of your NFTs`}, valued at {eth(d.ledger.nftValues)} ETH. NFTs are not counted above.</p>}
+          {d.ledger.nftsWon > 0 && <p className="note" style={{ marginTop: 10 }}>Players won {word(d.ledger.nftsWon)} curated {d.ledger.nftsWon === 1 ? 'NFT' : 'NFTs'} with listed values totalling {eth(d.ledger.nftValues)} ETH.</p>}
+          <h3 className="h3" style={{ marginTop: 24 }}>Capital transfers and holdings</h3>
+          <div className="kv"><span className="k">Recorded deposits</span><span>{eth(d.ledger.deposited, 5)} ETH</span></div>
+          {d.ledger.depositors.map((flow) => <div className="kv" key={flow.participant}><span className="k mono" style={{ overflowWrap: 'anywhere', minWidth: 0 }}>From {flow.participant}</span><span style={{ whiteSpace: 'nowrap' }}>{eth(flow.amount, 5)} ETH</span></div>)}
+          <div className="kv"><span className="k">Recorded withdrawals</span><span>{eth(d.ledger.withdrawn, 5)} ETH</span></div>
+          {d.ledger.recipients.map((flow) => <div className="kv" key={flow.participant}><span className="k mono" style={{ overflowWrap: 'anywhere', minWidth: 0 }}>To {flow.participant}</span><span style={{ whiteSpace: 'nowrap' }}>{eth(flow.amount, 5)} ETH</span></div>)}
+          <div className="kv"><span className="k">ETH, backing and uncollected sales held</span><span>{eth(d.ledger.held, 5)} ETH</span></div>
+          <div className="kv"><span className="k">Unattributed reconciliation</span><span>{d.ledger.reconciliation < 0n ? '−' : '+'}{eth(d.ledger.reconciliation < 0n ? -d.ledger.reconciliation : d.ledger.reconciliation, 5)} ETH</span></div>
+          <p className="note">Reconciliation is separate from the operating result. Plain ETH transfers have no deposit event.</p>
           </>}
           {isCreator && (
             <div className="withdraw">

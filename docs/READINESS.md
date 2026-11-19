@@ -1,4 +1,16 @@
-# Current implementation status: protected revenue, 2026-11-18
+# Current implementation status: focused audit follow-up, 2026-11-18
+
+The new candidate repairs curated-presence admission, generic transaction confirmation and pool-lifetime dashboard
+reporting. [Focused results and limitations](AUDIT-FOLLOWUP-RESULTS.md) separate the approved proof-refresh pause,
+fork/gas checks, retrospective browser receipt checks and external VRF liquidity assumptions. R71 forbids merge or
+deployment; R72 approves one permissionless proof refresh after ambiguous curated-witness loss. No donor or policy
+rights change. Historical full rehearsal and outcome approvals remain scoped to their original material.
+
+This PR is an implementation follow-up, not a new whole-system audit or release-readiness determination. A new
+production-path rehearsal, real wallet replacement interaction, real-oracle successful delivery and separately
+approved release outcomes/canary remain outside its evidence.
+
+## Protected revenue implementation status (historical candidate)
 
 The current branch replaces historical inventory-dependent attribution, optional policy settings metadata,
 full-inventory activation checks and separate setup transactions. [Current evidence](PROTECTED-REVENUE-RESULTS.md)

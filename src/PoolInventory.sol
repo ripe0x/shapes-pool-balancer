@@ -23,6 +23,8 @@ library PoolInventory {
         uint16[16] activeShapes;
         uint256 listedPrizes;
         uint256 shapeStageUpper;
+        uint256 curatedWitness;
+        uint256 curatedWitnessSlot;
     }
     struct Fill {
         uint256 plan;
@@ -54,6 +56,7 @@ library PoolInventory {
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
+    event CuratedWitnessRefreshed(uint256 indexed listingId, uint256 slot);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     error InvalidBatch();
@@ -91,6 +94,10 @@ library PoolInventory {
         uint256 unsettled = pool.unsettledAcquisitionCount();
         if (unsettled >= 5) return 4;
         if (IShapes(shapes).mintFee() > mintFeeCap) return 5;
+        uint256 active = pool.activeListingCount();
+        // Active Shapes are a subset of tracked Shapes. Otherwise require a fresh identity proof: tracked
+        // curated includes staging and unreconciled wins. Ambiguity intentionally pauses until public refresh.
+        if (active <= s.listedPrizes && !_hasCuratedWitness(s, pool)) return 7;
         uint256 unavailable = pool.lastIssuedSequence() - reconciledSequence;
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {
@@ -98,7 +105,6 @@ library PoolInventory {
             return prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight ? 6 : 0;
         }
         uint256 shapeBound = unavailable + stageUpper;
-        uint256 active = pool.activeListingCount();
         uint256 tracked = s.activeIds.length;
         // Earlier reserved batches and the next six staged records activate before the first new selection.
         // Inactive records are staged or already won; max(q, C-activation+u) avoids counting a win twice.
@@ -110,6 +116,30 @@ library PoolInventory {
         uint256 lost = unavailable * (1e36 / 0.01 ether);
         if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight) return 6;
         return 0;
+    }
+
+    function _hasCuratedWitness(State storage s, IFWAPool pool) private view returns (bool) {
+        uint256 lid = s.curatedWitness;
+        return lid != 0 && s.activeIndexPlusOne[lid] != 0 && s.items[lid].kind == 1
+            && pool.slotToListing(s.curatedWitnessSlot) == lid;
+    }
+
+    /// @dev A caller supplies discovery, never authority. Slot identities are rechecked on every admission.
+    function refreshCuratedWitness(State storage s, IFWAPool pool, uint256 lid) public returns (bool changed) {
+        Item storage it = s.items[lid];
+        if (it.kind != 1 || it.state != ACTIVE || s.activeIndexPlusOne[lid] == 0) revert InvalidItem();
+        (,,,,,, uint256 slot, uint8 status) = pool.listings(lid);
+        if (slot == 0 || status != ACTIVE) revert InvalidItem();
+        // Permissionless callers cannot replace an already valid proof with a less durable candidate.
+        if (_hasCuratedWitness(s, pool)) return false;
+        _setCuratedWitness(s, lid, slot);
+        return true;
+    }
+
+    function _setCuratedWitness(State storage s, uint256 lid, uint256 slot) private {
+        s.curatedWitness = lid;
+        s.curatedWitnessSlot = slot;
+        emit CuratedWitnessRefreshed(lid, slot);
     }
 
     function listCurated(State storage s, IFWAPool pool, address shapes, address packs, address source,
@@ -136,6 +166,17 @@ library PoolInventory {
             s.items[lid] = Item(1, 0, ACTIVE, uint104(inputs[i].base), uint104(inputs[i].base));
             addActive(s, lid);
             emit CuratedListed(lid, inputs[i].collection, inputs[i].tokenId, inputs[i].base, inputs[i].base);
+        }
+        if (!_hasCuratedWitness(s, pool)) {
+            // At most the newly listed batch (20). Discovering other surviving inventory is caller-supplied,
+            // so neither listing nor the 100k purchase hook scans an uncapped curated inventory.
+            for (uint256 i; i < n; ++i) {
+                (,,,,,, uint256 slot, uint8 status) = pool.listings(listingIds[i]);
+                if (slot != 0 && status == ACTIVE) {
+                    _setCuratedWitness(s, listingIds[i], slot);
+                    break;
+                }
+            }
         }
     }
     function updateCurated(State storage s, IFWAPool pool, uint256 lid, uint256 base) public {

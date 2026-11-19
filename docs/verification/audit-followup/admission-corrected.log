@@ -1,0 +1,46 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.34s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:104:13:
+    |
+104 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:116:9:
+    |
+116 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 7 tests for test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[PASS] test_activeCountProofDoesNotDependOnLostWitness() (gas: 24193887)
+[PASS] test_coldWitnessHookAtThousandShapesAndHundredCuratedAdmitsFive() (gas: 575950102)
+Logs:
+  cold curated witness canPurchase gas: 71194
+  VRF required after additional requests: 3.050000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.104721629473774037
+  external synthetic sponsor VRF contribution: 0.345411994884955013
+
+[PASS] test_fourOutstandingRequestsStillAdmitAnotherFiveRequestBatch() (gas: 25187744)
+Logs:
+  VRF required after additional requests: 4.400000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.108582629473774037
+  external synthetic sponsor VRF contribution: 1.691550994884955013
+
+[PASS] test_lastCuratedWithdrawalIsKnownAbsence() (gas: 22041664)
+[PASS] test_lostWitnessPausesUntilOnePermissionlessRefreshAndCannotBeChurned() (gas: 32782701)
+Logs:
+  cold permissionless curated refresh gas: 79142
+  VRF required after additional requests: 3.050000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.104721629473774037
+  external synthetic sponsor VRF contribution: 0.345411994884955013
+
+[PASS] test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase() (gas: 31888386)
+[PASS] test_withdrawnCuratedAndReusedSlotCannotAuthorizeStagedCurated() (gas: 29439950)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 1.05s (3.35s CPU time)
+
+Ran 1 test suite in 1.05s (1.05s CPU time): 7 tests passed, 0 failed, 0 skipped (7 total tests)

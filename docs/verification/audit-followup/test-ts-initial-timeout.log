@@ -1,0 +1,71 @@
+
+> test:ts
+> vitest run
+
+
+ RUN  v3.2.7 /private/tmp/fwa-credit-atomic
+
+ ✓ app/src/refresh.test.ts (9 tests) 79ms
+ ✓ shared/planner.test.ts (29 tests) 28ms
+ ✓ shared/design.test.ts (13 tests) 210ms
+ ✓ app/src/policy.test.ts (2 tests | 1 skipped) 151ms
+ ✓ app/src/errors.test.ts (3 tests) 31ms
+ ✓ app/src/wallet.test.ts (4 tests) 124ms
+ ✓ shared/policy-money-path.test.ts (1 test) 22ms
+ ✓ keeper/keeper.test.ts (15 tests) 33ms
+ ✓ app/src/inventory.test.ts (4 tests) 6ms
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 53ms
+ ✓ app/src/revenue-rate.test.ts (6 tests) 16ms
+ ✓ shared/reserve-capital.test.ts (42 tests) 226ms
+ ✓ shared/policy-simulation.test.ts (14 tests) 379ms
+ ✓ app/src/tx-intent.test.ts (5 tests) 667ms
+   ✓ verifies actual recorded local replacement receipts without accepting cancellation or a real revert  656ms
+ ✓ app/src/tx.test.ts (6 tests) 32ms
+ ✓ app/src/ledger.test.ts (4 tests) 24ms
+ ✓ shared/policy-quotes.test.ts (1 test) 7ms
+ ↓ app/src/creation-replacement.test.ts (2 tests | 2 skipped)
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 4135ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  1742ms
+   ✓ local rehearsal gate without chain mutations > runs the CLI through an absolute symlink instead of silently exiting successfully  2048ms
+ ❯ scripts/current-local-rehearsal.test.ts (17 tests | 1 failed) 9453ms
+   ✓ current local rehearsal control inputs, without node mutation > keeps the fixed scope separate from any deployment or owner approval 94ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects mainnet independent of a plan hash 140ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects testnet independent of a plan hash 96ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects remote RPC independent of a plan hash 145ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects old owned node independent of a plan hash 103ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects arbitrary signer independent of a plan hash 133ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects higher spending independent of a plan hash 109ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects second time jump independent of a plan hash 97ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different negative action independent of a plan hash 110ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different action count independent of a plan hash 112ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects parent-path evidence independent of a plan hash 123ms
+   ✓ current local rehearsal control inputs, without node mutation > enforces the actual sender budget boundary before any mutation or submission 1ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects stale approval before touching a node or preparation file 107ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects altered command arguments, signer, relay and resume paths 109ms
+   × current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs 5661ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ current local rehearsal control inputs, without node mutation > stages real pinned dependency source bytes without library symlinks or Git metadata  2248ms
+   ✓ current local rehearsal control inputs, without node mutation > preserves the production gate tail exactly and requires an explicit new local route 59ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/current-local-rehearsal.test.ts > current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/current-local-rehearsal.test.ts:57:5
+     55|             assert.throws(() => validateCurrentForgeArguments(p, args)…
+     56|     });
+     57|     it('binds every current app helper and actual artifact while exclu…
+       |     ^
+     58|         const inputs = manifest();
+     59|         const p = { ...bounds(), inputs, sourceFingerprint: digest(jso…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 18 passed | 1 skipped (20)
+      Tests  1 failed | 198 passed | 6 skipped (205)
+   Start at  21:51:44
+   Duration  12.69s (transform 2.68s, setup 0ms, collect 28.29s, tests 15.68s, environment 5ms, prepare 10.00s)
+

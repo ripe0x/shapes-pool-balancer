@@ -1,5 +1,19 @@
 # Gas benchmarks and keeper bounds
 
+## Focused curated-proof follow-up, 2026-11-18
+
+[Current focused evidence](AUDIT-FOLLOWUP-RESULTS.md) supersedes historical admission measurements below.
+At fork block **26,382,349**, basefee **0.5 gwei** and transaction price **0.55 gwei**, the new witness path with
+**1,000 tracked Shape prizes and 100 curated NFTs** used **71,194 cold caller-span gas** and returned true through
+an explicit **100,000-gas** static call. A real FWA five-request batch also succeeded. Permissionless proof refresh
+used **79,142 cold caller-span gas**. Both implementation accounts, clones, library and relevant storage were cooled.
+These spans include caller overhead and exclude transaction intrinsic gas and receipt refunds; they are not billed
+node receipts. Batch checks sponsor the real VRF service's coverage shortfall, separately from admission gas.
+
+Proof refresh transfers **zero ETH** and creates no keeper compensation. The caller pays its transaction gas.
+At the measured 0.55 gwei, the refresh execution span is **0.0000435281 ETH** before intrinsic gas/refunds;
+at 50 gwei it is **0.0039571 ETH** on the same basis. No fixed user fee or maximum market gas price is promised.
+
 > **Current reserve redesign:** [before/after evidence](reserve-redesign-results.md) and [RESERVES.md](RESERVES.md) supersede the `a8fb321` capital requirements below. Earlier reports remain historical; no deployment is authorized.
 > **2026-11-17 policy refactor:** current policy architecture and economic changes are specified in [KEEPER-POLICIES.md](KEEPER-POLICIES.md). Earlier formula, authority, reserve, gas and simulation evidence below applies only to its named revision. Current implementation evidence and remaining blockers are in [keeper-policy-results.md](keeper-policy-results.md); historical passes do not establish its readiness.
 

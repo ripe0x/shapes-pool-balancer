@@ -1,0 +1,74 @@
+Browser tab: 8, Title: "Read-only action confirmation review", URL: "http://127.0.0.1:5212/action-review".
+1 AXWebArea Read-only action confirmation review, URL: 127.0.0.1:5212/action-review
+	2 heading Read-only generic confirmation review, Value: 1
+		3 text Read-only generic confirmation review
+	4 text RPC http://127.0.0.1:18795 · chain 31337 · reads only
+	5 text Uses production tx.ts orchestration and confirmation with actual recorded mined replacements. No wallet requests or broadcasts. This checks retrospective receipt handling, not a wallet cancellation click or original-hash replacement discovery.
+	6 link Description: Open the real dashboard, Value: 127.0.0.1:5212/
+	7 container cases
+		8 container
+			9 heading Cancelled action, Value: 2
+				10 text Cancelled action
+			11 text Reviewed original: 0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255 Actual mined candidate: 0x18680616082a6804ba33cbf4a8ca37b361c76cc50a2feace1ee116f64d3c4025
+			12 button Check cancelled action
+			32 text {
+  "case": "cancelled",
+  "passed": true,
+  "outcome": "rejected",
+  "message": "The action was cancelled or replaced by a different transaction.",
+  "dependentSteps": 0,
+  "originalHash": "0x14ae07df20e17dc3b3c6f9c131687518248418f5b2607e031825b3af94c4f255",
+  "minedHash": "0x18680616082a6804ba33cbf4a8ca37b361c76cc50a2feace1ee116f64d3c4025",
+  "chainId": 31337,
+  "broadcasts": 0
+}
+		14 container
+			15 heading Reverted replacement, Value: 2
+				16 text Reverted replacement
+			17 text Reviewed original: 0x7153e793e9470407b1050e8f03107ec5cf4fdc09c22eba584de6cd8a9f8d5159 Actual mined candidate: 0xb4b4529a829b320d82c042309870cb8a42805ffc9109b35f7514d26adc99e368
+			18 button Check reverted replacement
+			33 text {
+  "case": "reverted",
+  "passed": true,
+  "outcome": "rejected",
+  "message": "Transaction reverted.",
+  "dependentSteps": 0,
+  "originalHash": "0x7153e793e9470407b1050e8f03107ec5cf4fdc09c22eba584de6cd8a9f8d5159",
+  "minedHash": "0xb4b4529a829b320d82c042309870cb8a42805ffc9109b35f7514d26adc99e368",
+  "chainId": 31337,
+  "broadcasts": 0
+}
+		20 container
+			21 heading Same-intent repricing, Value: 2
+				22 text Same-intent repricing
+			23 text Reviewed original: 0x4b5662a363888e2bb8ba5b35fa9d0763f37b2e4fe512c58b16704e70f2806290 Actual mined candidate: 0xd65d8813dc1cc44ec61a66d68e06f4da02173bcd2a67dc355dfc9fd40a65c0fe
+			24 button Check same-intent repricing
+			34 text {
+  "case": "repriced",
+  "passed": true,
+  "outcome": "confirmed",
+  "message": "Reviewed action confirmed.",
+  "dependentSteps": 1,
+  "originalHash": "0x4b5662a363888e2bb8ba5b35fa9d0763f37b2e4fe512c58b16704e70f2806290",
+  "minedHash": "0xd65d8813dc1cc44ec61a66d68e06f4da02173bcd2a67dc355dfc9fd40a65c0fe",
+  "chainId": 31337,
+  "broadcasts": 0
+}
+		26 container
+			27 heading Included transaction unavailable, Value: 2
+				28 text Included transaction unavailable
+			29 text Reviewed original: 0x4b5662a363888e2bb8ba5b35fa9d0763f37b2e4fe512c58b16704e70f2806290 Actual mined candidate: 0xd65d8813dc1cc44ec61a66d68e06f4da02173bcd2a67dc355dfc9fd40a65c0fe
+			30 button Check included transaction unavailable
+			35 text {
+  "case": "unavailable",
+  "passed": true,
+  "outcome": "unverified",
+  "message": "Confirmation is unverified: the included transaction is unavailable.",
+  "dependentSteps": 0,
+  "originalHash": "0x4b5662a363888e2bb8ba5b35fa9d0763f37b2e4fe512c58b16704e70f2806290",
+  "minedHash": "0xd65d8813dc1cc44ec61a66d68e06f4da02173bcd2a67dc355dfc9fd40a65c0fe",
+  "chainId": 31337,
+  "broadcasts": 0
+}
+
+The focused UI element is 1 AXWebArea Read-only action confirmation review, URL: 127.0.0.1:5212/action-review

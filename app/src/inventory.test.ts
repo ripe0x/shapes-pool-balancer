@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { DENOMS } from '../../shared/planner';
-import { activationBatch, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
+import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 
 const activeShape = { kind: 2, denom: 0, state: 1, fwaStatus: 1 };
 const stagedShape = { ...activeShape, fwaStatus: 5 };
@@ -30,4 +30,9 @@ it('offers a bounded activation batch only after draws settle', () => {
 it('retains staging and delivery-recovery records in creator holdings while excluding exited tracking states', () => {
   for (const fwaStatus of [1, 5, 6, 7]) expect(isHeld({ ...activeShape, fwaStatus })).toBe(true);
   for (const fwaStatus of [0, 2, 3, 4]) expect(isHeld({ ...activeShape, fwaStatus })).toBe(false);
+});
+
+it('offers only a currently selectable, locally active curated listing as a proof candidate', () => {
+  expect(curatedWitness([activeShape, stagedCurated, { ...activeCurated, fwaStatus: 6 }])).toBeUndefined();
+  expect(curatedWitness([{ ...activeCurated, state: 2 }, activeCurated])).toBe(activeCurated);
 });

@@ -1,0 +1,53 @@
+Compiling 9 files with Solc 0.8.28
+Solc 0.8.28 finished in 9.71s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:104:13:
+    |
+104 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:116:9:
+    |
+116 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 7 tests for test/SelectableInventory.t.sol:SelectableInventoryTest
+[PASS] test_curatedOnlyStagingDoesNotReduceShapeAdmission() (gas: 42864118)
+[PASS] test_earlierReservedBatchesCountBeforeTheNextSelection() (gas: 49515033)
+[PASS] test_fiveShapeWinsWithoutUpkeepStillAdmitTheNextBatch() (gas: 31734789)
+[PASS] test_oneShapeWinDoesNotCreateFalseCuratedAbsence() (gas: 24676209)
+[PASS] test_reservedActivationNeedsNoAdditionalBalancerSync() (gas: 34246867)
+[PASS] test_stagedBoardCannotPassAndPublicActivationRestoresAdmission() (gas: 72027411)
+[PASS] test_stagedWithdrawalHoleIsClearedExactlyOnce() (gas: 31607050)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 1.29s (5.27s CPU time)
+
+Ran 7 tests for test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[PASS] test_activeCountProofDoesNotDependOnLostWitness() (gas: 24193881)
+[FAIL: dXg8] test_coldWitnessHookAtThousandShapesAndHundredCuratedAdmitsFive() (block: 26382349) (gas: 582570592)
+Logs:
+  cold curated witness canPurchase gas: 71172
+
+[FAIL: dXg8] test_fourOutstandingRequestsStillAdmitAnotherFiveRequestBatch() (block: 26382349) (gas: 23790060)
+[PASS] test_lastCuratedWithdrawalIsKnownAbsence() (gas: 22041664)
+[FAIL: dXg8] test_lostWitnessPausesUntilOnePermissionlessRefreshAndCannotBeChurned() (block: 26382349) (gas: 31840961)
+Logs:
+  cold permissionless curated refresh gas: 81142
+
+[PASS] test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase() (gas: 31780665)
+[PASS] test_withdrawnCuratedAndReusedSlotCannotAuthorizeStagedCurated() (gas: 29439944)
+Suite result: FAILED. 4 passed; 3 failed; 0 skipped; finished in 71.20s (76.05s CPU time)
+
+Ran 2 test suites in 71.21s (72.49s CPU time): 11 tests passed, 3 failed, 0 skipped (14 total tests)
+
+Failing tests:
+Encountered 3 failing tests in test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[FAIL: dXg8] test_coldWitnessHookAtThousandShapesAndHundredCuratedAdmitsFive() (block: 26382349) (gas: 582570592)
+[FAIL: dXg8] test_fourOutstandingRequestsStillAdmitAnotherFiveRequestBatch() (block: 26382349) (gas: 23790060)
+[FAIL: dXg8] test_lostWitnessPausesUntilOnePermissionlessRefreshAndCannotBeChurned() (block: 26382349) (gas: 31840961)
+
+Encountered a total of 3 failing tests, 11 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 3 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

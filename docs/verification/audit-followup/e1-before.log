@@ -1,0 +1,29 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.01s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> src/PoolInventory.sol:97:13:
+   |
+97 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+   |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:110:9:
+    |
+110 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 1 test for test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[FAIL: tracked but unselectable curated inventory must not authorize a draw: 0 != 3] test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase() (block: 26382349) (gas: 29596062)
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 328.18ms (322.66ms CPU time)
+
+Ran 1 test suite in 338.19ms (328.18ms CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[FAIL: tracked but unselectable curated inventory must not authorize a draw: 0 != 3] test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase() (block: 26382349) (gas: 29596062)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

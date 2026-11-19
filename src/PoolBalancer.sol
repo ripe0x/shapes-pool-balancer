@@ -120,6 +120,7 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant BUSY = 4;
     uint8 internal constant MINT_FEE_ROSE = 5;
     uint8 internal constant LOW_INVENTORY = 6;
+    uint8 internal constant CURATED_PROOF_REQUIRED = 7;
 
     /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
@@ -187,6 +188,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedListed(uint256 indexed listingId, address indexed collection, uint256 tokenId, uint256 base, uint256 price);
     event CuratedRepriced(uint256 indexed listingId, uint256 base, uint256 price);
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
+    event CuratedWitnessRefreshed(uint256 indexed listingId, uint256 slot);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
@@ -425,6 +427,12 @@ contract PoolBalancer is ReentrancyGuard {
         return PoolInventory.listCurated(_inventory, pool, address(SHAPES), address(PACKS), source, inputs);
     }
 
+    /// @notice Prove one tracked curated NFT is active. Anyone may refresh at their own gas cost; no assets move.
+    /// @dev Ambiguous curated availability pauses purchases until refresh or FWA activation. Valid proofs persist.
+    function refreshCuratedWitness(uint256 listingId) external nonReentrant returns (bool changed) {
+        return PoolInventory.refreshCuratedWitness(_inventory, pool, listingId);
+    }
+
     /// @notice Set a curated NFT's value, which is its FWA price.
     ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
@@ -556,7 +564,8 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Why purchases are or are not admitted right now (see status codes).
     /// @dev Preserve the pending-draw bound and bound selectable Shape weight at the first new selection,
-    ///      including FWA's guaranteed activation. No metadata synchronization or single-batch barrier is required.
+    ///      including FWA's guaranteed activation. Curated ambiguity may require permissionless proof refresh;
+    ///      a valid proof permits concurrent purchases without a synchronization barrier between batches.
     function admissionStatus() public view returns (uint8) {
         if (!enabled) return CLOSED;
         if (creatorWork) return SETTING_UP;

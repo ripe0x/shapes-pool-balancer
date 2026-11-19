@@ -1,7 +1,7 @@
 # Operations and recovery
 
 Current operations, 2026-11-18. See [SPEC.md](SPEC.md), [KEEPER-POLICIES.md](KEEPER-POLICIES.md) and
-[implementation evidence](PROTECTED-REVENUE-RESULTS.md). Historical reports validate only their named revisions.
+[focused audit repairs](AUDIT-FOLLOWUP-RESULTS.md). Historical reports validate only their named revisions.
 
 Status codes come from `admissionStatus()`; the dashboard shows them as text.
 
@@ -10,10 +10,11 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | CLOSED | Closed by creator | `open()` |
 | 2 | SETTING_UP | Initial stocking or reopening setup is unfinished | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
-| 3 | NO_CURATED | No curated NFT is listed | list a curated NFT, then upkeep |
+| 3 | NO_CURATED | No curated listing remains in local tracking | list a curated NFT, then complete any stocking |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
 | 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Prospective Shape-weight lower bound is below 70% of target | process/reconcile existing draws; inspect actual staging and liquidity before adding ETH |
+| 7 | CURATED_PROOF_REQUIRED | An active curated listing has not been proven | activate staged curated inventory if necessary, then anyone calls `refreshCuratedWitness(listingId)` |
 
 ## Keeper down
 
@@ -21,9 +22,19 @@ New purchases pause once prize weight falls below 70% of the target (status 6) o
 Outstanding draws, refunds and NFT claims retain FWA's rules. Ready or expired draws can require explicit processing; upkeep processes the queue. Anyone, including the creator from the dashboard, can call `performUpkeepUnpaid()`, even if the factory restricts paid keepers. Run a second keeper with the same factory address; duplicate submissions just
 revert `NoUpkeepNeeded` in simulation and are never sent.
 
-Admission uses the [operation-aware bound](SPEC.md): the old unreconciled allowance and actual nonselectable count receive credit only for FWA's previously reserved prefix plus the next six guaranteed activations. It preserves the existing busy threshold and permits purchases without keeper maintenance between every batch. A single bounded Shape/Pack staging-count estimate prevents unrelated curated staging from being charged as missing Shapes; its zero fast path preserves the original allowance. No per-listing staging queue, synchronization transaction or Balancer activation wrapper is required.
+Shape admission uses the [operation-aware bound](SPEC.md): the old unreconciled allowance and actual nonselectable count receive credit only for FWA's previously reserved prefix plus the next six guaranteed activations. It preserves the existing busy threshold and permits purchases without keeper maintenance between every batch. A single bounded Shape/Pack staging-count estimate prevents unrelated curated staging from being charged as missing Shapes; its zero fast path preserves the original allowance.
+
+Curated presence is checked separately against current FWA inventory. A cached listing ID and slot are only a candidate: each purchase checks that FWA's slot still maps to that tracked curated listing. An active count greater than all tracked Shape prizes also proves curated presence. Otherwise status 7 pauses purchases, including when every curated item is staged. The dashboard's **Refresh curated proof** action is permissionless and verifies one actually active curated listing. It transfers no assets and pays no reward; the caller pays gas. A still-valid cached witness cannot be replaced. When the witness exits but another curated NFT remains, one refresh transaction can restore this gate. This bounded ambiguity pause is owner-approved R72; it is not a maintenance requirement after every batch. Earlier pending draws can still win the last curated item before a later draw selects; the gate establishes presence at admission, not a guaranteed prize mix for all future selections.
 
 If actual staging remains after all draws settle, the dashboard's bounded activation action calls the existing public FWA `activateListings(20)`; repeat while needed. This creates no Balancer compensation and spends only caller gas. Inspect actual active/staged records: a tracked count is not a proof that all records are selectable or that the target is complete. An operating deficit may instead need existing proceeds, Add ETH, a smaller target or closing. Do not add capital to cure a mere activation backlog.
+
+If no curated item is active, let pending requests become ready or expire and process FWA's queue, activate the FIFO prefix through a curated item, then refresh its proof. The prefix can include arbitrarily many curated listings, so there is no fixed global activation-call bound. Anyone can perform these recovery calls; neither the keeper nor an automatic browser job is assumed to do so. Refresh alone does not cure a separate low-Shape-weight or funding condition.
+
+## Dashboard results and transaction confirmation
+
+**Pool lifetime operating ETH result** is owner proceeds less Shape/Pack backing won, Shapes mint fees and keeper pay. It includes previous creators' activity and excludes capital transfers, wallet gas and curated NFT valuations. Deposits and withdrawal recipients are listed by address. Holdings and unattributed reconciliation are separate; an eventless ETH transfer is not inferred to be personal profit or a refundable donor balance. Asset rights are unchanged.
+
+Generic wallet actions confirm only when the included successful transaction matches the reviewed chain, sender, destination, calldata and value. Fee-only repricing is accepted. Cancellation, changed intent, revert and unavailable confirmation stop dependent steps. A failed lookup is unverified, not a successful action. Atomic creation retains its separate persisted, factory-and-pool-verified recovery path.
 
 ## Keeper service
 
