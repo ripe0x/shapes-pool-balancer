@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPublicClient, createTestClient, createWalletClient, getAddress, http, type Address, type Hex, type PublicClient } from 'viem';
-import { CanaryGuard, commitments, evaluate, keeperInFlight, loadPlan, reservedAfter, type CanaryPlan } from './canary-guard';
+import { CanaryGuard, commitments, evaluate, keeperInFlight, loadApprovedPlan, loadPlan, planHash, reservedAfter, wallets, type CanaryPlan } from './canary-guard';
 import { matchPlan, scriptConstants, verify } from './verify-deployment';
 import { Keeper } from '../keeper/keeper';
 
@@ -64,6 +64,43 @@ describe('canary budget arithmetic', () => {
     writeFileSync(f, JSON.stringify(plan({ actions: [plan().actions[0], plan().actions[0]] })));
     expect(() => loadPlan(f)).toThrow('uniquely named');
   });
+});
+
+describe('canary plan identity', () => {
+  const W = '0x000000000000000000000000000000000000d001';
+  it('counts a wallet that holds several roles once', () => {
+    const p = plan({ accounts: { deployer: { address: W, startNonce: 4 }, creator: { address: W.toUpperCase().replace('0X', '0x'), startNonce: 4 }, keeper: { address: K, startNonce: 0 } } });
+    expect(wallets(p)).toEqual([{ address: getAddress(W), startNonce: 4 }, { address: K, startNonce: 0 }]);
+    expect(() => wallets(plan({ accounts: { deployer: { address: W, startNonce: 4 }, creator: { address: W, startNonce: 5 } } }))).toThrow('different start nonce');
+  });
+
+  it('executes only the exact approved file, with its start nonces recorded', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'canary-approved-'));
+    const f = join(dir, 'p.json');
+    writeFileSync(f, JSON.stringify(plan(), null, 2));
+    const approved = planHash(readFileSync(f));
+    expect(loadApprovedPlan(f, approved).budgetWei).toBe('50000000000000000');
+    expect(() => loadApprovedPlan(f, undefined)).toThrow('approved plan SHA-256 is required');
+    writeFileSync(f, JSON.stringify({ ...plan(), actions: plan().actions.map(a => a.id === 'deploy' ? { ...a, gasLimit: '30000000' } : a) }, null, 2));
+    expect(() => loadApprovedPlan(f, approved)).toThrow('not the approved');
+    writeFileSync(f, JSON.stringify(plan({ accounts: { deployer: { address: W, startNonce: null } } }), null, 2));
+    expect(() => loadApprovedPlan(f, planHash(readFileSync(f)))).toThrow('lacks start nonces');
+  });
+});
+
+// Read-only check of the provider-specific lookup on real mainnet. Opt in: MAINNET_RPC=https://mainnet.gateway.tenderly.co
+describe.skipIf(!process.env.MAINNET_RPC)('mainnet sender/nonce lookup', () => {
+  it('returns the included transaction consistently with its hash lookup and receipt', async () => {
+    const pub = createPublicClient({ transport: http(process.env.MAINNET_RPC ?? 'http://127.0.0.1:1', { timeout: 60_000 }) }) as PublicClient;
+    const g = new CanaryGuard(plan({ rpcUrl: process.env.MAINNET_RPC!, chainId: 1 }), pub);
+    const owner = getAddress('0x019817aD02a31B990433542097bE29D97613E8Cb'); // FWA factory owner, an existing mainnet sender
+    const r = await g.minedReceipt(owner, 0);
+    expect(r.transactionHash).toBe('0x7f7f27e89de9447af7c4169e685aa43c47699c3bc2230e1287e198f327d2ebd4');
+    expect(r.blockNumber).toBe(22377220n);
+    expect(r.gasUsed * r.effectiveGasPrice).toBe(593960584676081n);
+    const unused = await pub.getTransactionCount({ address: owner });
+    await expect(g.minedReceipt(owner, unused + 1_000_000)).rejects.toThrow();
+  }, 120_000);
 });
 
 describe('deployment verification inputs', () => {
@@ -137,6 +174,8 @@ describe.skipIf(!RPC)('on a local mainnet fork', () => {
     const r = await Promise.all([h1, h2].map(hash => pub.waitForTransactionReceipt({ hash })));
     expect(r[1].status).toBe('reverted');
     expect(await guard.spent()).toBe(r.reduce((s, x) => s + x.gasUsed * x.effectiveGasPrice, 0n));
+    const shared = new CanaryGuard(plan({ rpcUrl: RPC!, accounts: { creator: p.accounts.creator, deployer: p.accounts.creator, keeper: p.accounts.creator } }), pub);
+    expect(await shared.spent()).toBe(await guard.spent());
 
     await test.setAutomine(false);
     const h3 = await wallet.sendTransaction({ account: creator, to: keeper, value: 1n, chain: null });

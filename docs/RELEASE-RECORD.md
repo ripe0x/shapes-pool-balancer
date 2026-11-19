@@ -128,7 +128,8 @@ With Foundry 1.8.1 this selects the 20-optimizer-run profile through the reposit
 1. Signature over `231b42ba…`, then an observed gate `PASS`.
 2. The six canary account addresses, the curated NFT (collection, token id, listing price), `markupBps` and
    `creatorRevenueBps`, filled into `deployments/canary-plan.json`.
-3. Approval of that plan file's SHA-256, which authorizes every action in it.
+3. Approval of the finalized plan file's SHA-256 (after the gate, the dry run and start nonces are recorded), which
+   authorizes every action in it. The guard and keeper refuse any other file.
 
 Known open gaps, not blockers for the capped canary: real-wallet extension writes, FWA pool-page ERC-1271 acceptance,
 live oracle and keeper inclusion timing, human review.

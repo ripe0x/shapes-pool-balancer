@@ -11,6 +11,7 @@
     "keeper": { "address": "<owner-chosen>", "startNonce": null }
   },
   "keeperStateFile": "keeper/state-canary.json",
+  "reviewedDryRunSha256": "<shasum -a 256 deployments/1.reviewed-dry-run.json>",
   "pool": {
     "curatedCollection": "<owner-chosen>",
     "curatedTokenId": "<owner-chosen>",

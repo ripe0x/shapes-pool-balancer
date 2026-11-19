@@ -623,7 +623,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const account = pk ? privateKeyToAccount(pk) : (env('KEEPER_ADDRESS') as Address);
   const plan = process.env.CANARY_PLAN;
   const canary = plan ? await import('../scripts/canary-guard') : undefined;
-  const guard = canary && plan ? new canary.CanaryGuard(canary.loadPlan(plan)) : undefined;
+  // The keeper runs only the exact plan the owner approved: CANARY_PLAN_SHA256 must match the file.
+  const guard = canary && plan ? new canary.CanaryGuard(canary.loadApprovedPlan(plan, process.env.CANARY_PLAN_SHA256)) : undefined;
   const address = typeof account === 'string' ? account : account.address;
   if (guard && !guard.plan.accounts.keeper) throw new Error('CANARY_PLAN has no keeper account');
   if (guard && guard.plan.accounts.keeper.address.toLowerCase() !== address.toLowerCase()) throw new Error('CANARY_PLAN keeper account differs from this signer');

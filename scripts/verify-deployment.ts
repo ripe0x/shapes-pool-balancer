@@ -2,6 +2,7 @@
 // `deployments/<chainId>.json` is written by Deploy.s.sol during its simulation (dry run included) and its `block` is the
 // simulation block, so it proves nothing. This check reads every broadcast transaction's receipt from the RPC, requires
 // its calldata to equal the reviewed dry run, and writes `deployments/<chainId>.verified.json` only when all checks pass.
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -126,7 +127,10 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
 async function main(argv: string[]) {
   const arg = (n: string) => { const i = argv.indexOf(n); return i < 0 ? undefined : argv[i + 1]; };
   const rpc = arg('--rpc-url'), dry = arg('--reviewed-dry-run'), sent = arg('--broadcast');
-  if (!rpc || !dry || !sent) { console.error('usage: verify-deployment.ts --rpc-url <url> --reviewed-dry-run <json> --broadcast <run-latest.json>  (env DEPLOYER, PACKS_ADMIN, KEEPER_ADMIN, POLICY_ADMIN)'); return 2; }
+  const dryHash = arg('--reviewed-dry-run-sha256');
+  if (!rpc || !dry || !sent || !dryHash) { console.error('usage: verify-deployment.ts --rpc-url <url> --reviewed-dry-run <json> --reviewed-dry-run-sha256 <from the approved plan> --broadcast <run-latest.json>  (env DEPLOYER, PACKS_ADMIN, KEEPER_ADMIN, POLICY_ADMIN)'); return 2; }
+  const actual = createHash('sha256').update(readFileSync(dry)).digest('hex');
+  if (actual !== dryHash) { console.error(`reviewed dry run ${dry} has SHA-256 ${actual}, not the approved ${dryHash}`); return 1; }
   const env = (k: string) => { const v = process.env[k]; if (!v) throw new Error(`missing env ${k}`); return getAddress(v); };
   const roles = { deployer: env('DEPLOYER'), packsAdmin: env('PACKS_ADMIN'), keeperAdmin: env('KEEPER_ADMIN'), policyAdmin: env('POLICY_ADMIN') };
   const pub = createPublicClient({ transport: http(rpc, { timeout: 60_000 }) }) as PublicClient;
