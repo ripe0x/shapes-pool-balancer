@@ -1,3 +1,10 @@
+> **Correction (2026-11-19). Historical lane report; [REPORT.md](REPORT.md) is authoritative.** (1) The "~75/90m" time
+> is wrong: harness wall clock was 11.0 min. (2) Info-2 is incorrect and withdrawn: a credit claim lowers balance and
+> credit equally, so operating cash (`balance - creatorCredit`) is unchanged; see REPORT.md B-2 and
+> `test/ProtectedRevenueAtomic.t.sol:164`. (3) Info-4 is incorrect: the signature approves the complete outcome text and
+> gate configuration; the gate separately checks each configured metric; see REPORT.md B-4. (4) Info-5 is wrong:
+> the verifier requires `drift_groups`.
+
 # Lane B independent release review — Shapes Pool Balancer
 
 **Target (immutable):** commit e7e3558f4d0de3e30d24f92f3b0e2dbdde664028 at /private/tmp/shapes-review-B-e7e3558.
@@ -71,13 +78,13 @@ Idle/stranded at launch scale: none. Reserve holds exactly missing-inventory cos
 ### Low/Info-1 — O6 player-loss exception reachable by ANY creator, not just owner (disclosed, accepted)
 BalancerFactory.createBalancer is permissionless. The R20/O6 exception (creator-controlled collection delivered then clawed back; player loses 0.0175 ETH with FWA treating transfer as final; refusing collection costs player VRF fee + 7-day wait) therefore applies to every public pool from launch, not only the owner's canary. Owner-accepted ("passthrough for FWA", R20/R21) and disclosed in O6. NOT a blocker. Owner should confirm understanding that the first capped launch opens pool creation to the public; there is no on-chain allowlist to keep the canary owner-only.
 
-### Info-2 — Creator can self-starve the pool by withdrawing protected credit below the reserve (by design)
+### Info-2 — [WITHDRAWN: incorrect, see correction notice] Creator can self-starve the pool by withdrawing protected credit below the reserve
 claimSurplus(amount<=creatorCredit) ignores the reserve (R63 intends this), so a creator whose credit exceeds balance-reserve can pull it, dropping operating cash below requiredReserve; paid upkeep then reverts PaymentUnavailable, restock stalls, inventory depletes, sales pause. No player harm (backing + FWA refunds untouched; B>=C preserved). Working as specified; flagged because "protected credit" (R63) and "self-sustaining" (R6) can conflict at the creator's election.
 
 ### Info-3 — activateKeeperPolicy permissionless; funding check reads current block.basefee
 Anyone may activate once the creator's 2-day proposal matures. The increased-exposure gate (candidate>previous && fund<candidate, KeeperPolicyCalls.sol:79) uses one basefee snapshot, so activation in a low-basefee block can admit a policy with less operating cash than it needs at normal gas. Creator consented by proposing; player funds never at risk; withdrawal reserve recomputes at current basefee. Only consequence: possible later keeper-pay reverts (creator liveness). Consistent with R67. Info only.
 
-### Info-4 — O1/O8 gate metrics narrower than their prose (signing hazard)
+### Info-4 — [CORRECTED: see correction notice] O1/O8 gate metrics narrower than their prose
 O1 gates only keeper_refund_gas_kept_per_draw<=80000; the 0.311/0.622/0.05-per-12s/0.00002 caps are code constants not checked by that metric. O8 gates only creator_credit_error_wei==0; "paid and unpaid work protect existing credit" and "claims available during depletion" are not captured by the credit-error metric (exercised in ProtectedRevenueAtomic/ConcurrentRecovery, not run here). A signature over O1/O8 covers the gated number, not the full sentence.
 
 ### Info-5 — O9 referenced by requirements but absent from gated outcomes; drift_groups vestigial
