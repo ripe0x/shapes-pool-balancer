@@ -1,5 +1,7 @@
 import { decodeFunctionResult, encodeFunctionData, multicall3Abi, parseAbi, type Abi, type Address, type PublicClient, type Block, type Hex } from 'viem';
-import { DENOMS, SHAPES_IN, keeperWorkAt } from '../../shared/planner';
+import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound } from '../../shared/planner';
+
+const lesser = (a: bigint, b: bigint) => (a < b ? a : b);
 
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
@@ -45,13 +47,19 @@ export async function policyEconomics(pub: PublicClient, policy: Address, cached
   const restockFees = await readsAt(pub, DENOMS.map((_, d) => balancer
     ? { address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] }
     : { address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] }), callContext) as bigint[];
-  // A policy's direct response is never a pool payment offer. Older pools without
-  // this informational view keep costs unknown, while newer pools apply their own bounds.
-  const keeperQuotes = balancer ? await (async () => {
-    const quote = (d?: number) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [keeperWorkAt(baseFee, gasPrice, d)] });
-    const [reconcile, ...replace] = await readsAt(pub, [quote(), ...DENOMS.map((_, d) => quote(d))], callContext) as bigint[];
+  // An existing pool quotes keeper pay itself. A pool not created yet has no quote of its own: the preview asks the
+  // policy directly and applies the pool's bound (KeeperPolicyCalls.reward), an unverified estimate like its restocking
+  // fees. Either way a failed quote leaves keeper costs unknown.
+  const keeperQuotes = await (async () => {
+    const work = (d?: number) => keeperWorkAt(baseFee, gasPrice, d);
+    const quote = (d?: number) => balancer
+      ? { address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] }
+      : { address: policy, abi: policyAbi, functionName: 'quoteReward', args: [work(d)] };
+    const ds = [undefined, ...DENOMS.map((_, d) => d)];
+    const out = await readsAt(pub, ds.map(quote), callContext) as bigint[];
+    const [reconcile, ...replace] = balancer ? out : out.map((q, i) => lesser(q, paymentBound(work(ds[i]), maxReward)));
     return { reconcile, replace };
-  })().catch(() => undefined) : undefined;
+  })().catch(() => undefined);
   if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n)) {
     throw new Error('Policy surcharge exceeds the pool limit');
   }
