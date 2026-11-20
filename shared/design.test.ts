@@ -1,7 +1,7 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, mixOf, playerView, styleBonus, type DesignInputs } from './design';
-import { DENOMS, MAX_SHAPES_PER_PLAN, evaluate, restockFeeAt, shapeCount, type Counts } from './planner';
+import { BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, restockFeeAt, shapeCount, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
@@ -72,6 +72,22 @@ suite('pool size and styles', () => {
     const c = mixOf(10, styleBonus('balanced', one, 10));
     expect(at(c).v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
     expect(shapeCount(c)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+  });
+
+  it('more big wins: the fast search picks the same mix as adding one Shape at a time', () => {
+    const oneAtATime = (d: DesignInputs, small: number) => {
+      let b = mix({});
+      while (shapeCount(b) < MAX_SHAPES_PER_PLAN - small) {
+        const v = playerView(evaluate(mixOf(small, b), d));
+        if (v.win2x >= BIG_WIN_SHARE) break;
+        const i = BY_VALUE.find((j) => DENOMS[j] >= 2n * v.cost) ?? -1;
+        if (i < 0) break;
+        b = b.map((n, j) => (j === i ? n + 1 : n));
+      }
+      return b;
+    };
+    for (const d of [one, { ...one, curatedBases: [] }, { ...one, markupBps: 1000 }, { ...one, markupBps: 10_000 }])
+      for (const n of [1, 2, 3, 7, 10, 25, 60, 150, 400, 666, 900]) expect(styleBonus('balanced', d, n)).toEqual(oneAtATime(d, n));
   });
 
   it('jackpot: one bonus Shape near 50x the draw price', () => {

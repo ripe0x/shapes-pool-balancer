@@ -47,7 +47,7 @@ const nameAbi = parseAbi(['function name() view returns (string)']);
 /** PoolBalancer.admissionStatus codes. */
 export const STATUS: Record<number, string> = {
   0: 'Open',
-  1: 'Closed by creator',
+  1: 'Closed by pool creator',
   2: 'Stocking the prizes',
   3: 'No NFTs listed',
   4: 'Busy: draws settling',
@@ -584,11 +584,11 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
       {d.pendingCreator.toLowerCase() === me.toLowerCase() && (
         <p className="txline">You were offered this pool. <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Accept pool', [() => tx.write({ ...B, functionName: 'acceptCreator' })])}>Accept</button></p>
       )}
-      {!isCreator && <p className="txline">You are not this pool's creator. You can run upkeep; other changes need the creator.</p>}
+      {!isCreator && <p className="txline">You are not the pool creator. You can run upkeep; other changes need the pool creator.</p>}
       {tab === 'overview' && <Overview d={d} tx={tx} isCreator={isCreator} me={me} setTab={setTab} />}
       {tab === 'nfts' && <Nfts d={d} tx={tx} isCreator={isCreator} me={me} setTab={setTab} />}
-      {tab === 'mix' && (isCreator ? <Design d={d} tx={tx} mode="pool" me={me} /> : <main className="page"><p className="lead">Only the creator can change prices and the mix.</p></main>)}
-      {tab === 'settings' && (isCreator ? <Settings d={d} tx={tx} /> : <main className="page"><p className="lead">Only the creator can change settings.</p></main>)}
+      {tab === 'mix' && (isCreator ? <Design d={d} tx={tx} mode="pool" me={me} /> : <main className="page"><p className="lead">Only the pool creator can change prices and the mix.</p></main>)}
+      {tab === 'settings' && (isCreator ? <Settings d={d} tx={tx} /> : <main className="page"><p className="lead">Only the pool creator can change settings.</p></main>)}
     </>
   );
 }
@@ -847,22 +847,21 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // Until a curated NFT is chosen, the design is priced on its Shapes alone.
   const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
     [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = maxPrizes - shapeCount(bonus);
-  const smallUsed = Math.max(1, Math.min(small, room));
-  const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
-  // Pool size: the Shape prize totals this style can make, smallest first, each with the number of 0.01 ETH Shapes that
-  // makes it. A style keeps its proportions, so some totals are skipped; the slider steps through these.
-  const poolSizes = useMemo(() => {
-    const out: { small: number; total: number }[] = [];
-    for (let n = 1; n <= maxPrizes; n++) {
-      const b = style ? styleBonus(style, base, n) : custom;
-      if (n > maxPrizes - shapeCount(b)) break;
-      const total = n + b.reduce((a, x) => a + x, 0);
-      if (!out.length || total > out[out.length - 1].total) out.push({ small: n, total });
+  // Pool size: the slider steps through the number of 0.01 ETH Shapes, up to the first count where the Shape limit
+  // binds (a style's other Shapes then shrink, so the total stops growing). Found by halving: a style's mix is too
+  // costly to compute for every count.
+  const maxSmall = useMemo(() => {
+    if (!style) return Math.max(1, maxPrizes - shapeCount(custom));
+    let lo = 1, hi = maxPrizes;
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (m + shapeCount(styleBonus(style, base, m)) >= maxPrizes) hi = m; else lo = m + 1;
     }
-    return out;
+    return lo;
   }, [style, custom.join(), bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  const sizeAt = Math.max(0, poolSizes.filter((x) => x.small <= smallUsed).length - 1);
+  const room = maxPrizes - shapeCount(bonus);
+  const smallUsed = Math.max(1, Math.min(small, room, maxSmall));
+  const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
   const prizes = counts.reduce((a, x) => a + x, 0);
   // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
   // design prices the new Shapes at the current markup instead.
@@ -1249,8 +1248,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{prizes} <small>prize{prizes === 1 ? '' : 's'}</small></span></div>
-              <input id="small" type="range" min={0} max={Math.max(0, poolSizes.length - 1)} step={1} value={sizeAt} aria-valuetext={`${prizes} prizes`}
-                onChange={(e) => change(setSmall)(poolSizes[Number(e.target.value)]?.small ?? smallUsed)} />
+              <input id="small" type="range" min={1} max={maxSmall} step={1} value={smallUsed} aria-valuetext={`${prizes} prizes`}
+                onChange={(e) => change(setSmall)(Number(e.target.value))} />
               <p className="note">More prizes make curated NFTs rarer and the draw cheaper.</p>
             </div>
             <div className="rule">
@@ -1283,10 +1282,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 : <div><span>Above the operating requirement</span>{figureEth(ev && have - needed, 6)}</div>}
             </>
           )}
-          {fresh && <div><div><label htmlFor="initial-revenue-share">Creator revenue share</label><p className="note">Suggested {(suggestedRate / 100).toFixed(2)}%</p></div><div className="field"><input id="initial-revenue-share" aria-label="Creator revenue share" type="number" min="0" max="100" step="0.01" value={reviewedRate / 100} onChange={(e) => setRevenueRate(Math.round(Number(e.target.value) * 100))} /><span>%</span></div></div>}
-          {!fresh && <div><span>Creator revenue share</span><span>{d.creatorRevenueBps / 100}%</span></div>}
+          {fresh && <div><div><label htmlFor="initial-revenue-share">Pool creator revenue share</label><p className="note">Suggested {(suggestedRate / 100).toFixed(2)}%</p></div><div className="field"><input id="initial-revenue-share" aria-label="Pool creator revenue share" type="number" min="0" max="100" step="0.01" value={reviewedRate / 100} onChange={(e) => setRevenueRate(Math.round(Number(e.target.value) * 100))} /><span>%</span></div></div>}
+          {!fresh && <div><span>Pool creator revenue share</span><span>{d.creatorRevenueBps / 100}%</span></div>}
           {!fresh && <div><span>Suggested share for the revised mix</span><span>{suggestedRate / 100}%</span></div>}
-          <div><span>Expected creator earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+          <div><span>Expected pool creator earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected revenue retained by the pool</span><span>{econ ? `${perDraw(econ.retainedRevenuePerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected replacement backing</span><span>{econ ? `${perDraw(econ.replacementCostsPerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected mint costs</span><span>{econ ? `${perDraw(econ.mintFeesPerDraw)} ETH` : 'Unavailable'}</span></div>
@@ -1294,7 +1293,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           <div><span>Replenishment margin or shortfall</span><span>{econ?.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
         </div>
         {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
-        {!d.restockQuoteVerified && <p className="note error" role="status">Restocking charges and player prices are unverified estimates.</p>}
+        {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
         {reviewedRate === 10_000 && <p className="note error">100% leaves no new owner proceeds for pool operations.</p>}
         {!fresh && <p className="note">Revenue share changes require the explicit action in Settings.</p>}
         <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
@@ -1610,7 +1609,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {stagedBacking > 0n && <div className="kv"><span className="k">Staged prize backing</span><span>{eth(stagedBacking, 6)} ETH</span></div>}
           <div className="kv"><span className="k">Operating ETH</span><span>{eth(fund, 6)} ETH</span></div>
           <div className="kv"><span className="k">Accrued revenue share</span><span>{eth(d.creatorCredit, 6)} ETH</span></div>
-          <div className="kv"><span className="k">Creator revenue share</span><span>{d.creatorRevenueBps / 100}%</span></div>
+          <div className="kv"><span className="k">Pool creator revenue share</span><span>{d.creatorRevenueBps / 100}%</span></div>
           {isCreator && <button className="btn" disabled={!!tx.busy || d.creatorCredit === 0n} onClick={() => tx.send('Claim revenue share', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [d.creatorCredit, me] })])}>Claim {eth(d.creatorCredit, 6)} ETH revenue share</button>}
           {d.surplus === undefined && <p className="note">Operating surplus unavailable. Accrued revenue share remains claimable.</p>}
           <div className="kv"><span className="k">Required operating reserve</span><span>{d.required === undefined ? 'Unavailable' : eth(d.required, 6)} ETH</span></div>
@@ -1654,7 +1653,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="earned">
             <span className="note">Pool operating ETH result</span>
             <div><span className={`figure-s${d.ledger.operatingResult < 0n ? ' error' : ''}`}>{d.ledger.operatingResult < 0n ? '−' : '+'}{eth(d.ledger.operatingResult < 0n ? -d.ledger.operatingResult : d.ledger.operatingResult, 5)}</span><span className="unit">ETH</span></div>
-            <p className="note">Excludes capital transfers, wallet gas and curated NFT values. Includes activity under previous creators.</p>
+            <p className="note">Excludes capital transfers, wallet gas and curated NFT values. Includes activity under previous pool creators.</p>
           </div>
           <div className="kv"><span className="k">Draw sales</span><span>+{eth(d.ledger.sales, 5)} ETH</span></div>
           <div className="kv"><span className="k">Prizes won by players</span><span>−{eth(d.ledger.prizesWon, 5)} ETH</span></div>
@@ -1708,7 +1707,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                   <div className="kv"><span className="k">Expected replacement mint costs</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Expected surcharge in drawn prizes</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Estimated keeper pay</span><span>−{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
-                  <p className="note" style={{ marginTop: 10 }}>Revenue allocation is separate from overall creator net results. Demand, replacement backing, mint costs and keeper costs affect those results.</p>
+                  <p className="note" style={{ marginTop: 10 }}>Revenue allocation is separate from overall pool creator net results. Demand, replacement backing, mint costs and keeper costs affect those results.</p>
                 </div>
               )}
             </>
@@ -1728,7 +1727,7 @@ function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
   const bps = Math.round(Number(rate) * 100);
   const valid = rate.trim() !== '' && Number.isFinite(bps) && bps >= 0 && bps <= 10_000;
   return <div className="section">
-    <h2 className="h3">Creator revenue share</h2>
+    <h2 className="h3">Pool creator revenue share</h2>
     <div className="kv"><span className="k">Stored share</span><span>{d.creatorRevenueBps / 100}%</span></div>
     <label htmlFor="revenue-share" className="ctl">New percentage</label>
     <div className="field"><input id="revenue-share" type="number" min="0" max="100" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} /><span>%</span></div>
