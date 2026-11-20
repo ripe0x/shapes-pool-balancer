@@ -31,3 +31,11 @@ it('explains the failure when there is no browser wallet to read through', async
   const { walletReads } = await load('1', false);
   await expect(createPublicClient({ transport: walletReads }).getBlockNumber()).rejects.toThrow('open this page in a browser with a wallet');
 });
+
+// Real network call to the mainnet backup RPC; opt in with BACKUP_RPC_TEST=1.
+it.skipIf(process.env.BACKUP_RPC_TEST !== '1')('reads mainnet through the backup RPC when the first RPC fails', async () => {
+  const { config, backupRpcUrl } = await load('1', false);
+  expect(backupRpcUrl).toBe('https://ethereum-rpc.publicnode.com');
+  const block = BigInt(await config.getClient().request({ method: 'eth_blockNumber' }));
+  expect(block).toBeGreaterThan(26_453_686n);
+});

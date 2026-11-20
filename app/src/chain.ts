@@ -34,11 +34,15 @@ export const walletReads = custom({
   async request({ method, params }) {
     const wallet = (globalThis as { ethereum?: EIP1193Provider }).ethereum;
     // BaseError keeps this text as the message the page shows; viem wraps any other error as an unknown RPC error.
-    if (!wallet) throw new BaseError('The public RPC is busy. Try again in a minute, or open this page in a browser with a wallet.');
-    if (Number(await wallet.request({ method: 'eth_chainId' })) !== chain.id) throw new BaseError(`The public RPC is busy. Switch your wallet to ${chain.name} to read through it.`);
+    if (!wallet) throw new BaseError('The public RPCs are busy. Try again in a minute, or open this page in a browser with a wallet.');
+    if (Number(await wallet.request({ method: 'eth_chainId' })) !== chain.id) throw new BaseError(`The public RPCs are busy. Switch your wallet to ${chain.name} to read through it.`);
     return wallet.request({ method, params } as Parameters<EIP1193Provider['request']>[0]);
   },
 }, { retryCount: 0 });
+
+// Mainnet only: a second keyless RPC for when the first refuses (Tenderly's free tier caps response data per IP per day).
+export const backupRpcUrl = chain.id === mainnet.id ? 'https://ethereum-rpc.publicnode.com' : undefined;
+const rpcs = [rpcUrl, ...(backupRpcUrl ? [backupRpcUrl] : [])].map((url) => http(url, { fetchFn: limitConcurrency(fetch, 4), retryCount: 0 }));
 
 export const config = createConfig({
   chains: [chain],
@@ -46,9 +50,9 @@ export const config = createConfig({
   connectors: chainId === 31337 && import.meta.env.VITE_DEV_ACCOUNT
     ? [...wallets, mock({ accounts: [import.meta.env.VITE_DEV_ACCOUNT as Address] })]
     : wallets,
-  // Reads go to the public RPC, at most four in flight. When it refuses (it rate-limits per IP), the browser wallet's
-  // own node answers instead. The whole chain retries with backoff (2, 4, 8, 16 s) before a read fails.
-  transports: { [chain.id]: fallback([http(rpcUrl, { fetchFn: limitConcurrency(fetch, 4), retryCount: 0 }), walletReads], { retryCount: 4, retryDelay: 1000 }) } as Record<number, Transport>,
+  // Reads try each public RPC in order, at most four in flight per RPC, then the browser wallet's own node. The whole
+  // chain retries with backoff (2, 4, 8, 16 s) before a read fails.
+  transports: { [chain.id]: fallback([...rpcs, walletReads], { retryCount: 4, retryDelay: 1000 }) } as Record<number, Transport>,
   // Reads made together go out as one multicall: a pool reads two values per listing on load (2,200 reads at 1,100).
   batch: { multicall: { batchSize: 16_384 } },
 });
