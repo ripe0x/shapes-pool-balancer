@@ -1080,7 +1080,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       const steps: Step[] = [];
       steps.push(...approveSteps(pub, tx, me, balancer, toList));
       if (mode === 'new') {
-        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired };
+        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0 };
         const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
         const attempt: CreationAttempt = { chainId: chain.id, factory: FACTORY, creator: me, salt, predicted: balancer,
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
@@ -1194,7 +1194,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
             {chooser(nfts.length)}
           </div>
         )}
-        {fresh && (
+        {fresh && rows.length > 0 && (
           <label className="check" style={{ marginTop: 14 }}>
             <input type="checkbox" checked={curatedRequired} onChange={(e) => setCuratedRequired(e.target.checked)} />
             <span>Pause purchases while no curated NFT is available</span>

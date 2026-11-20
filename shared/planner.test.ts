@@ -59,8 +59,11 @@ describe('planner', () => {
     expect(unpackPlan(packPlan([5, 3, 2, 0, 0, 0, 0, 0, 1]))).toEqual([5, 3, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
   });
 
-  it('reports infeasible with no curated NFTs', () => {
-    expect(evaluate([1, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [] }).feasible).toBe(false);
+  it('a Shapes-only plan is feasible: curated NFTs are optional', () => {
+    const ev = evaluate([0, 10, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [] });
+    expect(ev.feasible).toBe(true);
+    expect(ev.curatedOddsPpm).toBe(0);
+    expect(ev.drawPrice).toBeGreaterThan(0n);
   });
 
   it('tier odds sum to ~1e6 ppm', () => {
