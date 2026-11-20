@@ -131,7 +131,7 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         sourceCheck(p);
         assert.ok(p.runtime.binaries.some(binary => binary.path.endsWith('/.svm/0.8.28/solc-0.8.28') && binary.sha256 === digest(readFileSync(binary.path))), 'installed solc executable is bound with its actual file hash');
         assert.ok(p.runtime.binaries.some(binary => binary.path.endsWith('/forge') && binary.sha256 === digest(readFileSync(binary.path))), 'actual Forge executable remains bound even when the invoked command is guarded');
-        for (const name of ['app/src/creation.ts', 'app/src/refresh.ts', 'app/src/revenue-rate.ts', 'app/src/App.tsx'])
+        for (const name of ['app/src/creation.ts', 'app/src/refresh.ts', 'app/src/policy.ts', 'app/src/App.tsx'])
             assert.ok(inputs.some(i => i.path === name), name);
         assert.ok(!inputs.some(i => i.path.startsWith('docs/receipts/') || i.path.startsWith('docs/verification/')));
         const changed = structuredClone(p);
