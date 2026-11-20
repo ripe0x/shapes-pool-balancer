@@ -23,3 +23,10 @@ export function poolEthLedger(input: { deposits: CapitalFlow[]; withdrawals: Cap
     // Eventless ETH and incomplete accounting cannot be attributed to an actor from these logs.
     reconciliation: withdrawn + held - deposited - operatingResult };
 }
+
+/** Next log range after a cache that covers through `through`: cached logs up to `keepThrough` are kept, and the last
+ *  `reorgWindow` blocks are fetched again so a reorganized block's events are replaced, not duplicated. */
+export function incrementalRange(through: bigint | undefined, fromBlock: bigint, reorgWindow: bigint) {
+  const keepThrough = through === undefined ? fromBlock - 1n : through - reorgWindow;
+  return { from: keepThrough + 1n > fromBlock ? keepThrough + 1n : fromBlock, keepThrough };
+}

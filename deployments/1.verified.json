@@ -1,0 +1,84 @@
+{
+  "verified": true,
+  "source": "canonical receipts and contract reads",
+  "chainId": 1,
+  "checkedAtBlock": "26453687",
+  "factoryDeploymentBlock": "26453686",
+  "balancerFactory": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
+  "poolBalancerImplementation": "0x46516fE3bd20B210985be9B2E65c22E46c1Ef6Ca",
+  "packs": "0x91582A79498B4A6B7cABb2bb72155145E15f439C",
+  "keeperPolicy": "0x13797a6a7CFBfDD3956006f1cAc8Cae749569117",
+  "roles": {
+    "deployer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "packsAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "keeperAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9"
+  },
+  "transactions": {
+    "KeeperPolicyCalls": {
+      "address": "0x1601A841C2C86f6AC574279b87F1168ff284B8fb",
+      "hash": "0x389039cdcd57ce59d06063a6c574b44daf9fdc5f0b25d6e6d5925360e469a96b",
+      "block": "26453677",
+      "blockHash": "0x0c904778992ca719617826e8175233e81ad0e08f48cc95cae5ae06c7a286805f",
+      "gasUsed": "1099810",
+      "effectiveGasPrice": "155236785"
+    },
+    "PoolPage": {
+      "address": "0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf",
+      "hash": "0x9e2d5b5522955710db7bd5cef39dcd0564a97ee475c5cdadc6ffeb958819e640",
+      "block": "26453680",
+      "blockHash": "0xfd104f50cf7d8cdab947f474ad94b9a3f324a19e7beafd4d7ee1ea85831f9dd2",
+      "gasUsed": "312318",
+      "effectiveGasPrice": "147008688"
+    },
+    "PoolInventory": {
+      "address": "0x9154504fB111544725bBb593b813fa106FdcFF9E",
+      "hash": "0xa882d547f27d4bfb49ca274357c8e9ff338a8cd5552157cd735e86bd82d8503e",
+      "block": "26453681",
+      "blockHash": "0xb7c8b2f6be85499b682bae53569545d840f9a89f0dd60b3c89637ad03851e9ed",
+      "gasUsed": "2560264",
+      "effectiveGasPrice": "136067446"
+    },
+    "ShapePackRenderer": {
+      "address": "0x2c784265787926975fb8C6974609871271eF57AD",
+      "hash": "0x9b2625a60af9ececa642bb9f5c1cf74fc83b0089b4a82ae7bbcee951cc3427eb",
+      "block": "26453682",
+      "blockHash": "0xb949bd68827752e9e552adfdf8d81b02ffd4616f9b4f00f466771f70b144c477",
+      "gasUsed": "2079868",
+      "effectiveGasPrice": "141606772"
+    },
+    "ShapePacks": {
+      "address": "0x91582A79498B4A6B7cABb2bb72155145E15f439C",
+      "hash": "0xa3dc709c691f2d52aca93b31a6dba4271e860f434ec8bf155a63708ba05ec8a0",
+      "block": "26453683",
+      "blockHash": "0x4bb1f9349440c8d358ef6d4df1f2bddeffe9f340acbe1cb20f65594e223c425b",
+      "gasUsed": "4279090",
+      "effectiveGasPrice": "141230542"
+    },
+    "PoolBalancer": {
+      "address": "0x46516fE3bd20B210985be9B2E65c22E46c1Ef6Ca",
+      "hash": "0x22bc859bc02dba5baa22bbf806a1741c4f396b313b9e38fa8afadd357cc78784",
+      "block": "26453684",
+      "blockHash": "0x1fb716b1a5aa19063863c9148f3f6892736674f2bd437a0f6172341d24d84786",
+      "gasUsed": "4547781",
+      "effectiveGasPrice": "141733665"
+    },
+    "KeeperPolicyV1": {
+      "address": "0x13797a6a7CFBfDD3956006f1cAc8Cae749569117",
+      "hash": "0x0b2fb6eac7f49610cf510062e347f40431571352c839b505dfee3180a92bfff4",
+      "block": "26453685",
+      "blockHash": "0xa3d74d12272b73c892253659352a46ad6d43636ae28eef14503dc77afc6f0ff4",
+      "gasUsed": "232232",
+      "effectiveGasPrice": "143771231"
+    },
+    "BalancerFactory": {
+      "address": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
+      "hash": "0xb39ab31b5353aa6cba88f849d0701c5fd2f1023caa7b17e04e65c066741bd910",
+      "block": "26453686",
+      "blockHash": "0xf5576bf9294a1bafadbd66ee718096b1c13e9205168d1e6162165c6ad6fab81c",
+      "gasUsed": "898122",
+      "effectiveGasPrice": "146600835"
+    }
+  },
+  "deploymentGasWei": "2273501989525081"
+}

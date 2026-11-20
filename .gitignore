@@ -29,3 +29,4 @@ audit/**/slither-out/
 /audit/round8/source-inventory-factory.json
 /audit/round8/source-inventory-page.json
 /audit/round8/source-inventory-pool.json
+.netlify/

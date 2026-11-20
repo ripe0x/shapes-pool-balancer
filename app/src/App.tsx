@@ -10,7 +10,7 @@ import {
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, type TransactionIntent, type TransactionStep } from './tx';
-import { poolEthLedger } from './ledger';
+import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
@@ -152,9 +152,12 @@ function useBalancer(b?: Address) {
     });
     currentRefresh.current = queue;
     queue.request();
-    const timer = setInterval(() => queue.request(), 15_000);
+    // Public RPC endpoints limit bursts: refresh every 30 s while the tab is visible, and at once when it returns.
+    const timer = setInterval(() => { if (!document.hidden) queue.request(); }, 30_000);
+    const onVisible = () => { if (!document.hidden) queue.request(); };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
-      clearInterval(timer); queue.dispose();
+      clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); queue.dispose();
       if (currentRefresh.current === queue) currentRefresh.current = undefined;
     };
   }, [pub, b, load]);
@@ -182,11 +185,28 @@ function useBalancer(b?: Address) {
   }, error, refresh };
 }
 
+/** Ledger events from FROM_BLOCK, fetched once and then only from the last fetched block (less a reorg window, whose
+ *  events are replaced), instead of rescanning the whole range on every refresh. */
+const ledgerCache = new Map<string, { through: bigint; logs: Awaited<ReturnType<typeof fetchLedger>> }>();
+const REORG_WINDOW = 64n;
+const fetchLedger = (pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer: Address, fromBlock: bigint, toBlock: bigint) =>
+  pub.getLogs({ address: balancer, events: LEDGER, fromBlock, toBlock });
+async function ledgerLogs(pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer: Address, toBlock: bigint) {
+  const key = `${pub.chain?.id}:${balancer.toLowerCase()}`;
+  const cached = ledgerCache.get(key);
+  if (cached && cached.through >= toBlock) return cached.logs.filter((l) => l.blockNumber! <= toBlock);
+  const { from, keepThrough } = incrementalRange(cached?.through, FROM_BLOCK, REORG_WINDOW);
+  const fresh = await fetchLedger(pub, balancer, from, toBlock);
+  const logs = [...(cached?.logs.filter((l) => l.blockNumber! <= keepThrough) ?? []), ...fresh];
+  ledgerCache.set(key, { through: toBlock, logs });
+  return logs;
+}
+
 async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>, d: {
   balancer: Address; pool: Address; listings: Listing[]; balance: bigint; proceeds: bigint; blockNumber: bigint;
 }) {
   const { listings, balance, proceeds, blockNumber } = d;
-  const events = await pub.getLogs({ address: d.balancer, events: LEDGER, fromBlock: FROM_BLOCK, toBlock: blockNumber });
+  const events = await ledgerLogs(pub, d.balancer, blockNumber);
   const drawn = events.filter((l) => l.eventName === 'ItemDrawn') as unknown as { args: { listingId?: bigint; kind?: number; denom?: number; delivered?: boolean } }[];
   const failedIds = [...new Set(drawn.filter((l) => !l.args.delivered).map((l) => l.args.listingId!))];
   const listing = async (id: bigint): Promise<Listing> => {
@@ -382,11 +402,12 @@ export function App() {
     // Pools this wallet created, plus pools transferred to it (CreatorTransferred is emitted by each Balancer). The
     // current on-chain creator() is authoritative, so reorg or duplicate logs are harmless and transferred-away pools
     // (and offers not yet accepted) drop out.
-    const [created, received] = await Promise.all([
-      // Anvil forks can stall indexed filters for locally emitted factory logs; ownership is checked below.
-      pub.getLogs({ address: FACTORY, event: CREATED, args: chain.id === 31337 ? undefined : { creator: address }, fromBlock: FROM_BLOCK }),
-      pub.getLogs({ event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: FROM_BLOCK }),
-    ]);
+    // Every pool this factory created, then transfers to this wallet among only those pools: an address-filtered scan
+    // stays within public RPC limits, where an unfiltered one would search every contract on chain.
+    const all = await pub.getLogs({ address: FACTORY, event: CREATED, fromBlock: FROM_BLOCK });
+    const created = all.filter((l) => chain.id === 31337 || l.args.creator?.toLowerCase() === address.toLowerCase());
+    const pools = all.map((l) => l.args.balancer!);
+    const received = pools.length ? await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: FROM_BLOCK }) : [];
     const candidates = [...new Set([...created.map((l) => l.args.balancer!), ...received.map((l) => l.address as Address)])];
     // Any contract can emit CreatorTransferred: only Balancers this dashboard's factory deployed are listed.
     const owned = await Promise.all(candidates.map(async (b) => {

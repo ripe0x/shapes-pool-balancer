@@ -1,6 +1,6 @@
 import { parseEther } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { poolEthLedger } from './ledger';
+import { incrementalRange, poolEthLedger } from './ledger';
 
 const creator = '0x0000000000000000000000000000000000000001' as const;
 const donor = '0x0000000000000000000000000000000000000002' as const;
@@ -41,4 +41,10 @@ describe('pool lifetime operating ETH ledger', () => {
     expect(ledger.recipients).toEqual([{ participant: recipient, amount: eth('3') }]);
     expect(ledger.operatingResult).toBe(0n); expect(ledger.reconciliation).toBe(0n);
   });
+});
+
+it('fetches ledger logs incrementally, re-reading only the reorg window', () => {
+  expect(incrementalRange(undefined, 100n, 64n)).toEqual({ from: 100n, keepThrough: 99n });
+  expect(incrementalRange(1_000n, 100n, 64n)).toEqual({ from: 937n, keepThrough: 936n });
+  expect(incrementalRange(120n, 100n, 64n)).toEqual({ from: 100n, keepThrough: 56n });
 });
