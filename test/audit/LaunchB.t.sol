@@ -329,8 +329,8 @@ contract AttackB is ForkBase {
 
     // ---------------------------------------------------------------- external dependency hostile: Shapes mint fee
 
-    /// @dev Shapes' admin raises the mint fee to its cap while the pool is open with draws in flight. Purchases stop;
-    ///      the creator closes and exits. Where does every wei of the creator's end up?
+    /// @dev Shapes' admin raises the mint fee to its cap while the pool is open with draws in flight. Restocking stops;
+    ///      listed prizes keep selling; the creator closes and exits. Where does every wei of the creator's end up?
     function test_shapesFeeAtCap_thenCloseout() public {
         _gas(0.5 gwei, 0.55 gwei);
         _open(_launchBoard(), 2_500, 10 ether, 0.2 ether);
@@ -339,7 +339,7 @@ contract AttackB is ForkBase {
         vm.prank(s.admin());
         s.setMintFee(0.01 ether);
         console.log("mint fee now", s.mintFee());
-        assertEq(balancer.admissionStatus(), 5, "MINT_FEE_ROSE");
+        assertTrue(balancer.admissionStatus() != 5, "code 5 is retired: the fee limits minting, not purchases");
         uint256 reqOpen = balancer.requiredReserve();
         console.log("required reserve while open at the raised fee", reqOpen);
         for (uint256 k; k < 3; ++k) fulfill(r[k], uint256(keccak256(abi.encode("fee", k))));

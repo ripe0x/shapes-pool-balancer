@@ -1860,7 +1860,9 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
     return () => { live = false; };
   }, [pub, ens.name]);
   const publish = async () => {
-    const metadata = { name, profile: Object.fromEntries(PROFILE_KEYS.map((k) => [k, profile[k] ?? ''])) };
+    // FWA hashes its schema's parsed metadata, which trims these fields; hash the same bytes.
+    const trimmed = (k: string, v: string) => (k === 'avatarUrl' || k === 'bannerUrl' ? v : v.trim());
+    const metadata = { name: name.trim(), profile: Object.fromEntries(PROFILE_KEYS.map((k) => [k, trimmed(k, profile[k] ?? '')])) };
     const issuedAt = new Date().toISOString();
     const hash = keccak256(toBytes(JSON.stringify(metadata)));
     if (!(await tx.send('Approve pool page', [() => tx.write({ ...B, functionName: 'approvePoolPage', args: [issuedAt, hash] })]))) return;
@@ -1891,8 +1893,8 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             <div key={k}><label className="form-label" htmlFor={k}>{PROFILE_LABELS[k]}</label><div className="field"><input id={k} value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} /></div></div>
           ))}
           <div className="row" style={{ marginTop: 20, gap: 16 }}>
-            <button className="btn" disabled={!!tx.busy || name.length < 2 || name.length > 64} onClick={publish}>Approve and publish</button>
-            <span className="note">One confirmation in your wallet. FWA has not confirmed it accepts pool owners that are contracts.</span>
+            <button className="btn" disabled={!!tx.busy || name.trim().length < 2 || name.trim().length > 64} onClick={publish}>Approve and publish</button>
+            <span className="note">One confirmation in your wallet. FWA has not confirmed it accepts pools owned by a contract, so it may reject the page.</span>
           </div>
           {result && <p className="note" style={{ marginTop: 10 }}>{result}</p>}
         </div>

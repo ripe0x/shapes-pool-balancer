@@ -17,6 +17,14 @@ Publication client bundle SHA-256: `3b7025e6a99f6ef05f0a546318fc01ae5b2a97fa1655
 
 Repository flow reviewed: `app/src/App.tsx:1562-1576` hashes the metadata, waits for `approvePoolPage`, then on mainnet submits a 66-zero-byte placeholder signature to FWA. `src/PoolPage.sol` constructs the corresponding message digest. `src/PoolBalancer.sol:522-540` approves that digest and returns ERC-1271 magic for a current approval. These facts and existing fork signature checks establish the contract side only. The FWA client also contains special editor/legacy-pool handling; this check does not claim compatibility for those paths.
 
+## Recheck 2026-11-20 (shapes-only release candidate)
+
+Read-only recheck of the same live deployment (`dpl_XhkM1Hhw…`): the client still builds the same EIP-191 message (title, `Site: pools.fwa.fun`, `Chain: 1`, `Factories: <PoolFactory>, <FWAFactory V1>` lower-case, lower-case pool, ISO `issuedAt`, metadata hash) and POSTs `{pool, issuedAt, metadata, signature}` to `/api/fwa/profile`; GET still returns 405 and no server source is public. `src/PoolPage.sol` reproduces the message byte for byte, so the result is unchanged: **contract-owner (ERC-1271) acceptance is unverified.** The dashboard says so before the creator approves.
+
+One app-side mismatch was found and fixed: FWA hashes its schema-parsed metadata, which trims `name`, `description`, `websiteUrl`, `xUrl` and `discordUrl`, while the dashboard hashed the raw input. Any surrounding whitespace made the approved digest differ from the server's, which would fail even for an ordinary wallet owner. The dashboard now trims those fields before hashing and validates the trimmed name length.
+
+Pool creation and FWA purchases do not depend on the page: a pool without a published page still works on FWA.
+
 ## Exact blocker and smallest remaining action
 
 The inspected public artifacts do not disclose whether the deployed POST handler calls ERC-1271 on the pool owner, accepts this placeholder, imposes additional signature constraints, or permits the dashboard's cross-origin request. Server freshness policy also remains unknown. HTTP GET cannot exercise the publication authorization path.
