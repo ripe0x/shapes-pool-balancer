@@ -54,7 +54,10 @@
     "burst",
     "policy_switch",
     "minimum_capital",
-    "minimum_large_win"
+    "minimum_large_win",
+    "shapes_only",
+    "mixed_to_shapes_only",
+    "shapes_only_to_mixed"
   ],
   "drift_groups": [
     [
@@ -96,7 +99,10 @@
         "burst",
         "policy_switch",
         "minimum_capital",
-        "minimum_large_win"
+        "minimum_large_win",
+        "shapes_only",
+        "mixed_to_shapes_only",
+        "shapes_only_to_mixed"
       ]
     },
     {
@@ -129,7 +135,10 @@
         "burst",
         "policy_switch",
         "minimum_capital",
-        "minimum_large_win"
+        "minimum_large_win",
+        "shapes_only",
+        "mixed_to_shapes_only",
+        "shapes_only_to_mixed"
       ]
     },
     {
@@ -182,7 +191,10 @@
         "no_processor",
         "no_processor_5_gwei",
         "burst",
-        "minimum_capital"
+        "minimum_capital",
+        "shapes_only",
+        "mixed_to_shapes_only",
+        "shapes_only_to_mixed"
       ]
     },
     {
@@ -215,7 +227,10 @@
         "burst",
         "policy_switch",
         "minimum_capital",
-        "minimum_large_win"
+        "minimum_large_win",
+        "shapes_only",
+        "mixed_to_shapes_only",
+        "shapes_only_to_mixed"
       ]
     },
     {
@@ -246,7 +261,8 @@
         "gas_5_gwei",
         "whatif_large_win_top_up",
         "whatif_large_win_drop_top",
-        "burst"
+        "burst",
+        "shapes_only"
       ]
     },
     {

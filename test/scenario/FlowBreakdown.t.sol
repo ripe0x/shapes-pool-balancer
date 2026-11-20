@@ -200,6 +200,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     bool internal trackPrice;
     uint256 internal maxPriceToBackingBps;
     uint256 internal minPriceToBackingBps = type(uint256).max;
+    // optional-curated (standard mode) regimes: no launch NFT, and curated add/withdraw mid-run
+    bool internal noNft;
+    uint256 internal withdrawCuratedAt = type(uint256).max;
+    uint256 internal listCuratedAt = type(uint256).max;
 
     function setUp() public {
         setUpFork();
@@ -254,6 +258,46 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         for (uint256 i; i < DRAWS; ++i) _single(i);
         assertEq(vrfPaid, requested * VRF_GAS * gasNow, "each draw paid FWA's randomness fee at the stated gas price");
         _done("quiet", a, new Fact[](0));
+    }
+
+    /// @dev Standard mode (curatedRequired=false): the launch Shape/Pack board with no curated NFT at all, played like
+    ///      quiet, then closed out. Purchases are admitted throughout on Shapes alone.
+    function test_breakdown_shapesOnly() public {
+        curatedRequired = false;
+        noNft = true;
+        Snap memory a = _launch();
+        assertEq(_ids(CURATED_KIND).length, 0, "no curated NFT listed");
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertEq(nftsWon, 0, "a shapes-only pool delivers no curated NFT");
+        _closeout();
+        _done("shapes_only", a, new Fact[](0));
+    }
+
+    /// @dev Standard mode: a mixed pool whose single (last) curated NFT the creator withdraws mid-run; Shape purchases
+    ///      continue with no curated NFT listed, then closeout.
+    function test_breakdown_mixedToShapesOnly() public {
+        curatedRequired = false;
+        withdrawCuratedAt = 60;
+        Snap memory a = _launch();
+        assertEq(_ids(CURATED_KIND).length, 1, "starts mixed: one curated NFT listed");
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertEq(_ids(CURATED_KIND).length, 0, "ran shapes-only after the last curated NFT was withdrawn");
+        _closeout();
+        _done("mixed_to_shapes_only", a, new Fact[](0));
+    }
+
+    /// @dev Standard mode: starts shapes-only, the creator adds a curated NFT with listCuratedBatch mid-run, play
+    ///      continues (the NFT is relisted when won, as the standard regimes do), then closeout.
+    function test_breakdown_shapesOnlyToMixed() public {
+        curatedRequired = false;
+        noNft = true;
+        listCuratedAt = 60;
+        Snap memory a = _launch();
+        assertEq(_ids(CURATED_KIND).length, 0, "starts shapes-only");
+        for (uint256 i; i < DRAWS; ++i) _single(i);
+        assertGe(nftsListed, 1, "a curated NFT was added with listCuratedBatch mid-run (and relisted if won)");
+        _closeout();
+        _done("shapes_only_to_mixed", a, new Fact[](0));
     }
 
     /// @dev Same inputs bought five at a time: five draws unsettled, upkeep working while three are still unsettled
@@ -917,7 +961,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         deposited += deposit;
         vm.prank(creator);
         balancer.configure(uint16(MARKUP_BPS), plan16(c));
-        _listNft();
+        if (!noNft) _listNft();
         vm.prank(creator);
         balancer.open();
         assertTrue(_keeperPass(), "keepers finished the setup");
@@ -1056,6 +1100,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         _gasPhase(i);
         if (trackPrice) _trackPrice();
         if (i == actAt) _act();
+        if (i == withdrawCuratedAt) assertEq(_withdrawNfts(), 1, "the last curated NFT was withdrawn mid-run");
+        if (i == listCuratedAt) _listNftBatch();
         if (!balancer.canPurchase(buyer)) {
             _refused(1);
         } else {
@@ -1503,6 +1549,43 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.stopPrank();
         _scanListings();
         ++nftsListed;
+    }
+
+    /// @dev Add one curated NFT to an open shapes-only pool through listCuratedBatch (shapes_only_to_mixed).
+    function _listNftBatch() internal {
+        uint256 id;
+        address holder;
+        do {
+            id = nextNft++;
+            holder = IERC721Min(BAYC).ownerOf(id);
+        } while (holder.code.length != 0);
+        vm.prank(holder);
+        IERC721Min(BAYC).transferFrom(holder, creator, id);
+        _collectNow();
+        PoolBalancer.CuratedInput[] memory batch = new PoolBalancer.CuratedInput[](1);
+        batch[0] = PoolBalancer.CuratedInput(BAYC, id, NFT_VALUE);
+        vm.startPrank(creator);
+        IERC721Min(BAYC).approve(address(balancer), id);
+        balancer.listCuratedBatch(batch);
+        vm.stopPrank();
+        _scanListings();
+        ++nftsListed;
+    }
+
+    /// @dev Close, reconcile anything outstanding, unlist every Shape, return the NFTs, claim and retire. After a quiet
+    ///      run no draw is unsettled, so unlisting and withdrawal are never blocked (FWA rule).
+    function _closeout() internal {
+        _collectNow();
+        vm.prank(creator);
+        balancer.close();
+        _keeperPass();
+        while (_upkeep(creator, false) == RAN) {}
+        uint256[] memory prizes = _ids(SHAPE_KIND);
+        for (uint256 from; from < prizes.length; from += 20) assertTrue(_unlist(_chunk(prizes, from)), "unlist");
+        _withdrawNfts();
+        _claim();
+        vm.prank(creator);
+        balancer.retire();
     }
 
     /// @dev Collects FWA proceeds on their own, so the amount and the profit credited are measured apart from the
