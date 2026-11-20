@@ -429,7 +429,8 @@ export function App() {
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
-  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
+  // A failed discovery still opens the designer; the address field above it is the way into an existing pool.
+  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => { setLoadFailed(true); setPage((p) => p ?? 'new'); }); }, [loadMine]);
   useEffect(() => { setLoaded(false); setPage(loadDraft()?.creation ? 'new' : undefined); setSelected(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
@@ -440,7 +441,7 @@ export function App() {
   }, [pub]);
 
   const dev = connectors.filter((c) => c.type === 'mock');
-  const fresh = !isConnected || (page === 'new' && (loaded || !!loadDraft()?.creation));
+  const fresh = !isConnected || (page === 'new' && (loaded || loadFailed || !!loadDraft()?.creation));
   const open = (b: Address) => { setTab('overview'); setSelected(b); setPage('pool'); };
   const openAddress = async () => {
     if (!pub || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)) return;
@@ -477,18 +478,15 @@ export function App() {
       {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
       {help && <HowItWorks onDesign={() => { setHelp(false); if (isConnected) setPage('new'); }} />}
       <div hidden={help}>
-      {fresh && (
-        <div className="status">
-          <span>{isConnected ? <><b>New pool.</b> Nothing is sent until you create it and confirm in your wallet.</> : <><b>Preview.</b> Design a pool. Nothing is sent until you connect a wallet and create it.</>}</span>
-          {isConnected && mine.length > 0 && <span className="actions"><button className="link quiet" onClick={() => setPage('list')}>Back to your pools</button></span>}
-        </div>
-      )}
-      {isConnected && page !== 'pool' && <main className="page narrow-page">
-        {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : !loaded && <p className="txline">Discovering your pools…</p>}
-        <label htmlFor="open-pool-address" className="form-label">Pool address</label>
-        <div className="field"><input id="open-pool-address" value={poolAddress} onChange={(e) => setPoolAddress(e.target.value)} placeholder="0x…" spellCheck={false} /></div>
-        <button className="btn" disabled={openingAddress || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)} onClick={openAddress}>{openingAddress ? 'Opening…' : 'Open pool'}</button>
-        {addressError && <p className="note error">{addressError}</p>}
+      {isConnected && page !== 'pool' && (loadFailed || !loaded) && <main className="page narrow-page">
+        {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your pools…</p>}
+        {/* Opening a pool by address is the way in only while discovery is failing. */}
+        {loadFailed && <>
+          <label htmlFor="open-pool-address" className="form-label">Pool address</label>
+          <div className="field"><input id="open-pool-address" value={poolAddress} onChange={(e) => setPoolAddress(e.target.value)} placeholder="0x…" spellCheck={false} /></div>
+          <button className="btn" disabled={openingAddress || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)} onClick={openAddress}>{openingAddress ? 'Opening…' : 'Open pool'}</button>
+          {addressError && <p className="note error">{addressError}</p>}
+        </>}
       </main>}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
@@ -692,6 +690,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   }, [pub, attempt, walletChainId, me, recheck, tx.busy]);
   const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint }>();
   const [loadError, setLoadError] = useState<string>();
+  const [loadTry, setLoadTry] = useState(0);
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
@@ -705,7 +704,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
       setLive({ ...costs, edgeBps, mintFee, vrfFee });
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
-  }, [pub]);
+  }, [pub, loadTry]);
+  useEffect(() => { if (!loadError) return; const t = setTimeout(() => setLoadTry((n) => n + 1), 30_000); return () => clearTimeout(t); }, [loadError]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
   if (attempt) return <main className="page narrow-page">
     <h1 className="title t2">Pool creation</h1>
@@ -717,9 +717,10 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY }) && <button className="btn sec" onClick={() => rejectCreation(attempt)}>Return to saved design</button>}
     {(tx.busy || tx.msg) && <p className="txline">{tx.busy ? `${tx.busy}…` : tx.msg?.text}</p>}
   </main>;
-  if (!live) return <main className="page"><p className="lead">{loadError ?? 'Loading current fees…'}</p></main>;
+  // The designer shows without current fees: costs stay hidden and creation blocked until they load.
+  const fees = live ?? { policyMaxReward: 0n, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
-  const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: live.mintFee, ...live } as unknown as D;
+  const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
   return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt }} />;
 }
 
@@ -789,7 +790,7 @@ type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => voi
  */
 type DesignProps = { d: D; tx: Tx; mode: Mode; me?: Address; create?: Create };
 function Design(props: DesignProps) {
-  if (props.d.policyUnavailable || props.d.mintFeeUnavailable) return <main className="page"><p className="lead">Current economic quotes are unavailable.</p><p>Use Overview to collect or claim earnings and Settings to recover the policy.</p></main>;
+  if (props.mode === 'pool' && (props.d.policyUnavailable || props.d.mintFeeUnavailable)) return <main className="page"><p className="lead">Current economic quotes are unavailable.</p><p>Use Overview to collect or claim earnings and Settings to recover the policy.</p></main>;
   return <DesignEditor {...props} />;
 }
 function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
@@ -835,7 +836,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
   const base: DesignInputs = {
-    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!,
+    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee ?? 0n,
     have: d.activeShapes, baseFee: d.baseFee, unreconciled: d.awaitingUpkeep, paidUpkeepEnabled: d.paidUpkeepEnabled, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes,
   };
   const maxPrizes = MAX_SHAPES_PER_PLAN;
@@ -892,7 +893,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const choose = (st: Style) => { setEdited(true); setStyle(st); };
   const ready = total > 0;
   const quotedCounts = has && !edited ? listedShapeCounts(d.listings) : counts;
-  const ev = ready ? evaluate(quotedCounts, inputs) : undefined;
+  // Prices and costs need current fees; without them every figure shows as a dash.
+  const ev = ready && !d.policyUnavailable && !d.mintFeeUnavailable ? evaluate(quotedCounts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
   const view = ev ? playerView(ev) : undefined;
@@ -1028,7 +1030,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : (shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
-  const blocked = d.policyUnavailable ? 'Policy quotes are unavailable.'
+  const blocked = (d as { feesLoading?: boolean }).feesLoading ? 'Loading current fees…'
+    : d.policyUnavailable ? 'Current fees are unavailable. Retrying.'
     : d.mintFeeUnavailable ? 'The Shapes mint fee is unavailable.'
     : !revenueValid ? 'Choose a revenue share from 0% to 100%.'
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
@@ -1254,7 +1257,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
               <p className="note">Added to each new Shape listing price.</p>
-              <p className="note" style={{ marginTop: 6 }}>0.01 ETH Shape restocking charge: {eth(d.restockFee!, 5)} ETH.</p>
+              <p className="note" style={{ marginTop: 6 }}>0.01 ETH Shape restocking charge: {d.restockFee === undefined ? 'unavailable' : `${eth(d.restockFee, 5)} ETH`}.</p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>
