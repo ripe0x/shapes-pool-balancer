@@ -2,7 +2,7 @@ import { createPublicClient, custom, http, toFunctionSelector, toHex, type Addre
 import { expect, it } from 'vitest';
 import { poolBalancerAbi } from '../../shared/abi';
 import { DENOMS, SHAPES_IN } from '../../shared/planner';
-import { policyEconomics } from './policy';
+import { policyAbi, policyEconomics, readsAt } from './policy';
 
 const rpc = process.env.POLICY_PREVIEW_RPC;
 const balancer = process.env.POLICY_PREVIEW_BALANCER as Address | undefined;
@@ -33,10 +33,11 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
   expect(requests.some(request => request.method === 'eth_call' && JSON.stringify(request.params).includes(settingsSelector.slice(2)))).toBe(false);
   expect(costs.restockFees).toHaveLength(DENOMS.length);
   expect(costs.policyMaxReward).toBe(maxReward);
-  const feeCalls = requests.filter(request => request.method === 'eth_call').map(request => request.params as [{ to?: string; data?: string; gasPrice?: string }, string])
-    .filter(([call]) => call.to?.toLowerCase() === balancer!.toLowerCase() && call.data?.startsWith(toFunctionSelector('restockFeeFor(uint8)')));
-  expect(feeCalls).toHaveLength(DENOMS.length);
-  for (const [call, block] of feeCalls) {
+  // Restock fees and keeper quotes each go out as one Multicall3 aggregate3 eth_call carrying the gas price.
+  const batches = requests.filter(request => request.method === 'eth_call').map(request => request.params as [{ to?: string; data?: string; gasPrice?: string }, string])
+    .filter(([call]) => call.to?.toLowerCase() === '0xca11bde05977b3631167028862be2a173976ca11' && call.data?.startsWith(toFunctionSelector('aggregate3((address,bool,bytes)[])')));
+  expect(batches).toHaveLength(2);
+  for (const [call, block] of batches) {
     expect(call.gasPrice).toBe(toHex(costs.gasPrice));
     expect(block).toMatch(/^0x[0-9a-f]+$/);
   }
@@ -48,3 +49,23 @@ it('reports failed policy economics as unavailable instead of substituting V1', 
   const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
   await expect(policyEconomics(pub, '0x0000000000000000000000000000000000000001', 100_000_000_000_000n, undefined, snapshot)).rejects.toThrow('RPC unavailable');
 });
+
+// Opt-in read-only mainnet check: MAINNET_RPC=https://mainnet.gateway.tenderly.co. The deployed KeeperPolicyV1 answers
+// the batched quotes exactly as it answers one call each, in a single request, at the real basefee.
+it.skipIf(!process.env.MAINNET_RPC)('batches restock quotes into one request with the same answers', async () => {
+  const actual = createPublicClient({ transport: http(process.env.MAINNET_RPC), cacheTime: 0 });
+  const requests: { method: string }[] = [];
+  const pub = createPublicClient({ transport: custom({ request: async (request) => { requests.push(request); return actual.transport.request(request); } }), cacheTime: 0 });
+  const policy = '0x13797a6a7CFBfDD3956006f1cAc8Cae749569117' as Address;
+  const block = await actual.getBlock();
+  const baseFee = block.baseFeePerGas!;
+  const at = { blockNumber: block.number!, gasPrice: baseFee + 50_000_000n, gasPerRead: 150_000n };
+  const batched = await readsAt(pub, DENOMS.map((_, d) => ({ address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] })), at);
+  expect(requests).toHaveLength(1);
+  const single: bigint[] = [];
+  for (let d = 0; d < DENOMS.length; d++) single.push(await actual.readContract({ address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee], blockNumber: block.number!, gasPrice: at.gasPrice, gas: 150_000n } as never) as bigint);
+  expect(batched).toEqual(single);
+  // V1: units x (900,000 gas x min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH)
+  const price = baseFee + 50_000_000n > 5_000_000_000n ? 5_000_000_000n : baseFee + 50_000_000n;
+  expect(batched[0]).toBe(BigInt(SHAPES_IN[0]) * (900_000n * price + 200_000_000_000_000n));
+}, 120_000);

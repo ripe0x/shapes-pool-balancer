@@ -3,6 +3,7 @@ import { mock } from 'wagmi/connectors';
 import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { injectedWallet, metaMaskWallet, rabbyWallet, walletConnectWallet } from '@rainbow-me/rainbowkit/wallets';
 import { defineChain, type Address } from 'viem';
+import { limitConcurrency } from './limit';
 import { mainnet } from 'viem/chains';
 
 const chainId = Number(import.meta.env.VITE_CHAIN_ID ?? 1);
@@ -33,7 +34,8 @@ export const config = createConfig({
   connectors: chainId === 31337 && import.meta.env.VITE_DEV_ACCOUNT
     ? [...wallets, mock({ accounts: [import.meta.env.VITE_DEV_ACCOUNT as Address] })]
     : wallets,
-  transports: { [chain.id]: http(rpcUrl) } as Record<number, ReturnType<typeof http>>,
+  // At most four requests in flight, and slower retries after a 429, so the public RPC endpoint is enough.
+  transports: { [chain.id]: http(rpcUrl, { fetchFn: limitConcurrency(fetch, 4), retryDelay: 600 }) } as Record<number, ReturnType<typeof http>>,
   // Reads made together go out as one multicall: a pool reads two values per listing on load (2,200 reads at 1,100).
   batch: { multicall: { batchSize: 16_384 } },
 });

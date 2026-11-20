@@ -1,0 +1,12 @@
+# Dashboard only. VITE_CHAIN_ID, VITE_RPC_URL, VITE_FACTORY and VITE_FROM_BLOCK are set on the Netlify site, not here.
+[build]
+  command = "npm run build:app"
+  publish = "app/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
