@@ -57,7 +57,7 @@ contract ReentrantNFT is MockNFT {
             (bool ok,) = target.call(abi.encodeCall(IReenterTarget.performUpkeep, (IReenterTarget(target).settingsHash(), 0, 0)));
             ++attempts;
             if (ok) reentered = true;
-            PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(1500, 1000, 1, 0.001 ether);
+            PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(1500, 1000, 1, 0.001 ether, false);
             (ok,) = target.call(abi.encodeCall(PoolBalancer.initialize,
                 (address(this), config, new PoolBalancer.CuratedInput[](0))));
             ++initializationAttempts;

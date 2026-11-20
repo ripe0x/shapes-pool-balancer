@@ -45,7 +45,7 @@ contract DevSetup is Script {
         PoolBalancer implementation = PoolBalancer(payable(factory.implementation()));
         // Demo review values: 15% Shape markup and a fixed 4% allocation of collected owner proceeds.
         PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(
-            1500, 400, 5 | (3 << 16) | (2 << 32), implementation.SHAPES().mintFee());
+            1500, 400, 5 | (3 << 16) | (2 << 32), implementation.SHAPES().mintFee(), false);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 3 ether}(salt, config, nfts)));
         vm.stopBroadcast();
         console.log("Balancer", address(b));

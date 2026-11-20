@@ -67,10 +67,10 @@ contract BalancerTest is ForkBase {
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/

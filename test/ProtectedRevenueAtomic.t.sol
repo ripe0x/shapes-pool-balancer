@@ -67,7 +67,7 @@ contract ProtectedRevenueAtomicTest is ForkBase {
     function _creation(uint256 t, uint16 rate)
         internal view returns (PoolBalancer.CreationConfig memory c, uint256 funding)
     {
-        c = PoolBalancer.CreationConfig(1500, rate, t, shapes.mintFee());
+        c = PoolBalancer.CreationConfig(1500, rate, t, shapes.mintFee(), true);
         KeeperPolicyCalls.Reserve memory r;
         r.enabled = true;
         r.target = t;

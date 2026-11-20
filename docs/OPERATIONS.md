@@ -10,11 +10,11 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 0 | OK | Open: the Balancer admits purchases (FWA can still refuse one, e.g. when its VRF service lacks capacity) | none |
 | 1 | CLOSED | Closed by creator | `open()` |
 | 2 | SETTING_UP | Initial stocking or reopening setup is unfinished | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
-| 3 | NO_CURATED | No curated listing remains in local tracking | list a curated NFT, then complete any stocking |
+| 3 | NO_CURATED | Only while `curatedRequired`: no curated listing remains in local tracking | list a curated NFT, or `setCuratedRequired(false)`; then complete any stocking |
 | 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
-| 5 | MINT_FEE_ROSE | The Shapes mint fee is above the one the creator accepted | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
+| 5 | (retired) | Not returned by this release. A Shapes mint fee above `mintFeeCap` stops minting in upkeep; listed prizes keep selling until LOW_INVENTORY | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Prospective Shape-weight lower bound is below 70% of target | process/reconcile existing draws; inspect actual staging and liquidity before adding ETH |
-| 7 | CURATED_PROOF_REQUIRED | An active curated listing has not been proven | activate staged curated inventory if necessary, then anyone calls `refreshCuratedWitness(listingId)` |
+| 7 | CURATED_PROOF_REQUIRED | Only while `curatedRequired`: an active curated listing has not been proven | activate staged curated inventory if necessary, then anyone calls `refreshCuratedWitness(listingId)` |
 
 ## Keeper down
 

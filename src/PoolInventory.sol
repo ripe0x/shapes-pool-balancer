@@ -87,17 +87,18 @@ library PoolInventory {
         emit UntrackedNFTRecovered(collection, tokenId, to);
     }
 
-    function admission(State storage s, IFWAPool pool, address shapes, uint256 mintFeeCap,
+    /// @dev Curated NFTs are optional unless `curatedRequired`. The Shapes mint fee is not checked here: it limits
+    ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
+    function admission(State storage s, IFWAPool pool, bool curatedRequired,
         uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence) public view returns (uint8)
     {
-        if (s.activeIds.length == s.listedPrizes) return 3;
+        if (curatedRequired && s.activeIds.length == s.listedPrizes) return 3;
         uint256 unsettled = pool.unsettledAcquisitionCount();
         if (unsettled >= 5) return 4;
-        if (IShapes(shapes).mintFee() > mintFeeCap) return 5;
         uint256 active = pool.activeListingCount();
         // Active Shapes are a subset of tracked Shapes. Otherwise require a fresh identity proof: tracked
         // curated includes staging and unreconciled wins. Ambiguity intentionally pauses until public refresh.
-        if (active <= s.listedPrizes && !_hasCuratedWitness(s, pool)) return 7;
+        if (curatedRequired && active <= s.listedPrizes && !_hasCuratedWitness(s, pool)) return 7;
         uint256 unavailable = pool.lastIssuedSequence() - reconciledSequence;
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {

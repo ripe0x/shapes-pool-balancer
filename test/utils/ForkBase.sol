@@ -33,6 +33,9 @@ abstract contract ForkBase is Test {
     address internal constant VRF_SERVICE = 0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d;
 
     uint16 internal constant MARKUP = 1500;
+    /// @dev Fixtures predating optional curated NFTs keep their original curated-required admission; tests of the
+    ///      standard mode set this false before creating a fixture.
+    bool internal curatedRequired = true;
 
     BalancerFactory internal factory;
     PoolBalancer internal balancer;
@@ -76,7 +79,7 @@ abstract contract ForkBase is Test {
         vm.startPrank(owner);
         nft.approve(predicted, id);
         b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
-            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee()), initial)));
+            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired), initial)));
         b.close();
         b.withdrawCurated(b.getActiveIds()[0], owner);
         if (seed > deposit) b.claimSurplus(seed - deposit, owner);

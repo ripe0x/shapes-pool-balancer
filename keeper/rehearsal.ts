@@ -410,7 +410,7 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
         }
         if (i === 0)
             await run.creationReceiptProbe(creator, curated, fee);
-        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
+        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee, curatedRequired: true }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
         b.pool = await read<Address>(balancer, 'pool');
         run.save();
         eqPrepared(await read<Address>(balancer, 'creator'), creator);

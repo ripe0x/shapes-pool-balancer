@@ -14,7 +14,7 @@ export interface CreationAttempt {
   /** Observed on the actual submitted transaction, never a pre-wallet nonce estimate. */
   nonce?: number;
   fromBlock?: string;
-  config: { markupBps: number; creatorRevenueBps: number; target: string; mintFeeCap: string };
+  config: { markupBps: number; creatorRevenueBps: number; target: string; mintFeeCap: string; curatedRequired?: boolean };
   curated: { collection: Address; tokenId: string; base: string }[];
   value: string;
 }
@@ -28,6 +28,7 @@ export const sameCreation = (a?: CreationAttempt, b?: CreationAttempt) => !!a &&
   && sameAddress(a.predicted, b.predicted) && a.salt === b.salt && a.value === b.value
   && a.config.markupBps === b.config.markupBps && a.config.creatorRevenueBps === b.config.creatorRevenueBps
   && a.config.target === b.config.target && a.config.mintFeeCap === b.config.mintFeeCap
+  && !!a.config.curatedRequired === !!b.config.curatedRequired
   && a.curated.length === b.curated.length && a.curated.every((n, i) => sameAddress(n.collection, b.curated[i].collection)
     && n.tokenId === b.curated[i].tokenId && n.base === b.curated[i].base);
 
@@ -62,7 +63,7 @@ export const creationStatus = (outcome: CreationOutcome) => ({
 type Remember = (next: CreationAttempt, previous?: CreationAttempt) => void;
 type CreationClient = Pick<PublicClient, 'getChainId' | 'getBlockNumber' | 'getBlock' | 'getTransactionCount' | 'readContract' | 'getTransactionReceipt' | 'getTransaction'>;
 const creationInput = (a: CreationAttempt) => encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer',
-  args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap) },
+  args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired },
     a.curated.map(n => ({ ...n, tokenId: BigInt(n.tokenId), base: BigInt(n.base) }))] });
 const isCreationTransaction = (a: CreationAttempt, t: Transaction) => sameAddress(t.from, a.creator)
   && sameAddress(t.to ?? undefined, a.factory) && t.input === creationInput(a) && t.value === BigInt(a.value);
@@ -149,14 +150,15 @@ export async function recoverCreation(pub: CreationClient, a: CreationAttempt, c
     if (registered) {
       const read = <T>(functionName: string) => pub.readContract({ address: a.predicted, abi: poolBalancerAbi,
         functionName: functionName as never, blockNumber }) as Promise<T>;
-      const [creator, factory, pool, markupBps, creatorRevenueBps, target, mintFeeCap] = await Promise.all([
+      const [creator, factory, pool, markupBps, creatorRevenueBps, target, mintFeeCap, curatedRequired] = await Promise.all([
         read<Address>('creator'), read<Address>('factory'), read<Address>('pool'), read<number>('markupBps'),
-        read<number>('creatorRevenueBps'), read<bigint>('target'), read<bigint>('mintFeeCap'),
+        read<number>('creatorRevenueBps'), read<bigint>('target'), read<bigint>('mintFeeCap'), read<boolean>('curatedRequired'),
       ]);
       const owner = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'owner', blockNumber });
       return sameAddress(creator, a.creator) && sameAddress(factory, a.factory) && sameAddress(owner, a.predicted)
         && Number(markupBps) === a.config.markupBps && Number(creatorRevenueBps) === a.config.creatorRevenueBps
-        && target === BigInt(a.config.target) && mintFeeCap === BigInt(a.config.mintFeeCap) ? 'confirmed' : 'mismatch';
+        && target === BigInt(a.config.target) && mintFeeCap === BigInt(a.config.mintFeeCap)
+        && curatedRequired === !!a.config.curatedRequired ? 'confirmed' : 'mismatch';
     }
     if (!a.hash) return 'unknown';
     if (a.nonce === undefined && a.submittedHash && a.submittedHash !== a.hash) {
