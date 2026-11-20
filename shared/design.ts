@@ -85,12 +85,26 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
     const i = DENOMS.reduce((b, v, j) => (Math.abs(Math.log(Number(v) / target)) < Math.abs(Math.log(Number(DENOMS[b]) / target)) ? j : b), 0);
     return NONE.map((_, j) => (j === i ? 1 : 0));
   }
+  const pick = (cost: bigint) => BY_VALUE.find((j) => DENOMS[j] >= 2n * cost) ?? -1; // the smallest size worth 2x the draw
   while (shapeCount(bonus) < room) {
     const v = view(bonus);
     if (v.win2x >= BIG_WIN_SHARE) break;
-    const i = BY_VALUE.find((j) => DENOMS[j] >= 2n * v.cost) ?? -1; // the smallest size worth 2x the draw
+    const i = pick(v.cost);
     if (i < 0) break;
-    bonus = bonus.map((n, j) => (j === i ? n + 1 : n));
+    // Same result as adding size i one at a time, in O(log n) evaluations: find the most extra i after which the
+    // one-at-a-time loop would still add i (galloping, then halving), then add one more. Relies on the 2x share and the
+    // draw price both rising as size i is added.
+    const add = (k: number) => bonus.map((n, j) => (j === i ? n + k : n));
+    const more = (k: number) => {
+      const b = add(k);
+      if (shapeCount(b) >= room) return false;
+      const w = view(b);
+      return w.win2x < BIG_WIN_SHARE && pick(w.cost) === i;
+    };
+    let k = 0, step = 1;
+    while (more(k + step)) { k += step; step *= 2; }
+    for (step >>= 1; step >= 1; step >>= 1) if (more(k + step)) k += step;
+    bonus = add(k + 1);
   }
   return bonus;
 }
