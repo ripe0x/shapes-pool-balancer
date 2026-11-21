@@ -7,7 +7,7 @@ import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi }
 import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, MAX_SHAPES_PER_PLAN, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
@@ -357,8 +357,7 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
         ? { head: 'Open.', body: `${eth(shortfall, 6)} ETH below the operating requirement. Maintenance uses available ETH and collected sales.`, act: 'overview', label: 'Add ETH' }
         : { head: 'Open.', body: 'Players can buy draws. Nothing needs attention.' };
     case 1: {
-      const mintFee = d.mintFee > d.mintFeeCap ? d.mintFee : d.mintFeeCap;
-      const opening = requiredReserveAt(target, d.activeShapes, mintFee, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.policyMaxReward : 0n, d.baseFee);
+      const opening = requiredReserveAt(target, d.activeShapes, d.mintFeeCap, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.policyMaxReward : 0n, d.baseFee);
       const needed = opening > fund ? opening - fund : 0n;
       return needed > 0n
         ? { head: 'Closed.', body: `Opening requires ${eth(needed, 6)} ETH more operating capital.`, act: 'overview', label: 'Add ETH' }
@@ -604,7 +603,9 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
 type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
 /** Design work before submission, retained across wallet connection and reloads. */
-type Draft = { salt?: Hash; creation?: CreationAttempt; creatorRevenueBps?: number; curatedRequired?: boolean; markup: number; small?: number; style?: Style | null; bonus?: Counts; nfts?: DraftNft[] };
+type Draft = { salt?: Hash; creation?: CreationAttempt; creatorRevenueBps?: number; curatedRequired?: boolean; markup: number; counts?: Counts; style?: Style | null; nfts?: DraftNft[];
+  /** Drafts saved before `counts`: 0.01 ETH Shapes and the other sizes, kept apart. Read once, never written. */
+  small?: number; bonus?: Counts };
 const draftKey = () => 'pool-design-draft';
 const loadDraft = (): Draft | undefined => { try { return JSON.parse(localStorage.getItem(draftKey()) ?? 'null') ?? undefined; } catch { return undefined; } };
 const saveDraft = (x: Draft) => { try { localStorage.setItem(draftKey(), JSON.stringify({ ...x, creation: loadDraft()?.creation })); } catch { /* storage unavailable */ } };
@@ -631,6 +632,8 @@ const DEFAULT_NFT: DraftNft = { value: '0.050' };
 const DEFAULT_MARKUP = 25;
 const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
+/** A new design: the Balanced preset at ten 0.01 ETH Shapes (Balanced depends only on that count). */
+const defaultCounts = (d: DesignInputs) => presetCounts('board', d, DEFAULT_SMALL);
 const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
   { key: 'steady', label: 'Low draw price', hint: 'Cheapest draws. Curated NFTs are the big prizes.' },
   { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps, 0.01 to 0.1 ETH.' },
@@ -822,12 +825,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const curatedPrices = listed.map((l) => l.price);
   const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
-  // The number of 0.01 ETH Shapes; a style scales its other Shapes with it. At least one, so a style never collapses
-  // to a one-prize pool.
-  // A style needs at least one; a custom mix may have none (`smallUsed` applies the floor).
-  const [small, setSmall] = useState(has ? savedCounts[0] : draft?.small ?? DEFAULT_SMALL);
-  // A saved pool shows its saved mix until something changes.
-  const [edited, setEdited] = useState(!has);
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const [open, setOpen] = useState({ bonus: false, numbers: false });
@@ -847,31 +844,23 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     have: d.activeShapes, baseFee: d.baseFee, unreconciled: d.awaitingUpkeep, paidUpkeepEnabled: d.paidUpkeepEnabled, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes,
   };
   const maxPrizes = MAX_SHAPES_PER_PLAN;
-  // Bonus prizes: Shapes on top of the small ones. A style picks them; adjusting them by hand makes the mix custom.
-  const [custom, setCustom] = useState<Counts>(() => (has ? savedCounts.map((n, i) => (i === 0 ? 0 : n)) : draft?.bonus ?? ZERO));
-  const [style, setStyle] = useState<Style | undefined>(() => (has ? (custom.some(Boolean) ? undefined : 'steady') : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
-  const initial = useRef({ style, custom, small });
-  // Until a curated NFT is chosen, the design is priced on its Shapes alone.
-  const bonus = useMemo(() => (style ? styleBonus(style, base, small) : custom),
-    [style, custom.join(), small, bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Pool size: the slider steps through the number of 0.01 ETH Shapes, up to the first count where the Shape limit
-  // binds (a style's other Shapes then shrink, so the total stops growing). Found by halving: a style's mix is too
-  // costly to compute for every count.
-  const maxSmall = useMemo(() => {
-    if (!style) return Math.max(0, maxPrizes - shapeCount(custom));
-    let lo = 1, hi = maxPrizes;
-    while (lo < hi) {
-      const m = (lo + hi) >> 1;
-      if (m + shapeCount(styleBonus(style, base, m)) >= maxPrizes) hi = m; else lo = m + 1;
-    }
-    return lo;
-  }, [style, custom.join(), bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  const room = maxPrizes - shapeCount(bonus);
-  const smallUsed = Math.max(style ? 1 : 0, Math.min(small, room, maxSmall));
-  const counts = edited ? mixOf(smallUsed, bonus) : savedCounts;
-  const prizes = counts.reduce((a, x) => a + x, 0);
-  // While the saved design is shown unchanged, its listed Shapes keep their actual prices; a projection of an edited
-  // design prices the new Shapes at the current markup instead.
+  // The prize count of each of the 16 sizes: the one record of the mix. Presets compute it; hand edits change it.
+  const [counts, setCounts] = useState<Counts>(() => (has ? savedCounts
+    : draft?.counts?.length === 16 ? draft.counts : draft ? mixOf(draft.small ?? DEFAULT_SMALL, draft.bonus) : defaultCounts(base)));
+  // The preset last applied, until a count is changed by hand. While it is applied, the mix follows the draw price it
+  // depends on (markup, curated NFTs, fees), as each preset is defined against it.
+  const savedStyle = (): Style | undefined => (savedCounts.some((n, i) => i > 0 && n > 0) ? undefined : 'steady');
+  const [style, setStyle] = useState<Style | undefined>(() => (has ? savedStyle() : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
+  const maxSmall = useMemo(() => (style ? presetMaxSmall(style, base) : maxPrizes - (shapeCount(counts) - counts[0])),
+    [style, style ? '' : counts.join(), bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (style) setCounts((c) => presetCounts(style, base, Math.min(c[0], maxSmall)));
+  }, [style, bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const total = shapeCount(counts);
+  const target = packPlan(counts);
+  // A saved pool shows its listed prizes at their actual prices until the design differs from it; a projection of an
+  // edited design prices the new Shapes at the current markup instead.
+  const edited = !has || target !== d.target || markupBps !== d.markupBps || pending.some(({ n }) => n.collection);
   const inputs: DesignInputs = has && !edited ? { ...base, shapePrices: livePrices } : base;
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
   // A new pool takes the suggested rate: earnings are what the markup brings in above the 10% that runs the pool. An
@@ -880,55 +869,48 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [curatedRequired, setCuratedRequired] = useState(!!draft?.curatedRequired);
   const reviewedRate = fresh ? revenueRate ?? suggestedRate : d.creatorRevenueBps;
   const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
-  const change = <T,>(set: (v: T) => void) => (v: T) => { setEdited(true); set(v); };
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
-  const current = (): Draft => ({ salt, creatorRevenueBps: revenueRate, curatedRequired, markup, small, style: style ?? null, bonus: custom, nfts });
+  const current = (): Draft => ({ salt, creatorRevenueBps: revenueRate, curatedRequired, markup, counts, style: style ?? null, nfts });
   useEffect(() => {
     if (fresh) saveDraft(current());
-  }, [has, markup, small, style, custom, nfts, revenueRate, curatedRequired]); // eslint-disable-line react-hooks/exhaustive-deps
-  const setNft = (i: number, x: Partial<DraftNft>) => { setEdited(true); setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
+  }, [has, markup, counts.join(), style, nfts, revenueRate, curatedRequired]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setNft = (i: number, x: Partial<DraftNft>) => { setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
   const reset = () => {
     setPicking(undefined);
     setOpen({ bonus: false, numbers: false });
     if (has) {
-      setEdited(false); setMarkup(d.markupBps / 100);
-      setStyle(initial.current.style); setCustom(initial.current.custom); setSmall(initial.current.small);
+      setMarkup(d.markupBps / 100); setStyle(savedStyle()); setCounts(savedCounts);
       return;
     }
-    setMarkup(DEFAULT_MARKUP); setSmall(DEFAULT_SMALL); setStyle('board'); setCustom(ZERO);
+    setMarkup(DEFAULT_MARKUP); setStyle('board'); setCounts(defaultCounts(base));
     setNfts([]);
   };
-  const total = counts.reduce((a, b) => a + b, 0);
-  const setBonusAt = (i: number, n: number) => { setEdited(true); setStyle(undefined); setCustom(bonus.map((x, j) => (j === i ? Math.max(0, n) : x))); };
-  // Exact counts by hand: the 0.01 ETH Shapes are `small`, every other size is in `custom`.
-  const countAt = (i: number) => (i === 0 ? smallUsed : bonus[i]);
-  const setCountAt = (i: number, n: number) => {
-    if (i !== 0) return setBonusAt(i, n);
-    setEdited(true); setStyle(undefined); setCustom(bonus); setSmall(Math.max(0, n));
-  };
-  const choose = (st: Style) => { setEdited(true); setStyle(st); };
+  // Exact counts by hand; any size may be zero.
+  const setCountAt = (i: number, n: number) => { setStyle(undefined); setCounts(counts.map((x, j) => (j === i ? Math.max(0, n) : x))); };
+  const choose = (st: Style) => { setStyle(st); setCounts(presetCounts(st, base, Math.min(counts[0], presetMaxSmall(st, base)))); };
+  // The pool-size control steps through the 0.01 ETH Shapes: a preset recomputes its mix at that count.
+  const setSmall = (n: number) => setCounts(style ? presetCounts(style, base, n) : counts.map((x, j) => (j === 0 ? n : x)));
   const ready = total > 0;
   const quotedCounts = has && !edited ? listedShapeCounts(d.listings) : counts;
   // Prices and costs need current fees; without them every figure shows as a dash.
   const ev = ready && !d.policyUnavailable && !d.mintFeeUnavailable ? evaluate(quotedCounts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
-  const view = ev ? playerView(ev) : undefined;
-  const target = packPlan(counts);
+  const view = ev && playerView(ev).top ? playerView(ev) : undefined;
   // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
   const pausesAt = pendingDrawsAdmitted(counts) + 1;
   // Saving (configure) is needed for a new design, a markup or mix change, or to accept a risen Shapes mint fee.
   const configChanged = !has || markupBps !== d.markupBps || target !== d.target || d.mintFee > d.mintFeeCap;
-  // The reserve uses the fee the contract will (PoolBalancer.requiredReserve): a pending configure sets the cap to the
-  // live fee; the saved design uses the higher of the live fee and its saved cap.
-  const savedReserveFee = d.mintFee > d.mintFeeCap ? d.mintFee : d.mintFeeCap;
+  // The reserve uses the accepted fee (PoolBalancer.requiredReserve): a pending configure accepts the live fee.
+  const savedReserveFee = d.mintFeeCap;
   const reserveMintFee = configChanged ? d.mintFee : savedReserveFee;
   const fundForOpen = fresh || d.enabled || !has;
   const needed = ready ? ethNeeded(counts, { ...inputs, mintFee: reserveMintFee, enabled: fundForOpen }) : 0n;
   const capital = ready ? reserveBreakdownAt(counts, d.activeShapes, reserveMintFee, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.policyMaxReward : 0n, d.baseFee, fundForOpen) : undefined;
   // An existing pool being edited: each figure shows its value after saving, with the value now beside it.
   const savedEv = has ? evaluate(listedShapeCounts(d.listings), { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
-  const savedView = savedEv ? playerView(savedEv) : undefined;
+  // A pool still stocking has no selectable prize to compare against.
+  const savedView = savedEv && playerView(savedEv).top ? playerView(savedEv) : undefined;
   const editing = has && configChanged && !!savedEv;
   const now = (before: string, after: string) => (editing && before !== after ? <span className="was">now {before}</span> : null);
   // Round by one micro-ETH; larger rounding would dominate a small working-capital buffer.
@@ -1134,7 +1116,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       exclude={[...listedKeys, ...nfts.filter((x, j) => j !== i && x.collection).map((x) => nftKey(x.collection!, x.tokenId!))]}
       onPick={(xs) => {
         const at = nfts[i] ?? DEFAULT_NFT;
-        setEdited(true); setPicking(undefined);
+        setPicking(undefined);
         setNfts([...nfts.slice(0, i), { ...at, ...xs[0] }, ...nfts.slice(i + 1), ...xs.slice(1).map((x) => ({ value: at.value, ...x }))]);
       }} />
   );
@@ -1254,14 +1236,14 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 <div style={{ marginTop: 14 }}>
                   <p className="note" style={{ marginBottom: 6 }}>Exact prize counts. Any size can be zero. Bigger prizes raise the draw price and the ETH needed.</p>
                   {BY_VALUE.map((i) => {
-                    const t = countAt(i) ? tierOf(i) : undefined;
+                    const t = counts[i] ? tierOf(i) : undefined;
                     return (
                       <div className="mixrow" key={i}>
                         <div><div className="t">{prizeLabel(i)}</div>{t && <div className="s">Each {oneIn(t.odds / counts[i])} draws · {t.multiple.toFixed(1)}× the draw</div>}</div>
                         <div className="stepper end">
-                          <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!countAt(i)} onClick={() => setCountAt(i, countAt(i) - 1)}>−</button>
-                          <output aria-live="polite">{countAt(i)}</output>
-                          <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= maxPrizes} onClick={() => setCountAt(i, countAt(i) + 1)}>+</button>
+                          <button aria-label={`One fewer ${prizeLabel(i)}`} disabled={!counts[i]} onClick={() => setCountAt(i, counts[i] - 1)}>−</button>
+                          <output aria-live="polite">{counts[i]}</output>
+                          <button aria-label={`One more ${prizeLabel(i)}`} disabled={total >= maxPrizes} onClick={() => setCountAt(i, counts[i] + 1)}>+</button>
                         </div>
                       </div>
                     );
@@ -1270,14 +1252,14 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{prizes} <small>prize{prizes === 1 ? '' : 's'}</small></span></div>
-              <input id="small" type="range" min={style ? 1 : 0} max={maxSmall} step={1} value={smallUsed} aria-valuetext={`${prizes} prizes`}
-                onChange={(e) => change(setSmall)(Number(e.target.value))} />
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{total} <small>prize{total === 1 ? '' : 's'}</small></span></div>
+              <input id="small" type="range" min={style ? 1 : 0} max={maxSmall} step={1} value={counts[0]} aria-valuetext={`${total} prizes`}
+                onChange={(e) => setSmall(Number(e.target.value))} />
               <p className="note">More prizes make curated NFTs rarer and the draw cheaper.</p>
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
-              <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => change(setMarkup)(Number(e.target.value))} />
+              <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
               <p className="note">Added to each new Shape listing price.</p>
               <p className="note" style={{ marginTop: 6 }}>0.01 ETH Shape restocking charge: {d.restockFee === undefined ? 'unavailable' : `${eth(d.restockFee, 5)} ETH`}.</p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
@@ -1564,7 +1546,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const trimmed = plan.map((n, i) => Math.min(n, actualShapes[i])) as Counts;
   const gone = plan.map((n, i) => (n > actualShapes[i] ? i : -1)).filter((i) => i >= 0);
   const goneLabel = missing === 1 ? `the ${eth(DENOMS[gone[0]], 3).replace(/\.?0+$/, '')} ETH prize` : 'the missing prizes';
-  const opening = !d.enabled && !d.retired ? requiredReserveAt(plan, d.activeShapes, d.mintFee > d.mintFeeCap ? d.mintFee : d.mintFeeCap, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.policyMaxReward : 0n, d.baseFee) : 0n;
+  const opening = !d.enabled && !d.retired ? requiredReserveAt(plan, d.activeShapes, d.mintFeeCap, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.policyMaxReward : 0n, d.baseFee) : 0n;
   const openingShortfall = opening > fund ? opening - fund : 0n;
   const suggestedDeposit = openingShortfall > short_ ? openingShortfall : short_;
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? eth(d.surplus ?? d.creatorCredit, 6) : suggestedDeposit > 0n ? formatEther(suggestedDeposit) : '0.01'); };

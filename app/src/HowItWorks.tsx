@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, MAX_KEEPER_REWARD, capitalOf, economics, evaluate, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
-import { ethNeeded, mixOf, playerView, styleBonus, type DesignInputs, type Style } from '../../shared/design';
+import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -56,7 +56,7 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
 }
 
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
-  const counts = mixOf(SMALL, styleBonus('board', EXAMPLE, SMALL));
+  const counts = presetCounts('board', EXAMPLE, SMALL);
   const { ev, view, list } = groups(counts);
   const econ = economics(counts, EXAMPLE);
   const draw = Number(ev.drawPrice) / 1e18;
@@ -135,7 +135,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <p className="hiw-p">A Shape style decides which Shapes sit next to your NFTs. The Shape pool size slider sets how many Shape prizes there are, in the style's proportions.</p>
         <div className="hiw-styles">
           {STYLES.map((s) => {
-            const c = mixOf(SMALL, styleBonus(s.key, EXAMPLE, SMALL));
+            const c = presetCounts(s.key, EXAMPLE, SMALL);
             const g = groups(c);
             return (
               <div key={s.key}>

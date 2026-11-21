@@ -1,7 +1,7 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, mixOf, playerView, styleBonus, type DesignInputs } from './design';
-import { BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, restockFeeAt, shapeCount, type Counts } from './planner';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, mixOf, playerView, presetCounts, presetMaxSmall, styleBonus, type DesignInputs } from './design';
+import { BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, packPlan, restockFeeAt, shapeCount, unpackPlan, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
@@ -136,3 +136,69 @@ suite('balanced style (ape-Ball board)', () => {
   });
 });
 
+
+suite('designer presets as functions of one counts array', () => {
+  const styles = ['steady', 'board', 'balanced', 'jackpot'] as const;
+  // The derivation App.tsx used before one counts array (rev 58f4009): `small` 0.01 ETH Shapes, the style's bonus at
+  // that count, the slider clamp found by halving, and the floor of one.
+  const oldMaxSmall = (style: (typeof styles)[number], d: DesignInputs) => {
+    let lo = 1, hi = MAX_SHAPES_PER_PLAN;
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (m + shapeCount(styleBonus(style, d, m)) >= MAX_SHAPES_PER_PLAN) hi = m; else lo = m + 1;
+    }
+    return lo;
+  };
+  const oldCounts = (style: (typeof styles)[number], d: DesignInputs, small: number) => {
+    const bonus = styleBonus(style, d, small);
+    const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
+    return mixOf(Math.max(1, Math.min(small, room, oldMaxSmall(style, d))), bonus);
+  };
+  const inputs = [
+    base,
+    { ...base, curatedBases: [], curatedPrices: [] },
+    { ...base, markupBps: 1000 },
+    { ...base, markupBps: 10_000, curatedBases: [parseEther('2')] },
+    { ...base, mintFee: parseEther('0.001'), curatedBases: [parseEther('0.05'), parseEther('0.3'), parseEther('25')] },
+  ];
+
+  it('each preset produces the same counts and packed target as before, at every tested pool size', () => {
+    for (const d of inputs) for (const style of styles) {
+      const max = presetMaxSmall(style, d);
+      expect(max).toBe(oldMaxSmall(style, d));
+      for (const small of [1, 2, 10, 24, 100, 499, max]) {
+        if (small > max) continue;
+        const now = presetCounts(style, d, small);
+        expect(now, `${style} at ${small}`).toEqual(oldCounts(style, d, small));
+        expect(unpackPlan(packPlan(now))).toEqual(now);
+        expect(shapeCount(now)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+      }
+    }
+  });
+
+  it('a preset never drops below one 0.01 ETH Shape; a hand-made mix may have none', () => {
+    for (const style of styles) expect(presetCounts(style, base, 0)[0]).toBe(1);
+    for (const m of [mix({ 1: 10 }), mix({ 2: 1, 3: 1 }), mix({ 9: 4 }), mix({ 12: 2, 3: 1 })]) {
+      expect(m[0]).toBe(0);
+      expect(unpackPlan(packPlan(m))).toEqual(m);
+      const ev = evaluate(m, base);
+      expect(ev.feasible).toBe(true);
+      expect(ev.drawPrice).toBeGreaterThan(0n);
+    }
+  });
+
+  it('a draw-price preset recomputes from the same count when markup or curated NFTs change', () => {
+    expect(presetCounts('balanced', base, 20)).toEqual(mix({ 0: 20, 1: 9, 10: 1 }));
+    expect(presetCounts('balanced', { ...base, markupBps: 10_000 }, 20)).toEqual(mix({ 0: 20, 1: 1, 2: 20 }));
+    expect(presetCounts('jackpot', base, 20)).toEqual(mix({ 0: 20, 4: 1 }));
+    expect(presetCounts('jackpot', { ...base, curatedBases: [] }, 20)).toEqual(mix({ 0: 20, 3: 1 }));
+    // Balanced depends only on the count.
+    expect(presetCounts('board', base, 10)).toEqual(presetCounts('board', { ...base, markupBps: 5000, curatedBases: [] }, 10));
+  });
+
+  it('presets stay fast at the 1,000-prize limit', () => {
+    const started = performance.now();
+    for (const style of styles) presetCounts(style, base, presetMaxSmall(style, base));
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});

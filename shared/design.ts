@@ -109,3 +109,22 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   return bonus;
 }
 
+/** A preset's whole mix at `small` 0.01 ETH Shapes, at least one so a preset never collapses to a one-prize pool. */
+export const presetCounts = (style: Style, d: DesignInputs, small: number): Counts => {
+  const n = Math.max(1, small);
+  return mixOf(n, styleBonus(style, d, n));
+};
+
+/**
+ * The pool-size control's last step for a preset: the first count of 0.01 ETH Shapes where the Shape limit binds (the
+ * preset's other Shapes then shrink, so the total stops growing). Found by halving: a preset's mix is too costly to
+ * compute for every count.
+ */
+export function presetMaxSmall(style: Style, d: DesignInputs): number {
+  let lo = 1, hi = MAX_SHAPES_PER_PLAN;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (m + shapeCount(styleBonus(style, d, m)) >= MAX_SHAPES_PER_PLAN) hi = m; else lo = m + 1;
+  }
+  return lo;
+}
