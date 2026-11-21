@@ -26,12 +26,12 @@ workBound = min(M, 0.311 ETH,
 
 While open, required liquid operating capital is:
 
-1. Actual missing target inventory: redeemable backing plus the real accepted/current mint fee per contained Shape.
+1. Actual missing target inventory: redeemable backing plus the accepted mint fee (`mintFeeCap`) per contained Shape.
 2. Current missing inventory's canonical listing budgets, grouped by the real five-Shape/four-size/value-order limits. Complete same-size batches are counted arithmetically; the calculation does not loop over every prize.
 3. Actual issued-but-unreconciled draws times the single-draw bound (one processed and one reconciled draw).
 4. One working-call buffer: the greater bound for two processed/five reconciled draws, or five reconciled draws plus five successfully listed Shape units/prizes.
 
-When closed, only item 3 remains while payments are enabled. When payments are disabled all keeper budget terms are zero; open pools retain only actual missing inventory cost. Delayed activation reenables payment and must fund the positive candidate budget. Current mint fee cannot be understated by an older accepted fee. Old unsold surcharges never offset these ETH requirements. Expected fees may be derived from listing records for information; no fee accumulator is stored.
+When closed, only item 3 remains while payments are enabled. When payments are disabled all keeper budget terms are zero; open pools retain only actual missing inventory cost. Delayed activation reenables payment and must fund the positive candidate budget. A live mint fee above the accepted one adds nothing: upkeep does not mint at it, and the reserve follows only when the creator configures to accept it (DECISIONS 101). Old unsold surcharges never offset these ETH requirements. Expected fees may be derived from listing records for information; no fee accumulator is stored.
 
 The largest-prize duplicate backing, implied spare draw, full-board future maintenance cycle, fee-income bridge and multiplication of every missing Shape unit by an unrelated full-call maximum are removed. There is no new tax or player-price increase. V1's quoted formula and restocking surcharge are unchanged.
 

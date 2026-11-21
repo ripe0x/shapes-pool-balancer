@@ -182,7 +182,7 @@ odds floor, the worst-batch reserve and `unwind`.
 46. **Withdrawal reserve while open**: restoring the target, one largest prize per unreconciled draw plus one spare,
     and a maximum keeper reward per upkeep call that work takes plus one. It limits withdrawals only; it never closes
     purchases. Evidence: without the spare, a creator withdrawing everything left the top prize missing half the time.
-    The reserve and restocking use the higher of the live mint fee and the accepted one. Review round 7 noted that one
+    The reserve and restocking use the higher of the live mint fee and the accepted one (reserve: superseded by 101). Review round 7 noted that one
     gate check admits a batch of five draws while the reserve holds one spare top prize; kept at one: two top-prize wins
     in one batch is about 1 in 6,000 for Balanced, a shortfall only delays that restock (proceeds or a deposit cover it),
     and holding five would lock about 2.5 ETH more per Balanced pool.
@@ -743,3 +743,11 @@ Routine choices: keep `claimSurplus` as the single withdrawal API, with no impli
 as the policy-generation identity used by existing journals, with no Settings decoding; store the reviewed initial
 mint-fee cap exactly and reject an increased live fee. Linked immutable libraries and the active listing array remain.
 All historical release approvals stay historical; no new public deployment or real-spend authority follows.
+
+101. **Reserve at the accepted mint fee** (owner simplification brief, 2026-11-20; R80). The withdrawal reserve prices
+    missing prizes at `mintFeeCap`, not the higher of it and the live Shapes fee. Upkeep never mints above the cap, so a
+    higher live fee only locked creator capital (3 missing 0.01 ETH Shapes at a 10x fee: 0.06554 ETH reserved before,
+    0.03854 ETH after). A live fee below the cap is still covered, which keeps E4's fix. `configure` accepts the live fee
+    and the reserve follows. No fee state, automatic cap change or separate bucket is added; backing, protected credit
+    and purchaser refunds are unchanged. Supersedes the reserve half of 46 and E4/round-7's "higher of the two".
+
