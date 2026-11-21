@@ -633,11 +633,13 @@ const DEFAULT_MARKUP = 25;
 const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
 /** A new design: the Balanced preset at ten 0.01 ETH Shapes (Balanced depends only on that count). */
-const defaultCounts = (d: DesignInputs) => presetCounts('board', d, DEFAULT_SMALL);
+/** Drafts saved before `counts` used older preset keys: steady, board (Balanced) and balanced (More big wins). */
+const draftStyle = (d?: Draft) => (d && !d.counts ? ({ steady: 'lowPrice', board: 'balanced', balanced: 'bigWins' } as Record<string, Style>)[d.style ?? ''] ?? d.style : d?.style);
+const defaultCounts = (d: DesignInputs) => presetCounts('balanced', d, DEFAULT_SMALL);
 const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
-  { key: 'steady', label: 'Low draw price', hint: 'Cheapest draws. Curated NFTs are the big prizes.' },
-  { key: 'board', label: 'Balanced', hint: 'Prizes in steady steps, 0.01 to 0.1 ETH.' },
-  { key: 'balanced', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price.` },
+  { key: 'lowPrice', label: 'Low draw price', hint: 'Cheapest draws. Curated NFTs are the big prizes.' },
+  { key: 'balanced', label: 'Balanced', hint: 'Prizes in steady steps, 0.01 to 0.1 ETH.' },
+  { key: 'bigWins', label: 'More big wins', hint: `About 1 in ${Math.round(1 / BIG_WIN_SHARE)} draws wins 2× the price.` },
   { key: 'jackpot', label: 'Jackpot', hint: `Adds one Shape worth about ${JACKPOT_MULTIPLE}× the price.` },
 ];
 /** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
@@ -849,8 +851,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : draft?.counts?.length === 16 ? draft.counts : draft ? mixOf(draft.small ?? DEFAULT_SMALL, draft.bonus) : defaultCounts(base)));
   // The preset last applied, until a count is changed by hand. While it is applied, the mix follows the draw price it
   // depends on (markup, curated NFTs, fees), as each preset is defined against it.
-  const savedStyle = (): Style | undefined => (savedCounts.some((n, i) => i > 0 && n > 0) ? undefined : 'steady');
-  const [style, setStyle] = useState<Style | undefined>(() => (has ? savedStyle() : draft?.style === null ? undefined : GAME_STYLES.some((g) => g.key === draft?.style) ? draft!.style! : 'board'));
+  const savedStyle = (): Style | undefined => (savedCounts.some((n, i) => i > 0 && n > 0) ? undefined : 'lowPrice');
+  const [style, setStyle] = useState<Style | undefined>(() => (has ? savedStyle() : draft?.style === null ? undefined : GAME_STYLES.find((g) => g.key === draftStyle(draft))?.key ?? 'balanced'));
   const maxSmall = useMemo(() => (style ? presetMaxSmall(style, base) : maxPrizes - (shapeCount(counts) - counts[0])),
     [style, style ? '' : counts.join(), bases.join(), markupBps, d.mintFee, d.edgeBps, d.restockFees?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -882,7 +884,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       setMarkup(d.markupBps / 100); setStyle(savedStyle()); setCounts(savedCounts);
       return;
     }
-    setMarkup(DEFAULT_MARKUP); setStyle('board'); setCounts(defaultCounts(base));
+    setMarkup(DEFAULT_MARKUP); setStyle('balanced'); setCounts(defaultCounts(base));
     setNfts([]);
   };
   // Exact counts by hand; any size may be zero.

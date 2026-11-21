@@ -65,11 +65,11 @@ suite('pool size and styles', () => {
   });
 
   it('steady adds nothing', () => {
-    expect(styleBonus('steady', one, 10)).toEqual(mix({}));
+    expect(styleBonus('lowPrice', one, 10)).toEqual(mix({}));
   });
 
   it('more big wins: about 1 in 10 draws wins 2x the price or more, within the Shape limit', () => {
-    const c = mixOf(10, styleBonus('balanced', one, 10));
+    const c = mixOf(10, styleBonus('bigWins', one, 10));
     expect(at(c).v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
     expect(shapeCount(c)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
@@ -87,7 +87,7 @@ suite('pool size and styles', () => {
       return b;
     };
     for (const d of [one, { ...one, curatedBases: [] }, { ...one, markupBps: 1000 }, { ...one, markupBps: 10_000 }])
-      for (const n of [1, 2, 3, 7, 10, 25, 60, 150, 400, 666, 900]) expect(styleBonus('balanced', d, n)).toEqual(oneAtATime(d, n));
+      for (const n of [1, 2, 3, 7, 10, 25, 60, 150, 400, 666, 900]) expect(styleBonus('bigWins', d, n)).toEqual(oneAtATime(d, n));
   });
 
   it('jackpot: one bonus Shape near 50x the draw price', () => {
@@ -99,7 +99,7 @@ suite('pool size and styles', () => {
   });
 
   it('a style never pushes the pool past the Shape limit', () => {
-    for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80, 199]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+    for (const st of ['balanced', 'bigWins', 'jackpot'] as const) for (const n of [38, 78, 80, 199]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 
   it('counts Shapes the switch would redeem as available', () => {
@@ -110,16 +110,16 @@ suite('pool size and styles', () => {
 suite('styles without a curated NFT', () => {
   it('pick the same kind of mix from the Shapes alone', () => {
     const none = { ...base, curatedBases: [] };
-    expect(shapeCount(styleBonus('board', none, 10))).toBeGreaterThan(0);
-    expect(shapeCount(styleBonus('jackpot', none, 10))).toBe(1);
     expect(shapeCount(styleBonus('balanced', none, 10))).toBeGreaterThan(0);
-    expect(styleBonus('steady', none, 10)).toEqual(mix({}));
+    expect(shapeCount(styleBonus('jackpot', none, 10))).toBe(1);
+    expect(shapeCount(styleBonus('bigWins', none, 10))).toBeGreaterThan(0);
+    expect(styleBonus('lowPrice', none, 10)).toEqual(mix({}));
   });
 });
 
 suite('balanced style (ape-Ball board)', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const counts = (small: number) => mixOf(small, styleBonus('board', one, small));
+  const counts = (small: number) => mixOf(small, styleBonus('balanced', one, small));
 
   it('at 20 small Shapes is ape-Ball\'s 47-row board scaled to 40', () => {
     const c = counts(20);
@@ -138,7 +138,7 @@ suite('balanced style (ape-Ball board)', () => {
 
 
 suite('designer presets as functions of one counts array', () => {
-  const styles = ['steady', 'board', 'balanced', 'jackpot'] as const;
+  const styles = ['lowPrice', 'balanced', 'bigWins', 'jackpot'] as const;
   // The derivation App.tsx used before one counts array (rev 58f4009): `small` 0.01 ETH Shapes, the style's bonus at
   // that count, the slider clamp found by halving, and the floor of one.
   const oldMaxSmall = (style: (typeof styles)[number], d: DesignInputs) => {
@@ -188,12 +188,12 @@ suite('designer presets as functions of one counts array', () => {
   });
 
   it('a draw-price preset recomputes from the same count when markup or curated NFTs change', () => {
-    expect(presetCounts('balanced', base, 20)).toEqual(mix({ 0: 20, 1: 9, 10: 1 }));
-    expect(presetCounts('balanced', { ...base, markupBps: 10_000 }, 20)).toEqual(mix({ 0: 20, 1: 1, 2: 20 }));
+    expect(presetCounts('bigWins', base, 20)).toEqual(mix({ 0: 20, 1: 9, 10: 1 }));
+    expect(presetCounts('bigWins', { ...base, markupBps: 10_000 }, 20)).toEqual(mix({ 0: 20, 1: 1, 2: 20 }));
     expect(presetCounts('jackpot', base, 20)).toEqual(mix({ 0: 20, 4: 1 }));
     expect(presetCounts('jackpot', { ...base, curatedBases: [] }, 20)).toEqual(mix({ 0: 20, 3: 1 }));
     // Balanced depends only on the count.
-    expect(presetCounts('board', base, 10)).toEqual(presetCounts('board', { ...base, markupBps: 5000, curatedBases: [] }, 10));
+    expect(presetCounts('balanced', base, 10)).toEqual(presetCounts('balanced', { ...base, markupBps: 5000, curatedBases: [] }, 10));
   });
 
   it('presets stay fast at the 1,000-prize limit', () => {

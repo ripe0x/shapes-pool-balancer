@@ -10,8 +10,8 @@ const EXAMPLE: DesignInputs = {
 };
 const SMALL = 20;
 const STYLES: { key: Style; label: string }[] = [
-  { key: 'steady', label: 'Low draw price' }, { key: 'board', label: 'Balanced' },
-  { key: 'balanced', label: 'More big wins' }, { key: 'jackpot', label: 'Jackpot' },
+  { key: 'lowPrice', label: 'Low draw price' }, { key: 'balanced', label: 'Balanced' },
+  { key: 'bigWins', label: 'More big wins' }, { key: 'jackpot', label: 'Jackpot' },
 ];
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 const eth = (wei: bigint, d = 3) => (Number(wei) / 1e18).toFixed(d).replace(/\.?0+$/, '');
@@ -56,7 +56,7 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
 }
 
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
-  const counts = presetCounts('board', EXAMPLE, SMALL);
+  const counts = presetCounts('balanced', EXAMPLE, SMALL);
   const { ev, view, list } = groups(counts);
   const econ = economics(counts, EXAMPLE);
   const draw = Number(ev.drawPrice) / 1e18;
