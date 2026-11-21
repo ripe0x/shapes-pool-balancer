@@ -89,3 +89,19 @@ Added regimes, all in standard mode, 180 draws then closeout, 5 ETH deposit:
 | shapes_only_to_mixed (NFT listed at draw 60) | 0 | 1 | 5.5699 ETH | +0.5699 ETH |
 
 They are added to O1, O2, O7 and O8 (and O11 for shapes_only). O7 and O13 wording now matches the code: the curated gate applies only in curated-required mode, and a mint fee above the cap stops restocking, not purchases. No outcome number changed. The previous signature (outcomes hash `231b42ba…`) does not cover this payload and is not reused. New outcomes hash to sign: `d3b9ba838eef9c2f9fc0f54fa189b294ec49323d2bf08fc4963c8489f64dd992`.
+
+## Candidate c1b5e6d: reserve at the accepted mint fee (2026-11-20, unsigned)
+
+Source hash `638e64af0672040600b6b5dd3d1452abb8cc01e5557b7967c72224afb9428a9e` (commit `c1b5e6d`; `c176815` adds
+docs only). `CANDIDATE_RUN=1 SOURCE_HASH=<that> forge test --fork-url https://mainnet.gateway.tenderly.co
+--fork-block-number 26382349 --isolate --threads 8 --match-path test/scenario/FlowBreakdown.t.sol --gas-limit
+100000000000` passed **30/30**. `asset_gate.py . --no-run` returned **INCOMPLETE (exit 2), every numerical outcome
+OK**; the only gap is the owner approval. The outcomes hash to sign is unchanged:
+`d3b9ba838eef9c2f9fc0f54fa189b294ec49323d2bf08fc4963c8489f64dd992`.
+
+No regime raises the Shapes fee above the accepted cap, so the reserve change (DECISIONS 101) cannot move these
+numbers, and none moved: worst O1 60,372 gas (`burst`), O2 0.2585 ETH, O10 14,717 bps, O15 0.2356 ETH, and
+`shapes_only` creator claim 5.574399082146567600 ETH with keeper pay 0.11762907215 ETH, equal to the wei to candidate
+4873250. The fee-above-cap reserve itself is covered by `test_mintFeeAboveCapReserveUsesAcceptedFee`
+(test/OptionalCurated.t.sol): 3 missing 0.01 ETH Shapes at a 10x live fee reserve 0.03854 ETH (0.06554 ETH under the
+old rule); acceptance raises the reserve by exactly 4 x 9 x 0.001 = 0.036 ETH.
