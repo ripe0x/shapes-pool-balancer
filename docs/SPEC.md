@@ -55,7 +55,8 @@ Before submitting, the creator reviews the target, markup, creator revenue share
 curated batch. The factory predicts the Balancer address using a creator-scoped salt. Approve that address for the
 initial NFTs. Then one payable `createBalancer(salt, config, curated)` transaction deploys the clone/FWA pool,
 stores the configuration, deposits ETH, transfers/lists 1 to 20 initial curated NFTs and opens in initial stocking mode.
-`CreationConfig` fields are `uint16 markupBps`, `uint16 creatorRevenueBps`, `uint256 target`, `uint256 mintFeeCap`.
+`CreationConfig` fields are `uint16 markupBps`, `uint16 creatorRevenueBps`, `uint256 target`, `uint256 mintFeeCap`,
+`bool curatedRequired`.
 The authenticated factory caller is the creator and NFT source. No `tx.origin`, public arbitrary-source transfer,
 generic multicall or external self-call is used. Initialization is guarded against reentrancy and establishes creator
 and factory state before external NFT interactions. A failed configuration, transfer, listing or funding check reverts
@@ -79,8 +80,9 @@ pre-submission drafts and stocking progress; there is no partial-creation recove
   0.2, 0.25, 2, 2.5 and 25 ETH, each prize one Draw Pack holding the fewest Shapes that sum to it (2 or 3; e.g.
   0.25 = 2×0.1 + 0.05). A target set with only the first nine sizes decodes unchanged.
 
-`configure` also records the current Shapes `mintFee()` as `mintFeeCap`: purchases and restocking stop while the fee is
-above it. There is one target: no fallback plans, no on-chain solver, no separate capital limit (the target fixes its own
+`configure` also records the current Shapes `mintFee()` as `mintFeeCap`, the accepted fee: upkeep (paid and unpaid)
+mints nothing while the live fee is above it, and listed prizes keep selling. The withdrawal reserve prices missing
+prizes at `mintFeeCap`, never at a higher live fee. Configuring again accepts the live fee and the reserve follows. There is one target: no fallback plans, no on-chain solver, no separate capital limit (the target fixes its own
 capital; the dashboard planner shows the total ETH committed). A smaller target leaves the extra prizes listed until the
 creator unlists them with `unlistShapes`. Upkeep restocks toward the target; it never changes the target.
 

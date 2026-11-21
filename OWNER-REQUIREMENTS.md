@@ -305,3 +305,16 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
 - R79. Exception to R3 (owner, 2026-11-20: "Keep it", after rc-28b53ad finding 2): the dashboard's mainnet reads may
   fall back to `https://ethereum-rpc.publicnode.com`, then to the connected wallet's own provider, when Tenderly
   refuses. Reads only; tests, scripts, keepers and broadcasts stay on Tenderly per R3.
+
+## Simplification before mainnet (owner brief, 2026-11-20)
+
+- R80. "Withdrawal reserves use the accepted mint fee": `r.mintFee = mintFeeCap`. Minting only at or below the cap
+  (paid and unpaid upkeep); listed prizes keep selling under the normal admission checks; the creator accepts a higher
+  fee through `configure` and the reserve then updates; backing, protected creator credit and purchaser refunds are
+  unchanged; no new fee states, automatic cap changes, funding buckets or options. Supersedes the reserve half of
+  DECISIONS 46/70 ("the higher of the live fee and the accepted one").
+- R81. The prize designer keeps one 16-size counts array as the only record of the mix. Presets compute a composition;
+  hand edits and the pool-size control change the same array; a custom mix may have no 0.01 ETH Shape. Presets keep
+  their results. Remove Solidity with no current purpose, without changing ABI, storage, formulas or behavior. Player
+  pricing, FWA/VRF fees, markup minimums and expected-return presentation are out of scope.
+

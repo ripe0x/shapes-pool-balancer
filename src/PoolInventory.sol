@@ -46,7 +46,11 @@ library PoolInventory {
     uint8 constant SHAPE = 2;
     uint8 constant ACTIVE = 1;
     uint256 constant BY_VALUE = 0x87f65ed43cb21a90;
+    /// @dev Size values in units of 0.01 ETH, 16 bits each, size 0 in the low bits:
+    ///      0.01 0.05 0.1 0.5 1 5 10 50 100 | 0.02 0.03 0.2 0.25 2 2.5 25. Sizes 0-8 are the mainnet Shapes ladder,
+    ///      checked against `Shapes.denominationAt` in the PoolBalancer constructor.
     uint256 constant AMOUNTS = 0x9c400fa00c800190014000300022710138803e801f400640032000a00050001;
+    /// @dev Shapes inside one prize of each size, 4 bits each (1 for a Shape; 2 or 3 for a pack), each paying the mint fee.
     uint256 constant SHAPES_IN = 0x3323232111111111;
     event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost);
     event ShapeListed(uint256 indexed listingId, uint8 indexed denom, uint256 tokenId, uint256 price);
@@ -349,6 +353,9 @@ library PoolInventory {
         delete s.activeIndexPlusOne[lid];
     }
 
+    /// @dev A prize's weight in the fill gate: 1 / its backing (1e36 is FWA StandardPool's constant). Listed prices keep
+    ///      the markup and fees of their listing block, so weighing by price would let a lower markup or mint fee push a
+    ///      full board under the gate with nothing for upkeep to restock. Backing is fixed per size: the gate measures the mix.
     function _weight(uint256 d) internal pure returns (uint256) { return 1e36 / _amount(d); }
     function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
         return _cost(d, fee) + _amount(d) * markup / 10_000;

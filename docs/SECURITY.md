@@ -42,7 +42,7 @@ Foundry's zero-gas default in its own harnesses and calibrated the affected runs
 | E1 | Profit split used the listings at collection | Fixed for withdrawal and upkeep order (DECISIONS 69); restock-while-pending residual accepted |
 | E2 | Lowering markup or mint fee can stop sales on a full board | Decided: fill gate on prize backing (DECISIONS 71), not yet built |
 | E3 | Dashboard listed NFTs before saving the markup | Fixed: contract refuses curated listings before `configure`; dashboard saves first (DECISIONS 70) |
-| E4 | Planner understated the deposit after the mint fee fell | Fixed: reserve at max(live fee, accepted cap) (DECISIONS 70) |
+| E4 | Planner understated the deposit after the mint fee fell | Fixed: reserve at max(live fee, accepted cap) (DECISIONS 70); now the accepted cap, which still covers a fallen fee (DECISIONS 101) |
 | E5 | `open()` counted proceeds still at FWA | Fixed: `open()` collects first (DECISIONS 70) |
 | E6 | Earnings and player return labels | Fixed: average and refill-period figures shown separately; return includes the VRF fee |
 | E7 | Simulation (round 8 E3) | Closed: `sim/flows.ts` removed (DECISIONS 71) |
@@ -100,7 +100,7 @@ statement that the rewrite is safe. Findings and outcome:
 | Severity | Finding | Outcome |
 | --- | --- | --- |
 | Medium | The reserve holds one spare top prize, but one gate check admits a batch of five draws | Kept by decision (DECISIONS 46); superseded after round 8 E1 by the funding check (DECISIONS 61) |
-| Low | Reserve priced at the live mint fee while restocking runs at any fee up to the accepted one | Fixed: the reserve uses the higher of the two |
+| Low | Reserve priced at the live mint fee while restocking runs at any fee up to the accepted one | Fixed: the reserve uses the higher of the two; now the accepted fee, since upkeep never mints above it (DECISIONS 101) |
 | Low | Keeper credit backs out FWA's edge at today's `edgeBps`, not the edge a draw paid | Obsolete: the credit is now the restocking fee each drawn prize carried, read from the Balancer's own records (DECISIONS 54) |
 | Low | Unchecked integration assumptions: FWA staging cap, Shapes size count | Fixed: `initialize` requires no staging cap; the constructor requires nine Shapes sizes |
 | Info | A draw still awaiting delivery when reconciled leaves its record and earns no credit if a retry later delivers it | Accepted, documented |

@@ -44,7 +44,7 @@ const NONE: Counts = DENOMS.map(() => 0);
  */
 export const mixOf = (small: number, bonus: Counts = NONE): Counts => bonus.map((n, i) => n + (i === 0 ? small : 0));
 
-export type Style = 'steady' | 'board' | 'balanced' | 'jackpot';
+export type Style = 'lowPrice' | 'balanced' | 'bigWins' | 'jackpot';
 /**
  * "Balanced": ape-Ball's opening board (24 x 0.01 Shape, 8 x 0.02 Pack, 12 x 0.05, 2 x 0.1, 1 x 0.5 ETH Shape;
  * apeball LaunchConfig D93), as prizes per 24 small Shapes: size index -> count.
@@ -57,18 +57,18 @@ export const JACKPOT_MULTIPLE = 50;
 
 /**
  * Bonus Shapes for a style, on top of `small` 0.01 ETH Shapes, within the per-plan Shape limit:
- * steady: none;
- * balanced: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
+ * lowPrice: none;
+ * bigWins: Shapes worth at least 2x the draw price, added one at a time (the smallest size that qualifies at the
  * current price) until about 1 in 10 draws wins 2x or more;
  * jackpot: one Shape, the size closest to 50x the draw price of the small-Shape pool;
- * board: ape-Ball's proportions scaled to `small` (at least one 0.1 ETH prize; the 0.5 ETH prize from 12 small Shapes,
+ * balanced: ape-Ball's proportions scaled to `small` (at least one 0.1 ETH prize; the 0.5 ETH prize from 12 small Shapes,
  * since it sets the reserve: 0.534 ETH with it, 0.134 without), trimmed from the most
  * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
   const room = MAX_SHAPES_PER_PLAN - small;
-  if (style === 'steady' || room <= 0) return NONE;
-  if (style === 'board') {
+  if (style === 'lowPrice' || room <= 0) return NONE;
+  if (style === 'balanced') {
     const b = [...NONE];
     for (const [i, per24] of BOARD) b[i] = Math.max(i === 2 ? 1 : 0, Math.round((small * per24) / 24));
     while (shapeCount(b) > room) {
@@ -109,3 +109,22 @@ export function styleBonus(style: Style, d: DesignInputs, small: number): Counts
   return bonus;
 }
 
+/** A preset's whole mix at `small` 0.01 ETH Shapes, at least one so a preset never collapses to a one-prize pool. */
+export const presetCounts = (style: Style, d: DesignInputs, small: number): Counts => {
+  const n = Math.max(1, small);
+  return mixOf(n, styleBonus(style, d, n));
+};
+
+/**
+ * The pool-size control's last step for a preset: the first count of 0.01 ETH Shapes where the Shape limit binds (the
+ * preset's other Shapes then shrink, so the total stops growing). Found by halving: a preset's mix is too costly to
+ * compute for every count.
+ */
+export function presetMaxSmall(style: Style, d: DesignInputs): number {
+  let lo = 1, hi = MAX_SHAPES_PER_PLAN;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (m + shapeCount(styleBonus(style, d, m)) >= MAX_SHAPES_PER_PLAN) hi = m; else lo = m + 1;
+  }
+  return lo;
+}

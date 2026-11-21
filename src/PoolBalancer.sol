@@ -26,7 +26,7 @@ interface IBalancerFactory {
 ///        no new request while initial setup is unfinished, while no active curated NFT is proven and the creator
 ///        requires one (`curatedRequired`; curated NFTs are otherwise optional), while at least MAX_BATCH draws are
 ///        already unsettled, while the prizes' weight, after assuming every unreconciled draw took the heaviest
-///        possible prize, is below FILL_BPS of the target's weight. A Shapes mint fee above what the creator accepted
+///        possible prize, is below 70% of the target's weight. A Shapes mint fee above what the creator accepted
 ///        stops minting, not purchases of listed prizes; depletion then pauses purchases through the weight gate. Purchases do not
 ///        wait for a fully funded target: expensive deficits may remain while sales replenish operating capital.
 ///        A stored share of actual collected owner proceeds is protected as creator credit.
@@ -54,19 +54,10 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation. Also the unsettled-draw cap.
     uint256 public constant MAX_BATCH = 5;
     /// @dev Prize sizes: indices 0-8 are the nine Shapes denominations (each prize one Shape); indices 9-15 are values
-    ///      between them, each prize one Draw Pack holding the fewest Shapes that sum to it (see `_amount`, `_makeup`).
+    ///      between them, each prize one Draw Pack holding the fewest Shapes that sum to it (see `PoolInventory`'s `AMOUNTS` and `_makeup`).
     ///      A target packs sixteen 16-bit counts into one uint256.
     uint256 internal constant DENOMS = 16;
     uint256 internal constant SHAPE_DENOMS = 9;
-    /// @dev Size values in units of 0.01 ETH, 16 bits each, size 0 in the low bits:
-    ///      0.01 0.05 0.1 0.5 1 5 10 50 100 | 0.02 0.03 0.2 0.25 2 2.5 25.
-    uint256 internal constant AMOUNTS = 0x9c400fa00c800190014000300022710138803e801f400640032000a00050001;
-    /// @dev Shapes inside one prize of each size, 4 bits each (1 for a Shape; 2 or 3 for a pack).
-    uint256 internal constant SHAPES_IN = 0x3323232111111111;
-    /// @dev Size indices in ascending value order, 4 bits each, smallest first.
-    uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
-    /// @dev The most Shapes any one prize holds.
-    uint256 internal constant MAX_SHAPES_IN = 3;
     /// @dev Inventory work per upkeep, in Shape units: minting+listing or withdrawing+redeeming one Shape is 1; a pack
     ///      counts as the Shapes it holds (measured: ~425k gas per Shape with its listing, ~870k per three-Shape pack).
     ///      Six units with five reconciles measured 3.13M against the 3.2M pay cap (the lowest maxGas allowed); five keeps a margin.
@@ -84,14 +75,6 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against the 3.2M pay cap.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
-    uint256 internal constant MAX_MARKUP_BPS = 10_000;
-    /// @dev Minimum markup for newly listed Shape prizes; revenue allocation is set independently.
-    uint256 internal constant MIN_MARKUP_BPS = 1_000;
-    /// @dev Purchases need the listed prizes' weight, less the unreconciled-draw allowance, at this share of the target's.
-    uint256 internal constant FILL_BPS = 7_000;
-    uint256 internal constant INVERSE_WEIGHT_NUMERATOR = 1e36; // FWA StandardPool constant
-    /// @dev The heaviest prize in the fill gate: the smallest backing (0.01 ETH). See `_weight`.
-    uint256 internal constant MAX_PRIZE_WEIGHT = INVERSE_WEIGHT_NUMERATOR / 0.01 ether;
 
     uint256 public constant POLICY_DELAY = 2 days;
     uint256 public constant HARD_MAX_KEEPER_REWARD = 0.311 ether;
@@ -104,7 +87,6 @@ contract PoolBalancer is ReentrancyGuard {
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
 
     // FWA ListingStatus / AcquisitionStatus values.
-    uint8 internal constant L_DELIVERY_REFUNDED = 7;
     uint8 internal constant A_FULFILLED = 2;
 
     // Item kinds and states.
@@ -250,12 +232,12 @@ contract PoolBalancer is ReentrancyGuard {
         ENS = IENS(ens);
         // The size table below is hardcoded; refuse a Shapes deployment that disagrees, and a Packs instance that
         // wraps other Shapes or cannot make the smallest pack size.
-        // Draw Packs takes one mint count per Shapes size (`_makeup` has nine).
+        // Draw Packs takes one mint count per Shapes size (`PoolInventory._makeup` has nine).
         if (IShapes(shapes).denominationCount() != SHAPE_DENOMS) revert UnsupportedFWAConfig();
         for (uint256 d; d < SHAPE_DENOMS; ++d) {
-            if (IShapes(shapes).denominationAt(uint8(d)) != _amount(d)) revert UnsupportedFWAConfig();
+            if (IShapes(shapes).denominationAt(uint8(d)) != PoolInventory._amount(d)) revert UnsupportedFWAConfig();
         }
-        if (IShapePacks(packs).shapes() != shapes || IShapePacks(packs).MIN_PACK_VALUE() > _amount(9)) {
+        if (IShapePacks(packs).shapes() != shapes || IShapePacks(packs).MIN_PACK_VALUE() > PoolInventory._amount(9)) {
             revert UnsupportedFWAConfig();
         }
         creator = address(1); // lock the implementation
@@ -681,7 +663,7 @@ contract PoolBalancer is ReentrancyGuard {
         _removeActive(lid);
         if (kind == SHAPE) {
             --_inventory.activeShapes[d];
-            prizeWeight -= _weight(d);
+            prizeWeight -= PoolInventory._weight(d);
         }
         if (delivered) {
             delete _inventory.items[lid];
@@ -692,7 +674,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
-    ///      left after this call's keeper reward, and list them at `_prizeBase` plus the restocking fees in one FWA
+    ///      left after this call's keeper reward, and list them at `PoolInventory._prizeBase` plus the restocking fees in one FWA
     ///      batch. FWA stages the batch while draws are unsettled. Returns Shape units used.
     function _fillDeficit(IFWAPool p, uint256 fee, bool paid, uint256 draws) internal returns (uint256 used, uint256 listed) {
         uint256 added;
@@ -741,8 +723,8 @@ contract PoolBalancer is ReentrancyGuard {
     function _reserveInput() internal view returns (KeeperPolicyCalls.Reserve memory r) {
         r = _maintenanceInput();
         if (enabled) {
-            uint256 fee = SHAPES.mintFee();
-            r.mintFee = fee < mintFeeCap ? mintFeeCap : fee;
+            // The accepted fee: upkeep never mints above it, so a higher live fee adds nothing to reserve for.
+            r.mintFee = mintFeeCap;
             r.target = target;
             r.have = _inventory.activeShapes;
         }
@@ -763,7 +745,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function denominationAmount(uint256 d) external pure returns (uint256) {
-        return _amount(d);
+        return PoolInventory._amount(d);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -793,7 +775,6 @@ contract PoolBalancer is ReentrancyGuard {
     function _removeActive(uint256 lid) internal { PoolInventory.removeActive(_inventory, lid); }
     function listedShapePrizes() external view returns (uint256) { return _inventory.listedPrizes; }
 
-    function _listedShapes() internal view returns (uint256) { return _inventory.listedPrizes; }
 
     /// @dev Shape units missing from the target.
     function _missingUnits() internal view returns (uint256) { return PoolInventory.missingUnits(_inventory, target); }
@@ -810,55 +791,10 @@ contract PoolBalancer is ReentrancyGuard {
     }
     function restockFeeFor(uint8 denomination) external view returns (uint256) {
         if (denomination >= DENOMS) revert InvalidPlan();
-        return _restockFee(denomination, _shapesIn(denomination), true);
+        return _restockFee(denomination, PoolInventory._shapesIn(denomination), true);
     }
 
     function _restockFee(uint8 d, uint256 units, bool paid) internal view returns (uint256 fee) {
         return KeeperPolicyCalls.restock(_keeper.policy, d, units, paid, block.basefee);
-    }
-
-    /// @dev A prize's weight in the fill gate: 1 / its backing. Listed prices keep the markup and fees of their listing
-    ///      block, so weighing by price would let a lower markup or mint fee push a full board under the gate with
-    ///      nothing for upkeep to restock. Backing is fixed per size, so the gate measures the mix, not prices.
-    function _weight(uint256 d) internal pure returns (uint256) {
-        return INVERSE_WEIGHT_NUMERATOR / _amount(d);
-    }
-
-    /// @dev A Shape prize's price before restocking fees: what it costs to create plus the markup on its backing.
-    function _prizeBase(uint256 d, uint256 fee, uint256 markup) internal pure returns (uint256) {
-        return _cost(d, fee) + _amount(d) * markup / BPS;
-    }
-
-    /// @dev ETH to create one prize of size `d`: its backing plus the Shapes mint fee for each Shape inside.
-    function _cost(uint256 d, uint256 fee) internal pure returns (uint256) {
-        return _amount(d) + _shapesIn(d) * fee;
-    }
-
-    function _count(uint256 plan, uint256 d) internal pure returns (uint256) {
-        return (plan >> (16 * d)) & 0xFFFF;
-    }
-
-    /// @dev Sizes 0-8: the mainnet Shapes ladder, checked against `Shapes.denominationAt` in the constructor.
-    ///      Sizes 9-15: pack values (see AMOUNTS).
-    function _amount(uint256 d) internal pure returns (uint256) {
-        return ((AMOUNTS >> (16 * d)) & 0xFFFF) * 0.01 ether;
-    }
-
-    /// @dev Shapes per denomination index inside a pack of size `d`: the ladder taken largest first, which gives the
-    ///      fewest Shapes for every pack value (0.02 = 2x0.01, 0.03 = 3x0.01, 0.2 = 2x0.1, 0.25 = 2x0.1+0.05,
-    ///      2 = 2x1, 2.5 = 2x1+0.5, 25 = 2x10+5); the count matches SHAPES_IN.
-    function _makeup(uint256 d) internal pure returns (uint32[] memory m) {
-        m = new uint32[](SHAPE_DENOMS);
-        uint256 rest = _amount(d);
-        for (uint256 i = SHAPE_DENOMS; i != 0;) {
-            uint256 a = _amount(--i);
-            m[i] = uint32(rest / a);
-            rest %= a;
-        }
-    }
-
-    /// @dev Shapes inside one prize of size `d`, each paying the Shapes mint fee.
-    function _shapesIn(uint256 d) internal pure returns (uint256) {
-        return (SHAPES_IN >> (4 * d)) & 0xF;
     }
 }

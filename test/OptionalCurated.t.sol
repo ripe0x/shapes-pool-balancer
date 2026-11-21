@@ -488,6 +488,73 @@ contract OptionalCuratedTest is ForkBase {
         IShapesAdmin(SHAPES).setMintFee(fee);
     }
 
+    /// The withdrawal reserve prices missing prizes at the accepted fee, not a higher live fee the pool will not mint at.
+    /// Covers claims and withdrawals during the increase, sales of listed prizes, no minting, and explicit acceptance.
+    function test_mintFeeAboveCapReserveUsesAcceptedFee() public {
+        setUpFork();
+        _openStandard(5 ether, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        uint256 fee = shapes.mintFee();
+        assertEq(fee, 0.001 ether, "fork's real Shapes mint fee");
+        assertEq(balancer.mintFeeCap(), fee);
+
+        // Three wins, reconciled; the fee rises before upkeep can restock them.
+        for (uint256 k; k < 3; ++k) _win(0);
+        vm.prank(SHAPES_ADMIN);
+        IShapesAdmin(SHAPES).setMintFee(fee * 10);
+        upkeep(); // reconciles the three draws; mints nothing above the cap
+        assertEq(balancer.getActiveShapes()[0], 17, "three prizes missing, none minted");
+        uint256 req = balancer.requiredReserve();
+
+        // Restoring the live fee to the cap leaves the reserve unchanged: a higher live fee adds nothing.
+        vm.prank(SHAPES_ADMIN);
+        IShapesAdmin(SHAPES).setMintFee(fee);
+        assertEq(balancer.requiredReserve(), req, "reserve at a 10x live fee equals the reserve at the accepted fee");
+        vm.prank(SHAPES_ADMIN);
+        IShapesAdmin(SHAPES).setMintFee(fee * 10);
+
+        // Listed prizes keep selling at the higher fee.
+        assertEq(balancer.admissionStatus(), 0);
+        assertTrue(balancer.canPurchase(buyer));
+        _win(0);
+        upkeep();
+        assertEq(balancer.getActiveShapes()[0], 16, "a fourth sale reconciled, still nothing minted");
+        req = balancer.requiredReserve();
+
+        // Claims during the increase: protected credit plus surplus above the accepted-fee reserve, to the wei.
+        balancer.collectProceeds();
+        uint256 credit = balancer.creatorCredit();
+        uint256 operating = address(balancer).balance - credit;
+        assertGt(operating, req);
+        uint256 available = balancer.withdrawableSurplus();
+        assertEq(available, credit + operating - req, "surplus is measured against the accepted fee");
+        uint256 before = creator.balance;
+        vm.prank(creator);
+        balancer.claimSurplus(available, creator);
+        assertEq(creator.balance - before, available, "creator received credit and surplus");
+        assertEq(balancer.creatorCredit(), 0);
+        assertEq(address(balancer).balance, req, "exactly the accepted-fee reserve remains");
+        assertEq(balancer.withdrawableSurplus(), 0);
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(1, creator);
+
+        // Explicit acceptance: the reserve rises by exactly the four missing Shapes' extra fee, 4 x 9 x 0.001 ETH.
+        vm.prank(creator);
+        balancer.configure(MARKUP, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        assertEq(balancer.mintFeeCap(), fee * 10, "the live fee is the new cap");
+        assertEq(balancer.requiredReserve() - req, 4 * 9 * fee, "reserve now prices missing prizes at the new fee");
+        assertEq(balancer.requiredReserve() - req, 0.036 ether);
+        address donor = makeAddr("donor");
+        vm.deal(donor, 1 ether); // funding an outside wallet is setup
+        vm.prank(donor);
+        balancer.depositETH{value: 1 ether}();
+        fillUp();
+        assertEq(balancer.getActiveShapes()[0], 20, "restocked at the accepted higher fee");
+
+        vm.prank(SHAPES_ADMIN);
+        IShapesAdmin(SHAPES).setMintFee(fee);
+    }
+
     /*//////////////////////////// 10. canPurchase gas under the FWA stipend ////////////////////////////*/
 
     function test_canPurchaseGasStandardModeUnderStipend() public {

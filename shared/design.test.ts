@@ -1,7 +1,7 @@
 import { describe as suite, expect, it } from 'vitest';
 import { parseEther } from 'viem';
-import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, mixOf, playerView, styleBonus, type DesignInputs } from './design';
-import { BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, restockFeeAt, shapeCount, type Counts } from './planner';
+import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, available, mixOf, playerView, presetCounts, presetMaxSmall, styleBonus, type DesignInputs } from './design';
+import { BY_VALUE, DENOMS, MAX_SHAPES_PER_PLAN, evaluate, packPlan, restockFeeAt, shapeCount, unpackPlan, type Counts } from './planner';
 
 const base: DesignInputs = {
   curatedBases: [parseEther('0.05'), parseEther('0.1')],
@@ -65,11 +65,11 @@ suite('pool size and styles', () => {
   });
 
   it('steady adds nothing', () => {
-    expect(styleBonus('steady', one, 10)).toEqual(mix({}));
+    expect(styleBonus('lowPrice', one, 10)).toEqual(mix({}));
   });
 
   it('more big wins: about 1 in 10 draws wins 2x the price or more, within the Shape limit', () => {
-    const c = mixOf(10, styleBonus('balanced', one, 10));
+    const c = mixOf(10, styleBonus('bigWins', one, 10));
     expect(at(c).v.win2x).toBeGreaterThanOrEqual(BIG_WIN_SHARE);
     expect(shapeCount(c)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
@@ -87,7 +87,7 @@ suite('pool size and styles', () => {
       return b;
     };
     for (const d of [one, { ...one, curatedBases: [] }, { ...one, markupBps: 1000 }, { ...one, markupBps: 10_000 }])
-      for (const n of [1, 2, 3, 7, 10, 25, 60, 150, 400, 666, 900]) expect(styleBonus('balanced', d, n)).toEqual(oneAtATime(d, n));
+      for (const n of [1, 2, 3, 7, 10, 25, 60, 150, 400, 666, 900]) expect(styleBonus('bigWins', d, n)).toEqual(oneAtATime(d, n));
   });
 
   it('jackpot: one bonus Shape near 50x the draw price', () => {
@@ -99,7 +99,7 @@ suite('pool size and styles', () => {
   });
 
   it('a style never pushes the pool past the Shape limit', () => {
-    for (const st of ['board', 'balanced', 'jackpot'] as const) for (const n of [38, 78, 80, 199]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+    for (const st of ['balanced', 'bigWins', 'jackpot'] as const) for (const n of [38, 78, 80, 199]) expect(shapeCount(mixOf(n, styleBonus(st, one, n)))).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
   });
 
   it('counts Shapes the switch would redeem as available', () => {
@@ -110,16 +110,16 @@ suite('pool size and styles', () => {
 suite('styles without a curated NFT', () => {
   it('pick the same kind of mix from the Shapes alone', () => {
     const none = { ...base, curatedBases: [] };
-    expect(shapeCount(styleBonus('board', none, 10))).toBeGreaterThan(0);
-    expect(shapeCount(styleBonus('jackpot', none, 10))).toBe(1);
     expect(shapeCount(styleBonus('balanced', none, 10))).toBeGreaterThan(0);
-    expect(styleBonus('steady', none, 10)).toEqual(mix({}));
+    expect(shapeCount(styleBonus('jackpot', none, 10))).toBe(1);
+    expect(shapeCount(styleBonus('bigWins', none, 10))).toBeGreaterThan(0);
+    expect(styleBonus('lowPrice', none, 10)).toEqual(mix({}));
   });
 });
 
 suite('balanced style (ape-Ball board)', () => {
   const one = { ...base, curatedBases: [parseEther('0.05')] };
-  const counts = (small: number) => mixOf(small, styleBonus('board', one, small));
+  const counts = (small: number) => mixOf(small, styleBonus('balanced', one, small));
 
   it('at 20 small Shapes is ape-Ball\'s 47-row board scaled to 40', () => {
     const c = counts(20);
@@ -136,3 +136,69 @@ suite('balanced style (ape-Ball board)', () => {
   });
 });
 
+
+suite('designer presets as functions of one counts array', () => {
+  const styles = ['lowPrice', 'balanced', 'bigWins', 'jackpot'] as const;
+  // The derivation App.tsx used before one counts array (rev 58f4009): `small` 0.01 ETH Shapes, the style's bonus at
+  // that count, the slider clamp found by halving, and the floor of one.
+  const oldMaxSmall = (style: (typeof styles)[number], d: DesignInputs) => {
+    let lo = 1, hi = MAX_SHAPES_PER_PLAN;
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (m + shapeCount(styleBonus(style, d, m)) >= MAX_SHAPES_PER_PLAN) hi = m; else lo = m + 1;
+    }
+    return lo;
+  };
+  const oldCounts = (style: (typeof styles)[number], d: DesignInputs, small: number) => {
+    const bonus = styleBonus(style, d, small);
+    const room = MAX_SHAPES_PER_PLAN - shapeCount(bonus);
+    return mixOf(Math.max(1, Math.min(small, room, oldMaxSmall(style, d))), bonus);
+  };
+  const inputs = [
+    base,
+    { ...base, curatedBases: [], curatedPrices: [] },
+    { ...base, markupBps: 1000 },
+    { ...base, markupBps: 10_000, curatedBases: [parseEther('2')] },
+    { ...base, mintFee: parseEther('0.001'), curatedBases: [parseEther('0.05'), parseEther('0.3'), parseEther('25')] },
+  ];
+
+  it('each preset produces the same counts and packed target as before, at every tested pool size', () => {
+    for (const d of inputs) for (const style of styles) {
+      const max = presetMaxSmall(style, d);
+      expect(max).toBe(oldMaxSmall(style, d));
+      for (const small of [1, 2, 10, 24, 100, 499, max]) {
+        if (small > max) continue;
+        const now = presetCounts(style, d, small);
+        expect(now, `${style} at ${small}`).toEqual(oldCounts(style, d, small));
+        expect(unpackPlan(packPlan(now))).toEqual(now);
+        expect(shapeCount(now)).toBeLessThanOrEqual(MAX_SHAPES_PER_PLAN);
+      }
+    }
+  });
+
+  it('a preset never drops below one 0.01 ETH Shape; a hand-made mix may have none', () => {
+    for (const style of styles) expect(presetCounts(style, base, 0)[0]).toBe(1);
+    for (const m of [mix({ 1: 10 }), mix({ 2: 1, 3: 1 }), mix({ 9: 4 }), mix({ 12: 2, 3: 1 })]) {
+      expect(m[0]).toBe(0);
+      expect(unpackPlan(packPlan(m))).toEqual(m);
+      const ev = evaluate(m, base);
+      expect(ev.feasible).toBe(true);
+      expect(ev.drawPrice).toBeGreaterThan(0n);
+    }
+  });
+
+  it('a draw-price preset recomputes from the same count when markup or curated NFTs change', () => {
+    expect(presetCounts('bigWins', base, 20)).toEqual(mix({ 0: 20, 1: 9, 10: 1 }));
+    expect(presetCounts('bigWins', { ...base, markupBps: 10_000 }, 20)).toEqual(mix({ 0: 20, 1: 1, 2: 20 }));
+    expect(presetCounts('jackpot', base, 20)).toEqual(mix({ 0: 20, 4: 1 }));
+    expect(presetCounts('jackpot', { ...base, curatedBases: [] }, 20)).toEqual(mix({ 0: 20, 3: 1 }));
+    // Balanced depends only on the count.
+    expect(presetCounts('balanced', base, 10)).toEqual(presetCounts('balanced', { ...base, markupBps: 5000, curatedBases: [] }, 10));
+  });
+
+  it('presets stay fast at the 1,000-prize limit', () => {
+    const started = performance.now();
+    for (const style of styles) presetCounts(style, base, presetMaxSmall(style, base));
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
