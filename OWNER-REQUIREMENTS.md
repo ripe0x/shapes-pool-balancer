@@ -280,3 +280,28 @@ historical. This implementation authority does not sign new release outcomes or 
   return available funds, but the sender cannot require it through the protocol. This clarifies and supersedes any
   suggestion in R71 or R72 that “preserve donor rights” grants a donor refund or withdrawal right; it leaves purchaser
   refunds, creator credit and keeper/policy rights unchanged. No new numerical outcome is approved.
+
+## Optional curated NFTs and creation controls (owner brief, 2026-11-20)
+
+Source: the owner's brief "Complete the Shapes Pool Balancer product design corrections" (merged as PR 24, `28b53ad`).
+Player pricing, markup minimums, FWA/VRF fees and expected-return logic are excluded ("item #3") and unchanged. No new
+numerical outcome is approved here; the updated outcomes in `asset-flow.json` await the owner's signature.
+
+- R74. Curated NFTs are optional: a pool may be Shapes-only, mixed, or move between the two over its life. "Creating a
+  pool with an empty curated array must work." Curated NFTs stay creator-supplied, first-class prizes; no placeholder NFT
+  and no automatic purchase of curated NFTs. Curated-only pools are out of scope.
+- R75. Two modes, chosen by the creator. **Standard** (the default): after the last curated NFT is won or withdrawn,
+  Shapes keep selling under the normal admission checks. **Curated-required**: purchases pause while no active curated
+  NFT can be proven; the staged-witness rule (R71, R72) and `refreshCuratedWitness()` still apply. The creator can change
+  the mode after creation, and admission reflects it immediately. Narrows R72's curated-presence proof to
+  curated-required mode.
+- R76. No hidden minimum of the smallest denomination: any valid Shapes/Pack mix with at least one prize, within the
+  contract's maximums and funding. Fewer permitted concurrent draws from the 70% weight gate (R16) are shown, not
+  prevented.
+- R77. Creation takes an explicit `creatorRevenueBps`; the markup-based value is the suggested default. It is set in
+  the atomic creation transaction and later changes only through the existing explicit operation.
+- R78. A Shapes mint fee above `mintFeeCap` stops minting (paid and unpaid upkeep), not purchases of listed prizes.
+  Depletion still pauses sales through the weight gate; the creator may accept a new fee through `configure`.
+- R79. Exception to R3 (owner, 2026-11-20: "Keep it", after rc-28b53ad finding 2): the dashboard's mainnet reads may
+  fall back to `https://ethereum-rpc.publicnode.com`, then to the connected wallet's own provider, when Tenderly
+  refuses. Reads only; tests, scripts, keepers and broadcasts stay on Tenderly per R3.
