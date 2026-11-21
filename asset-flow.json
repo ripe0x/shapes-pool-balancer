@@ -180,7 +180,7 @@
     },
     {
       "id": "O7",
-      "text": "Ordinary funded launch-board operation admits reconciled purchases under the existing70% weight/curated/busy/mint-fee gate. Adverse low-capital depletion may pause and requires existing proceeds, Add ETH, a smaller target or closing; no automatic refill from refused demand is promised. The named ordinary regimes have zero low-inventory refusals within the5gwei V1 cap.",
+      "text": "Ordinary funded launch-board operation admits reconciled purchases under the existing70% weight/busy gate, plus the curated gate only in curated-required mode. A Shapes mint fee above the accepted cap stops restocking, not purchases of listed prizes. Adverse low-capital depletion may pause and requires existing proceeds, Add ETH, a smaller target or closing; no automatic refill from refused demand is promised. The named ordinary regimes have zero low-inventory refusals within the5gwei V1 cap.",
       "metric": "facts.refused_low_inventory_within_gas_cap",
       "max": 0,
       "regimes": [
@@ -279,7 +279,7 @@
     },
     {
       "id": "O13",
-      "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the tested burst size; FWA checks the operator once per batch and actual outstanding counts can exceed five; keepers process two per call). Sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another.",
+      "text": "(D16) Draws settle with only players, the randomness service and keepers acting, while the factory's keeper list is open or names an active keeper: upkeep processes FWA's queue, so no day ends with a draw unsettled, including draws that reserved a staged restock and lost FWA's randomness fast path, and bursts that leave five draws waiting at once (the tested burst size; FWA checks the operator once per batch and actual outstanding counts can exceed five; keepers process two per call). In curated-required mode sales keep going only while a curated NFT is listed: the regimes relist each won NFT as the creator would; after the last is won, sales pause until the creator lists another. In standard mode a pool keeps selling Shapes with no curated NFT listed (shapes_only, mixed_to_shapes_only).",
       "metric": "facts.unsettled_draws_at_day_end_max",
       "max": 0,
       "regimes": [
