@@ -302,3 +302,6 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
   the atomic creation transaction and later changes only through the existing explicit operation.
 - R78. A Shapes mint fee above `mintFeeCap` stops minting (paid and unpaid upkeep), not purchases of listed prizes.
   Depletion still pauses sales through the weight gate; the creator may accept a new fee through `configure`.
+- R79. Exception to R3 (owner, 2026-11-20: "Keep it", after rc-28b53ad finding 2): the dashboard's mainnet reads may
+  fall back to `https://ethereum-rpc.publicnode.com`, then to the connected wallet's own provider, when Tenderly
+  refuses. Reads only; tests, scripts, keepers and broadcasts stay on Tenderly per R3.
