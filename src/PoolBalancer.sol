@@ -23,10 +23,11 @@ interface IBalancerFactory {
 /// @dev Design:
 ///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
-///        no new request while initial setup is unfinished, while no curated NFT is listed (the pool exists to
-///        give NFTs away), while at least MAX_BATCH draws are already unsettled, while the
-///        Shapes mint fee is above what the creator accepted, while the prizes' weight, after assuming every
-///        unreconciled draw took the heaviest possible prize, is below FILL_BPS of the target's weight. Purchases do not
+///        no new request while initial setup is unfinished, while no active curated NFT is proven and the creator
+///        requires one (`curatedRequired`; curated NFTs are otherwise optional), while at least MAX_BATCH draws are
+///        already unsettled, while the prizes' weight, after assuming every unreconciled draw took the heaviest
+///        possible prize, is below FILL_BPS of the target's weight. A Shapes mint fee above what the creator accepted
+///        stops minting, not purchases of listed prizes; depletion then pauses purchases through the weight gate. Purchases do not
 ///        wait for a fully funded target: expensive deficits may remain while sales replenish operating capital.
 ///        A stored share of actual collected owner proceeds is protected as creator credit.
 ///        `open` funds current inventory/setup work and a maintenance buffer, without duplicate prize backing.
@@ -116,11 +117,11 @@ contract PoolBalancer is ReentrancyGuard {
     uint8 internal constant OK = 0;
     uint8 internal constant CLOSED = 1;
     uint8 internal constant SETTING_UP = 2;
-    uint8 internal constant NO_CURATED = 3;
+    uint8 internal constant NO_CURATED = 3; // only while `curatedRequired`
     uint8 internal constant BUSY = 4;
-    uint8 internal constant MINT_FEE_ROSE = 5;
+    // 5 is retired: a Shapes mint fee above `mintFeeCap` stops minting in upkeep, not purchases of listed prizes.
     uint8 internal constant LOW_INVENTORY = 6;
-    uint8 internal constant CURATED_PROOF_REQUIRED = 7;
+    uint8 internal constant CURATED_PROOF_REQUIRED = 7; // only while `curatedRequired`
 
     /*//////////////////////////////////////////////////////////////
                                IMMUTABLES
@@ -147,11 +148,13 @@ contract PoolBalancer is ReentrancyGuard {
     bool public enabled;
     /// @dev Initial opening setup remains true until the target is stocked; later ordinary depletion does not reset it.
     bool public creatorWork;
+    /// @dev Purchases need a proven active curated NFT. Off by default: curated NFTs are optional prizes.
+    bool public curatedRequired;
     uint64 public reconciledSequence;
     /// @dev Only actual FWA owner proceeds create credit, including collections after closing.
     uint256 public creatorCredit;
     uint16 public creatorRevenueBps;
-    /// @dev The Shapes mint fee when the creator last configured; purchases and restocking stop above it.
+    /// @dev The Shapes mint fee when the creator last configured; upkeep mints nothing while the live fee is above it.
     uint256 public mintFeeCap;
     /// @dev Weight (1e36 / `base`) of the listed prizes (staged or active, not yet reconciled as drawn) and of the
     ///      target. `base` leaves out the basefee-indexed restocking fee, so fill does not move with gas.
@@ -179,6 +182,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CreatorTransferred(address indexed oldCreator, address indexed newCreator);
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event CreatorRevenueChanged(uint16 previousBps, uint16 newBps);
+    event CuratedRequirementChanged(bool required);
     event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
     event KeeperPolicyCancelled(address indexed policy);
     event KeeperPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
@@ -264,6 +268,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint16 creatorRevenueBps;
         uint256 target;
         uint256 mintFeeCap;
+        bool curatedRequired;
     }
 
     function initialize(address creator_, CreationConfig calldata config, CuratedInput[] calldata curated)
@@ -290,7 +295,8 @@ contract PoolBalancer is ReentrancyGuard {
         if (SHAPES.mintFee() > config.mintFeeCap) revert InvalidConfig();
         _configure(config.markupBps, config.target, config.mintFeeCap);
         _setCreatorRevenueBps(config.creatorRevenueBps);
-        _listCurated(curated, creator_);
+        _setCuratedRequired(config.curatedRequired);
+        if (curated.length != 0) _listCurated(curated, creator_);
         _open();
         emit Initialized(creator_, p);
         if (msg.value != 0) emit Deposited(creator_, msg.value);
@@ -346,6 +352,16 @@ contract PoolBalancer is ReentrancyGuard {
         if (newBps > BPS) revert InvalidConfig();
         emit CreatorRevenueChanged(creatorRevenueBps, newBps);
         creatorRevenueBps = newBps;
+    }
+
+    /// @notice Require a proven active curated NFT for purchases, or not. Takes effect at the next admission check.
+    function setCuratedRequired(bool required) external onlyCreator nonReentrant {
+        _setCuratedRequired(required);
+    }
+
+    function _setCuratedRequired(bool required) internal {
+        curatedRequired = required;
+        emit CuratedRequirementChanged(required);
     }
 
     function keeperPolicy() external view returns (address) { return _keeper.policy; }
@@ -569,7 +585,7 @@ contract PoolBalancer is ReentrancyGuard {
     function admissionStatus() public view returns (uint8) {
         if (!enabled) return CLOSED;
         if (creatorWork) return SETTING_UP;
-        return PoolInventory.admission(_inventory, pool, address(SHAPES), mintFeeCap, targetWeight, prizeWeight, reconciledSequence);
+        return PoolInventory.admission(_inventory, pool, curatedRequired, targetWeight, prizeWeight, reconciledSequence);
     }
 
     /*//////////////////////////////////////////////////////////////

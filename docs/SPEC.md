@@ -101,11 +101,11 @@ the Draw Packs contract or the FWA pool (a draw delivered to them could never be
 | 0 | OK | the Balancer admits a purchase |
 | 1 | CLOSED | the creator has not opened purchases, or has closed them |
 | 2 | SETTING_UP | initial stocking or reopening setup is unfinished |
-| 3 | NO_CURATED | no curated listing remains in local tracking |
+| 3 | NO_CURATED | `curatedRequired` and no curated listing remains in local tracking |
 | 4 | BUSY | 5 draws are unsettled on FWA |
-| 5 | MINT_FEE_ROSE | the Shapes mint fee is above the one the creator accepted |
+| 5 | (retired) | not returned; a mint fee above `mintFeeCap` stops minting in upkeep, not purchases |
 | 6 | LOW_INVENTORY | the conservative Shape-weight bound at the first new selection is below 70% of target |
-| 7 | CURATED_PROOF_REQUIRED | no current active curated witness or aggregate proof is available |
+| 7 | CURATED_PROOF_REQUIRED | `curatedRequired` and no current active curated witness or aggregate proof is available |
 
 FWA prices every draw on live inventory and refunds a draw whose price moved past its tolerance. Several batches may be admitted between upkeeps; no serialized cohort is introduced. The curated-proof ambiguity pause below may require one permissionless refresh. The existing busy check rejects a new transaction when at least five draws are already unsettled. FWA checks the operator once per batch, so four outstanding requests plus a new batch of five can produce nine actual requests if external service capacity permits.
 

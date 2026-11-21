@@ -75,3 +75,17 @@ A complete final Foundry run may execute and write the same 25 current-source re
 
 
 Final scalar candidate source `ca02fb070a2a839cccc9fced15b3116613f6d7727d4e50133693dd63a4c92eda` executed all 25 records inside its complete 501-test Foundry pass. `--no-run --require-review` returned exit 2 with **all numerical checks passing**, and only two incomplete conditions: missing/mismatched owner approval hash and no fresh whole-candidate audit seal. The fixed in-flight O9 absolute error was 0.000145285333333628 ETH per 180 draws, while broader adversarial cases still exceeded 0.001 ETH; do not convert that named pass into a universal limit. Corrected O11 named play shortfall was 0. The focused final-source review is bounded and is not represented as a whole-candidate audit seal. Exact evidence is in [verification.json](../audit/remediation-focused/verification.json).
+
+## Candidate 4873250: optional curated NFTs (2026-11-20, unsigned)
+
+Source hash `d705dfa8bad157a09e537cca6bad21c4d9d2c87d5590c1f403fd72d27728d4b8`. `CANDIDATE_RUN=1 SOURCE_HASH=<that> forge test --fork-block-number 26382349 --isolate --threads 8 --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000` passed **30/30**. The fork RPC was an Alchemy archive endpoint, because Tenderly's public gateway returned HTTP 429; state is the same pinned block. `asset_gate.py . --no-run` then returned **INCOMPLETE (exit 2) with every numerical outcome OK**; the only gap is the owner approval.
+
+Added regimes, all in standard mode, 180 draws then closeout, 5 ETH deposit:
+
+| regime | refused draws | curated NFTs won | creator claimed | creator net |
+| --- | --- | --- | --- | --- |
+| shapes_only | 0 | 0 | 5.5744 ETH | +0.5744 ETH |
+| mixed_to_shapes_only (last NFT withdrawn at draw 60) | 0 | 0 | 5.7646 ETH | +0.7646 ETH |
+| shapes_only_to_mixed (NFT listed at draw 60) | 0 | 1 | 5.5699 ETH | +0.5699 ETH |
+
+They are added to O1, O2, O7 and O8 (and O11 for shapes_only). O7 and O13 wording now matches the code: the curated gate applies only in curated-required mode, and a mint fee above the cap stops restocking, not purchases. No outcome number changed. The previous signature (outcomes hash `231b42ba…`) does not cover this payload and is not reused. New outcomes hash to sign: `d3b9ba838eef9c2f9fc0f54fa189b294ec49323d2bf08fc4963c8489f64dd992`.

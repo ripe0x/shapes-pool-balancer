@@ -298,7 +298,6 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   const curatedOddsBps = tW === 0n ? 0 : Number((c.w * BPS) / tW);
   const curatedOddsPpm = tW === 0n ? 0 : Number((c.w * 1_000_000n) / tW);
 
-  if (c.w === 0n) reasons.push('No curated NFTs');
   if (shapes === 0) reasons.push('Plan has no Shapes');
   if (shapes > MAX_SHAPES_PER_PLAN) reasons.push(`More than ${MAX_SHAPES_PER_PLAN} Shapes`);
 

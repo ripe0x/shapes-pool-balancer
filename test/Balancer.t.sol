@@ -67,10 +67,10 @@ contract BalancerTest is ForkBase {
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether), new PoolBalancer.CuratedInput[](0));
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/
@@ -420,15 +420,15 @@ contract BalancerTest is ForkBase {
 
     /*////////////////////////////// mint fee //////////////////////////////*/
 
-    /// Raising the fee closes the gate and stops restocking; re-configure accepts it; a fee drop keeps it open.
+    /// Raising the fee stops restocking but not sales of listed prizes; re-configure accepts it; a fee drop keeps it open.
     function test_realMintFeeChange() public {
         _drawOneShape(); // create a deficit so restocking would run if the fee allowed it
         vm.prank(SHAPES_ADMIN);
         IShapesAdmin(SHAPES).setMintFee(0.005 ether);
-        assertEq(balancer.admissionStatus(), 5, "MINT_FEE_ROSE");
+        assertEq(balancer.admissionStatus(), 0, "listed prizes keep selling above the accepted fee");
         // upkeep reconciles the draw but does not restock above the accepted fee
         upkeep();
-        assertEq(balancer.admissionStatus(), 5, "still closed, not restocked");
+        assertEq(balancer.admissionStatus(), 0, "still open, not restocked");
         uint16[16] memory have = balancer.getActiveShapes();
         assertEq(have[2], 1, "the drawn 0.1 Shape was not replaced");
 

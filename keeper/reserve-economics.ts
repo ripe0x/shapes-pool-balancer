@@ -97,7 +97,7 @@ async function main(){
    await send(A.creator,nft,nArt.abi,'mint',[A.creator,BigInt(i+1)]);
    await send(A.creator,nft,nArt.abi,'approve',[b,BigInt(i+1)]);
    const initial=[{collection:nft,tokenId:BigInt(i+1),base:200_000_000_000_000_000n}];
-   const config={markupBps:1500,creatorRevenueBps:400,target:20n,mintFeeCap:await read(SHAPES,shapeAbi,'mintFee')};
+   const config={markupBps:1500,creatorRevenueBps:400,target:20n,mintFeeCap:await read(SHAPES,shapeAbi,'mintFee'),curatedRequired:true};
    await send(A.creator,factory,fAbi,'createBalancer',[salt,config,initial],10n**18n,'atomic create/deposit1ETH');
    const pool=await read(b,bAbi,'pool') as Address;
    await send(A.creator,b,bAbi,'proposeKeeperPolicy',[policy]);

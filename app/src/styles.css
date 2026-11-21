@@ -377,3 +377,5 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .earned .note { margin-top: 4px; }
 .withdraw { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 .withdraw .kvline { margin-bottom: 12px; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: currentColor; }
