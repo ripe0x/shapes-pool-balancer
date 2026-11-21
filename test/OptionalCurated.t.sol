@@ -67,6 +67,12 @@ contract OptionalCuratedTest is ForkBase {
     }
 
     /// @dev Buyer wins one active prize of denomination `d` through a real VRF callback. Returns the won token.
+    function _isActive(uint256 lid) internal view returns (bool) {
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) if (ids[i] == lid) return true;
+        return false;
+    }
+
     function _win(uint8 d) internal returns (uint256 token) {
         uint256 lid = _activeOfDenom(d);
         uint256 slot;
@@ -128,13 +134,16 @@ contract OptionalCuratedTest is ForkBase {
         assertEq(balancer.admissionStatus(), 0);
 
         // purchase + real win + reconcile + restock
+        uint256 wonLid = _activeOfDenom(0);
         _win(0);
-        assertEq(balancer.getActiveShapes()[0], 4, "won Shape left the board");
+        assertTrue(_isActive(wonLid), "a delivered Shape stays tracked until upkeep reconciles the draw");
+        assertEq(balancer.getActiveShapes()[0], 5);
         uint256 proceeds = pool.ownerProceeds();
         assertGt(proceeds, 0, "the reached board produced owner proceeds");
         assertEq(balancer.collectProceeds(), proceeds, "collected exactly the settled proceeds");
         upkeep();
-        assertEq(balancer.getActiveShapes()[0], 5, "restocked to target");
+        assertFalse(_isActive(wonLid), "reconciliation removed the won listing");
+        assertEq(balancer.getActiveShapes()[0], 5, "restocked to target in the same call (the draw was already processed)");
         assertEq(balancer.admissionStatus(), 0);
 
         // close, unlist everything, drain to the creator
@@ -377,9 +386,11 @@ contract OptionalCuratedTest is ForkBase {
         assertEq(balancer.admissionStatus(), 0);
 
         // purchase + win + restock a 0.05 Shape
+        uint256 wonLid = _activeOfDenom(1);
         _win(1);
-        assertEq(balancer.getActiveShapes()[1], 9, "won 0.05 Shape left the board");
+        assertTrue(_isActive(wonLid), "a delivered Shape stays tracked until upkeep reconciles the draw");
         fillUp();
+        assertFalse(_isActive(wonLid), "reconciliation removed the won 0.05 Shape");
         assertEq(balancer.getActiveShapes()[1], 10, "0.05 Shape restocked");
         assertEq(balancer.admissionStatus(), 0);
 
