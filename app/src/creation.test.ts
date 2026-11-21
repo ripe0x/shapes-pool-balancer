@@ -1,4 +1,4 @@
-import { BaseError, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, createPublicClient, custom, http, type Address } from 'viem';
+import { BaseError, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, createPublicClient, createWalletClient, custom, decodeFunctionData, http, type Address, type Hash } from 'viem';
 import { describe, expect, it } from 'vitest';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, recoverCreation, sameCreation, sameSubmission, submitCreation, type CreationAttempt } from './creation';
 
@@ -144,18 +144,46 @@ describe('creation lookup failure', () => {
   });
 });
 
-const rpc = process.env.CREATION_RECOVERY_RPC;
-// Successful answers below come only from the retained real FWA fork and its actually deployed atomic pool.
-it.skipIf(!rpc)('recovers the real creator pool without relying on its receipt and rejects a different reviewed design', async () => {
-  const pub = createPublicClient({ transport: http(rpc), cacheTime: 0 });
-  const { poolBalancerAbi } = await import('../../shared/abi');
-  const target = await pub.readContract({ address: attempt.predicted, abi: poolBalancerAbi, functionName: 'target' });
-  const actual = { ...attempt, config: { ...attempt.config, target: String(target) } };
-  expect(await recoverCreation(pub, actual, context)).toBe('confirmed');
-  expect(await recoverCreation(pub, { ...actual, config: { ...actual.config, creatorRevenueBps: 1235 } }, context)).toBe('mismatch');
-  expect(await recoverCreation(pub, actual, { ...context, creator: attempt.factory })).toBe('context');
-});
+const forkRpc = process.env.CREATION_TOGGLE_RPC;
+const forkFactory = process.env.CREATION_RECOVERY_FACTORY as Address | undefined;
+// Local fork only (chain 31337): the real factory's latest creation is replayed from its own transaction, then the creator
+// changes the pool's mode through a real transaction. Every successful answer comes from that fork node.
+it.skipIf(!forkRpc || !forkFactory)('confirms a created pool after the creator changes its settings, and rejects a different reviewed design', async () => {
+  const { balancerFactoryAbi, poolBalancerAbi } = await import('../../shared/abi');
+  const pub = createPublicClient({ transport: http(forkRpc, { retryCount: 0 }), cacheTime: 0, pollingInterval: 100 });
+  expect(await pub.getChainId()).toBe(31337);
+  const created = await pub.getContractEvents({ address: forkFactory!, abi: balancerFactoryAbi, eventName: 'BalancerCreated',
+    fromBlock: await pub.getBlockNumber() - 50n, strict: true });
+  const log = created.at(-1)!;
+  const transaction = await pub.getTransaction({ hash: log.transactionHash });
+  const { args: [salt, config, curated] } = decodeFunctionData({ abi: balancerFactoryAbi, data: transaction.input }) as never as { args: [Hash, {
+    markupBps: number; creatorRevenueBps: number; target: bigint; mintFeeCap: bigint; curatedRequired: boolean }, { collection: Address; tokenId: bigint; base: bigint }[]] };
+  const creator = transaction.from;
+  const live: CreationAttempt = { chainId: 31337, factory: forkFactory!, creator, salt, predicted: log.args.balancer, hash: transaction.hash,
+    nonce: transaction.nonce, value: String(transaction.value),
+    config: { markupBps: config.markupBps, creatorRevenueBps: config.creatorRevenueBps, target: String(config.target),
+      mintFeeCap: String(config.mintFeeCap), curatedRequired: config.curatedRequired },
+    curated: curated.map(n => ({ collection: n.collection, tokenId: String(n.tokenId), base: String(n.base) })) };
+  const liveContext = { chainId: 31337, factory: forkFactory!, creator };
+  expect(await recoverCreation(pub, live, liveContext)).toBe('confirmed');
 
+  const current = await pub.readContract({ address: live.predicted, abi: poolBalancerAbi, functionName: 'curatedRequired' });
+  await pub.request({ method: 'anvil_impersonateAccount' as never, params: [creator] as never });
+  const wallet = createWalletClient({ account: creator, transport: http(forkRpc, { retryCount: 0 }) });
+  const toggle = await wallet.writeContract({ address: live.predicted, abi: poolBalancerAbi, functionName: 'setCuratedRequired',
+    args: [!current], chain: null });
+  expect((await pub.waitForTransactionReceipt({ hash: toggle })).status).toBe('success');
+  expect(await pub.readContract({ address: live.predicted, abi: poolBalancerAbi, functionName: 'curatedRequired' })).toBe(!current);
+
+  expect(await recoverCreation(pub, live, liveContext)).toBe('confirmed');
+  // The saved record survives a reload without its hash when it has the block it was submitted after.
+  expect(await recoverCreation(pub, { ...live, hash: undefined, nonce: undefined, fromBlock: String(transaction.blockNumber! - 1n) }, liveContext)).toBe('confirmed');
+  expect(await recoverCreation(pub, { ...live, config: { ...live.config, curatedRequired: !current } }, liveContext)).toBe('mismatch');
+  expect(await recoverCreation(pub, { ...live, config: { ...live.config, creatorRevenueBps: (live.config.creatorRevenueBps + 1) % 10_001 } }, liveContext)).toBe('mismatch');
+  expect(await recoverCreation(pub, live, { ...liveContext, creator: forkFactory! })).toBe('context');
+}, 60_000);
+
+const rpc = process.env.CREATION_RECOVERY_RPC;
 // Public facts from docs/verification/frontend-followup/creation-readback.json.
 // This transaction was already broadcast and mined by the real browser flow; these tests never submit it again.
 const minedAttempt: CreationAttempt = {

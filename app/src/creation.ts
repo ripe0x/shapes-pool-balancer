@@ -61,7 +61,8 @@ export const creationStatus = (outcome: CreationOutcome) => ({
 })[outcome];
 
 type Remember = (next: CreationAttempt, previous?: CreationAttempt) => void;
-type CreationClient = Pick<PublicClient, 'getChainId' | 'getBlockNumber' | 'getBlock' | 'getTransactionCount' | 'readContract' | 'getTransactionReceipt' | 'getTransaction'>;
+type CreationClient = Pick<PublicClient, 'getChainId' | 'getBlockNumber' | 'getBlock' | 'getTransactionCount' | 'readContract' | 'getTransactionReceipt' | 'getTransaction' | 'getLogs'>;
+const balancerCreated = balancerFactoryAbi.find(e => e.type === 'event' && e.name === 'BalancerCreated')!;
 const creationInput = (a: CreationAttempt) => encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer',
   args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired },
     a.curated.map(n => ({ ...n, tokenId: BigInt(n.tokenId), base: BigInt(n.base) }))] });
@@ -150,15 +151,20 @@ export async function recoverCreation(pub: CreationClient, a: CreationAttempt, c
     if (registered) {
       const read = <T>(functionName: string) => pub.readContract({ address: a.predicted, abi: poolBalancerAbi,
         functionName: functionName as never, blockNumber }) as Promise<T>;
-      const [creator, factory, pool, markupBps, creatorRevenueBps, target, mintFeeCap, curatedRequired] = await Promise.all([
-        read<Address>('creator'), read<Address>('factory'), read<Address>('pool'), read<number>('markupBps'),
-        read<number>('creatorRevenueBps'), read<bigint>('target'), read<bigint>('mintFeeCap'), read<boolean>('curatedRequired'),
-      ]);
+      const [factory, pool] = await Promise.all([read<Address>('factory'), read<Address>('pool')]);
       const owner = await pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: 'owner', blockNumber });
-      return sameAddress(creator, a.creator) && sameAddress(factory, a.factory) && sameAddress(owner, a.predicted)
-        && Number(markupBps) === a.config.markupBps && Number(creatorRevenueBps) === a.config.creatorRevenueBps
-        && target === BigInt(a.config.target) && mintFeeCap === BigInt(a.config.mintFeeCap)
-        && curatedRequired === !!a.config.curatedRequired ? 'confirmed' : 'mismatch';
+      if (!sameAddress(factory, a.factory) || !sameAddress(owner, a.predicted)) return 'mismatch';
+      // Mode, markup, target, fee cap, revenue rate and even the creator can change after creation, so current settings
+      // never prove the submitted design. The single BalancerCreated log names the transaction whose input created this pool.
+      const known = a.hash ? await pub.getTransaction({ hash: a.hash }).catch(() => undefined) : undefined;
+      const around = known?.blockNumber ?? undefined;
+      const from = around ?? (a.fromBlock === undefined ? undefined : BigInt(a.fromBlock));
+      if (from === undefined) return 'unknown';
+      const logs = await pub.getLogs({ address: a.factory, event: balancerCreated, args: { creator: a.creator, balancer: a.predicted },
+        fromBlock: from, toBlock: around ?? blockNumber, strict: true });
+      if (logs.length !== 1) return around === undefined ? 'unknown' : recoverCreation(pub, { ...a, hash: undefined }, context, remember);
+      const created = logs[0].transactionHash === known?.hash ? known : await pub.getTransaction({ hash: logs[0].transactionHash });
+      return created && isCreationTransaction(a, created) ? 'confirmed' : 'mismatch';
     }
     if (!a.hash) return 'unknown';
     if (a.nonce === undefined && a.submittedHash && a.submittedHash !== a.hash) {
