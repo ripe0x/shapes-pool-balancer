@@ -66,6 +66,9 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         assert.ok(p.caps.draws >= 150 + 7 + p.scenario.curatedProofRecovery.resumedDraws);
         assert.equal(p.scenario.curatedProofRecovery.maximumRefreshes, 1);
         assert.equal(p.scenario.creationReceiptProbe.expectedReceipt, 'reverted');
+        // One pool per admission mode: A requires a curated NFT, B is a standard-mode Shapes-only pool.
+        assert.deepEqual(p.scenario.curatedRequired, [true, false]);
+        assert.deepEqual(p.scenario.curatedPerPool, [2, 0]);
         assert.equal(p.scenario.initialDeposits.map(BigInt).reduce((a, b) => a + b, 0n), BigInt(p.caps.deposits));
     });
     it.each([
@@ -76,6 +79,8 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         ['second time jump', (p: any) => p.scenario = { ...p.scenario, maximumTimeJumps: 2 }],
         ['different negative action', (p: any) => p.scenario = { ...p.scenario, creationReceiptProbe: { ...p.scenario.creationReceiptProbe, valueWei: '1' } }],
         ['repeated proof recovery', (p: any) => p.scenario = { ...p.scenario, curatedProofRecovery: { ...p.scenario.curatedProofRecovery, maximumRefreshes: 2 } }],
+        ['no standard-mode pool', (p: any) => p.scenario = { ...p.scenario, curatedRequired: [true, true] }],
+        ['curated NFTs in the Shapes-only pool', (p: any) => p.scenario = { ...p.scenario, curatedPerPool: [2, 2] }],
         ['keeper-paid proof recovery', (p: any) => p.scenario = { ...p.scenario, curatedProofRecovery: { ...p.scenario.curatedProofRecovery, callerRole: 'keeper' } }],
         ['different action count', (p: any) => p.deployment = p.deployment.slice(1)],
         ['parent-path evidence', (p: any) => p.evidenceDirectory = join(ROOT, 'docs/receipts/current-rehearsal/../old')],
