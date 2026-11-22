@@ -402,26 +402,29 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
         const b = { creator, demo, balancer, pool: '' as Address, target: p.scenario.targets[i] };
         run.journal.pools.push(b);
         run.save();
+        // Pool A requires a curated NFT and lists two; pool B is a standard-mode, Shapes-only pool.
+        const curatedCount = BigInt(p.scenario.curatedPerPool[i]);
         const curated = [];
-        for (let id = 1n; id <= 2n; id++) {
+        for (let id = 1n; id <= curatedCount; id++) {
             await run.send(creator, demo, demoAbi, 'mint', [creator, id]);
             await run.send(creator, demo, erc721Abi, 'approve', [balancer, id]);
             curated.push({ collection: demo, tokenId: id, base: BigInt(p.scenario.curatedValues[Number(id) - 1]) });
         }
         if (i === 0)
             await run.creationReceiptProbe(creator, curated, fee);
-        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee, curatedRequired: true }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
+        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee, curatedRequired: p.scenario.curatedRequired[i] }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
         b.pool = await read<Address>(balancer, 'pool');
         run.save();
         eqPrepared(await read<Address>(balancer, 'creator'), creator);
         eqPrepared(await poolRead<Address>(b.pool, 'owner'), balancer);
         assert.equal(await read<bigint>(balancer, 'target'), BigInt(b.target));
         assert.equal(await read<number>(balancer, 'creatorRevenueBps'), 400);
+        assert.equal(await read<boolean>(balancer, 'curatedRequired'), p.scenario.curatedRequired[i]);
         assert.equal(await read<bigint>(balancer, 'listedShapePrizes'), 0n, 'creation minted no inventory');
         assert.equal(await read<number>(balancer, 'admissionStatus'), 2, 'purchases remain closed during initial stocking');
-        for (let id = 1n; id <= 2n; id++)
+        for (let id = 1n; id <= curatedCount; id++)
             eqPrepared(await run.read<Address>(demo, erc721Abi, 'ownerOf', [id]), b.pool);
-        note('atomic-approved-creation', { balancer, transaction: receipt.transactionHash, target: b.target, funding: p.scenario.initialDeposits[i], listedCurated: 2, listedShapes: 0 });
+        note('atomic-approved-creation', { balancer, transaction: receipt.transactionHash, target: b.target, funding: p.scenario.initialDeposits[i], curatedRequired: p.scenario.curatedRequired[i], listedCurated: Number(curatedCount), listedShapes: 0 });
     }
     const [a, b] = run.journal.pools;
     await drain();
