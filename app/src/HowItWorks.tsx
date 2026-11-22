@@ -72,12 +72,12 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   return (
     <main className="page hiw">
       <h1 className="title">How it works</h1>
-      <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in your NFTs and ETH; keepers replenish prizes from available operating capital.</p>
+      <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
 
       <section className="hiw-sec">
         <h2 className="h3">1. One inventory, two kinds of prizes</h2>
-        <p className="hiw-p"><b>Your NFTs</b> are the prizes you give away. <b>Shapes</b> fill the rest: each is a token holding a fixed amount of ETH (0.01 to 100), which the winner can redeem. Values between the Shape sizes, like 0.02 or 0.25 ETH, are <b>Packs</b>: one token holding a few Shapes.</p>
+        <p className="hiw-p"><b>Your NFTs</b>, if you add any, are the prizes you give away. <b>Shapes</b> fill the rest: each is a token holding a fixed amount of ETH (0.01 to 100), which the winner can redeem. Values between the Shape sizes, like 0.02 or 0.25 ETH, are <b>Packs</b>: one token holding a few Shapes.</p>
         <Squares counts={counts} />
         <div className="legend">
           {list.map((g) => <div key={g.key}><span className="sw" style={g.style} /><span><b>{g.n}</b> × {g.label}{g.nft ? ` (${eth(EXAMPLE.curatedBases[0])} ETH)` : ''}</span></div>)}
@@ -163,7 +163,7 @@ const FAQ: [string, string][] = [
   ['What is a Shape?', 'An NFT from the Shapes project that holds a fixed amount of ETH. Whoever owns it can redeem it for exactly that ETH at any time, or keep it.'],
   ['What is a Pack?', 'One token holding a few Shapes, used for values between the Shape sizes (0.02, 0.03, 0.2, 0.25, 2, 2.5 and 25 ETH). It redeems for the sum of its Shapes.'],
   ['Who owns the pool?', 'A contract created for you owns the FWA pool permanently; you are its pool creator. You can hand the pool creator role to another address, which has to accept.'],
-  ['What happens when someone wins my NFT?', 'It goes to them. If other curated NFTs remain, purchases continue while the inventory gate permits them. If it was your last NFT, purchases stop until you add another.'],
+  ['What happens when someone wins my NFT?', 'It goes to them. If other curated NFTs remain, purchases continue while the inventory gate permits them. If it was your last NFT, Shapes keep selling; only a pool that requires a curated NFT pauses until you add another.'],
   ['Can I lose money?', 'Mint fees and restocking charges are built into prize prices. Successful purchases generate proceeds; refunded draws do not. Keepers are paid from your operating ETH, so low volume, large wins and gas costs can consume your capital. Fees in unsold prizes are not cash. Initial mint and keeper costs remain costs even if nobody buys. Shapes and Packs retain their redeemable backing.'],
   ['How do I get my ETH and NFTs back?', 'Accrued pool creator earnings can be claimed even while inventory is underfunded. Operating ETH above the reserve can also be withdrawn. To take everything out, close purchases, unlist the prizes (each is redeemed for its ETH), withdraw your NFTs, then withdraw the rest.'],
   ['Do purchases pause after draws?', 'Purchases may continue with a partially stocked target. They pause when the inventory gate is below 70% of the target weight, or at the busy threshold. If you chose to require a curated NFT, they also pause while none is available. A Shapes mint fee above the accepted amount stops restocking, not sales of listed prizes. The actual remaining inventory sets the current draw price and odds.'],

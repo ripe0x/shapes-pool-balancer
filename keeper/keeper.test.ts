@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BaseError } from 'viem';
-import { decide, gasLimitFor, MAX_TRANSACTION_GAS, minimumPayment, paymentAt, paymentFloor, traceGasUsed, tracingUnsupported, UPKEEP_GAS_FLOOR } from './keeper';
+import { decide, gasLimitFor, Keeper, STUCK_TICKS, MAX_TRANSACTION_GAS, minimumPayment, paymentAt, paymentFloor, traceGasUsed, tracingUnsupported, UPKEEP_GAS_FLOOR } from './keeper';
 
 const GWEI = 10n ** 9n;
 
@@ -107,5 +107,34 @@ describe('fee-indexed minimum payment', () => {
     expect(offered).toBeLessThan(paymentAt(floor, oldPrice));
     expect(offered).toBeGreaterThan(paymentAt(floor, newPrice));
     expect(offered - 900_000n * newPrice).toBe(20_000_000_000_000n);
+  });
+});
+
+describe('health', () => {
+  const pool = '0x0000000000000000000000000000000000000001';
+  const make = () => {
+    const k = new Keeper({ rpcUrl: 'http://127.0.0.1:1', factory: '0x0000000000000000000000000000000000000002', fromBlock: 1n,
+      stateFile: '/nonexistent/keeper-health-test.json', account: '0x0000000000000000000000000000000000000003' });
+    k.lastTick = Date.now();
+    return k;
+  };
+
+  it(`fails after ${STUCK_TICKS} consecutive errors on one pool, and recovers on its next success`, () => {
+    const k = make();
+    for (let i = 1; i < STUCK_TICKS; i++) k.recordPool(pool, new Error('upkeep simulation reverted\ndetail'));
+    expect(k.health().ok).toBe(true);
+    expect(k.health().errors[pool]).toBe('upkeep simulation reverted');
+    k.recordPool(pool, new Error('upkeep simulation reverted'));
+    expect(k.health()).toMatchObject({ ok: false, stuck: [pool] });
+    k.recordPool(pool);
+    expect(k.health()).toMatchObject({ ok: true, stuck: [], errors: {} });
+  });
+
+  it('a success between errors restarts the count', () => {
+    const k = make();
+    for (let i = 1; i < STUCK_TICKS; i++) k.recordPool(pool, new Error('x'));
+    k.recordPool(pool);
+    for (let i = 1; i < STUCK_TICKS; i++) k.recordPool(pool, new Error('x'));
+    expect(k.health().ok).toBe(true);
   });
 });

@@ -126,6 +126,8 @@ interface State {
 }
 /** Mined upkeeps kept in memory for inspection (the e2e run reads them); older entries are dropped. */
 const AUDIT_KEEP = 1_000;
+/** Consecutive failed ticks after which a pool counts as unattended and /health fails (about a minute at 12s blocks). */
+export const STUCK_TICKS = 5;
 export interface AuditEntry { balancer: Address; hash: Hash; status: 'success' | 'reverted'; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint; gasEstimate: bigint; expenseGas: bigint; expenseSource: 'trace' | 'estimate'; minimumReward: bigint; minimumGas: bigint; policy?: Address }
 
 export class Keeper {
@@ -133,6 +135,8 @@ export class Keeper {
   readonly wallet: WalletClient;
   state: State;
   errors: Record<string, string> = {};
+  /** Consecutive failed ticks per pool; a success clears it. */
+  failures: Record<string, number> = {};
   audit: AuditEntry[] = [];
   lastTick = 0;
   lastBlock = 0n;
@@ -212,6 +216,7 @@ export class Keeper {
     }
     this.state.balancers = kept;
     for (const b of Object.keys(this.policies)) if (!kept.some((address) => address.toLowerCase() === b.toLowerCase())) delete this.policies[b];
+    for (const b of Object.keys(this.failures)) if (!kept.some((address) => address.toLowerCase() === b.toLowerCase())) this.recordPool(b);
     this.state.lastScanned = head.toString();
   }
 
@@ -245,9 +250,9 @@ export class Keeper {
     for (const b of this.state.balancers) {
       try {
         await this.service(b, head, block.baseFeePerGas ?? 0n);
-        delete this.errors[b];
+        this.recordPool(b);
       } catch (e) {
-        this.errors[b] = (e as Error).message.split('\n')[0];
+        this.recordPool(b, e as Error);
         this.log('pool error', { balancer: b, error: this.errors[b] });
       }
     }
@@ -569,9 +574,17 @@ export class Keeper {
     return true;
   }
 
+  recordPool(b: string, error?: Error) {
+    if (!error) { delete this.errors[b]; delete this.failures[b]; return; }
+    this.errors[b] = error.message.split('\n')[0];
+    this.failures[b] = (this.failures[b] ?? 0) + 1;
+  }
+
   health() {
+    const stuck = Object.keys(this.failures).filter((b) => this.failures[b] >= STUCK_TICKS);
     return {
-      ok: Date.now() - this.lastTick < 120_000 && Object.keys(this.accountingErrors).length === 0,
+      ok: Date.now() - this.lastTick < 120_000 && Object.keys(this.accountingErrors).length === 0 && stuck.length === 0,
+      stuck,
       lastTick: new Date(this.lastTick).toISOString(),
       block: this.lastBlock.toString(),
       keeper: this.address,

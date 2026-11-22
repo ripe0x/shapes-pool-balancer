@@ -9,7 +9,7 @@ import {
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, type TransactionIntent, type TransactionStep } from './tx';
+import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferUnresolved, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
@@ -249,6 +249,11 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
   return { pending, ledger };
 }
 
+const loadPending = (key: string): PendingTransfer | undefined => {
+  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? undefined; } catch { return undefined; }
+};
+const savePending = (key: string, p: PendingTransfer) => { try { localStorage.setItem(key, JSON.stringify(p)); } catch { /* storage unavailable */ } };
+
 function useTx(onDone: () => void) {
   const pub = usePublicClient();
   const { address } = useAccount();
@@ -258,8 +263,18 @@ function useTx(onDone: () => void) {
   const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
     const prepared = await prepareWrite(pub!, address, params);
     const intent = reviewedIntent(prepared);
+    const key = intent.value > 0n ? transferKey(intent) : undefined;
+    let nonce = 0;
+    if (key) {
+      const earlier = loadPending(key);
+      if (earlier && await transferUnresolved(pub!, earlier)) {
+        throw new Error(`An earlier ETH transfer to this contract is unconfirmed (${earlier.hash}). Wait for it, or cancel it in your wallet.`);
+      }
+      nonce = await pub!.getTransactionCount({ address: intent.from, blockTag: 'pending' });
+    }
     beforeWallet?.();
     const hash = await writeContractAsync(prepared as never);
+    if (key) savePending(key, { hash, chainId: intent.chainId, from: intent.from, to: intent.to, nonce });
     submitted.current = { hash, intent };
     return hash;
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
