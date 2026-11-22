@@ -66,6 +66,24 @@ export async function confirmAction(pub: ConfirmationClient, hash: Hash, intent:
   await verifyActionReceipt(pub, receipt, intent);
 }
 
+export interface PendingTransfer { hash: Hash; chainId: number; from: Address; to: Address; nonce: number }
+
+export const transferKey = (i: Pick<TransactionIntent, 'chainId' | 'from' | 'to'>) =>
+  `pending-transfer:${i.chainId}:${i.from.toLowerCase()}:${i.to.toLowerCase()}`;
+
+/** ETH sent to a pool is not refundable, so a transfer whose outcome is unknown blocks another one to the same pool.
+ *  It stays unresolved until it is mined or its nonce is used by another transaction (a replacement or cancellation).
+ *  Without the transaction, the nonce read just before the wallet opened stands in; a wallet that queued a higher
+ *  nonce can clear it early. RPC failures throw, so an unknown state never permits a second transfer. */
+export async function transferUnresolved(pub: Pick<PublicClient, 'getTransaction' | 'getTransactionCount'>, p: PendingTransfer) {
+  const transaction = await pub.getTransaction({ hash: p.hash }).catch((e: Error) => {
+    if (e.name === 'TransactionNotFoundError') return undefined;
+    throw e;
+  });
+  if (transaction?.blockNumber != null) return false;
+  return await pub.getTransactionCount({ address: p.from, blockTag: 'latest' }) <= (transaction?.nonce ?? p.nonce);
+}
+
 export type TransactionStep = (() => Promise<Hash | undefined>) | [string, () => Promise<Hash | undefined>];
 
 /** A confirmation failure stops dependent wallet actions and caller success effects. */
