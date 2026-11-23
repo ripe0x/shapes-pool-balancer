@@ -108,6 +108,13 @@ describe('deployment verification inputs', () => {
     expect(scriptConstants(readFileSync('script/Deploy.s.sol', 'utf8'))).toEqual({
       fwaFactory: '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C', fwaImpl: '0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7',
       shapes: '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0', ens: '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e', packsName: 'Pool Prize Packs', packsSymbol: 'PRIZEPACK',
+      // Reused community dependencies (reuse mode), with the code hashes recorded from mainnet.
+      packs: '0xfE11c0E794475fd86801fb3020d779bd7887cB2D', renderer: '0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A',
+      fwaCodehash: '0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02',
+      shapesCodehash: '0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7',
+      packsCodehash: '0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c',
+      rendererCodehash: '0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe',
+      fwaFactoryCodehash: '0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e',
     });
   });
 });

@@ -1,0 +1,88 @@
+{
+  "schema": "community-deployment-preflight-v1",
+  "chainId": 1,
+  "checkedBlock": {
+    "number": "26479663",
+    "hash": "0xe18978d1d865892344356116593192141668d6a8222e16806823ff8f993a7573",
+    "timestamp": "1795458947"
+  },
+  "ok": true,
+  "problems": [],
+  "legacyFactories": [
+    {
+      "label": "community-v1",
+      "balancerFactory": "0x91C31Ad620555DE24e62290906aD1aA14C4CE281",
+      "scannedFromBlock": "26475448",
+      "scannedToBlock": "26479663",
+      "poolCount": 0,
+      "pools": [],
+      "abiName": "community-v1",
+      "missingAbiSelectors": {
+        "balancerFactory": [],
+        "poolBalancer": [],
+        "keeperPolicyV1": []
+      }
+    },
+    {
+      "label": "community-v0",
+      "balancerFactory": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
+      "scannedFromBlock": "26453686",
+      "scannedToBlock": "26479663",
+      "poolCount": 0,
+      "pools": [],
+      "abiName": null,
+      "missingAbiSelectors": null
+    }
+  ],
+  "reusedDependencies": {
+    "code": {
+      "shapes": {
+        "address": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "codeHash": "0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7",
+        "codeBytes": 22460,
+        "recordedCodeHash": "0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7"
+      },
+      "packs": {
+        "address": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+        "codeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c",
+        "codeBytes": 17768,
+        "recordedCodeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c"
+      },
+      "renderer": {
+        "address": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+        "codeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe",
+        "codeBytes": 9354,
+        "recordedCodeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe"
+      },
+      "fwaFactory": {
+        "address": "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+        "codeHash": "0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e",
+        "codeBytes": 18856,
+        "recordedCodeHash": "0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e"
+      },
+      "fwaImplementation": {
+        "address": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+        "codeHash": "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+        "codeBytes": 24280,
+        "recordedCodeHash": "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02"
+      }
+    },
+    "readbacks": {
+      "packsShapes": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "packsRenderer": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+      "packsMinimumWei": "20000000000000000",
+      "packsAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "packsPresentationLocked": false,
+      "packsName": "Pool Prize Packs",
+      "packsSymbol": "PRIZEPACK",
+      "rendererShapes": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "fwaFactoryImplementation": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+      "fwaMaxAcquisitionsPerTx": 5,
+      "shapesMintFeeWei": "1000000000000000"
+    },
+    "matchesLocalBuild": {
+      "packs": true,
+      "renderer": true
+    }
+  }
+}
