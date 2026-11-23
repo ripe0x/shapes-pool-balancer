@@ -1,0 +1,20 @@
+Candidate: 2d9d16bf289817eff1831263e48c8b5412a3855f
+Command: CANDIDATE_RUN=1 forge test --match-path test/audit/FreshReviewMintCap.t.sol --fork-url https://mainnet.gateway.tenderly.co --fork-block-number 26382349 -vv
+Exit status: 0
+Forge: 1.8.1
+Environment set and asserted inside a state-changing call: 0.5 gwei basefee / 0.55 gwei bid for fee-spike test; 4.9 gwei basefee / 5 gwei bid for the other two tests.
+Result: 3 passed, 0 failed, 0 skipped.
+  test_feeSpikeDoesNotBlockListedPurchasesOrCreateUnfundedMint() PASS, gas 2295763
+  test_paidKeeperCompletesFiveExpiredDrawsAtGasCap() PASS, gas 2484751
+    operating after five paid refunds: 0.013294008600000000 ETH
+  test_pendingDrawBudgetSurvivesStagedRestock() PASS, gas 4282999
+    operating after staged restock: 0.014798798650000000 ETH
+    reserve after staged restock: 0.061650000000000000 ETH
+Compiler warning: PoolInventory.sol:109 `lost` shadows PoolInventory.sol:121 `lost`.
+Forge warned that it could not initialize submodules because nonempty dependency directories already existed. It still compiled and ran the three tests against the present dependency files.
+
+Earlier attempts and corrections:
+- Initial fee-spike test passed but was invalid for creator identity: evaluating `shapes.mintFee()` as an argument consumed `vm.prank(creator)`, leaving the test contract as creator. Corrected by caching the fee before the prank and asserting `balancer.creator() == creator` inside setup.
+- Initial staged-restock test tried to purchase five more draws without releasing VRF coverage; FWA `prepareRequests` reverted `InsufficientVrfCoverage`. This is a real dependency constraint, not a target finding. The corrected test uses one purchase batch.
+- An intermediate assertion that restock must leave `operating >= requiredReserve` failed at 0.00541090705 ETH versus 0.00928 ETH at 0.5/0.55 gwei. It did not establish harm: the later 4.9/5 gwei full sequence reconciled all waiting draws through paid upkeep while operating was below the reserve.
+- A hypothesis that five expired draws at 4.9/5 gwei would exhaust paid upkeep failed. All five reconciled; 0.0132940086 ETH operating remained.

@@ -249,15 +249,15 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
   return { pending, ledger };
 }
 
-// The transfer guard fails closed: without working browser storage, ETH transfers are refused.
+// The transfer guard fails closed: without working browser storage and cross-tab locks, ETH transfers are refused.
 const NO_STORAGE = 'Browser storage is unavailable, so ETH transfers are blocked: a duplicate transfer could not be prevented.';
 const loadPending = (key: string): PendingTransfer | undefined => {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? undefined; } catch { throw new Error(NO_STORAGE); }
 };
 const savePending = (key: string, p: PendingTransfer) => { try { localStorage.setItem(key, JSON.stringify(p)); } catch { throw new Error(NO_STORAGE); } };
-/** Remove this tab's reservation only, not one another tab wrote since. */
-const releasePending = (key: string, since: number) => {
-  try { if (loadPending(key)?.since === since) localStorage.removeItem(key); } catch { /* the reservation stays and blocks */ }
+/** Remove this attempt's reservation only, never one another tab wrote. */
+const releasePending = (key: string, id: string) => {
+  try { if (loadPending(key)?.id === id) localStorage.removeItem(key); } catch { /* the reservation stays and blocks */ }
 };
 
 function useTx(onDone: () => void) {
@@ -270,32 +270,36 @@ function useTx(onDone: () => void) {
     const prepared = await prepareWrite(pub!, address, params);
     const intent = reviewedIntent(prepared);
     const key = intent.value > 0n ? transferKey(intent) : undefined;
-    const since = Date.now();
+    const reservation = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
     if (key) {
-      const earlier = loadPending(key);
-      const state = earlier && await transferState(pub!, earlier);
-      if (earlier && state?.unresolved) {
-        if (state.nonce !== undefined && earlier.nonce === undefined) savePending(key, { ...earlier, nonce: state.nonce });
-        throw new Error(earlier.hash
-          ? `An earlier ETH transfer to this contract is unconfirmed (${earlier.hash}). Wait for it, or cancel it in your wallet.`
-          : 'An earlier ETH transfer to this contract may have been sent from another tab or before a reload. Wait for it to confirm; if none was sent, try again in 24 hours.');
-      }
-      // Reserve before the wallet opens, so another tab or a reload sees this transfer while it is unconfirmed.
-      savePending(key, { chainId: intent.chainId, from: intent.from, to: intent.to, since });
+      if (!navigator.locks) throw new Error(NO_STORAGE);
+      // Check and reserve as one step across this site's tabs, so two tabs cannot both find no earlier transfer.
+      await navigator.locks.request(key, async () => {
+        const earlier = loadPending(key);
+        const state = earlier && await transferState(pub!, earlier);
+        if (earlier && state?.unresolved) {
+          if (state.nonce !== undefined && earlier.nonce === undefined) savePending(key, { ...earlier, nonce: state.nonce });
+          throw new Error(earlier.hash
+            ? `An earlier ETH transfer to this contract is unconfirmed (${earlier.hash}). Wait for it, or cancel it in your wallet.`
+            : 'An earlier ETH transfer to this contract may have been sent from another tab or before a reload. Wait for it to confirm; if none was sent, try again in 24 hours.');
+        }
+        // Reserve before the wallet opens, so another tab or a reload sees this transfer while it is unconfirmed.
+        savePending(key, reservation);
+      });
     }
     beforeWallet?.();
     let hash: Hash;
     try {
       hash = await writeContractAsync(prepared as never);
     } catch (e) {
-      if (key) releasePending(key, since);
+      if (key) releasePending(key, reservation.id);
       throw e;
     }
     if (key) {
       // The wallet chooses the nonce; keep it once a node shows the transaction. If saving fails now, the hashless
       // reservation still blocks.
       const seen = await pub!.getTransaction({ hash }).catch(() => undefined);
-      try { savePending(key, { chainId: intent.chainId, from: intent.from, to: intent.to, since, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
+      try { if (loadPending(key)?.id === reservation.id) savePending(key, { ...reservation, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
     }
     submitted.current = { hash, intent };
     return hash;

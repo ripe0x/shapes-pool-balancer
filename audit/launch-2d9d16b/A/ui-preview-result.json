@@ -1,0 +1,24 @@
+{
+  "http": 200,
+  "initial": {
+    "small": 10,
+    "pack": 3,
+    "medium": 5,
+    "large": 1
+  },
+  "hand_edited": {
+    "small": 0,
+    "pack": 3,
+    "medium": 5,
+    "large": 1
+  },
+  "after_size_control": {
+    "small": 7,
+    "pack": 3,
+    "medium": 5,
+    "large": 1
+  },
+  "faq_opened": true,
+  "page_errors": [],
+  "wallet_connected": false
+}

@@ -1,0 +1,41 @@
+Missing dependencies found. Installing now...
+fatal: destination path '/private/tmp/fwa-launch-2d9d16b-A/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/fwa-launch-2d9d16b-A/lib/forge-std' failed
+Failed to clone 'lib/forge-std'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-launch-2d9d16b-A/lib/shape-packs' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/ripe0x/shape-packs' into submodule path '/private/tmp/fwa-launch-2d9d16b-A/lib/shape-packs' failed
+Failed to clone 'lib/shape-packs'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-launch-2d9d16b-A/lib/solady' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/Vectorized/solady' into submodule path '/private/tmp/fwa-launch-2d9d16b-A/lib/solady' failed
+Failed to clone 'lib/solady'. Retry scheduled
+fatal: destination path '/private/tmp/fwa-launch-2d9d16b-A/lib/forge-std' already exists and is not an empty directory.
+fatal: clone of 'https://github.com/foundry-rs/forge-std' into submodule path '/private/tmp/fwa-launch-2d9d16b-A/lib/forge-std' failed
+Failed to clone 'lib/forge-std' a second time, aborting
+Warning: Your project has missing dependencies that could not be installed.
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.14s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:109:13:
+    |
+109 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:121:9:
+    |
+121 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 1 test for test/audit/contract-challenge-cap-recovery.t.sol:ContractChallengeCapRecovery
+[PASS] test_capSpikeExactWithdrawalThenPaidRecovery() (gas: 38296473)
+Logs:
+  accepted-fee reserve wei: 73400000000000000
+  protected credit wei: 3166800000000000
+  full claim wei: 2778955864900000000
+  fresh protected credit wei: 527800000000000
+  post-restock balance wei: 7239971450000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.18s (1.18s CPU time)
+
+Ran 1 test suite in 1.45s (1.18s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)

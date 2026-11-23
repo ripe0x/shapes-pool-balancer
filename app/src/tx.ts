@@ -67,8 +67,9 @@ export async function confirmAction(pub: ConfirmationClient, hash: Hash, intent:
 }
 
 /** A reserved or sent ETH transfer. `hash` is set once the wallet returns it; `nonce` only once a node has shown that
- *  transaction, so it is the transfer's own nonce, never one guessed before the wallet chose it. */
-export interface PendingTransfer { chainId: number; from: Address; to: Address; since: number; hash?: Hash; nonce?: number }
+ *  transaction, so it is the transfer's own nonce, never one guessed before the wallet chose it. `id` names the attempt
+ *  that wrote it, so a failed attempt removes only its own record. */
+export interface PendingTransfer { chainId: number; from: Address; to: Address; since: number; id?: string; hash?: Hash; nonce?: number }
 
 /** How long a transfer no node has shown keeps blocking another one. Its nonce is unknown, so nothing on chain can
  *  prove it will never mine. */
