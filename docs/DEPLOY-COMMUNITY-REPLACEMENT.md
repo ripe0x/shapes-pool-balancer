@@ -3,9 +3,9 @@
 **Status: unsigned plan, nothing broadcast.** This replaces the 2026-11-22 community factory
 (`0x91C31Ad620555DE24e62290906aD1aA14C4CE281`, now legacy) with a new BalancerFactory, PoolBalancer implementation,
 KeeperPolicyV1 and any changed linked libraries, while **reusing** the existing Shapes, Draw Packs, renderer and FWA
-contracts. Contract-dependent parts are filled in against `claude/community-release` at `505d93d` (slice A3
-contracts plus this deploy tooling). Recheck sizes, library addresses and section 7 against the frozen candidate
-before signing: any later source change to a created contract or library moves them.
+contracts. Contract-dependent parts are filled in against the community release candidate `08be33f` (contracts and
+tests; the following commit adds only this plan and docs/CANDIDATE-REPORT.md). Recheck sizes, library addresses and
+section 7 against the commit you sign: any later source change to a created contract or library moves them.
 
 A generated `deployments/1.json` or a successful simulation is not a deployment. Only step 7's
 `DEPLOYMENT VERIFIED` against mined receipts establishes one.
@@ -34,20 +34,20 @@ getter readbacks at the checked block; no receipts).
 
 - Deployer and signer: `0xCB43078C32423F5348Cab5885911C3B5faE217F9`, `--account ripe0x`. It is an EIP-7702 account
   (Calibur), so nodes accept one in-flight transaction from it: every broadcast uses `--slow`.
-- Mainnet nonce read 2026-11-23 at block 26,479,596: **4158**; balance 0.0523 ETH. Any transaction from this account
+- Mainnet nonce read 2026-11-23 at block 26,480,612: **4158**; balance 0.052298546834342702 ETH. Any transaction from this account
   before step 6 shifts every CREATE address, so step 4 rereads the nonce and step 5's dry run is the address source of
   truth. The plan does not depend on a specific nonce; the verifier matches the broadcast to the reviewed dry run
   transaction for transaction (sender, nonce, kind, address, calldata).
 - CREATE2 library addresses depend only on init code (salt 0 via `0x4e59b44847b379578588920cA78FbF26c0B4956C`). A
-  library whose code did not change keeps its 2026-11-22 address and is not sent. At `505d93d`:
+  library whose code did not change keeps its 2026-11-22 address and is not sent. At `08be33f`:
   - PoolPage unchanged: reused at `0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf` (already on mainnet, not sent).
-  - KeeperPolicyCalls changed: new `0x924dDC89b64C51759C0b27f9dd044D1A65184731` (old `0x1601A841…B8fb` stays for
+  - KeeperPolicyCalls changed: new `0x8d1e84409f65415455d0Ec1Ad891002BC8DE442f` (old `0x1601A841…B8fb` stays for
     legacy pools).
-  - PoolInventory changed: new `0x930114134C867A62FE8bE0dC7f365cAaDCDcbB85` (old `0xD6e89D45…9fD0` stays).
-  Neither new address has code on mainnet at block 26,480,080.
+  - PoolInventory changed: new `0x6b7e1D309798b1A9e8aB408D5436b3946B1B54FF` (old `0xD6e89D45…9fD0` stays).
+  Neither new address has code on mainnet at block 26,480,612.
 - Every transaction, CREATE2 libraries included, is sent by the deployer and uses one nonce. Order: KeeperPolicyCalls
   (N), PoolInventory (N+1), PoolBalancer (N+2), KeeperPolicyV1 (N+3), BalancerFactory (N+4): 5 transactions.
-- With N = 4158 (read at mainnet block 26,480,080): PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`,
+- With N = 4158 (read at mainnet block 26,480,612; `cast compute-address`): PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`,
   KeeperPolicyV1 `0x526FbD402624B50861f54c081B592cdCeE322929`, BalancerFactory
   `0x1abD8bF61c05be3efDDa7F3e34a11417036ddED4`. Illustrative: step 5's dry run is the address source of truth.
 
@@ -64,11 +64,11 @@ Initial factory settings, all set by the `BalancerFactory` constructor (no setup
 
 | Getter | Initial value |
 | --- | --- |
-| `economics()` | policy = the new KeeperPolicyV1; workFee 0.00002 ETH; maxGas 3,200,000; overheadGas **60,000**; gasPriceCeiling 5 gwei; priorityAllowance 0.05 gwei; restockGas **910,000**; restockFlat 0.0002 ETH; baseGas 200,000; processGas 1,800,000; reconcileGas 150,000; shapeGas 700,000; prizeGas 150,000 |
+| `economics()` | policy = the new KeeperPolicyV1; workFee 0.00002 ETH; maxGas 3,200,000; overheadGas **60,000**; gasPriceCeiling 5 gwei; priorityAllowance 0.05 gwei; restockGas **910,000**; restockFlat 0.0002 ETH; baseGas 200,000; processGas 1,800,000; reconcileGas 150,000; shapeGas 700,000; prizeGas 150,000; processGraceBlocks **50**; pausedProcessGraceBlocks **10** |
 | `defaultKeeperPolicy()` | `economics().policy` |
 | `defaultBucketCapacity()` / `defaultBucketRefill()` | 0.622 ETH / 4,166,666,666,666,666 wei per second (`floor(0.05 ether / 12)`) |
 | `productLimits()` | maxPrizes 1,000; minMarkupBps 1,000; maxMarkupBps 10,000 |
-| `creationSettingsHash()` | `keccak256(abi.encode(poolHash, defaultBucketCapacity(), defaultBucketRefill()))` with `poolHash = keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; at mint fee 0.001 ETH with the 7a fork policy address: poolHash `0x9e72aad3…2655`, creation hash `0x58ddfb37…8252` (depends on the policy address, so it differs on mainnet). The bucket term was added after 7a (review S3), so 7a's recorded `creationSettingsHash` is the poolHash |
+| `creationSettingsHash()` | `keccak256(abi.encode(poolHash, defaultBucketCapacity(), defaultBucketRefill()))` with `poolHash = keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; at mint fee 0.001 ETH with the 7a fork policy address: pool hash `0x2fb30e3b…9af4`, creation hash `0x19cf24eb…730c` (depends on the policy address, so it differs on mainnet) |
 | `keepersRestricted()` / `pendingKeeperAdmin()` / `pendingPolicyAdmin()` | false / zero / zero |
 
 Overhead 60k and restocking 910k are measured recalibrations of V1's 50k and 900k (CONFIG-INVENTORY §0a). Derived
@@ -96,8 +96,8 @@ Check: `## main...origin/main` with no `[ahead`/`[behind` and the reviewed candi
 ```bash
 forge build --sizes 2>&1 | grep -E "^\| (PoolBalancer|BalancerFactory|KeeperPolicyV1|PoolInventory|PoolPage|KeeperPolicyCalls) "
 ```
-Check: every runtime size is below 24,576 bytes. At `505d93d`: PoolBalancer 24,027 (549 to spare), PoolInventory
-12,110, KeeperPolicyCalls 7,529, BalancerFactory 5,122, PoolPage 1,194, KeeperPolicyV1 732.
+Check: every runtime size is below 24,576 bytes. At `08be33f`: PoolBalancer 24,275 (301 to spare), PoolInventory
+12,210, KeeperPolicyCalls 8,883, BalancerFactory 5,387, PoolPage 1,194, KeeperPolicyV1 743.
 
 **3 → Cutover preflight (read-only).** Pins the head block, scans every legacy factory for created pools, verifies
 the reused dependencies and writes `deployments/1.preflight.json`.
@@ -112,8 +112,8 @@ factories stay permissionless); each pool is listed in the file and stays manage
 ```bash
 cast nonce $DEPLOYER --rpc-url $RPC && cast balance $DEPLOYER --rpc-url $RPC --ether
 ```
-Check: a nonce N (4158 at block 26,480,080) and a balance of at least 11.3M gas at the intended max fee plus margin
-(0.0112 ETH at 1 gwei; 0.0523 ETH held at block 26,480,080 covers up to about 4.6 gwei). Send nothing else from this
+Check: a nonce N (4158 at block 26,480,612) and a balance of at least 11.7M gas at the intended max fee plus margin
+(0.0117 ETH at 1 gwei; 0.0523 ETH held at block 26,480,612 covers up to about 4.4 gwei, 4.0 gwei with a 10% margin). Send nothing else from this
 account until step 7.
 
 **5 → Reviewed dry run (no broadcast).** Runs the asset-flow gate and simulates the deployment against mainnet.
@@ -149,10 +149,10 @@ Check, in order: `$I`, `0xCB43078C32423F5348Cab5885911C3B5faE217F9`, `0xCB43078C
 
 Then the initial settings (section 3):
 ```bash
-cast call $F "economics()((address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32))" --rpc-url $RPC && cast call $F "defaultBucketCapacity()(uint128)" --rpc-url $RPC && cast call $F "defaultBucketRefill()(uint96)" --rpc-url $RPC && cast call $F "productLimits()(uint16,uint16,uint16)" --rpc-url $RPC && cast call $P "interfaceVersion()(uint256)" --rpc-url $RPC && cast call $F "pendingKeeperAdmin()(address)" --rpc-url $RPC && cast call $F "pendingPolicyAdmin()(address)" --rpc-url $RPC
+cast call $F "economics()((address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16))" --rpc-url $RPC && cast call $F "defaultBucketCapacity()(uint128)" --rpc-url $RPC && cast call $F "defaultBucketRefill()(uint96)" --rpc-url $RPC && cast call $F "productLimits()(uint16,uint16,uint16)" --rpc-url $RPC && cast call $P "interfaceVersion()(uint256)" --rpc-url $RPC && cast call $F "pendingKeeperAdmin()(address)" --rpc-url $RPC && cast call $F "pendingPolicyAdmin()(address)" --rpc-url $RPC
 ```
 Check: `($P, 20000000000000, 3200000, 60000, 5000000000, 50000000, 910000, 200000000000000, 200000, 1800000, 150000,
-700000, 150000)`, `622000000000000000`, `4166666666666666`, `1000 1000 10000`, `2`, zero address twice.
+700000, 150000, 50, 10)`, `622000000000000000`, `4166666666666666`, `1000 1000 10000`, `2`, zero address twice.
 `creationSettingsHash()` is checked by step 7.
 
 **9 → Post-cutover legacy scan.** Rescans the old factories at a block after the deployment, so the record covers any
@@ -201,9 +201,36 @@ Run by `Deploy.s.sol` (before and after the broadcast), `scripts/deployment-pref
 
 ## 7. Fork rehearsal evidence
 
-### 7a. Current: A3 contracts with the reconciled tooling (`505d93d`, 2026-11-23)
+### 7a. Current: release candidate `08be33f` (2026-11-23)
 
-Not yet the frozen candidate (the acceptance suite and app work continue); rerun on it.
+Full record: docs/CANDIDATE-REPORT.md. Fresh anvil (`--fork-url https://mainnet.gateway.tenderly.co --chain-id 31337
+--port 18950`), fork block **26,480,609**, hash `0x1006c87388f1e4711e0e1469e891247052f5822e73c8546f1138603bfaf3f16e`
+(equal to mainnet's), basefee 0.129 gwei. Deployer `0x69BDEC4e…7444`, keeperAdmin `0x9CAcA492…9C9b`, policyAdmin
+`0x8FB9bA13…B10c`: random fresh addresses (no code, nonce 0, balance 0), funded 1 ETH by `anvil_setBalance` and
+impersonated. Canonical `script/Deploy.s.sol`, `REUSE_DEPENDENCIES=true`, Forge 1.8.1, solc 0.8.28.
+
+| Check | Result |
+| --- | --- |
+| Reuse dry run | passes, including `_postflight`; SHA-256 `1a2443cb…41a5`; 5 creations |
+| Reuse broadcast (`--unlocked --slow`) | 5 receipts, status success, blocks 26,480,610..614 |
+| `verify-deployment.ts` | `DEPLOYMENT VERIFIED`; initial settings match section 3 (grace 50/10); `creationSettingsHash` `0x19cf24ebc5cd16f9dd574a973f614d3c58e8ff8e18e5060389007c745780730c`; PoolPage preexisting; 5 reused dependencies with recorded code hashes |
+| `deployment-preflight.ts` on the fork | `ok: true`, `problems: []`, 0 pools on both legacy factories at 26,480,614 |
+
+| Contract | Address (fork) | Runtime bytes | Gas used | Effective gas price |
+| --- | --- | --- | --- | --- |
+| KeeperPolicyCalls (CREATE2) | `0x8d1e84409f65415455d0Ec1Ad891002BC8DE442f` | 8,883 | 1,977,225 | 0.127 gwei |
+| PoolInventory (CREATE2) | `0x6b7e1D309798b1A9e8aB408D5436b3946B1B54FF` | 12,210 | 2,698,027 | 0.112 gwei |
+| PoolBalancer | `0xB872975cb68e3e116B0a5F46303a0c9370A54661` | 24,275 | 5,366,349 | 0.099 gwei |
+| KeeperPolicyV1 | `0xA460b8aC458d5e2ac692C356242166036230c7Fe` | 743 | 213,748 | 0.089 gwei |
+| BalancerFactory | `0xA5B257E9E08b83CeA9E5e27A37C3226bcDDfDFBc` | 5,387 | 1,418,303 | 0.078 gwei |
+
+Total 11,673,652 gas (0.0012157 ETH on the fork; 0.0117 ETH at 1 gwei). The CREATE2 library addresses are the mainnet
+ones; the CREATE addresses are the fresh deployer's (mainnet predictions in section 2). The operational pass (keeper,
+pools on both factories, factory and local updates, stuck draws, complete exit) is in docs/CANDIDATE-REPORT.md.
+
+### 7b. History: A3 contracts with the reconciled tooling (`505d93d`, 2026-11-23)
+
+Superseded by 7a.
 
 Fresh anvil (`--fork-url https://mainnet.gateway.tenderly.co --chain-id 31337 --port 18900`), fork block
 **26,480,077**, hash `0x1f799073529f94a4167a89e3b2e128b2811f6ed1b7e8ee9f3f77b1fba2f7df24` (equal to mainnet's),
@@ -230,12 +257,12 @@ Canonical `script/Deploy.s.sol` with `REUSE_DEPENDENCIES=true`, Forge 1.8.1, sol
 Total 11,243,235 gas, 0.001466 ETH on the fork. At 1 gwei that is 0.0112 ETH; the deployer held 0.0523 ETH at block
 26,480,080. The CREATE2 library addresses are the mainnet ones; the CREATE addresses are the fresh deployer's.
 
-The legacy-pool operability rows below (7b) were not rerun on `505d93d`: that path depends on the old factory and
+The legacy-pool operability rows below (7c) were not rerun on `505d93d`: that path depends on the old factory and
 the packaged `community-v1` ABI, which this commit does not change. The permanent fork acceptance case is planned as
 `test_legacyPoolRemainsOperable` (CONFIG-INVENTORY §5, row L) in `test/CommunityConfigAcceptance.t.sol`, which is
 not on this branch yet.
 
-### 7b. History: tooling slice (source at `7ed3335`)
+### 7c. History: tooling slice (source at `7ed3335`)
 
 Proved the deployment tooling before the A3 contract changes; its addresses, sizes and gas are superseded by 7a.
 
