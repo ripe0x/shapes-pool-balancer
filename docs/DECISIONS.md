@@ -757,3 +757,34 @@ All historical release approvals stay historical; no new public deployment or re
     Accepted without a contract change: the winner's backing and purchaser refunds are untouched, and the creator can
     reach the same withdrawal through `close()` or a smaller target. Refusing capital claims while
     `lastIssuedSequence() > reconciledSequence` was the rejected alternative (new source hash and re-audit).
+
+## Community release: config inventory and two creator settings (2026-11-23)
+
+Scope: the community-pool release brief (`scratchpad/community-release-spec.md`, Part B overrides Part A).
+Phase A (contracts/tests/CI/deploy tooling). Full status and the economics design live in
+`docs/CONFIG-INVENTORY.md`.
+
+Implemented and compiled this pass (`PoolBalancer`, `PoolInventory`):
+
+1. **Fill gate is now a creator pool setting `fillGateBps` (0..10000, default 7000).** Replaces the two
+   hardcoded `7_000` literals in `PoolInventory.admission`. Zero drops the additional target-fill requirement
+   but keeps the conservative `prizeWeight < lost` unavailable-inventory check and all other admission
+   safeguards (Part B §2). Alternative considered and rejected: keep it on the factory (the earlier
+   `pool-settings-rework` branch did this) — the new spec makes it a per-creator choice with no factory
+   minimum. `setFillGateBps`, event `FillGateChanged`.
+2. **Backlog threshold is now a creator pool setting `backlogThreshold` (>=1, default 5).** Replaces the
+   hardcoded `unsettled >= 5` pause in `PoolInventory.admission` and is explicitly separated from FWA's
+   per-transaction batch cap `MAX_BATCH` (still 5, verified against the FWA factory at creation). FWA checks
+   admission before a batch of up to `MAX_BATCH`, so a threshold `T` allows up to `T+MAX_BATCH-1` outstanding
+   draws (Part B §3). Zero rejected; no factory maximum this release. `setBacklogThreshold`, event
+   `BacklogThresholdChanged`. Use `close` to stop purchases entirely.
+
+Both default to the former hardcoded values, so every existing listing, reserve and admission outcome is
+unchanged until a creator opts in. They are purchase-admission gates, not keeper economics, so they are
+deliberately NOT part of `settingsHash` (the keeper-payment identity).
+
+Designed but NOT yet implemented in this pass (see `docs/CONFIG-INVENTORY.md` for the full design): the
+factory EconConfig + per-pool pin/local-override + restored creator-tunable bucket + one effective-config
+resolver + fee-sensitive config hash; removal of the three policy delays while KEEPING the bucket; the
+accepted-mint-fee-cap binding on `configure`; factory `maxPrizes`/markup-range settings; the deploy reuse
+path + legacy-factory preflight scan; the CI fix; and the `CommunityConfigAcceptance` suite.

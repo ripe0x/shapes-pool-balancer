@@ -329,3 +329,25 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
 - R83. No mainnet canary (owner, 2026-11-22: "i don't want to do the canary!!!"). Launch goes from the signed
   outcomes and the recorded review straight to the production deploy through `script/deploy.sh`; no capped first
   deployment or cap-raising plan. Supersedes the canary step of runbook 0b E for this launch.
+
+## Community release (owner brief, 2026-11-23) — Phase A in progress
+
+The community-pool release brief (`scratchpad/community-release-spec.md`, Part B overrides Part A) is the
+current product direction and deliberately changes earlier decisions. Authoritative configuration inventory,
+economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
+
+- R84. **Fill gate is a creator setting** `fillGateBps` (0..10000, default 7000); zero removes the
+  target-fill requirement but keeps the conservative unavailable-inventory check (Part B §2). No factory
+  minimum. Implemented (`PoolBalancer.setFillGateBps`, `PoolInventory.admission`). Supersedes the fixed 70%
+  gate and the earlier proposal to put the gate on the factory.
+- R85. **Backlog threshold is a creator setting** `backlogThreshold` (>=1, default 5), independent of FWA's
+  per-transaction batch cap `MAX_BATCH` (Part B §3). A threshold `T` can allow up to `T+MAX_BATCH-1`
+  outstanding draws. Implemented (`PoolBalancer.setBacklogThreshold`). Clarifies that five was never an
+  absolute outstanding-draw cap.
+- R86. **maxPrizes initial value is 1000** (new brief §4.1, factory-administered), reaffirming the value in
+  the current `validateTarget`. Note: this supersedes the earlier "set max to 200" (2026-11-16) for the
+  community release; recorded as a discrepancy to confirm. Design only this pass.
+- R87. The economics rework (factory EconConfig, pin/local/follow, creator-tunable bucket, one resolver,
+  fee-sensitive hash), removal of the three policy delays (keeping the bucket), accepted-mint-fee-cap
+  binding, deploy reuse path + legacy preflight, CI fix and the permanent acceptance suite are **designed,
+  not yet implemented** this pass. See `docs/CONFIG-INVENTORY.md`.

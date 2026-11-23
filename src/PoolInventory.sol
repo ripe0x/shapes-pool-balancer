@@ -93,12 +93,17 @@ library PoolInventory {
 
     /// @dev Curated NFTs are optional unless `curatedRequired`. The Shapes mint fee is not checked here: it limits
     ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
+    /// @dev `fillGateBps` (creator, 0..10000) is the inverse-backing-weight threshold; zero drops the target-fill
+    ///      requirement but keeps the `prizeWeight < lost` conservative unavailable-inventory check. `backlogThreshold`
+    ///      (creator, >=1) is the unsettled-draw count that pauses purchases; it is distinct from FWA's per-transaction
+    ///      batch cap (MAX_BATCH), so a threshold T allows up to T+MAX_BATCH-1 outstanding when other checks permit.
     function admission(State storage s, IFWAPool pool, bool curatedRequired,
-        uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence) public view returns (uint8)
+        uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence, uint256 fillGateBps, uint256 backlogThreshold)
+        public view returns (uint8)
     {
         if (curatedRequired && s.activeIds.length == s.listedPrizes) return 3;
         uint256 unsettled = pool.unsettledAcquisitionCount();
-        if (unsettled >= 5) return 4;
+        if (unsettled >= backlogThreshold) return 4;
         uint256 active = pool.activeListingCount();
         // Active Shapes are a subset of tracked Shapes. Otherwise require a fresh identity proof: tracked
         // curated includes staging and unreconciled wins. Ambiguity intentionally pauses until public refresh.
@@ -107,7 +112,7 @@ library PoolInventory {
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {
             uint256 lost = unavailable * (1e36 / 0.01 ether);
-            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight ? 6 : 0;
+            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
         }
         uint256 shapeBound = unavailable + stageUpper;
         uint256 tracked = s.activeIds.length;
@@ -119,7 +124,7 @@ library PoolInventory {
         if (afterActivation > unavailable) unavailable = afterActivation;
         if (shapeBound < unavailable) unavailable = shapeBound;
         uint256 lost = unavailable * (1e36 / 0.01 ether);
-        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight) return 6;
+        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
         return 0;
     }
 

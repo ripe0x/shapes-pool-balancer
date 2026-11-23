@@ -24,9 +24,10 @@ interface IBalancerFactory {
 ///      - FWA prices every draw on its live inventory and refunds draws whose price moved past the player's
 ///        tolerance, so the gate does not need an exact inventory. It keeps the game close to its design:
 ///        no new request while initial setup is unfinished, while no active curated NFT is proven and the creator
-///        requires one (`curatedRequired`; curated NFTs are otherwise optional), while at least MAX_BATCH draws are
-///        already unsettled, while the prizes' weight, after assuming every unreconciled draw took the heaviest
-///        possible prize, is below 70% of the target's weight. A Shapes mint fee above what the creator accepted
+///        requires one (`curatedRequired`; curated NFTs are otherwise optional), while at least `backlogThreshold`
+///        draws (creator setting, default MAX_BATCH) are already unsettled, while the prizes' weight, after assuming
+///        every unreconciled draw took the heaviest possible prize, is below the creator `fillGateBps` (default 70%)
+///        of the target's weight. A Shapes mint fee above what the creator accepted
 ///        stops minting, not purchases of listed prizes; depletion then pauses purchases through the weight gate. Purchases do not
 ///        wait for a fully funded target: expensive deficits may remain while sales replenish operating capital.
 ///        A stored share of actual collected owner proceeds is protected as creator credit.
@@ -51,7 +52,8 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     uint256 internal constant BPS = 10_000;
-    /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation. Also the unsettled-draw cap.
+    /// @dev FWA `maxAcquisitionsPerTx`; verified against the FWA factory at pool creation. The unsettled-draw pause is
+    ///      the separate creator `backlogThreshold` (default MAX_BATCH), not this per-transaction batch cap.
     uint256 public constant MAX_BATCH = 5;
     /// @dev Prize sizes: indices 0-8 are the nine Shapes denominations (each prize one Shape); indices 9-15 are values
     ///      between them, each prize one Draw Pack holding the fewest Shapes that sum to it (see `PoolInventory`'s `AMOUNTS` and `_makeup`).
@@ -127,6 +129,13 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Prize counts per size, sixteen 16-bit counts, size 0 in the low bits.
     uint256 public target;
     uint16 public markupBps;
+    /// @dev Creator fill gate in bps (inverse backing-weight threshold), default 7000. Zero drops the target-fill
+    ///      requirement but keeps the conservative `prizeWeight < lost` unavailable-inventory check (see PoolInventory).
+    uint16 public fillGateBps;
+    /// @dev Creator unsettled-draw count that pauses purchases (BUSY), default MAX_BATCH. Distinct from FWA's
+    ///      per-transaction batch cap: FWA checks admission before a batch of up to MAX_BATCH, so T allows up to
+    ///      T+MAX_BATCH-1 outstanding draws. Use `close` to stop purchases entirely.
+    uint16 public backlogThreshold;
     bool public enabled;
     /// @dev Initial opening setup remains true until the target is stocked; later ordinary depletion does not reset it.
     bool public creatorWork;
@@ -165,6 +174,8 @@ contract PoolBalancer is ReentrancyGuard {
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event CreatorRevenueChanged(uint16 previousBps, uint16 newBps);
     event CuratedRequirementChanged(bool required);
+    event FillGateChanged(uint16 bps);
+    event BacklogThresholdChanged(uint16 threshold);
     event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
     event KeeperPolicyCancelled(address indexed policy);
     event KeeperPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
@@ -275,6 +286,9 @@ contract PoolBalancer is ReentrancyGuard {
         PACKS.setApprovalForAll(p, true);
 
         if (SHAPES.mintFee() > config.mintFeeCap) revert InvalidConfig();
+        // Admission defaults preserve the former hardcoded gate (70%) and unsettled-draw pause (MAX_BATCH).
+        fillGateBps = 7_000;
+        backlogThreshold = uint16(MAX_BATCH);
         _configure(config.markupBps, config.target, config.mintFeeCap);
         _setCreatorRevenueBps(config.creatorRevenueBps);
         _setCuratedRequired(config.curatedRequired);
@@ -339,6 +353,22 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Require a proven active curated NFT for purchases, or not. Takes effect at the next admission check.
     function setCuratedRequired(bool required) external onlyCreator nonReentrant {
         _setCuratedRequired(required);
+    }
+
+    /// @notice Set the creator fill gate in bps (0..10000). Zero drops the target-fill requirement while keeping the
+    ///         conservative unavailable-inventory check. Takes effect at the next admission check; listings are unchanged.
+    function setFillGateBps(uint16 bps) external onlyCreator nonReentrant {
+        if (bps > BPS) revert InvalidConfig();
+        fillGateBps = bps;
+        emit FillGateChanged(bps);
+    }
+
+    /// @notice Set the creator unsettled-draw backlog threshold that pauses purchases. Must be >= 1. Distinct from
+    ///         FWA's per-transaction batch cap (MAX_BATCH); use `close` to stop purchases entirely.
+    function setBacklogThreshold(uint16 threshold) external onlyCreator nonReentrant {
+        if (threshold == 0) revert InvalidConfig();
+        backlogThreshold = threshold;
+        emit BacklogThresholdChanged(threshold);
     }
 
     function _setCuratedRequired(bool required) internal {
@@ -567,7 +597,7 @@ contract PoolBalancer is ReentrancyGuard {
     function admissionStatus() public view returns (uint8) {
         if (!enabled) return CLOSED;
         if (creatorWork) return SETTING_UP;
-        return PoolInventory.admission(_inventory, pool, curatedRequired, targetWeight, prizeWeight, reconciledSequence);
+        return PoolInventory.admission(_inventory, pool, curatedRequired, targetWeight, prizeWeight, reconciledSequence, fillGateBps, backlogThreshold);
     }
 
     /*//////////////////////////////////////////////////////////////
