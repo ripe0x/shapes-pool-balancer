@@ -259,22 +259,25 @@ economics + disabled state. Test zero refill, capacity up/down, elapsed boundari
   X ETH Shapes mint fee" when only the fee differs) and passes the shown fee. All call sites updated (Solidity
   tests, `keeper/rehearsal.ts`, `scripts/run-local-rehearsal.ts`, `scripts/approved-local-rehearsal.ts`,
   `shared/abi.ts`). Fork test `test/MintFeeChange.t.sol` (0.001 → 0.0005 → 0.001 via the real Shapes admin).
-- **§11 deploy reuse path** ◻︎: `Deploy.s.sol:49-52` unconditionally deploys renderer+packs. Add an explicit
-  reuse branch gated on env (reuse addresses: shapes `0x6fE9…FAf0`, packs `0xfE11…cB2D`, renderer `0xA998…a65A`,
-  FWA factory `0x8919…477C`, FWA impl `0x85Fa…Fee7`). Verify reused deps by code hash + getter readbacks
-  (packs.shapes()==shapes, renderer, 0.02 ETH min, FWA compatibility) rather than minting new receipts. Update
-  `scripts/verify-deployment.ts`, `current-local-rehearsal.ts`, `prepare-local-rehearsal.ts` and the keeper
-  path so the manifest distinguishes NEW deployments from REUSED deps (not the old "eight deployments"
-  assumption). Use a fresh fork where the reused addresses have code (current ForkBase block predates the
-  packs).
-- **§11/Part B §6 legacy factory** ◻︎: current mainnet factory
-  `0x91C31Ad620555DE24e62290906aD1aA14C4CE281` (block 26475448, 0 pools at last check) becomes legacy. Add an
-  automated preflight scan of its `BalancerCreated` events to the deploy tooling (record checked block +
-  discovered pools; the old factory stays permissionless so re-scan at cutover). Keep an explicit old/new
-  deployment config + a named **legacy PoolBalancer ABI** so app/keeper (Phase B) can still run
-  upkeep/purchases/withdrawals on old pools. Fork acceptance case: create a pool on the OLD factory on a
-  current-block fork, deploy the NEW factory, show the old pool still operates with the legacy ABI.
-- **§9 CI** ◻︎: `.github/workflows/ci.yml` only runs `Fork.t.sol` + one FlowBreakdown case, and its markdown
+- **§11 deploy reuse path** ✅ `Deploy.s.sol` `REUSE_DEPENDENCIES=true` (required on chain 1) reuses Shapes, Draw
+  Packs, renderer, FWA factory and FWA implementation, checked by code hash and getter readbacks before and after the
+  broadcast; it creates only changed CREATE2 libraries, PoolBalancer, the interface-2 KeeperPolicyV1 and
+  BalancerFactory. `_postflight` and `scripts/verify-deployment.ts` read back every §0 initial setting
+  (`economics()`, default bucket, `productLimits()`, `creationSettingsHash()`, policy `interfaceVersion() == 2`).
+  The verified record separates `transactions` (receipts), `preexistingLibraries` and `reusedDependencies` (no
+  receipts); `prepare-local-rehearsal.ts` and `current-local-rehearsal.ts` accept the reuse plan. Fork rehearsal at
+  block 26,480,077 and the unsigned runbook: `docs/DEPLOY-COMMUNITY-REPLACEMENT.md`. The keeper integration scripts
+  (`keeper/e2e.ts`, `keeper/rehearsal.ts`) keep the full mode on their pre-Packs fork block, as the spec allows.
+- **§11/Part B §6 legacy factory** ✅ `deployments/1.legacy.json` lists the 2026-11-22 factory `0x91C3…E281`
+  (block 26475448) with its `community-v1` ABIs (byte-identical to `shared/abi.ts` at `40ad9dd`) and the superseded
+  `0xA57d…7ece`. `scripts/deployment-preflight.ts` scans their `BalancerCreated` logs to a pinned block, checks each
+  legacy ABI's selectors against the deployed code and records the block and pools in `deployments/1.preflight.json`
+  (mainnet 26,479,663: 0 pools). Rerun at cutover (runbook steps 3 and 9). App/keeper consumption of the legacy
+  route is Phase B. The permanent fork acceptance case (§5 row L) is ◻︎ with the acceptance suite.
+- **§9 CI** ✅ (`afbd981`): CI runs the acceptance suite, the regressions below, `test:ts` and `build:app`, and the
+  markdown shortcut no longer skips protected requirement docs, tests, scripts, deployments or the workflow.
+  `test/CommunityConfigAcceptance.t.sol` is not on this branch yet, so that CI step fails until it lands. History:
+  `.github/workflows/ci.yml` only ran `Fork.t.sol` + one FlowBreakdown case, and its markdown
   shortcut (`!filename.endsWith('.md')`) skips `OWNER-REQUIREMENTS.md` + acceptance/requirement changes. Fix:
   run the new acceptance suite + the affected regressions (`Settings`, `Reserve`, `PolicyLifecycle`,
   `PolicyPreview`, `PolicyModelParity`, `ParityFixture`, `GasBench`) + TS tests; and force full checks when
