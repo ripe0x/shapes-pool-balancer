@@ -1375,8 +1375,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 : <div><span>Above the operating requirement</span>{figureEth(ev && have - needed, 6)}</div>}
             </>
           )}
-          <div><span>Pool creator earnings</span><span>{reviewedRate / 100}% of sales</span></div>
-          {!fresh && <div><span>Suggested for this mix</span><span>{suggestedRate / 100}% of sales</span></div>}
           <div><span>Expected pool creator earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected revenue retained by the pool</span><span>{econ ? `${perDraw(econ.retainedRevenuePerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected replacement backing</span><span>{econ ? `${perDraw(econ.replacementCostsPerDraw)} ETH` : 'Unavailable'}</span></div>
@@ -1387,8 +1385,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
         {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
-          : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">At {reviewedRate / 100}% earnings, sales do not cover replenishment.</p>}
-        {!fresh && <p className="note">Change the earnings rate in Settings.</p>}
+          : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales do not cover replenishment.</p>}
         <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
         {!d.paidUpkeepEnabled && <p className="note">Paid upkeep is disabled. Setup and replenishment require unpaid maintenance; the caller pays transaction gas.</p>}
         {save}
