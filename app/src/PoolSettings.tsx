@@ -245,7 +245,7 @@ export function KeeperEconomics({ d, tx }: { d: KeeperView; tx: Tx }) {
         <summary className="disclose quiet">Factory values now</summary>
         <EconomicsRows e={k.factoryEconomics} />
         <div className="kv"><span className="k">Maintenance budget when following</span><span>{ethx(k.follow.required)}</span></div>
-        {followNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Following needs {ethx(followNeed)} more operating ETH first.</p>{deposit(followNeed)}</div>}
+        {followNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Following needs {formatEther(followNeed)} more operating ETH first.</p>{deposit(followNeed)}</div>}
       </details>}
       {editing && <LocalEconomicsForm key={FIELDS.map(([key]) => String(k.economics[key])).join()} d={d} tx={tx} write={write} deposit={deposit} />}
     </div>
@@ -269,7 +269,7 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
     let live = true;
     k.funding(candidate).then((next) => live && setFunding({ key: candidateKey, next }), () => live && setFunding({ key: candidateKey, error: true }));
     return () => { live = false; };
-  }, [candidateKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [candidateKey, k]); // eslint-disable-line react-hooks/exhaustive-deps -- k: re-check after every refresh (a deposit)
   const next = funding?.key === candidateKey ? funding : undefined;
   const need = next?.next ? toDeposit(d.paidUpkeepEnabled, k.current, next.next) : 0n;
   const unchanged = !!candidate && k.source === 1 && sameEconomics(candidate, k.economics);
@@ -292,7 +292,7 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
       <div className="kv"><span className="k">Maximum payment per call</span><span>{ethx(maxPaymentOf(candidate))}</span></div>
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{ethx(maxSurchargeOf(candidate))}</span></div>
       <div className="kv"><span className="k">Maintenance budget</span><span>{next?.next ? ethx(next.next.required) : next?.error ? 'Unavailable' : 'Checking…'}</span></div>
-      {need > 0n && <div style={{ marginTop: 12 }}><p className="note error">These values need {ethx(need)} more operating ETH first.</p>{deposit(need)}</div>}
+      {need > 0n && <div style={{ marginTop: 12 }}><p className="note error">These values need {formatEther(need)} more operating ETH first.</p>{deposit(need)}</div>}
     </div>}
     <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !candidate || unchanged || !next?.next || need > 0n} onClick={save}>{policyOnly ? 'Use this pricing policy' : 'Save local values'}</button>
     <p className="note" style={{ marginTop: 12 }}>Saved values apply immediately and factory changes stop applying to this pool. Existing listings keep their prices. A larger maintenance budget needs operating ETH first; missing prizes do not.</p>
@@ -312,7 +312,7 @@ function PaidUpkeep({ d, tx, write, deposit }: { d: KeeperView; tx: Tx } & Write
         : <button className="btn" disabled={!!tx.busy || enableNeed > 0n} onClick={() => write('Enable paid upkeep', 'setPaidUpkeepEnabled', [true])}>Enable paid upkeep</button>}
       <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
     </div>
-    {enableNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Enabling needs {ethx(enableNeed)} more operating ETH first.</p>{deposit(enableNeed)}</div>}
+    {enableNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Enabling needs {formatEther(enableNeed)} more operating ETH first.</p>{deposit(enableNeed)}</div>}
     <p className="note" style={{ marginTop: 12 }}>Disabling takes effect immediately. A disable stays through factory updates, policy changes and pinning. Only the creator can enable it again.</p>
   </div>;
 }
