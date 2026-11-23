@@ -112,7 +112,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         <p className="note">Keepers are paid from your pool's ETH for each upkeep that restocks prizes or records draws; the restocking fee in each prize's price is your income toward that pay. V1 reimburses gas up to 5 gwei. Low inventory can pause purchases. If operating ETH is insufficient, lower gas alone may not restart the pool; add ETH or reduce the target.</p>
         <div id="how-restock" style={{ marginTop: 24, scrollMarginTop: 24 }}>
           <h3 className="ctl">The restocking charge</h3>
-          <p className="hiw-p">Each new Shape's price includes a restocking charge: the gas to mint and list its replacement, plus {eth(V1_POLICY.restockFlat, 4)} ETH. It is set from the base fee when the Shape is listed and stays in that price. Gas above {Number(V1_POLICY.maxGasPrice) / 1e9} gwei is not charged, so the charge never exceeds {eth(restockFeeAt(10n ** 12n), 4)} ETH a Shape.</p>
+          <p className="hiw-p">Each new Shape's price includes a restocking charge: the gas to mint and list its replacement, plus {eth(V1_POLICY.restockFlat, 4)} ETH toward keeper pay. It is set from the base fee when the Shape is listed and stays in that price. Gas above {Number(V1_POLICY.maxGasPrice) / 1e9} gwei is not charged, so the charge never exceeds {eth(restockFeeAt(10n ** 12n), 4)} ETH a Shape. The pool receives it with each sale; keepers are paid from your pool's ETH.</p>
           <div className="kvs">
             {[0.1, 0.5, 1, 2, 5].map((g) => <div key={g} className="kv"><span className="k">Base fee {g === 5 ? '5 gwei or more' : `${g} gwei`}</span><span>{eth(restockFeeAt(BigInt(g * 1e9)), 5)} ETH a Shape</span></div>)}
           </div>
