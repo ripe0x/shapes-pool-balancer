@@ -31,10 +31,17 @@ jobs:
               limit = 300;
             }
             // GitHub caps PR file lists at 3,000 and commit comparisons at 300.
+            // Docs-only shortcut: every changed file (and rename source) must be a .md
+            // file that is not a protected requirement/decision document.
+            const protectedMd = new Set([
+              'OWNER-REQUIREMENTS.md', 'docs/CONFIG-INVENTORY.md', 'docs/DECISIONS.md'
+            ]);
+            const skippable = (f) => !!f && f.endsWith('.md') && !protectedMd.has(f) &&
+              !f.startsWith('test/') && !f.startsWith('script/') && !f.startsWith('scripts/') &&
+              !f.startsWith('deployments/') && !f.startsWith('.github/');
             const full = files.length === 0 || files.length >= limit ||
               files.some(({ filename, previous_filename }) =>
-                !filename.endsWith('.md') ||
-                (previous_filename && !previous_filename.endsWith('.md')));
+                !skippable(filename) || (previous_filename && !skippable(previous_filename)));
             core.setOutput('full', String(full));
       - uses: actions/checkout@v4
         if: steps.changes.outputs.full == 'true'
@@ -57,9 +64,46 @@ jobs:
       - if: steps.changes.outputs.full == 'true'
         run: npm run typecheck
       - if: steps.changes.outputs.full == 'true'
-        run: npx vitest run
+        run: npm run test:ts
+      - if: steps.changes.outputs.full == 'true'
+        run: npm run build:app
       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
       - if: steps.changes.outputs.full == 'true'
         run: forge test --match-path test/Fork.t.sol
       - if: steps.changes.outputs.full == 'true'
-        run: forge test --match-path test/scenario/FlowBreakdown.t.sol --match-test test_evidence_recordsCuratedProofRefusalsAndPublicRecovery
+        run: forge test --match-path test/CommunityConfigAcceptance.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/Settings.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/PolicyLifecycle.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/PolicyPreview.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/PolicyModelParity.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/Reserve.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/ReserveCapital.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/KeeperPay.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/KeeperAdversarial.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/ProtectedRevenueAtomic.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/ProductLimits.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/MintFeeChange.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/CuratedAdmission.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/OptionalCurated.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/Balancer.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-contract ParityFixture
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-contract GasBench --isolate
+      # Whole suite exceeds the default 2^30 test gas limit.
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000 --isolate
