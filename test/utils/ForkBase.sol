@@ -149,10 +149,10 @@ abstract contract ForkBase is Test {
         if (price > 5 gwei) price = 5 gwei;
     }
 
-    /// @dev One owed draw: process + reconcile one, 200k + 1.8M + 150k gas.
+    /// @dev One owed draw: process + reconcile one, 200k + 1.8M + 150k gas, and a work fee for each.
     function _reconciliationBudget() internal view returns (uint256) {
         if (!balancer.paidUpkeepEnabled()) return 0;
-        return (2_150_000 + V1_OVERHEAD) * _v1Price() + 0.00002 ether;
+        return (2_150_000 + V1_OVERHEAD) * _v1Price() + 0.00004 ether;
     }
 
     function _workingBufferAt(uint256 price) internal pure returns (uint256) {
@@ -198,9 +198,8 @@ abstract contract ForkBase is Test {
     }
 
     /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has
-    ///      expired; each later block expires exactly one more. Upkeep processes FWA's queue itself (D16) and stops at
-    ///      a head that is neither ready nor expired, so rolling to `firstExpired + i` lets call i reconcile exactly
-    ///      one draw: the most calls, and so the most keeper pay, a batch can cost.
+    ///      expired; each later block expires exactly one more. Upkeep never processes an expired draw (only Ready
+    ///      stuck draws), so the caller processes them on FWA as any third party would.
     function buyOnePerBlock(address who, uint256 n) internal returns (uint256 firstExpired) {
         uint256 timeout = ITimeout(address(pool)).selectionTimeoutBlocks();
         firstExpired = vm.getBlockNumber() + timeout + 1;

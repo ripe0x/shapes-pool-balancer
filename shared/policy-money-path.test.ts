@@ -56,7 +56,10 @@ describe('independent economic replay of the fork lifecycle', () => {
       expect(drawPrice, `${step.action}: fixed listing prices/FWA quote`).toBe(b('drawPrice'));
       if (b('reward') > 0n) {
         const work: KeeperWork = { measuredGas: b('measuredGas'), gasPrice: b('gasPrice'), baseFee: b('baseFee'),
-          reconciledDraws: b('reconciledDraws'), listedShapeUnits: b('shapeUnits'), listedPrizes: b('listedPrizes'), processedDraws: b('processedDraws') };
+          reconciledDraws: b('reconciledDraws'), listedShapeUnits: b('shapeUnits'), listedPrizes: b('listedPrizes'),
+          // `processedDraws` in the fixture is FWA's queue progress; in this lifecycle FWA's fast path and the harness
+          // process every draw, never upkeep, so no processing is paid.
+          processedDraws: 0n };
         const quote = step.version === 1 ? quoteV1(work) : V2.reward(work);
         const ceiling = paymentBound(work, V1_ECONOMICS);
         const reward = quote < ceiling ? quote : ceiling;

@@ -20,11 +20,12 @@ interface IKeeperPolicy {
     /// @dev Field widths are the only numeric bounds: they keep every payment, reserve and listing-price product far
     ///      below uint256 and every restocking surcharge below 2^98, inside a listing's uint104 price record.
     ///      Derived, never stored: the maximum keeper payment `(maxGas + overheadGas) * gasPriceCeiling + 10 * workFee`
-    ///      (10 = five reconciles plus five Shape units per call) and the maximum restocking surcharge per Shape
+    ///      (10 = five reconciles plus five Shape units per call; a call that processes draws lists nothing, so its at
+    ///      most two processed draws plus five reconciles stay within 10) and the maximum restocking surcharge per Shape
     ///      `restockGas * gasPriceCeiling + restockFlat`. The fallback restocking price is this same schedule.
     struct Economics {
         address policy; // pricing algorithm; its quotes are capped by the schedule below
-        uint64 workFee; // per reconciled draw sequence and per listed Shape unit
+        uint64 workFee; // per processed draw, per reconciled draw sequence and per listed Shape unit
         uint32 maxGas; // reimbursable measured gas per call
         uint32 overheadGas; // transaction gas outside the measured span: intrinsic, quote, payment, transfer
         uint64 gasPriceCeiling;
@@ -37,6 +38,11 @@ interface IKeeperPolicy {
         uint32 reconcileGas;
         uint32 shapeGas;
         uint32 prizeGas;
+        // Upkeep processes FWA's queue only for Ready draws requested at least this many blocks ago (FWA stores no
+        // fulfillment time; randomness arrives about three blocks after the request), and the shorter value while
+        // purchases are paused BUSY or LOW_INVENTORY.
+        uint16 processGraceBlocks;
+        uint16 pausedProcessGraceBlocks;
     }
 
     function interfaceVersion() external view returns (uint256);

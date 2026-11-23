@@ -63,11 +63,12 @@ contract KeeperEconomicsTest is ForkBase {
         return keccak256(abi.encode(a)) == keccak256(abi.encode(b));
     }
 
-    /// Expire one draw so the next upkeep has paid work (process and reconcile it).
+    /// Expire one draw and process it on FWA as a third party, so the next upkeep has paid work (reconcile it).
     function _owe(PoolBalancer b) internal {
         _use(b);
         buy(buyer, 1);
         vm.roll(vm.getBlockNumber() + 40);
+        settle();
     }
 
     function _paid(PoolBalancer b) internal returns (uint256 reward, uint256 measured) {

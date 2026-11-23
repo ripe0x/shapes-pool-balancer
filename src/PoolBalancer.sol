@@ -70,14 +70,6 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 internal constant MAX_OPS = 5;
     /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
     uint256 internal constant MAX_RECONCILE = 5;
-    /// @dev FWA draws processed per upkeep: keeps the worst upkeep under the default 3.2M reimbursable gas.
-    uint256 internal constant MAX_PROCESS = 2;
-    /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
-    ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
-    ///      so a starved failure hands back at most about 343,000 (measured, 48 to 2,048 listings). A failure with more
-    ///      than this left was not for want of gas. The proxy's share grows with the gas processing needs, so the bound
-    ///      holds for MAX_PROCESS = 2 and FWA's six-listing reservations (at most about 3.3M).
-    uint256 internal constant PROCESS_STARVED_GAS = 400_000;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against the default 3.2M reimbursable gas.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -209,6 +201,7 @@ contract PoolBalancer is ReentrancyGuard {
     error PolicyUnavailable();
     error PaymentUnavailable();
     error MinimumPaymentNotMet();
+    error InsufficientGas(); // reverted by KeeperPolicyCalls.process when processing was starved of gas
     error AlreadyInitialized();
     error UnreviewedImplementation();
     error UnsupportedFWAConfig();
@@ -222,7 +215,6 @@ contract PoolBalancer is ReentrancyGuard {
     error InsufficientSurplus();
     error ReserveNotFunded();
     error NoUpkeepNeeded();
-    error InsufficientGas();
     error InvalidBatch();
     error ProtectedAsset();
 
@@ -674,26 +666,28 @@ contract PoolBalancer is ReentrancyGuard {
         }
         IFWAPool p = pool;
 
-        // 0. Process FWA's queue. A draw whose request reserved a staged restock skips FWA's randomness fast path (which
-        //    also only ever takes the queue's head), and a ready draw never expires, so it and every draw behind it wait
-        //    for an explicit processAcquisitions that nobody else is bound to call. FWA stops at a draw still waiting
-        //    for its randomness; a failure here never blocks the rest of upkeep. The draws it settles are reconciled
-        //    below in the same call, so the work is paid like any reconcile.
-        //    Gas spent on processing that reverted is not paid for (FWA reverts on purpose when its notifier is left too
-        //    little gas, so a keeper could otherwise pick a gas limit that burns paid gas for nothing). Processing that
-        //    failed for want of gas reverts the whole upkeep instead, at any pool size: a call never succeeds with
-        //    processing starved, so a gas estimate is enough to process.
+        // 0. Process stuck draws only (owner decision, docs/DECISIONS.md "Paid processing of stuck draws"). FWA's
+        //    randomness callback processes one draw, and only the queue's head that reserved no staged listing, so a
+        //    Ready draw behind the head or one that reserved a staged restock waits for an explicit processAcquisitions,
+        //    and a Ready draw never expires. Players and FWA's own path normally finish draws, so upkeep processes only
+        //    Ready head draws requested at least the economics' grace ago (`KeeperPolicyCalls.stuck`), paid as gas plus
+        //    the work fee per processed draw; the draws it settles are reconciled below in the same call. Gas of a
+        //    reverted processing is not paid and processing starved of gas reverts the call (`KeeperPolicyCalls.process`).
+        //    The head check is ordinary upkeep work: its first reads of FWA are the cold accesses reconciling would
+        //    otherwise pay.
         uint256 processed;
         uint64 next = p.nextSequenceToProcess();
-        if (next <= p.lastIssuedSequence()) {
-            uint256 g = gasleft();
-            try p.processAcquisitions(MAX_PROCESS) {
-                processed = p.nextSequenceToProcess() - next;
-            } catch {
-                uint256 left = gasleft();
-                if (left < g / 64 + PROCESS_STARVED_GAS) revert InsufficientGas();
-                gasStart -= g - left;
-            }
+        // FWA stores no fulfillment time, so the grace runs from the request block (randomness arrives about three
+        // blocks later). The shorter grace applies while purchases are refused BUSY or LOW_INVENTORY.
+        (uint256 n, uint256 nPaused) = KeeperPolicyCalls.stuck(p, next, e.processGraceBlocks, e.pausedProcessGraceBlocks);
+        if (nPaused > n) {
+            uint8 a = admissionStatus();
+            if (a == BUSY || a == LOW_INVENTORY) n = nPaused;
+        }
+        if (n != 0) {
+            uint256 unpaid;
+            (processed, unpaid) = KeeperPolicyCalls.process(p, next, n);
+            gasStart -= unpaid;
         }
 
         // 1. Collect actual settled proceeds at the stored revenue share.

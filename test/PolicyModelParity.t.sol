@@ -160,6 +160,7 @@ contract PolicyModelParity is ForkBase {
         uint256 price = pool.acquisitionFee();
         buy(buyer, 2); _snapshot("request real draws");
         vm.roll(vm.getBlockNumber() + 40);
+        settle(); // anyone processes expired draws on FWA; upkeep processes only Ready stuck draws
         upkeep(); _snapshot("reconcile expired draws");
         assertEq(pool.unsettledAcquisitionCount(), 0);
         assertEq(IRefundCredit(address(pool)).acquisitionRefundCredit(buyer), 2 * price);

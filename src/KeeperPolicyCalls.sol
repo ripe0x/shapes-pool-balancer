@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
+import {IFWAPool} from "./interfaces/External.sol";
 
 /// @dev Keeper money path over one effective `Economics`, resolved once per operation by PoolBalancer and passed to
 ///      every quote, payment bound, reserve and restocking price here. Policy calls use a fixed returndata buffer and gas
@@ -10,7 +11,8 @@ import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 library KeeperPolicyCalls {
     /// @dev Gas forwarded to a policy quote. A technical bound on an untrusted call, not an economic setting.
     uint256 internal constant GAS_LIMIT = 100_000;
-    /// @dev Paid service units one call can complete: MAX_RECONCILE (5) draws plus MAX_OPS (5) Shape units.
+    /// @dev Paid service units one call can complete: MAX_RECONCILE (5) draws plus MAX_OPS (5) Shape units. A call that
+    ///      processes (at most two) draws lists nothing, so it stays below this.
     uint256 internal constant MAX_SERVICE_UNITS = 10;
     uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
     /// @dev `State.source`: follow the factory's current economics, or use the pool's own copy (set or pinned).
@@ -188,7 +190,7 @@ library KeeperPolicyCalls {
     function paymentBound(IKeeperPolicy.Economics memory e, uint256 baseFee, uint256 processed, uint256 draws,
         uint256 units, uint256 prizes) public pure returns (uint256)
     {
-        return _bound(e, workGas(e, processed, draws, units, prizes), referencePrice(e, baseFee), draws + units);
+        return _bound(e, workGas(e, processed, draws, units, prizes), referencePrice(e, baseFee), processed + draws + units);
     }
 
     function listingPaymentBound(IKeeperPolicy.Economics memory e, uint256 draws, uint256 units, uint256 prizes)
@@ -241,8 +243,44 @@ library KeeperPolicyCalls {
         if (price > w.gasPrice) price = w.gasPrice;
         uint256 measured = workGas(e, w.processedDraws, w.reconciledDraws, w.listedShapeUnits, w.listedPrizes);
         if (measured > w.measuredGas) measured = w.measuredGas;
-        uint256 envelope = _bound(e, measured, price, w.reconciledDraws + w.listedShapeUnits);
+        uint256 envelope = _bound(e, measured, price, w.processedDraws + w.reconciledDraws + w.listedShapeUnits);
         return quote < envelope ? quote : envelope;
+    }
+
+    /// @dev Ready draws at the head of FWA's queue (status 5, randomness cached), at most two, each requested at least
+    ///      `grace` blocks ago; `nShort` counts the same under `shortGrace`. A draw still waiting for randomness stops it.
+    ///      Two per call keeps the worst upkeep under the default 3.2M reimbursable gas.
+    function stuck(IFWAPool p, uint64 s, uint256 grace, uint256 shortGrace)
+        public view returns (uint256 n, uint256 nShort)
+    {
+        uint64 last = p.lastIssuedSequence();
+        for (; nShort < 2 && s <= last; ++s) {
+            (, uint256 requested,,, uint8 status,) = p.acquisitions(p.requestIdAtSequence(s));
+            if (status != 5 || block.number < requested + shortGrace) break;
+            ++nShort;
+            if (n + 1 == nShort && block.number >= requested + grace) ++n;
+        }
+    }
+
+    /// @dev Gas a failed processing call can hand back and still have been starved: FWA reverts on purpose when its
+    ///      notifier would start with under 290,000 gas, and the pool is a proxy that keeps 1/64 of what it forwards,
+    ///      so a starved failure hands back at most about 343,000 (measured, 48 to 2,048 listings). A failure with more
+    ///      than this left was not for want of gas. The proxy's share grows with the gas processing needs, so the bound
+    ///      holds for two processed draws (`stuck`) and FWA's six-listing reservations (at most about 3.3M).
+    uint256 internal constant PROCESS_STARVED_GAS = 400_000;
+    error InsufficientGas();
+
+    /// @dev Processes `n` stuck draws on FWA (run by delegatecall, as the pool). Returns the draws processed and the
+    ///      gas of a reverted attempt, which the caller leaves unpaid. Processing that failed for want of gas reverts.
+    function process(IFWAPool p, uint64 next, uint256 n) public returns (uint256 processed, uint256 unpaid) {
+        uint256 g = gasleft();
+        try p.processAcquisitions(n) {
+            processed = p.nextSequenceToProcess() - next;
+        } catch {
+            uint256 left = gasleft();
+            if (left < g / 64 + PROCESS_STARVED_GAS) revert InsufficientGas();
+            unpaid = g - left;
+        }
     }
 
     function restock(IKeeperPolicy.Economics memory e, uint8 d, uint256 units, bool paid, uint256 baseFee)

@@ -1,5 +1,26 @@
 # Gas benchmarks and keeper bounds
 
+## Paid processing of stuck draws, 2026-11-23
+
+Owner decision (docs/DECISIONS.md "Paid processing of stuck draws only"). Fork block 26,382,349, Forge 1.8.1,
+`--isolate` (transaction gas with refunds). Upkeep processes only Ready draws requested at least the grace ago (50
+blocks, 10 while paused), paid as measured gas at the usual price plus one work fee per processed draw.
+
+| Call | measured (paid span) | billed | paid (ETH) | billed cost (ETH) | keeper net (ETH) |
+|---|---|---|---|---|---|
+| process 1 stuck draw + reconcile 2, 5 gwei (`KeeperPay` calibration) | 679,189 | 594,417 | 0.003755945 | 0.002972085 | +0.00078386 |
+| process 1 stuck draw + reconcile 1, 0.55 gwei (`ProcessQueue` grace test) | 678,012 | n/a | (678,012 + 60,000) x 0.55 gwei + 2 x 0.00002 | | |
+| staged-restock draws, three processing calls, 0.55 gwei (`ProcessQueue` D16 test) | 1,201,540 / 1,274,397 / 931,522 | 1,005,498 / 1,063,784 / 809,650 | 0.000773847 / 0.000813918 / 0.000585337 | | +0.000221 / +0.000229 / +0.000140 |
+| reconcile 1 timed-out draw processed on FWA by a third party, 5 gwei | 110,171 | 162,632 | 0.000870855 | 0.00081316 | +0.000057695 |
+
+Largest billed − measured across the calibration classes: 54,540 gas (closed, reconcile 5), under the 60,000
+overhead. Measured exceeds billed on processing calls because FWA's storage refunds are applied after the span.
+
+Self-made stuck draws do not pay (`test_manufacturedStuckDrawLosesMoney`, launch board): a draw costs 0.023108 ETH of
+which FWA's edge is 0.0011004 ETH, plus a 0.001287 ETH randomness fee; neither comes back. Processing pays at most
+0.00002 ETH work fee plus the 60,000-gas overhead allowance (0.000033 ETH at 0.55 gwei) above gas reimbursed at no more
+than the price paid: 0.000053 ETH against 0.0023874 ETH lost per draw.
+
 ## Slice A3 keeper overhead recalibration, 2026-11-23
 
 `test/KeeperPay.t.sol test_overheadCoversBilledGasPerOperationClass`, `forge test --isolate` (Foundry 1.8.1 transaction

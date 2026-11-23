@@ -136,6 +136,7 @@ contract PolicyLifecycleTest is ForkBase {
         assertEq(keptPrice, oldPrice, "old listing retains its exact historical surcharge");
         vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector); first.performUpkeep(priced, 1, 0);
         vm.roll(vm.getBlockNumber() + 40);
+        first.pool().processAcquisitions(5); // expired draws are processed on FWA by anyone, not by upkeep
         upkeep(); fillUp();
         assertEq(first.pool().unsettledAcquisitionCount(), 0);
         _draw(first); _draw(second); _draw(third);

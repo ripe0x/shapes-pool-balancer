@@ -20,7 +20,10 @@ export const MAX_KEEPER_REWARD = V1_POLICY.maxReward;
 export interface Economics {
   policy: `0x${string}`; workFee: bigint; maxGas: number; overheadGas: number; gasPriceCeiling: bigint; priorityAllowance: bigint;
   restockGas: number; restockFlat: bigint; baseGas: number; processGas: number; reconcileGas: number; shapeGas: number; prizeGas: number;
-  /** Legacy community-v1 pools only (shared/legacy.ts): their stored maximum also capped every payment bound. */
+  /** Upkeep processes only Ready draws requested at least this many blocks ago; the shorter value while purchases are paused. */
+  processGraceBlocks: number; pausedProcessGraceBlocks: number;
+  /** Legacy community-v1 pools only (shared/legacy.ts): their stored maximum also capped every payment bound, and they
+   *  paid no work fee for processed draws. */
   paymentCap?: bigint;
 }
 
@@ -37,6 +40,7 @@ export const V1_ECONOMICS: Economics = {
   priorityAllowance: KEEPER_LIMITS.priorityAllowance, restockGas: Number(V1_POLICY.restockGas), restockFlat: V1_POLICY.restockFlat,
   baseGas: Number(KEEPER_LIMITS.baseGas), processGas: Number(KEEPER_LIMITS.processGas), reconcileGas: Number(KEEPER_LIMITS.reconcileGas),
   shapeGas: Number(KEEPER_LIMITS.shapeGas), prizeGas: Number(KEEPER_LIMITS.prizeGas),
+  processGraceBlocks: Number(KEEPER_LIMITS.processGraceBlocks), pausedProcessGraceBlocks: Number(KEEPER_LIMITS.pausedProcessGraceBlocks),
 };
 /** Derived bounds (KeeperPolicyCalls.maxPayment / maxSurcharge): the most one call can be paid, and the most a
  *  restocking quote can charge per Shape. Bounds, not per-call charges. */
@@ -62,7 +66,7 @@ export interface KeeperWork {
 export function quoteV1(work: KeeperWork, e: Economics = V1_ECONOMICS): bigint {
   const price = lesser(rewardPrice(work.baseFee, e), work.gasPrice);
   const measured = lesser(work.measuredGas, BigInt(e.maxGas));
-  return (measured + BigInt(e.overheadGas)) * price + (work.reconciledDraws + work.listedShapeUnits) * e.workFee;
+  return (measured + BigInt(e.overheadGas)) * price + (work.processedDraws + work.reconciledDraws + work.listedShapeUnits) * e.workFee;
 }
 
 type WorkCounts = Pick<KeeperWork, 'processedDraws' | 'reconciledDraws' | 'listedShapeUnits' | 'listedPrizes'>;
@@ -75,14 +79,16 @@ export function workGas(w: WorkCounts, e: Economics): bigint {
  *  Without economics (paid upkeep off) nothing is budgeted. */
 export function workBudget(w: WorkCounts, baseFee: bigint, e: Economics | undefined): bigint {
   if (!e) return 0n;
-  return capped(e, (workGas(w, e) + BigInt(e.overheadGas)) * rewardPrice(baseFee, e) + e.workFee * (w.reconciledDraws + w.listedShapeUnits));
+  return capped(e, (workGas(w, e) + BigInt(e.overheadGas)) * rewardPrice(baseFee, e) + e.workFee * feeUnits(w, e));
 }
 const capped = (e: Economics, bound: bigint) => e.paymentCap !== undefined ? lesser(e.paymentCap, bound) : bound;
+/** Work-fee units: processed draws count except on legacy pools (`paymentCap` set), which paid no fee for them. */
+const feeUnits = (w: WorkCounts, e: Economics) => (e.paymentCap === undefined ? w.processedDraws : 0n) + w.reconciledDraws + w.listedShapeUnits;
 /** KeeperPolicyCalls.reward's envelope for actual measured work and the included bid; the policy quote is capped by it. */
 export function paymentBound(w: KeeperWork, e: Economics | undefined): bigint {
   if (!e) return 0n;
   const price = lesser(w.gasPrice, rewardPrice(w.baseFee, e));
-  return capped(e, (lesser(w.measuredGas, workGas(w, e)) + BigInt(e.overheadGas)) * price + e.workFee * (w.reconciledDraws + w.listedShapeUnits));
+  return capped(e, (lesser(w.measuredGas, workGas(w, e)) + BigInt(e.overheadGas)) * price + e.workFee * feeUnits(w, e));
 }
 export interface ListingBatch { counts: Counts; units: number; prizes: number }
 /** Same value order, Shape-unit limit and denomination limit as PoolInventory.fill. */

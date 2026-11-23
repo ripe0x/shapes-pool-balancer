@@ -110,7 +110,7 @@
   "10": {
     "action": "reconcile and replace Shape",
     "activeCount": "21",
-    "balance": "4743311303090848635",
+    "balance": "4743304021090848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "14931081690848635",
@@ -165,7 +165,7 @@
       "13200500000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "874619",
+    "measuredGas": "876751",
     "mintCost": "11000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "10000000000000000",
@@ -177,7 +177,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "1993000000000000",
-    "reward": "554040450000000",
+    "reward": "555213050000000",
     "shapeUnits": "1",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -185,7 +185,7 @@
   "11": {
     "action": "request real draws",
     "activeCount": "21",
-    "balance": "4743311303090848635",
+    "balance": "4743304021090848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -251,7 +251,7 @@
     "reconciledDraws": "0",
     "redeemed": "0",
     "refundCredit": "0",
-    "required": "4464000000000000",
+    "required": "4504000000000000",
     "reward": "0",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",
@@ -260,7 +260,7 @@
   "12": {
     "action": "reconcile expired draws",
     "activeCount": "21",
-    "balance": "4743126525490848635",
+    "balance": "4743161042390848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -315,7 +315,7 @@
       "13200500000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "203232",
+    "measuredGas": "127234",
     "mintCost": "0",
     "mintFee": "1000000000000000",
     "mintedBacking": "0",
@@ -327,7 +327,7 @@
     "redeemed": "0",
     "refundCredit": "31355271550782132",
     "required": "1993000000000000",
-    "reward": "184777600000000",
+    "reward": "142978700000000",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -335,7 +335,7 @@
   "13": {
     "action": "set V2",
     "activeCount": "21",
-    "balance": "4743126525490848635",
+    "balance": "4743161042390848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -410,7 +410,7 @@
   "14": {
     "action": "request delivered draw",
     "activeCount": "21",
-    "balance": "4743126525490848635",
+    "balance": "4743161042390848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -476,7 +476,7 @@
     "reconciledDraws": "0",
     "redeemed": "0",
     "refundCredit": "31355271550782132",
-    "required": "3228500000000000",
+    "required": "3248500000000000",
     "reward": "0",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",
@@ -485,7 +485,7 @@
   "15": {
     "action": "FWA delivers Shape",
     "activeCount": "21",
-    "balance": "4743126525490848635",
+    "balance": "4743161042390848635",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -550,7 +550,7 @@
     "reconciledDraws": "0",
     "redeemed": "0",
     "refundCredit": "31355271550782132",
-    "required": "3228500000000000",
+    "required": "3248500000000000",
     "reward": "0",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",
@@ -559,7 +559,7 @@
   "16": {
     "action": "reconcile and replace Shape",
     "activeCount": "21",
-    "balance": "4746526909301697270",
+    "balance": "4746560455881697270",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "14931081690848635",
@@ -614,7 +614,7 @@
       "13244000000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "854419",
+    "measuredGas": "856285",
     "mintCost": "11000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "10000000000000000",
@@ -626,7 +626,7 @@
     "redeemed": "0",
     "refundCredit": "31355271550782132",
     "required": "1993000000000000",
-    "reward": "530697880000000",
+    "reward": "531668200000000",
     "shapeUnits": "1",
     "target": "66902235595591869424607154817945084517941265",
     "version": 2
@@ -634,7 +634,7 @@
   "17": {
     "action": "close",
     "activeCount": "21",
-    "balance": "4746526909301697270",
+    "balance": "4746560455881697270",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -709,7 +709,7 @@
   "18": {
     "action": "redeem Shapes and packs",
     "activeCount": "1",
-    "balance": "4976526909301697270",
+    "balance": "4976560455881697270",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -764,7 +764,7 @@
   "19": {
     "action": "recover curated NFT",
     "activeCount": "0",
-    "balance": "4976526909301697270",
+    "balance": "4976560455881697270",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -874,7 +874,7 @@
     "activeCount": "0",
     "balance": "0",
     "baseFee": "500000000",
-    "claimed": "4976526909301697270",
+    "claimed": "4976560455881697270",
     "collected": "0",
     "creatorCredit": "0",
     "creatorRevenueBps": "400",
@@ -978,7 +978,7 @@
   "3": {
     "action": "setup",
     "activeCount": "6",
-    "balance": "4943464771150000000",
+    "balance": "4943463600200000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1018,7 +1018,7 @@
       "13200500000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "2549507",
+    "measuredGas": "2551636",
     "mintCost": "55000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "50000000000000000",
@@ -1030,7 +1030,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "207525000000000000",
-    "reward": "1535228850000000",
+    "reward": "1536399800000000",
     "shapeUnits": "5",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -1038,7 +1038,7 @@
   "4": {
     "action": "setup",
     "activeCount": "11",
-    "balance": "4886945678750000000",
+    "balance": "4886943336850000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1083,7 +1083,7 @@
       "13200500000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "2520168",
+    "measuredGas": "2522297",
     "mintCost": "55000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "50000000000000000",
@@ -1095,7 +1095,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "150632000000000000",
-    "reward": "1519092400000000",
+    "reward": "1520263350000000",
     "shapeUnits": "5",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -1103,7 +1103,7 @@
   "5": {
     "action": "setup",
     "activeCount": "16",
-    "balance": "4830448048450000000",
+    "balance": "4830444535600000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1153,7 +1153,7 @@
       "13200500000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "2481146",
+    "measuredGas": "2483275",
     "mintCost": "55000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "50000000000000000",
@@ -1165,7 +1165,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "93739000000000000",
-    "reward": "1497630300000000",
+    "reward": "1498801250000000",
     "shapeUnits": "5",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -1173,7 +1173,7 @@
   "6": {
     "action": "setup",
     "activeCount": "19",
-    "balance": "4785132414600000000",
+    "balance": "4785127476150000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1226,7 +1226,7 @@
       "26401000000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "2186607",
+    "measuredGas": "2189199",
     "mintCost": "44000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "40000000000000000",
@@ -1238,7 +1238,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "47866000000000000",
-    "reward": "1315633850000000",
+    "reward": "1317059450000000",
     "shapeUnits": "4",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -1246,7 +1246,7 @@
   "7": {
     "action": "setup",
     "activeCount": "21",
-    "balance": "4739934261850000000",
+    "balance": "4739928152450000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1301,7 +1301,7 @@
       "26401000000000000"
     ],
     "maxReward": "16500000000000000",
-    "measuredGas": "1973005",
+    "measuredGas": "1975134",
     "mintCost": "44000000000000000",
     "mintFee": "1000000000000000",
     "mintedBacking": "40000000000000000",
@@ -1313,7 +1313,7 @@
     "redeemed": "0",
     "refundCredit": "0",
     "required": "1993000000000000",
-    "reward": "1198152750000000",
+    "reward": "1199323700000000",
     "shapeUnits": "4",
     "target": "66902235595591869424607154817945084517941265",
     "version": 1
@@ -1321,7 +1321,7 @@
   "8": {
     "action": "request delivered draw",
     "activeCount": "21",
-    "balance": "4739934261850000000",
+    "balance": "4739928152450000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1387,7 +1387,7 @@
     "reconciledDraws": "0",
     "redeemed": "0",
     "refundCredit": "0",
-    "required": "3228500000000000",
+    "required": "3248500000000000",
     "reward": "0",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",
@@ -1396,7 +1396,7 @@
   "9": {
     "action": "FWA delivers Shape",
     "activeCount": "21",
-    "balance": "4739934261850000000",
+    "balance": "4739928152450000000",
     "baseFee": "500000000",
     "claimed": "0",
     "collected": "0",
@@ -1461,7 +1461,7 @@
     "reconciledDraws": "0",
     "redeemed": "0",
     "refundCredit": "0",
-    "required": "3228500000000000",
+    "required": "3248500000000000",
     "reward": "0",
     "shapeUnits": "0",
     "target": "66902235595591869424607154817945084517941265",

@@ -274,6 +274,7 @@ contract SettingsTest is ForkBase {
         _switch(address(new HostilePolicy(0)));
         buy(buyer, 1);
         vm.roll(vm.getBlockNumber() + 40);
+        settle(); // an expired draw is processed on FWA by anyone, not by upkeep
         uint256 before = balancer.availableKeeperAllowance();
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
@@ -302,6 +303,7 @@ contract SettingsTest is ForkBase {
         _switch(address(new HostilePolicy(3)));
         buy(buyer, 1);
         vm.roll(vm.getBlockNumber() + 40);
+        settle();
         bytes32 expected = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
@@ -322,7 +324,7 @@ contract SettingsTest is ForkBase {
                 uint256 units = k == 4 ? 3 : 1;
                 uint256 draws = k == 3 ? 5 : 1;
                 IKeeperPolicy.Work memory w = IKeeperPolicy.Work(k == 3 ? 6_000_000 : 864_000,
-                    bases[k] + 0.05 gwei, bases[k], draws, k == 3 ? 5 : units, 1, 0);
+                    bases[k] + 0.05 gwei, bases[k], draws, k == 3 ? 5 : units, 1, k == 3 ? 2 : 0);
                 string memory o = string.concat("quote", vm.toString(v * 5 + k));
                 vm.serializeUint(o, "version", v + 1);
                 vm.serializeString(o, "measuredGas", vm.toString(w.measuredGas));

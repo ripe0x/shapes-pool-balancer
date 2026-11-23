@@ -887,3 +887,58 @@ local economics that allow it (`ProtectedRevenueAtomic`). New focused suite: `te
 2. The default bucket stays 0.622 ETH capacity and `floor(0.05 ether / 12)` wei per second refill.
 3. No safeguards against admin updates are added (no delay, cap or per-pool check on factory changes). Creators who
    want values that do not move use `pinEconomics` or `setLocalEconomics`.
+
+## Owner decision: paid processing of stuck draws only (2026-11-23)
+
+Supersedes, for this release, D16's "upkeep processes FWA's queue whenever draws wait" (decision 75 and its
+re-attacks, history kept above). Owner: keepers should be reimbursed "at least for gas" and paid "the same fee on top",
+"as long as it's not going to get abused". Two intermediate directions the same day (never pay processing; remove
+processing from upkeep) were superseded before any commit.
+
+1. **When upkeep processes.** `performUpkeep` and `performUpkeepUnpaid` call FWA's `processAcquisitions` only for
+   stuck draws: the prefix of FWA's queue whose draws have status Ready (randomness cached) and were requested at
+   least `processGraceBlocks` ago (`KeeperPolicyCalls.stuck`), at most two per call. Otherwise they do not call it.
+2. **Why draws get stuck** (FWA `StandardPool._tryProcessCallbackHead`): the randomness callback processes one draw,
+   and only when that draw is the queue head, reserved no staged listing, `callbackGasLimit >= 900k` and gas remains.
+   So a Ready draw behind the head (randomness arriving out of order, common in bursts) and a draw that reserved a
+   staged restock (D16's case) wait for an explicit `processAcquisitions`. Ready draws never expire.
+3. **Grace, from on-chain FWA data.** FWA stores no fulfillment time (only the `RandomnessCached` event), so the grace
+   runs from `acquisitions(id).requestBlock`: processable once `block.number >= requestBlock + grace`. Randomness
+   arrives about three blocks after the request, so the effective wait after Ready is the grace minus about three
+   blocks. No pool storage is added. Two `Economics` fields (factory default, follow/local/pin like the rest):
+   `processGraceBlocks` = 50 (about 10 minutes) and `pausedProcessGraceBlocks` = 10 (about 2 minutes), used while
+   `admissionStatus()` is BUSY or LOW_INVENTORY. Two fields fit once the processing call itself moved into the
+   library (`KeeperPolicyCalls.stuck` and `.process`): PoolBalancer 24,275 bytes (301 spare; 24,027 before).
+   LOW_INVENTORY can also come from missing stock; with a stuck draw waiting, the shorter grace then only processes
+   it sooner.
+4. **Pay.** Gas under the same price rule, `min(transaction gas price, basefee + priorityAllowance, gasPriceCeiling)`,
+   bounded by `processGas` (1.8M) per processed draw, plus one `workFee` per draw processed. The same draw is then
+   reconciled in the same call and earns its reconcile fee as before. `KeeperPolicyV1.quoteReward` and the envelope
+   both count `processedDraws`. Processing that reverts is not paid; processing starved of gas reverts the call
+   (`InsufficientGas`, unchanged). The stuck check itself (a few FWA reads) is ordinary upkeep work and stays in the
+   measured span: excluding it underpaid every reconcile by the cold FWA accesses it moves (KeeperPay at 5 gwei:
+   −0.00002075 ETH, 4,150 gas).
+5. **Not processed by upkeep:** a head still waiting for randomness, and expired draws (Pending past
+   `wordDeadlineBlock` or TimedOut). FWA skips those as Expired with a refund when anyone calls its permissionless
+   `processAcquisitions`; buyers, the FWA app or an operator do that, unpaid by the pool. While such a head waits, the
+   draws behind it count toward the backlog threshold and can pause sales (BUSY).
+6. **Abuse bounds** (tested in `test/ProcessQueue.t.sol`, `test_case14c`): no processing pay before the grace; none
+   for a head that is not Ready; at most two per call; each draw processed once (FWA's queue advances), so repeated
+   calls cannot pay twice; pay is limited by the pool's spending bucket and operating cash like all keeper pay. A
+   keeper buying draws to manufacture stuck work pays FWA's edge and the randomness fee on each, which never come
+   back, against one 0.00002 ETH work fee and gas reimbursed at no more than its own price
+   (`test_manufacturedStuckDrawLosesMoney`; 0.0023874 ETH lost per draw against at most 0.000053 ETH, docs/GAS.md).
+7. **Reserve consequence.** Each unreconciled draw now budgets two work fees (process and reconcile) besides
+   200k + 1.8M + 150k gas: +0.00002 ETH per owed draw. The one-call working buffer is unchanged at the defaults
+   (the listing call is larger).
+
+Tests whose assertions changed because the owner changed the rule: `CommunityConfigAcceptance` case 14c (was
+"processing bounded" over expired draws); expired draws are now processed on FWA by the test as a third party in
+`KeeperPay` (split and calibration), `KeeperEconomics`, `Settings`, `PolicyLifecycle`, `PolicyModelParity`,
+`ReserveCapital`, `ConcurrentRecovery` and `FlowBreakdown` (closeout, randomness outage, curated-proof evidence);
+per-owed-draw literals carry the extra work fee (`ForkBase`, `ReserveCapital`, `ReserveCapitalMatrix`,
+`ConcurrentRecovery`, `FlowBreakdown` policy switch, `shared/planner.test.ts`, `shared/reserve-capital.test.ts`);
+`FlowBreakdown` pay check adds one fee per processed draw; `ProcessQueue` waits for the grace and gains the focused
+grace, paused-grace, waiting-head and abuse tests; `KeeperPay` calibration gains a stuck-draw class. `Balancer`
+`test_reentrantCollectionCannotReenter` no longer asserts delivery: the re-entrant upkeep's added queue reads push
+the hostile hook past FWA's 150k delivery gas (both re-entries still fail).

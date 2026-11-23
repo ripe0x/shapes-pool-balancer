@@ -26,7 +26,7 @@ every surcharge < 2^98, inside a listing's uint104 price record); only `policy` 
 | Field | Type | Initial | Was | Meaning / consumers |
 |---|---|---|---|---|
 | `policy` | address | KeeperPolicyV1 (ctor arg) | per-pool snapshot of `defaultKeeperPolicy` | pricing algorithm; receives the struct with every quote (`quoteReward(w, e)`, `quoteRestock(d, units, baseFee, e)`) |
-| `workFee` | uint64 wei | 0.00002 ETH | V1 constant; envelope 0.00005 | per reconciled draw sequence and per listed Shape unit |
+| `workFee` | uint64 wei | 0.00002 ETH | V1 constant; envelope 0.00005 | per processed stuck draw, per reconciled draw sequence and per listed Shape unit |
 | `maxGas` | uint32 | 3,200,000 | V1 constant; envelope 6M | reimbursable measured gas per call; caps the operation bounds |
 | `overheadGas` | uint32 | **60,000** (recalibrated) | V1 50k; envelope 100k | gas outside the measured span |
 | `gasPriceCeiling` | uint64 wei | 5 gwei | V1; envelope 50 gwei | reimbursed price cap |
@@ -34,6 +34,8 @@ every surcharge < 2^98, inside a listing's uint104 price record); only `policy` 
 | `restockGas` | uint32 | **910,000** (recalibrated) | V1 900k | surcharge gas per Shape; also the fallback schedule |
 | `restockFlat` | uint64 wei | 0.0002 ETH | V1 | surcharge flat per Shape; also the fallback |
 | `baseGas` / `processGas` / `reconcileGas` / `shapeGas` / `prizeGas` | uint32 | 200k / 1.8M / 150k / 700k / 150k | library constants | per-operation gas bounds: paid gas = min(measured, Σ bounds, maxGas); maintenance and reserve budgets |
+| `processGraceBlocks` | uint16 blocks | 50 (~10 min) | new 2026-11-23 | upkeep processes a Ready draw only once `block.number >= requestBlock + grace` (FWA stores no fulfillment time) |
+| `pausedProcessGraceBlocks` | uint16 blocks | 10 (~2 min) | new 2026-11-23 | the same while `admissionStatus()` is BUSY or LOW_INVENTORY |
 
 Derived, not stored (getters on the pool, from the effective economics):
 - maximum keeper payment `policyMaxReward() = (maxGas + overheadGas) * gasPriceCeiling + 10 * workFee` = **0.0165 ETH**
@@ -150,7 +152,7 @@ factory setters over.
 |---|---|---|
 | `MAX_OPS` (shape units/upkeep) | 5 | 6 units + 5 reconciles measured 3.13M vs the 3.2M lowest allowed `maxGas`; 5 keeps margin. Raising it risks exceeding the reimbursable-gas envelope and underpaying keepers. |
 | `MAX_RESTOCK_SIZES` | 4 | each size is its own mint call (~0.5M); 6 sizes measured 3.19M vs 3.2M cap. |
-| `MAX_PROCESS` | 2 | `PROCESS_STARVED_GAS` (400k) griefing bound was derived for 2 processed draws + FWA's 6-listing reservations (~3.3M). Changing it invalidates the starvation proof. |
+| stuck draws processed per call (`KeeperPolicyCalls.stuck`, was `MAX_PROCESS`) | 2 | `PROCESS_STARVED_GAS` (400k) griefing bound was derived for 2 processed draws + FWA's 6-listing reservations (~3.3M). Changing it invalidates the starvation proof. Only Ready draws past the processing grace count (owner decision 2026-11-23). |
 | `MAX_RECONCILE` | 5 | one FWA batch (~33k each); keeps worst upkeep under the pay cap. |
 | curated batch | 20 | bounds the 100k-gas purchase-hook witness scan and `listNFTs` gas. |
 | `MAX_BATCH` | 5 | FWA `maxAcquisitionsPerTx`, verified against the FWA factory at creation. Protocol identity, not tunable. |

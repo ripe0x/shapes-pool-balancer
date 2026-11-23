@@ -5,7 +5,7 @@ export { maxPaymentOf, maxSurchargeOf, type Economics };
 
 const lesser = (a: bigint, b: bigint) => (a < b ? a : b);
 
-const ECONOMICS = '(address policy,uint64 workFee,uint32 maxGas,uint32 overheadGas,uint64 gasPriceCeiling,uint64 priorityAllowance,uint32 restockGas,uint64 restockFlat,uint32 baseGas,uint32 processGas,uint32 reconcileGas,uint32 shapeGas,uint32 prizeGas)';
+const ECONOMICS = '(address policy,uint64 workFee,uint32 maxGas,uint32 overheadGas,uint64 gasPriceCeiling,uint64 priorityAllowance,uint32 restockGas,uint64 restockFlat,uint32 baseGas,uint32 processGas,uint32 reconcileGas,uint32 shapeGas,uint32 prizeGas,uint16 processGraceBlocks,uint16 pausedProcessGraceBlocks)';
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
   'function version() view returns (uint256)',

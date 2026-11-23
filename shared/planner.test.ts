@@ -170,8 +170,9 @@ describe('planner', () => {
     const fee = E / 1000n, baseFee = 500_000_000n;
     expect(requiredReserveAt(ten, none, fee, 0, V1_ECONOMICS, baseFee)).toBe(115_779_000_000_000_000n);
     expect(requiredReserveAt(ten, ten, fee, 0, V1_ECONOMICS, baseFee)).toBe(1_993_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee)).toBe(4_464_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee, false)).toBe(2_471_000_000_000_000n);
+    // Each owed draw: (2.15M + 60k) gas at 0.55 gwei plus a processing and a reconciling work fee (since 2026-11-23).
+    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee)).toBe(4_504_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee, false)).toBe(2_511_000_000_000_000n);
     expect(requiredReserveAt(ten, none, fee, 2, undefined, baseFee)).toBe(110_000_000_000_000_000n);
     expect(evaluate(ten, { ...inputs, paidUpkeepEnabled: false }).requiredReserve).toBe(0n);
     const twenty = ten.map((n) => 2 * n);
@@ -244,9 +245,10 @@ describe('planner', () => {
 
   it('separates maintenance funding from a 100 ETH inventory deficit', () => {
     const baseFee = 500_000_000n;
-    // Two outstanding draws at (2.15M + 60k) gas plus the larger operating call at (3.2M + 60k) gas, 0.55 gwei.
+    // Two outstanding draws at (2.15M + 60k) gas and two work fees each, plus the larger operating call at
+    // (3.2M + 60k) gas, 0.55 gwei.
     const high = maintenanceBudgetAt(2, V1_ECONOMICS, baseFee).total;
-    expect(high).toBe(4_464_000_000_000_000n);
+    expect(high).toBe(4_504_000_000_000_000n);
     expect(maintenanceBudgetAt(2, { ...V1_ECONOMICS, workFee: 0n }, baseFee).total).toBe(4_224_000_000_000_000n);
     expect(maintenanceBudgetAt(2, undefined, baseFee).total).toBe(0n);
     const target = DENOMS.map((_, d) => d === 8 ? 1 : 0);

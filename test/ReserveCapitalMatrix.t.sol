@@ -124,7 +124,7 @@ contract ReserveCapitalMatrixTest is ForkBase {
         r.owed = 2;
         // Closed: only two actual outstanding draw sequences, despite three missing inventory prizes.
         (uint256 closed, uint256 mintFee) = probe.quote(r, econ, 0.5 gwei, 0.55 gwei);
-        assertEq(closed, 0.002471 ether); // two owed draws at (2.15M + 60k) * 0.55 gwei + 0.00002
+        assertEq(closed, 0.002511 ether); // two owed draws at (2.15M + 60k) * 0.55 gwei + two work fees (process, reconcile)
         // Paid disabled: actual missing inventory cost remains, while no compensation budget is locked.
         r.enabled = true;
         (uint256 disabled,) = probe.quote(r, none, 0.5 gwei, 0.55 gwei);

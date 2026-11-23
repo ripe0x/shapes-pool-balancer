@@ -11,7 +11,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 1 | CLOSED | Closed by creator | `open()` |
 | 2 | SETTING_UP | Initial stocking or reopening setup is unfinished | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
 | 3 | NO_CURATED | Only while `curatedRequired`: no curated listing remains in local tracking | list a curated NFT, or `setCuratedRequired(false)`; then complete any stocking |
-| 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing; anyone may call FWA `processAcquisitions(5)` |
+| 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing (upkeep processes Ready draws after 10 blocks while BUSY); anyone may call FWA `processAcquisitions(5)` |
 | 5 | (retired) | Not returned by this release. A Shapes mint fee above `mintFeeCap` stops minting in upkeep; listed prizes keep selling until LOW_INVENTORY | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Prospective Shape-weight lower bound is below 70% of target | process/reconcile existing draws; inspect actual staging and liquidity before adding ETH |
 | 7 | CURATED_PROOF_REQUIRED | Only while `curatedRequired`: an active curated listing has not been proven | activate staged curated inventory if necessary, then anyone calls `refreshCuratedWitness(listingId)` |
@@ -19,7 +19,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 ## Keeper down
 
 New purchases pause once prize weight falls below 70% of the target (status 6) or 5 draws are unsettled (status 4).
-Outstanding draws, refunds and NFT claims retain FWA's rules. Ready or expired draws can require explicit processing; upkeep processes the queue. Anyone, including the creator from the dashboard, can call `performUpkeepUnpaid()`, even if the factory restricts paid keepers. Run a second keeper with the same factory address; duplicate submissions just
+Outstanding draws, refunds and NFT claims retain FWA's rules. Ready or expired draws can require explicit processing (see "Stuck draws"). Anyone, including the creator from the dashboard, can call `performUpkeepUnpaid()`, even if the factory restricts paid keepers. Run a second keeper with the same factory address; duplicate submissions just
 revert `NoUpkeepNeeded` in simulation and are never sent.
 
 Shape admission uses the [operation-aware bound](SPEC.md): the old unreconciled allowance and actual nonselectable count receive credit only for FWA's previously reserved prefix plus the next six guaranteed activations. It preserves the existing busy threshold and permits purchases without keeper maintenance between every batch. A single bounded Shape/Pack staging-count estimate prevents unrelated curated staging from being charged as missing Shapes; its zero fast path preserves the original allowance.
@@ -29,6 +29,20 @@ Curated presence is checked separately against current FWA inventory. A cached l
 If actual staging remains after all draws settle, the dashboard's bounded activation action calls the existing public FWA `activateListings(20)`; repeat while needed. This creates no Balancer compensation and spends only caller gas. Inspect actual active/staged records: a tracked count is not a proof that all records are selectable or that the target is complete. An operating deficit may instead need existing proceeds, Add ETH, a smaller target or closing. Do not add capital to cure a mere activation backlog.
 
 If no curated item is active, let pending requests become ready or expire and process FWA's queue, activate the FIFO prefix through a curated item, then refresh its proof. The prefix can include arbitrarily many curated listings, so there is no fixed global activation-call bound. Anyone can perform these recovery calls; neither the keeper nor an automatic browser job is assumed to do so. Refresh alone does not cure a separate low-Shape-weight or funding condition.
+
+## Stuck draws
+
+FWA's randomness callback processes a draw only when it is the queue head and reserved no staged listing, so a Ready
+draw behind the head, or one that reserved a staged restock, waits for an explicit `processAcquisitions`; Ready draws
+never expire. Upkeep processes such a draw only after `processGraceBlocks` (default 50, about 10 minutes) from its
+request block, or `pausedProcessGraceBlocks` (default 10) while sales are paused BUSY or LOW_INVENTORY, at most two per
+call. FWA stores no fulfillment time; randomness arrives about three blocks after the request. The keeper is paid the
+gas at the usual price rule plus one work fee per processed draw, besides the reconcile fee. Before the grace nobody is
+paid for it; buyers or the FWA app usually process their own draw first.
+
+Upkeep never processes a head still waiting for randomness or an expired draw. Expired draws (no randomness by the
+word deadline) are skipped with a refund when anyone calls FWA's `processAcquisitions(5)` on the pool; that caller
+pays the gas. While they wait, they count toward the backlog threshold and can pause sales.
 
 ## Dashboard results and transaction confirmation
 
@@ -155,7 +169,8 @@ show when a fee makes the configuration uneconomic.
 ## Recover all capital
 
 1. `close()`.
-2. Allow randomness or expiry, then run `performUpkeepUnpaid()` until outstanding draws are processed and reconciled.
+2. Allow randomness or expiry. Process expired draws with FWA's `processAcquisitions(5)` (upkeep processes only Ready
+   draws past the grace), then run `performUpkeepUnpaid()` until outstanding draws are reconciled.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.

@@ -36,7 +36,7 @@ contract PolicyGasOverheadTest is Test {
         KeeperPolicyV1 policy = new KeeperPolicyV1();
         // The V1 schedule at 50k overhead, so the independent inline amount below is fixed.
         IKeeperPolicy.Economics memory e = IKeeperPolicy.Economics(address(policy), 0.00002 ether, 3_200_000, 50_000,
-            5 gwei, 0.05 gwei, 900_000, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000);
+            5 gwei, 0.05 gwei, 900_000, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000, 50, 10);
         PolicyQuoteGasMeter meter = new PolicyQuoteGasMeter();
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(864_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
         vm.cool(address(policy));

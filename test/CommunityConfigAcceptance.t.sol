@@ -1570,25 +1570,45 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(keeper.balance - k0, 14 * e.workFee, "seven draws and seven Shapes paid once each");
     }
 
-    function test_case14c_processingBounded() public {
+    /// Owner decision 2026-11-23 (replaces "processing bounded", which processed any waiting draw): upkeep processes
+    /// only stuck draws, Ready draws at the head of FWA's queue requested at least the grace ago, at most two per call,
+    /// each paid one work fee besides its reconcile. Expired draws are left to FWA's permissionless processing.
+    function test_case14c_stuckDrawsProcessedAfterGrace_boundedAndPaidOnce() public {
         IKeeperPolicy.Economics memory e = _feeOnlyEconomics();
-        PoolBalancer b = _create(creator, 144, 10, 1 ether, false, 0);
+        PoolBalancer b = _create(creator, 144, 20, 1 ether, false, 0);
         _use(b);
         _fillAll(b);
-        uint256 firstExpired = buyOnePerBlock(buyer, 3);
-        vm.roll(firstExpired + 2);
+        uint256 t0 = vm.getBlockNumber();
+        uint256[] memory ids = buy(buyer, 4);
+        for (uint256 i = 4; i > 0; --i) fulfill(ids[i - 1], 0); // last to first: FWA's callback processes the head only
+        assertEq(pool.lastIssuedSequence() + 1 - pool.nextSequenceToProcess(), 3, "three Ready draws stuck");
+        assertEq(b.admissionStatus(), 0, "sales open: the 50-block grace applies");
         uint256 k0 = keeper.balance;
-        Run memory r = _run(b, true);
-        assertTrue(r.ok);
-        assertEq(r.processed, 2, "at most two draws processed per call");
-        assertEq(r.reconciled, 2);
-        assertEq(r.listed, 0);
-        r = _run(b, true);
-        assertEq(r.processed, 1);
-        assertEq(r.reconciled, 1);
-        r = _run(b, true);
-        assertFalse(r.ok);
-        assertEq(keeper.balance - k0, 3 * e.workFee, "each draw paid once");
+        uint256 units;
+        uint256 work;
+        uint256 processed;
+        for (uint256 i; i < 10; ++i) {
+            Run memory r = _run(b, true);
+            if (!r.ok) break;
+            assertEq(r.processed, 0, "before the grace: nothing processed");
+            assertEq(r.paid, (r.reconciled + r.listed) * e.workFee);
+            work += r.reconciled + r.listed;
+        }
+        vm.roll(t0 + 50);
+        for (uint256 i; i < 10; ++i) {
+            Run memory r = _run(b, true);
+            if (!r.ok) break;
+            assertLe(r.processed, 2, "at most two draws processed per call");
+            if (r.processed != 0) assertEq(r.listed, 0, "a call that processes lists nothing");
+            assertEq(r.paid, (r.processed + r.reconciled + r.listed) * e.workFee, "one fee per processed, reconciled, listed");
+            processed += r.processed;
+            units += r.listed;
+            work += r.processed + r.reconciled + r.listed;
+        }
+        assertEq(processed, 3, "every stuck draw processed once");
+        assertEq(b.reconciledSequence(), pool.lastIssuedSequence(), "and reconciled once");
+        assertEq(keeper.balance - k0, work * e.workFee, "no duplicate pay: 3 processed + 4 reconciled + listed Shapes");
+        assertGt(units, 0);
     }
 
     /*//////////////////////////////////////////////////////////////

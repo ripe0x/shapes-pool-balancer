@@ -225,7 +225,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
         (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(_econWith(address(v2)));
-        assertEq(required, _workingBufferAt(0.55 gwei) + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 0.00002 ether,
+        assertEq(required, _workingBufferAt(0.55 gwei) + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 0.00004 ether,
             "one outstanding request and one operating call at 0.5 gwei");
         assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no top-up");
         vm.prank(creator); balancer.setKeeperPolicy(address(v2));
@@ -521,8 +521,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         if (r < minPriceToBackingBps) minPriceToBackingBps = r;
     }
 
-    /// @dev D16 (launch audit B, S1): only players, the randomness service and keepers act; the harness never calls FWA's
-    ///      processAcquisitions. Keepers act between every two events, as a keeper polling every 12 seconds does. Each
+    /// @dev D16 (launch audit B, S1; since 2026-11-23 upkeep processes only Ready draws past the processing grace): only
+    ///      players, the randomness service and keepers act; the harness never calls FWA's processAcquisitions. Keepers act between every two events, as a keeper polling every 12 seconds does. Each
     ///      step three players overlap: A and B buy, A's word arrives, the keeper reconciles A and restocks its prize
     ///      (staged, since B is in flight), C buys and reserves that staged restock, which costs C FWA's randomness fast
     ///      path; then B's and C's words arrive and keepers run.
@@ -707,7 +707,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             }
             if ((i + 1) % PER_DAY != 0) continue;
             vm.roll(vm.getBlockNumber() + timeout + 1);
-            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+            _processOnFwa(); // expired draws: upkeep processes only Ready stuck draws (owner decision 2026-11-23)
+            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass();
             assembly ("memory-safe") {
                 mstore(late, nLate)
             }
@@ -721,7 +722,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertGt(expired, 0, "FWA expired draws through its timeout");
         assertGt(credit, 0, "the player holds refund credit");
         for (uint256 k; k < nLate; ++k) _deliver(late[k], uint256(keccak256(abi.encode(SEED, "late", k))));
-        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _keeperPass();
         vm.prank(buyer, buyer);
         refundsWithdrawn += IPoolMore(address(pool)).withdrawAcquisitionRefund();
         _service();
@@ -768,10 +769,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 startBlock = vm.getBlockNumber();
         _deliver(ids[0], _word(90));
         _deliver(ids[1], _word(91));
-        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _keeperPass();
         _account(ids);
         vm.roll(vm.getBlockNumber() + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
-        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _processOnFwa(); // expired draws: upkeep processes only Ready stuck draws (owner decision 2026-11-23)
+        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass();
         _account(ids);
         assertEq(pool.unsettledAcquisitionCount(), 0, "every pending draw settled or timed out");
         x[5] = Fact("blocks_until_closeout_possible", vm.getBlockNumber() - startBlock);
@@ -856,6 +858,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         upkeep(); upkeep(); upkeep();
         uint256 stagedCurated = listCurated(2, NFT_VALUE);
         vm.roll(block.number + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
+        settle(); // the expired draw is processed on FWA by anyone
         upkeep();
         vm.prank(creator);
         balancer.withdrawCurated(originalCurated, creator);
@@ -1365,6 +1368,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         ++daysRun;
     }
 
+    /// @dev A third party (a player, the FWA app or an operator) processes expired draws on FWA, paying its own gas.
+    function _processOnFwa() internal {
+        vm.prank(address(0xBEEF), address(0xBEEF));
+        pool.processAcquisitions(5);
+    }
+
     /// @dev True when keepers ran until nothing was left; false when the next call would not have paid for its gas.
     function _keeperPass() internal returns (bool) {
         for (uint256 i; i < 40; ++i) {
@@ -1394,6 +1403,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 who0 = who.balance;
         // a keeper transaction starts with every account and slot cold
         bytes32 uh2 = balancer.settingsHash();
+        uint64 next0 = pool.nextSequenceToProcess();
         _coolKeeperTx();
         vm.prank(who, who);
         vm.recordLogs();
@@ -1414,7 +1424,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             assertEq(who.balance - who0, reward, "the caller received the reward");
             ++upkeepsRun;
             if (ready != 0) ++upkeepsWithQueueReady;
-            if (ready > 2) ++upkeepsWithQueueReadyOver2; // the Balancer processes at most 2 per call (MAX_PROCESS)
+            if (ready > 2) ++upkeepsWithQueueReadyOver2; // the Balancer processes at most 2 stuck draws per call
             if (who == keeper) {
                 if (setupWork) keeperPaidSetup += reward;
                 else keeperPaidPlay += reward;
@@ -1435,7 +1445,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             if (units > maxUnits) maxUnits = units;
             if (who == keeper) {
                 uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
-                uint256 service = (rec + units) * 0.00002 ether;
+                uint256 service = (pool.nextSequenceToProcess() - next0 + rec + units) * 0.00002 ether;
                 uint256 overhead = V1_OVERHEAD;
                 if (alternativePolicy) {
                     price = feeNow + 0.02 gwei;

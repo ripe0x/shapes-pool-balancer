@@ -72,6 +72,10 @@ contract ConcurrentRecoveryTest is ForkBase {
         assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 2 * fee);
         _assertFwaCash();
         vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        // Owner decision 2026-11-23: upkeep processes only Ready stuck draws, so a third party processes the two expired
+        // draws on FWA (refund credit is FWA's) and upkeep reconciles them. Before, upkeep processed them itself.
+        vm.prank(address(0xBEEF), address(0xBEEF));
+        pool.processAcquisitions(5);
         uint256 before = vm.snapshotState();
         uint256 poolCash = address(pool).balance;
         uint256 creatorFund = address(balancer).balance;
@@ -90,15 +94,17 @@ contract ConcurrentRecoveryTest is ForkBase {
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.PolicyUnavailable.selector);
         balancer.performUpkeep(expected, 0, 0);
-        assertEq(pool.unsettledAcquisitionCount(), 2, "failed paid operation reverted all FWA processing atomically");
-        assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 2 * fee);
+        assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2, "failed paid operation reconciled nothing");
+        assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 0, "FWA already moved escrow to refund credit");
+        assertEq(IConcurrentFwaCash(address(pool)).acquisitionRefundCredit(buyer), fee);
         policy.setBroken(false);
         policy.setMaximum(true);
         vm.prank(creator);
         balancer.close();
         _claimAll();
-        // Two owed draws (2 x 0.0012355) now exceed the remaining one-call buffer, so nothing more is claimable.
-        assertEq(balancer.requiredReserve(), 0.002471 ether, "only actual pending work's current-fee hold remains");
+        // Two owed draws (2 x 0.0012555: process and reconcile gas plus two work fees each) now exceed the remaining
+        // one-call buffer, so nothing more is claimable.
+        assertEq(balancer.requiredReserve(), 0.002511 ether, "only actual pending work's current-fee hold remains");
         assertEq(address(balancer).balance, 0.001993 ether);
         assertEq(balancer.withdrawableSurplus(), 0);
         uint256 base = 0.5 gwei;
@@ -126,11 +132,11 @@ contract ConcurrentRecoveryTest is ForkBase {
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.PaymentUnavailable.selector);
         balancer.performUpkeep(expected, 0, 0);
-        assertEq(pool.unsettledAcquisitionCount(), 2);
+        assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
         assertEq(address(pool).balance, poolCash);
         uint256 priorPaid = paid;
         balancer.performUpkeepUnpaid();
-        assertEq(pool.unsettledAcquisitionCount(), 0);
+        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
         assertEq(paid, priorPaid, "public unpaid recovery takes no keeper reward");
         (,,,, uint8 firstStatus,) = pool.acquisitions(first);
         (,,,, uint8 secondStatus,) = pool.acquisitions(second);

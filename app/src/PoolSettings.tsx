@@ -165,7 +165,7 @@ const SOURCE_NOTE = [
   'Every economic value stays as pinned until you follow the factory again. Factory changes do not apply to this pool.',
 ];
 
-type Unit = 'address' | 'eth' | 'gwei' | 'gas';
+type Unit = 'address' | 'eth' | 'gwei' | 'gas' | 'blocks';
 const FIELDS: readonly [keyof Economics & string, string, Unit][] = [
   ['policy', 'Pricing policy', 'address'],
   ['workFee', 'Work fee per reconciled draw and listed Shape', 'eth'],
@@ -180,19 +180,22 @@ const FIELDS: readonly [keyof Economics & string, string, Unit][] = [
   ['reconcileGas', 'Gas bound per reconciled draw', 'gas'],
   ['shapeGas', 'Gas bound per listed Shape', 'gas'],
   ['prizeGas', 'Gas bound per listed prize', 'gas'],
+  ['processGraceBlocks', 'Wait before processing a stuck draw', 'blocks'],
+  ['pausedProcessGraceBlocks', 'Wait before processing a stuck draw while sales are paused', 'blocks'],
 ];
 const showField = (e: Economics, key: keyof Economics, unit: Unit) => {
   const v = e[key];
   return unit === 'eth' ? formatEther(v as bigint) : unit === 'gwei' ? formatGwei(v as bigint) : String(v);
 };
 const display = (e: Economics, key: keyof Economics, unit: Unit) =>
-  unit === 'address' ? short(String(e[key])) : unit === 'gas' ? `${num(Number(e[key]))} gas` : unit === 'eth' ? ethx(e[key] as bigint) : gweix(e[key] as bigint);
+  unit === 'address' ? short(String(e[key])) : unit === 'gas' ? `${num(Number(e[key]))} gas` : unit === 'blocks' ? `${num(Number(e[key]))} blocks` : unit === 'eth' ? ethx(e[key] as bigint) : gweix(e[key] as bigint);
 /** A field typed in its unit, within its on-chain width; undefined when invalid. */
 function parseField(text: string, unit: Unit): string | bigint | number | undefined {
   const s = text.trim();
   try {
     if (unit === 'address') return /^0x[0-9a-fA-F]{40}$/.test(s) ? s : undefined;
     if (unit === 'gas') return /^\d+$/.test(s) && BigInt(s) <= U32 ? Number(s) : undefined;
+    if (unit === 'blocks') return /^\d+$/.test(s) && BigInt(s) <= 65_535n ? Number(s) : undefined;
     if (!/^\d*\.?\d+$/.test(s)) return undefined;
     const v = unit === 'eth' ? parseEther(s) : parseGwei(s);
     return v <= U64 ? v : undefined;
@@ -284,7 +287,7 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
       <div className="field">
         <input id={`econ-${key}`} className={unit === 'address' ? 'mono' : undefined} list={unit === 'address' ? 'known-policies' : undefined} inputMode={unit === 'address' ? undefined : 'decimal'}
           spellCheck={false} autoComplete="off" value={text[key]} onChange={(ev) => setText({ ...text, [key]: ev.target.value })} />
-        {unit !== 'address' && <span className="u">{unit === 'eth' ? 'ETH' : unit === 'gwei' ? 'GWEI' : 'GAS'}</span>}
+        {unit !== 'address' && <span className="u">{unit === 'eth' ? 'ETH' : unit === 'gwei' ? 'GWEI' : unit === 'blocks' ? 'BLOCKS' : 'GAS'}</span>}
       </div>
     </div>)}
     {invalid.length > 0 && <p className="note error" style={{ marginTop: 12 }}>Check: {invalid.join(', ')}.</p>}

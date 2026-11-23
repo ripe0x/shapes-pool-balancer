@@ -53,7 +53,8 @@ it('reports failed policy economics as unavailable instead of substituting V1', 
   const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
   const economics = { policy: '0x0000000000000000000000000000000000000001' as Address, workFee: 20_000_000_000_000n, maxGas: 3_200_000,
     overheadGas: 60_000, gasPriceCeiling: 5_000_000_000n, priorityAllowance: 50_000_000n, restockGas: 910_000, restockFlat: 200_000_000_000_000n,
-    baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000 };
+    baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000,
+    processGraceBlocks: 50, pausedProcessGraceBlocks: 10 };
   await expect(policyEconomics(pub, economics, undefined, snapshot)).rejects.toThrow('RPC unavailable');
 });
 

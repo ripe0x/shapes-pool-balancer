@@ -414,7 +414,11 @@ contract BalancerTest is ForkBase {
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], wordForSlot(slot));
         settle();
-        assertEq(evil.ownerOf(1), buyer);
+        assertGt(evil.attempts(), 0, "the delivery transfer tried to re-enter");
+        assertFalse(evil.reentered(), "neither re-entry succeeded");
+        // Delivery itself is not asserted: since 2026-11-23 the re-entrant upkeep also reads FWA's queue head, and this
+        // hook's two re-entry attempts measured over FWA's 150k delivery gas, so FWA quarantines the NFT (a collection
+        // whose transfer needs more than that is SECURITY G-1). Before, they fitted and the NFT reached the buyer.
         upkeep();
         assertTrue(balancer.canPurchase(buyer));
     }

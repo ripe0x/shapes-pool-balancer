@@ -146,9 +146,10 @@ contract ReserveCapitalTest is ForkBase {
         buy(buyer,5);
         assertEq(pool.unsettledAcquisitionCount(),9,"one pre-batch gate check admits five after four unsettled");
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),10,"one finalized draw also awaits reconciliation");
-        assertEq(balancer.requiredReserve(),0.014348 ether,"ten actual owed bounds .0012355 plus one call buffer .001993");
+        assertEq(balancer.requiredReserve(),0.014548 ether,"ten actual owed bounds .0012555 plus one call buffer .001993");
         assertEq(balancer.withdrawableSurplus(),0);
         vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        while (pool.unsettledAcquisitionCount() != 0) settle(); // expired draws are processed on FWA by anyone
         while (balancer.reconciledSequence()<pool.lastIssuedSequence()) _paid();
         assertEq(balancer.reconciledSequence(),10);
         assertEq(pool.unsettledAcquisitionCount(),0);
@@ -169,6 +170,7 @@ contract ReserveCapitalTest is ForkBase {
         buy(buyer,5);
         assertLt(address(balancer).balance,balancer.requiredReserve());
         vm.roll(vm.getBlockNumber()+ITimeout(address(pool)).selectionTimeoutBlocks()+1);
+        settle();
         while(balancer.reconciledSequence()<pool.lastIssuedSequence()) _paid();
         assertEq(balancer.reconciledSequence(),5);
         assertEq(pool.ownerProceeds(),0,"expired draws create no operating proceeds");
@@ -255,7 +257,8 @@ contract ReserveCapitalTest is ForkBase {
     function test_feeAndCapSensitiveBoundForActualWork() public {
         IKeeperPolicy.Economics memory e = factory.economics();
         uint256 price = 0.55 gwei;
-        assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,1,1,0,0),(2_150_000 + V1_OVERHEAD) * price + 0.00002 ether);
+        assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,1,1,0,0),(2_150_000 + V1_OVERHEAD) * price + 0.00004 ether,
+            "one processed and one reconciled draw: two work fees");
         assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,0,1,1),(1_050_000 + V1_OVERHEAD) * price + 0.00002 ether);
         assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,5,5,5),(3_200_000 + V1_OVERHEAD) * price + 0.0002 ether);
         IKeeperPolicy.Economics memory none;
@@ -277,6 +280,8 @@ contract ReserveCapitalTest is ForkBase {
         vm.serializeString(key,"reconcileGas",vm.toString(e.reconcileGas));
         vm.serializeString(key,"shapeGas",vm.toString(e.shapeGas));
         vm.serializeString(key,"prizeGas",vm.toString(e.prizeGas));
+        vm.serializeString(key,"processGraceBlocks",vm.toString(e.processGraceBlocks));
+        vm.serializeString(key,"pausedProcessGraceBlocks",vm.toString(e.pausedProcessGraceBlocks));
         vm.serializeString(key,"priorityAllowance",vm.toString(e.priorityAllowance));
         vm.serializeString(key,"gasPriceCeiling",vm.toString(e.gasPriceCeiling));
         vm.serializeString(key,"workFee",vm.toString(e.workFee));

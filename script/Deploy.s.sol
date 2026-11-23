@@ -158,10 +158,11 @@ contract Deploy is Script {
     /// @notice The reviewed initial factory economics (docs/CONFIG-INVENTORY.md section 0), stated independently of the
     ///         factory constructor so the postflight catches a constructor that drifts from the deployment plan.
     ///         Field order: policy, workFee, maxGas, overheadGas, gasPriceCeiling, priorityAllowance, restockGas,
-    ///         restockFlat, baseGas, processGas, reconcileGas, shapeGas, prizeGas.
+    ///         restockFlat, baseGas, processGas, reconcileGas, shapeGas, prizeGas, processGraceBlocks,
+    ///         pausedProcessGraceBlocks.
     function initialEconomics(address policy) public pure returns (IKeeperPolicy.Economics memory) {
         return IKeeperPolicy.Economics(policy, 0.00002 ether, 3_200_000, 60_000, 5 gwei, 0.05 gwei, 910_000, 0.0002 ether,
-            200_000, 1_800_000, 150_000, 700_000, 150_000);
+            200_000, 1_800_000, 150_000, 700_000, 150_000, 50, 10);
     }
 
     /// @dev Reuse mode: every reused dependency still holds its recorded code and relationships. A matching code hash

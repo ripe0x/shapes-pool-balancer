@@ -22,6 +22,8 @@ export const EXPECTED_REVERTS = new Set(['NoUpkeepNeeded', 'KeeperNotApproved', 
  *  restock to the call (+536k measured for one draw), so 30% over a small estimate can run out of gas. The heaviest
  *  upkeeps measure around 3.2M on historical forks: 5 reconciles + 5 Shape units in 4 sizes, and two processed draws that
  *  each reserved FWA's maximum six listings + 5 reconciles, 2.98M to 3.22M (a call that processes skips restocking).
+ *  Upkeep processes only Ready draws past the economics' processing grace; before it the simulated reward simply
+ *  carries no processing pay, and this keeper never calls FWA's processAcquisitions itself.
  *  Processing that fails
  *  for want of gas reverts the whole upkeep (InsufficientGas), so a limit too small to process never succeeds; this
  *  floor adds headroom for Shapes mint gas varying by block. Only gas used is billed. */

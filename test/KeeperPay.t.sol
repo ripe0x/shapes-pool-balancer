@@ -164,33 +164,32 @@ contract KeeperPayTest is ForkBase {
 
     /// FWA processing is permissionless, so anyone can process a ready batch one draw at a time and reconcile after
     /// each: one batch becomes up to five paid calls (audit rc-ec5259c finding 6). The bound is one paid call per
-    /// processed draw, not one per batch. The splitter needs no draws of its own; players bought these.
+    /// reconciled draw, not one per batch. The splitter needs no draws of its own; players bought these. Expired draws
+    /// are never processed by upkeep (owner decision 2026-11-23: only Ready stuck draws), so the splitter processes them
+    /// on FWA; before that decision upkeep processed them two per call.
     function test_splitCallsArePaidOncePerProcessedDraw() public {
         _open(0.5 gwei);
         fillUp();
         // Four draws: on this ten-Shape board the fill gate refuses a fifth single draw while four are unreconciled.
         uint256 firstExpired = buyOnePerBlock(buyer, 4);
         uint256 snap = vm.snapshotState();
-        // Fewest calls: all four expired at once. Upkeep processes at most MAX_PROCESS (2) per call: 2, 2.
+        // Fewest calls: all four expired at once, processed on FWA, then one call reconciles all four.
         vm.roll(firstExpired + 3);
-        uint256 batched;
-        int256 batchedPnl;
-        for (uint256 i; i < 2; ++i) {
-            (uint256 reward,, int256 pnl) = _paid();
-            batched += reward;
-            batchedPnl += pnl;
-        }
-        assertEq(balancer.reconciledSequence(), 4, "two calls reconcile all four");
+        pool.processAcquisitions(4);
+        (uint256 batched,, int256 batchedPnl) = _paid();
+        assertEq(balancer.reconciledSequence(), 4, "one call reconciles all four");
         _noWork();
         vm.revertToState(snap);
 
-        // Most calls: one draw expires per block, so each call processes and reconciles exactly one.
+        // Most calls: one draw expires per block and is processed on FWA, so each call reconciles exactly one.
         uint256 split;
         int256 splitPnl;
         for (uint256 i; i < 4; ++i) {
             vm.roll(firstExpired + i - 1);
             _noWork(); // the head is neither ready nor expired: nothing to be paid for
             vm.roll(firstExpired + i);
+            _noWork(); // expired but not Ready: upkeep leaves it to FWA's permissionless processing
+            pool.processAcquisitions(1);
             (uint256 reward, uint256 measured, int256 pnl) = _paid();
             splitPnl += pnl;
             assertEq(balancer.reconciledSequence(), i + 1, "each paid call advances reconciliation");
@@ -199,8 +198,8 @@ contract KeeperPayTest is ForkBase {
             split += reward;
         }
         _noWork();
-        assertLt(split - batched, 2 * 0.0003 ether, "splitting costs the creator at most one small reward per extra call");
-        emit log_named_decimal_uint("paid for two batched calls", batched, 18);
+        assertLt(split - batched, 3 * 0.0003 ether, "splitting costs the creator at most one small reward per extra call");
+        emit log_named_decimal_uint("paid for one batched call", batched, 18);
         emit log_named_decimal_uint("paid for four split calls", split, 18);
         emit log_named_decimal_int("keeper net from batched upkeep", batchedPnl, 18);
         emit log_named_decimal_int("keeper net from split upkeep", splitPnl, 18);
@@ -320,7 +319,8 @@ contract KeeperPayTest is ForkBase {
         worst = _max(worst, _calibrate("reconcile 1 timed-out draw"));
         fulfill(late[0], 1); // the service delivers the word it owed; until then FWA refuses a batch of five
         late = _timeOut(1);
-        worst = _max(worst, _calibrate("process and reconcile 1 timed-out draw"));
+        pool.processAcquisitions(1); // expired draws are processed on FWA by anyone, not by upkeep
+        worst = _max(worst, _calibrate("reconcile 1 timed-out draw processed on FWA"));
         fulfill(late[0], 1);
         uint256[] memory ids = buy(buyer, 1);
         (,,,,,, uint256 slot,) = pool.listings(nftListing);
@@ -332,6 +332,17 @@ contract KeeperPayTest is ForkBase {
         worst = _max(worst, _calibrate("reconcile and replace 1 Shape"));
         _drawShapes(5);
         worst = _max(worst, _calibrate("reconcile and replace 5 Shapes"));
+        fillUp();
+        uint256 head = buy(buyer, 1)[0];
+        uint256 behind = buy(buyer, 1)[0];
+        fulfill(behind, 7); // not the queue head: FWA's callback leaves it Ready (stuck)
+        fulfill(head, 7); // the head: FWA's callback processes it alone
+        assertEq(pool.nextSequenceToProcess(), pool.lastIssuedSequence(), "one stuck Ready draw");
+        vm.roll(vm.getBlockNumber() + 50); // the default processing grace
+        worst = _max(worst, _calibrate("process 1 stuck draw and reconcile 2"));
+        fillUp();
+        if (balancer.admissionStatus() == 3) _listNft(); // a stuck draw won the NFT: the creator relists one
+        assertTrue(balancer.canPurchase(buyer));
         buy(buyer, 5);
         vm.prank(creator);
         balancer.close();

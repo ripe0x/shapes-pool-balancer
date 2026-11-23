@@ -62,7 +62,8 @@ contract BalancerFactory {
     /// @dev Initial economics are the V1 schedule with `policy_` as the algorithm and two measured
     ///      recalibrations: work fee 0.00002 ETH, 3.2M reimbursable gas, OVERHEAD_GAS (V1: 50k), 5 gwei ceiling,
     ///      0.05 gwei priority allowance, RESTOCK_GAS (V1: 900k) plus 0.0002 ETH restocking per Shape, and the
-    ///      per-operation gas bounds. Derived maxima: 0.0165 ETH per payment (V1: 0.01645), 0.00475 ETH restocking per
+    ///      per-operation gas bounds, and a processing grace of 50 blocks (about 10 minutes), 10 while purchases are
+    ///      paused. Derived maxima: 0.0165 ETH per payment (V1: 0.01645), 0.00475 ETH restocking per
     ///      Shape (V1: 0.0047). Bucket: 0.622 ETH, refilling floor(0.05 ETH / 12) per
     ///      second.
     constructor(address implementation_, address keeperAdmin_, address policyAdmin_, address policy_) {
@@ -73,7 +74,7 @@ contract BalancerFactory {
         emit KeeperAdminTransferred(address(0), keeperAdmin_);
         emit PolicyAdminTransferred(address(0), policyAdmin_);
         _setEconomics(IKeeperPolicy.Economics(policy_, 0.00002 ether, 3_200_000, OVERHEAD_GAS, 5 gwei, 0.05 gwei,
-            RESTOCK_GAS, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000));
+            RESTOCK_GAS, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000, 50, 10));
         _setDefaultBucket(0.622 ether, uint96(uint256(0.05 ether) / 12));
         _setProductLimits(1_000, 1_000, 10_000);
     }

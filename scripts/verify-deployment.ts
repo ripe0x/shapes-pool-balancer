@@ -38,6 +38,7 @@ export const INITIAL_SETTINGS = {
   economics: {
     workFee: parseEther('0.00002'), maxGas: 3_200_000, overheadGas: 60_000, gasPriceCeiling: parseGwei('5'), priorityAllowance: parseGwei('0.05'),
     restockGas: 910_000, restockFlat: parseEther('0.0002'), baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000,
+    processGraceBlocks: 50, pausedProcessGraceBlocks: 10,
   },
   bucketCapacity: parseEther('0.622'), bucketRefill: parseEther('0.05') / 12n, productLimits: [1000, 1000, 10000] as const, policyInterfaceVersion: 2n,
 };
@@ -47,8 +48,8 @@ export function creationSettingsHash(economics: { policy: Address } & typeof INI
   bucketCapacity: bigint, bucketRefill: bigint): Hex {
   const e = economics;
   const pool = keccak256(encodeAbiParameters(
-    parseAbiParameters('(address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32), uint8, uint64, bool, uint256'),
-    [[e.policy, e.workFee, e.maxGas, e.overheadGas, e.gasPriceCeiling, e.priorityAllowance, e.restockGas, e.restockFlat, e.baseGas, e.processGas, e.reconcileGas, e.shapeGas, e.prizeGas],
+    parseAbiParameters('(address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16), uint8, uint64, bool, uint256'),
+    [[e.policy, e.workFee, e.maxGas, e.overheadGas, e.gasPriceCeiling, e.priorityAllowance, e.restockGas, e.restockFlat, e.baseGas, e.processGas, e.reconcileGas, e.shapeGas, e.prizeGas, e.processGraceBlocks, e.pausedProcessGraceBlocks],
       0, 0n, true, mintFee]));
   return keccak256(encodeAbiParameters(parseAbiParameters('bytes32, uint128, uint96'), [pool, bucketCapacity, bucketRefill]));
 }
