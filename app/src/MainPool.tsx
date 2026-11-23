@@ -9,7 +9,7 @@ import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
 import { eth, short, useTx } from './App';
 import {
-  MANAGER_FACTORY, MANAGER_PARAMS, MIN_DEPOSIT, POSITION_VALUE, VAULT, checkCreation, clearManagerCreation,
+  MAIN_POOL_OPEN, MANAGER_FACTORY, MANAGER_PARAMS, MIN_DEPOSIT, POSITION_VALUE, VAULT, checkCreation, clearManagerCreation,
   depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge,
   saveManagerCreation, vaultStatus, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
@@ -127,8 +127,23 @@ export function MainPool({ tab, setTab }: { tab: MainTab; setTab: (t: MainTab) =
         </nav>
       )}
       {t === 'overview' && <Compare v={vault.data} hasManager={!!managers.data?.managers.length} setTab={setTab} />}
-      {t === 'vault' && <VaultPage vault={vault} me={me} />}
-      {t === 'manager' && <ManagerTab v={vault.data} me={me} managers={managers} />}
+      {t === 'vault' && (MAIN_POOL_OPEN ? <VaultPage vault={vault} me={me} />
+        : <Soon title="Shared vault" lead="Deposit ETH with other holders. The vault builds Shape packs, lists them on FWA's main pool, and you own a share of everything it holds." />)}
+      {t === 'manager' && (MAIN_POOL_OPEN ? <ManagerTab v={vault.data} me={me} managers={managers} />
+        : <Soon title="Personal manager" lead="Your own account that runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee." />)}
+    </>
+  );
+}
+
+function Soon({ title, lead }: { title: string; lead: string }) {
+  return (
+    <>
+      <StatusBar head="Coming soon." body="Not open for deposits yet." />
+      <main className="page">
+        <h1 className="title">{title}</h1>
+        <p className="lead">{lead}</p>
+        <a className="disclose" href="#how-main">How the main pool works ▾</a>
+      </main>
     </>
   );
 }
@@ -149,8 +164,8 @@ function Compare({ v, hasManager, setTab }: { v?: Vault; hasManager: boolean; se
     ['Same capital, modelled', 'Earned more in every run: one reserve, more ETH at work.', 'Less, because more ETH sits idle.'],
   ];
   const head = (k: 'vault' | 'manager') => (k === 'vault'
-    ? <><h2>Shared vault</h2><p>Deposit with other holders and own a share of everything the vault holds.</p><button className="btn big" onClick={() => setTab('vault')}>Deposit ETH</button></>
-    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p><button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button></>);
+    ? <><h2>Shared vault</h2><p>Deposit with other holders and own a share of everything the vault holds.</p>{MAIN_POOL_OPEN ? <button className="btn big" onClick={() => setTab('vault')}>Deposit ETH</button> : <button className="btn big" disabled>Coming soon</button>}</>
+    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p>{MAIN_POOL_OPEN ? <button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button> : <button className="btn sec big" disabled>Coming soon</button>}</>);
   return (
     <main className="page mp-overview">
       <div className="intro">

@@ -15,7 +15,7 @@ import { canRetryCreation, creationContextMatches, creationStatus, recoverCreati
 import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
-import { VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, VAULT } from './main-pool';
 import { policyAbi, policyEconomics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -436,6 +436,8 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
 }
 
 type Page = 'home' | 'list' | 'pool' | 'new' | 'main';
+// 'list' falls through to the Design page when disconnected or once the pool list loads empty.
+const LANDING: Page = MAIN_POOL_OPEN ? 'home' : 'list';
 const helpOf = (hash: string) => (hash === '#how' ? 'how' : hash === '#how-main' ? 'how-main' : undefined);
 /** The main pool tab a hash route names, or undefined when it names none. */
 const routeOf = (hash: string): MainTab | undefined => {
@@ -450,8 +452,9 @@ export function App() {
   const [mine, setMine] = useState<Address[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Address>();
-  // Everyone lands on Home, except a pool creation in progress (or a connect from the Design preview), which resumes.
-  const [page, setPage] = useState<Page>(() => (loadDraft()?.creation ? 'new' : routeOf(location.hash) ? 'main' : 'home'));
+  // Everyone lands on Home (Community pools until the main pool opens), except a pool creation in progress (or a connect
+  // from the Design preview), which resumes.
+  const [page, setPage] = useState<Page>(() => (loadDraft()?.creation ? 'new' : routeOf(location.hash) ? 'main' : LANDING));
   const [mainTab, setMainTab] = useState<MainTab>(() => routeOf(location.hash) ?? 'overview');
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
@@ -468,7 +471,7 @@ export function App() {
       const on = helpOf(location.hash);
       const tab = routeOf(location.hash);
       setHelpState(on);
-      if (tab) { setPage('main'); setMainTab(tab); } else if (!on) setPage((p) => (p === 'main' ? 'home' : p));
+      if (tab) { setPage('main'); setMainTab(tab); } else if (!on) setPage((p) => (p === 'main' ? LANDING : p));
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', h);
@@ -546,7 +549,7 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}>{APP_NAME}</a>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
           {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
