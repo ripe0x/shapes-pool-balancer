@@ -60,9 +60,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         configure(plan([uint256(20),0,0,0,0,0,0,0,0]));
         listCurated(1,0.2 ether);
         address hostile=address(new ReserveReviewMaxPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(hostile);
-        vm.warp(vm.getBlockTimestamp()+2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator);balancer.setKeeperPolicy(hostile);
         vm.prank(creator);balancer.open();
         fillUp();
         assertEq(balancer.getActiveShapes()[0],20);
@@ -167,7 +165,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         vm.prank(creator);balancer=_createFixture(creator, bytes32(uint256(2)), 1 ether);
         pool=balancer.pool();configure(plan([uint256(20),0,0,0,0,0,0,0,0]));listCurated(3,0.2 ether);
         address low=address(new ReserveReviewLowPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(low);vm.warp(vm.getBlockTimestamp()+2 days);balancer.activateKeeperPolicy();
+        vm.prank(creator);balancer.setKeeperPolicy(low);
         vm.prank(creator);balancer.open();fillUp();
         uint256 free=balancer.withdrawableSurplus();vm.prank(creator);balancer.claimSurplus(free,creator);
         assertEq(address(balancer).balance,0.00005 ether);
@@ -176,14 +174,13 @@ contract ReserveEconomicReviewTest is ForkBase {
         for(uint256 i;i<listings.length;++i){(uint8 kind,,,uint112 bs,uint112 pr)=balancer.items(listings[i]);if(kind==2){oldShape=listings[i];oldBase=bs;oldPrice=pr;break;}}
         assertEq(oldPrice,0.0125 ether);
         address higher=address(new ReserveReviewMaxPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(higher);vm.warp(vm.getBlockTimestamp()+2 days);
         uint256[] memory request=buy(buyer,1);
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),1);
         (uint256 required,uint256 shortfall)=balancer.policyFunding(higher);
         assertEq(required,0.00508 ether,"one current-call .00368 plus one actual draw .0014");
         assertEq(shortfall,0.00503 ether);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);balancer.activateKeeperPolicy();
-        vm.prank(creator);balancer.depositETH{value:shortfall}();balancer.activateKeeperPolicy();
+        vm.prank(creator);vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);balancer.setKeeperPolicy(higher);
+        vm.prank(creator);balancer.depositETH{value:shortfall}();vm.prank(creator);balancer.setKeeperPolicy(higher);
         (,,,uint112 afterBase,uint112 afterPrice)=balancer.items(oldShape);
         assertEq(afterBase,oldBase);assertEq(afterPrice,oldPrice,"activation never reprices unsold old inventory");
         fulfill(request[0],0);upkeep();

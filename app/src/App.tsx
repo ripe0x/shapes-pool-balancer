@@ -105,9 +105,8 @@ function useBalancer(b?: Address) {
     // The keeper list is on the factory that deployed this Balancer.
     const factoryAddr = await r<Address>('factory');
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
-    const [keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, policyMaxReward] = await Promise.all([
-      r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<Address>('pendingKeeperPolicy'),
-      r<bigint>('policyActivationTime'), r<bigint>('policyMaxReward'),
+    const [keeperPolicy, paidUpkeepEnabled, policyMaxReward] = await Promise.all([
+      r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<bigint>('policyMaxReward'),
     ]);
     const policyCosts = await policyEconomics(pub, keeperPolicy, policyMaxReward, b, block).catch(() => ({
       version: undefined, baseFee: block.baseFeePerGas ?? 0n, gasPrice: undefined, keeperQuotes: undefined,
@@ -134,7 +133,7 @@ function useBalancer(b?: Address) {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
-      keepersRestricted, keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, factoryAddr, blockNumber,
+      keepersRestricted, keeperPolicy, paidUpkeepEnabled, factoryAddr, blockNumber,
     };
   }, [pub, b]);
   type Snapshot = Awaited<ReturnType<typeof load>>;
@@ -1843,10 +1842,7 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
   const [quote, setQuote] = useState<{ required: bigint; shortfall: bigint }>();
   const [error, setError] = useState<string>();
-  const pending = d.pendingKeeperPolicy !== ZERO_ADDR;
-  const mature = d.chainTimestamp >= d.policyActivationTime;
-  // Paid upkeep stops at once and comes back only by proposing the pool's policy again and activating it after the
-  // 2-day delay, which needs the policy's full maintenance budget in operating ETH.
+  // Paid upkeep stops at once and re-enables at once; re-enabling needs the policy's maintenance budget in operating ETH.
   useEffect(() => {
     setQuote(undefined);
     setError(undefined);
@@ -1860,10 +1856,11 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     return () => { current = false; };
   }, [pub, d.paidUpkeepEnabled, d.keeperPolicy, d.balancer, d.blockNumber, d.baseFee]);
   const write = (label: string, functionName: string, args: unknown[] = []) => tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: functionName as never, args: args as never })]);
+  const blocked = !!quote && quote.shortfall > 0n;
   return <div className="section">
     <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keeper pay</h2>
     {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable.</p>}
-    <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : pending ? 'Re-enabling' : 'Disabled'}</span></div>
+    <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : 'Disabled'}</span></div>
     <div className="kv"><span className="k">Most paid for one upkeep</span><span>{eth(d.policyMaxReward, 5)} ETH</span></div>
     <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{d.restockFee === undefined ? 'Unavailable' : `${eth(d.restockFee, 6)} ETH`}</span></div>
     {!d.paidUpkeepEnabled && quote && <>
@@ -1873,17 +1870,10 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     {error && <p className="note error" role="alert">{error}</p>}
     <div className="row" style={{ gap: 16, marginTop: 16 }}>
       {d.paidUpkeepEnabled && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>}
-      {!d.paidUpkeepEnabled && !pending && <button className="btn" disabled={!!tx.busy} onClick={() => write('Re-enable paid upkeep', 'proposeKeeperPolicy', [d.keeperPolicy])}>Re-enable paid upkeep · 2 day delay</button>}
+      {!d.paidUpkeepEnabled && <button className="btn" disabled={!!tx.busy || blocked} onClick={() => write('Re-enable paid upkeep', 'setPaidUpkeepEnabled', [true])}>Re-enable paid upkeep</button>}
       <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
     </div>
-    {pending && <div style={{ marginTop: 20 }}>
-      <div className="kv"><span className="k">Paid upkeep can resume</span><time dateTime={new Date(Number(d.policyActivationTime) * 1000).toISOString()}>{new Date(Number(d.policyActivationTime) * 1000).toLocaleString()}</time></div>
-      <div className="row" style={{ gap: 16, marginTop: 12 }}>
-        <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Cancel re-enabling', 'cancelKeeperPolicy')}>Cancel</button>
-        <button className="btn" disabled={!!tx.busy || !mature} onClick={() => write('Resume paid upkeep', 'activateKeeperPolicy')}>Resume paid upkeep</button>
-      </div>
-    </div>}
-    <p className="note" style={{ marginTop: 12 }}>Disabling paid upkeep takes effect at once. Re-enabling takes 2 days.</p>
+    <p className="note" style={{ marginTop: 12 }}>Disabling and re-enabling paid upkeep both take effect at once. Re-enabling needs the policy's maintenance budget in operating ETH.</p>
   </div>;
 }
 

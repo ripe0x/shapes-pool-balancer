@@ -39,11 +39,16 @@ The reference price is current, not a promise that the initial deposit covers al
 
 ## Payment and affordability
 
-The pool clamps a policy's proposal to the same work-sensitive envelope, using the lesser of measured gas and workGas, and the lesser of actual gas price and reserveReference. These coefficients are enforced payment ceilings; they are not assertions that every external execution fits within those gas amounts. The cached selected maximum, immutable absolute maximum, real operating liquidity and persistent spending allowance are additional restrictions. The policy cannot decide work counts or alter these checks.
+The pool clamps a policy's proposal to the same work-sensitive envelope, using the lesser of measured gas and workGas, and the lesser of actual gas price and reserveReference. These coefficients are enforced payment ceilings; they are not assertions that every external execution fits within those gas amounts. The cached selected maximum, immutable absolute maximum and real operating liquidity are additional restrictions (the per-pool spending allowance was removed, decision 103). The policy cannot decide work counts or alter these checks.
 
 Paid inventory planning retains creator credit and the payment bound for the exact candidate work accumulated in the current call. It can reduce a candidate quantity, mint fewer prizes, and leave a visible deficit. It no longer withholds an unrelated entire policy maximum for a one-prize operation. Work still stops at the first unaffordable missing denomination; existing value order and custody rules remain.
 
-The per-pool spending allowance is separate from cash locked in reserve: 0.622 ETH burst and `floor(0.05 ETH / 12)` wei/second refill. It persists through changes of policy, ownership, target and open state, and saturates during inactivity. This permits ordinary V1 work while reducing the previous absolute exposure. Actual high-volume evidence must support its operational suitability; arithmetic bounds alone do not establish profitability.
+The per-pool spending allowance (0.622 ETH burst, `floor(0.05 ETH / 12)` wei/second refill) was removed in decision
+103: it allowed about 360 ETH/day and so bounded nothing. Each paid call is bounded by validated work, the cached
+selected maximum, the immutable `HARD_MAX_REWARD` (0.311 ETH) and real operating liquidity; there is no cumulative
+per-pool budget. The reserve below still budgets one maintenance call at the default work bounds (5 reconcile, 5 ops,
+2 process, 4 sizes), not the live factory settings; raising a work-per-upkeep setting can under-budget keeper pay for
+the larger call (a liveness, not custody, effect — see decision 103).
 
 ## Admission and recovery
 
@@ -57,7 +62,7 @@ If small-prize depletion crosses the admission threshold, future purchases canno
 
 Public unpaid maintenance preserves selected healthy prices and the immutable V1 fallback on policy quote failure. It can process/reconcile, restock what is affordable and support closing/retirement; the caller pays gas. Dependency pauses, delivery locks and buyer refund timing remain in force.
 
-## Policy activation and protected credit
+## Immediate policy switch and protected credit
 
 `maintenanceBudget(M, snapshot)` factors items 3 and 4 above. Activation and `policyFunding(candidate)` use one
 snapshot of current basefee, pool enabled state and actual issued-minus-reconciled requests; they make no mint-fee or

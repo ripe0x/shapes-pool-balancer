@@ -16,7 +16,7 @@ pool. As prizes are won, anyone may call `performUpkeep` to restock toward the t
 
 | Contract | Role |
 | --- | --- |
-| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt, config, curated)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list and a recommended default policy snapshotted by future clones. Its keeper admin manages eligibility only; a separate policy admin changes the default after two days. No authority over prize backing, FWA pools or assets. |
+| `BalancerFactory` | Deploys one EIP-1167 clone of `PoolBalancer` per call (`createBalancer(salt, config, curated)`), forwards any ETH as a deposit, emits `BalancerCreated(creator, balancer, pool, salt)`. Holds the keeper list and a recommended default policy snapshotted by future clones. Its keeper admin manages eligibility only; a separate policy admin changes the default immediately (future clones only) and holds the adjustable factory settings. No authority over prize backing, FWA pools or assets. |
 | `PoolBalancer` | Non-upgradeable logic shared by all clones. Immutables pin the FWA factory, the reviewed FWA implementation and its runtime code hash, Shapes, this system's Draw Packs instance and the ENS registry. |
 | `IKeeperPolicy` / `KeeperPolicyV1` | Stable read-only economic interface and initial stateless implementation; active policy selected separately by each pool. |
 | `KeeperPolicyCalls` | Permanently linked selection, reserve and payout enforcement. Selected policies are invoked only through bounded static calls. |
@@ -34,10 +34,10 @@ for its Shapes and Draw Packs. Nothing can ever change the operator, enable toke
 
 | Actor | Can |
 | --- | --- |
-| Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer, explicitly change the revenue share, always run its own pool's upkeep, propose/cancel a payment policy and immediately disable payments |
+| Creator | configure, open/close, list/update/withdraw curated NFTs, recover a refunded NFT or prize, return untracked NFTs, claim surplus, unlist prizes, retire, set ENS name, approve or revoke FWA pool-page publications, start creator transfer, explicitly change the revenue share, always run its own pool's upkeep, set a payment policy immediately, and immediately disable or re-enable payments |
 | Pending creator | accept the creator role |
 | Keeper admin (factory) | restrict upkeep on every pool to approved keepers or open it to anyone, approve or remove keepers, start keeper-admin transfer (the pending admin accepts) |
-| Policy admin (factory) | propose/cancel a recommended policy for future pools, transfer this separate role; anyone activates after two days |
+| Policy admin (factory) | set a recommended policy for future pools (immediate) and the adjustable factory settings, transfer this separate role |
 | Anyone (keeper) | `performUpkeep` (while the factory's list is open, the default; when restricted, approved keepers and each pool's creator), `performUpkeepUnpaid` regardless of keeper restrictions, execute matured pool/factory policy proposals, `collectProceeds`, `depositETH`, `refreshCuratedWitness(listingId)` |
 | FWA pool | calls `canPurchase` (view) |
 
@@ -180,12 +180,13 @@ issued-but-unreconciled requests plus one bounded operating call while enabled. 
 adds missing backing, mint costs and bounded listing work. Disabled paid upkeep makes payment terms zero, retaining
 missing inventory expense while enabled. No duplicate-largest-prize or full-board hypothetical keeper insurance returns.
 
-Policy activation uses the same maintenance snapshot, excluding inventory restoration. Compare the candidate against
-the old effective paid maximum, zero when payments are disabled. No-greater exposure may activate even while depleted.
-Increased exposure needs the **entire candidate maintenance budget** in operating cash, not only the difference.
-Neither creator credit nor unsold backing, expected fees, purchaser escrow or uncollected proceeds funds that check.
-The two-day delay, generation invalidation, persistent allowance and every atomic payment check remain intact.
-A smaller permitted maximum does not imply a lower policy quote for every job.
+An immediate policy switch (`setKeeperPolicy`, decision 103) uses the same maintenance snapshot, excluding inventory
+restoration. Compare the candidate against the old effective paid maximum, zero when payments are disabled. No-greater
+exposure may switch even while depleted. Increased exposure needs the **entire candidate maintenance budget** in
+operating cash, not only the difference. Neither creator credit nor unsold backing, expected fees, purchaser escrow or
+uncollected proceeds funds that check. There is no two-day delay, generation or persistent allowance; `settingsHash`
+hashes policy, maximum and enabled, and every atomic payment check remains intact. A smaller permitted maximum does not
+imply a lower policy quote for every job.
 
 Closing preserves credit. Late collections retain the stored split. Only actual outstanding processing/reconciliation
 budgets remain in the closed reserve while paid upkeep is enabled; after obligations resolve, remaining operating cash
@@ -225,7 +226,7 @@ V1 pays `(min(measured, 3.2M) + 50,000) × min(tx.gasprice, basefee + 0.05 gwei,
 
 Each pool has a persistent 0.622 ETH burst allowance, refilling at floor(0.05 ETH / 12 seconds), independent of other pools. Every interval is bounded by burst plus refill over elapsed seconds. Policy switches, reconfiguration, reopening and ownership changes never reset spending. This is a generous bounded exposure, not an unrestricted-throughput promise. Paid execution reverts atomically on insufficient quote, minimum payment, allowance or operating funds; it never silently clips to liquidity. The recipient remains the caller and cannot redirect pool assets through a policy.
 
-`performUpkeepUnpaid()` executes the same validated work with zero compensation. It retains valid bounded active-policy listing surcharges and falls back to immutable V1 pricing only if the quote fails or exceeds the immutable limit. It is public even when paid keepers are restricted. Creators disable payment and cancel the pending replacement immediately; reenabling requires proposal and activation after two days, including same-policy reenabling. Both paid and unpaid paths retain external FWA/Shapes restrictions.
+`performUpkeepUnpaid()` executes the same validated work with zero compensation. It retains valid bounded active-policy listing surcharges and falls back to immutable V1 pricing only if the quote fails or exceeds the immutable limit. It is public even when paid keepers are restricted. Creators disable payment immediately (emergency stop) and re-enable it immediately with the same funding check (decision 103); there is no proposal or delay. Both paid and unpaid paths retain external FWA/Shapes restrictions.
 
 ## Curated NFTs
 

@@ -100,9 +100,7 @@ async function main(){
    const config={markupBps:1500,creatorRevenueBps:400,target:20n,mintFeeCap:await read(SHAPES,shapeAbi,'mintFee'),curatedRequired:true};
    await send(A.creator,factory,fAbi,'createBalancer',[salt,config,initial],10n**18n,'atomic create/deposit1ETH');
    const pool=await read(b,bAbi,'pool') as Address;
-   await send(A.creator,b,bAbi,'proposeKeeperPolicy',[policy]);
-   await test.increaseTime({seconds:172801});await test.mine({blocks:1});
-   await send(A.creator,b,bAbi,'activateKeeperPolicy');
+   await send(A.creator,b,bAbi,'setKeeperPolicy',[policy]);
    for(let j=0;j<4;j++)await send(A.keeper,b,bAbi,'performUpkeep',[await read(b,bAbi,'settingsHash'),0n,0n],0n,'setup 5Shapes');
    assert.equal((await read(b,bAbi,'getActiveShapes'))[0],20);
    assert.equal(await read(b,bAbi,'requiredReserve'),5_300_000n*(base+100_000_000n)+500_000_000_000_000n);

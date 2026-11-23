@@ -164,7 +164,6 @@ contract CuratedAdmissionTest is ForkBase {
         assertEq(balancer.admissionStatus(), 7, "old proof was preserved and then genuinely lost");
         uint256 balance = address(balancer).balance;
         uint256 credit = balancer.creatorCredit();
-        uint256 allowance = balancer.keeperAllowance();
         bytes32 policy = balancer.settingsHash();
         _coolAdmission();
         vm.prank(stranger);
@@ -176,7 +175,6 @@ contract CuratedAdmissionTest is ForkBase {
         assertLt(refreshGas, 150_000);
         assertEq(address(balancer).balance, balance);
         assertEq(balancer.creatorCredit(), credit);
-        assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.settingsHash(), policy);
         assertEq(balancer.reconciledSequence(), 0, "proof refresh does not manufacture maintenance work");
         assertEq(balancer.admissionStatus(), 0);

@@ -308,8 +308,6 @@ export class CurrentRehearsal {
             assert.equal(value, 0n);
             if (fn === 'performUpkeep')
                 eq(actor, ROLES.keeper);
-            else if (fn === 'activateKeeperPolicy')
-                assert.ok(role === 'keeper' || actor.toLowerCase() === pool.creator.toLowerCase());
             else if (fn === 'refreshCuratedWitness') {
                 eq(actor, ROLES[SCENARIO.curatedProofRecovery.callerRole]);
                 assert.equal(pool, this.journal.pools[SCENARIO.curatedProofRecovery.pool]);
@@ -319,7 +317,7 @@ export class CurrentRehearsal {
             }
             else {
                 eq(actor, pool.creator);
-                assert.ok(['collectProceeds', 'configure', 'listCuratedBatch', 'updateCuratedPrice', 'open', 'close', 'retire', 'withdrawCurated', 'unlistShapes', 'claimSurplus', 'proposeKeeperPolicy', 'cancelKeeperPolicy', 'setPaidUpkeepEnabled', 'setCreatorRevenueBps', 'performUpkeepUnpaid'].includes(fn));
+                assert.ok(['collectProceeds', 'configure', 'listCuratedBatch', 'updateCuratedPrice', 'open', 'close', 'retire', 'withdrawCurated', 'unlistShapes', 'claimSurplus', 'setKeeperPolicy', 'setPaidUpkeepEnabled', 'setCreatorRevenueBps', 'performUpkeepUnpaid', 'syncSettings'].includes(fn));
             }
             return;
         }

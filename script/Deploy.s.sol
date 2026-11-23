@@ -14,7 +14,8 @@ import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/Exte
 ///         Also deploys this system's own Draw Packs instance (lib/shape-packs, ripe0x/shape-packs `draw-packs` at
 ///         3a463f7), from its own build artifacts, for prizes between the Shapes denominations. PACKS_ADMIN (env) is
 ///         its presentation admin: renderer and description only. KEEPER_ADMIN controls eligibility; POLICY_ADMIN
-///         separately proposes the default policy for future pools after two days. Existing pools never follow it.
+///         separately sets the default policy (immediate) and the adjustable factory settings for future pools.
+///         Existing pools never follow it.
 ///         All three admin addresses are supplied as environment values, never secrets.
 contract Deploy is Script {
     address constant FWA_FACTORY = 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C;

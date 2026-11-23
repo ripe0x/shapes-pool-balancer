@@ -36,7 +36,7 @@ contract AlternativeSurchargePolicy is IKeeperPolicy {
     function version() external pure returns (uint256) { return 405; }
     function maxReward() external pure returns (uint256) { return 0.001 ether; }
     function quoteReward(Work calldata) external pure returns (uint256) { return 0.0001 ether; }
-    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) { return units * 0.01 ether; }
+    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) { return units * 0.001 ether; }
 }
 
 contract ReviewReceiver {
@@ -73,9 +73,7 @@ contract PolicySecurityReviewTest is ForkBase {
     }
 
     function _adopt(MutableReviewPolicy policy) internal {
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
     }
     function _expire() internal {
         buy(buyer, 1);
@@ -144,14 +142,12 @@ contract PolicySecurityReviewTest is ForkBase {
         _expire();
         ReviewReceiver receiver = new ReviewReceiver();
         uint256 held = address(balancer).balance;
-        uint256 allowance = balancer.keeperAllowance();
         uint256 pending = pool.nextSequenceToProcess();
         vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
         receiver.run(balancer, 0.0001 ether + 1);
         assertEq(receiver.callbacks(), 0);
         assertEq(address(receiver).balance, 0);
         assertEq(address(balancer).balance, held);
-        assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.reconciledSequence(), 0);
         assertEq(pool.nextSequenceToProcess(), pending, "external FWA processing rolls back too");
         assertEq(receiver.run(balancer, 0.0001 ether), 0.0001 ether);
@@ -161,10 +157,8 @@ contract PolicySecurityReviewTest is ForkBase {
     }
     function test_unpaidMaintenanceRespectsHealthySelectedSurcharge() public {
         AlternativeSurchargePolicy policy = new AlternativeSurchargePolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
-        assertEq(balancer.restockFeeFor(0), 0.01 ether, "healthy selected policy quotes its price");
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
+        assertEq(balancer.restockFeeFor(0), 0.001 ether, "healthy selected policy quotes its price");
         uint256[] memory one = new uint256[](1);
         one[0] = balancer.getActiveIds()[1];
         vm.prank(creator); balancer.unlistShapes(one);
@@ -177,7 +171,7 @@ contract PolicySecurityReviewTest is ForkBase {
         (,,, uint256 base, uint256 price) = balancer.items(listed);
         (,,,,, uint256 fwaPrice,,) = pool.listings(listed);
         assertEq(fwaPrice, price);
-        assertEq(price - base, 0.01 ether, "unpaid caller cannot replace a healthy selected pricing schedule");
+        assertEq(price - base, 0.001 ether, "unpaid caller cannot replace a healthy selected pricing schedule");
     }
 
     function test_priceIndexedMinimumUsesMinedPriceAndIsAtomic() public {
@@ -186,12 +180,10 @@ contract PolicySecurityReviewTest is ForkBase {
         _expire();
         bytes32 expected = balancer.settingsHash();
         uint256 held = address(balancer).balance;
-        uint256 allowance = balancer.keeperAllowance();
         // 200k gas at 0.55 gwei is 0.00011 ETH, above this policy's fixed 0.0001 ETH offer.
         vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
         balancer.performUpkeep(expected, 0, 200_000);
         assertEq(address(balancer).balance, held);
-        assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.reconciledSequence(), 0);
         // The same pending offer becomes sufficient at the actual lower inclusion price.
         vm.fee(0.15 gwei);

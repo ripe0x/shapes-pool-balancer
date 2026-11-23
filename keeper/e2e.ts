@@ -453,11 +453,8 @@ async function run() {
     const hash = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName, args, account: ACCTS[0], chain: null } as never);
     assert.equal((await pub.waitForTransactionReceipt({ hash })).status, 'success', functionName);
   };
-  await writeFactory('proposeDefaultKeeperPolicy', [v2]);
-  await test.increaseTime({ seconds: 2 * 86_400 });
-  await test.mine({ blocks: 1 });
-  await writeFactory('activateDefaultKeeperPolicy');
-  for (const b of [b1, b2]) assert.equal(await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v1Policy, 'old pool remains V1');
+  await writeFactory('setDefaultKeeperPolicy', [v2]);
+  for (const b of [b1, b2]) assert.equal(await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v1Policy, 'old pool remains V1 after immediate default change');
   const upgradedPool = await setupPool(ACCTS[1], '2');
   assert.equal(await pub.readContract({ address: upgradedPool, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v2, 'new pool starts V2');
   const setupRevertedBefore = k.state.stats.reverted;
@@ -465,24 +462,21 @@ async function run() {
   assert.equal(k.state.stats.reverted, setupRevertedBefore, 'falling basefee does not cause minimum-payment reverts');
   assert.equal(k.policies[upgradedPool].address, v2, 'shared keeper discovers V2 without formula changes');
 
-  const propose = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: 'proposeKeeperPolicy', args: [v2], account: ACCTS[1], chain: null } as never);
-  assert.equal((await pub.waitForTransactionReceipt({ hash: propose })).status, 'success');
-  await assert.rejects(pub.simulateContract({ address: b1, abi: poolBalancerAbi, functionName: 'activateKeeperPolicy', account: ACCTS[0] } as never), 'creator switch is delayed');
-  await test.increaseTime({ seconds: 2 * 86_400 });
-  await test.mine({ blocks: 1 });
+  // Creator switch is immediate (no proposal/delay). Only the creator may set it.
+  await assert.rejects(pub.simulateContract({ address: b1, abi: poolBalancerAbi, functionName: 'setKeeperPolicy', args: [v2], account: ACCTS[0] } as never), 'only the creator may set the policy');
   await buyAndSettle(b1, 1, '0x00000000000000000000000000000000000b0b11', 45n);
   await test.setAutomine(false);
   await k.tick();
   const oldOffer = k.state.pending[b1];
   assert.ok(oldOffer?.hashes.length, 'V1-priced keeper transaction pending');
   const oldHash = oldOffer.hashes[0];
-  // Higher priority gives the activation first position in the local block, explicitly testing the inclusion race.
-  const activated = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: 'activateKeeperPolicy', account: ACCTS[0], chain: null, gas: 2_000_000n, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n } as never);
+  // Higher priority gives the immediate policy change first position in the local block, testing the inclusion race.
+  const activated = await wallet.writeContract({ address: b1, abi: poolBalancerAbi, functionName: 'setKeeperPolicy', args: [v2], account: ACCTS[1], chain: null, gas: 2_000_000n, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n } as never);
   await test.mine({ blocks: 1 });
   await test.setAutomine(true);
   assert.equal((await pub.waitForTransactionReceipt({ hash: activated })).status, 'success');
   const stale = await pub.waitForTransactionReceipt({ hash: oldHash });
-  assert.equal(stale.status, 'reverted', 'old policy offer reverts atomically after activation');
+  assert.equal(stale.status, 'reverted', 'old policy offer reverts atomically after the immediate switch (settingsHash changed)');
   const revertedBefore = k.state.stats.reverted;
   await tickUntil(k, async () => await stocked(b1) && Object.keys(k.state.pending).length === 0);
   assert.equal(k.state.stats.reverted, revertedBefore + 1, 'stale attempt expense is accounted');
@@ -490,13 +484,9 @@ async function run() {
   assert.equal(await pub.readContract({ address: b2, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v1Policy);
   for (const [i, b] of [b1, b2, upgradedPool].entries()) await buyAndSettle(b, 1, `0x00000000000000000000000000000000000b0b${12 + i}` as Address, 50n + BigInt(i));
   await tickUntil(k, async () => (await stocked(b1)) && (await stocked(b2)) && (await stocked(upgradedPool)));
-  console.log('✓ mixed V1/V2 service, delayed funded switch and stale pending transaction recovery');
+  console.log('✓ mixed V1/V2 service, immediate funded switch and stale pending transaction recovery');
 
   // A policy-changing replacement may be accepted by the node before its response/metadata reaches disk.
-  const replaceProposal = await wallet.writeContract({ address: b2, abi: poolBalancerAbi, functionName: 'proposeKeeperPolicy', args: [v2], account: ACCTS[2], chain: null } as never);
-  assert.equal((await pub.waitForTransactionReceipt({ hash: replaceProposal })).status, 'success');
-  await test.increaseTime({ seconds: 2 * 86_400 });
-  await test.mine({ blocks: 1 });
   await buyAndSettle(b2, 1, '0x00000000000000000000000000000000000b0b16', 61n);
   k = mk(0);
   await test.setAutomine(false);
@@ -505,10 +495,10 @@ async function run() {
   assert.ok(beforeReplacement, 'old-policy offer queued');
   const replacementStats = { ...k.state.stats };
   await test.setBlockGasLimit({ gasLimit: 2_000_000n });
-  const activationOnly = await wallet.writeContract({ address: b2, abi: poolBalancerAbi, functionName: 'activateKeeperPolicy', account: ACCTS[0], chain: null, gas: 2_000_000n, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n } as never);
+  const activationOnly = await wallet.writeContract({ address: b2, abi: poolBalancerAbi, functionName: 'setKeeperPolicy', args: [v2], account: ACCTS[2], chain: null, gas: 2_000_000n, maxFeePerGas: 20_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n } as never);
   await test.mine({ blocks: 1 });
   assert.equal((await pub.waitForTransactionReceipt({ hash: activationOnly })).status, 'success');
-  assert.equal(await pub.getTransactionReceipt({ hash: beforeReplacement.hashes[0] }).catch(() => null), null, 'old4M-gas offer did not fit the activation-only block');
+  assert.equal(await pub.getTransactionReceipt({ hash: beforeReplacement.hashes[0] }).catch(() => null), null, 'old 4M-gas offer did not fit the policy-change block');
   await test.setBlockGasLimit({ gasLimit: 30_000_000n });
   await k.tick();
   const replacementHash = k.state.pending[b2].hashes.at(-1)!;

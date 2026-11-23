@@ -13,7 +13,8 @@ contract CallerSensitivePolicy is IKeeperPolicy {
     function version() external pure returns (uint256) { return 99; }
     function maxReward() external pure returns (uint256) { return 0.311 ether; }
     function quoteRestock(uint8, uint256 units, uint256) external view returns (uint256) {
-        return units * (msg.sender == balancer ? 0.102 ether : 0.0002 ether);
+        // Pool-context quote stays within the basefee-indexed restock cap (0.00148 ETH/unit at 0.5 gwei).
+        return units * (msg.sender == balancer ? 0.001 ether : 0.0002 ether);
     }
     function quoteReward(Work calldata) external view returns (uint256) {
         return msg.sender == balancer ? 0.0003 ether : 0.0001 ether;
@@ -34,12 +35,10 @@ contract PolicyPreviewTest is ForkBase {
         vm.prank(creator); balancer.open();
         fillUp();
         CallerSensitivePolicy policy = new CallerSensitivePolicy(address(balancer));
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
         assertEq(policy.quoteRestock(0, 1, block.basefee), 0.0002 ether);
         uint256 fee = balancer.restockFeeFor(0);
-        assertEq(fee, 0.102 ether);
+        assertEq(fee, 0.001 ether);
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(1_000_000, 1 gwei, 0.5 gwei, 0, 1, 1, 0);
         assertEq(policy.quoteReward(w), 0.0001 ether);
         assertEq(balancer.quoteKeeperReward(w), 0.0003 ether);

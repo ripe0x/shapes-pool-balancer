@@ -329,3 +329,15 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
 - R83. No mainnet canary (owner, 2026-11-22: "i don't want to do the canary!!!"). Launch goes from the signed
   outcomes and the recorded review straight to the production deploy through `script/deploy.sh`; no capped first
   deployment or cap-raising plan. Supersedes the canary step of runbook 0b E for this launch.
+- R84. Behavior-shaping values are adjustable and keeper-policy changes are immediate (owner, 2026-11-16: "is the cap a
+  constant? we should make that updateable"; "i'd prefer to have them adjustable. on the factory by the admin ... only
+  on things that wouldn't break the system"; owner approval 2026-11-23). The `policyAdmin` sets factory settings
+  (`maxPrizes`, `fillGateBps`, `minMarkupBps`, `maxMarkupBps`, `maxOps`, `maxReconcile`, `maxProcess`,
+  `maxRestockSizes`, `curatedBatch`) with immediate effect and fixed sanity bounds; defaults equal the previous
+  constants. Pools read them live (the fill gate cached for FWA's 100k admission hook, refreshed via `syncSettings`).
+  `setKeeperPolicy` (creator) and `setDefaultKeeperPolicy` (policyAdmin) are immediate, keeping the funding check and
+  the public unpaid recovery path; the per-pool keeper burst/refill allowance is removed (it bounded nothing); the
+  restock quote cap is now basefee-indexed. This **supersedes the two-day keeper-policy delay of R41 and R51** for the
+  new implementation; emergency disable and immutable payout safeguards remain. Decision 103; measured worst upkeep at
+  the work-per-upkeep upper bounds is 4,486,913 gas (< the 6M immutable payment envelope). Applies to pools deployed
+  with the new implementation only; the 2026-11-22 deployment is unaffected until a redeploy the owner authorizes.

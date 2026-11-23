@@ -51,7 +51,16 @@ separately checks actual Anvil receipts.
 
 Measured on the 2026-11-11 rewrite (`forge test --match-path test/Gas.t.sol -vv`, mainnet fork block 26,382,349). The
 heaviest upkeep measured uses 2,756,732 gas in total, 14% under the 3.2M reimbursement cap; that is why one call restocks
-at most 5 Shape units in 4 sizes and reconciles at most 5 draws.
+at most 5 Shape units in 4 sizes and reconciles at most 5 draws **by default**.
+
+**Adjustable work bounds (decision 103).** `maxOps`, `maxReconcile`, `maxProcess` and `maxRestockSizes` are now factory
+settings (defaults 5/5/2/4, unchanged above). Their upper bounds keep the worst upkeep within the immutable payment
+envelope `MAX_GAS` (6M) and well under the 30M block limit. Measured worst upkeep at the upper bounds (`maxReconcile` 10,
+`maxOps` 8, `maxRestockSizes` 8; `maxProcess` stays 2 under `PROCESS_STARVED_GAS`) — reconcile 10 draws + mint/list 8
+Shapes across 8 distinct sizes — is **4,486,913 gas** (`test/Gas.t.sol:test_gas_worstCaseUpperBounds`), a ~25% margin
+under 6M. Every upkeep now also reads `factory.getSettings()` and refreshes the cached `fillGateBps` (about +3,770 gas,
+paid through the measured span). The `canPurchase` admission hook reads that cached copy, not a cross-contract call:
+44,481 gas, identical before and after a settings change, well under FWA's 100k stipend.
 
 | Operation | Billed gas | Reimbursed gas | Ratio |
 | --- | ---: | ---: | ---: |
@@ -77,7 +86,7 @@ over the estimate. The margin is a limit only: the contract reimburses measured 
 
 ## Historical a8fb321 policy measurements (2026-11-17)
 
-See [current verification](keeper-policy-results.md). PoolBalancer runtime is 24,380 bytes, leaving 196 bytes under EIP-170. Permanently linked inventory/policy libraries preserve immutable execution while external economic quotes use a 100k-gas bounded staticcall. Equal inline-vs-bounded quote arithmetic adds 7,704 gas cold and 2,677 warm; this excludes transfers, transaction intrinsic and other pool accounting. Maximum reached local production-path deployment bills 5,387,856 gas; its maximum submitted transaction gas limit is 7,004,212. Keeper limits reject estimates with headroom over EIP-7825's 16,777,216 transaction gas cap.
+See [current verification](keeper-policy-results.md). PoolBalancer runtime is 21,112 bytes (decision 103 removed the delay machinery and four display mirrors), leaving 3,464 bytes under EIP-170. Permanently linked inventory/policy libraries preserve immutable execution while external economic quotes use a 100k-gas bounded staticcall. Equal inline-vs-bounded quote arithmetic adds 7,704 gas cold and 2,677 warm; this excludes transfers, transaction intrinsic and other pool accounting. Maximum reached local production-path deployment bills 5,387,856 gas; its maximum submitted transaction gas limit is 7,004,212. Keeper limits reject estimates with headroom over EIP-7825's 16,777,216 transaction gas cap.
 
 Foundry 1.8.1's five-field raw `lastCallGas().used` is already billed gas, including intrinsic and applied refunds. A real storage-clear transaction matches an Anvil receipt at 22,503 gas; the 4,800 refund gives 27,303 gross. Current isolated tests use this interpretation. Earlier gas tables below belong to their stated revisions and must not be mixed with current measurements.
 

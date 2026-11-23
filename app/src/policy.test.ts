@@ -1,7 +1,7 @@
 import { createPublicClient, custom, http, toFunctionSelector, toHex, type Address } from 'viem';
 import { expect, it } from 'vitest';
 import { poolBalancerAbi } from '../../shared/abi';
-import { DENOMS, SHAPES_IN } from '../../shared/planner';
+import { DENOMS, SHAPES_IN, KEEPER_LIMITS } from '../../shared/planner';
 import { policyAbi, policyEconomics, readsAt } from './policy';
 
 const rpc = process.env.POLICY_PREVIEW_RPC;
@@ -28,7 +28,9 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
     expect(quote).toBeGreaterThanOrEqual(0n);
     expect(quote).toBeLessThanOrEqual(maxReward);
   }
-  costs.restockFees.forEach((fee, d) => expect(fee).toBeLessThanOrEqual(BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n));
+  const refPrice = costs.baseFee + KEEPER_LIMITS.priorityAllowance > KEEPER_LIMITS.gasPriceCeiling ? KEEPER_LIMITS.gasPriceCeiling : costs.baseFee + KEEPER_LIMITS.priorityAllowance;
+  const capPerUnit = 1_800_000n * refPrice + 400_000_000_000_000n;
+  costs.restockFees.forEach((fee, d) => expect(fee).toBeLessThanOrEqual(BigInt(SHAPES_IN[d]) * capPerUnit));
   const settingsSelector = toFunctionSelector('settings()');
   expect(requests.some(request => request.method === 'eth_call' && JSON.stringify(request.params).includes(settingsSelector.slice(2)))).toBe(false);
   expect(costs.restockFees).toHaveLength(DENOMS.length);

@@ -284,6 +284,67 @@ contract GasBench is ForkBase {
         settle();
     }
 
+    function _anyActiveCurated() internal view returns (uint256) {
+        uint256[] memory ids = balancer.getActiveIds();
+        for (uint256 i; i < ids.length; ++i) {
+            (uint8 kind,,,,) = balancer.items(ids[i]);
+            if (kind != 1) continue;
+            (,,,,,,, uint8 st) = pool.listings(ids[i]);
+            if (st == 1) return ids[i];
+        }
+        revert("no active curated");
+    }
+
+    function _drawCurated() internal {
+        (,,,,,, uint256 slot,) = pool.listings(_anyActiveCurated());
+        uint256[] memory ids = buy(buyer, 1);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+    }
+
+    /// @dev The worst upkeep at the factory settings' UPPER BOUNDS (maxReconcile 10, maxOps 8, maxRestockSizes 8;
+    ///      maxProcess stays 2, bounded by the immutable PROCESS_STARVED_GAS). One call reconciles 10 draws and
+    ///      restocks 8 Shape units across 8 distinct sizes (8 separate mint calls, the heaviest restock). It must stay
+    ///      within the immutable payment envelope MAX_GAS (6M) and well under the 30M block gas limit.
+    function test_gas_worstCaseUpperBounds() public {
+        factory.setMaxReconcile(10);
+        factory.setMaxOps(8);
+        factory.setMaxRestockSizes(8);
+        curatedRequired = false; // the 10 reconcile draws are curated NFTs; no witness barrier needed here
+        vm.deal(creator, 6_000 ether);
+        balancer = _createFixture(creator, bytes32(uint256(99)), 3_000 ether);
+        pool = balancer.pool();
+        // 100 x 0.01 ballast keeps the board above the fill gate while 10 draws are unreconciled; one Shape of each
+        // size 1..8 (0.05 .. 100 ETH) is the held restock deficit.
+        uint256[16] memory c;
+        c[0] = 100;
+        for (uint256 d = 1; d <= 8; ++d) c[d] = 1;
+        _configure(plan16(c));
+        for (uint256 k; k < 10; ++k) listCurated(800 + k, 0.3 ether);
+        fillUp();
+        // Draw the 8 distinct Shape sizes, then reconcile them with the mint fee held above the accepted cap so the
+        // deficit is not yet restocked.
+        for (uint256 d = 1; d <= 8; ++d) _drawSize(uint8(d));
+        address admin = 0xCB43078C32423F5348Cab5885911C3B5faE217F9;
+        uint256 fee = shapes.mintFee();
+        vm.prank(admin); (bool ok,) = SHAPES.call(abi.encodeWithSignature("setMintFee(uint256)", fee * 2)); assertTrue(ok);
+        upkeep();
+        assertEq(balancer.reconciledSequence(), 8, "8 Shape draws reconciled, held unrestocked");
+        vm.prank(admin); (ok,) = SHAPES.call(abi.encodeWithSignature("setMintFee(uint256)", fee)); assertTrue(ok);
+        // Draw 10 curated NFTs: 10 settled unreconciled draws that create no Shape deficit.
+        for (uint256 k; k < 10; ++k) _drawCurated();
+        assertEq(pool.nextSequenceToProcess() - 1, 18, "10 curated draws settled, unreconciled");
+        uint256 g = gasleft();
+        _upkeep("WORST upkeep at UPPER bounds: reconcile 10 + mint/list 8 Shapes in 8 sizes");
+        uint256 used = g - gasleft();
+        emit log_named_uint("  actual gas used (measured span)", used);
+        assertEq(balancer.reconciledSequence(), 18, "reconciled 10 more");
+        uint16[16] memory have = balancer.getActiveShapes();
+        for (uint256 d = 1; d <= 8; ++d) assertEq(have[d], 1, "each held size restocked (8 distinct mint calls)");
+        assertLt(used, 6_000_000, "worst upkeep within the immutable payment envelope MAX_GAS (6M)");
+        assertLt(used, 24_000_000, "well under the 30M block gas limit");
+    }
+
     function _anyActiveOfSize(uint8 size) internal view returns (uint256) {
         uint256[] memory ids = balancer.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {

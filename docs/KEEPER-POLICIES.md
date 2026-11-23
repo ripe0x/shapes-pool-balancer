@@ -13,13 +13,28 @@ capability, purchase-operator authority, or authority to decide useful work. Cal
 An interface-compatible contract need not be honest or stateless; all financial protection assumes it may be malicious.
 
 Each clone snapshots its factory's default policy at initialization. The keeper eligibility admin only manages
-eligibility. A separate `policyAdmin` proposes a new factory recommendation; anyone activates after two days.
-This changes future clones only. Both admin roles transfer by two-step acceptance.
+eligibility. A separate `policyAdmin` sets a new factory recommendation with `setDefaultKeeperPolicy(address)`,
+immediately. This changes future clones only. Both admin roles transfer by two-step acceptance.
 
-The creator calls `proposeKeeperPolicy(address)`. Anyone may call `activateKeeperPolicy()` after two days, with
-funding rechecked in the activation transaction. `cancelKeeperPolicy()` removes the proposal. A transfer of creator
-ownership cancels the old creator's proposal. `setPaidUpkeepEnabled(false)` disables payments and cancels any pending replacement immediately;
-reenabling requires delayed activation, even for the same policy. Events expose every proposal, cancellation and switch.
+**Changes are immediate (decision 103, superseding the two-day delay of R41/R51).** The creator calls
+`setKeeperPolicy(address)`: the switch applies at once, with funding rechecked in the same transaction.
+`setPaidUpkeepEnabled(false)` disables payments immediately (emergency stop); `setPaidUpkeepEnabled(true)` re-enables
+immediately with the same funding check. Setting a policy also re-enables paid upkeep. There is no proposal, pending
+state, activation window or `generation`; `settingsHash` hashes the policy, its maximum and whether paid upkeep is
+enabled, so a disable/re-enable or same-policy re-set returns to identical terms and a stale keeper offer still
+reverts `StaleSettings`. Events expose every switch and enable/disable.
+
+**Factory settings (decision 103).** The `policyAdmin` also holds the adjustable behaviour-shaping settings
+(`IBalancerFactory.Settings`: `maxPrizes`, `fillGateBps`, `minMarkupBps`, `maxMarkupBps`, `maxOps`, `maxReconcile`,
+`maxProcess`, `maxRestockSizes`, `curatedBatch`), each set immediately with a `SettingChanged(key, value)` event and
+fixed sanity bounds; defaults equal the former constants. Pools read them live, except the fill gate, which each pool
+caches (`fillGateBps`) for FWA's 100k admission hook and refreshes at creation, on `configure`, on every upkeep and via
+the permissionless `syncSettings()`. A settings change never invalidates an already-configured target.
+
+**Restock quote cap (decision 103).** The per-Shape surcharge a selected policy may quote is capped at
+`units * (1_800_000 * referencePrice(baseFee) + 0.0004 ether)` (2x V1's 900k gas and 0.0002 ETH flat at the reference
+price), replacing the former flat `units * 0.102 ether`. V1 always passes; a policy quoting materially above a
+reasonable gas cost is refused on the paid path and falls back to the immutable V1 recovery surcharge on the unpaid path.
 
 Pool immutability means an already deployed OLD PoolBalancer implementation cannot gain this feature. Pools deployed
 with this implementation can change economics without redeployment. No existing production pool is migrated or changed.
@@ -56,14 +71,17 @@ At 0.5 gwei basefee, twenty small Shapes need 0.2356 ETH to open for paid setup,
 
 Reference price for security budgets is `min(basefee + 0.1 gwei, 50 gwei)`. Actual payout also respects the actual bid and measured work. The service envelope is 0.00005 ETH per verified draw/Shape unit. Operation coefficients and all remaining components are immutable and exported for planner parity. They are payment bounds, not universal execution-gas claims. V1's own quote and surcharge formulas above remain unchanged.
 
-The per-pool allowance has a 0.622 ETH burst and `floor(0.05 ETH / 12)` wei/second refill, never reset by policy/configuration/ownership/open-state changes. It is spending authority, not ETH that must be locked upfront. At most burst plus elapsed-time refill can be paid, additionally bounded by current validated work, the selected maximum and creator-owned operating liquidity. A popular pool uses its own allowance.
+The per-pool burst/refill allowance was removed (decision 103): the old 0.622 ETH burst and `floor(0.05 ETH / 12)`
+wei/second refill allowed about 360 ETH/day, so it bounded nothing. Each paid call is bounded by current validated
+work, the selected maximum, the immutable `HARD_MAX_REWARD` (0.311 ETH) and creator-owned operating liquidity; there
+is no cumulative per-pool budget.
 
-Activation validates the candidate and compares its current maintenance budget with the old effective budget from
+A policy switch validates the candidate and compares its current maintenance budget with the old effective budget from
 the same snapshot. The old paid maximum is zero when disabled. No-greater maintenance exposure needs no additional
 funding, even with missing expensive inventory. Increased exposure requires operating cash covering the entire
 candidate maintenance budget. Missing inventory restoration is excluded here and remains in full withdrawal/opening
 reserves. Creator credit, uncollected proceeds, listed backing and future fees cannot fund activation. A smaller
-permitted maximum need not quote a smaller reward on each job. Existing prices and spending allowance stay unchanged.
+permitted maximum need not quote a smaller reward on each job. Existing prices stay unchanged; there is no per-pool spending allowance.
 
 Disabling paid upkeep releases payment-related reserve terms, retaining actual missing inventory cost. Delayed reenabling still checks the candidate's positive paid budget. A creator can bootstrap twenty small Shapes unpaid with 0.22 ETH pool funding, paying execution gas separately. Purchaser escrow/refunds remain in FWA regardless of payment state.
 
