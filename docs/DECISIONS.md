@@ -938,7 +938,13 @@ processing from upkeep) were superseded before any commit.
    back. The keeper's gain is not only the work fee: processing is paid on its measured span, which FWA's storage
    refunds put above the billed gas, so a processing call nets up to about 0.0014 ETH at 5 gwei (largest measured gap
    210,613 gas). `test_manufacturedStuckDrawLosesMoney` measures it from the transaction at 5 gwei: net +0.00074336
-   ETH against 0.0128004 ETH (edge plus randomness fee) lost on the draw (docs/GAS.md).
+   ETH against 0.0128004 ETH (edge plus randomness fee) lost on the draw (docs/GAS.md). That gain can exceed the edge
+   plus randomness fee when the draw was bought at low gas (at 0.1 gwei: 0.00133 ETH) and processed at the 5 gwei
+   ceiling. What keeps manufacture a loss is the creator markup of at least 10% on the prize (about 0.002 ETH on the
+   test board), plus basefee having to rise about 50 times within the ~50-block grace.
+   `ReserveEconomicReview` `test_manufacturedExpiredDrawPaysBuyerKeeperButCostsTheirCreator` is an outage-only
+   economic note: a buyer cannot cause undelivered randomness, and that buyer-keeper net is positive only below
+   about 0.017 gwei buyer gas.
 7. **Reserve consequence.** Each unreconciled draw now budgets two work fees (process and reconcile) besides
    200k + 1.8M + 150k gas: +0.00002 ETH per owed draw. The one-call working buffer is unchanged at the defaults
    (the listing call is larger).

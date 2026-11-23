@@ -84,7 +84,8 @@ contract CuratedAdmissionTest is ForkBase {
         (,,,,,, uint256 slot, uint8 status) = pool.listings(stagedCurated);
         assertEq(slot, 0);
         assertEq(status, 5);
-        vm.roll(block.number + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block processing grace applies");
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace (sales open)
         upkeep();
         assertEq(pool.unsettledAcquisitionCount(), 0);
         vm.prank(creator); balancer.withdrawCurated(originalCurated, creator);

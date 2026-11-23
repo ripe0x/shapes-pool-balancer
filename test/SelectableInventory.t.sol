@@ -119,7 +119,9 @@ contract SelectableInventoryTest is ForkBase {
         assertEq(balancer.admissionStatus(), 0, "prior reserved activation must not become an extra purchase barrier");
         uint256 fifth = buy(stranger, 1)[0];
         assertEq(pool.reservedStagedCount(), 12);
-        vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 4, "five outstanding draws: BUSY, so the 10-block paused grace applies at first");
+        // Two processed draws reopen sales and the 50-block grace then binds the rest, so wait it out.
+        vm.roll(vm.getBlockNumber() + 50);
         for (uint256 i; i < 3; ++i) {
             vm.prank(stranger, stranger); balancer.performUpkeepUnpaid();
         }
@@ -146,7 +148,9 @@ contract SelectableInventoryTest is ForkBase {
         for (uint256 i; i < 4; ++i) assertEq(buy(stranger, 1).length, 1);
         assertEq(pool.reservedStagedCount(), 24);
         assertEq(pool.unsettledAcquisitionCount(), 5);
-        vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 4, "five outstanding draws: BUSY, so the 10-block paused grace applies at first");
+        // Two processed draws reopen sales and the 50-block grace then binds the rest, so wait it out.
+        vm.roll(vm.getBlockNumber() + 50);
         for (uint256 i; i < 3; ++i) {
             vm.prank(stranger, stranger); balancer.performUpkeepUnpaid();
         }
@@ -172,7 +176,8 @@ contract SelectableInventoryTest is ForkBase {
         vm.prank(creator); balancer.unlistShapes(one);
         assertEq(address(balancer).balance - before, 0.01 ether, "the withdrawn staged Shape redeems its actual backing");
         assertEq(pool.activeListingCount(), 21, "withdrawal removed staging, not selectable inventory");
-        vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block processing grace applies");
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         vm.prank(stranger, stranger); balancer.performUpkeepUnpaid();
         vm.prank(stranger, stranger); pool.activateListings(20);
         fillUp();

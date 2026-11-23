@@ -65,6 +65,10 @@ contract ReserveEconomicReviewTest is ForkBase {
         assertEq(balancer.requiredReserve(),(3_200_000+V1_OVERHEAD)*0.0505 gwei+0.0002 ether,"one current call, no hypothetical full future board");
     }
 
+    /// @dev Outage-only economic note, not an abuse path: a buyer cannot cause undelivered randomness, so this draw
+    ///      expires only during a randomness outage. At this suite's 0.001 gwei the buyer-keeper coalition nets the
+    ///      creator-paid reward minus the randomness fee; with buyer gas counted the net is positive only below about
+    ///      0.017 gwei.
     function test_manufacturedExpiredDrawPaysBuyerKeeperButCostsTheirCreator() public {
         uint256 creatorStart=address(balancer).balance;
         uint256 bkStart=buyer.balance+keeper.balance;

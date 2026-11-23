@@ -307,7 +307,8 @@ contract OptionalCuratedTest is ForkBase {
         assertEq(slot, 0);
         assertEq(status, 5, "the second curated NFT is only staged behind the new Shapes");
 
-        vm.roll(block.number + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block processing grace applies");
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace (sales open)
         upkeep();
         assertEq(pool.unsettledAcquisitionCount(), 0);
         vm.prank(creator);

@@ -21,7 +21,10 @@ costs 0.023108 ETH of which FWA's edge is 0.0011004 ETH, plus a 0.0117 ETH rando
 back. The processing call is paid on its measured span, which FWA's storage refunds put above the billed gas: billed
 580,460 gas, paid 0.00364566 ETH, keeper net **+0.00074336 ETH** against 0.0128004 ETH lost on the draw. The largest
 measured − billed gap seen (210,613 gas, staged-restock processing above) would net about 0.0014 ETH per processing
-call at 5 gwei, still below the edge plus randomness fee of the one draw it processes.
+call at 5 gwei. That can exceed the edge plus randomness fee when the draw was bought at low gas and processed at the
+5 gwei ceiling: bought at 0.1 gwei, the edge plus randomness fee is 0.00133 ETH. What keeps manufacture a loss is
+the creator markup of at least 10% that the buyer pays over the prize's value (about 0.002 ETH on the test board),
+plus basefee having to rise about 50 times within the ~50-block grace.
 
 ## Slice A3 keeper overhead recalibration, 2026-11-23
 

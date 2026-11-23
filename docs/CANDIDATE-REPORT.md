@@ -1,7 +1,7 @@
 # Community release candidate report (2026-11-23)
 
-**Tested commit: `a609277`** (contracts, tests, app, keeper, docs). The commit after it adds only this report and
-the deployment plan refresh. **Nothing was deployed or broadcast on mainnet.** `08be33f` (sections 4 operational pass
+**Tested commit: `a609277`** (contracts, tests, app, keeper, docs). The commits after it add this report, the
+deployment plan refresh, five stale test fixes (test files only) and documentation; `src/` is unchanged. **Nothing was deployed or broadcast on mainnet.** `08be33f` (sections 4 operational pass
 and earlier evidence below) is superseded by the stuck-draw follow-up in section 0.
 
 ## 0. Follow-up at `a609277`: draws without randomness are stuck too
@@ -31,8 +31,30 @@ First runs: KeeperPay `test_splitCallsArePaidOncePerProcessedDraw` asserted the 
 its superseded line was removed. The five review suites (policy-interface bump touched them) had 10 failures that
 date from `08be33f`, which never ran them: 8 rolled 31 to 40 blocks and expected upkeep to process an expired draw at
 once, 2 lacked the second per-owed-draw work fee. They now roll past the 50-block grace and count the processing fee;
-only the 10 were rerun. Not run on this code: FlowBreakdown, Gas, Hardening, PolicyLifecycle, PolicyModelParity,
-ReserveCapital, ReserveCapitalMatrix, BatchSlippage, ProductLimits, MintFeeChange, Balancer, ParityFixture, vitest.
+only the 10 were rerun.
+
+Full run on `a609277` (validation):
+
+| Command | Result |
+| --- | --- |
+| `forge build` | pass; PoolBalancer 24,275 B |
+| `forge test`, 24 suites | 157 / 162; the 5 failures were stale tests, fixed below |
+| `forge test` Gas | 25 / 25 |
+| `forge test` FlowBreakdown | 30 / 30 |
+| `forge test --match-contract ParityFixture` | 1 / 1 |
+| `CANDIDATE_RUN=1 npm run test:ts` | 235 passed, 16 skipped |
+
+The 5 failures (`NoUpkeepNeeded()`) expected upkeep to process an expired draw 31 blocks after the request, inside
+the 50-block grace (the paused 10-block grace binds only while sales are BUSY or LOW_INVENTORY). No contract defect:
+each test now rolls 50 blocks so upkeep processes the draw under the owner's rule, with its other assertions
+unchanged. `CuratedAdmission` `test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase`, `OptionalCurated`
+`test_requiredMode_stagedCuratedNeverAuthorizesPurchase` and `SelectableInventory`
+`test_stagedWithdrawalHoleIsClearedExactlyOnce` had sales open (grace 50); in the last one the early unpaid upkeep
+restocked instead of processing, so the draw's staged listing was never activated and `_backing` failed
+`assertEq(5, 1)`. `SelectableInventory` `test_curatedOnlyStagingDoesNotReduceShapeAdmission` and
+`test_earlierReservedBatchesCountBeforeTheNextSelection` start BUSY (five draws, asserted): the first call processed
+two under the 10-block grace, which reopened sales, so the 50-block grace bound the third call. Rerun of only those
+5 tests: 5 / 5 pass.
 
 New tests: `test_drawWithoutRandomnessProcessedAfterDeadlineAndGrace_drawBehindProceeds` (expired head plus the Ready
 draw behind it processed at requestBlock + 50, nothing at + 49, reward = (measured + 60,000) × 0.55 gwei + 4 work fees,
@@ -191,13 +213,13 @@ Gas measurements in tests: docs/GAS.md "Paid processing of stuck draws".
   (2) The first layout exceeded the size limit by 87 bytes; the scan and the processing call moved into
   `KeeperPolicyCalls`.
 - Independent review of `08be33f`'s processing change ran afterwards; its findings (strict deadline, grace ordering,
-  interface version, the refund-surplus wording, a shadowed name) are repaired in `a609277`. The repairs themselves
-  were not re-reviewed.
+  interface version, the refund-surplus wording, a shadowed name) are repaired in `a609277`. An independent review
+  of `08be33f` and `a609277` then found no Critical, High or Medium issue.
 
 ## 7. Remaining blockers (owner)
 
 1. New asset-flow gate run (`ASSET FLOW GATE: PASS`) and the owner's signature on the new source hash of `a609277`.
-   The suites listed as not run in section 0 belong to that frozen-candidate run.
+   The full run in section 0 is evidence for that gate, not the gate itself.
 2. Merge to `main`, then the deployment plan's runbook from the main checkout.
 3. Deployer gas: 0.0523 ETH covers the deployment up to about 4 gwei; top up if fees are higher at signing time.
 4. Mainnet broadcast by the owner only (`--account ripe0x`), then verification, the post-cutover legacy scan and the
