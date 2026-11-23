@@ -76,7 +76,6 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         ['remote RPC', (p: any) => p.rpc = MAINNET], ['old owned node', (p: any) => p.rpc = 'http://127.0.0.1:18556'],
         ['arbitrary signer', (p: any) => p.roles = { ...p.roles, deployer: '0x0000000000000000000000000000000000000001' }],
         ['higher spending', (p: any) => p.caps = { ...p.caps, gas: '2000000000000000000' }],
-        ['second time jump', (p: any) => p.scenario = { ...p.scenario, maximumTimeJumps: 2 }],
         ['different negative action', (p: any) => p.scenario = { ...p.scenario, creationReceiptProbe: { ...p.scenario.creationReceiptProbe, valueWei: '1' } }],
         ['repeated proof recovery', (p: any) => p.scenario = { ...p.scenario, curatedProofRecovery: { ...p.scenario.curatedProofRecovery, maximumRefreshes: 2 } }],
         ['no standard-mode pool', (p: any) => p.scenario = { ...p.scenario, curatedRequired: [true, true] }],

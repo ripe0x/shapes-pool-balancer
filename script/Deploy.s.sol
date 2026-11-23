@@ -5,6 +5,8 @@ import {Script, console} from "forge-std/Script.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
+import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/External.sol";
 
 /// @dev Getters of the reused Draw Packs instance and renderer that src/interfaces does not declare.
@@ -29,8 +31,9 @@ interface IReusedRenderer {
 ///         - full (local forks and historical tests): also creates this system's own Draw Packs instance
 ///           (lib/shape-packs, ripe0x/shape-packs `draw-packs` at 3a463f7) and its renderer. PACKS_ADMIN (env) is its
 ///           presentation admin: renderer and description only.
-///         KEEPER_ADMIN controls eligibility; POLICY_ADMIN controls the factory's default policy and settings. Admin
-///         addresses are environment values, never secrets.
+///         KEEPER_ADMIN controls eligibility; POLICY_ADMIN controls the factory economics, the default spending bucket
+///         and the product limits, each changed immediately by one setter. Admin addresses are environment values,
+///         never secrets. The factory constructor sets the initial settings; `_postflight` reads every one back.
 contract Deploy is Script {
     address constant FWA_FACTORY = 0x8919814D825a5Af238cC04DE06b1C18c9eaA477C;
     address constant FWA_IMPL = 0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7;
@@ -129,13 +132,35 @@ contract Deploy is Script {
     ) internal view {
         require(factory.implementation() == address(impl), "factory wiring");
         require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
+        require(factory.pendingKeeperAdmin() == address(0) && factory.pendingPolicyAdmin() == address(0), "no pending admin");
         require(factory.policyAdmin() == policyAdmin && factory.defaultKeeperPolicy() == address(policy), "policy wiring");
+        require(policy.interfaceVersion() == 2, "policy interface");
+        IKeeperPolicy.Economics memory e = initialEconomics(address(policy));
+        require(keccak256(abi.encode(factory.economics())) == keccak256(abi.encode(e)), "initial economics");
+        require(factory.defaultBucketCapacity() == 0.622 ether, "bucket capacity");
+        require(factory.defaultBucketRefill() == uint256(0.05 ether) / 12, "bucket refill");
+        (uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps) = factory.productLimits();
+        require(maxPrizes == 1_000 && minMarkupBps == 1_000 && maxMarkupBps == 10_000, "product limits");
+        require(
+            factory.creationSettingsHash()
+                == KeeperPolicyCalls.settingsHash(e, KeeperPolicyCalls.FOLLOW, 0, true, impl.SHAPES().mintFee()),
+            "creation settings hash"
+        );
         require(impl.creator() == address(1), "implementation not locked");
         require(address(impl.FWA_FACTORY()) == FWA_FACTORY && impl.FWA_IMPLEMENTATION() == FWA_IMPL, "impl wiring");
         require(address(impl.SHAPES()) == SHAPES && address(impl.ENS()) == ENS, "impl wiring");
         require(address(impl.PACKS()) == packs && IPacksView(packs).shapes() == SHAPES, "packs wiring");
         require(IPacksView(packs).MIN_PACK_VALUE() == 0.02 ether, "pack minimum");
         require(address(impl).code.length > 0 && address(factory).code.length > 0, "no code");
+    }
+
+    /// @notice The reviewed initial factory economics (docs/CONFIG-INVENTORY.md section 0), stated independently of the
+    ///         factory constructor so the postflight catches a constructor that drifts from the deployment plan.
+    ///         Field order: policy, workFee, maxGas, overheadGas, gasPriceCeiling, priorityAllowance, restockGas,
+    ///         restockFlat, baseGas, processGas, reconcileGas, shapeGas, prizeGas.
+    function initialEconomics(address policy) public pure returns (IKeeperPolicy.Economics memory) {
+        return IKeeperPolicy.Economics(policy, 0.00002 ether, 3_200_000, 60_000, 5 gwei, 0.05 gwei, 910_000, 0.0002 ether,
+            200_000, 1_800_000, 150_000, 700_000, 150_000);
     }
 
     /// @dev Reuse mode: every reused dependency still holds its recorded code and relationships. A matching code hash
