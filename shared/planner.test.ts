@@ -92,6 +92,11 @@ describe('planner', () => {
     // 17 x 0.01 Shapes is the smallest all-0.01 board that never pauses before FWA's limit
     expect(pendingDrawsAdmitted(counts([[0, 16]]))).toBe(4);
     expect(pendingDrawsAdmitted(counts([[0, 17]]))).toBe(5);
+    // Creator fill gate: 16 x 0.01 admits floor(16 x (1 - gate)); 0 keeps only the weight-covers-loss check.
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 5_000, 100)).toBe(8);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 0, 100)).toBe(16);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 10_000, 100)).toBe(0);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 7_000, 3)).toBe(3);
   });
 
   it('creator estimates use explicit V1 gas context and work-based fees', () => {

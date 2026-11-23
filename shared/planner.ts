@@ -9,6 +9,7 @@ export const NUM = 10n ** 36n; // FWA INVERSE_WEIGHT_NUMERATOR
 export const MIN_MARKUP_BPS = 1_000n;
 export const MAX_BATCH = 5;
 export const MAX_OPS = Number(enforcement.maxUnits);
+/** Initial factory `productLimits().maxPrizes`; designers use the live value via `PoolInputs.maxPrizes`. */
 export const MAX_SHAPES_PER_PLAN = 1_000;
 /** Immutable V1 parameters exported by Solidity, for explicitly selected V1 simulations only. */
 export const V1_POLICY = Object.fromEntries(Object.entries(policyV1).map(([k, v]) => [k, BigInt(v)])) as
@@ -169,6 +170,8 @@ export interface PoolInputs {
    *  of each active prize of that size, which keeps the markup and fees in force when it was listed. Prizes beyond the
    *  listed count (new ones the plan adds) are priced at the current markup and fees. Parallels `curatedPrices`. */
   shapePrices?: bigint[][];
+  /** Factory `productLimits().maxPrizes` for this design (see app/src/limits.ts); default MAX_SHAPES_PER_PLAN. */
+  maxPrizes?: number;
   /** Cached immutable-enforced maximum read from the selected pool/policy. */
   policyMaxReward?: bigint;
   /** Exact surcharge per new prize, indexed by denomination. Supports pack-specific future policies. */
@@ -251,13 +254,14 @@ export function shapeTotals(counts: Counts, inputs: PoolInputs) {
   return { w, wp };
 }
 
-/** Unsettled draws a fully stocked board still admits a purchase with (PoolBalancer's fill gate counts each
- *  unreconciled draw as the loss of a 0.01 ETH prize's weight, 1e36 / backing, and admits while 70% of the target's
- *  weight remains), capped at FWA's MAX_BATCH. Below MAX_BATCH the board pauses while that many draws are unsettled. */
-export function pendingDrawsAdmitted(counts: Counts): number {
+/** Unreconciled draws a fully stocked board still admits a purchase with (PoolInventory.admission counts each
+ *  unreconciled draw as the loss of a 0.01 ETH prize's weight, 1e36 / backing, and admits while `fillGateBps` of the
+ *  target's weight remains; at 0 it still requires the remaining weight to cover the loss), capped at `cap`
+ *  (default FWA's MAX_BATCH). */
+export function pendingDrawsAdmitted(counts: Counts, fillGateBps = 7_000, cap = MAX_BATCH): number {
   const w = counts.reduce((s, n, d) => s + BigInt(n) * (NUM / DENOMS[d]), 0n);
-  const k = Number((3_000n * w) / (BPS * (NUM / DENOMS[0])));
-  return Math.min(k, MAX_BATCH);
+  const k = Number(((BPS - BigInt(fillGateBps)) * w) / (BPS * (NUM / DENOMS[0])));
+  return Math.min(k, cap);
 }
 
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
@@ -299,7 +303,8 @@ export function evaluate(counts: Counts, inputs: PoolInputs): Evaluation {
   const curatedOddsPpm = tW === 0n ? 0 : Number((c.w * 1_000_000n) / tW);
 
   if (shapes === 0) reasons.push('Plan has no Shapes');
-  if (shapes > MAX_SHAPES_PER_PLAN) reasons.push(`More than ${MAX_SHAPES_PER_PLAN} Shapes`);
+  const maxPrizes = inputs.maxPrizes ?? MAX_SHAPES_PER_PLAN;
+  if (shapes > maxPrizes) reasons.push(`More than ${maxPrizes} Shapes`);
 
   const tiers: Tier[] = [];
   inputs.curatedBases.forEach((b, i) => {
