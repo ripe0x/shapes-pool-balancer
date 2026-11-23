@@ -76,13 +76,14 @@ history view, not a reason to disable current claims, maintenance, closing or po
 
 ## Adopt a policy
 
-1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer.
-2. Creator: `proposeKeeperPolicy(candidate)`. Observe `KeeperPolicyProposed` and `policyActivationTime`.
-3. `policyFunding` returns candidate maintenance budget and activation shortfall. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
-4. After two days, anyone: `activateKeeperPolicy()`. Funding and compatibility are checked again atomically.
-5. Creator may `cancelKeeperPolicy()` or `setPaidUpkeepEnabled(false)` immediately. Reenabling requires delayed activation, even with the same policy. Ownership acceptance cancels the former creator's proposal.
+Policy changes are immediate (decision 103, superseding the two-day delay).
 
-Only the separate policy admin may propose/cancel a factory default. `proposeDefaultKeeperPolicy`, a two-day delay and permissionless `activateDefaultKeeperPolicy` affect future pools only. The keeper admin cannot select any pool's policy or change keeper economics.
+1. Read `keeperPolicy`, `policyMaxReward` and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer. (The app no longer shows policy version labels.)
+2. `policyFunding` returns the candidate maintenance budget and the shortfall for the switch. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
+3. Creator: `setKeeperPolicy(candidate)` applies immediately, with funding and compatibility checked atomically in the same transaction. It also re-enables paid upkeep.
+4. Creator may `setPaidUpkeepEnabled(false)` (emergency stop) and `setPaidUpkeepEnabled(true)` (re-enable) at any time, both immediate; re-enabling applies the same funding check. There is no proposal to cancel.
+
+Only the separate policy admin may change a factory default, immediately via `setDefaultKeeperPolicy`; it affects future pools only. The keeper admin cannot select any pool's policy or change keeper economics. The policy admin also sets the adjustable factory settings (`IBalancerFactory.Settings`), each immediate with a `SettingChanged` event and fixed bounds; a pool's cached fill gate is refreshed on configure, on upkeep, or via `syncSettings()`.
 
 ## Broken policy or unavailable payment
 

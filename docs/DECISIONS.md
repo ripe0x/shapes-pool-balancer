@@ -757,3 +757,55 @@ All historical release approvals stay historical; no new public deployment or re
     Accepted without a contract change: the winner's backing and purchaser refunds are untouched, and the creator can
     reach the same withdrawal through `close()` or a smaller target. Refusing capital claims while
     `lastIssuedSequence() > reconciledSequence` was the rejected alternative (new source hash and re-audit).
+
+103. **Behavior-shaping settings become adjustable; keeper policy changes immediate; keeper allowance removed**
+    (owner, 2026-11-16: "is the cap a constant? we should make that updateable"; "i'd prefer to have them adjustable.
+    on the factory by the admin ... only on things that wouldn't break the system"; owner approval 2026-11-23). The
+    2026-11-22 mainnet deployment hard-coded values the owner had asked (2026-11-16) to make adjustable, and decision 95's
+    policy rework had dropped the decision 88/91 factory settings. This restores a minimal, redeploy-only set.
+    - **Factory settings** (`IBalancerFactory.Settings`, set by `policyAdmin` with immediate effect and a
+      `SettingChanged(key, value)` event; `getSettings()` reads them): `maxPrizes` (1000), `fillGateBps` (7000),
+      `minMarkupBps` (1000), `maxMarkupBps` (10000), `maxOps` (5), `maxReconcile` (5), `maxProcess` (2),
+      `maxRestockSizes` (4), `curatedBatch` (20). Defaults equal the former constants, so behavior is unchanged until
+      the admin acts. Fixed sanity bounds (chosen): maxPrizes 1..1000; fillGateBps 0..10000; markups 1..10000 each with
+      the pair kept non-inverted (min<=max enforced in each setter); maxOps 1..8; maxReconcile 1..10; maxProcess 1..2;
+      maxRestockSizes 1..8; curatedBatch 1..50. `maxProcess` is capped at 2 because the immutable `PROCESS_STARVED_GAS`
+      (400k) was derived for two processed draws; raising it would need that bound re-derived. Measured worst upkeep at
+      the work-per-upkeep upper bounds (reconcile 10 + mint/list 8 Shapes across 8 sizes) is **4,486,913 gas**, within
+      the immutable payment envelope `MAX_GAS` (6M, ~25% margin) and far under the 30M block limit
+      (`test/Gas.t.sol:test_gas_worstCaseUpperBounds`).
+    - **Pools read settings live.** Exception: the fill gate runs inside FWA's read-only `admission` hook under a 100k
+      gas stipend, so the pool caches `fillGateBps` in its own storage, refreshed at creation, on `configure`, on every
+      `performUpkeep`, and via the permissionless `syncSettings()`. The hook stays at **44,481 gas**, identical before
+      and after a settings change (the cached read adds no cross-contract call). A settings change never invalidates an
+      already-configured target; validation applies at `configure` time only.
+    - **Immediate keeper policy.** `setKeeperPolicy(address)` (creator-only) and factory `setDefaultKeeperPolicy(address)`
+      (policyAdmin) take effect at once; `setPaidUpkeepEnabled(true)` re-enables immediately. The existing
+      ReserveNotFunded funding check (greater maintenance exposure must be funded from operating capital) is kept.
+      Removed: propose/cancel/activate, pending/activationTime, `POLICY_DELAY`, and `generation` (settingsHash now hashes
+      policy, maxReward and enabled; a disable/re-enable or same-policy re-set returns to identical terms, so a stale
+      keeper offer still reverts StaleSettings). Existing pools still never change policy when the factory default
+      changes (snapshot at creation). This **supersedes the two-day delay of R41/R51/decision 95** for pools deployed
+      with the new implementation; emergency disable, immutable payout safeguards and the public unpaid recovery path
+      are unchanged.
+    - **Keeper allowance removed.** The per-pool burst/refill budget (0.622 ETH / floor(0.05 ETH / 12 s)) allowed about
+      360 ETH/day, so it bounded nothing; per-call pay is already min(policy quote, cached policy maxReward,
+      gas-and-work envelope, HARD_MAX_REWARD 0.311). Deleted `BURST`, `REFILL_PER_SECOND`, `available()`, `allowance`
+      and `allowanceTime`. `test/PoolSettingsRework.t.sol:test_noAllowanceCapsCumulativePayInZeroElapsedTime` pays out
+      more than the old 0.622 ETH burst across consecutive calls at the same timestamp.
+    - **Restock quote cap** changed from the constant `units * 0.102 ether` to
+      `units * (1_800_000 * referencePrice(baseFee) + 0.0004 ether)` (2x V1's 900k gas and 0.0002 ETH flat, at the
+      reference price), so V1 always passes and a policy quoting materially above a reasonable gas cost is refused on
+      the paid path. The four display-only mirrors in PoolBalancer were deleted; `HARD_MAX_KEEPER_REWARD` now reads
+      `KeeperPolicyCalls.HARD_MAX_REWARD`.
+    - **New running cost.** Every upkeep now reads `factory.getSettings()` and writes the `fillGateBps` cache, measured
+      at about +3,770 gas per upkeep (keeper-policy money-path fixture: measuredGas 861,631 -> 865,401). The keeper is
+      paid for it through the measured span (about +0.00019 ETH at 50 gwei); it comes from the pool's operating ETH.
+    - **Deliberate scope.** The reserve math (`KeeperPolicyCalls.reserve`/`maintenanceBudget`) still budgets one
+      maintenance call at the default work bounds (5/5/2/4), not the live settings. If the admin raises a work bound the
+      reserve under-budgets keeper pay for the larger call; this is a liveness degradation (the keeper simply is not
+      paid and the call reverts), not asset loss, and the admin is the trusted owner who can add ETH. Threading the live
+      work bounds into the reserve was left out as beyond the approved scope; flagged for the owner.
+    Redeploy of implementation + factory + changed libraries follows (not done here). Tests: `test/PoolSettingsRework.t.sol`
+    and the migrated policy/reserve/keeper suites; asset-flow gate 30/30. Runtime sizes: PoolBalancer 21,112 B (3,464
+    under EIP-170), PoolInventory 11,429, BalancerFactory 4,688, KeeperPolicyCalls 4,354.
