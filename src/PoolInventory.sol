@@ -38,11 +38,11 @@ library PoolInventory {
         address pool;
         address policy;
         bool paid;
+        uint256 maxOps;         // factory setting: Shape units restocked per call
+        uint256 maxRestockSizes; // factory setting: distinct sizes restocked per call
     }
-    uint256 constant MAX_OPS = 5;
     uint256 constant DENOMS = 16;
     uint256 constant SHAPE_DENOMS = 9;
-    uint256 constant MAX_RESTOCK_SIZES = 4;
     uint8 constant SHAPE = 2;
     uint8 constant ACTIVE = 1;
     uint256 constant BY_VALUE = 0x87f65ed43cb21a90;
@@ -71,8 +71,10 @@ library PoolInventory {
     error InvalidPlan();
     error ProtectedAsset();
 
-    function validateTarget(uint256 plan, uint256 markup) public pure returns (uint256 weight) {
-        if (markup < 1_000 || markup > 10_000) revert InvalidConfig();
+    function validateTarget(uint256 plan, uint256 markup, uint256 maxPrizes, uint256 minMarkupBps, uint256 maxMarkupBps)
+        public pure returns (uint256 weight)
+    {
+        if (markup < minMarkupBps || markup > maxMarkupBps) revert InvalidConfig();
         uint256 prizes;
         for (uint256 d; d < DENOMS; ++d) {
             uint256 n = _count(plan, d);
@@ -80,7 +82,7 @@ library PoolInventory {
             prizes += n;
             weight += n * _weight(d);
         }
-        if (prizes == 0 || prizes > 1_000) revert InvalidPlan();
+        if (prizes == 0 || prizes > maxPrizes) revert InvalidPlan();
     }
 
     function recoverUntracked(address pool, address factory, address collection, uint256 tokenId, address to) public {
@@ -94,7 +96,7 @@ library PoolInventory {
     /// @dev Curated NFTs are optional unless `curatedRequired`. The Shapes mint fee is not checked here: it limits
     ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
     function admission(State storage s, IFWAPool pool, bool curatedRequired,
-        uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence) public view returns (uint8)
+        uint256 targetWeight, uint256 prizeWeight, uint64 reconciledSequence, uint256 fillGateBps) public view returns (uint8)
     {
         if (curatedRequired && s.activeIds.length == s.listedPrizes) return 3;
         uint256 unsettled = pool.unsettledAcquisitionCount();
@@ -107,7 +109,7 @@ library PoolInventory {
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {
             uint256 lost = unavailable * (1e36 / 0.01 ether);
-            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight ? 6 : 0;
+            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
         }
         uint256 shapeBound = unavailable + stageUpper;
         uint256 tracked = s.activeIds.length;
@@ -119,7 +121,7 @@ library PoolInventory {
         if (afterActivation > unavailable) unavailable = afterActivation;
         if (shapeBound < unavailable) unavailable = shapeBound;
         uint256 lost = unavailable * (1e36 / 0.01 ether);
-        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < 7_000 * targetWeight) return 6;
+        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
         return 0;
     }
 
@@ -148,10 +150,10 @@ library PoolInventory {
     }
 
     function listCurated(State storage s, IFWAPool pool, address shapes, address packs, address source,
-        PoolBalancer.CuratedInput[] calldata inputs) public returns (uint256[] memory listingIds)
+        PoolBalancer.CuratedInput[] calldata inputs, uint256 curatedBatch) public returns (uint256[] memory listingIds)
     {
         uint256 n = inputs.length;
-        if (n == 0 || n > 20) revert InvalidBatch();
+        if (n == 0 || n > curatedBatch) revert InvalidBatch();
         // Clear stale Shape uncertainty before adding curated staging, only with proof all tracked records are active.
         if (s.shapeStageUpper != 0 && pool.activeListingCount() == s.activeIds.length) s.shapeStageUpper = 0;
         IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](n);
@@ -257,8 +259,9 @@ library PoolInventory {
         uint256 markup = f.markup;
         uint256 keep = f.keep;
         uint256 fee = f.fee;
-        IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](MAX_OPS);
-        uint8[] memory sizes = new uint8[](MAX_OPS);
+        uint256 maxOps = f.maxOps;
+        IFWAPool.ListingInput[] memory batch = new IFWAPool.ListingInput[](maxOps);
+        uint8[] memory sizes = new uint8[](maxOps);
         uint256 n;
         uint256 restocked; // sizes
         for (uint256 k; k < DENOMS; ++k) {
@@ -268,7 +271,7 @@ library PoolInventory {
             if (have >= want) continue;
             uint256 w = _shapesIn(d);
             uint256 need = want - have;
-            if (need > (MAX_OPS - used) / w) need = (MAX_OPS - used) / w;
+            if (need > (maxOps - used) / w) need = (maxOps - used) / w;
             uint256 each = _cost(d, fee);
             uint256 bal = address(this).balance;
             // Only the candidate work's enforced bound is held, not the policy's unrelated full-call maximum.
@@ -299,7 +302,7 @@ library PoolInventory {
                 }
             }
             used += need * w;
-            if (need < want - have || ++restocked == MAX_RESTOCK_SIZES) break;
+            if (need < want - have || ++restocked == f.maxRestockSizes) break;
         }
         if (n == 0) return (0, 0, 0);
         assembly ("memory-safe") {

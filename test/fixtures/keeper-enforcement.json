@@ -1,6 +1,5 @@
 {
   "baseGas": "200000",
-  "burst": "622000000000000000",
   "byValue": "9797122305035475600",
   "gasPriceCeiling": "50000000000",
   "hardMaxReward": "311000000000000000",
@@ -14,7 +13,6 @@
   "prizeGas": "150000",
   "processGas": "1800000",
   "reconcileGas": "150000",
-  "refillPerSecond": "4166666666666666",
   "shapeGas": "700000",
   "workFee": "50000000000000"
 }

@@ -217,11 +217,9 @@ contract ReserveCapitalTest is ForkBase {
         assertEq(required,0.00368 ether);
         assertEq(shortfall,required);
         address policy=balancer.keeperPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(policy);
-        vm.warp(vm.getBlockTimestamp()+2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(policy);
         _deposit(shortfall);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(policy);
         assertTrue(balancer.paidUpkeepEnabled());
         assertEq(balancer.requiredReserve(),0.00368 ether);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
@@ -265,8 +263,6 @@ contract ReserveCapitalTest is ForkBase {
     function test_writeImmutableEnforcementFixture() public {
         string memory key = "keeperEnforcement";
         vm.serializeString(key,"hardMaxReward",vm.toString(KeeperPolicyCalls.HARD_MAX_REWARD));
-        vm.serializeString(key,"burst",vm.toString(KeeperPolicyCalls.BURST));
-        vm.serializeString(key,"refillPerSecond",vm.toString(KeeperPolicyCalls.REFILL_PER_SECOND));
         vm.serializeString(key,"maxGas",vm.toString(KeeperPolicyCalls.MAX_GAS));
         vm.serializeString(key,"overheadGas",vm.toString(KeeperPolicyCalls.OVERHEAD_GAS));
         vm.serializeString(key,"baseGas",vm.toString(KeeperPolicyCalls.BASE_GAS));

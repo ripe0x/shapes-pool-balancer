@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
@@ -76,9 +77,7 @@ contract SettingsTest is ForkBase {
     }
 
     function _switch(address policy) internal {
-        vm.prank(creator); balancer.proposeKeeperPolicy(policy);
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(policy);
     }
 
     function test_policyV1FormulaAbsoluteAndFixture() public {
@@ -101,24 +100,22 @@ contract SettingsTest is ForkBase {
         vm.writeJson(json, "./test/fixtures/keeper-policy-v1.json");
     }
 
-    function test_defaultAndPoolTimelocksAreSeparate() public {
+    function test_defaultAndPoolPolicyChangesAreImmediateAndScoped() public {
         _open(5 ether);
         address initial = balancer.keeperPolicy();
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(keeperAdmin); vm.expectRevert(); factory.proposeDefaultKeeperPolicy(address(v2));
-        factory.proposeDefaultKeeperPolicy(address(v2));
-        vm.expectRevert(); factory.activateDefaultKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.prank(stranger); factory.activateDefaultKeeperPolicy();
-        assertEq(balancer.keeperPolicy(), initial);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.prank(stranger); balancer.activateKeeperPolicy();
+        // Factory default: policyAdmin only, immediate; it never touches an existing pool.
+        vm.prank(keeperAdmin); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setDefaultKeeperPolicy(address(v2));
+        factory.setDefaultKeeperPolicy(address(v2)); // test contract is the policyAdmin
+        assertEq(factory.defaultKeeperPolicy(), address(v2));
+        assertEq(balancer.keeperPolicy(), initial, "default change does not alter an existing pool");
+        // Pool policy: creator only, immediate.
+        vm.prank(stranger); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setKeeperPolicy(address(v2));
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
     }
 
-    function test_pendingWithdrawCannotDefeatActivationFunding() public {
+    function test_withdrawCannotDefeatPolicyFunding() public {
         _open(5 ether);
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
         // At normal gas both declarations exceed the immutable current-work bound; a higher declaration alone costs nothing.
@@ -126,40 +123,32 @@ contract SettingsTest is ForkBase {
         assertEq(sameRequired,balancer.requiredReserve());
         assertEq(noShortfall,0);
         vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator); balancer.claimSurplus(claimable, creator);
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
         assertGt(shortfall, 0);
         assertGt(required, address(balancer).balance - balancer.creatorCredit());
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        // The immediate switch enforces funding at call time.
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
     }
 
-    function test_emergencyDisableCannotBeInstantlyReenabled() public {
+    function test_emergencyDisableAndImmediateReenableWithFunding() public {
         _open(5 ether);
         bytes32 old = balancer.settingsHash();
-        uint64 generation = balancer.policyGeneration();
-        uint256 allowance = balancer.keeperAllowance();
-        uint64 allowanceTime = balancer.keeperAllowanceTime();
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
         bytes32 disabled = balancer.settingsHash();
         assertFalse(balancer.paidUpkeepEnabled());
-        assertTrue(old != disabled);
-        assertEq(balancer.policyGeneration(), generation + 1);
-        vm.prank(creator); vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.setPaidUpkeepEnabled(true);
-        _switch(balancer.keeperPolicy());
+        assertTrue(old != disabled, "disabling changes the terms");
+        // Re-enabling is immediate (with the funding check), not delayed.
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
         assertTrue(balancer.paidUpkeepEnabled());
-        assertTrue(old != balancer.settingsHash(), "same-address re-enable invalidates the original terms");
-        assertTrue(disabled != balancer.settingsHash(), "re-enabled terms also differ from disabled terms");
-        assertEq(balancer.policyGeneration(), generation + 2);
-        assertEq(balancer.keeperAllowance(), allowance, "same-address cycle preserves spending history");
-        assertEq(balancer.keeperAllowanceTime(), allowanceTime);
+        assertEq(balancer.settingsHash(), old, "re-enabling the same policy returns to the original terms");
+        // A keeper holding the pre-disable hash can act again under identical terms; a disabled-era hash is stale.
         vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector);
-        balancer.performUpkeep(old, 0, 0);
+        balancer.performUpkeep(disabled, 0, 0);
     }
 
     function test_minimumPaymentRevertsWorkAtomically() public {
@@ -210,42 +199,31 @@ contract SettingsTest is ForkBase {
         }
     }
 
-    function test_cancelAndCreatorTransferInvalidateProposals() public {
+    function test_creatorTransferLeavesPolicyUntouched() public {
         _open(5 ether);
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
-        vm.prank(creator); balancer.cancelKeeperPolicy();
-        assertEq(balancer.pendingKeeperPolicy(), address(0));
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
+        address policy = balancer.keeperPolicy();
         vm.prank(creator); balancer.transferCreator(stranger);
         vm.prank(stranger); balancer.acceptCreator();
-        assertEq(balancer.pendingKeeperPolicy(), address(0));
+        assertEq(balancer.keeperPolicy(), policy, "creator transfer does not disturb the policy");
+        assertTrue(balancer.paidUpkeepEnabled());
     }
-    function test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() public {
+    /// @dev Allowance removed (decision: BURST/REFILL deleted). Per-call pay is still capped by HARD_MAX_REWARD, and no
+    ///      per-pool allowance is consumed or tracked, so repeated large rewards are each bounded independently.
+    function test_maximumPolicyRewardRemainsBoundedWithoutAllowance() public {
         _open(100 ether);
         _switch(address(new HostilePolicy(0)));
         buy(buyer, 1);
         vm.roll(vm.getBlockNumber() + 40);
-        uint256 before = balancer.availableKeeperAllowance();
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
         assertGt(reward, 0);
         assertLe(reward, balancer.HARD_MAX_KEEPER_REWARD());
-        assertEq(balancer.keeperAllowance(), before - reward);
-        uint256 stored = balancer.keeperAllowance();
-        uint256 stamp = balancer.keeperAllowanceTime();
+        // Reopening and re-setting the policy do not reset or consult any allowance; paid upkeep stays enabled.
         vm.prank(creator); balancer.close();
         vm.prank(creator); balancer.open();
-        assertEq(balancer.keeperAllowance(), stored, "reopening never resets spend history");
-        assertEq(balancer.keeperAllowanceTime(), stamp);
         _switch(balancer.keeperPolicy());
-        assertEq(balancer.keeperAllowance(), stored, "policy activation never resets spend history");
-        assertEq(balancer.keeperAllowanceTime(), stamp);
-        assertEq(balancer.availableKeeperAllowance(), balancer.KEEPER_BURST(), "idle refill saturates");
-        uint256 dayBound = balancer.KEEPER_BURST() + 1 days * balancer.KEEPER_REFILL_PER_SECOND();
-        uint256 yearBound = balancer.KEEPER_BURST() + 365 days * balancer.KEEPER_REFILL_PER_SECOND();
-        assertEq(dayBound, 360.6219999999999424 ether);
-        assertEq(yearBound, 131400.621999999978976 ether);
+        assertTrue(balancer.paidUpkeepEnabled());
+        assertEq(balancer.HARD_MAX_KEEPER_REWARD(), KeeperPolicyCalls.HARD_MAX_REWARD);
     }
 
     function test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() public {

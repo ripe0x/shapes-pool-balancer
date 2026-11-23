@@ -146,9 +146,7 @@ contract ConcurrentRecoveryTest is ForkBase {
             policy = new HostileRecoveryPolicy();
             policy.setFee(fee);
             vm.prank(creator);
-            balancer.proposeKeeperPolicy(address(policy));
-            vm.warp(vm.getBlockTimestamp() + 2 days);
-            balancer.activateKeeperPolicy();
+            balancer.setKeeperPolicy(address(policy));
         }
         uint256 refPrice = block.basefee + 0.1 gwei;
         if (refPrice > 50 gwei) refPrice = 50 gwei;

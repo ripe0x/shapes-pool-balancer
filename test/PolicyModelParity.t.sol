@@ -164,9 +164,7 @@ contract PolicyModelParity is ForkBase {
         assertEq(pool.unsettledAcquisitionCount(), 0);
         assertEq(IRefundCredit(address(pool)).acquisitionRefundCredit(buyer), 2 * price);
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2)); _snapshot("propose V2");
-        vm.warp(block.timestamp + 2 days);
-        balancer.activateKeeperPolicy(); _snapshot("activate V2");
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2)); _snapshot("set V2");
         _drawShape();
         vm.prank(creator); balancer.close(); _snapshot("close");
         uint256[] memory active = balancer.getActiveIds();

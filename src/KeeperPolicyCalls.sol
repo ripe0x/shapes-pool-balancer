@@ -8,8 +8,6 @@ import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 library KeeperPolicyCalls {
     uint256 internal constant GAS_LIMIT = 100_000;
     uint256 internal constant HARD_MAX_REWARD = 0.311 ether;
-    uint256 internal constant BURST = 0.622 ether;
-    uint256 internal constant REFILL_PER_SECOND = uint256(0.05 ether) / 12;
     uint256 internal constant MAX_GAS = 6_000_000;
     uint256 internal constant OVERHEAD_GAS = 100_000;
     uint256 internal constant BASE_GAS = 200_000;
@@ -26,13 +24,8 @@ library KeeperPolicyCalls {
 
     struct State {
         address policy;
-        address pending;
-        uint64 activationTime;
-        uint64 generation;
         bool enabled;
         uint256 maxReward;
-        uint256 allowance;
-        uint64 allowanceTime;
     }
     struct Reserve {
         bool enabled;
@@ -42,12 +35,9 @@ library KeeperPolicyCalls {
         uint256 mintFee;
         uint256 baseFee;
     }
-    event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
-    event KeeperPolicyCancelled(address indexed policy);
     event KeeperPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
     event PaidUpkeepChanged(bool enabled);
     event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed);
-    error PolicyNotReady();
     error PaymentUnavailable();
     error ReserveNotFunded();
 
@@ -55,58 +45,37 @@ library KeeperPolicyCalls {
         s.policy = policy;
         s.maxReward = validate(policy);
         s.enabled = true;
-        s.allowance = BURST;
-        s.allowanceTime = uint64(block.timestamp);
         emit KeeperPolicyChanged(address(0), policy);
     }
-    function propose(State storage s, address policy) public {
-        validate(policy);
-        s.pending = policy;
-        s.activationTime = uint64(block.timestamp + 2 days);
-        emit KeeperPolicyProposed(policy, s.activationTime);
-    }
-    function cancel(State storage s) public {
-        emit KeeperPolicyCancelled(s.pending);
-        s.pending = address(0);
-        s.activationTime = 0;
-    }
-    function activate(State storage s, uint256 fund, Reserve memory r) public {
-        if (s.pending == address(0) || block.timestamp < s.activationTime) revert PolicyNotReady();
-        uint256 bound = validate(s.pending);
+    /// @dev Immediate replacement (creator-authorized in PoolBalancer). Keeps the funding check: a greater maintenance
+    ///      exposure than the current one must be funded from operating capital. Always (re)enables paid upkeep.
+    function setPolicy(State storage s, address policy, uint256 fund, Reserve memory r) public {
+        uint256 bound = validate(policy);
         uint256 candidate = maintenanceBudget(bound, r);
         uint256 previous = maintenanceBudget(s.enabled ? s.maxReward : 0, r);
         // A lower bound need not quote less for each job; only immutable maintenance exposure is compared.
         if (candidate > previous && fund < candidate) revert ReserveNotFunded();
-        emit KeeperPolicyChanged(s.policy, s.pending);
-        s.policy = s.pending;
+        emit KeeperPolicyChanged(s.policy, policy);
+        s.policy = policy;
         s.maxReward = bound;
         s.enabled = true;
-        ++s.generation;
-        cancel(s);
         emit PaidUpkeepChanged(true);
     }
-    function disable(State storage s, bool value) public {
-        if (value) revert PolicyNotReady();
+    /// @dev Immediate emergency stop.
+    function disable(State storage s) public {
         s.enabled = false;
-        ++s.generation;
-        // An already matured proposal must not let a public executor undo the creator's emergency stop.
-        cancel(s);
         emit PaidUpkeepChanged(false);
     }
-    function available(State storage s) public view returns (uint256) {
-        uint256 elapsed = block.timestamp - s.allowanceTime;
-        uint256 burst = BURST;
-        uint256 refill = REFILL_PER_SECOND;
-        if (elapsed >= burst / refill + 1) return burst;
-        uint256 amount = s.allowance + elapsed * refill;
-        return amount > burst ? burst : amount;
+    /// @dev Immediate re-enable with the same funding check, against zero current paid exposure.
+    function enable(State storage s, uint256 fund, Reserve memory r) public {
+        uint256 need = maintenanceBudget(s.maxReward, r);
+        if (need != 0 && fund < need) revert ReserveNotFunded();
+        s.enabled = true;
+        emit PaidUpkeepChanged(true);
     }
     function pay(State storage s, IKeeperPolicy.Work memory w, uint256 fund) public returns (uint256 amount) {
         amount = reward(s.policy, s.maxReward, w);
-        uint256 balance = available(s);
-        if (amount > balance || amount > fund) revert PaymentUnavailable();
-        s.allowance = balance - amount;
-        s.allowanceTime = uint64(block.timestamp);
+        if (amount > fund) revert PaymentUnavailable();
         if (amount != 0) {
             SafeTransferLib.forceSafeTransferETH(msg.sender, amount);
             emit KeeperPaid(msg.sender, amount, w.measuredGas);
@@ -224,8 +193,10 @@ library KeeperPolicyCalls {
 
     function restock(address policy, uint8 d, uint256 units, bool paid, uint256 baseFee) public view returns (uint256) {
         (bool ok, uint256 quote) = word(policy, abi.encodeCall(IKeeperPolicy.quoteRestock, (d, units, baseFee)));
-        // Unpaid callers cannot select cheaper pricing while the creator's chosen policy is healthy.
-        if (ok && quote <= units * 0.102 ether) return quote;
+        // Unpaid callers cannot select cheaper pricing while the creator's chosen policy is healthy. The per-Shape cap
+        // is basefee-indexed at 2x V1's 900k gas and 0.0002 ETH flat, measured at the reference price, so V1 always
+        // passes and any policy that quotes materially above a reasonable gas cost is refused.
+        if (ok && quote <= units * (1_800_000 * referencePrice(baseFee) + 0.0004 ether)) return quote;
         if (paid) revert PolicyUnavailable();
         uint256 price = baseFee + 0.05 gwei;
         if (price > 5 gwei) price = 5 gwei;

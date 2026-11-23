@@ -224,13 +224,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory pending = _buy(1);
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
         assertEq(required, 0.00508 ether, "one outstanding request and one operating call at 0.5 gwei");
-        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no activation top-up");
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.prank(stranger); balancer.activateKeeperPolicy();
+        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no top-up");
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
         alternativePolicy = true;
         assertLt(address(balancer).balance - balancer.creatorCredit(), required, "existing underfunding does not block equal-exposure replacement");
@@ -880,7 +877,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
 
         uint256 fund = address(balancer).balance;
         uint256 credit = balancer.creatorCredit();
-        uint256 allowance = balancer.keeperAllowance();
         uint256 keeperCash = keeper.balance;
         vm.prank(stranger);
         pool.activateListings(13);
@@ -888,7 +884,6 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertTrue(balancer.refreshCuratedWitness(stagedCurated));
         assertEq(address(balancer).balance, fund, "proof recovery needs no new pool capital");
         assertEq(balancer.creatorCredit(), credit);
-        assertEq(balancer.keeperAllowance(), allowance);
         assertEq(keeper.balance, keeperCash, "proof recovery creates no keeper compensation");
         assertEq(balancer.admissionStatus(), 0);
         buy(buyer, 1);

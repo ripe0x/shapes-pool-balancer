@@ -177,9 +177,7 @@ contract ProtectedRevenueAtomicTest is ForkBase {
     function test_fullRateCreditOnlyCashSurvivesUnpaidAndFailingPolicy() public {
         _atomic(20, 10_000);
         HostilePolicy broken = new HostilePolicy(2);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(broken));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(broken));
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
         _pruneSurplus();
         assertEq(address(balancer).balance, 0, "no new operating capital remains");
@@ -264,12 +262,8 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         assertEq(required, 0.00368 ether, "one operating call at 0.5 gwei, no missing backing");
         assertEq(shortfall, 0);
         assertGt(balancer.requiredReserve(), 100 ether);
-        uint256 allowance = balancer.keeperAllowance();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
-        assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.creatorCredit(), credit);
         assertEq(balancer.getActiveShapes()[8], 0);
         assertGt(balancer.requiredReserve(), 100 ether);
@@ -278,11 +272,9 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         (required, shortfall) = balancer.policyFunding(address(v2));
         assertEq(required, 0.02753 ether);
         assertGt(shortfall, 0, "re-enable compares with zero effective paid exposure");
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(address(balancer).balance - credit, required);
         assertGt(balancer.requiredReserve(), required, "funding maintenance does not restore inventory");
     }
@@ -302,9 +294,10 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         vm.stopPrank();
         pool = balancer.pool();
         ExactCashPolicy policy = new ExactCashPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
+        // 0.008 ETH/Shape (~1.6M gas-equivalent) is within the basefee-indexed restock cap at a realistic 5 gwei
+        // but not at 0.5 gwei. Fill at 5 gwei so the diagnostic policy's exact surcharge is accepted.
+        vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
         for (uint256 i; i < 4; ++i) {
             vm.prank(stranger); balancer.performUpkeepUnpaid();
         }
@@ -407,11 +400,10 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         assertEq(nft.ownerOf(91), creator, "creator-scoped predicted approval cannot be stolen");
     }
 
-    function test_activationRechecksNewPendingRequestsAndBasefeeDuringDelay() public {
+    function test_switchRechecksNewPendingRequestsAndBasefee() public {
         _atomic(20, 1000);
         _pruneSurplus();
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         (uint256 beforeRequired, uint256 beforeShortfall) = balancer.policyFunding(address(v2));
         assertEq(beforeRequired, 0.00368 ether);
         assertEq(beforeShortfall, 0);
@@ -424,13 +416,12 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         buy(buyer, 1);
         buy(stranger, 1);
         assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
-        vm.warp(vm.getBlockTimestamp() + 2 days);
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
         assertEq(required, 0.05058 ether, "two actual processing bounds plus one bounded operating call at 5 gwei");
         assertEq(shortfall, required - (address(balancer).balance - balancer.creatorCredit()));
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
         assertEq(pool.unsettledAcquisitionCount(), 2, "policy activation does not manufacture queue work");
     }
