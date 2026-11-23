@@ -10,7 +10,8 @@ import {
 } from 'viem';
 
 const CREATE2_DEPLOYER = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
-const ORDER = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
+const LIBRARIES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory'];
+const ORDER = [...LIBRARIES, 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
 const abi = parseAbi([
   'function implementation() view returns (address)', 'function keeperAdmin() view returns (address)', 'function policyAdmin() view returns (address)',
   'function defaultKeeperPolicy() view returns (address)', 'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
@@ -37,10 +38,19 @@ export function scriptConstants(source: string) {
 interface ArtifactTx { hash?: Hex; contractName: string; contractAddress: Address; transactionType: string; transaction: { from: Address; to?: Address | null; nonce: Hex; input: Hex } }
 const txs = (path: string) => (JSON.parse(readFileSync(path, 'utf8')).transactions as ArtifactTx[]);
 
-/** The broadcast must be the reviewed dry run, transaction for transaction: same sender, nonce, kind, target and calldata. */
+/** Linked library addresses from a Forge artifact's `libraries` entries ("path:Name:0x…"). */
+export function linkedLibraries(path: string): Record<string, Address> {
+  const entries = (JSON.parse(readFileSync(path, 'utf8')).libraries ?? []) as string[];
+  return Object.fromEntries(entries.map(e => { const [, name, address] = e.split(':'); return [name, getAddress(address)]; }));
+}
+
+/** The broadcast must be the reviewed dry run, transaction for transaction: same sender, nonce, kind, target and calldata.
+ *  Forge skips a library whose CREATE2 address already holds code; that address commits to the library's exact init code,
+ *  so a dry run may omit libraries, and verify() then requires code at each omitted library's linked address. */
 export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[]): string[] {
   const bad: string[] = [];
-  if (JSON.stringify(dry.map(t => t.contractName)) !== JSON.stringify(ORDER)) bad.push(`reviewed dry run is not the 8-transaction deployment: ${dry.map(t => t.contractName)}`);
+  const names = dry.map(t => t.contractName);
+  if (JSON.stringify(names) !== JSON.stringify(ORDER.filter(n => names.includes(n) || !LIBRARIES.includes(n)))) bad.push(`reviewed dry run is not the deployment order: ${names}`);
   if (sent.length !== dry.length) bad.push(`broadcast has ${sent.length} transactions, reviewed dry run ${dry.length}`);
   sent.forEach((t, i) => {
     const d = dry[i];
@@ -84,8 +94,17 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     at[name] = address;
     deployed[name] = { address, hash: t.hash!, block: r.blockNumber.toString(), blockHash: r.blockHash, gasUsed: r.gasUsed.toString(), effectiveGasPrice: r.effectiveGasPrice.toString() };
   }
+  const preexistingLibraries: Record<string, Address> = {};
+  const linked = linkedLibraries(dryPath);
+  for (const name of LIBRARIES.filter(n => !at[n])) {
+    const address = linked[name];
+    if (!address) { bad.push(`${name}: neither deployed nor linked in the reviewed dry run`); continue; }
+    const code = await pub.getCode({ address });
+    if (!code || code === '0x') bad.push(`${name}: skipped by the dry run but no code at ${address}`);
+    preexistingLibraries[name] = address;
+  }
   if (bad.length) return { bad };
-  const read = (address: Address, functionName: string) => pub.readContract({ address, abi, functionName } as never) as Promise<any>;
+  const read =(address: Address, functionName: string) => pub.readContract({ address, abi, functionName } as never) as Promise<any>;
   const eq = async (label: string, address: Address, fn: string, want: unknown) => {
     const got = await read(address, fn);
     const norm = (v: unknown) => typeof v === 'string' && v.startsWith('0x') ? v.toLowerCase() : String(v);
@@ -118,7 +137,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     record: {
       verified: true, source: 'canonical receipts and contract reads', chainId: await pub.getChainId(), checkedAtBlock: head.toString(),
       factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, keeperPolicy: at.KeeperPolicyV1,
-      roles, transactions: deployed,
+      roles, transactions: deployed, preexistingLibraries,
       deploymentGasWei: Object.values(deployed).reduce((s, d) => s + BigInt(d.gasUsed) * BigInt(d.effectiveGasPrice), 0n).toString(),
     },
   };

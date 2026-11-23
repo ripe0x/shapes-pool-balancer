@@ -1,4 +1,31 @@
-# Mainnet release record: `e7e3558` contracts
+# Mainnet release record
+
+## Deployed 2026-11-22 from `main` at `40ad9dd`
+
+The owner broadcast `script/deploy.sh` from the main checkout with the `ripe0x` keystore after `ASSET FLOW GATE: PASS`
+(source hash `638e64af…8a9e`, outcomes `d3b9ba83…dd992` signed 2026-11-22, review record `audit/launch-2d9d16b/C`).
+No canary (R83). `scripts/verify-deployment.ts` checked every receipt against the reviewed dry run
+(`deployments/1.reviewed-dry-run.json`, sha256 `2aca5fb6…ab06`) and wrote `deployments/1.verified.json`.
+
+| Contract | Address |
+| --- | --- |
+| BalancerFactory | `0x91C31Ad620555DE24e62290906aD1aA14C4CE281` (block 26475448) |
+| PoolBalancer implementation | `0x9714b1319f57a543549451d5402aBDbc0B02E40E` |
+| ShapePacks | `0xfE11c0E794475fd86801fb3020d779bd7887cB2D` |
+| KeeperPolicyV1 | `0x27c56f36Fadf3d7CD2bF4669AA30ebc3432c88Db` |
+| ShapePackRenderer | `0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A` |
+| PoolInventory library | `0xD6e89D450Cb0E591A9a634696D173a7F2B979fD0` |
+| KeeperPolicyCalls, PoolPage libraries | `0x1601A841…B8fb`, `0x67C828Ad…fBcf`: already on chain from the 2026-11-20 deployment; same CREATE2 address, so same init code |
+
+All roles (deployer, Packs admin, keeper admin, policy admin) are `0xCB43078C32423F5348Cab5885911C3B5faE217F9`, an
+EIP-7702 account delegated to Uniswap's Calibur: nodes accept one in-flight transaction from it, so broadcasts need
+`--slow`. Deployment gas 0.001514 ETH. Every deployed runtime matched the local build. The dashboard at
+community-pool-balancer.shapes.ripe.wtf uses this factory from block 26475448.
+
+The 2026-11-20 stack (factory `0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece`) is superseded; it never created a pool.
+The `e7e3558` record below is history.
+
+## History: `e7e3558` contracts
 
 **Status: ready for the owner's signature and the final gate run.** Production execution requires an observed
 `ASSET FLOW GATE: PASS` and the owner's approval of one concrete [canary execution plan](CANARY-PLAN.md). Nothing has
