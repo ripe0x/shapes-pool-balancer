@@ -1,9 +1,10 @@
-// Pool settings outside keeper economics: purchase pauses (fill gate, backlog), product limits and the legacy route.
-import { useEffect, useState } from 'react';
+// Pool settings: keeper economics, spending bucket and paid upkeep; purchase pauses (fill gate, backlog); product
+// limits; and the legacy route.
+import { useEffect, useState, type ReactElement } from 'react';
 import { usePublicClient } from 'wagmi';
-import { formatEther, type Abi, type Address, type Hash } from 'viem';
+import { formatEther, formatGwei, parseEther, parseGwei, type Abi, type Address, type Hash } from 'viem';
 import { balancerFactoryAbi, poolBalancerAbi } from '../../shared/abi';
-import { MAX_BATCH, pendingDrawsAdmitted, unpackPlan } from '../../shared/planner';
+import { MAX_BATCH, maxPaymentOf, maxSurchargeOf, pendingDrawsAdmitted, unpackPlan, type Economics } from '../../shared/planner';
 import { legacyFactory, type LegacyFactory } from '../../shared/legacy';
 import {
   BACKLOG_DEFAULT, FILL_GATE_DEFAULT_BPS, LEGACY_LIMITS, maxUnsettled, validBacklog, validFillGate, type ProductLimits,
@@ -123,5 +124,221 @@ export function LegacyKeeperPay({ d, tx }: { d: { balancer: Address; keeperPolic
       </div>
     </div>}
     <p className="note" style={{ marginTop: 12 }}>Legacy pools change policy after a two-day delay. Re-enabling paid upkeep uses the same proposal.</p>
+  </div>;
+}
+
+type Funding = { required: bigint; shortfall: bigint };
+export type Keeper = Awaited<ReturnType<typeof readKeeper>>;
+
+/** The pool's effective keeper economics, their source, the factory's current economics, the spending bucket, and the
+ *  maintenance funding each needs now. Reads carry a gas price: eth_call otherwise runs at basefee 0. */
+export async function readKeeper(pub: Pub, balancer: Address, factory: Address, block: { number: bigint | null; baseFeePerGas: bigint | null }) {
+  const at = { blockNumber: block.number!, gasPrice: (block.baseFeePerGas ?? 0n) + 50_000_000n, gas: 2_000_000n };
+  const r = <T,>(functionName: string, args: unknown[] = []) =>
+    pub.readContract({ ...at, address: balancer, abi: poolBalancerAbi, functionName: functionName as never, args: args as never }) as Promise<T>;
+  const [economics, source, capacity, refill, available, factoryEconomics] = await Promise.all([
+    r<Economics>('effectiveEconomics'), r<number>('economicsSource'), r<bigint>('keeperBucketCapacity'),
+    r<bigint>('keeperBucketRefill'), r<bigint>('availableKeeperAllowance'),
+    pub.readContract({ ...at, address: factory, abi: balancerFactoryAbi, functionName: 'economics' }) as Promise<Economics>,
+  ]);
+  const funding = (e: Economics): Promise<Funding> =>
+    r<readonly [bigint, bigint]>('maintenanceFunding', [e]).then(([required, shortfall]) => ({ required, shortfall }));
+  const [current, follow] = await Promise.all([funding(economics), funding(factoryEconomics)]);
+  return { economics, source, capacity, refill, available, factoryEconomics, current, follow, funding };
+}
+
+/** Operating ETH a creator change needs first (KeeperPolicyCalls.select): only a larger maintenance budget than the
+ *  current one, and only while paid upkeep is on. Missing prizes never count. */
+const toDeposit = (paid: boolean, current: Funding, next: Funding) => paid && next.required > current.required ? next.shortfall : 0n;
+const sameEconomics = (a: Economics, b: Economics) =>
+  FIELDS.every(([key]) => String(a[key]).toLowerCase() === String(b[key]).toLowerCase());
+
+const ethx = (x: bigint) => `${formatEther(x)} ETH`;
+const gweix = (x: bigint) => `${formatGwei(x)} gwei`;
+const num = (n: number) => n.toLocaleString('en-US');
+const DAY = 86_400n;
+const U32 = 2n ** 32n - 1n, U64 = 2n ** 64n - 1n, U96 = 2n ** 96n - 1n, U128 = 2n ** 128n - 1n;
+const SOURCE = ['Following the factory', "This pool's own values", 'Pinned'];
+const SOURCE_NOTE = [
+  'Factory changes apply to this pool immediately.',
+  'Factory changes do not apply to this pool.',
+  'Every economic value stays as pinned until you follow the factory again. Factory changes do not apply to this pool.',
+];
+
+type Unit = 'address' | 'eth' | 'gwei' | 'gas';
+const FIELDS: readonly [keyof Economics & string, string, Unit][] = [
+  ['policy', 'Pricing policy', 'address'],
+  ['workFee', 'Work fee per reconciled draw and listed Shape', 'eth'],
+  ['gasPriceCeiling', 'Gas price ceiling', 'gwei'],
+  ['priorityAllowance', 'Priority allowance', 'gwei'],
+  ['maxGas', 'Reimbursable gas per call', 'gas'],
+  ['overheadGas', 'Overhead gas per call', 'gas'],
+  ['restockGas', 'Restocking gas per Shape', 'gas'],
+  ['restockFlat', 'Restocking flat charge per Shape', 'eth'],
+  ['baseGas', 'Gas bound per call', 'gas'],
+  ['processGas', 'Gas bound per processed draw', 'gas'],
+  ['reconcileGas', 'Gas bound per reconciled draw', 'gas'],
+  ['shapeGas', 'Gas bound per listed Shape', 'gas'],
+  ['prizeGas', 'Gas bound per listed prize', 'gas'],
+];
+const showField = (e: Economics, key: keyof Economics, unit: Unit) => {
+  const v = e[key];
+  return unit === 'eth' ? formatEther(v as bigint) : unit === 'gwei' ? formatGwei(v as bigint) : String(v);
+};
+const display = (e: Economics, key: keyof Economics, unit: Unit) =>
+  unit === 'address' ? short(String(e[key])) : unit === 'gas' ? `${num(Number(e[key]))} gas` : unit === 'eth' ? ethx(e[key] as bigint) : gweix(e[key] as bigint);
+/** A field typed in its unit, within its on-chain width; undefined when invalid. */
+function parseField(text: string, unit: Unit): string | bigint | number | undefined {
+  const s = text.trim();
+  try {
+    if (unit === 'address') return /^0x[0-9a-fA-F]{40}$/.test(s) ? s : undefined;
+    if (unit === 'gas') return /^\d+$/.test(s) && BigInt(s) <= U32 ? Number(s) : undefined;
+    if (!/^\d*\.?\d+$/.test(s)) return undefined;
+    const v = unit === 'eth' ? parseEther(s) : parseGwei(s);
+    return v <= U64 ? v : undefined;
+  } catch { return undefined; }
+}
+const parseEth = (text: string) => /^\d*\.?\d+$/.test(text.trim()) ? parseEther(text.trim()) : undefined;
+
+function EconomicsRows({ e, version }: { e: Economics; version?: bigint }) {
+  return <>
+    {FIELDS.map(([key, label, unit]) => <div className="kv" key={key}>
+      <span className="k">{label}</span>
+      <span title={unit === 'address' ? String(e[key]) : undefined}>{display(e, key, unit)}{key === 'policy' && version !== undefined ? ` · V${version}` : ''}</span>
+    </div>)}
+    <div className="kv"><span className="k">Maximum payment per call</span><span>{ethx(maxPaymentOf(e))}</span></div>
+    <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{ethx(maxSurchargeOf(e))}</span></div>
+  </>;
+}
+
+type KeeperView = { balancer: Address; keeper: Keeper; paidUpkeepEnabled: boolean; version?: bigint; policyUnavailable: boolean; restockFee?: bigint };
+
+/** Keeper economics (follow, local, pinned), paid upkeep and the spending bucket of a current-factory pool. */
+export function KeeperEconomics({ d, tx }: { d: KeeperView; tx: Tx }) {
+  const k = d.keeper;
+  const [editing, setEditing] = useState(false);
+  const write = (label: string, functionName: string, args: unknown[] = [], value?: bigint) =>
+    tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName, args, ...(value ? { value } : {}) })]);
+  const deposit = (amount: bigint) => amount > 0n &&
+    <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Deposit ETH', 'depositETH', [], amount)}>Deposit {formatEther(amount)} ETH</button>;
+  const followNeed = toDeposit(d.paidUpkeepEnabled, k.current, k.follow);
+  return <>
+    <div className="section">
+      <h2 className="h3">Keeper economics</h2>
+      <div className="kv"><span className="k">Source</span><span>{SOURCE[k.source] ?? `Unknown (${k.source})`}</span></div>
+      <p className="note">{SOURCE_NOTE[k.source]}</p>
+      {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable.</p>}
+      <EconomicsRows e={k.economics} version={d.version} />
+      <div className="kv"><span className="k">0.01 ETH Shape restocking charge now</span><span>{d.restockFee === undefined ? 'Unavailable' : ethx(d.restockFee)}</span></div>
+      <div className="kv"><span className="k">Maintenance budget</span><span>{ethx(k.current.required)}</span></div>
+      {d.paidUpkeepEnabled && k.current.shortfall > 0n && <div style={{ marginTop: 12 }}>
+        <p className="note error" role="alert">Operating ETH is {ethx(k.current.shortfall)} below the maintenance budget. Paid upkeep pays only from operating ETH and the spending bucket. Unpaid upkeep, claims and recovery stay available.</p>
+        {deposit(k.current.shortfall)}
+      </div>}
+      <div className="row" style={{ gap: 16, marginTop: 16 }}>
+        {k.source !== 0 && <button className="btn" disabled={!!tx.busy || followNeed > 0n} onClick={() => write('Follow factory economics', 'followFactoryEconomics')}>Follow factory</button>}
+        {k.source !== 2 && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Pin keeper economics', 'pinEconomics')}>Pin current values</button>}
+        <button className="btn sec" onClick={() => setEditing(!editing)}>{editing ? 'Cancel editing' : 'Edit local values'}</button>
+      </div>
+      <p className="note" style={{ marginTop: 12 }}>Following applies factory changes immediately. Pinning keeps every current value, including the pricing policy. Editing makes the values this pool's own. Paid upkeep and the spending bucket stay as they are.</p>
+      {k.source !== 0 && <details style={{ marginTop: 16 }}>
+        <summary className="disclose quiet">Factory values now</summary>
+        <EconomicsRows e={k.factoryEconomics} />
+        <div className="kv"><span className="k">Maintenance budget when following</span><span>{ethx(k.follow.required)}</span></div>
+        {followNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Following needs {ethx(followNeed)} more operating ETH first.</p>{deposit(followNeed)}</div>}
+      </details>}
+      {editing && <LocalEconomicsForm key={FIELDS.map(([key]) => String(k.economics[key])).join()} d={d} tx={tx} write={write} deposit={deposit} />}
+    </div>
+    <PaidUpkeep d={d} tx={tx} write={write} deposit={deposit} />
+    <KeeperBucket key={`${k.capacity}-${k.refill}`} d={d} tx={tx} write={write} />
+  </>;
+}
+
+type Writers = { write: (label: string, functionName: string, args?: unknown[], value?: bigint) => Promise<boolean>; deposit: (amount: bigint) => false | ReactElement };
+
+function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx } & Writers) {
+  const k = d.keeper;
+  const [text, setText] = useState(() => Object.fromEntries(FIELDS.map(([key, , unit]) => [key, showField(k.economics, key, unit)])) as Record<string, string>);
+  const [funding, setFunding] = useState<{ key: string; next?: Funding; error?: boolean }>();
+  const parsed = FIELDS.map(([key, , unit]) => [key, parseField(text[key] ?? '', unit)] as const);
+  const invalid = parsed.filter(([, v]) => v === undefined).map(([key]) => FIELDS.find((f) => f[0] === key)![1]);
+  const candidate = invalid.length ? undefined : Object.fromEntries(parsed) as unknown as Economics;
+  const candidateKey = candidate ? FIELDS.map(([key]) => String(candidate[key])).join() : '';
+  useEffect(() => {
+    if (!candidate) return;
+    let live = true;
+    k.funding(candidate).then((next) => live && setFunding({ key: candidateKey, next }), () => live && setFunding({ key: candidateKey, error: true }));
+    return () => { live = false; };
+  }, [candidateKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const next = funding?.key === candidateKey ? funding : undefined;
+  const need = next?.next ? toDeposit(d.paidUpkeepEnabled, k.current, next.next) : 0n;
+  const unchanged = !!candidate && k.source === 1 && sameEconomics(candidate, k.economics);
+  const policyOnly = !!candidate && !sameEconomics(candidate, k.economics) && sameEconomics({ ...k.economics, policy: candidate.policy }, candidate);
+  const save = () => candidate && (policyOnly
+    ? write('Change pricing policy', 'setKeeperPolicy', [candidate.policy])
+    : write('Set local keeper economics', 'setLocalEconomics', [candidate]));
+  return <div style={{ marginTop: 20 }}>
+    <datalist id="known-policies">{[...new Set([k.economics.policy, k.factoryEconomics.policy])].map((p) => <option key={p} value={p} />)}</datalist>
+    {FIELDS.map(([key, label, unit]) => <div key={key} style={{ marginTop: 12 }}>
+      <label htmlFor={`econ-${key}`} className="form-label">{label}</label>
+      <div className="field">
+        <input id={`econ-${key}`} className={unit === 'address' ? 'mono' : undefined} list={unit === 'address' ? 'known-policies' : undefined} inputMode={unit === 'address' ? undefined : 'decimal'}
+          spellCheck={false} autoComplete="off" value={text[key]} onChange={(ev) => setText({ ...text, [key]: ev.target.value })} />
+        {unit !== 'address' && <span className="u">{unit === 'eth' ? 'ETH' : unit === 'gwei' ? 'GWEI' : 'GAS'}</span>}
+      </div>
+    </div>)}
+    {invalid.length > 0 && <p className="note error" style={{ marginTop: 12 }}>Check: {invalid.join(', ')}.</p>}
+    {candidate && <div style={{ marginTop: 16 }}>
+      <div className="kv"><span className="k">Maximum payment per call</span><span>{ethx(maxPaymentOf(candidate))}</span></div>
+      <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{ethx(maxSurchargeOf(candidate))}</span></div>
+      <div className="kv"><span className="k">Maintenance budget</span><span>{next?.next ? ethx(next.next.required) : next?.error ? 'Unavailable' : 'Checking…'}</span></div>
+      {need > 0n && <div style={{ marginTop: 12 }}><p className="note error">These values need {ethx(need)} more operating ETH first.</p>{deposit(need)}</div>}
+    </div>}
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !candidate || unchanged || !next?.next || need > 0n} onClick={save}>{policyOnly ? 'Use this pricing policy' : 'Save local values'}</button>
+    <p className="note" style={{ marginTop: 12 }}>Saved values apply immediately and factory changes stop applying to this pool. Existing listings keep their prices. A larger maintenance budget needs operating ETH first; missing prizes do not.</p>
+  </div>;
+}
+
+function PaidUpkeep({ d, tx, write, deposit }: { d: KeeperView; tx: Tx } & Writers) {
+  const k = d.keeper;
+  // Re-enabling compares the effective maintenance budget against no paid exposure.
+  const enableNeed = d.paidUpkeepEnabled ? 0n : k.current.shortfall;
+  return <div className="section">
+    <h2 className="h3">Paid upkeep</h2>
+    <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : 'Disabled'}</span></div>
+    <div className="row" style={{ gap: 16, marginTop: 16 }}>
+      {d.paidUpkeepEnabled
+        ? <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>
+        : <button className="btn" disabled={!!tx.busy || enableNeed > 0n} onClick={() => write('Enable paid upkeep', 'setPaidUpkeepEnabled', [true])}>Enable paid upkeep</button>}
+      <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
+    </div>
+    {enableNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Enabling needs {ethx(enableNeed)} more operating ETH first.</p>{deposit(enableNeed)}</div>}
+    <p className="note" style={{ marginTop: 12 }}>Disabling takes effect immediately. A disable stays through factory updates, policy changes and pinning. Only the creator can enable it again.</p>
+  </div>;
+}
+
+function KeeperBucket({ d, tx, write }: { d: KeeperView; tx: Tx } & Pick<Writers, 'write'>) {
+  const k = d.keeper;
+  const [cap, setCap] = useState(formatEther(k.capacity));
+  const [perDay, setPerDay] = useState(formatEther(k.refill * DAY));
+  const capWei = parseEth(cap);
+  const dayWei = parseEth(perDay);
+  // The contract stores wei per second: an ETH-per-day entry rounds down to whole wei per second.
+  const refill = dayWei === undefined ? undefined : dayWei / DAY;
+  const ok = capWei !== undefined && capWei <= U128 && refill !== undefined && refill <= U96;
+  const changed = ok && (capWei !== k.capacity || refill !== k.refill);
+  return <div className="section">
+    <h2 className="h3">Spending bucket</h2>
+    <div className="kv"><span className="k">Capacity</span><span>{ethx(k.capacity)}</span></div>
+    <div className="kv"><span className="k">Refill</span><span title={`${k.refill} wei per second`}>{ethx(k.refill * DAY)} per day</span></div>
+    <div className="kv"><span className="k">Available now</span><span>{ethx(k.available)}</span></div>
+    <label htmlFor="bucket-cap" className="form-label" style={{ marginTop: 16, display: 'block' }}>Capacity</label>
+    <div className="field"><input id="bucket-cap" inputMode="decimal" value={cap} onChange={(e) => setCap(e.target.value)} /><span className="u">ETH</span></div>
+    <label htmlFor="bucket-refill" className="form-label" style={{ marginTop: 12, display: 'block' }}>Refill per day</label>
+    <div className="field"><input id="bucket-refill" inputMode="decimal" value={perDay} onChange={(e) => setPerDay(e.target.value)} /><span className="u">ETH / DAY</span></div>
+    {ok && refill! * DAY !== dayWei && <p className="note" style={{ marginTop: 8 }}>Stored as {refill!.toString()} wei per second: {formatEther(refill! * DAY)} ETH per day.</p>}
+    {!ok && <p className="note error" style={{ marginTop: 8 }}>Enter amounts in ETH.</p>}
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !changed} onClick={() => write('Change spending bucket', 'setKeeperBucket', [capWei, refill])}>Apply</button>
+    <p className="note" style={{ marginTop: 12 }}>The bucket limits how fast paid upkeep spends. A change first adds the time since the last update at the old rate, keeps spent allowance spent and lowers the available allowance to a lower capacity. A higher capacity adds no allowance. The new rate applies from the change.</p>
   </div>;
 }

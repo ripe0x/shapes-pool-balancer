@@ -148,7 +148,7 @@ export class Keeper {
   audit: AuditEntry[] = [];
   lastTick = 0;
   lastBlock = 0n;
-  policies: Record<string, { address: Address; paid: boolean }> = {};
+  policies: Record<string, { address: Address; paid: boolean; settingsHash: Hash; economics?: Record<string, string> }> = {};
   private traceAvailable = true;
   private abis = new Map<string, Abi>();
   private blockHashes = new Map<string, Hash>();
@@ -304,18 +304,28 @@ export class Keeper {
     return abi;
   }
 
-  private async service(b: Address, head: bigint, baseFee: bigint) {
-    const abi = await this.resolveAbi(b);
-    const [policy, paid, settingsHash] = await Promise.all([
-      this.pub.readContract({ address: b, abi, functionName: 'keeperPolicy', blockNumber: head } as never) as Promise<Address>,
-      this.pub.readContract({ address: b, abi, functionName: 'paidUpkeepEnabled', blockNumber: head } as never) as Promise<boolean>,
-      this.pub.readContract({ address: b, abi, functionName: 'settingsHash', blockNumber: head } as never) as Promise<Hash>,
+  /** The pool's current keeper settings, read fresh every pass: nothing copied at creation or an earlier pass decides
+   *  payment. Current pools also expose their effective economics; a legacy pool pays under its own fixed schedule. */
+  private async readContext(b: Address, at: { blockNumber: bigint } | { blockTag: 'latest' }): Promise<PolicyContext & { economics?: Record<string, string> }> {
+    const abi = this.abi(b);
+    const read = <T,>(functionName: string) => this.pub.readContract({ address: b, abi, functionName, ...at } as never) as Promise<T>;
+    const current = abi.some((item) => item.type === 'function' && item.name === 'effectiveEconomics');
+    const [policy, paid, settingsHash, economics] = await Promise.all([
+      read<Address>('keeperPolicy'), read<boolean>('paidUpkeepEnabled'), read<Hash>('settingsHash'),
+      current ? read<Record<string, unknown>>('effectiveEconomics') : undefined,
     ]);
-    this.policies[b] = { address: policy, paid };
-    const context = { policy, paid, settingsHash };
+    return { policy, paid, settingsHash, economics: economics && Object.fromEntries(Object.entries(economics).map(([k, v]) => [k, String(v)])) };
+  }
+
+  private async service(b: Address, head: bigint, baseFee: bigint) {
+    await this.resolveAbi(b);
+    const { economics, ...context } = await this.readContext(b, { blockNumber: head });
+    const seen = this.policies[b];
+    if (seen && seen.settingsHash !== context.settingsHash) this.log('pool settings changed', { balancer: b, ...context, economics });
+    this.policies[b] = { address: context.policy, paid: context.paid, settingsHash: context.settingsHash, economics };
     const pending = this.state.pending[b];
     if (pending && (await this.resolvePending(b, pending, head, baseFee, context))) return;
-    if (!paid) return;
+    if (!context.paid) return;
     const { priority, max, cap } = this.fees(baseFee);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
@@ -361,15 +371,32 @@ export class Keeper {
     return { reward: guarded.result as bigint, gasEstimate, expenseGas, expenseSource: traced === undefined ? 'estimate' as const : 'trace' as const, minimumReward, minimumGas, gas };
   }
 
+  /** Quote under `context`. If the settings changed after it was read (StaleSettings), discard that expectation, re-read
+   *  the current settings into `context` and re-estimate once; the payment floor is recomputed for the new estimate. */
+  private async quoteCurrent(b: Address, baseFee: bigint, maxFeePerGas: bigint, priority: bigint, context: PolicyContext) {
+    try {
+      return await this.quote(b, baseFee, maxFeePerGas, priority, context.settingsHash);
+    } catch (e) {
+      if (revertName(e) !== 'StaleSettings') throw e;
+      const { economics, ...fresh } = await this.readContext(b, { blockTag: 'latest' });
+      this.log('stale settings: re-estimating under the current settings', { balancer: b, expected: context.settingsHash, ...fresh, economics });
+      Object.assign(context, fresh);
+      this.policies[b] = { address: fresh.policy, paid: fresh.paid, settingsHash: fresh.settingsHash, economics };
+      if (!fresh.paid) return undefined;
+      return this.quote(b, baseFee, maxFeePerGas, priority, fresh.settingsHash);
+    }
+  }
+
   private async attempt(b: Address, head: bigint, baseFee: bigint, maxFeePerGas: bigint, priority: bigint, context: PolicyContext): Promise<boolean> {
     let quote;
     try {
-      quote = await this.quote(b, baseFee, maxFeePerGas, priority, context.settingsHash);
+      quote = await this.quoteCurrent(b, baseFee, maxFeePerGas, priority, context);
     } catch (e) {
       const name = revertName(e);
       if (name && EXPECTED_REVERTS.has(name)) return false;
       throw e;
     }
+    if (!context.paid) return false; // disabled since this pass read it
     if (!quote) {
       this.state.stats.skippedUnprofitable++;
       this.log('skip: unprofitable at current gas', { balancer: b, policy: context.policy });
@@ -581,7 +608,7 @@ export class Keeper {
     }
     try {
       // Re-simulate changed work and policy at the same nonce, with a fresh executable limit and payment floor.
-      const quote = await this.quote(b, baseFee, max, prio, context.settingsHash);
+      const quote = await this.quoteCurrent(b, baseFee, max, prio, context);
       if (!quote) {
         this.log('waiting: replacement unprofitable at current gas', { balancer: b });
         return true;

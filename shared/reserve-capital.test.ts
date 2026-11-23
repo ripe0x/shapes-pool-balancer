@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/reserve-capital.json';
-import { DENOMS, MAX_KEEPER_REWARD, SHAPES_IN, requiredReserveAt } from './planner';
+import { DENOMS, MAX_KEEPER_REWARD, SHAPES_IN, V1_ECONOMICS, requiredReserveAt } from './planner';
 import { capitalComparisons, REPRESENTATIVE_BOARDS } from '../sim/fund';
 
 interface QuoteRow {
@@ -33,8 +33,8 @@ describe('capital matrix parity with actual KeeperPolicyCalls.reserve quotes', (
       expect(BigInt(row.gasPrice!)).toBe(baseFee === 5_000_000_000n ? baseFee : baseFee + 50_000_000n);
       expect(row.target).toEqual(REPRESENTATIVE_BOARDS.find((b) => b.name === row.name)!.target);
       const none = DENOMS.map(() => 0);
-      expect(requiredReserveAt(row.target, none, mintFee, 0, maximum, baseFee)).toBe(BigInt(row.opening!));
-      expect(requiredReserveAt(row.target, row.target, mintFee, 0, maximum, baseFee)).toBe(BigInt(row.stocked!));
+      expect(requiredReserveAt(row.target, none, mintFee, 0, V1_ECONOMICS, baseFee)).toBe(BigInt(row.opening!));
+      expect(requiredReserveAt(row.target, row.target, mintFee, 0, V1_ECONOMICS, baseFee)).toBe(BigInt(row.stocked!));
       const backing = row.target.reduce((a, n, d) => a + BigInt(n) * DENOMS[d], 0n);
       const units = row.target.reduce((a, n, d) => a + BigInt(n * SHAPES_IN[d]), 0n);
       expect(backing).toBe(BigInt(row.backing!));
@@ -53,8 +53,10 @@ describe('capital matrix parity with actual KeeperPolicyCalls.reserve quotes', (
     const edges = rows.filter((r) => r.kind !== 'board');
     expect(edges).toHaveLength(2);
     for (const row of edges) {
+      // The fixture records the derived maximum: zero while paid upkeep is off, else the initial economics'.
+      if (BigInt(row.maxReward) !== 0n) expect(BigInt(row.maxReward)).toBe(MAX_KEEPER_REWARD);
       const need = requiredReserveAt(row.target, row.have!, BigInt(row.mintFee), row.owed!,
-        BigInt(row.maxReward), BigInt(row.baseFee), row.enabled);
+        BigInt(row.maxReward) === 0n ? undefined : V1_ECONOMICS, BigInt(row.baseFee), row.enabled);
       expect(need).toBe(BigInt(row.required!));
       expect(need).toBe(row.kind === 'closed' ? 2_471_000_000_000_000n : 33_000_000_000_000_000n);
     }

@@ -20,11 +20,11 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
     return actual.transport.request(request);
   } }), cacheTime: 0 });
   expect(await pub.getChainId()).toBe(31337);
-  const [policy, maxReward] = await Promise.all([
-    pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'keeperPolicy' }),
+  const [economics, maxReward] = await Promise.all([
+    pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'effectiveEconomics' }),
     pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'policyMaxReward' }),
   ]);
-  const costs = await policyEconomics(pub, policy, maxReward, balancer);
+  const costs = await policyEconomics(pub, economics, balancer);
   expect(costs.restockQuoteVerified).toBe(true);
   expect(costs.keeperQuotes).toBeDefined();
   for (const quote of [...costs.keeperQuotes!.replace, costs.keeperQuotes!.reconcile]) {
@@ -54,7 +54,7 @@ it('reports failed policy economics as unavailable instead of substituting V1', 
   const economics = { policy: '0x0000000000000000000000000000000000000001' as Address, workFee: 20_000_000_000_000n, maxGas: 3_200_000,
     overheadGas: 60_000, gasPriceCeiling: 5_000_000_000n, priorityAllowance: 50_000_000n, restockGas: 910_000, restockFlat: 200_000_000_000_000n,
     baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000 };
-  await expect(policyEconomics(pub, economics.policy, undefined, undefined, snapshot, economics)).rejects.toThrow('RPC unavailable');
+  await expect(policyEconomics(pub, economics, undefined, snapshot)).rejects.toThrow('RPC unavailable');
 });
 
 // Opt-in read-only mainnet check: MAINNET_RPC=https://mainnet.gateway.tenderly.co. The deployed KeeperPolicyV1 answers
