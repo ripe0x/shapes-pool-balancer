@@ -8,10 +8,11 @@ import { createServer } from 'node:http';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import {
   BaseError, ContractFunctionRevertedError, TransactionNotFoundError, createPublicClient, createWalletClient, decodeEventLog, decodeFunctionData, encodeFunctionData, getAddress, http, parseAbiItem, toHex,
-  type Account, type Address, type Hash, type PublicClient, type TransactionReceipt, type WalletClient,
+  type Abi, type Account, type Address, type Hash, type PublicClient, type TransactionReceipt, type WalletClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { poolBalancerAbi } from '../shared/abi';
+import { LEGACY_FACTORIES } from '../shared/legacy';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
@@ -101,6 +102,9 @@ export interface KeeperConfig {
   maxReplacements?: number;
   logChunk?: bigint;
   log?: (msg: string, extra?: Record<string, unknown>) => void;
+  /** Earlier factories whose pools this keeper also services, each with the PoolBalancer ABI it was deployed with
+   *  (shared/legacy.ts). A pool's ABI follows its own factory() and is never the current ABI for a legacy pool. */
+  legacyFactories?: readonly { factory: Address; fromBlock: bigint; poolBalancerAbi: Abi }[];
   /** Optional operator spending guard (scripts/canary-guard.ts). Called before every send and fee replacement with the
    *  transaction's maximum and this keeper's unconfirmed sends; false withholds the transaction. */
   beforeSend?: (next: { gas: bigint; maxFeePerGas: bigint; nonce: number }, inFlight: { account: Address; nonce: number; gas: bigint; maxFeePerGas: bigint }[]) => Promise<boolean>;
@@ -113,6 +117,9 @@ interface AccountingRetry { balancer: Address; pending: Pending }
 interface PolicyContext { policy: Address; paid: boolean; settingsHash: Hash }
 interface State {
   lastScanned: string;
+  /** Last scanned block per factory (lowercase). A factory without an entry is scanned from its own fromBlock, so
+   *  adding a factory or switching the official one never skips pools created before the switch. */
+  scanned?: Record<string, string>;
   balancers: Address[];
   /** The upkeep transaction in flight per Balancer, until mined or its nonce is used. */
   pending: Record<string, Pending>;
@@ -143,6 +150,7 @@ export class Keeper {
   lastBlock = 0n;
   policies: Record<string, { address: Address; paid: boolean }> = {};
   private traceAvailable = true;
+  private abis = new Map<string, Abi>();
   private blockHashes = new Map<string, Hash>();
   private accountingErrors: Record<string, string> = {};
   private readonly c: Required<Omit<KeeperConfig, 'log' | 'beforeSend'>> & Pick<KeeperConfig, 'log' | 'beforeSend'>;
@@ -150,7 +158,7 @@ export class Keeper {
   get failures() { return this.state.failures; }
 
   constructor(cfg: KeeperConfig) {
-    this.c = { reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { legacyFactories: [], reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
     const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
@@ -188,22 +196,28 @@ export class Keeper {
     return BigInt(Math.round(x * 1e9));
   }
 
-  /** Re-scan from `lastScanned - reorgWindow` so events dropped or added by a reorg are reconciled. */
+  /** Re-scan each factory from its last scanned block less `reorgWindow`, so events dropped or added by a reorg are
+   *  reconciled. */
   async discover(head: bigint) {
-    let from = BigInt(this.state.lastScanned) - BigInt(this.c.reorgWindow) + 1n;
-    if (from < this.c.fromBlock) from = this.c.fromBlock;
     const seen = new Set(this.state.balancers.map((b) => b.toLowerCase()));
-    for (let start = from; start <= head; start += this.c.logChunk) {
-      const end = start + this.c.logChunk - 1n > head ? head : start + this.c.logChunk - 1n;
-      const logs = await this.pub.getLogs({ address: this.c.factory, event: CREATED, fromBlock: start, toBlock: end });
-      for (const l of logs) {
-        const b = l.args.balancer!;
-        if (!seen.has(b.toLowerCase())) {
-          seen.add(b.toLowerCase());
-          this.state.balancers.push(getAddress(b));
-          this.log('discovered', { balancer: b, block: l.blockNumber?.toString() });
+    const scanned = (this.state.scanned ??= {});
+    for (const source of [{ factory: this.c.factory, fromBlock: this.c.fromBlock }, ...this.c.legacyFactories]) {
+      const key = source.factory.toLowerCase();
+      let from = scanned[key] === undefined ? source.fromBlock : BigInt(scanned[key]) - BigInt(this.c.reorgWindow) + 1n;
+      if (from < source.fromBlock) from = source.fromBlock;
+      for (let start = from; start <= head; start += this.c.logChunk) {
+        const end = start + this.c.logChunk - 1n > head ? head : start + this.c.logChunk - 1n;
+        const logs = await this.pub.getLogs({ address: source.factory, event: CREATED, fromBlock: start, toBlock: end });
+        for (const l of logs) {
+          const b = l.args.balancer!;
+          if (!seen.has(b.toLowerCase())) {
+            seen.add(b.toLowerCase());
+            this.state.balancers.push(getAddress(b));
+            this.log('discovered', { balancer: b, factory: source.factory, block: l.blockNumber?.toString() });
+          }
         }
       }
+      scanned[key] = head.toString();
     }
     // A Balancer whose creation was reorged out has no code; forget it.
     const kept: Address[] = [];
@@ -271,11 +285,31 @@ export class Keeper {
     return { priority, max, cap };
   }
 
+  /** The ABI of `b`, from the factory that deployed it. A pool of an unconfigured factory is never called. */
+  private async resolveAbi(b: Address): Promise<Abi> {
+    const known = this.abis.get(b.toLowerCase());
+    if (known) return known;
+    // factory() has the same selector in every released PoolBalancer.
+    const factory = await this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'factory' }) as Address;
+    const legacy = this.c.legacyFactories.find((f) => f.factory.toLowerCase() === factory.toLowerCase());
+    if (!legacy && factory.toLowerCase() !== this.c.factory.toLowerCase()) throw new Error(`pool of unconfigured factory ${factory}`);
+    const abi = legacy?.poolBalancerAbi ?? poolBalancerAbi as Abi;
+    this.abis.set(b.toLowerCase(), abi);
+    return abi;
+  }
+
+  private abi(b: Address): Abi {
+    const abi = this.abis.get(b.toLowerCase());
+    if (!abi) throw new Error('pool ABI unresolved');
+    return abi;
+  }
+
   private async service(b: Address, head: bigint, baseFee: bigint) {
+    const abi = await this.resolveAbi(b);
     const [policy, paid, settingsHash] = await Promise.all([
-      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'keeperPolicy', blockNumber: head } as never) as Promise<Address>,
-      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'paidUpkeepEnabled', blockNumber: head } as never) as Promise<boolean>,
-      this.pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'settingsHash', blockNumber: head }) as Promise<Hash>,
+      this.pub.readContract({ address: b, abi, functionName: 'keeperPolicy', blockNumber: head } as never) as Promise<Address>,
+      this.pub.readContract({ address: b, abi, functionName: 'paidUpkeepEnabled', blockNumber: head } as never) as Promise<boolean>,
+      this.pub.readContract({ address: b, abi, functionName: 'settingsHash', blockNumber: head } as never) as Promise<Hash>,
     ]);
     this.policies[b] = { address: policy, paid };
     const context = { policy, paid, settingsHash };
@@ -295,7 +329,7 @@ export class Keeper {
   private async traceExpense(b: Address, maxFeePerGas: bigint, priority: bigint, settingsHash: Hash, gas: bigint): Promise<bigint | undefined> {
     if (!this.traceAvailable) return undefined;
     try {
-      const input = encodeFunctionData({ abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash, 0n, 0n] } as never);
+      const input = encodeFunctionData({ abi: this.abi(b), functionName: 'performUpkeep', args: [settingsHash, 0n, 0n] } as never);
       const trace = await this.pub.request({ method: 'debug_traceCall', params: [
         { from: this.address, to: b, data: input, gas: toHex(gas), maxFeePerGas: toHex(maxFeePerGas), maxPriorityFeePerGas: toHex(priority) },
         'latest', { tracer: 'callTracer', tracerConfig: { onlyTopCall: true } },
@@ -312,7 +346,7 @@ export class Keeper {
 
   /** Simulate the actual offer, estimate an executable limit and trace expected expense separately. */
   private async quote(b: Address, baseFee: bigint, maxFeePerGas: bigint, priority: bigint, settingsHash: Hash) {
-    const call = { address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash, 0n, 0n], account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority, blockTag: 'latest' } as const;
+    const call = { address: b, abi: this.abi(b), functionName: 'performUpkeep', args: [settingsHash, 0n, 0n], account: this.address, maxFeePerGas, maxPriorityFeePerGas: priority, blockTag: 'latest' } as const;
     const gasEstimate = await this.pub.estimateContractGas(call as never);
     const gas = gasLimitFor(gasEstimate);
     const reward = (await this.pub.simulateContract({ ...call, gas } as never)).result as bigint;
@@ -368,7 +402,7 @@ export class Keeper {
 
   private async send(b: Address, nonce: number, maxFeePerGas: bigint, maxPriorityFeePerGas: bigint, gas: bigint, settingsHash: Hash, minimumReward: bigint, minimumGas: bigint) {
     return this.wallet.writeContract({
-      address: b, abi: poolBalancerAbi, functionName: 'performUpkeep', args: [settingsHash, minimumReward, minimumGas], account: this.c.account, chain: null,
+      address: b, abi: this.abi(b), functionName: 'performUpkeep', args: [settingsHash, minimumReward, minimumGas], account: this.c.account, chain: null,
       nonce, maxFeePerGas, maxPriorityFeePerGas, gas,
     } as never);
   }
@@ -446,7 +480,7 @@ export class Keeper {
     let ours = tx.to?.toLowerCase() === b.toLowerCase() && tx.value === 0n;
     if (ours) {
       try {
-        const decoded = decodeFunctionData({ abi: poolBalancerAbi, data: tx.input });
+        const decoded = decodeFunctionData({ abi: await this.resolveAbi(b), data: tx.input });
         ours = decoded.functionName === 'performUpkeep';
         if (ours && decoded.functionName === 'performUpkeep') {
           const args = decoded.args as readonly [Hash, bigint, bigint];
@@ -472,6 +506,7 @@ export class Keeper {
   }
 
   private async recordReceipt(b: Address, p: Pending, r: TransactionReceipt): Promise<boolean> {
+    await this.resolveAbi(b);
     const h = r.transactionHash;
     if (await this.canonicalHash(r.blockNumber) !== r.blockHash) return false;
     const recorded = this.state.receipts.find((entry) => entry.nonce === p.nonce);
@@ -489,7 +524,7 @@ export class Keeper {
     for (const l of r.logs) {
       if (l.address.toLowerCase() !== b.toLowerCase()) continue;
       try {
-        const ev = decodeEventLog({ abi: poolBalancerAbi, data: l.data, topics: l.topics });
+        const ev = decodeEventLog({ abi: this.abi(b), data: l.data, topics: l.topics }) as unknown as { eventName: string; args: { keeper: Address; amount: bigint; gasUsed: bigint } };
         if (ev.eventName === 'KeeperPaid' && ev.args.keeper.toLowerCase() === this.address.toLowerCase()) { reward += ev.args.amount; measuredGas += ev.args.gasUsed; }
       } catch {} // other contracts' events
     }
@@ -649,6 +684,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     rpcUrl,
     factory: env('FACTORY') as Address,
     fromBlock: BigInt(env('FROM_BLOCK')),
+    // Pools of earlier factories (deployments/1.legacy.json) stay serviced with their own ABI. LEGACY_FACTORIES=0 opts out.
+    legacyFactories: process.env.LEGACY_FACTORIES === '0' ? [] : LEGACY_FACTORIES,
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '50')),
