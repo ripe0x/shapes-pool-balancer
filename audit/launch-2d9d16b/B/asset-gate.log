@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py", line 276, in <module>
+    sys.exit(main(sys.argv))
+             ~~~~^^^^^^^^^^
+  File "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py", line 213, in main
+    inc, fail, drifts, regs, shown, ms, cur = check(root, cfg_name, run)
+                                              ~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py", line 109, in check
+    cur = src_hash(root, cfg)
+  File "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py", line 23, in src_hash
+    return source_hash(root, cfg["source_paths"] + cfg.get("evidence_paths", []))
+  File "/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py", line 8, in source_hash
+    out = subprocess.run(["git", "-C", root, "ls-files", "-z", "--"] + paths, capture_output=True, check=True).stdout
+          ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.5/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', '-C', '/Users/dd/CascadeProjects/fwa-pool-balancer-launch-b-2d9d16b', 'ls-files', '-z', '--', 'src', 'script', 'foundry.toml', '.gitmodules', 'test/scenario/FlowBreakdown.t.sol', 'test/utils/FlowBreakdown.sol', 'test/utils/ForkBase.sol', 'test/utils/ReceiptGas.sol', 'test/ReserveCapital.t.sol', 'test/ReserveEconomicReview.t.sol', 'test/ReserveSecurityReview.t.sol', 'test/ReserveCapitalMatrix.t.sol', 'test/ProtectedRevenueAtomic.t.sol', 'test/ConcurrentRecovery.t.sol', 'test/BatchSlippage.t.sol', 'test/PolicyPreview.t.sol', 'test/SelectableInventory.t.sol', 'test/fixtures/keeper-enforcement.json', 'test/fixtures/reserve-capital.json', 'keeper/reserve-economics.ts', 'test/FlowReporting.t.sol', 'test/fixtures/flow-reporting.json', 'scripts/test-flow-reporting.py', 'audit/reporting-fix/asset-gate-nullable.patch']' returned non-zero exit status 128.

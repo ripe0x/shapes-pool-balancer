@@ -46,6 +46,9 @@ export interface Scenario {
   elasticity?: number; failPolicyDay?: number; dependencyPausedDay?: number; forcedLargeEvery?: number; seed?: number;
   forceFirstLargest?: boolean; replaceCurated?: boolean; unpaidRecovery?: boolean; extraCapital?: bigint; initialCapital?: bigint;
   selectionWords?: readonly bigint[]; playerGasPrice?: bigint; creatorRevenueBps?: number;
+  /** Curated-required admission (default, as these scenarios were written). False is standard mode: Shapes keep selling
+   *  without a curated NFT. */
+  curatedRequired?: boolean;
 }
 export interface ModelResult {
   name: string; baseFeeGwei: number; draws: number; refunded: number; fulfilledDraws: number; slippageRefunds: number; emptyBoardRefunds: number; blockedDraws: number;
@@ -108,7 +111,7 @@ export function runScenario(s: Scenario): ModelResult {
   };
   const status = () => {
     if (opening && missing()) return 'setting up';
-    if (!listings.some((l) => l.d < 0)) return 'no curated NFT';
+    if ((s.curatedRequired ?? true) && !listings.some((l) => l.d < 0)) return 'no curated NFT';
     if (owed.length >= 5) return 'outstanding draws';
     const weight = have.reduce((a, n, d) => a + BigInt(n) * (NUM / DENOMS[d]), 0n);
     const lost = BigInt(owed.length) * (NUM / DENOMS[0]);

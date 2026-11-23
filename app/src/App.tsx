@@ -9,7 +9,7 @@ import {
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferUnresolved, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
+import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
@@ -249,10 +249,16 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
   return { pending, ledger };
 }
 
+// The transfer guard fails closed: without working browser storage and cross-tab locks, ETH transfers are refused.
+const NO_STORAGE = 'Browser storage is unavailable, so ETH transfers are blocked: a duplicate transfer could not be prevented.';
 const loadPending = (key: string): PendingTransfer | undefined => {
-  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? undefined; } catch { return undefined; }
+  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? undefined; } catch { throw new Error(NO_STORAGE); }
 };
-const savePending = (key: string, p: PendingTransfer) => { try { localStorage.setItem(key, JSON.stringify(p)); } catch { /* storage unavailable */ } };
+const savePending = (key: string, p: PendingTransfer) => { try { localStorage.setItem(key, JSON.stringify(p)); } catch { throw new Error(NO_STORAGE); } };
+/** Remove this attempt's reservation only, never one another tab wrote. */
+const releasePending = (key: string, id: string) => {
+  try { if (loadPending(key)?.id === id) localStorage.removeItem(key); } catch { /* the reservation stays and blocks */ }
+};
 
 function useTx(onDone: () => void) {
   const pub = usePublicClient();
@@ -264,17 +270,37 @@ function useTx(onDone: () => void) {
     const prepared = await prepareWrite(pub!, address, params);
     const intent = reviewedIntent(prepared);
     const key = intent.value > 0n ? transferKey(intent) : undefined;
-    let nonce = 0;
+    const reservation = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
     if (key) {
-      const earlier = loadPending(key);
-      if (earlier && await transferUnresolved(pub!, earlier)) {
-        throw new Error(`An earlier ETH transfer to this contract is unconfirmed (${earlier.hash}). Wait for it, or cancel it in your wallet.`);
-      }
-      nonce = await pub!.getTransactionCount({ address: intent.from, blockTag: 'pending' });
+      if (!navigator.locks) throw new Error(NO_STORAGE);
+      // Check and reserve as one step across this site's tabs, so two tabs cannot both find no earlier transfer.
+      await navigator.locks.request(key, async () => {
+        const earlier = loadPending(key);
+        const state = earlier && await transferState(pub!, earlier);
+        if (earlier && state?.unresolved) {
+          if (state.nonce !== undefined && earlier.nonce === undefined) savePending(key, { ...earlier, nonce: state.nonce });
+          throw new Error(earlier.hash
+            ? `An earlier ETH transfer to this contract is unconfirmed (${earlier.hash}). Wait for it, or cancel it in your wallet.`
+            : 'An earlier ETH transfer to this contract may have been sent from another tab or before a reload. Wait for it to confirm; if none was sent, try again in 24 hours.');
+        }
+        // Reserve before the wallet opens, so another tab or a reload sees this transfer while it is unconfirmed.
+        savePending(key, reservation);
+      });
     }
     beforeWallet?.();
-    const hash = await writeContractAsync(prepared as never);
-    if (key) savePending(key, { hash, chainId: intent.chainId, from: intent.from, to: intent.to, nonce });
+    let hash: Hash;
+    try {
+      hash = await writeContractAsync(prepared as never);
+    } catch (e) {
+      if (key) releasePending(key, reservation.id);
+      throw e;
+    }
+    if (key) {
+      // The wallet chooses the nonce; keep it once a node shows the transaction. If saving fails now, the hashless
+      // reservation still blocks.
+      const seen = await pub!.getTransaction({ hash }).catch(() => undefined);
+      try { if (loadPending(key)?.id === reservation.id) savePending(key, { ...reservation, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
+    }
     submitted.current = { hash, intent };
     return hash;
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
@@ -522,7 +548,7 @@ export function App() {
 }
 
 /** The current admission state shown in the pool list. */
-const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Closed: no NFTs', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes', 7: 'Paused: curated proof' };
+const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3: 'Paused: no curated NFT', 4: 'Busy', 5: 'Paused: mint fee', 6: 'Paused: low prizes', 7: 'Paused: curated proof' };
 
 /** Every pool this wallet created, with its state and ETH, and the way to start another. */
 function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
@@ -1384,7 +1410,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
           <div className="group-body nfts-list">
             {d.historyLoading && <p className="note">Loading failed delivery history…</p>}
             {d.historyError && <p className="note error">Failed delivery history unavailable: {d.historyError}</p>}
-            {curated.length === 0 && d.pending.length === 0 && <p className="note">No NFTs listed. Purchases stay closed until you add one.</p>}
+            {curated.length === 0 && d.pending.length === 0 && <p className="note">No curated NFTs listed.</p>}
             {curated.map((l) => {
               const editing = edit?.id === l.id;
               return (

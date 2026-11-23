@@ -1,0 +1,363 @@
+Compiling 31 files with Solc 0.8.28
+Compiling 86 files with Solc 0.8.28
+Solc 0.8.28 finished in 2.17s
+Solc 0.8.28 finished in 68.80s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:109:13:
+    |
+109 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:121:9:
+    |
+121 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> test/PolicyModelParity.t.sol:55:20:
+   |
+55 |                 (, uint256 n, uint256 c) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+   |                    ^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> test/PolicyModelParity.t.sol:104:9:
+    |
+104 |         uint256 n;
+    |         ^^^^^^^^^
+
+Warning (2072): Unused local variable.
+   --> test/Packs.t.sol:183:9:
+    |
+183 |         uint256 fee = shapes.mintFee();
+    |         ^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Gas.t.sol:51:5:
+   |
+51 |     function _reimbursed() internal returns (uint256 gasPaid) {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/Hardening.t.sol:255:5:
+    |
+255 |     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/KeeperPay.t.sol:18:5:
+   |
+18 |     function noop() external returns (uint256) { return 42; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/PolicyGasOverhead.t.sol:12:5:
+   |
+12 |     function compare(address policy, IKeeperPolicy.Work calldata input, bool warm)
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 1 test for test/PolicyGasOverhead.t.sol:PolicyGasOverheadTest
+[PASS] test_inlineVersusBoundedQuoteColdAndWarm() (gas: 388528)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 950.08µs (290.54µs CPU time)
+
+Ran 2 tests for test/ForkContext.t.sol:ForkContextTest
+[PASS] test_callsSeeTheConfiguredBasefeeAndGasPrice() (gas: 200604)
+[PASS] test_listedFeesMatchAnIndependentCalculation() (gas: 5441174)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 358.91ms (4.62ms CPU time)
+
+Ran 9 tests for test/Fork.t.sol:ForkScenarioTest
+[PASS] test_canPurchaseFitsStipend() (gas: 5288754)
+[PASS] test_curatedDrawDeliversAndPoolStaysOpen() (gas: 6933011)
+[PASS] test_initialUpkeepBuildsInventory() (gas: 5524820)
+[PASS] test_lastCuratedDrawnClosesPool() (gas: 8005059)
+[PASS] test_overlappingPurchasesBusyAtFive() (gas: 23427597)
+[PASS] test_ownershipAndOperator() (gas: 41234)
+[PASS] test_singleShapeDrawReplenishes() (gas: 8276515)
+[PASS] test_tokenPurchasesImpossible() (gas: 5406612)
+[PASS] test_unlistAndRetire() (gas: 7232944)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 3.64s (2.30s CPU time)
+
+Ran 3 tests for test/KeeperList.t.sol:KeeperListTest
+[PASS] test_factoryKeeperListCoversEveryPoolAndIsOpenByDefault() (gas: 5079428)
+[PASS] test_keeperAdminTransferIsTwoStep() (gas: 2572160)
+[PASS] test_oneListCoversEveryPool() (gas: 14512137)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.87s (3.58s CPU time)
+
+Ran 1 test for test/ConcurrentRecovery.t.sol:ConcurrentRecoveryTest
+[PASS] test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() (gas: 29853792)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.88s (3.59s CPU time)
+
+Ran 2 tests for test/EconFork.t.sol:EconForkTest
+[PASS] test_econBigWin() (gas: 1520327834)
+[PASS] test_econRandom() (gas: 861330353)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 5.06s (7.97s CPU time)
+
+Ran 8 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 9925975)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 11711170)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 24556445)
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 24556398)
+[PASS] test_noWorkCallIsPaidNothing() (gas: 11010161)
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 12269632)
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 11488061)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 14122711)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 1.37s (149.19ms CPU time)
+
+Ran 9 tests for test/Packs.t.sol:PacksTest
+[PASS] test_constructorRejectsPacksThatCannotMakeTheSmallestPack() (gas: 6467402)
+[PASS] test_drawnPackGoesToWinnerRedeemsExactlyAndIsReplaced() (gas: 3190273)
+[PASS] test_everyPackSizeMintsAtExactValueWithItsShapes() (gas: 6267615)
+[PASS] test_packsContractRefusedAsPurchaserAndAsCurated() (gas: 71255)
+[PASS] test_packsListedAtExactValueWithFewestShapes() (gas: 644403)
+[PASS] test_reserveHoldsWorkingCapitalWithoutDuplicatePackBacking() (gas: 105787)
+[PASS] test_smallerTargetThenUnlistSurplus() (gas: 775316)
+[PASS] test_unlistRedeemsPacksAndShapesForExactBacking() (gas: 1813560)
+[PASS] test_worstPackBatchRebuilds() (gas: 18655553)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 1.17s (52.63ms CPU time)
+
+Ran 29 tests for test/Balancer.t.sol:BalancerTest
+[PASS] test_basefeeSpikeCappedAtMaxGasPrice() (gas: 940030)
+[PASS] test_blockedRefundRecoveryDoesNotBrickUpkeep() (gas: 7104438)
+[PASS] test_claimDuringUnsettledDraw() (gas: 1874988)
+[PASS] test_claimSurplusRespectsReserveWhileOpen() (gas: 3193495)
+[PASS] test_claimToRejectingRecipientReverts() (gas: 353052)
+[PASS] test_configureRejectsBadTargets() (gas: 254126)
+[PASS] test_creatorTransferTwoStep() (gas: 275642)
+[PASS] test_curatedBatchRepriceWithdraw() (gas: 1879949)
+[PASS] test_curatedOpsAndUnsettledDraws() (gas: 2762222)
+[PASS] test_ensReverseAndForward() (gas: 416163)
+[PASS] test_factory_isolatedBalancersAndPools() (gas: 5933723)
+[PASS] test_failedCuratedDeliveryRefundAndRecovery() (gas: 3575361)
+[PASS] test_gasGriefingCollectionCannotTaxUpkeep() (gas: 5821889)
+[PASS] test_gateRefusesUnrefundablePurchasers() (gas: 350083)
+[PASS] test_lowInventoryGate() (gas: 5165223)
+[PASS] test_manyCuratedListingsUnderStipend() (gas: 49009943)
+[PASS] test_markupAppliesAtListingOnly() (gas: 2803254)
+[PASS] test_noRewardForUnnecessaryWork() (gas: 2886734)
+[PASS] test_onlyCreator() (gas: 834192)
+[PASS] test_priorityOverbidIsNotReimbursed() (gas: 7246394)
+[PASS] test_realMintFeeChange() (gas: 3221016)
+[PASS] test_reentrantCollectionCannotReenter() (gas: 3481527)
+[PASS] test_refundOnlyBatchIsPaid() (gas: 912948)
+[PASS] test_rejectingKeeperIsStillPaidAndCannotBlock() (gas: 2633529)
+[PASS] test_rejectsShapesAndLyingCollections() (gas: 796556)
+[PASS] test_reserveMath() (gas: 107142)
+[PASS] test_retireIsIrreversibleAndKeepsExits() (gas: 1777059)
+[PASS] test_settledAfterRetryNeedsNoUpkeep() (gas: 3293922)
+[PASS] test_unlistShapesInBoundedSteps() (gas: 17562314)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 8.62s (8.25s CPU time)
+
+Ran 1 test for test/PolicyLifecycle.t.sol:PolicyLifecycleTest
+[PASS] test_threePoolsV1V2AndPolicyFailureNoAssetMigration() (gas: 90498002)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 13.18s (11.99s CPU time)
+
+Ran 14 tests for test/Reserve.t.sol:ReserveTest
+[PASS] test_bigWinKeepsSellingWhileReserveRefills() (gas: 170289002)
+[PASS] test_closeHoldsOnlyPayForUnreconciledDraws() (gas: 4133941)
+[PASS] test_collectionCallbackCannotReconfigure() (gas: 1129224)
+[PASS] test_creatorKeeperCannotReenterFromReward() (gas: 2597103)
+[PASS] test_creatorRateRemainsStoredAcrossInventoryChanges() (gas: 11071)
+[PASS] test_listingNFTsBeforeCollectionCannotMoveFundMoney() (gas: 7773869)
+[PASS] test_lowerMarkupKeepsAFullBoardOpen() (gas: 5577637)
+[PASS] test_markupBelowTenPercentRejected() (gas: 119264)
+[PASS] test_nftsListOnlyAfterTheFirstConfigure() (gas: 4186513)
+[PASS] test_openCollectsSettledProceedsFirst() (gas: 1648509)
+[PASS] test_openNeedsTheReserve() (gas: 1209491)
+[PASS] test_unpaidRecoveryPreservesCreditWhenOperatingCashCannotRestock() (gas: 3551299)
+[PASS] test_upkeepAndSeparateCollectionUseTheSameStoredRate() (gas: 3545320)
+[PASS] test_worstBatchAtMinimumReservePaysEveryWinner() (gas: 263955695)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 3.64s (2.46s CPU time)
+
+Ran 13 tests for test/Settings.t.sol:SettingsTest
+[PASS] test_boundedPolicyQuoteGasOverhead() (gas: 547736)
+[PASS] test_cancelAndCreatorTransferInvalidateProposals() (gas: 15130766)
+[PASS] test_defaultAndPoolTimelocksAreSeparate() (gas: 15221136)
+[PASS] test_emergencyDisableCannotBeInstantlyReenabled() (gas: 15038006)
+[PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 16219513)
+[PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 17807880)
+[PASS] test_pendingWithdrawCannotDefeatActivationFunding() (gas: 15381168)
+[PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185453)
+[PASS] test_policyFailureUnpaidWholePathAndRestrictedKeeper() (gas: 76154717)
+[PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 334756)
+[PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 16659113)
+[PASS] test_staticReentryPolicyCannotChangeAnythingOutsideValidatedWork() (gas: 15950885)
+[PASS] test_writePolicyQuoteFixture() (gas: 921764)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 2.12s (209.11ms CPU time)
+
+Ran 13 tests for test/Hardening.t.sol:HardeningTest
+[PASS] test_cannotRecoverProtectedAssets() (gas: 4300521)
+[PASS] test_creatorTopUpWhileOpenSetsNoCreatorWork() (gas: 188898)
+[PASS] test_creatorWorkPaysFullAndRefusesPurchases() (gas: 6944822)
+[PASS] test_curatedDrawReconcileIsPaid() (gas: 1652834)
+[PASS] test_gasJumpRestockPaidByTheNewListingsFee() (gas: 10917798)
+[PASS] test_griefingBoundForRestrictedCurated() (gas: 3583755)
+[PASS] test_griefingThinPoolIsCheap() (gas: 6120198)
+[PASS] test_historicalRefundsDoNotGrowUpkeepGas() (gas: 1004641330)
+[PASS] test_minimumMarkupStillFundsKeepers() (gas: 12332935)
+[PASS] test_poolPageApprovalIsNarrow() (gas: 561584)
+[PASS] test_reconcileBoundPerCall() (gas: 57015968)
+[PASS] test_recoverUntrackedNFTs() (gas: 1268145)
+[PASS] test_reserveExactFormula() (gas: 9637723)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 15.64s (14.50s CPU time)
+
+Ran 16 tests for test/ProtectedRevenueAtomic.t.sol:ProtectedRevenueAtomicTest
+[PASS] test_activationRechecksNewPendingRequestsAndBasefeeDuringDelay() (gas: 15076693)
+[PASS] test_atomicCannotPullApprovedAssetFromWrongOwner() (gas: 1288376)
+[PASS] test_atomicHostileSecondFwaTransferRollsBackPoolAndBothNfts() (gas: 3179320)
+[PASS] test_atomicHostileTransferCannotReenterAndInvalidRateReverts() (gas: 4618373)
+[PASS] test_atomicLaterListingFailureRollsBackEarlierTransfersAndFunding() (gas: 1449950)
+[PASS] test_atomicMissingApprovalAndInsufficientFundingLeaveNothing() (gas: 4867982)
+[PASS] test_atomicThousandPrizeCreationMintsNoneAndFirstUpkeepStaysBounded() (gas: 5223715)
+[PASS] test_capitalMovementsNeverCreateCreditAndClosePreservesIt() (gas: 15517424)
+[PASS] test_creditClaimCallbackCannotDuplicateCollectionOrClaims() (gas: 15346384)
+[PASS] test_creditClaimDuringRealHundredEthDeficit() (gas: 18422741)
+[PASS] test_creditClaimDuringRealOneEthDeficit() (gas: 18415283)
+[PASS] test_fullRateCreditOnlyCashSurvivesUnpaidAndFailingPolicy() (gas: 15680067)
+[PASS] test_literalCashCreditReserveExampleDoesNotDoubleCountCredit() (gas: 15969520)
+[PASS] test_policyActivationIgnoresMissingHundredEthBackingAtEqualExposure() (gas: 17196763)
+[PASS] test_rateChangesUseCollectionBoundaryAndKeepConcurrentRequests() (gas: 17122968)
+[PASS] test_zeroFullAndOneBasisPointRoundingRemainBacked() (gas: 20413355)
+Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 18.71s (18.68s CPU time)
+
+Ran 8 tests for test/KeeperAdversarial.t.sol:KeeperAdversarialTest
+[PASS] test_callerRefundsDoNotChangePoolPayment() (gas: 14507696)
+[PASS] test_creatorActionDuringOutstandingBatchBound() (gas: 14771075)
+[PASS] test_depositDoesNotUnlockFullIncentive() (gas: 14598459)
+[PASS] test_inflatedBidOrGasLimitDoesNotRaiseReward() (gas: 13563651)
+[PASS] test_noPurchasesDuringCreatorWork() (gas: 15294314)
+[PASS] test_selfDealingDrainsOnlyCheapCurated() (gas: 11402703)
+[PASS] test_selfDealingRepeatedLowValuePurchases() (gas: 47980613)
+[PASS] test_selfDealingSingleDrawCheapPool() (gas: 12957613)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 5.88s (15.67s CPU time)
+
+Ran 14 tests for test/OptionalCurated.t.sol:OptionalCuratedTest
+[PASS] test_addCuratedToShapesOnlyPool() (gas: 17737003)
+[PASS] test_atomicCreationWithZeroCuratedStocksAndOpens() (gas: 19378219)
+[PASS] test_canPurchaseGasRequiredModeUnderStipend() (gas: 16697568)
+[PASS] test_canPurchaseGasStandardModeUnderStipend() (gas: 15962678)
+[PASS] test_creatorRevenueAtCreationStoredAndUsedForCredit() (gas: 48833889)
+[PASS] test_mintFeeAboveCapKeepsSalesButHaltsMintingUntilReconfigure() (gas: 38688280)
+[PASS] test_mintFeeAboveCapReserveUsesAcceptedFee() (gas: 31473220)
+[PASS] test_noCheapShapePoolStocksSellsWinsRestocksAndGatesEarly() (gas: 22771010)
+[PASS] test_requiredMode_lostWitnessReturnsSevenUntilRefresh() (gas: 28901201)
+[PASS] test_requiredMode_noCuratedListedReturnsThree() (gas: 22013834)
+[PASS] test_requiredMode_stagedCuratedNeverAuthorizesPurchase() (gas: 30747256)
+[PASS] test_shapesOnlyLifecycleAccountedToTheWei() (gas: 16793584)
+[PASS] test_standardModePurchasesContinueAfterLastCuratedWithdrawn() (gas: 19340863)
+[PASS] test_toggleCuratedRequiredFlipsAdmissionWithNoAssetMovement() (gas: 16198469)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 21.71s (30.59s CPU time)
+
+Ran 1 test for test/PolicyModelParity.t.sol:PolicyModelParity
+[PASS] test_writePolicyModelParity() (gas: 100356091)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 21.47s (20.28s CPU time)
+
+Ran 25 tests for test/Gas.t.sol:GasBench
+[PASS] test_breakEven_fillStep() (gas: 21369728)
+[PASS] test_breakEven_gasJumpAfterListing() (gas: 13899017)
+[PASS] test_breakEven_steadyGas_oneDraw() (gas: 64080564)
+[PASS] test_breakEven_steadyGas_threeDraws() (gas: 88317475)
+[PASS] test_gas_canPurchase() (gas: 5441007)
+[PASS] test_gas_createBalancer() (gas: 2825750)
+[PASS] test_gas_curatedOnlyReconcile() (gas: 6646521)
+[PASS] test_gas_initialFill() (gas: 21202818)
+[PASS] test_gas_packFillStep() (gas: 16816933)
+[PASS] test_gas_purchaseWithOperator() (gas: 7054630)
+[PASS] test_gas_refundOnlyBatch() (gas: 6252025)
+[PASS] test_gas_replaceFive() (gas: 13427478)
+[PASS] test_gas_replaceFiveMixed() (gas: 14215284)
+[PASS] test_gas_replaceFivePacks() (gas: 20888105)
+[PASS] test_gas_replaceOne() (gas: 8008038)
+[PASS] test_gas_unlistShapes20() (gas: 12750501)
+[PASS] test_gas_worstCaseUpkeep() (gas: 70628815)
+[PASS] test_gas_worstCaseUpkeepFullUnits() (gas: 65823708)
+[PASS] test_gas_worstCaseUpkeepFullUnits_1000Prizes() (gas: 1026693836)
+[PASS] test_gas_worstCaseUpkeepFullUnits_200Prizes() (gas: 209442855)
+[PASS] test_gas_worstCaseUpkeepShapes() (gas: 60958464)
+[PASS] test_gas_worstCaseUpkeepSixSizes() (gas: 67809460)
+[PASS] test_profitAtCap_curatedReconcilePaid() (gas: 7785887)
+[PASS] test_profitAtCap_fillSteps() (gas: 21252770)
+[PASS] test_profitAtCap_replaceFiveMixed() (gas: 14217300)
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 192.18s (192.33s CPU time)
+
+Ran 1 test for test/Invariant.t.sol:InvariantTest
+[PASS]
+InvariantTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_creatorCreditBackedAndRateBounded
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_reconciledTrackingMatchesFWA
+ InvariantTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 381   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 395   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 421   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 451   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 402   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 416   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 406   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 408   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 406   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 410   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 393.93s (392.60s CPU time)
+
+Ran 2 tests for test/Invariant.t.sol:HandlerSmokeTest
+[PASS]
+HandlerSmokeTest invariants:
+[PASS] invariant_admissionImpliesGateConditions
+[PASS] invariant_creatorCreditBackedAndRateBounded
+[PASS] invariant_keeperPaidOnlyForWork
+[PASS] invariant_noShapesHeldBetweenCalls
+[PASS] invariant_permanentOwnershipAndOperator
+[PASS] invariant_prizeWeightMatchesTrackedPrizes
+[PASS] invariant_reconciledTrackingMatchesFWA
+ HandlerSmokeTest invariants (runs: 64, calls: 4096, reverts: 0)
+
+╭----------+-----------------+-------+---------+----------╮
+| Contract | Selector        | Calls | Reverts | Discards |
++=========================================================+
+| Handler  | addCurated      | 381   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | buy             | 395   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | claim           | 421   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | deposit         | 451   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | expireAll       | 402   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | fulfillAll      | 416   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | reconfigure     | 406   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | unlist          | 408   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | upkeep          | 406   | 0       | 0        |
+|----------+-----------------+-------+---------+----------|
+| Handler  | withdrawCurated | 410   | 0       | 0        |
+╰----------+-----------------+-------+---------+----------╯
+
+[PASS] test_handlerBuysAndSettles() (gas: 2061459)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 401.98s (401.76s CPU time)
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 74311229)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 402.53s (401.30s CPU time)
+
+Ran 21 test suites in 409.06s (1520.93s CPU time): 173 tests passed, 0 failed, 0 skipped (173 total tests)

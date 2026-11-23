@@ -1,0 +1,102 @@
+No files changed, compilation skipped
+
+Ran 25 tests for audit-b/UninformedFork.t.sol:UninformedForkTest
+[PASS] test_atomicCuratedCreationNeedsPredictedApprovalAndRollsBackFailure() (gas: 14631879)
+[PASS] test_creatorBuyerKeeperCoalitionFullCyclePaysExternalFees() (gas: 16578488)
+Logs:
+  creator-buyer-keeper coalition cost excluding gas: 0.021992750000000000
+  creator-buyer-keeper external FWA edge: 0.000641750000000000
+
+[PASS] test_deliveredHundredEthPrizeCapitalClaimableBeforeReconciliation() (gas: 15513360)
+Logs:
+  capital withdrawn after confirmed 100 ETH win: 100.000000000000000000
+  reserve before reconciliation: 0.005080000000000000
+  reserve after reconciliation: 100.005420000000000000
+  operating cash after reconciliation: 0.771951737900000000
+
+[PASS] test_donorCapitalEntersCreatorSurplusWithoutCreditOrDonorClaim() (gas: 12473251)
+Logs:
+  irrevocable donor capital claimed by creator: 10.000000000000000000
+
+[PASS] test_exactCapitalShapeOnlyThenBuyerRefundAfterCreatorExit() (gas: 13320446)
+Logs:
+  minimum-board setup keeper pay: 0.006392858850000000
+  minimum-board operating cash after setup: 0.009207141150000000
+  buyer nonrefundable VRF: 0.001287000000000000
+
+[PASS] test_fiveGweiSpikeRestocksAtCurrentFeeWithoutSpendingCredit() (gas: 14413130)
+Logs:
+  high-gas buyer VRF fee: 0.011700000000000000
+  old listing price: 0.013195000000000000
+  new listing price: 0.017200000000000000
+
+[PASS] test_fiveStandardShapesOnlySalesAgainstModelZeroSales() (gas: 22588280)
+Logs:
+  real five-sale owner proceeds: 0.065975000000000000
+  real five-sale player ETH paid excluding gas: 0.075708750000000000
+  real five-sale FWA edge: 0.003298750000000000
+
+[PASS] test_fiveTimedOutDrawsPublicUpkeepReturnsFeesWithoutProcessor() (gas: 15307306)
+Logs:
+  five buyers' nonrefundable randomness charges: 0.006435000000000000
+
+[PASS] test_hostilePolicyFailureCannotConsumeCreditOrStopUnpaidRecovery() (gas: 14872290)
+Logs:
+  credit preserved across failed paid quote and unpaid recovery: 0.013195000000000000
+
+[PASS] test_largeWinTopUpOrDropTopBothReopenWithoutFutureSales() (gas: 16389633)
+Logs:
+  creator response top-up: 100.000000000000000000
+
+[PASS] test_maximumThousandPrizeBoardStartsStockingInBoundedBatch() (gas: 4585442)
+Logs:
+  1000-prize opening reserve: 11.599680000000000000
+  1000-prize reserve after first batch: 11.541700000000000000
+
+[PASS] test_noProcessorFiveGweiTimeoutAndRefund() (gas: 15245494)
+Logs:
+  5-gwei five-buyer nonrefundable VRF: 0.058500000000000000
+
+[PASS] test_noSmallestShapePackCanBeWonRedeemedAndRestocked() (gas: 7088893)
+[PASS] test_normalPointOneGweiQuoteBeforeSale() (gas: 13330125)
+Logs:
+  normal-gas all-in quote: 0.013827750000000000
+
+[PASS] test_outsiderBuyerKeeperCannotProfitFromFiveExpiredDrawsAtNormalGas() (gas: 15747943)
+Logs:
+  manufactured-work keeper reward: 0.000365105800000000
+  manufactured-work VRF cost: 0.001755000000000000
+
+[PASS] test_predictedAddressPrefundingBecomesPoolCapitalAndCreatorSurplus() (gas: 12321220)
+Logs:
+  prefunded donor capital creator surplus: 9.769927141150000000
+
+[PASS] test_publicCuratedWitnessRefreshAfterSelectedProofWithdrawn() (gas: 15550024)
+[PASS] test_rateChangeAndCuratedModeDuringConcurrentShapePurchases() (gas: 15691342)
+Logs:
+  two successful Shapes-only owner proceeds: 0.026390000000000000
+
+[PASS] test_refusingCreatorCollectionLeavesBuyerRefundAndCreatorRecovery() (gas: 15672633)
+Logs:
+  failed-delivery buyer VRF loss: 0.001287000000000000
+
+[PASS] test_restrictedKeeperThenOpenAccessCannotTakeCredit() (gas: 16142666)
+[PASS] test_shapesOnlyToMixedAndBackAcrossBothAdmissionModes() (gas: 14595997)
+[PASS] test_stagedRestockWithoutIndependentFwaProcessor() (gas: 17169719)
+[PASS] test_thousandPrizeBoardFullSetupAndIdleCloseout() (gas: 677370502)
+Logs:
+  1000-prize setup keeper calls: 200
+  1000-prize setup keeper pay: 0.301538320800000000
+  1000-prize zero-demand creator loss excluding actor gas: 1.301538320800000000
+
+[PASS] test_twoGweiSaleStillSettlesAndRestocks() (gas: 14293567)
+Logs:
+  2-gwei buyer VRF fee: 0.004797000000000000
+
+[PASS] test_zeroDemandCloseoutReturnsBackingButNotMintOrKeeperCosts() (gas: 14351433)
+Logs:
+  zero-demand mint and keeper loss excluding actor gas: 0.026392858850000000
+
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 1.18s (1.37s CPU time)
+
+Ran 1 test suite in 1.49s (1.18s CPU time): 25 tests passed, 0 failed, 0 skipped (25 total tests)

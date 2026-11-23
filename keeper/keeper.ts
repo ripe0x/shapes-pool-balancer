@@ -116,6 +116,8 @@ interface State {
   balancers: Address[];
   /** The upkeep transaction in flight per Balancer, until mined or its nonce is used. */
   pending: Record<string, Pending>;
+  /** Consecutive failed ticks per pool; a success clears it. Saved so a restart does not hide a stuck pool. */
+  failures: Record<string, number>;
   accounting: Record<string, AccountingRetry>;
   receipts: ReceiptRecord[];
   accountingAnchor?: { block: string; hash: Hash };
@@ -128,6 +130,7 @@ interface State {
 const AUDIT_KEEP = 1_000;
 /** Consecutive failed ticks after which a pool counts as unattended and /health fails (about a minute at 12s blocks). */
 export const STUCK_TICKS = 5;
+export const MAINNET_RPC = 'https://mainnet.gateway.tenderly.co';
 export interface AuditEntry { balancer: Address; hash: Hash; status: 'success' | 'reverted'; gasUsed: bigint; measuredGas: bigint; reward: bigint; cost: bigint; gasEstimate: bigint; expenseGas: bigint; expenseSource: 'trace' | 'estimate'; minimumReward: bigint; minimumGas: bigint; policy?: Address }
 
 export class Keeper {
@@ -135,8 +138,6 @@ export class Keeper {
   readonly wallet: WalletClient;
   state: State;
   errors: Record<string, string> = {};
-  /** Consecutive failed ticks per pool; a success clears it. */
-  failures: Record<string, number> = {};
   audit: AuditEntry[] = [];
   lastTick = 0;
   lastBlock = 0n;
@@ -145,6 +146,8 @@ export class Keeper {
   private blockHashes = new Map<string, Hash>();
   private accountingErrors: Record<string, string> = {};
   private readonly c: Required<Omit<KeeperConfig, 'log' | 'beforeSend'>> & Pick<KeeperConfig, 'log' | 'beforeSend'>;
+
+  get failures() { return this.state.failures; }
 
   constructor(cfg: KeeperConfig) {
     this.c = { reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
@@ -161,7 +164,7 @@ export class Keeper {
 
   private load(): State {
     const fresh: State = {
-      lastScanned: (this.c.fromBlock - 1n).toString(), balancers: [], pending: {}, accounting: {}, receipts: [], accountingCoverage: 'journal', journalPrunedThrough: '0',
+      lastScanned: (this.c.fromBlock - 1n).toString(), balancers: [], pending: {}, failures: {}, accounting: {}, receipts: [], accountingCoverage: 'journal', journalPrunedThrough: '0',
       stats: { sent: 0, mined: 0, reverted: 0, replaced: 0, skippedUnprofitable: 0, spentWei: '0', earnedWei: '0' },
     };
     if (!existsSync(this.c.stateFile)) return fresh;
@@ -641,8 +644,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const address = typeof account === 'string' ? account : account.address;
   if (guard && !guard.plan.accounts.keeper) throw new Error('CANARY_PLAN has no keeper account');
   if (guard && guard.plan.accounts.keeper.address.toLowerCase() !== address.toLowerCase()) throw new Error('CANARY_PLAN keeper account differs from this signer');
+  const rpcUrl = env('RPC_URL', MAINNET_RPC);
   const k = new Keeper({
-    rpcUrl: env('RPC_URL', 'https://mainnet.gateway.tenderly.co'),
+    rpcUrl,
     factory: env('FACTORY') as Address,
     fromBlock: BigInt(env('FROM_BLOCK')),
     stateFile: env('STATE_FILE', 'keeper/state.json'),
@@ -654,6 +658,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     operatingCostWei: BigInt(env('OPERATING_COST_WEI', '0')),
     beforeSend: guard?.keeperHook(address, 'keeper-run', (m, e) => console.log(JSON.stringify({ t: new Date().toISOString(), msg: m, ...e }))),
   });
+  // R3: mainnet keeper reads and sends go through the Tenderly public endpoint; local forks use their own chain id.
+  if (await k.pub.getChainId() === 1 && rpcUrl !== MAINNET_RPC) throw new Error(`mainnet keeper must use ${MAINNET_RPC}`);
   k.serveHealth(Number(env('HEALTH_PORT', '8787')));
   process.on('SIGINT', () => { k.save(); process.exit(0); });
   process.on('SIGTERM', () => { k.save(); process.exit(0); });

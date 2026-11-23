@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer-launch-b-2d9d16b
+
+······································-·-·-·····-·····--··········---··························································································--·············-··········
+
+ Test Files  19 passed | 1 skipped (20)
+      Tests  173 passed | 12 skipped (185)
+   Start at  18:29:03
+   Duration  1.80s (transform 819ms, setup 0ms, collect 5.44s, tests 1.95s, environment 2ms, prepare 1.06s)
+

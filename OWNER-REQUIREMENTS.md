@@ -318,3 +318,14 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
   their results. Remove Solidity with no current purpose, without changing ABI, storage, formulas or behavior. Player
   pricing, FWA/VRF fees, markup minimums and expected-return presentation are out of scope.
 
+
+## Launch audit at 2d9d16b (owner, 2026-11-22: "Accept E1, fix app")
+
+- R82. R67's "full inventory restoration in the withdrawal reserve" applies to reconciled inventory. Between a
+  delivered win and the upkeep that reconciles it, the reserve still counts the won prize, so the creator may claim
+  that capital (step B measured 100 ETH claimed against a 0.00508 ETH reserve, then a 100.005 ETH reserve). Accepted:
+  only the creator's own capital moves, and `close()` or a smaller `configure` target reaches the same claim at any
+  time. No contract change. The app and keeper findings of the same audits are fixed.
+- R83. No mainnet canary (owner, 2026-11-22: "i don't want to do the canary!!!"). Launch goes from the signed
+  outcomes and the recorded review straight to the production deploy through `script/deploy.sh`; no capped first
+  deployment or cap-raising plan. Supersedes the canary step of runbook 0b E for this launch.

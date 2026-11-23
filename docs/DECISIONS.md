@@ -751,3 +751,9 @@ All historical release approvals stay historical; no new public deployment or re
     and the reserve follows. No fee state, automatic cap change or separate bucket is added; backing, protected credit
     and purchaser refunds are unchanged. Supersedes the reserve half of 46 and E4/round-7's "higher of the two".
 
+
+102. **Reserve counts reconciled inventory** (owner, 2026-11-22; R82). Launch audit B found that `claimSurplus` can take
+    capital between a delivered win and its reconciliation, because `_inventory.activeShapes` drops only in `_onDrawn`.
+    Accepted without a contract change: the winner's backing and purchaser refunds are untouched, and the creator can
+    reach the same withdrawal through `close()` or a smaller target. Refusing capital claims while
+    `lastIssuedSequence() > reconciledSequence` was the rejected alternative (new source hash and re-audit).
