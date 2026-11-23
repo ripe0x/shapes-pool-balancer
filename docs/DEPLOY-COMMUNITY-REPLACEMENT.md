@@ -178,13 +178,15 @@ source `40ad9dd`) carries its own BalancerFactory, PoolBalancer, IKeeperPolicy a
 `community-v0` (`0xA57de1a6…7ece`, superseded, never used) is scanned but has no packaged ABI; the preflight fails
 if a pool ever appears there.
 
-How the app and keeper should consume it (Phase B, not implemented here):
-1. Official creation uses only the replacement factory (`deployments/1.replacement.verified.json`).
+How the app and keeper consume it (`shared/legacy.ts` reads this file; entries without an ABI are skipped):
+1. Official creation uses only the replacement factory (`VITE_FACTORY`, from `deployments/1.replacement.verified.json`).
 2. Pool discovery reads `BalancerCreated` from the replacement factory and from each `legacyFactories[i]` from its
-   `deploymentBlock`.
-3. A pool's ABI comes from the factory that emitted its `BalancerCreated` (`isBalancer` on that factory confirms it),
-   never from the current `shared/abi.ts`. Legacy pools keep their old keeper behaviour: the keeper quotes them with
-   the old `previewUpkeep`/policy ABI and never sends new-ABI calls to them.
+   `deploymentBlock` (app `loadMine`; keeper `discover`, which tracks the last scanned block per factory and scans a
+   factory it has no record for from its own block).
+3. A pool's ABI follows its own `factory()`: a legacy factory's pool uses `abis[abiName]`, never the current
+   `shared/abi.ts`. The app marks it "Legacy · community-v1", shows its fixed limits and admission, saves designs with
+   the two-argument `configure` and changes policy through propose/cancel/activate. The keeper quotes, sends and
+   decodes its receipts with the same ABI. `LEGACY_FACTORIES=0` turns legacy servicing off in the keeper.
 
 ## 6. Reused dependency checks
 

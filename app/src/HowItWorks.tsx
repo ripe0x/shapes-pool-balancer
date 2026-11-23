@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
-import { BY_VALUE, DENOMS, MAX_KEEPER_REWARD, capitalOf, economics, evaluate, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
+import { BY_VALUE, DENOMS, V1_ECONOMICS, capitalOf, economics, evaluate, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
@@ -65,7 +65,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const edgeShare = (draw - econ.ownerProceeds) / draw;
   const inPrizes = capitalOf(counts);
   const needed = ethNeeded(counts, EXAMPLE);
-  const capital = reserveBreakdownAt(counts, EXAMPLE.have, EXAMPLE.mintFee, 0, MAX_KEEPER_REWARD, EXAMPLE.baseFee);
+  const capital = reserveBreakdownAt(counts, EXAMPLE.have, EXAMPLE.mintFee, 0, V1_ECONOMICS, EXAMPLE.baseFee);
   const deposit = needed;
   const initialCosts = capital.inventoryCost - inPrizes + capital.listingBudget;
   const reserve = capital.workingBuffer;

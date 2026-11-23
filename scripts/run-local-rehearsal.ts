@@ -13,7 +13,7 @@ import {
 } from 'viem';
 import { Keeper, MAX_TRANSACTION_GAS, revertName } from '../keeper/keeper';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../shared/abi';
-import { MAX_KEEPER_REWARD, requiredReserveAt, type Counts } from '../shared/planner';
+import { requiredReserveAt, type Counts, type Economics } from '../shared/planner';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const EVIDENCE = join(ROOT, 'docs/receipts/rehearsal-04bc760-preparation');
@@ -256,7 +256,7 @@ async function setup(creator:Address, counts:Counts) {
   for(let id=1n;id<=2n;id++) { journal.curatedContributions.push({creator,demo,tokenId:String(id),notionalWei:String(id*ETH/4n),initial:true});save();await send(creator,demo,demoAbi,'mint',[creator,id]);await send(creator,demo,erc721Abi,'approve',[balancer,id]); }
   await send(creator,balancer,poolBalancerAbi,'listCuratedBatch',[[{collection:demo,tokenId:1n,base:ETH/4n},{collection:demo,tokenId:2n,base:ETH/2n}]]);
   const b=await pub.getBlock(),fee=await read<bigint>(await read<Address>(balancer,poolBalancerAbi,'SHAPES'),shapesAbi,'mintFee');
-  const amount=requiredReserveAt(counts,Array(16).fill(0),fee,0,MAX_KEEPER_REWARD,b.baseFeePerGas??0n);
+  const amount=requiredReserveAt(counts,Array(16).fill(0),fee,0,await read<Economics>(balancer,poolBalancerAbi,'effectiveEconomics'),b.baseFeePerGas??0n);
   await send(creator,balancer,poolBalancerAbi,'depositETH',[],amount);
   const opened=await send(creator,balancer,poolBalancerAbi,'open');
   const actual=await read<bigint>(balancer,poolBalancerAbi,'requiredReserve',[],{blockNumber:opened.receipt.blockNumber});

@@ -4,10 +4,10 @@ import { writeFileSync } from 'node:fs';
 import { parseEther } from 'viem';
 import serviceFees from '../test/fixtures/fwa-service-fees.json';
 import {
-  BPS, BY_VALUE, V1_POLICY, DENOMS, MAX_KEEPER_REWARD, MAX_OPS, MIN_MARKUP_BPS, NUM, SHAPES_IN,
+  BPS, BY_VALUE, V1_POLICY, V1_ECONOMICS, DENOMS, MAX_OPS, MIN_MARKUP_BPS, NUM, SHAPES_IN,
   keeperWorkAt, listingBatches, KEEPER_LIMITS, paymentBound, reserveBreakdownAt, prizeBase, prizeCost, quoteV1,
   requiredReserveAt, restockFeeAt, suggestedCreatorRevenueBps, maintenanceBudgetAt,
-  type Counts, type KeeperWork,
+  type Counts, type Economics, type KeeperWork,
 } from '../shared/planner';
 
 const E = (x: bigint) => Number(x) / 1e18;
@@ -16,19 +16,19 @@ const MINT_FEE = parseEther('0.001');
 const DAY = 86400;
 export interface ModelPolicy {
   name: string;
-  maxReward: bigint;
+  economics: Economics;
   reward: (work: KeeperWork) => bigint;
   surcharge: (d: number, baseFee: bigint) => bigint;
 }
 export const V1: ModelPolicy = {
-  name: 'V1', maxReward: MAX_KEEPER_REWARD,
+  name: 'V1', economics: V1_ECONOMICS,
   reward: quoteV1,
   surcharge: (d, b) => BigInt(SHAPES_IN[d]) * restockFeeAt(b),
 };
 /** Deliberately different test schedule, matched to the fork test's policy fixture before reporting parity.
  *  Since interface v2 a policy declares no maximum: the pool's economics bound it, so V2 shares V1's maximum. */
 export const V2: ModelPolicy = {
-  name: 'V2 test policy', maxReward: MAX_KEEPER_REWARD,
+  name: 'V2 test policy', economics: V1_ECONOMICS,
   reward: (w) => {
     const candidate = w.baseFee + 20_000_000n;
     const price = [candidate, w.gasPrice, 8_000_000_000n].reduce((a, b) => a < b ? a : b);
@@ -102,7 +102,7 @@ export function runScenario(s: Scenario): ModelResult {
   let unavailable = 0, serviceLatency = 0, draws = 0, refunded = 0, blocked = 0, replacements = 0, paidOperations = 0;
   let opening = true, policyFailed = false, paused = false;
   const targetWeight = s.target.reduce((a, n, d) => a + BigInt(n) * (NUM / DENOMS[d]), 0n);
-  const required = () => requiredReserveAt(s.target, have, MINT_FEE, owed.length, policy.maxReward, baseFee);
+  const required = () => requiredReserveAt(s.target, have, MINT_FEE, owed.length, policy.economics, baseFee);
   const missing = () => s.target.reduce((a, n, d) => a + Math.max(0, n - have[d]), 0);
   const contribute = (amount: bigint) => { putIn += amount; liquid += amount; };
   const drawQuote = () => {
@@ -129,7 +129,7 @@ export function runScenario(s: Scenario): ModelResult {
   const collect = (nextCredit: bigint) => { creatorCreditAccrued += nextCredit - credit; liquid += heldProceeds; proceeds += heldProceeds; heldProceeds = 0n; credit = nextCredit; };
   const work = (processed: number, reconciled: number, units = 0, prizes = 0) =>
     modeledWork(baseFee, processed, reconciled, units, prizes);
-  const rewardFor = (w: KeeperWork) => { const quote = policy.reward(w), cap = paymentBound(w, policy.maxReward); return quote < cap ? quote : cap; };
+  const rewardFor = (w: KeeperWork) => { const quote = policy.reward(w), cap = paymentBound(w, policy.economics); return quote < cap ? quote : cap; };
   const pay = (w: KeeperWork, paid: boolean) => {
     const amount = paid ? rewardFor(w) : 0n;
     if (amount > liquid - credit) throw new Error('paid work consumed credited creator earnings');
@@ -167,7 +167,7 @@ export function runScenario(s: Scenario): ModelResult {
       for (const d of BY_VALUE) {
         for (let i = 0; i < next.counts[d]; i++) {
           const newUnits = units + SHAPES_IN[d], newPrizes = prizes + 1, newCost = cost + prizeCost(d, MINT_FEE);
-          const bound = paid ? paymentBound({ ...work(0, 0, newUnits, newPrizes), measuredGas: KEEPER_LIMITS.maxGas }, policy.maxReward) : 0n;
+          const bound = paid ? paymentBound({ ...work(0, 0, newUnits, newPrizes), measuredGas: KEEPER_LIMITS.maxGas }, policy.economics) : 0n;
           if (newCost + bound > (liquid - credit)) { stop = true; break; }
           batch[d]++; units = newUnits; prizes = newPrizes; cost = newCost;
         }
@@ -204,9 +204,9 @@ export function runScenario(s: Scenario): ModelResult {
       if (paused) dependencyPauseWhileOpen++;
     }
     if (day === s.switchDay) {
-      const oldBudget = maintenanceBudgetAt(owed.length, policy.maxReward, baseFee).total;
+      const oldBudget = maintenanceBudgetAt(owed.length, policy.economics, baseFee).total;
       policy = V2;
-      const nextBudget = maintenanceBudgetAt(owed.length, policy.maxReward, baseFee).total;
+      const nextBudget = maintenanceBudgetAt(owed.length, policy.economics, baseFee).total;
       const need = nextBudget > oldBudget && nextBudget > liquid - credit ? nextBudget - (liquid - credit) : 0n;
       contribute(need); switchTopup += need; // explicit creator-funded policy adoption, never an ordinary operating top-up
     }
@@ -320,11 +320,11 @@ export function historicalReserveAt(target: Counts, mintFee: bigint, baseFee: bi
 export function capitalComparisons() {
   return REPRESENTATIVE_BOARDS.flatMap((b) => GAS_CASES.map((baseFee) => {
     const none = DENOMS.map(() => 0), before = historicalReserveAt(b.target, MINT_FEE, baseFee, false);
-    const after = reserveBreakdownAt(b.target, none, MINT_FEE, 0, V1.maxReward, baseFee);
-    const stocked = requiredReserveAt(b.target, b.target, MINT_FEE, 0, V1.maxReward, baseFee);
+    const after = reserveBreakdownAt(b.target, none, MINT_FEE, 0, V1.economics, baseFee);
+    const stocked = requiredReserveAt(b.target, b.target, MINT_FEE, 0, V1.economics, baseFee);
     const backing = b.target.reduce((a, n, d) => a + BigInt(n) * DENOMS[d], 0n);
     const setupQuote = listingBatches(b.target, none).reduce((a, batch) => {
-      const w = modeledWork(baseFee, 0, 0, batch.units, batch.prizes), quote = V1.reward(w), cap = paymentBound(w, V1.maxReward);
+      const w = modeledWork(baseFee, 0, 0, batch.units, batch.prizes), quote = V1.reward(w), cap = paymentBound(w, V1.economics);
       return a + (quote < cap ? quote : cap);
     }, 0n);
     const freeAfterSetup = after.total - after.inventoryCost - setupQuote - stocked;
