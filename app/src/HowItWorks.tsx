@@ -146,7 +146,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
             );
           })}
         </div>
-        <button className="btn" style={{ marginTop: 24 }} onClick={onDesign}>Design a pool</button>
+        <button className="btn" style={{ marginTop: 24 }} onClick={onDesign}>Design a community pool</button>
       </section>
 
       <section className="hiw-sec">

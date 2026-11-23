@@ -8,7 +8,7 @@ import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, MAX_SHAPES_PER_PLAN, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
-import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
+import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
@@ -504,9 +504,9 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); setHelp(false); if (isConnected && loaded) setPage(mine.length ? 'list' : 'new'); window.scrollTo(0, 0); }}>FWA Pool Balancer</a>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); setHelp(false); if (isConnected && loaded) setPage(mine.length ? 'list' : 'new'); window.scrollTo(0, 0); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
-          {isConnected && loaded && <button aria-current={!help && page === 'list' ? 'page' : undefined} onClick={() => { setHelp(false); setPage('list'); }}>Your pools</button>}
+          {isConnected && loaded && <button aria-current={!help && page === 'list' ? 'page' : undefined} onClick={() => { setHelp(false); setPage('list'); }}>Your community pools</button>}
           <button aria-current={help ? 'page' : undefined} onClick={() => setHelp(true)}>How it works</button>
         </nav>
         {!isConnected && (
@@ -527,7 +527,7 @@ export function App() {
       {help && <HowItWorks onDesign={() => { setHelp(false); if (isConnected) setPage('new'); }} />}
       <div hidden={help}>
       {isConnected && page !== 'pool' && (loadFailed || !loaded) && <main className="page narrow-page">
-        {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your pools…</p>}
+        {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your community pools…</p>}
         {/* Opening a pool by address is the way in only while discovery is failing. */}
         {loadFailed && <>
           <label htmlFor="open-pool-address" className="form-label">Pool address</label>
@@ -567,8 +567,8 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
   }, [pub, pools]);
   return (
     <main className="page narrow-page">
-      <div className="section-head"><h1 className="title t2">Your pools</h1><button className="btn" onClick={onNew}>New pool</button></div>
-      {!pools.length && <p className="note" style={{ marginTop: 16 }}>You have no pools yet.</p>}
+      <div className="section-head"><h1 className="title t2">Your community pools</h1><button className="btn" onClick={onNew}>New community pool</button></div>
+      {!pools.length && <p className="note" style={{ marginTop: 16 }}>You have no community pools yet.</p>}
       <div className="poollist">
         {[...pools].reverse().map((b) => (
           <button key={b} onClick={() => onOpen(b)}>
@@ -608,7 +608,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
       <div className="poolhead">
         <div className="ph-row">
           <div className="ph-id">
-            <span className="crumb"><button className="link quiet" onClick={onBack}>Your pools</button> /</span>
+            <span className="crumb"><button className="link quiet" onClick={onBack}>Community pools</button> /</span>
             <h1 className="ph-name">{poolName(d)}</h1>
             <div className="ph-meta">
               <span className="mono">{d.balancer}</span>
