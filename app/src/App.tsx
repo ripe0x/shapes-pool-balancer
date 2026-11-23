@@ -690,7 +690,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
 type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
 /** Design work before submission, retained across wallet connection and reloads. */
-type Draft = { salt?: Hash; creation?: CreationAttempt; creatorRevenueBps?: number; curatedRequired?: boolean; markup: number; counts?: Counts; style?: Style | null; nfts?: DraftNft[];
+type Draft = { salt?: Hash; creation?: CreationAttempt; curatedRequired?: boolean; markup: number; counts?: Counts; style?: Style | null; nfts?: DraftNft[];
   /** Drafts saved before `counts`: 0.01 ETH Shapes and the other sizes, kept apart. Read once, never written. */
   small?: number; bonus?: Counts };
 const draftKey = () => 'pool-design-draft';
@@ -954,15 +954,14 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
   // A new pool takes the suggested rate: earnings are what the markup brings in above the 10% that runs the pool. An
   // existing pool keeps its stored rate until changed in Settings.
-  const [revenueRate, setRevenueRate] = useState<number | undefined>(draft?.creatorRevenueBps);
   const [curatedRequired, setCuratedRequired] = useState(!!draft?.curatedRequired);
-  const reviewedRate = fresh ? revenueRate ?? suggestedRate : d.creatorRevenueBps;
+  const reviewedRate = fresh ? suggestedRate : d.creatorRevenueBps;
   const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
-  const current = (): Draft => ({ salt, creatorRevenueBps: revenueRate, curatedRequired, markup, counts, style: style ?? null, nfts });
+  const current = (): Draft => ({ salt, curatedRequired, markup, counts, style: style ?? null, nfts });
   useEffect(() => {
     if (fresh) saveDraft(current());
-  }, [has, markup, counts.join(), style, nfts, revenueRate, curatedRequired]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [has, markup, counts.join(), style, nfts, curatedRequired]); // eslint-disable-line react-hooks/exhaustive-deps
   const setNft = (i: number, x: Partial<DraftNft>) => { setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
   const reset = () => {
     setPicking(undefined);
@@ -1376,9 +1375,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 : <div><span>Above the operating requirement</span>{figureEth(ev && have - needed, 6)}</div>}
             </>
           )}
-          {fresh
-            ? <div><div><label htmlFor="initial-earnings">Pool creator earnings, % of sales</label><p className="note">Suggested {suggestedRate / 100}%</p></div><div className="field"><input id="initial-earnings" type="number" min="0" max="100" step="0.01" value={reviewedRate / 100} onChange={(e) => setRevenueRate(Math.round(Number(e.target.value) * 100))} /><span>%</span></div></div>
-            : <div><span>Pool creator earnings</span><span>{reviewedRate / 100}% of sales</span></div>}
+          <div><span>Pool creator earnings</span><span>{reviewedRate / 100}% of sales</span></div>
           {!fresh && <div><span>Suggested for this mix</span><span>{suggestedRate / 100}% of sales</span></div>}
           <div><span>Expected pool creator earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
           <div><span>Expected revenue retained by the pool</span><span>{econ ? `${perDraw(econ.retainedRevenuePerDraw)} ETH` : 'Unavailable'}</span></div>

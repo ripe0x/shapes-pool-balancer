@@ -128,7 +128,7 @@ export function MainPool({ tab, setTab }: { tab: MainTab; setTab: (t: MainTab) =
       )}
       {t === 'overview' && <Compare v={vault.data} hasManager={!!managers.data?.managers.length} setTab={setTab} />}
       {t === 'vault' && <VaultPage vault={vault} me={me} />}
-      {t === 'manager' && <ManagerTab v={vault.data} me={me} managers={managers} setTab={setTab} />}
+      {t === 'manager' && <ManagerTab v={vault.data} me={me} managers={managers} />}
     </>
   );
 }
@@ -357,7 +357,7 @@ function TxHelper({ tx, children }: { tx: ReturnType<typeof useTx>; children?: R
 
 // ------------------------------------------------------------------ Personal manager
 
-function ManagerTab({ v, me, managers, setTab }: { v?: Vault; me?: Address; managers: ReturnType<typeof useManagers>; setTab: (t: MainTab) => void }) {
+function ManagerTab({ v, me, managers }: { v?: Vault; me?: Address; managers: ReturnType<typeof useManagers> }) {
   const pub = usePublicClient();
   const [index, setIndex] = useState(0);
   const [record, setRecord] = useState<ManagerCreation | undefined>(() => loadManagerCreation());
@@ -387,7 +387,7 @@ function ManagerTab({ v, me, managers, setTab }: { v?: Vault; me?: Address; mana
   if (me && !managers.data) return <p className={`txline${managers.error ? ' bad' : ''}`}>{managers.error ?? 'Looking for your managers…'}</p>;
   if (mine) return <CreationView record={mine} state={creation} onDiscard={() => { clearManagerCreation(); setRecord(undefined); setCreation(undefined); }} />;
   const selected = list[Math.min(index, list.length - 1)];
-  if (!me || !selected) return <CreateManager v={v} me={me} onCreated={created} setTab={setTab} />;
+  if (!me || !selected) return <CreateManager v={v} me={me} onCreated={created} />;
   return <ManagerPage key={selected} manager={selected} v={v} me={me} count={list.length} index={list.indexOf(selected)} setIndex={setIndex} />;
 }
 
@@ -413,7 +413,7 @@ function CreationView({ record, state, onDiscard }: { record: ManagerCreation; s
 const DRAFT_KEY = 'manager-draft';
 const loadAmount = () => { try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as { amount?: string } | null)?.amount ?? '1.00'; } catch { return '1.00'; } };
 
-function CreateManager({ v, me, onCreated, setTab }: { v?: Vault; me?: Address; onCreated: () => void; setTab: (t: MainTab) => void }) {
+function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreated: () => void }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
   const [amount, setAmountState] = useState(loadAmount);
@@ -457,7 +457,6 @@ function CreateManager({ v, me, onCreated, setTab }: { v?: Vault; me?: Address; 
           <Group title="Before you start">
             <div className="rows">
               <div><div><h3 className="ctl">About {threshold === undefined ? '–' : ethText(threshold, 2)} ETH lists one pack</h3><p>With one pack the result is mostly luck. 0.5 to 1 ETH spreads it over several.</p></div></div>
-              <div><div><h3 className="ctl">The shared vault earned more with the same ETH</h3><p>In every model run: one reserve for everyone, and less ETH sitting idle.</p></div><button className="link" onClick={() => setTab('overview')}>Compare →</button></div>
             </div>
           </Group>
         </section>
