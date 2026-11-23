@@ -438,7 +438,8 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
 type Page = 'home' | 'list' | 'pool' | 'new' | 'main';
 // 'list' falls through to the Design page when disconnected or once the pool list loads empty.
 const LANDING: Page = MAIN_POOL_OPEN ? 'home' : 'list';
-const helpOf = (hash: string) => (hash === '#how' ? 'how' : hash === '#how-main' ? 'how-main' : undefined);
+// #how-<section> opens How it works at that section; #how-main is the main pool's page.
+const helpOf = (hash: string) => (hash === '#how-main' ? 'how-main' : /^#how(-[a-z]+)?$/.test(hash) ? 'how' : undefined);
 /** The main pool tab a hash route names, or undefined when it names none. */
 const routeOf = (hash: string): MainTab | undefined => {
   const m = /^#main(?:\/(vault|manager))?$/.exec(hash);
@@ -1352,7 +1353,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
               <p className="note">Added to each new Shape listing price.</p>
-              <p className="note" style={{ marginTop: 6 }}>0.01 ETH Shape restocking charge: {d.restockFee === undefined ? 'unavailable' : `${eth(d.restockFee, 5)} ETH`}.</p>
+              <p className="note" style={{ marginTop: 6 }}>Each new Shape's price also includes a restocking charge that follows gas when it is listed. <a className="link" href="#how-restock">How the restocking charge works</a></p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>
@@ -1421,7 +1422,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                   <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
                   <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
                   <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">0.01 ETH Shape restocking charge</span><span>{eth(d.restockFee!, 5)} ETH</span></div>
+                  <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{eth(d.restockFee!, 5)} ETH</span></div>
                 </div>
                 {mode !== 'preview' && !blocked && ev.feasible && actions.length > 0 && <p className="note" style={{ marginTop: 14 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
               </div>
@@ -1878,7 +1879,7 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable.</p>}
     <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : 'Disabled'}</span></div>
     <div className="kv"><span className="k">Policy payment ceiling</span><span>{eth(d.policyMaxReward, 5)} ETH</span></div>
-    <div className="kv"><span className="k">0.01 ETH Shape restocking charge</span><span>{d.restockFee === undefined ? 'Unavailable' : `${eth(d.restockFee, 6)} ETH`}</span></div>
+    <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{d.restockFee === undefined ? 'Unavailable' : `${eth(d.restockFee, 6)} ETH`}</span></div>
     <div className="row" style={{ gap: 16, marginTop: 16 }}>
       {d.paidUpkeepEnabled && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>}
       <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
