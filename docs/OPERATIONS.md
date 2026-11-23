@@ -76,12 +76,33 @@ history view, not a reason to disable current claims, maintenance, closing or po
 
 ## Adopt a policy
 
-1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer.
-2. `policyFunding` returns candidate maintenance budget and shortfall. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
-3. Creator: `setKeeperPolicy(candidate)`. It takes effect in that transaction (no delay since slice A2); funding and compatibility are checked atomically, and it enables paid upkeep. Observe `KeeperPolicyChanged`.
-4. Creator may `setPaidUpkeepEnabled(false)` or `setPaidUpkeepEnabled(true)` immediately; re-enabling checks the current policy's maintenance budget. A creator transfer keeps the policy and the disabled state.
+A pool uses one of three economics sources: **follow** (the factory's current `economics()`, the default for new
+pools), **local** (its own values) or **pinned** (a frozen copy of the values in effect when pinned). Every change
+below takes effect in its own transaction, increments `policyGeneration` and emits `EconomicsSelected`.
 
-Only the separate policy admin may change the factory default, with `setDefaultKeeperPolicy` (immediate, future pools only), and the product limits, with `setProductLimits`. The keeper admin cannot select any pool's policy or change keeper economics.
+1. Read `keeperPolicy`, `policyMaxReward`, `paidUpkeepEnabled` and `maintenanceFunding(e)` for the full economics `e`
+   you intend to use (the current effective values with the new `policy`, or your own numbers). Use active
+   Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a
+   guaranteed pool offer.
+2. `maintenanceFunding(e)` returns `e`'s maintenance budget at the current state and the operating cash it lacks. While
+   paid upkeep is on, a change is refused (`ReserveNotFunded`) only when `e`'s budget exceeds the current one and
+   operating cash is below it; a nonincrease needs nothing. Deposit only the shortfall with `depositETH()`. Missing
+   prize capital never enters this check; existing prices and creator credit stay unchanged.
+3. Creator: `setKeeperPolicy(candidate)` keeps the effective numbers, swaps the pricing algorithm and makes the pool
+   local (it stops following factory changes). `setLocalEconomics(e)` sets every value at once. The algorithm must
+   report interface version 2, or the call reverts `InvalidPolicy`. Neither call changes paid upkeep: a disabled pool
+   stays disabled, and no funding check runs while it is disabled.
+4. Creator: `setPaidUpkeepEnabled(false)` stops paid upkeep immediately. `setPaidUpkeepEnabled(true)` re-enables it
+   only if operating cash covers the effective economics' full maintenance budget. No factory change re-enables a
+   stopped pool. A creator transfer keeps the economics source and the disabled state.
+5. `pinEconomics()` freezes the effective values; `followFactoryEconomics()` returns to the factory's current values,
+   under the same funding check as step 2. The spending bucket (`setKeeperBucket`) is separate and none of these
+   change it.
+
+Only the separate policy admin may change the factory economics, with `setEconomics` (immediate; followers use the new
+values at their next operation, pinned and local pools are unaffected), the default spending bucket for future pools,
+with `setDefaultBucket`, and the product limits, with `setProductLimits`. The keeper admin cannot select any pool's
+policy or change keeper economics.
 
 ## Keeper economics and purchase limits
 

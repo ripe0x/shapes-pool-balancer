@@ -752,7 +752,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     const timer = setInterval(() => void check(), 5_000);
     return () => { current = false; clearInterval(timer); };
   }, [pub, attempt, walletChainId, me, recheck, tx.busy]);
-  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex }>();
+  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
   const [wallet, setWallet] = useState<bigint>();
@@ -763,17 +763,19 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
       // factory's default spending bucket, so a bucket change after review also refuses creation).
       const block = await pub.getBlock();
       const at = { blockNumber: block.number };
-      const [economics, settingsHash, mintFee] = await Promise.all([
+      const [economics, settingsHash, mintFee, capacity, refill] = await Promise.all([
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'economics' }) as Promise<Economics>,
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) as Promise<Hex>,
         pub.readContract({ ...at, address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }),
+        pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketCapacity' }),
+        pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketRefill' }),
       ]);
       const [costs, edgeBps, vrfFee, productLimits] = await Promise.all([
         policyEconomics(pub, economics, undefined, block),
         pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
         liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number),
       ]);
-      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash });
+      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill } });
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
   }, [pub, loadTry]);
@@ -794,7 +796,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, reload: () => setLoadTry((n) => n + 1) }} />;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1) }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -854,7 +856,8 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; reload?: () => void };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void };
+type Bucket = { capacity: bigint; refill: bigint };
 
 /**
  * One Design page for every stage: a preview before connecting (no NFTs until a wallet is connected), a pool about to be created
@@ -1183,8 +1186,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <div className="kv"><span className="k">Gas price ceiling</span><span>{formatGwei(e.gasPriceCeiling)} gwei</span></div>
       <div className="kv"><span className="k">Maximum payment per call</span><span>{formatEther(maxPaymentOf(e))} ETH</span></div>
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{formatEther(maxSurchargeOf(e))} ETH</span></div>
+      {create?.bucket && <>
+        <div className="kv"><span className="k">Spending bucket capacity</span><span>{formatEther(create.bucket.capacity)} ETH</span></div>
+        <div className="kv"><span className="k">Spending bucket refill</span><span title={`${create.bucket.refill} wei per second`}>{formatEther(create.bucket.refill * 86_400n)} ETH per day</span></div>
+      </>}
     </> : <p className="note">Loading.</p>}
-    <p className="note">Factory changes apply to the pool immediately. After creation you can pin these values or set your own in Settings.</p>
+    <p className="note">Factory economics changes apply to the pool immediately. The pool keeps this spending bucket. After creation you can pin these values or set your own, and change the bucket, in Settings.</p>
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
   const save = mode === 'preview' ? (
@@ -1196,7 +1203,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     <div className="pin">
       {creationEconomics}
       {staleShown && <div style={{ marginBottom: 12 }} role="alert">
-        <p className="note error">The factory's keeper settings or the Shapes mint fee changed since this review.</p>
+        <p className="note error">The factory's keeper settings, default spending bucket or the Shapes mint fee changed since this review.</p>
         <button className="btn sec" onClick={() => create?.reload?.()}>Refresh to review the current values</button>
       </div>}
       {restricted === restrictKey && toList.length > 0 && (
