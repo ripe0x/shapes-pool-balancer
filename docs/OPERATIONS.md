@@ -83,6 +83,19 @@ history view, not a reason to disable current claims, maintenance, closing or po
 
 Only the separate policy admin may change the factory default, with `setDefaultKeeperPolicy` (immediate, future pools only), and the product limits, with `setProductLimits`. The keeper admin cannot select any pool's policy or change keeper economics.
 
+## Keeper economics and purchase limits
+
+- FWA's VRF service draws on one Chainlink subscription shared by all FWA pools and refuses a purchase its balance
+  cannot cover (`InsufficientVrfCoverage`). Purchases can stop before a pool reaches its backlog threshold
+  (T + 4 outstanding draws).
+- Paid upkeep reimburses gas at no more than `gasPriceCeiling` (5 gwei initially). Above it a paid call costs the keeper
+  more than it pays, so paid upkeep stops and pools rely on `performUpkeepUnpaid()` until gas falls.
+- `pinEconomics()` freezes the values in effect at that moment, including any factory change made just before.
+  `setLocalEconomics(e)` sets the pool's own values and detaches it from later factory changes;
+  `followFactoryEconomics()` rejoins.
+- A creator's local `restockFlat` raises the restocking surcharge, and with it the pool's listing prices, beyond the
+  markup range; buyers see and pay that price.
+
 ## Broken policy or unavailable payment
 
 Use `performUpkeepUnpaid()`. It pays zero and retains valid bounded active-policy listing quotes. If a price quote reverts, burns its stipend, is malformed, or exceeds the immutable limit, it uses the immutable V1 recovery surcharge. It remains public under keeper restrictions and pays zero. No assets migrate. Existing listings retain their original prices. Inventory still needs capital, and dependencies' own pause/settlement restrictions remain effective.

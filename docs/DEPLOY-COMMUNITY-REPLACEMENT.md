@@ -68,7 +68,7 @@ Initial factory settings, all set by the `BalancerFactory` constructor (no setup
 | `defaultKeeperPolicy()` | `economics().policy` |
 | `defaultBucketCapacity()` / `defaultBucketRefill()` | 0.622 ETH / 4,166,666,666,666,666 wei per second (`floor(0.05 ether / 12)`) |
 | `productLimits()` | maxPrizes 1,000; minMarkupBps 1,000; maxMarkupBps 10,000 |
-| `creationSettingsHash()` | `keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; at mint fee 0.001 ETH with the fork policy address: `0x9e72aad3…2655` (depends on the policy address, so it differs on mainnet) |
+| `creationSettingsHash()` | `keccak256(abi.encode(poolHash, defaultBucketCapacity(), defaultBucketRefill()))` with `poolHash = keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; at mint fee 0.001 ETH with the 7a fork policy address: poolHash `0x9e72aad3…2655`, creation hash `0x58ddfb37…8252` (depends on the policy address, so it differs on mainnet). The bucket term was added after 7a (review S3), so 7a's recorded `creationSettingsHash` is the poolHash |
 | `keepersRestricted()` / `pendingKeeperAdmin()` / `pendingPolicyAdmin()` | false / zero / zero |
 
 Overhead 60k and restocking 910k are measured recalibrations of V1's 50k and 900k (CONFIG-INVENTORY §0a). Derived

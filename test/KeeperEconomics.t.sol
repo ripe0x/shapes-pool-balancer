@@ -361,7 +361,9 @@ contract KeeperEconomicsTest is ForkBase {
         vm.prank(stranger);
         PoolBalancer created = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(77)), cfg,
             new PoolBalancer.CuratedInput[](0))));
-        assertEq(created.settingsHash(), cfg.settingsHash, "a new pool starts at the reviewed hash");
+        // The reviewed creation hash is the new pool's own hash bound to the default bucket it copied.
+        assertEq(keccak256(abi.encode(created.settingsHash(), created.keeperBucketCapacity(), created.keeperBucketRefill())),
+            cfg.settingsHash, "a new pool starts at the reviewed hash and bucket");
     }
 
     /*////////////////////////////// item 6: funding //////////////////////////////*/

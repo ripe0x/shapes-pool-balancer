@@ -259,7 +259,7 @@ contract PoolBalancer is ReentrancyGuard {
         uint256 target;
         uint256 mintFeeCap;
         bool curatedRequired;
-        /// @dev Must equal the factory's `creationSettingsHash()`: the economics and mint fee the creator reviewed.
+        /// @dev Must equal the factory's `creationSettingsHash()`: the economics, mint fee and default bucket the creator reviewed.
         bytes32 settingsHash;
     }
 

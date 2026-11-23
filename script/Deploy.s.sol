@@ -143,7 +143,8 @@ contract Deploy is Script {
         require(maxPrizes == 1_000 && minMarkupBps == 1_000 && maxMarkupBps == 10_000, "product limits");
         require(
             factory.creationSettingsHash()
-                == KeeperPolicyCalls.settingsHash(e, KeeperPolicyCalls.FOLLOW, 0, true, impl.SHAPES().mintFee()),
+                == keccak256(abi.encode(KeeperPolicyCalls.settingsHash(e, KeeperPolicyCalls.FOLLOW, 0, true,
+                    impl.SHAPES().mintFee()), uint256(0.622 ether), uint256(0.05 ether) / 12)),
             "creation settings hash"
         );
         require(impl.creator() == address(1), "implementation not locked");

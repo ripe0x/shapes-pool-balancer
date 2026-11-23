@@ -857,6 +857,8 @@ items of the A1 list (history kept above). Inventory as built: `docs/CONFIG-INVE
    is gone (zero refill would have reverted).
 5. **`settingsHash`** = economics, source, generation, paid state and the live Shapes mint fee (the A2 hash omitted the
    fee). Creation binds `CreationConfig.settingsHash` to `factory.creationSettingsHash()` before cloning.
+   2026-11-23 (review S3): `creationSettingsHash()` also covers the factory's default bucket, since a new pool copies
+   it; the pool's own `settingsHash` stays without the bucket (a creator's spending limit, not keeper economics).
 6. **Funding**: unchanged rule (maintenance only, only when exposure grows, never missing inventory) applied to every
    local transition through one library function; `maintenanceFunding(e)` replaces `policyFunding(address)` because an
    algorithm alone no longer changes exposure. Factory updates inspect no pool.
@@ -877,3 +879,11 @@ Tests whose assertions changed because the brief changes behavior: factory econo
 schedule changes every reserve and listing literal (recomputed independently, `ForkBase` V1 helpers), and test policies
 quoting above the derived surcharge maximum were lowered into it (`PolicyPreview`, `PolicySecurityReview`) or given
 local economics that allow it (`ProtectedRevenueAtomic`). New focused suite: `test/KeeperEconomics.t.sol`.
+
+## Owner decision: trusted factory admin (2026-11-23)
+
+1. The factory admin (policyAdmin) is trusted. Pools that follow the factory adopt its economics immediately, as
+   intended.
+2. The default bucket stays 0.622 ETH capacity and `floor(0.05 ether / 12)` wei per second refill.
+3. No safeguards against admin updates are added (no delay, cap or per-pool check on factory changes). Creators who
+   want values that do not move use `pinEconomics` or `setLocalEconomics`.

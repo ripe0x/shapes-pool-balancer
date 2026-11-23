@@ -1196,7 +1196,18 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         vm.expectRevert(BalancerFactory.StaleSettings.selector);
         factory.createBalancer{value: 1 ether}(salt, PoolBalancer.CreationConfig(MARKUP, 0, 2, fee, true, reviewed), one);
         _setFee(0.001 ether);
+        // A default bucket change also makes a reviewed creation stale: the new pool copies that bucket.
         reviewed = factory.creationSettingsHash();
+        factory.setDefaultBucket(0.5 ether, uint96(uint256(0.05 ether) / 12));
+        vm.prank(creator);
+        vm.expectRevert(BalancerFactory.StaleSettings.selector);
+        factory.createBalancer{value: 1 ether}(salt, PoolBalancer.CreationConfig(MARKUP, 0, 2, fee, true, reviewed), one);
+        factory.setDefaultBucket(0.622 ether, 1);
+        vm.prank(creator);
+        vm.expectRevert(BalancerFactory.StaleSettings.selector);
+        factory.createBalancer{value: 1 ether}(salt, PoolBalancer.CreationConfig(MARKUP, 0, 2, fee, true, reviewed), one);
+        factory.setDefaultBucket(0.622 ether, uint96(uint256(0.05 ether) / 12));
+        assertEq(factory.creationSettingsHash(), reviewed, "restoring the bucket restores the reviewed hash");
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
         factory.createBalancer{value: 1 ether}(salt, PoolBalancer.CreationConfig(MARKUP, 0, 2, 0.0005 ether, true, reviewed), one);

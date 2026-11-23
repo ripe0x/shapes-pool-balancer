@@ -5,6 +5,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
+import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 
 interface IBatchSlippagePool {
     function selectionSlippageBps() external view returns (uint256);
@@ -57,13 +58,20 @@ contract BatchSlippageTest is ForkBase {
         fillUp();
         _assertFull();
         assertEq(IBatchSlippagePool(address(pool)).selectionSlippageBps(), 1_000);
+        // Surcharge from the factory's default economics, so a recalibration (restockGas 900k -> 910k) moves it too:
+        // restockGas * min(basefee + priorityAllowance, ceiling) + restockFlat = 910k * 0.13 gwei + 0.0002 ETH.
+        IKeeperPolicy.Economics memory e = factory.economics();
+        uint256 price_ = BASE + e.priorityAllowance;
+        if (price_ > e.gasPriceCeiling) price_ = e.gasPriceCeiling;
+        uint256 surcharge = uint256(e.restockGas) * price_ + e.restockFlat;
+        assertEq(surcharge, 0.0003183 ether, "default surcharge at 0.08 gwei basefee");
         uint256[] memory ids = balancer.getActiveIds();
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind, uint8 d,,, uint112 price) = balancer.items(ids[i]);
             if (kind != 2) continue;
             uint256 backing = balancer.denominationAmount(d);
-            assertEq(uint256(price), backing + 0.001 ether + backing * 1500 / 10_000 + 0.000317 ether,
-                "actual listing price includes distinct markup and V1 surcharge at 0.08 basefee");
+            assertEq(uint256(price), backing + 0.001 ether + backing * 1500 / 10_000 + surcharge,
+                "actual listing price includes distinct markup and the default restocking surcharge at 0.08 basefee");
         }
     }
 

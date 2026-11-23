@@ -75,6 +75,9 @@ Factory bucket defaults: `defaultBucketCapacity()`, `defaultBucketRefill()`, `se
   factory change for followers, on any local change, on the live mint fee; a pinned or local pool's does not move on
   factory updates. `performUpkeep(expected, …)` checks it before any work; creation requires
   `CreationConfig.settingsHash == factory.creationSettingsHash()` before the clone is deployed.
+- `creationSettingsHash() = keccak256(abi.encode(newPoolSettingsHash, defaultBucketCapacity, defaultBucketRefill))`,
+  so a `setDefaultBucket` after the creator's review also refuses creation (review S3, 2026-11-23). The pool's own
+  `settingsHash` leaves the bucket out: it is the creator's spending limit, not economics a keeper prices.
 - Funding: local transitions (local, pin, follow, policy switch, re-enable) need `maintenanceBudget(next)` in operating
   cash only when it exceeds the current paid exposure (zero while stopped); never missing inventory. Factory updates
   check nothing per pool; `maintenanceFunding(e)` exposes `(required, shortfall)`, and a short follower's paid

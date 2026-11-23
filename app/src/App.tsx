@@ -759,7 +759,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   useEffect(() => {
     if (!pub) return;
     (async () => {
-      // One block for everything the creator reviews: the economics, the mint fee and the hash that binds both.
+      // One block for everything the creator reviews: the economics, the mint fee and the hash that binds both (plus the
+      // factory's default spending bucket, so a bucket change after review also refuses creation).
       const block = await pub.getBlock();
       const at = { blockNumber: block.number };
       const [economics, settingsHash, mintFee] = await Promise.all([

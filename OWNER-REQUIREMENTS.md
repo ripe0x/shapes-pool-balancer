@@ -351,6 +351,9 @@ economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
   fee-sensitive hash), deploy reuse path + legacy preflight, CI fix and the permanent acceptance suite are
   **designed, not yet implemented**. See `docs/CONFIG-INVENTORY.md`. (Delay removal, the accepted-mint-fee
   binding and product limits are implemented: R88-R90.)
+  **Status (2026-11-23): implemented** on `claude/community-release` (slice A3 `ede97c4`, deploy reuse path and
+  readbacks `505d93d`, CI `afbd981`, acceptance suite `42118c2`; creation hash also binds the default bucket,
+  review S3). The text above is the earlier status, kept as history. Release readiness is not implied.
 - R88. **No policy delays** (spec §3). `BalancerFactory.setDefaultKeeperPolicy` (policyAdmin), pool
   `setKeeperPolicy` (creator) and `setPaidUpkeepEnabled(true)` (creator) take effect in the authorized
   transaction. Pool changes keep the maintenance-funding check (a larger maintenance exposure than the current

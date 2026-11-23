@@ -14,7 +14,7 @@ export interface CreationAttempt {
   /** Observed on the actual submitted transaction, never a pre-wallet nonce estimate. */
   nonce?: number;
   fromBlock?: string;
-  /** settingsHash: the factory's creationSettingsHash the creator reviewed; absent only in attempts saved before A3. */
+  /** settingsHash: the factory's creationSettingsHash (economics, mint fee, default bucket) the creator reviewed; absent only in attempts saved before A3. */
   config: { markupBps: number; creatorRevenueBps: number; target: string; mintFeeCap: string; curatedRequired?: boolean; settingsHash?: Hex };
   curated: { collection: Address; tokenId: string; base: string }[];
   value: string;

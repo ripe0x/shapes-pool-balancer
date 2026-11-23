@@ -84,8 +84,16 @@ jobs:
         run: forge test --match-path test/Reserve.t.sol
       - if: steps.changes.outputs.full == 'true'
         run: forge test --match-path test/ReserveCapital.t.sol
+      # Its overhead assertion holds only with each test in its own transaction.
       - if: steps.changes.outputs.full == 'true'
-        run: forge test --match-path test/KeeperPay.t.sol
+        run: forge test --match-path test/KeeperPay.t.sol --isolate
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/KeeperEconomics.t.sol
+      # Measures the restocking gas behind restockGas 910,000.
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/Hardening.t.sol
+      - if: steps.changes.outputs.full == 'true'
+        run: forge test --match-path test/ConcurrentRecovery.t.sol
       - if: steps.changes.outputs.full == 'true'
         run: forge test --match-path test/KeeperAdversarial.t.sol
       - if: steps.changes.outputs.full == 'true'

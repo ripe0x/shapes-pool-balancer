@@ -119,11 +119,14 @@ contract BalancerFactory {
         emit DefaultBucketChanged(capacity, refillPerSecond);
     }
 
-    /// @notice The `settingsHash` a pool created now starts with: it follows these economics with paid upkeep on, at the
-    ///         live Shapes mint fee. `createBalancer` requires it in `CreationConfig.settingsHash`.
+    /// @notice What a pool created now starts with: the pool's own `settingsHash` (these economics followed, paid upkeep
+    ///         on, the live Shapes mint fee) bound to the default spending bucket it copies. `createBalancer` requires it
+    ///         in `CreationConfig.settingsHash`, so any of these changing after the creator's review refuses creation.
+    /// @dev    keccak256(abi.encode(poolSettingsHash, defaultBucketCapacity, defaultBucketRefill)). The pool's own
+    ///         `settingsHash` leaves the bucket out: it is the creator's spending limit, not economics a keeper prices.
     function creationSettingsHash() public view returns (bytes32) {
-        return KeeperPolicyCalls.settingsHash(_economics, KeeperPolicyCalls.FOLLOW, 0, true,
-            PoolBalancer(payable(implementation)).SHAPES().mintFee());
+        return keccak256(abi.encode(KeeperPolicyCalls.settingsHash(_economics, KeeperPolicyCalls.FOLLOW, 0, true,
+            PoolBalancer(payable(implementation)).SHAPES().mintFee()), defaultBucketCapacity, defaultBucketRefill));
     }
 
     /// @notice Set the limits on newly submitted designs. Immediate; existing listings keep their prices.
