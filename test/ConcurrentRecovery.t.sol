@@ -25,7 +25,7 @@ contract HostileRecoveryPolicy is IKeeperPolicy {
     function setFee(uint256 value) external { fee = value; }
     function setMaximum(bool value) external { maximum = value; }
     function setBroken(bool value) external { broken = value; }
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 91; }
     function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {
         require(!broken, "unavailable policy");

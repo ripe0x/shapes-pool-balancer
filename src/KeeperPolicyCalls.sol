@@ -21,6 +21,7 @@ library KeeperPolicyCalls {
     uint8 internal constant PINNED = 2;
     error InvalidPolicy();
     error PolicyUnavailable();
+    error InvalidGrace();
 
     struct State {
         uint8 source;
@@ -125,8 +126,8 @@ library KeeperPolicyCalls {
         need = r.owed * paymentBound(e, r.baseFee, 1, 1, 0, 0);
         if (!r.enabled) return need;
         uint256 operating = paymentBound(e, r.baseFee, 0, 5, 5, 5);
-        uint256 process = paymentBound(e, r.baseFee, 2, 5, 0, 0);
-        need += operating > process ? operating : process;
+        uint256 processing = paymentBound(e, r.baseFee, 2, 5, 0, 0);
+        need += operating > processing ? operating : processing;
     }
 
     /// @dev Full withdrawal/opening target. Missing prize capital never enters policy-change funding.
@@ -231,10 +232,13 @@ library KeeperPolicyCalls {
             value := mload(out)
         }
     }
-    /// @dev Only the algorithm is checked: every number in `e` is valid at its field width.
+    /// @dev Checks the algorithm (interface 3: quotes take the Economics with the two grace fields) and that the paused
+    ///      grace is not longer than the normal one (`stuck` applies the shorter grace first). Every other number in `e`
+    ///      is valid at its field width.
     function validate(IKeeperPolicy.Economics memory e) public view {
         (bool ok, uint256 v) = word(e.policy, abi.encodeCall(IKeeperPolicy.interfaceVersion, ()));
-        if (!ok || v != 2 || e.policy.code.length == 0) revert InvalidPolicy();
+        if (!ok || v != 3 || e.policy.code.length == 0) revert InvalidPolicy();
+        if (e.pausedProcessGraceBlocks > e.processGraceBlocks) revert InvalidGrace();
     }
     function reward(IKeeperPolicy.Economics memory e, IKeeperPolicy.Work memory w) public view returns (uint256) {
         (bool ok, uint256 quote) = word(e.policy, abi.encodeCall(IKeeperPolicy.quoteReward, (w, e)));
@@ -247,16 +251,24 @@ library KeeperPolicyCalls {
         return quote < envelope ? quote : envelope;
     }
 
-    /// @dev Ready draws at the head of FWA's queue (status 5, randomness cached), at most two, each requested at least
-    ///      `grace` blocks ago; `nShort` counts the same under `shortGrace`. A draw still waiting for randomness stops it.
-    ///      Two per call keeps the worst upkeep under the default 3.2M reimbursable gas.
+    /// @dev Draws at the head of FWA's queue that FWA's processor will settle or expire, at most two, each requested at
+    ///      least `grace` blocks ago; `nShort` counts the same under `shortGrace`. That is Ready (5, randomness cached),
+    ///      TimedOut (6, randomness arrived late) or Pending (1) past its word deadline (randomness never arrived); a
+    ///      draw still within its deadline stops it. Two per call keeps the worst upkeep under the default 3.2M gas.
     function stuck(IFWAPool p, uint64 s, uint256 grace, uint256 shortGrace)
         public view returns (uint256 n, uint256 nShort)
     {
         uint64 last = p.lastIssuedSequence();
         for (; nShort < 2 && s <= last; ++s) {
-            (, uint256 requested,,, uint8 status,) = p.acquisitions(p.requestIdAtSequence(s));
-            if (status != 5 || block.number < requested + shortGrace) break;
+            uint256 id = p.requestIdAtSequence(s);
+            (, uint256 requested,,, uint8 status,) = p.acquisitions(id);
+            if (block.number < requested + shortGrace) break;
+            // FWA expires a Pending draw only once block.number > wordDeadlineBlock (StandardPool.processAcquisitions).
+            if (status == 1) {
+                (, uint64 deadline,,,,) = p.acquisitionMeta(id);
+                if (block.number > deadline) status = 6;
+            }
+            if (status != 5 && status != 6) break;
             ++nShort;
             if (n + 1 == nShort && block.number >= requested + grace) ++n;
         }

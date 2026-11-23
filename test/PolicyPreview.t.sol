@@ -9,7 +9,7 @@ import {GasProbe} from "./utils/FlowBreakdown.sol";
 contract CallerSensitivePolicy is IKeeperPolicy {
     address immutable balancer;
     constructor(address b) { balancer = b; }
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 99; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external view returns (uint256) {
         return units * (msg.sender == balancer ? 0.004 ether : 0.0002 ether);

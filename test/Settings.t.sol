@@ -10,7 +10,7 @@ import {BalancerFactory} from "../src/BalancerFactory.sol";
 
 /// @notice Real alternative economic policy accepted by the stable core protocol.
 contract KeeperPolicyV2 is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 2; }
     function quoteReward(Work calldata w, Economics calldata) external pure returns (uint256) {
         uint256 price = w.baseFee + 0.02 gwei;
@@ -29,7 +29,7 @@ contract KeeperPolicyV2 is IKeeperPolicy {
 contract HostilePolicy is IKeeperPolicy {
     uint256 immutable mode;
     constructor(uint256 m) { mode = m; }
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 99; }
     function quoteReward(Work calldata, Economics calldata) external view returns (uint256) { return _hostile(); }
     function quoteRestock(uint8, uint256, uint256, Economics calldata) external view returns (uint256) { return _hostile(); }
@@ -128,6 +128,10 @@ contract SettingsTest is ForkBase {
         vm.prank(stranger); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setEconomics(e);
         IKeeperPolicy.Economics memory invalid = _econWith(stranger); // read before expectRevert
         vm.expectRevert(KeeperPolicyCalls.InvalidPolicy.selector); factory.setEconomics(invalid);
+        IKeeperPolicy.Economics memory badGrace = _econWith(address(v2)); // paused grace longer than the normal one
+        badGrace.pausedProcessGraceBlocks = badGrace.processGraceBlocks + 1;
+        vm.expectRevert(KeeperPolicyCalls.InvalidGrace.selector); factory.setEconomics(badGrace);
+        vm.prank(creator); vm.expectRevert(KeeperPolicyCalls.InvalidGrace.selector); balancer.setLocalEconomics(badGrace);
         uint256 t = vm.getBlockTimestamp();
         bytes32 before = balancer.settingsHash();
         factory.setEconomics(e);

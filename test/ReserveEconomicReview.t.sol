@@ -10,14 +10,14 @@ import {ERC721} from "solady/tokens/ERC721.sol";
 
 /// @dev An accepted creator-selected counterparty, deliberately requesting every allowed wei and no surcharge.
 contract ReserveReviewMaxPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 2;}
+    function interfaceVersion() external pure returns(uint256){return 3;}
     function version() external pure returns(uint256){return 1;}
     function quoteReward(Work calldata, Economics calldata) external pure returns(uint256){return type(uint256).max;}
     function quoteRestock(uint8, uint256, uint256, Economics calldata) external pure returns(uint256){return 0;}
 }
 
 contract ReserveReviewLowPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 2;}
+    function interfaceVersion() external pure returns(uint256){return 3;}
     function version() external pure returns(uint256){return 1;}
     function quoteReward(Work calldata, Economics calldata) external pure returns(uint256){return 0.00005 ether;}
     function quoteRestock(uint8, uint256, uint256, Economics calldata) external pure returns(uint256){return 0;}
@@ -71,7 +71,8 @@ contract ReserveEconomicReviewTest is ForkBase {
         (uint256 price,uint256 vrf,uint256 total)=pool.quoteAcquisitionPrice(1);
         assertEq(vrf,2_340_000_000_000,"deployed VRF fee at .001 gwei");
         buy(buyer,1);
-        vm.roll(block.number+ITimeout(address(pool)).selectionTimeoutBlocks()+1);
+        assertLt(ITimeout(address(pool)).selectionTimeoutBlocks(),50);
+        vm.roll(block.number+50); // past FWA's word deadline and the 50-block processing grace
         upkeep();
         assertEq(balancer.reconciledSequence(),1,"expired draw was actually reconciled");
         assertEq(ReserveReviewRefund(address(pool)).acquisitionRefundCredit(buyer),price);
@@ -177,7 +178,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256[] memory request=buy(buyer,1);
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),1);
         (uint256 required,uint256 shortfall)=balancer.maintenanceFunding(higher);
-        assertEq(required,_workingBufferAt(0.55 gwei)+(2_150_000+V1_OVERHEAD)*0.55 gwei+0.00002 ether,"one current call plus one actual draw");
+        assertEq(required,_workingBufferAt(0.55 gwei)+(2_150_000+V1_OVERHEAD)*0.55 gwei+0.00004 ether,"one current call plus one actual draw");
         assertEq(shortfall,required-0.00005 ether);
         vm.prank(creator);vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);balancer.setLocalEconomics(higher);
         vm.prank(creator);balancer.depositETH{value:shortfall}();vm.prank(creator);balancer.setLocalEconomics(higher);

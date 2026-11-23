@@ -11,7 +11,7 @@ Status codes come from `admissionStatus()`; the dashboard shows them as text.
 | 1 | CLOSED | Closed by creator | `open()` |
 | 2 | SETTING_UP | Initial stocking or reopening setup is unfinished | call `performUpkeepUnpaid()` (keeper, creator or anyone) until the target is restored; deposit ETH first if the reserve is short |
 | 3 | NO_CURATED | Only while `curatedRequired`: no curated listing remains in local tracking | list a curated NFT, or `setCuratedRequired(false)`; then complete any stocking |
-| 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing (upkeep processes Ready draws after 10 blocks while BUSY); anyone may call FWA `processAcquisitions(5)` |
+| 4 | BUSY | 5 draws are unsettled on FWA | wait for VRF and FWA processing (upkeep processes stuck draws after 10 blocks while BUSY); anyone may call FWA `processAcquisitions(5)` |
 | 5 | (retired) | Not returned by this release. A Shapes mint fee above `mintFeeCap` stops minting in upkeep; listed prizes keep selling until LOW_INVENTORY | run `configure(markupBps, target)` again to accept the new fee (the reserve must cover it), then upkeep |
 | 6 | LOW_INVENTORY | Prospective Shape-weight lower bound is below 70% of target | process/reconcile existing draws; inspect actual staging and liquidity before adding ETH |
 | 7 | CURATED_PROOF_REQUIRED | Only while `curatedRequired`: an active curated listing has not been proven | activate staged curated inventory if necessary, then anyone calls `refreshCuratedWitness(listingId)` |
@@ -40,9 +40,10 @@ call. FWA stores no fulfillment time; randomness arrives about three blocks afte
 gas at the usual price rule plus one work fee per processed draw, besides the reconcile fee. Before the grace nobody is
 paid for it; buyers or the FWA app usually process their own draw first.
 
-Upkeep never processes a head still waiting for randomness or an expired draw. Expired draws (no randomness by the
-word deadline) are skipped with a refund when anyone calls FWA's `processAcquisitions(5)` on the pool; that caller
-pays the gas. While they wait, they count toward the backlog threshold and can pause sales.
+A draw whose randomness never arrived (past its word deadline, or arrived late) is stuck too: after the same grace,
+upkeep has FWA skip it as Expired, crediting the buyer's fee as refund credit, with the same pay, and the draws behind
+it proceed. Upkeep never processes a head still inside its word deadline. Anyone can process expired draws sooner with
+FWA's `processAcquisitions(5)`, unpaid.
 
 ## Dashboard results and transaction confirmation
 
@@ -104,7 +105,8 @@ below takes effect in its own transaction, increments `policyGeneration` and emi
    prize capital never enters this check; existing prices and creator credit stay unchanged.
 3. Creator: `setKeeperPolicy(candidate)` keeps the effective numbers, swaps the pricing algorithm and makes the pool
    local (it stops following factory changes). `setLocalEconomics(e)` sets every value at once. The algorithm must
-   report interface version 2, or the call reverts `InvalidPolicy`. Neither call changes paid upkeep: a disabled pool
+   report interface version 3, or the call reverts `InvalidPolicy`; a paused grace longer than the normal one reverts
+   `InvalidGrace`. Neither call changes paid upkeep: a disabled pool
    stays disabled, and no funding check runs while it is disabled.
 4. Creator: `setPaidUpkeepEnabled(false)` stops paid upkeep immediately. `setPaidUpkeepEnabled(true)` re-enables it
    only if operating cash covers the effective economics' full maintenance budget. No factory change re-enables a
@@ -169,8 +171,8 @@ show when a fee makes the configuration uneconomic.
 ## Recover all capital
 
 1. `close()`.
-2. Allow randomness or expiry. Process expired draws with FWA's `processAcquisitions(5)` (upkeep processes only Ready
-   draws past the grace), then run `performUpkeepUnpaid()` until outstanding draws are reconciled.
+2. Allow randomness or expiry. Process expired draws with FWA's `processAcquisitions(5)` (upkeep processes stuck
+   draws only after the grace), then run `performUpkeepUnpaid()` until outstanding draws are reconciled.
 3. `unlistShapes(listingIds)` until no prizes are listed (prize listing ids come from `getActiveIds` /
    `getActiveShapes`; it withdraws and redeems each prize for exact backing, up to 20 per call).
 4. `withdrawCurated(listingId, to)` for each curated NFT; `recoverRefunded(listingId, to)` for any refunded one.

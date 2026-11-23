@@ -47,7 +47,7 @@ contract AcceptancePolicy is IKeeperPolicy {
 
     function setMode(uint8 m) external { mode = m; }
     function setRestockPerShape(uint256 v) external { restockPerShape = v; }
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 77; }
 
     function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {

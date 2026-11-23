@@ -93,6 +93,10 @@ interface IFWAPool {
             uint8 status,
             bool tokenPayment
         );
+    function acquisitionMeta(uint256 requestId)
+        external
+        view
+        returns (uint64 sequence, uint64 wordDeadlineBlock, uint64 rewardEpoch, uint16, uint16, uint256 randomWord);
     function requestIdAtSequence(uint64 sequence) external view returns (uint256);
     function lastIssuedSequence() external view returns (uint64);
     function nextSequenceToProcess() external view returns (uint64);

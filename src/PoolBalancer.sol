@@ -669,8 +669,10 @@ contract PoolBalancer is ReentrancyGuard {
         // 0. Process stuck draws only (owner decision, docs/DECISIONS.md "Paid processing of stuck draws"). FWA's
         //    randomness callback processes one draw, and only the queue's head that reserved no staged listing, so a
         //    Ready draw behind the head or one that reserved a staged restock waits for an explicit processAcquisitions,
-        //    and a Ready draw never expires. Players and FWA's own path normally finish draws, so upkeep processes only
-        //    Ready head draws requested at least the economics' grace ago (`KeeperPolicyCalls.stuck`), paid as gas plus
+        //    and a Ready draw never expires. A draw whose randomness never arrived or arrived late
+        //    waits for the same call to expire it. Players and FWA's own path normally finish draws, so upkeep processes
+        //    only head draws that are Ready, TimedOut or past their word deadline and were requested at least the
+        //    economics' grace ago (`KeeperPolicyCalls.stuck`), paid as gas plus
         //    the work fee per processed draw; the draws it settles are reconciled below in the same call. Gas of a
         //    reverted processing is not paid and processing starved of gas reverts the call (`KeeperPolicyCalls.process`).
         //    The head check is ordinary upkeep work: its first reads of FWA are the cold accesses reconciling would

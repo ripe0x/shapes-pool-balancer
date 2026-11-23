@@ -12,6 +12,7 @@ interface IReservedListings {
 
 /// @notice Launch audit B, S1 (owner decision D16, narrowed 2026-11-23): a draw whose request reserved a staged restock,
 ///         or a Ready draw behind the queue head, skips FWA's randomness fast path and waits for `processAcquisitions`.
+///         A draw whose randomness never arrived (TimedOut, or Pending past its word deadline) is stuck too.
 ///         Upkeep processes such stuck draws once they were requested at least the economics' grace ago (50 blocks,
 ///         10 while sales are paused), paid as gas plus one work fee per processed draw. Mainnet fork, real FWA pool,
 ///         randomness service and Shapes.
@@ -202,41 +203,89 @@ contract ProcessQueueTest is ForkBase {
         assertTrue(balancer.admissionStatus() != 4, "no longer BUSY");
     }
 
-    function test_headWaitingForRandomnessIsNeverProcessedByUpkeep() public {
+    function test_headWaitingForRandomnessIsProcessedOnlyAfterItsDeadline() public {
         _board();
         vm.prank(creator);
         balancer.setBacklogThreshold(1); // the shortest grace
         uint256 t0 = vm.getBlockNumber();
         uint256[] memory a = buy(buyer, 2);
+        (, uint64 deadline,,,,) = pool.acquisitionMeta(a[0]);
         fulfill(a[1], 11); // Ready, behind a head still waiting for its word
-        vm.roll(t0 + 25); // past the 10-block grace, inside FWA's 30-block word deadline
+        assertEq(balancer.admissionStatus(), 4, "BUSY: the 10-block grace applies");
+        vm.roll(t0 + 25); // past the 10-block grace, inside FWA's word deadline
         Up memory u = _up();
         assertEq(u.processed, 0, "the head is not Ready");
         assertFalse(u.ok, "nothing to do, nothing paid");
-        vm.roll(t0 + 40); // the head expired: FWA would skip it, but it is not Ready
+        vm.roll(deadline); // FWA expires a Pending draw only once block.number > wordDeadlineBlock
         u = _up();
-        assertEq(u.processed, 0, "expired heads are left to FWA's permissionless processing");
-        assertFalse(u.ok);
-        vm.prank(stranger, stranger);
-        assertEq(pool.processAcquisitions(5), 2, "anyone processes them on FWA");
+        assertEq(u.processed, 0, "at the deadline block FWA would process nothing");
+        assertFalse(u.ok, "so upkeep is not paid for it");
+        vm.roll(uint256(deadline) + 1);
         u = _up();
-        assertEq(u.processed, 0);
-        assertEq(u.reconciled, 2);
-        assertEq(u.reward, (u.measured + V1_OVERHEAD) * 0.55 gwei + 2 * 0.00002 ether, "two reconcile fees, no processing fee");
+        assertEq(u.processed, 2, "the expired head and the Ready draw behind it");
+        assertEq(u.reward, (u.measured + V1_OVERHEAD) * 0.55 gwei + 4 * 0.00002 ether);
     }
 
-    /// A keeper that buys draws to manufacture paid processing pays FWA's edge and the randomness fee on each, which
-    /// never come back; processing pays one work fee and reimburses gas at no more than the price paid.
+    /// Owner decision (2026-11-23): a draw whose randomness never arrives is stuck too. After its word deadline and the
+    /// grace, upkeep expires it on FWA (the buyer's fee becomes refund credit), is paid gas plus the work fee, and the
+    /// Ready draw queued behind it proceeds in the same call.
+    function test_drawWithoutRandomnessProcessedAfterDeadlineAndGrace_drawBehindProceeds() public {
+        _board();
+        uint256[] memory a = buy(buyer, 2);
+        (, uint256 requested,,,,) = pool.acquisitions(a[0]);
+        (, uint64 deadline,,,,) = pool.acquisitionMeta(a[0]);
+        fulfill(a[1], 11); // Ready behind a head whose randomness never arrives
+        assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block grace applies");
+        assertGt(requested + 50, uint256(deadline) + 1, "the grace, not the deadline, binds");
+        _drainWithoutProcessing();
+        vm.roll(requested + 49); // past the word deadline, one block before the grace
+        Up memory u = _up();
+        assertEq(u.processed, 0, "expired, but inside the grace");
+        assertFalse(u.ok, "nothing to do, nothing paid");
+        vm.roll(requested + 50);
+        u = _up();
+        assertEq(u.processed, 2, "the expired head and the Ready draw behind it");
+        assertEq(u.reconciled, 2);
+        (,,,, uint8 status,) = pool.acquisitions(a[0]);
+        assertEq(status, 3, "FWA expired the draw without randomness");
+        assertEq(pool.unsettledAcquisitionCount(), 0, "the queue moved on");
+        assertEq(u.reward, (u.measured + V1_OVERHEAD) * 0.55 gwei + 4 * 0.00002 ether,
+            "measured gas at the reimbursed price, two processing and two reconcile fees");
+        emit log_named_uint("expired-head upkeep measured gas", u.measured);
+        _drainWithoutProcessing();
+    }
+
+    /// A keeper that buys a draw to manufacture paid processing pays FWA's edge and the randomness fee, which never come
+    /// back. Its gain is the processing call's net: pay (measured gas plus the overhead allowance at the price, plus the
+    /// work fees) less the gas it is billed, which FWA's storage refunds push below the measured span. Measured at
+    /// 5 gwei from the transaction's own gas; run with --isolate so that gas is the receipt's (refunds applied).
     function test_manufacturedStuckDrawLosesMoney() public {
         _board();
+        vm.fee(4.95 gwei);
+        vm.txGasPrice(5 gwei); // reimbursed price min(5, 4.95 + 0.05, ceiling 5) = 5 gwei
         (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
         uint256 edgeBps = IFWAPoolFactory(FWA_FACTORY).edgeBps();
         uint256 edge = fee * edgeBps / (10_000 + edgeBps);
-        uint256 pay = factory.economics().workFee + V1_OVERHEAD * 0.55 gwei; // processing fee, plus the overhead allowance
+        uint256 t0 = _stuckBehindHead(); // the manufactured draw: Ready behind the processed head
+        _drainWithoutProcessing();
+        vm.roll(t0 + 50);
+        bytes32 h = balancer.settingsHash();
+        uint64 n0 = pool.nextSequenceToProcess();
+        uint256 k0 = keeper.balance;
+        vm.prank(keeper, keeper);
+        uint256 reward = balancer.performUpkeep(h, 0, 0);
+        (bool ok, bytes memory r) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
+        require(ok, "lastCallGas");
+        (, uint64 billed,,,) = abi.decode(r, (uint64, uint64, uint64, int64, uint64));
+        assertEq(pool.nextSequenceToProcess() - n0, 1, "the manufactured draw was processed");
+        assertEq(keeper.balance - k0, reward, "paid");
+        int256 net = int256(reward) - int256(uint256(billed) * 5 gwei);
         emit log_named_decimal_uint("draw fee (ETH)", fee, 18);
         emit log_named_decimal_uint("FWA edge in it (ETH)", edge, 18);
         emit log_named_decimal_uint("randomness fee (ETH)", vrf, 18);
-        emit log_named_decimal_uint("most processing pay above gas (ETH)", pay, 18);
-        assertGt(edge + vrf, 10 * pay, "a self-bought stuck draw costs more than ten times its processing pay");
+        emit log_named_uint("processing call billed gas", billed);
+        emit log_named_decimal_uint("processing call pay (ETH)", reward, 18);
+        emit log_named_decimal_int("keeper net of billed gas (ETH)", net, 18);
+        assertGt(int256(edge + vrf), net, "a self-bought stuck draw costs more than its processing call nets");
     }
 }

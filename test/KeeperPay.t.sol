@@ -164,9 +164,9 @@ contract KeeperPayTest is ForkBase {
 
     /// FWA processing is permissionless, so anyone can process a ready batch one draw at a time and reconcile after
     /// each: one batch becomes up to five paid calls (audit rc-ec5259c finding 6). The bound is one paid call per
-    /// reconciled draw, not one per batch. The splitter needs no draws of its own; players bought these. Expired draws
-    /// are never processed by upkeep (owner decision 2026-11-23: only Ready stuck draws), so the splitter processes them
-    /// on FWA; before that decision upkeep processed them two per call.
+    /// reconciled draw, not one per batch. The splitter needs no draws of its own; players bought these. Upkeep processes
+    /// an expired draw only after the processing grace (owner decision 2026-11-23), so the splitter processes each on
+    /// FWA as soon as it expires; the paid processing of expired draws is tested in ProcessQueue.
     function test_splitCallsArePaidOncePerProcessedDraw() public {
         _open(0.5 gwei);
         fillUp();
@@ -188,8 +188,7 @@ contract KeeperPayTest is ForkBase {
             vm.roll(firstExpired + i - 1);
             _noWork(); // the head is neither ready nor expired: nothing to be paid for
             vm.roll(firstExpired + i);
-            _noWork(); // expired but not Ready: upkeep leaves it to FWA's permissionless processing
-            pool.processAcquisitions(1);
+            pool.processAcquisitions(1); // the splitter, as soon as the head expires
             (uint256 reward, uint256 measured, int256 pnl) = _paid();
             splitPnl += pnl;
             assertEq(balancer.reconciledSequence(), i + 1, "each paid call advances reconciliation");

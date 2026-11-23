@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-/// @notice Version 2 of the project's read-only economic quote protocol. Work is counted by PoolBalancer after
+/// @notice Version 3 of the project's read-only economic quote protocol. Work is counted by PoolBalancer after
 ///         successful external operations; a policy cannot execute work or decide whether it was useful.
 ///         Every quote receives the pool's effective `Economics`, resolved once per operation, so a policy holds no
 ///         mutable numbers of its own and a pinned pool cannot be repriced by a factory update.
@@ -38,9 +38,9 @@ interface IKeeperPolicy {
         uint32 reconcileGas;
         uint32 shapeGas;
         uint32 prizeGas;
-        // Upkeep processes FWA's queue only for Ready draws requested at least this many blocks ago (FWA stores no
-        // fulfillment time; randomness arrives about three blocks after the request), and the shorter value while
-        // purchases are paused BUSY or LOW_INVENTORY.
+        // Upkeep processes FWA's queue only for stuck draws (Ready, or expired without randomness) requested at least
+        // this many blocks ago (FWA stores no fulfillment time; randomness arrives about three blocks after the
+        // request), and the shorter value while purchases are paused BUSY or LOW_INVENTORY. paused <= normal.
         uint16 processGraceBlocks;
         uint16 pausedProcessGraceBlocks;
     }

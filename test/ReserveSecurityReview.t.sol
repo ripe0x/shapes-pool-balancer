@@ -21,7 +21,7 @@ contract ReviewHostilePolicy is IKeeperPolicy {
     address public target;
     function setMode(uint256 m) external { mode = m; }
     function setTarget(address b) external { target = b; }
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 1; }
     function quoteReward(Work calldata w, Economics calldata) external view returns (uint256) {
         require(w.baseFee == block.basefee && w.gasPrice == tx.gasprice, "work fee context");
@@ -151,7 +151,8 @@ contract ReserveSecurityReviewTest is ForkBase {
         vm.prank(creator);
         balancer.retire();
         assertEq(IReviewRefund(address(pool)).acquisitionEscrowTotal(), fee, "creator cannot take purchaser escrow");
-        vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertLt(ITimeout(address(pool)).selectionTimeoutBlocks(), 50);
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         balancer.performUpkeepUnpaid();
         (,,uint256 historicalPrice,, uint8 status,) = pool.acquisitions(requests[0]);
         assertEq(historicalPrice, fee, "FWA retains request-price history");
@@ -427,13 +428,13 @@ contract ReserveSecurityReviewTest is ForkBase {
         _hostile();
         uint256 request = buy(buyer, 1)[0];
         (, ,uint256 principal,,,) = pool.acquisitions(request);
-        vm.roll(vm.getBlockNumber() + 31);
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         uint256 before = address(balancer).balance;
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper);
         uint256 reward = balancer.performUpkeep(expected, 1, 0);
         uint256 billed = ReceiptGas.lastBilled();
-        assertLe(reward, (2_150_000 + V1_OVERHEAD) * 0.02 gwei + 0.00002 ether, "cheap expiry cap uses one actual process and reconcile");
+        assertLe(reward, (2_150_000 + V1_OVERHEAD) * 0.02 gwei + 0.00004 ether, "cheap expiry cap uses one actual process and reconcile");
         assertLt(reward, 0.0001 ether, "max-declared policy cannot draw theoretical heavy-call maximum");
         assertGt(reward, 0.00002 ether, "nonzero low-gas attack surface reached: gas paid beyond the work fee");
         assertEq(before - address(balancer).balance, reward);

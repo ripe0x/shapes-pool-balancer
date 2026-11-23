@@ -134,7 +134,7 @@ contract Deploy is Script {
         require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
         require(factory.pendingKeeperAdmin() == address(0) && factory.pendingPolicyAdmin() == address(0), "no pending admin");
         require(factory.policyAdmin() == policyAdmin && factory.defaultKeeperPolicy() == address(policy), "policy wiring");
-        require(policy.interfaceVersion() == 2, "policy interface");
+        require(policy.interfaceVersion() == 3, "policy interface");
         IKeeperPolicy.Economics memory e = initialEconomics(address(policy));
         require(keccak256(abi.encode(factory.economics())) == keccak256(abi.encode(e)), "initial economics");
         require(factory.defaultBucketCapacity() == 0.622 ether, "bucket capacity");

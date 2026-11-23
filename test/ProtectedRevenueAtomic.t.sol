@@ -11,7 +11,7 @@ import {GasProbe} from "./utils/FlowBreakdown.sol";
 
 /// @dev Immutable arithmetic policy for the literal cash/credit/reserve regression, not a production recommendation.
 contract ExactCashPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 101; }
     function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
@@ -424,7 +424,7 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         buy(stranger, 1);
         assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
         (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(higher);
-        assertEq(required, 2 * ((2_150_000 + V1_OVERHEAD) * 5.05 gwei + 0.00002 ether)
+        assertEq(required, 2 * ((2_150_000 + V1_OVERHEAD) * 5.05 gwei + 0.00004 ether) // process and reconcile fees
             + (3_200_000 + V1_OVERHEAD) * 5.05 gwei + 0.0002 ether,
             "two actual processing bounds plus one bounded operating call at 5.05 gwei");
         assertEq(shortfall, required - (address(balancer).balance - balancer.creatorCredit()));

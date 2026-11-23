@@ -21,7 +21,7 @@ Set whole by `BalancerFactory.setEconomics(Economics)` (policyAdmin, immediate, 
 pool by `setLocalEconomics(e)` (creator). Getters: `factory.economics()`, `pool.effectiveEconomics()`,
 `pool.economicsSource()`. Field widths are the only numeric bounds (they keep every product far below uint256 and
 every surcharge < 2^98, inside a listing's uint104 price record); only `policy` is validated (code +
-`interfaceVersion() == 2`).
+`interfaceVersion() == 3`).
 
 | Field | Type | Initial | Was | Meaning / consumers |
 |---|---|---|---|---|
@@ -152,7 +152,7 @@ factory setters over.
 |---|---|---|
 | `MAX_OPS` (shape units/upkeep) | 5 | 6 units + 5 reconciles measured 3.13M vs the 3.2M lowest allowed `maxGas`; 5 keeps margin. Raising it risks exceeding the reimbursable-gas envelope and underpaying keepers. |
 | `MAX_RESTOCK_SIZES` | 4 | each size is its own mint call (~0.5M); 6 sizes measured 3.19M vs 3.2M cap. |
-| stuck draws processed per call (`KeeperPolicyCalls.stuck`, was `MAX_PROCESS`) | 2 | `PROCESS_STARVED_GAS` (400k) griefing bound was derived for 2 processed draws + FWA's 6-listing reservations (~3.3M). Changing it invalidates the starvation proof. Only Ready draws past the processing grace count (owner decision 2026-11-23). |
+| stuck draws processed per call (`KeeperPolicyCalls.stuck`, was `MAX_PROCESS`) | 2 | `PROCESS_STARVED_GAS` (400k) griefing bound was derived for 2 processed draws + FWA's 6-listing reservations (~3.3M). Changing it invalidates the starvation proof. Only stuck draws (Ready, or expired without randomness) past the processing grace count (owner decision 2026-11-23). |
 | `MAX_RECONCILE` | 5 | one FWA batch (~33k each); keeps worst upkeep under the pay cap. |
 | curated batch | 20 | bounds the 100k-gas purchase-hook witness scan and `listNFTs` gas. |
 | `MAX_BATCH` | 5 | FWA `maxAcquisitionsPerTx`, verified against the FWA factory at creation. Protocol identity, not tunable. |
@@ -268,7 +268,7 @@ economics + disabled state. Test zero refill, capacity up/down, elapsed boundari
   Packs, renderer, FWA factory and FWA implementation, checked by code hash and getter readbacks before and after the
   broadcast; it creates only changed CREATE2 libraries, PoolBalancer, the interface-2 KeeperPolicyV1 and
   BalancerFactory. `_postflight` and `scripts/verify-deployment.ts` read back every §0 initial setting
-  (`economics()`, default bucket, `productLimits()`, `creationSettingsHash()`, policy `interfaceVersion() == 2`).
+  (`economics()`, default bucket, `productLimits()`, `creationSettingsHash()`, policy `interfaceVersion() == 3`).
   The verified record separates `transactions` (receipts), `preexistingLibraries` and `reusedDependencies` (no
   receipts); `prepare-local-rehearsal.ts` and `current-local-rehearsal.ts` accept the reuse plan. Fork rehearsal at
   block 26,480,077 and the unsigned runbook: `docs/DEPLOY-COMMUNITY-REPLACEMENT.md`. The keeper integration scripts

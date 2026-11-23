@@ -16,7 +16,7 @@ interface IShapesFeeAdmin {
 
 /// @dev Healthy alternative algorithm that charges less restocking than the V1 schedule. Not a protocol stand-in.
 contract CheapRestockPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 3; }
     function quoteReward(Work calldata w, Economics calldata e) external pure returns (uint256) {
         return (w.reconciledDraws + w.listedShapeUnits) * e.workFee;

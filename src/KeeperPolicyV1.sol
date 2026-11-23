@@ -7,7 +7,7 @@ import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 ///         reconciled draw sequences and created/listed Shape units, so splitting a job cannot duplicate service fees. Gas reimbursement
 ///         and refunds can still favor splitting. It holds no numbers: the factory or the pool supplies them.
 contract KeeperPolicyV1 is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 1; }
     function quoteReward(Work calldata w, Economics calldata e) external pure returns (uint256) {
         uint256 measured = w.measuredGas > e.maxGas ? e.maxGas : w.measuredGas;

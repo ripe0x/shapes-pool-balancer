@@ -12,7 +12,7 @@ import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 contract MutableReviewPolicy is IKeeperPolicy {
     bool public attack;
     PoolBalancer public ownedPool;
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 404; }
     function arm() external { attack = true; }
     function becomeCreator(PoolBalancer b) external { ownedPool = b; b.acceptCreator(); }
@@ -31,7 +31,7 @@ contract MutableReviewPolicy is IKeeperPolicy {
 
 /// @dev A valid stateless alternative with intentionally distinct listing economics.
 contract AlternativeSurchargePolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 405; }
     function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.0001 ether; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.004 ether; }
@@ -75,7 +75,7 @@ contract PolicySecurityReviewTest is ForkBase {
     }
     function _expire() internal {
         buy(buyer, 1);
-        vm.roll(vm.getBlockNumber() + 40);
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         assertEq(balancer.reconciledSequence(), 0);
         assertEq(pool.lastIssuedSequence(), 1);
     }
@@ -104,7 +104,7 @@ contract PolicySecurityReviewTest is ForkBase {
         for(uint256 i;i<logs.length;++i)if(logs[i].emitter==address(balancer)&&logs[i].topics[0]==keccak256("KeeperPaid(address,uint256,uint256)"))
             (,measured)=abi.decode(logs[i].data,(uint256,uint256));
         assertGt(paid,0);
-        uint256 envelope=((measured>2_150_000?2_150_000:measured)+V1_OVERHEAD)*0.55 gwei+0.00002 ether;
+        uint256 envelope=((measured>2_150_000?2_150_000:measured)+V1_OVERHEAD)*0.55 gwei+0.00004 ether; // process + reconcile fees
         assertEq(paid,envelope,"trivial work cannot obtain the full payment maximum");
         assertLt(paid, maximum);
         assertEq(keeper.balance - before,paid);
@@ -195,7 +195,7 @@ contract PolicySecurityReviewTest is ForkBase {
         context.record();
         assertEq(context.base(), 0.15 gwei);
         assertEq(context.price(), 0.2 gwei);
-        // At 0.2 gwei the economics envelope (measured gas + overhead, one work fee) is below the policy's offer.
+        // At 0.2 gwei the policy's offer, capped by the economics envelope, meets the 200k-gas minimum.
         vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 0, 200_000);
         assertGe(reward, 200_000 * 0.2 gwei, "the price-indexed minimum is met at the mined price");
         assertLe(reward, 0.0001 ether);

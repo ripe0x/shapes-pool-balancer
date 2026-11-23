@@ -9,7 +9,7 @@ import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
 
 contract ReviewEconomicPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 77; }
     function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
@@ -18,14 +18,14 @@ contract ReviewEconomicPolicy is IKeeperPolicy {
 }
 
 contract ReviewSmallPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 76; }
     function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.000695 ether; }
 }
 
 contract ReviewMaximumPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 2; }
+    function interfaceVersion() external pure returns (uint256) { return 3; }
     function version() external pure returns (uint256) { return 78; }
     function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return type(uint256).max; }
     function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
@@ -173,7 +173,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         (,uint256 topUp) = balancer.maintenanceFunding(_econWith(address(replacement)));
         assertEq(topUp, 0, "an oversized quote adds no hypothetical lifetime liability");
         vm.prank(creator); balancer.setKeeperPolicy(address(replacement));
-        vm.roll(vm.getBlockNumber() + 40);
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         assertEq(pool.unsettledAcquisitionCount(), 2, "two real unpaid draws await processing");
         uint256 fund = address(balancer).balance;
         uint256 poolCash = address(pool).balance;

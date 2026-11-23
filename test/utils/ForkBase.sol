@@ -198,8 +198,8 @@ abstract contract ForkBase is Test {
     }
 
     /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has
-    ///      expired; each later block expires exactly one more. Upkeep never processes an expired draw (only Ready
-    ///      stuck draws), so the caller processes them on FWA as any third party would.
+    ///      expired; each later block expires exactly one more. Upkeep processes an expired draw only after the grace
+    ///      (`KeeperPolicyCalls.stuck`), so callers that need it sooner process them on FWA as any third party would.
     function buyOnePerBlock(address who, uint256 n) internal returns (uint256 firstExpired) {
         uint256 timeout = ITimeout(address(pool)).selectionTimeoutBlocks();
         firstExpired = vm.getBlockNumber() + timeout + 1;

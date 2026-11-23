@@ -3,7 +3,7 @@
 ## Paid processing of stuck draws, 2026-11-23
 
 Owner decision (docs/DECISIONS.md "Paid processing of stuck draws only"). Fork block 26,382,349, Forge 1.8.1,
-`--isolate` (transaction gas with refunds). Upkeep processes only Ready draws requested at least the grace ago (50
+`--isolate` (transaction gas with refunds). Upkeep processes only stuck draws (Ready, or expired without randomness) requested at least the grace ago (50
 blocks, 10 while paused), paid as measured gas at the usual price plus one work fee per processed draw.
 
 | Call | measured (paid span) | billed | paid (ETH) | billed cost (ETH) | keeper net (ETH) |
@@ -16,10 +16,12 @@ blocks, 10 while paused), paid as measured gas at the usual price plus one work 
 Largest billed − measured across the calibration classes: 54,540 gas (closed, reconcile 5), under the 60,000
 overhead. Measured exceeds billed on processing calls because FWA's storage refunds are applied after the span.
 
-Self-made stuck draws do not pay (`test_manufacturedStuckDrawLosesMoney`, launch board): a draw costs 0.023108 ETH of
-which FWA's edge is 0.0011004 ETH, plus a 0.001287 ETH randomness fee; neither comes back. Processing pays at most
-0.00002 ETH work fee plus the 60,000-gas overhead allowance (0.000033 ETH at 0.55 gwei) above gas reimbursed at no more
-than the price paid: 0.000053 ETH against 0.0023874 ETH lost per draw.
+Self-made stuck draws do not pay (`test_manufacturedStuckDrawLosesMoney`, launch board, 5 gwei, `--isolate`): a draw
+costs 0.023108 ETH of which FWA's edge is 0.0011004 ETH, plus a 0.0117 ETH randomness fee at 5 gwei; neither comes
+back. The processing call is paid on its measured span, which FWA's storage refunds put above the billed gas: billed
+580,460 gas, paid 0.00364566 ETH, keeper net **+0.00074336 ETH** against 0.0128004 ETH lost on the draw. The largest
+measured − billed gap seen (210,613 gas, staged-restock processing above) would net about 0.0014 ETH per processing
+call at 5 gwei, still below the edge plus randomness fee of the one draw it processes.
 
 ## Slice A3 keeper overhead recalibration, 2026-11-23
 

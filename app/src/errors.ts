@@ -17,6 +17,7 @@ const ERRORS: Record<string, string> = {
   SettingOutOfRange: 'a value is outside its allowed range',
   StaleSettings: 'the keeper policy changed; refresh and try again',
   InvalidPolicy: 'the address does not support the keeper policy interface',
+  InvalidGrace: 'the paused processing wait cannot be longer than the normal one',
   PolicyUnavailable: 'the policy could not quote payment; run unpaid maintenance',
   PaymentUnavailable: 'paid upkeep is unavailable; run unpaid maintenance',
   MinimumPaymentNotMet: 'the offered payment is below the transaction minimum',
