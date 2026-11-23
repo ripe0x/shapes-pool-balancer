@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
+import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IShapes} from "../src/interfaces/External.sol";
 
 /// @dev The non-view call asserts fee context inside execution and reads the real Shapes mint fee.
@@ -15,7 +15,7 @@ contract ReserveCapitalQuoteProbe {
 
     constructor(address shapes_) { shapes = IShapes(shapes_); }
 
-    function quote(KeeperPolicyCalls.Reserve memory r, uint256 maximum, uint256 expectedBase, uint256 expectedBid)
+    function quote(KeeperPolicyCalls.Reserve memory r, IKeeperPolicy.Economics memory e, uint256 expectedBase, uint256 expectedBid)
         external returns (uint256 need, uint256 mintFee)
     {
         require(block.basefee == expectedBase && tx.gasprice == expectedBid, "executed fee context");
@@ -24,7 +24,7 @@ contract ReserveCapitalQuoteProbe {
         r.baseFee = block.basefee;
         r.mintFee = mintFee;
         ++calls;
-        need = KeeperPolicyCalls.reserve(maximum, r);
+        need = KeeperPolicyCalls.reserve(e, r);
     }
 }
 
@@ -34,12 +34,15 @@ contract ReserveCapitalMatrixTest is ForkBase {
     uint256 internal index;
     ReserveCapitalQuoteProbe internal probe;
     uint256 internal maximum;
+    IKeeperPolicy.Economics internal econ;
+    IKeeperPolicy.Economics internal none;
 
     function setUp() public {
         setUpFork();
         probe = new ReserveCapitalQuoteProbe(SHAPES);
-        maximum = KeeperPolicyV1(factory.defaultKeeperPolicy()).maxReward();
-        assertEq(maximum, 0.01645 ether);
+        econ = factory.economics();
+        maximum = (uint256(econ.maxGas) + econ.overheadGas) * econ.gasPriceCeiling + 10 * uint256(econ.workFee);
+        assertEq(maximum, (3_200_000 + V1_OVERHEAD) * 5 gwei + 0.0002 ether);
     }
 
     function _board(uint256 which) internal pure returns (string memory name, uint16[16] memory counts) {
@@ -78,9 +81,9 @@ contract ReserveCapitalMatrixTest is ForkBase {
         KeeperPolicyCalls.Reserve memory r;
         r.enabled = true;
         r.target = _plan(target);
-        (uint256 opening, uint256 mintFee) = probe.quote(r, maximum, baseFee, bid);
+        (uint256 opening, uint256 mintFee) = probe.quote(r, econ, baseFee, bid);
         r.have = target;
-        (uint256 stocked,) = probe.quote(r, maximum, baseFee, bid);
+        (uint256 stocked,) = probe.quote(r, econ, baseFee, bid);
         uint256 backing;
         uint256 shapeUnits;
         PoolBalancer implementation = PoolBalancer(payable(factory.implementation()));
@@ -93,8 +96,8 @@ contract ReserveCapitalMatrixTest is ForkBase {
         if (which == 1 && baseFee == 0.5 gwei) {
             assertEq(backing, 0.2 ether);
             assertEq(shapeUnits * mintFee, 0.02 ether);
-            assertEq(opening, 0.2356 ether);
-            assertEq(stocked, 0.00368 ether);
+            assertEq(opening, 0.229565 ether);
+            assertEq(stocked, 0.001993 ether);
         }
         string memory key = vm.toString(index++);
         vm.serializeString(key, "kind", "board");
@@ -120,11 +123,11 @@ contract ReserveCapitalMatrixTest is ForkBase {
         r.have[0] = 17;
         r.owed = 2;
         // Closed: only two actual outstanding draw sequences, despite three missing inventory prizes.
-        (uint256 closed, uint256 mintFee) = probe.quote(r, maximum, 0.5 gwei, 0.55 gwei);
-        assertEq(closed, 0.0028 ether);
+        (uint256 closed, uint256 mintFee) = probe.quote(r, econ, 0.5 gwei, 0.55 gwei);
+        assertEq(closed, 0.002471 ether); // two owed draws at (2.15M + 60k) * 0.55 gwei + 0.00002
         // Paid disabled: actual missing inventory cost remains, while no compensation budget is locked.
         r.enabled = true;
-        (uint256 disabled,) = probe.quote(r, 0, 0.5 gwei, 0.55 gwei);
+        (uint256 disabled,) = probe.quote(r, none, 0.5 gwei, 0.55 gwei);
         assertEq(disabled, 0.033 ether);
         for (uint256 i; i < 2; ++i) {
             string memory key = vm.toString(index++);

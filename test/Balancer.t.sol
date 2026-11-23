@@ -67,10 +67,10 @@ contract BalancerTest is ForkBase {
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/
@@ -458,7 +458,7 @@ contract BalancerTest is ForkBase {
     /// A fully stocked board needs a bounded working buffer, with no duplicate prize backing.
     function test_reserveMath() public view {
         uint256 expected = _workingBuffer();
-        assertEq(expected, 0.00368 ether, "independent normal-gas working buffer");
+        assertEq(expected, 0.001993 ether, "independent normal-gas working buffer");
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }

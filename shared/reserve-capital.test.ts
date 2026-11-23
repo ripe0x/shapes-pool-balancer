@@ -56,7 +56,7 @@ describe('capital matrix parity with actual KeeperPolicyCalls.reserve quotes', (
       const need = requiredReserveAt(row.target, row.have!, BigInt(row.mintFee), row.owed!,
         BigInt(row.maxReward), BigInt(row.baseFee), row.enabled);
       expect(need).toBe(BigInt(row.required!));
-      expect(need).toBe(row.kind === 'closed' ? 2_800_000_000_000_000n : 33_000_000_000_000_000n);
+      expect(need).toBe(row.kind === 'closed' ? 2_471_000_000_000_000n : 33_000_000_000_000_000n);
     }
   });
 });

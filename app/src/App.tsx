@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
+import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash, type Hex } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
@@ -14,7 +14,7 @@ import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks } from './HowItWorks';
-import { policyAbi, policyEconomics } from './policy';
+import { policyAbi, policyEconomics, type Economics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
@@ -747,9 +747,9 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   useEffect(() => {
     if (!pub) return;
     (async () => {
-      const policy = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy' });
+      const economics = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'economics' }) as Economics;
       const [costs, edgeBps, mintFee, vrfFee] = await Promise.all([
-        policyEconomics(pub, policy),
+        policyEconomics(pub, economics.policy, undefined, undefined, undefined, economics),
         pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
         pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }), liveVrfFee(pub),
       ]);
@@ -1106,7 +1106,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       const steps: Step[] = [];
       steps.push(...approveSteps(pub, tx, me, balancer, toList));
       if (mode === 'new') {
-        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0 };
+        // Phase B: bind to the economics shown during review; for now the hash is read when the creation is prepared.
+        const settingsHash = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) as Hex;
+        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0, settingsHash };
         const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
         const attempt: CreationAttempt = { chainId: chain.id, factory: FACTORY, creator: me, salt, predicted: balancer,
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
@@ -1807,8 +1809,8 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
   useEffect(() => {
     if (!pub) return;
     let current = true;
-    pub.getLogs({ address: d.factoryAddr, event: parseAbiItem('event DefaultPolicyChanged(address indexed previousPolicy,address indexed newPolicy)'), fromBlock: FROM_BLOCK })
-      .then((logs) => { if (current) setAvailablePolicies([...new Set(logs.map((l) => l.args.newPolicy!))]); }).catch(() => undefined);
+    pub.getLogs({ address: d.factoryAddr, event: parseAbiItem('event EconomicsChanged((address policy,uint64 workFee,uint32 maxGas,uint32 overheadGas,uint64 gasPriceCeiling,uint64 priorityAllowance,uint32 restockGas,uint64 restockFlat,uint32 baseGas,uint32 processGas,uint32 reconcileGas,uint32 shapeGas,uint32 prizeGas) economics)'), fromBlock: FROM_BLOCK })
+      .then((logs) => { if (current) setAvailablePolicies([...new Set(logs.map((l) => l.args.economics!.policy))]); }).catch(() => undefined);
     return () => { current = false; };
   }, [pub, d.factoryAddr, d.recommendedPolicy]);
   useEffect(() => {
@@ -1819,7 +1821,13 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     (async () => {
       const at = { blockNumber: d.blockNumber, gasPrice: d.baseFee + 50_000_000n, gas: 150_000n };
       return Promise.all([
-        pub.readContract({ ...at, address: d.balancer, abi: poolBalancerAbi, functionName: 'policyFunding', args: [candidate] }),
+        // Same numbers under another algorithm: the contract asks for funding only when exposure grows (never here).
+        pub.readContract({ ...at, address: d.balancer, abi: poolBalancerAbi, functionName: 'effectiveEconomics' })
+          .then(async (e) => {
+            const [current, next] = await Promise.all([e, { ...(e as Economics), policy: candidate }].map((x) =>
+              pub.readContract({ ...at, address: d.balancer, abi: poolBalancerAbi, functionName: 'maintenanceFunding', args: [x] }) as Promise<readonly [bigint, bigint]>));
+            return [next[0], d.paidUpkeepEnabled && next[0] > current[0] ? next[1] : 0n] as const;
+          }),
         pub.readContract({ ...at, address: candidate, abi: policyAbi, functionName: 'version' }).catch(() => undefined),
       ]);
     })().then(([funding, version]) => { if (current) setQuote({ required: funding[0], shortfall: funding[1], version }); })
@@ -1854,8 +1862,8 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
       {quote.shortfall > 0n && <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Fund policy reserve', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'depositETH', value: quote.shortfall })])}>Deposit {eth(quote.shortfall, 6)} ETH</button>}
     </>}
     {error && <p className="note error" role="alert">{error}</p>}
-    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !valid || (same && d.paidUpkeepEnabled) || (quote?.shortfall ?? 0n) > 0n} onClick={() => write('Set keeper policy', 'setKeeperPolicy', [candidate])}>Use this policy</button>
-    <p className="note" style={{ marginTop: 12 }}>A policy change takes effect immediately and enables paid upkeep. Existing listings keep their prices. A larger maintenance exposure needs its maintenance budget in operating ETH; missing prizes do not. Re-enabling paid upkeep needs the current policy's maintenance budget.</p>
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !valid || same || (quote?.shortfall ?? 0n) > 0n} onClick={() => write('Set keeper policy', 'setKeeperPolicy', [candidate])}>Use this policy</button>
+    <p className="note" style={{ marginTop: 12 }}>A policy change takes effect immediately, keeps the current fee numbers as this pool's own settings and leaves paid upkeep as it is. Existing listings keep their prices. A larger maintenance exposure needs its maintenance budget in operating ETH; missing prizes do not. Re-enabling paid upkeep needs the current maintenance budget.</p>
   </div>;
 }
 

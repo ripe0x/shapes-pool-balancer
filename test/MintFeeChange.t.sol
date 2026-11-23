@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {BalancerFactory} from "../src/BalancerFactory.sol";
 
 interface IShapesFeeAdmin {
     function setMintFee(uint256) external;
@@ -81,7 +82,7 @@ contract MintFeeChangeTest is ForkBase {
 
     function test_mintFeeDownAndBackUp() public {
         uint256 restock = balancer.restockFeeFor(0);
-        assertEq(restock, 0.000695 ether, "V1 restocking fee at 0.5 gwei basefee");
+        assertEq(restock, 0.0007005 ether, "default restocking fee at 0.5 gwei basefee: 910k * 0.55 gwei + 0.0002 ETH");
         assertEq(shapes.mintFee(), 0.001 ether, "fork's real Shapes mint fee");
         assertEq(balancer.mintFeeCap(), 0.001 ether);
         (uint256[] memory ids0, uint256[] memory prices0) = _prices();
@@ -154,12 +155,18 @@ contract MintFeeChangeTest is ForkBase {
 
     /// Creation binds the shown fee the same way: a cap below the live fee reverts the whole creation.
     function test_creationBindsAcceptedFee() public {
-        PoolBalancer.CreationConfig memory cfg = PoolBalancer.CreationConfig(MARKUP, 400, target, 0.0009 ether, false);
+        PoolBalancer.CreationConfig memory cfg = PoolBalancer.CreationConfig(MARKUP, 400, target, 0.0009 ether, false,
+            factory.creationSettingsHash());
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
         factory.createBalancer{value: 1 ether}(bytes32(uint256(7)), cfg, new PoolBalancer.CuratedInput[](0));
         _setFee(0.0005 ether);
         cfg.mintFeeCap = 0.0005 ether;
+        // The settings hash binds the live mint fee too: the one reviewed at 0.001 ETH is now stale.
+        vm.prank(stranger);
+        vm.expectRevert(BalancerFactory.StaleSettings.selector);
+        factory.createBalancer{value: 1 ether}(bytes32(uint256(7)), cfg, new PoolBalancer.CuratedInput[](0));
+        cfg.settingsHash = factory.creationSettingsHash();
         vm.prank(stranger);
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(bytes32(uint256(7)), cfg, new PoolBalancer.CuratedInput[](0))));
         assertEq(b.mintFeeCap(), 0.0005 ether);

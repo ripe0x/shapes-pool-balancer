@@ -3,13 +3,21 @@ import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound } from '../../shared/plan
 
 const lesser = (a: bigint, b: bigint) => (a < b ? a : b);
 
+const ECONOMICS = '(address policy,uint64 workFee,uint32 maxGas,uint32 overheadGas,uint64 gasPriceCeiling,uint64 priorityAllowance,uint32 restockGas,uint64 restockFlat,uint32 baseGas,uint32 processGas,uint32 reconcileGas,uint32 shapeGas,uint32 prizeGas)';
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
   'function version() view returns (uint256)',
-  'function maxReward() view returns (uint256)',
-  'function quoteRestock(uint8 denomination,uint256 shapeUnits,uint256 baseFee) view returns (uint256)',
-  'function quoteReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work) view returns (uint256)',
+  `function quoteRestock(uint8 denomination,uint256 shapeUnits,uint256 baseFee,${ECONOMICS} economics) view returns (uint256)`,
+  `function quoteReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work,${ECONOMICS} economics) view returns (uint256)`,
 ]);
+/** IKeeperPolicy.Economics: the factory's, or a pool's effective configuration. */
+export interface Economics {
+  policy: Address; workFee: bigint; maxGas: number; overheadGas: number; gasPriceCeiling: bigint; priorityAllowance: bigint;
+  restockGas: number; restockFlat: bigint; baseGas: number; processGas: number; reconcileGas: number; shapeGas: number; prizeGas: number;
+}
+/** Derived bounds of an economics configuration (KeeperPolicyCalls.maxPayment / maxSurcharge). */
+export const maxPaymentOf = (e: Economics) => (BigInt(e.maxGas) + BigInt(e.overheadGas)) * e.gasPriceCeiling + 10n * e.workFee;
+export const maxSurchargeOf = (e: Economics) => BigInt(e.restockGas) * e.gasPriceCeiling + e.restockFlat;
 const poolQuoteAbi = parseAbi([
   'function restockFeeFor(uint8 denomination) view returns (uint256)',
   'function quoteKeeperReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work) view returns (uint256)',
@@ -31,22 +39,21 @@ export async function readsAt(pub: PublicClient, reads: Read[], at: { blockNumbe
   return results.map((r, i) => decodeFunctionResult({ abi: reads[i].abi, functionName: reads[i].functionName, data: r.returnData } as never) as unknown);
 }
 
-/** Existing pools quote through Balancer; a not-yet-created pool has only unverified direct previews. */
-export async function policyEconomics(pub: PublicClient, policy: Address, cachedMaximum?: bigint, balancer?: Address, snapshot?: Pick<Block, 'number' | 'baseFeePerGas' | 'timestamp'>) {
+/** Existing pools quote through Balancer (pass its `policyMaxReward`); a not-yet-created pool has only unverified
+ *  direct previews under the factory's `economics` (required then). */
+export async function policyEconomics(pub: PublicClient, policy: Address, cachedMaximum?: bigint, balancer?: Address, snapshot?: Pick<Block, 'number' | 'baseFeePerGas' | 'timestamp'>, economics?: Economics) {
   const block = snapshot ?? await pub.getBlock();
   const at = { address: policy, blockNumber: block.number!, gas: 100_000n };
   const baseFee = block.baseFeePerGas ?? 0n;
-  const [version, declaredMaximum] = await Promise.all([
-    pub.readContract({ ...at, abi: policyAbi, functionName: 'version' }).catch(() => undefined),
-    cachedMaximum === undefined ? pub.readContract({ ...at, abi: policyAbi, functionName: 'maxReward' }) : Promise.resolve(cachedMaximum),
-  ]);
-  const maxReward = cachedMaximum ?? declaredMaximum;
+  if (cachedMaximum === undefined && economics === undefined) throw new Error('Economics required for a policy preview');
+  const version = await pub.readContract({ ...at, abi: policyAbi, functionName: 'version' }).catch(() => undefined);
+  const maxReward = cachedMaximum ?? maxPaymentOf(economics!);
   // A preview bid is a local assumption; only bounded pool quotes promise compensation.
   const gasPrice = baseFee + 50_000_000n;
   const callContext = { blockNumber: block.number!, gasPrice, gasPerRead: 150_000n };
   const restockFees = await readsAt(pub, DENOMS.map((_, d) => balancer
     ? { address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] }
-    : { address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] }), callContext) as bigint[];
+    : { address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee, economics] }), callContext) as bigint[];
   // An existing pool quotes keeper pay itself. A pool not created yet has no quote of its own: the preview asks the
   // policy directly and applies the pool's bound (KeeperPolicyCalls.reward), an unverified estimate like its restocking
   // fees. Either way a failed quote leaves keeper costs unknown.
@@ -54,13 +61,14 @@ export async function policyEconomics(pub: PublicClient, policy: Address, cached
     const work = (d?: number) => keeperWorkAt(baseFee, gasPrice, d);
     const quote = (d?: number) => balancer
       ? { address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] }
-      : { address: policy, abi: policyAbi, functionName: 'quoteReward', args: [work(d)] };
+      : { address: policy, abi: policyAbi, functionName: 'quoteReward', args: [work(d), economics] };
     const ds = [undefined, ...DENOMS.map((_, d) => d)];
     const out = await readsAt(pub, ds.map(quote), callContext) as bigint[];
     const [reconcile, ...replace] = balancer ? out : out.map((q, i) => lesser(q, paymentBound(work(ds[i]), maxReward)));
     return { reconcile, replace };
   })().catch(() => undefined);
-  if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n)) {
+  // A pool enforces its own bound; a direct preview applies the factory economics' derived per-Shape maximum.
+  if (!balancer && restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * maxSurchargeOf(economics!))) {
     throw new Error('Policy surcharge exceeds the pool limit');
   }
   return { version, policyMaxReward: maxReward, baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };

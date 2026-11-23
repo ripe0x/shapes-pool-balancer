@@ -475,7 +475,8 @@ export class CurrentRehearsal {
         await this.check();
         assert.equal(this.journal.inFlight, null);
         const salt = probe.salt as Hash, predicted = await this.read<Address>(this.factory, balancerFactoryAbi, 'predictBalancer', [actor, salt]);
-        const config = { markupBps: SCENARIO.markupBps, creatorRevenueBps: probe.creatorRevenueBps, target: BigInt(SCENARIO.targets[0]), mintFeeCap, curatedRequired: true };
+        const settingsHash = await this.read<Hash>(this.factory, balancerFactoryAbi, 'creationSettingsHash');
+        const config = { markupBps: SCENARIO.markupBps, creatorRevenueBps: probe.creatorRevenueBps, target: BigInt(SCENARIO.targets[0]), mintFeeCap, curatedRequired: true, settingsHash };
         const data = encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer', args: [salt, config, curated] });
         // uint16 encodes 10001, so the real factory/initializer must reject its semantic bound.
         let rejected = false;

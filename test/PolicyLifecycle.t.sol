@@ -113,10 +113,12 @@ contract PolicyLifecycleTest is ForkBase {
         assertEq(second.keeperPolicy(), v1);
         _draw(first); _draw(second);
 
+        // Spec §2: the second pool pins; a factory change then moves the follower at once and leaves the pinned pool.
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        factory.setDefaultKeeperPolicy(address(v2));
-        assertEq(first.keeperPolicy(), v1);
-        assertEq(second.keeperPolicy(), v1);
+        vm.prank(owner2); second.pinEconomics();
+        factory.setEconomics(_econWith(address(v2)));
+        assertEq(first.keeperPolicy(), address(v2), "a follower adopts the factory change");
+        assertEq(second.keeperPolicy(), v1, "a pinned pool keeps its pinned algorithm");
         PoolBalancer third = _new(owner3, 103);
         assertEq(third.keeperPolicy(), address(v2));
 
@@ -126,8 +128,8 @@ contract PolicyLifecycleTest is ForkBase {
         _select(first);
         buy(buyer, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1, "switch with live purchaser obligation");
-        vm.prank(creator); first.setKeeperPolicy(address(v2));
-        assertEq(first.keeperPolicy(), address(v2));
+        vm.prank(creator); first.setKeeperPolicy(v1);
+        assertEq(first.keeperPolicy(), v1);
         assertEq(second.keeperPolicy(), v1);
         assertEq(third.keeperPolicy(), address(v2));
         (,,,, uint112 keptPrice) = first.items(oldIds[1]);
@@ -140,8 +142,8 @@ contract PolicyLifecycleTest is ForkBase {
 
         _select(first);
         HostilePolicy broken = new HostilePolicy(2);
-        (uint256 required, uint256 shortfall) = first.policyFunding(address(broken));
-        assertEq(required, first.requiredReserve(), "a higher declaration above the immutable current-work cap adds no hypothetical liability");
+        (uint256 required, uint256 shortfall) = first.maintenanceFunding(_econWith(address(broken)));
+        assertEq(required, first.requiredReserve(), "another algorithm on the same numbers adds no liability");
         vm.prank(creator); first.depositETH{value: shortfall}();
         vm.prank(creator); first.setKeeperPolicy(address(broken));
         uint256 request = buy(buyer, 1)[0];

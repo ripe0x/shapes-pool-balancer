@@ -829,3 +829,51 @@ Supersedes, for the items below, the "designed but not implemented" list above (
    `hardMaxKeeperReward()`, `keeperBucketCapacity()`, `keeperBucketRefill()` and `maxRestockSurchargePerShape()`
    return the library values the money path enforces (slice A3 makes them configurable). The `0.102 ether`
    restock literal is now the library constant `MAX_RESTOCK_SURCHARGE`.
+
+## Community release slice A3: one economic configuration, follow/local/pin, bucket, hash (2026-11-23)
+
+Supersedes, for the items below, A2's per-pool policy snapshot, its library value getters and the remaining "designed"
+items of the A1 list (history kept above). Inventory as built: `docs/CONFIG-INVENTORY.md` §0.
+
+1. **One `IKeeperPolicy.Economics` struct** (spec §4.5-4.7, B§4) on the factory, set whole by `setEconomics`
+   (policyAdmin, immediate, constant work). It holds the algorithm address, the V1 pricing numbers and the
+   per-operation gas bounds. The separate enforcement schedule (6M gas, 100k overhead, 0.1 gwei, 50 gwei, 0.00005 ETH)
+   and the 0.311 ETH and 0.102 ETH ceilings are deleted: with the schedule tunable, a second looser schedule only
+   protected against a policy the owner chose, and it made reserves disagree with what a keeper can actually be paid.
+   The maximum payment and the maximum restocking surcharge are derived getters; the fallback restocking price is
+   the same schedule. Alternative considered and rejected: keep a separate enforcement struct (two numbers per concept,
+   and a pin would have to freeze both). Only `policy` is validated; numbers are bounded by field width.
+2. **Policies receive the economics** (interface version 2): `quoteReward(work, e)`, `quoteRestock(d, units, baseFee,
+   e)`; `maxReward()` is gone. A pinned pool therefore cannot be repriced by any factory change, and the V1 contract
+   holds no numbers. Policy replacement remains for algorithm changes.
+3. **Per pool: follow (default) / local / pinned** in the keeper state, one resolver `_econ()` called once per
+   operation and passed through hash, listing bounds, restocking price, quote and payment. Pin copies the complete
+   effective struct; follow picks up the latest factory struct. `setKeeperPolicy(p)` is kept as "local economics with
+   the effective numbers and algorithm p" and **no longer re-enables paid upkeep** (A2 bug: a policy switch silently
+   undid a creator's stop). Product limits stay outside the economics and still bind pinned pools' new designs.
+4. **Per-pool bucket** (spec §5): creator `setKeeperBucket(capacity, refill)`, initialised from factory defaults
+   (`setDefaultBucket`, new pools only). Accrue at the old rate, keep spent allowance, clamp on decrease, never fill
+   new headroom, new rate from now, zero refill allowed. The `burst / refill + 1` shortcut that divided by the refill
+   is gone (zero refill would have reverted).
+5. **`settingsHash`** = economics, source, generation, paid state and the live Shapes mint fee (the A2 hash omitted the
+   fee). Creation binds `CreationConfig.settingsHash` to `factory.creationSettingsHash()` before cloning.
+6. **Funding**: unchanged rule (maintenance only, only when exposure grows, never missing inventory) applied to every
+   local transition through one library function; `maintenanceFunding(e)` replaces `policyFunding(address)` because an
+   algorithm alone no longer changes exposure. Factory updates inspect no pool.
+7. **Measured recalibration** (spec §10, "do not raise a cap to go green"): the out-of-span gas a paid call bills was
+   up to 56,724 at 5 gwei (V1 allowed 50,000; the reconcile-only class was covered only by its work fee before any A3 code),
+   so `overheadGas` starts at 60,000. That raised the keeper pay of the single-Shape reconcile-and-replace call above
+   its own 900k restocking surcharge at the ceiling (by 1.29e13 wei), breaking "the restocking fee pays the call that
+   lists the prize"; `restockGas` starts at 910,000, the measured need (902,586) plus V1's 7,414-gas margin. Derived
+   maxima move 0.01645 → 0.0165 ETH and 0.0047 → 0.00475 ETH per Shape. Both are factory settings the owner can set
+   back. Measurements: `docs/GAS.md` "Slice A3".
+8. **Accepted mint fee cap ≤ type(uint96).max**: a larger accepted fee made `requiredReserve` overflow and could
+   truncate a listing's uint104 price; 2^96 keeps three fees plus backing, markup and the largest surcharge (< 2^98)
+   inside the record.
+
+Tests whose assertions changed because the brief changes behavior: factory economics now move followers
+(`Settings`, `PolicyLifecycle`, `PolicySecurityReview`, `FlowBreakdown`), policies declare no maximum
+(`PolicyEconomicReview`, `ReserveEconomicReview`, `ReserveSecurityReview`, `ProtectedRevenueAtomic`), the single
+schedule changes every reserve and listing literal (recomputed independently, `ForkBase` V1 helpers), and test policies
+quoting above the derived surcharge maximum were lowered into it (`PolicyPreview`, `PolicySecurityReview`) or given
+local economics that allow it (`ProtectedRevenueAtomic`). New focused suite: `test/KeeperEconomics.t.sol`.

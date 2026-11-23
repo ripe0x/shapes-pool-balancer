@@ -214,14 +214,14 @@ contract HardeningTest is ForkBase {
         uint256 fee = shapes.mintFee();
         // Two actual five-Shape setup calls plus one consumable working buffer.
         uint256 deficit = 5 * (0.01 ether + fee) + 3 * (0.05 ether + fee) + 2 * (0.1 ether + fee);
-        assertEq(b.requiredReserve(), deficit + 0.00596 ether + 0.00368 ether, "empty-pool reserve");
+        assertEq(b.requiredReserve(), deficit + 0.003786 ether + 0.001993 ether, "empty-pool reserve");
         // A stocked board retains only one bounded maintenance-call buffer.
         for (uint256 i; i < 10; ++i) {
             bytes32 uh2 = b.settingsHash();
             vm.prank(keeper, keeper);
             try b.performUpkeep(uh2, 0, 0) {} catch { break; }
         }
-        assertEq(b.requiredReserve(), 0.00368 ether, "reconciled-open reserve");
+        assertEq(b.requiredReserve(), 0.001993 ether, "reconciled-open reserve");
     }
 
     /*////////////////////////////// incentive accounting //////////////////////////////*/
@@ -249,7 +249,7 @@ contract HardeningTest is ForkBase {
         b.performUpkeep(uh3, 0, 0);
         (uint256 reward, uint256 gasPaid) = _fromLogs();
         // from the creator's ETH: measured gas plus the 50,000 overhead at the reimbursed price, plus the flat 0.0001
-        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.0001 ether, "full reward");
+        assertEq(reward, (gasPaid + V1_OVERHEAD) * 0.55 gwei + 0.0001 ether, "full reward");
     }
 
     function _fromLogs() internal returns (uint256 reward, uint256 gasPaid) {
@@ -298,7 +298,7 @@ contract HardeningTest is ForkBase {
     /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
     /// fee covers the keeper's pay for that call.
     function test_gasJumpRestockPaidByTheNewListingsFee() public {
-        uint256 capFee = 900_000 * 5 gwei + 0.0002 ether;
+        uint256 capFee = V1_RESTOCK_GAS * 5 gwei + 0.0002 ether;
         vm.fee(80 gwei);
         vm.txGasPrice(5 gwei);
         assertEq(balancer.restockFee(), capFee, "fee capped at 5 gwei");
@@ -331,7 +331,7 @@ contract HardeningTest is ForkBase {
         vm.recordLogs();
         upkeep();
         (uint256 reward, uint256 gasPaid) = _fromLogs();
-        assertEq(reward, (gasPaid + 50_000) * 0.55 gwei + 0.00002 ether, "measured gas, overhead and one verified draw");
+        assertEq(reward, (gasPaid + V1_OVERHEAD) * 0.55 gwei + 0.00002 ether, "measured gas, overhead and one verified draw");
         assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
     }
 

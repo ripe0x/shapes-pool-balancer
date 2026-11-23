@@ -25,9 +25,10 @@ export const V1: ModelPolicy = {
   reward: quoteV1,
   surcharge: (d, b) => BigInt(SHAPES_IN[d]) * restockFeeAt(b),
 };
-/** Deliberately different test schedule, matched to the fork test's policy fixture before reporting parity. */
+/** Deliberately different test schedule, matched to the fork test's policy fixture before reporting parity.
+ *  Since interface v2 a policy declares no maximum: the pool's economics bound it, so V2 shares V1's maximum. */
 export const V2: ModelPolicy = {
-  name: 'V2 test policy', maxReward: parseEther('0.03'),
+  name: 'V2 test policy', maxReward: MAX_KEEPER_REWARD,
   reward: (w) => {
     const candidate = w.baseFee + 20_000_000n;
     const price = [candidate, w.gasPrice, 8_000_000_000n].reduce((a, b) => a < b ? a : b);

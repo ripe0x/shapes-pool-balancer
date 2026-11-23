@@ -25,7 +25,8 @@ contract OptionalCuratedTest is ForkBase {
         returns (PoolBalancer b)
     {
         PoolBalancer.CreationConfig memory cfg =
-            PoolBalancer.CreationConfig(MARKUP, rate, target, shapes.mintFee(), reqCurated);
+            PoolBalancer.CreationConfig(MARKUP, rate, target, shapes.mintFee(), reqCurated,
+                factory.creationSettingsHash());
         vm.prank(creator);
         b = PoolBalancer(payable(factory.createBalancer{value: funding}(salt, cfg, new PoolBalancer.CuratedInput[](0))));
         balancer = b;

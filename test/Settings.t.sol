@@ -10,17 +10,16 @@ import {BalancerFactory} from "../src/BalancerFactory.sol";
 
 /// @notice Real alternative economic policy accepted by the stable core protocol.
 contract KeeperPolicyV2 is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 2; }
-    function maxReward() external pure returns (uint256) { return 0.03 ether; }
-    function quoteReward(Work calldata w) external pure returns (uint256) {
+    function quoteReward(Work calldata w, Economics calldata) external pure returns (uint256) {
         uint256 price = w.baseFee + 0.02 gwei;
         if (price > w.gasPrice) price = w.gasPrice;
         if (price > 8 gwei) price = 8 gwei;
         return ((w.measuredGas > 3_200_000 ? 3_200_000 : w.measuredGas) + 70_000) * price
             + w.reconciledDraws * 0.00001 ether + w.listedPrizes * 0.00004 ether;
     }
-    function quoteRestock(uint8 d, uint256 units, uint256 baseFee) external pure returns (uint256) {
+    function quoteRestock(uint8 d, uint256 units, uint256 baseFee, Economics calldata) external pure returns (uint256) {
         uint256 price = baseFee + 0.02 gwei;
         if (price > 8 gwei) price = 8 gwei;
         return (d < 9 ? 950_000 : 1_100_000) * price + units * 0.00025 ether;
@@ -30,11 +29,10 @@ contract KeeperPolicyV2 is IKeeperPolicy {
 contract HostilePolicy is IKeeperPolicy {
     uint256 immutable mode;
     constructor(uint256 m) { mode = m; }
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 99; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteReward(Work calldata) external view returns (uint256) { return _hostile(); }
-    function quoteRestock(uint8, uint256, uint256) external view returns (uint256) { return _hostile(); }
+    function quoteReward(Work calldata, Economics calldata) external view returns (uint256) { return _hostile(); }
+    function quoteRestock(uint8, uint256, uint256, Economics calldata) external view returns (uint256) { return _hostile(); }
     function _hostile() internal view returns (uint256) {
         uint256 m = mode;
         if (m == 0) return type(uint256).max;
@@ -80,67 +78,95 @@ contract SettingsTest is ForkBase {
         vm.prank(creator); balancer.setKeeperPolicy(policy);
     }
 
+    /// The factory's initial economics are the V1 schedule; the derived maxima are 0.01645 ETH per payment and
+    /// 0.0047 ETH restocking per Shape at V1's 50k overhead and 900k restocking gas; the recalibrated defaults (60k,
+    /// 910k) derive 0.0165 and 0.00475. Writes the default-economics fixture the TypeScript planner reads.
     function test_policyV1FormulaAbsoluteAndFixture() public {
-        KeeperPolicyV1 policy = new KeeperPolicyV1();
+        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyV1 policy = KeeperPolicyV1(e.policy);
+        assertEq(e.workFee, 0.00002 ether);
+        assertEq(e.maxGas, 3_200_000);
+        assertEq(e.overheadGas, V1_OVERHEAD);
+        assertEq(e.gasPriceCeiling, 5 gwei);
+        assertEq(e.priorityAllowance, 0.05 gwei);
+        assertEq(e.restockGas, V1_RESTOCK_GAS);
+        assertEq(e.restockFlat, 0.0002 ether);
+        assertEq(e.baseGas, 200_000);
+        assertEq(e.processGas, 1_800_000);
+        assertEq(e.reconcileGas, 150_000);
+        assertEq(e.shapeGas, 700_000);
+        assertEq(e.prizeGas, 150_000);
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(800_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
-        assertEq(policy.quoteReward(w), 0.0005075 ether);
-        assertEq(policy.quoteRestock(0, 1, 0.5 gwei), 0.000695 ether);
-        assertEq(policy.maxReward(), 0.01645 ether);
+        assertEq(policy.quoteReward(w, e), (800_000 + V1_OVERHEAD) * 0.55 gwei + 2 * 0.00002 ether);
+        assertEq(policy.quoteRestock(0, 1, 0.5 gwei, e), 0.0007005 ether);
+        createBalancer(1 ether);
+        uint256 maxReward = (3_200_000 + V1_OVERHEAD) * 5 gwei + 10 * 0.00002 ether;
+        assertEq(balancer.policyMaxReward(), maxReward, "derived: (maxGas + overhead) * ceiling + 10 work fees");
+        assertEq(balancer.maxRestockSurchargePerShape(), 0.00475 ether, "derived: 910k * 5 gwei + 0.0002 ETH");
         string memory key = "keeperPolicyV1";
-        vm.serializeString(key, "maxGasPrice", "5000000000");
-        vm.serializeString(key, "priorityCap", "50000000");
-        vm.serializeString(key, "drawFee", vm.toString(policy.WORK_FEE()));
-        vm.serializeString(key, "shapeFee", vm.toString(policy.WORK_FEE()));
-        vm.serializeString(key, "restockFlat", vm.toString(policy.RESTOCK_FLAT()));
-        vm.serializeString(key, "maxGas", vm.toString(policy.MAX_GAS()));
-        vm.serializeString(key, "overheadGas", vm.toString(policy.OVERHEAD_GAS()));
-        vm.serializeString(key, "restockGas", vm.toString(policy.RESTOCK_GAS()));
+        vm.serializeString(key, "maxGasPrice", vm.toString(e.gasPriceCeiling));
+        vm.serializeString(key, "priorityCap", vm.toString(e.priorityAllowance));
+        vm.serializeString(key, "drawFee", vm.toString(e.workFee));
+        vm.serializeString(key, "shapeFee", vm.toString(e.workFee));
+        vm.serializeString(key, "restockFlat", vm.toString(e.restockFlat));
+        vm.serializeString(key, "maxGas", vm.toString(e.maxGas));
+        vm.serializeString(key, "overheadGas", vm.toString(e.overheadGas));
+        vm.serializeString(key, "restockGas", vm.toString(e.restockGas));
         vm.serializeString(key, "maxPrizes", "1000");
-        string memory json = vm.serializeString(key, "maxReward", vm.toString(policy.maxReward()));
+        string memory json = vm.serializeString(key, "maxReward", vm.toString(maxReward));
         vm.writeJson(json, "./test/fixtures/keeper-policy-v1.json");
     }
 
-    /// Spec §3: the factory default and a pool's policy change in the authorized transaction, with no delay, and a
-    /// default change never moves an existing pool. Replaces the former two-day timelock test.
-    function test_defaultAndPoolPolicyChangesAreImmediateAndSeparate() public {
+    /// Spec §2/§3: factory economics and a pool's local choice change in the authorized transaction, with no delay.
+    /// A following pool adopts a factory change at once; a pool that chose its own policy does not. Replaces the
+    /// former "a default change never moves an existing pool" (the brief makes following the default).
+    function test_factoryAndPoolEconomicsChangesAreImmediate() public {
         _open(5 ether);
-        address initial = balancer.keeperPolicy();
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(keeperAdmin); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setDefaultKeeperPolicy(address(v2));
-        vm.prank(stranger); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setDefaultKeeperPolicy(address(v2));
-        vm.expectRevert(KeeperPolicyCalls.InvalidPolicy.selector); factory.setDefaultKeeperPolicy(stranger);
+        IKeeperPolicy.Economics memory e = _econWith(address(v2));
+        vm.prank(keeperAdmin); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setEconomics(e);
+        vm.prank(stranger); vm.expectRevert(BalancerFactory.Unauthorized.selector); factory.setEconomics(e);
+        IKeeperPolicy.Economics memory invalid = _econWith(stranger); // read before expectRevert
+        vm.expectRevert(KeeperPolicyCalls.InvalidPolicy.selector); factory.setEconomics(invalid);
         uint256 t = vm.getBlockTimestamp();
-        factory.setDefaultKeeperPolicy(address(v2));
+        bytes32 before = balancer.settingsHash();
+        factory.setEconomics(e);
         assertEq(factory.defaultKeeperPolicy(), address(v2), "default changes in the same transaction");
-        assertEq(balancer.keeperPolicy(), initial, "an existing pool keeps its own policy");
-        vm.prank(stranger); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setKeeperPolicy(address(v2));
-        vm.prank(keeperAdmin); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setKeeperPolicy(address(v2));
+        assertEq(balancer.keeperPolicy(), address(v2), "a following pool adopts it in the same transaction");
+        assertTrue(balancer.settingsHash() != before, "and its settings hash moves");
+        address v1 = address(new KeeperPolicyV1());
+        vm.prank(stranger); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setKeeperPolicy(v1);
+        vm.prank(keeperAdmin); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setKeeperPolicy(v1);
         vm.prank(creator); vm.expectRevert(KeeperPolicyCalls.InvalidPolicy.selector); balancer.setKeeperPolicy(stranger);
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
-        assertEq(balancer.keeperPolicy(), address(v2), "pool policy changes in the same transaction");
-        assertEq(balancer.policyMaxReward(), 0.03 ether);
+        vm.prank(creator); balancer.setKeeperPolicy(v1);
+        assertEq(balancer.keeperPolicy(), v1, "pool policy changes in the same transaction");
+        assertEq(balancer.economicsSource(), 1, "a creator's own policy is local economics");
+        factory.setEconomics(_econWith(address(v2)));
+        assertEq(balancer.keeperPolicy(), v1, "a local pool keeps its own");
+        assertEq(balancer.policyMaxReward(), (3_200_000 + V1_OVERHEAD) * 5 gwei + 0.0002 ether);
         assertEq(vm.getBlockTimestamp(), t, "no time passed");
     }
 
-    /// A policy with a larger maintenance exposure needs that exposure funded at the moment of the change; a pending
-    /// withdrawal cannot slip between a check and a later activation because there is none.
-    function test_policyChangeRequiresMaintenanceFunding() public {
+    /// Economics with a larger maintenance exposure need that exposure funded at the moment of the change; a pending
+    /// withdrawal cannot slip between a check and a later activation because there is none. A different algorithm on
+    /// the same numbers changes no exposure.
+    function test_economicsChangeRequiresMaintenanceFunding() public {
         _open(5 ether);
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        // At normal gas both declarations exceed the immutable current-work bound; a higher declaration alone costs nothing.
-        (uint256 sameRequired, uint256 noShortfall) = balancer.policyFunding(address(v2));
-        assertEq(sameRequired,balancer.requiredReserve());
-        assertEq(noShortfall,0);
+        IKeeperPolicy.Economics memory higher = balancer.effectiveEconomics();
+        higher.gasPriceCeiling = 50 gwei;
+        higher.workFee = 0.00005 ether;
         vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
         uint256 claimable = balancer.withdrawableSurplus();
         vm.prank(creator); balancer.claimSurplus(claimable, creator);
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2)); // same numbers: no new exposure, no funding needed
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(higher);
         assertGt(shortfall, 0);
-        assertGt(required, address(balancer).balance - balancer.creatorCredit());
-        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
+        assertEq(required, shortfall + address(balancer).balance - balancer.creatorCredit());
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setLocalEconomics(higher);
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
-        assertEq(balancer.keeperPolicy(), address(v2));
+        vm.prank(creator); balancer.setLocalEconomics(higher);
+        assertEq(balancer.effectiveEconomics().gasPriceCeiling, 50 gwei);
     }
 
     /// Spec §2/§3: the creator's emergency stop survives factory changes; only the creator re-enables, immediately, and
@@ -157,9 +183,10 @@ contract SettingsTest is ForkBase {
         assertFalse(balancer.paidUpkeepEnabled());
         assertTrue(old != disabled);
         assertEq(balancer.policyGeneration(), generation + 1);
-        factory.setDefaultKeeperPolicy(address(new KeeperPolicyV2()));
+        factory.setEconomics(_econWith(address(new KeeperPolicyV2())));
         factory.setProductLimits(500, 2_000, 5_000);
         assertFalse(balancer.paidUpkeepEnabled(), "factory changes never re-enable a stopped pool");
+        disabled = balancer.settingsHash(); // the follower's hash moved with the factory change
         vm.prank(stranger); vm.expectRevert(PoolBalancer.Unauthorized.selector); balancer.setPaidUpkeepEnabled(true);
         vm.prank(keeper); vm.expectRevert(PoolBalancer.PaymentUnavailable.selector); balancer.performUpkeep(disabled, 0, 0);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
@@ -251,7 +278,7 @@ contract SettingsTest is ForkBase {
         bytes32 expected = balancer.settingsHash();
         vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 1, 0);
         assertGt(reward, 0);
-        assertLe(reward, balancer.hardMaxKeeperReward());
+        assertLe(reward, balancer.policyMaxReward());
         assertEq(balancer.keeperAllowance(), before - reward);
         uint256 stored = balancer.keeperAllowance();
         uint256 stamp = balancer.keeperAllowanceTime();
@@ -305,10 +332,10 @@ contract SettingsTest is ForkBase {
                 vm.serializeString(o, "listedShapeUnits", vm.toString(w.listedShapeUnits));
                 vm.serializeString(o, "listedPrizes", vm.toString(w.listedPrizes));
                 vm.serializeString(o, "processedDraws", vm.toString(w.processedDraws));
-                vm.serializeString(o, "reward", vm.toString(policies[v].quoteReward(w)));
+                vm.serializeString(o, "reward", vm.toString(policies[v].quoteReward(w, factory.economics())));
                 vm.serializeUint(o, "denomination", k == 4 ? 10 : 0);
                 vm.serializeString(o, "shapeUnits", vm.toString(units));
-                string memory row = vm.serializeString(o, "surcharge", vm.toString(policies[v].quoteRestock(k == 4 ? 10 : 0, units, bases[k])));
+                string memory row = vm.serializeString(o, "surcharge", vm.toString(policies[v].quoteRestock(k == 4 ? 10 : 0, units, bases[k], factory.economics())));
                 root = vm.serializeString("policyQuotes", vm.toString(v * 5 + k), row);
             }
         }
@@ -321,10 +348,11 @@ contract SettingsTest is ForkBase {
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(864_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
         vm.cool(address(first)); vm.cool(address(second));
         uint256 g = gasleft();
-        uint256 direct = first.quoteReward(w);
+        uint256 direct = first.quoteReward(w, _econWith(address(first)));
         uint256 directGas = g - gasleft();
+        IKeeperPolicy.Economics memory e = _econWith(address(second));
         g = gasleft();
-        uint256 bounded = KeeperPolicyCalls.reward(address(second), 0.01645 ether, w);
+        uint256 bounded = KeeperPolicyCalls.reward(e, w);
         uint256 boundedGas = g - gasleft();
         assertEq(direct, bounded);
         assertLt(boundedGas, 25_000, "read-only boundary overhead is bounded independently of work");

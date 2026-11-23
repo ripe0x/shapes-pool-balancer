@@ -129,8 +129,8 @@ contract KeeperAdversarialTest is ForkBase {
         vm.revertToState(snap);
         (uint256 greedy,uint256 greedyBilled,uint256 greedyMeasured,uint256 greedyUnits)=_sample(15_000_000,40 gwei);
         assertEq(honestUnits,greedyUnits,"same objectively completed work");
-        assertEq(honest,(honestMeasured+50_000)*1.05 gwei+honestUnits*0.00002 ether);
-        assertEq(greedy,(greedyMeasured+50_000)*1.05 gwei+greedyUnits*0.00002 ether,"actual measured span uses identical capped reference");
+        assertEq(honest,(honestMeasured+V1_OVERHEAD)*1.05 gwei+honestUnits*0.00002 ether);
+        assertEq(greedy,(greedyMeasured+V1_OVERHEAD)*1.05 gwei+greedyUnits*0.00002 ether,"actual measured span uses identical capped reference");
         assertLt(int256(greedy)-int256(greedyBilled*40 gwei),int256(honest)-int256(honestBilled*1.05 gwei),"overbidding cannot improve the caller's full economics");
     }
 
@@ -257,7 +257,7 @@ contract KeeperAdversarialTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) {
                 (uint256 r, uint256 g) = abi.decode(logs[i].data, (uint256, uint256));
-                assertEq(r, (g + 50_000) * BASEFEE + 2 * 0.00002 ether, "measured gas and one draw plus one listed Shape unit");
+                assertEq(r, (g + V1_OVERHEAD) * BASEFEE + 2 * 0.00002 ether, "measured gas and one draw plus one listed Shape unit");
                 ++calls;
             }
         }
@@ -290,6 +290,6 @@ contract KeeperAdversarialTest is ForkBase {
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].topics[0] == KEEPER_PAID) (, gasPaid) = abi.decode(logs[i].data, (uint256, uint256));
         }
-        assertLe(reward - gasPaid * BASEFEE, 0.0001 ether + (gasPaid / 4 + 50_000) * BASEFEE + 0.0001 ether, "at most one incentive");
+        assertLe(reward - gasPaid * BASEFEE, 0.0001 ether + (gasPaid / 4 + V1_OVERHEAD) * BASEFEE + 0.0001 ether, "at most one incentive");
     }
 }

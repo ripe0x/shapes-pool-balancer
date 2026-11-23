@@ -9,12 +9,13 @@ import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 /// @dev Quote arithmetic only. A real CALL gives each measurement its own isolated access list. Intrinsic gas,
 ///      payment transfers, accounting and cap-storage reads are outside the measured spans.
 contract PolicyQuoteGasMeter {
-    function compare(address policy, IKeeperPolicy.Work calldata input, bool warm)
+    function compare(IKeeperPolicy.Economics calldata e, IKeeperPolicy.Work calldata input, bool warm)
         external returns (uint256 inlineReward, uint256 boundedReward, uint256 inlineGas, uint256 boundedGas)
     {
         IKeeperPolicy.Work memory w = input;
+        IKeeperPolicy.Economics memory econ = e;
         if (warm) {
-            uint256 primed = KeeperPolicyCalls.reward(policy, 0.01645 ether, w);
+            uint256 primed = KeeperPolicyCalls.reward(econ, w);
             require(primed != 0, "warm-up quote");
         }
         uint256 g = gasleft();
@@ -25,7 +26,7 @@ contract PolicyQuoteGasMeter {
         inlineReward = (measured + 50_000) * price + (w.reconciledDraws + w.listedShapeUnits) * 0.00002 ether;
         inlineGas = g - gasleft();
         g = gasleft();
-        boundedReward = KeeperPolicyCalls.reward(policy, 0.01645 ether, w);
+        boundedReward = KeeperPolicyCalls.reward(econ, w);
         boundedGas = g - gasleft();
     }
 }
@@ -33,16 +34,19 @@ contract PolicyQuoteGasMeter {
 contract PolicyGasOverheadTest is Test {
     function test_inlineVersusBoundedQuoteColdAndWarm() public {
         KeeperPolicyV1 policy = new KeeperPolicyV1();
+        // The V1 schedule at 50k overhead, so the independent inline amount below is fixed.
+        IKeeperPolicy.Economics memory e = IKeeperPolicy.Economics(address(policy), 0.00002 ether, 3_200_000, 50_000,
+            5 gwei, 0.05 gwei, 900_000, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000);
         PolicyQuoteGasMeter meter = new PolicyQuoteGasMeter();
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(864_000, 0.55 gwei, 0.5 gwei, 1, 1, 1, 0);
         vm.cool(address(policy));
         vm.cool(address(KeeperPolicyCalls));
         (uint256 inlineCold, uint256 boundedCold, uint256 inlineGasCold, uint256 boundedGasCold) =
-            meter.compare(address(policy), w, false);
+            meter.compare(e, w, false);
         vm.cool(address(policy));
         vm.cool(address(KeeperPolicyCalls));
         (uint256 inlineWarm, uint256 boundedWarm, uint256 inlineGasWarm, uint256 boundedGasWarm) =
-            meter.compare(address(policy), w, true);
+            meter.compare(e, w, true);
         assertEq(inlineCold, 0.0005427 ether, "independent V1 amount at the stated inputs");
         assertEq(boundedCold, inlineCold);
         assertEq(inlineWarm, inlineCold);

@@ -144,7 +144,8 @@ contract ProductLimitsTest is ForkBase {
         assertEq(creator.balance - before, surplus);
 
         // New creations follow the new limits.
-        PoolBalancer.CreationConfig memory cfg = PoolBalancer.CreationConfig(1_500, 400, _single(5), shapes.mintFee(), false);
+        PoolBalancer.CreationConfig memory cfg = PoolBalancer.CreationConfig(1_500, 400, _single(5), shapes.mintFee(), false,
+            factory.creationSettingsHash());
         vm.prank(stranger); vm.expectRevert(PoolBalancer.InvalidConfig.selector);
         factory.createBalancer{value: 1 ether}(bytes32(uint256(9)), cfg, new PoolBalancer.CuratedInput[](0));
         cfg.markupBps = 2_000;
@@ -156,14 +157,15 @@ contract ProductLimitsTest is ForkBase {
         factory.createBalancer{value: 1 ether}(bytes32(uint256(9)), cfg, new PoolBalancer.CuratedInput[](0));
     }
 
-    /// Spec §4/§6: the former public mirror constants are now getters of the values the money path enforces.
-    function test_libraryValueGetters() public {
+    /// Spec §4/§6: the former library mirrors are authoritative views of what the money path enforces: the pool's
+    /// own bucket, and bounds derived from its effective economics. The 0.311 ETH outer ceiling no longer exists.
+    function test_effectiveValueGetters() public {
         createBalancer(1 ether);
-        assertEq(balancer.hardMaxKeeperReward(), 0.311 ether);
         assertEq(balancer.keeperBucketCapacity(), 0.622 ether);
         assertEq(balancer.keeperBucketRefill(), uint256(0.05 ether) / 12);
         assertEq(balancer.keeperBucketRefill(), 4_166_666_666_666_666);
-        assertEq(balancer.maxRestockSurchargePerShape(), 0.102 ether);
-        assertEq(balancer.availableKeeperAllowance(), KeeperPolicyCalls.BURST);
+        assertEq(balancer.maxRestockSurchargePerShape(), V1_RESTOCK_GAS * 5 gwei + 0.0002 ether);
+        assertEq(balancer.policyMaxReward(), (3_200_000 + V1_OVERHEAD) * 5 gwei + 0.0002 ether);
+        assertEq(balancer.availableKeeperAllowance(), 0.622 ether);
     }
 }

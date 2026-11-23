@@ -25,14 +25,13 @@ contract HostileRecoveryPolicy is IKeeperPolicy {
     function setFee(uint256 value) external { fee = value; }
     function setMaximum(bool value) external { maximum = value; }
     function setBroken(bool value) external { broken = value; }
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 91; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteReward(Work calldata) external view returns (uint256) {
+    function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {
         require(!broken, "unavailable policy");
         return maximum ? type(uint256).max : 0.0001 ether;
     }
-    function quoteRestock(uint8, uint256 units, uint256) external view returns (uint256) {
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external view returns (uint256) {
         require(!broken, "unavailable policy");
         return units * fee;
     }
@@ -62,9 +61,9 @@ contract ConcurrentRecoveryTest is ForkBase {
 
     function test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() public {
         _context(0.5 gwei, 0.55 gwei);
-        _openMinimum(2_500, true, 0.000695 ether);
+        _openMinimum(2_500, true, 0.0007005 ether);
         _claimAll();
-        assertEq(address(balancer).balance, 0.00368 ether, "claim leaves only ordinary working capital");
+        assertEq(address(balancer).balance, 0.001993 ether, "claim leaves only ordinary working capital");
         (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
         assertEq(vrf, 0.001287 ether, "actual nonrefundable service charge at the witnessed bid");
         uint256 first = buy(buyer, 1)[0];
@@ -98,7 +97,10 @@ contract ConcurrentRecoveryTest is ForkBase {
         vm.prank(creator);
         balancer.close();
         _claimAll();
-        assertEq(address(balancer).balance, 0.0028 ether, "only actual pending work's current-fee hold remains");
+        // Two owed draws (2 x 0.0012355) now exceed the remaining one-call buffer, so nothing more is claimable.
+        assertEq(balancer.requiredReserve(), 0.002471 ether, "only actual pending work's current-fee hold remains");
+        assertEq(address(balancer).balance, 0.001993 ether);
+        assertEq(balancer.withdrawableSurplus(), 0);
         uint256 base = 0.5 gwei;
         for (uint256 i; i < 31; ++i) {
             uint256 prior = base;
@@ -111,6 +113,16 @@ contract ConcurrentRecoveryTest is ForkBase {
         assertGt(balancer.requiredReserve(), address(balancer).balance,
             "later high-fee paid continuity can be short without purchaser insolvency");
         expected = balancer.settingsHash();
+        // The 5 gwei payment ceiling keeps the actual work payable from the remaining cash at ~19 gwei.
+        uint256 snap = vm.snapshotState();
+        uint256 cash = address(balancer).balance;
+        vm.prank(keeper, keeper);
+        uint256 continuity = balancer.performUpkeep(expected, 0, 0);
+        assertLe(continuity, cash, "paid only within actual cash");
+        assertEq(address(pool).balance, poolCash, "purchaser cash untouched");
+        assertTrue(vm.revertToState(snap));
+        // A creator-emptied bucket makes paid work unavailable; unpaid recovery still completes.
+        vm.prank(creator); balancer.setKeeperBucket(0, 0);
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.PaymentUnavailable.selector);
         balancer.performUpkeep(expected, 0, 0);
@@ -149,11 +161,9 @@ contract ConcurrentRecoveryTest is ForkBase {
             vm.prank(creator);
             balancer.setKeeperPolicy(address(policy));
         }
-        uint256 refPrice = block.basefee + 0.1 gwei;
-        if (refPrice > 50 gwei) refPrice = 50 gwei;
-        uint256 cap = balancer.policyMaxReward();
-        uint256 listing = _min(cap, 4_550_000 * refPrice + 0.00025 ether);
-        uint256 buffer = _min(cap, 5_300_000 * refPrice + 0.0005 ether);
+        // Default economics: five Shape units per listing call and the operating call both reach the 3.2M limit.
+        uint256 listing = (3_200_000 + V1_OVERHEAD) * _v1Price() + 5 * 0.00002 ether;
+        uint256 buffer = _workingBufferAt(_v1Price());
         deposited = 0.22 ether + 4 * listing + buffer;
         vm.prank(creator);
         balancer.depositETH{value: deposited}();

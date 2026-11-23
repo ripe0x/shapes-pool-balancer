@@ -122,7 +122,8 @@ async function run() {
   const b1 = await setupPool(ACCTS[1]);
   const b2 = await setupPool(ACCTS[2]);
   console.log('balancers', b1, b2);
-  const hardMaxReward = await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'hardMaxKeeperReward' } as never) as bigint;
+  // Derived from the effective economics: (maxGas + overhead) * ceiling + 10 work fees. No separate outer ceiling exists.
+  const hardMaxReward = await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'policyMaxReward' } as never) as bigint;
 
   const dir = mkdtempSync(join(tmpdir(), 'keeper-e2e-'));
   const stateFile = join(dir, 'state.json');
@@ -442,7 +443,7 @@ async function run() {
   console.log('timeout keeper calibration', JSON.stringify({ transactionGasPriceWei: '5000000000', netWei: timeoutNet.toString(), receipts: timeoutReceipts.map((a) => ({ estimate: a.gasEstimate.toString(), expenseGas: a.expenseGas.toString(), source: a.expenseSource, billed: a.gasUsed.toString(), rewardWei: a.reward.toString() })) }));
   assert.ok(timeoutNet > 0n, 'timeout-only keeper has positive receipt-based profit at5gwei');
 
-  // Factory defaults are future-only. V2 has a different formula and no optional settings() metadata.
+  // Followers adopt factory economics at once; b1 and b2 pin first so they keep V1. V2 has a different formula.
   const v1Policy = await pub.readContract({ address: b1, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never) as Address;
   const v2Artifact = JSON.parse(readFileSync('out/Settings.t.sol/KeeperPolicyV2.json', 'utf8'));
   const deployedV2 = await wallet.deployContract({ abi: v2Artifact.abi, bytecode: v2Artifact.bytecode.object, account: ACCTS[0], chain: null });
@@ -453,7 +454,12 @@ async function run() {
     const hash = await wallet.writeContract({ address: factory, abi: balancerFactoryAbi, functionName, args, account: ACCTS[0], chain: null } as never);
     assert.equal((await pub.waitForTransactionReceipt({ hash })).status, 'success', functionName);
   };
-  await writeFactory('setDefaultKeeperPolicy', [v2]);
+  for (const [i, b] of [b1, b2].entries()) {
+    const pinned = await wallet.writeContract({ address: b, abi: poolBalancerAbi, functionName: 'pinEconomics', account: ACCTS[i + 1], chain: null } as never);
+    assert.equal((await pub.waitForTransactionReceipt({ hash: pinned })).status, 'success', 'pin');
+  }
+  const economics = await pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'economics' } as never) as Record<string, unknown>;
+  await writeFactory('setEconomics', [{ ...economics, policy: v2 }]);
   for (const b of [b1, b2]) assert.equal(await pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v1Policy, 'old pool remains V1');
   const upgradedPool = await setupPool(ACCTS[1], '2');
   assert.equal(await pub.readContract({ address: upgradedPool, abi: poolBalancerAbi, functionName: 'keeperPolicy' } as never), v2, 'new pool starts V2');

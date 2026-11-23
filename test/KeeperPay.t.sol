@@ -21,7 +21,6 @@ contract BillingWitness {
 contract KeeperPayTest is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     address constant BAYC = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D;
-    uint256 constant OVERHEAD = 50_000; // PoolBalancer.KEEPER_OVERHEAD_GAS
     uint256 constant WORK_FEE = 0.00002 ether; // KeeperPolicyV1 fee per completed draw or listed Shape unit
     uint256 constant VRF_GAS = 2_340_000; // FWA's randomness charge per draw
 
@@ -76,6 +75,11 @@ contract KeeperPayTest is ForkBase {
     /// @dev The pinned five-field Foundry response already includes intrinsic and applied refunds in isolation.
     ///      Its semantics are guarded by SettingsTest's storage-clear CALL and compared with real Anvil receipts.
     function _paid() internal returns (uint256 reward, uint256 measured, int256 pnl) {
+        uint256 billed;
+        (reward, measured, pnl, billed) = _paidBilled();
+    }
+
+    function _paidBilled() internal returns (uint256 reward, uint256 measured, int256 pnl, uint256 billed) {
         bytes32 uh1 = balancer.settingsHash();
         uint256 before = keeper.balance;
         vm.recordLogs();
@@ -84,7 +88,7 @@ contract KeeperPayTest is ForkBase {
         (bool ok, bytes memory usage) = address(vm).staticcall(abi.encodeWithSignature("lastCallGas()"));
         require(ok, "lastCallGas");
         (, uint64 used,,,) = abi.decode(usage, (uint64, uint64, uint64, int64, uint64));
-        uint256 billed = used;
+        billed = used;
         if (!isolated) {
             billed += 21_000;
             bytes memory data = abi.encodeWithSignature("performUpkeep(bytes32,uint256,uint256)", uh1, 0, 0);
@@ -141,7 +145,7 @@ contract KeeperPayTest is ForkBase {
         (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "reconciled");
         assertEq(lastListingId(), listings, "nothing listed");
-        assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + WORK_FEE, "gas at basefee + 0.05 gwei, plus the work fee");
+        assertEq(reward, (measured + V1_OVERHEAD) * 0.55 gwei + WORK_FEE, "gas at basefee + 0.05 gwei, plus the work fee");
         assertGt(reward, WORK_FEE + 0.00005 ether, "more than the flat reward");
         assertLt(reward, 0.0003 ether, "a reconcile-only call is cheap");
         assertEq(fund - address(balancer).balance, reward, "paid from the Balancer's ETH, nothing else moved");
@@ -190,7 +194,7 @@ contract KeeperPayTest is ForkBase {
             (uint256 reward, uint256 measured, int256 pnl) = _paid();
             splitPnl += pnl;
             assertEq(balancer.reconciledSequence(), i + 1, "each paid call advances reconciliation");
-            assertEq(reward, (measured + OVERHEAD) * 0.55 gwei + WORK_FEE);
+            assertEq(reward, (measured + V1_OVERHEAD) * 0.55 gwei + WORK_FEE);
             assertLt(reward, 0.0003 ether);
             split += reward;
         }
@@ -225,7 +229,7 @@ contract KeeperPayTest is ForkBase {
         assertEq(balancer.reconciledSequence(), 0, "reached: five processed draws await reconciliation");
         (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), 5, "the call did useful work");
-        assertEq(reward, (measured + OVERHEAD) * gasPrice + 5 * WORK_FEE, "five completed draw sequences");
+        assertEq(reward, (measured + V1_OVERHEAD) * gasPrice + 5 * WORK_FEE, "five completed draw sequences");
         assertEq(balancer.requiredReserve(), 0, "nothing owed once reconciled");
         uint256 rest = address(balancer).balance;
         assertEq(rest, held - reward, "the unspent hold stays in the pool");
@@ -301,6 +305,56 @@ contract KeeperPayTest is ForkBase {
         emit log_named_uint("paid calls", calls);
         emit log_named_decimal_int("keeper wallet change (ETH)", wallet, 18);
         assertGe(wallet, 0, "the keeper's wallet is not lower");
+    }
+
+    /// Calibration of the default overhead: for every paid operation class at the 5 gwei ceiling (gas price = ceiling,
+    /// so the reimbursed price is the paid price), the gas reimbursement alone, (measured + overhead), must cover the
+    /// billed transaction gas; the work fee is never needed to break even. Run with --isolate for receipt gas.
+    function test_overheadCoversBilledGasPerOperationClass() public {
+        _open(4.95 gwei);
+        uint256 overhead = factory.economics().overheadGas;
+        uint256 worst;
+        while (balancer.creatorWork()) worst = _max(worst, _calibrate("setup fill (5 Shape units)"));
+        uint256[] memory late = _timeOut(1);
+        pool.processAcquisitions(1);
+        worst = _max(worst, _calibrate("reconcile 1 timed-out draw"));
+        fulfill(late[0], 1); // the service delivers the word it owed; until then FWA refuses a batch of five
+        late = _timeOut(1);
+        worst = _max(worst, _calibrate("process and reconcile 1 timed-out draw"));
+        fulfill(late[0], 1);
+        uint256[] memory ids = buy(buyer, 1);
+        (,,,,,, uint256 slot,) = pool.listings(nftListing);
+        fulfill(ids[0], wordForSlot(slot));
+        settle();
+        worst = _max(worst, _calibrate("reconcile 1 NFT win"));
+        _listNft();
+        _drawShapes(1);
+        worst = _max(worst, _calibrate("reconcile and replace 1 Shape"));
+        _drawShapes(5);
+        worst = _max(worst, _calibrate("reconcile and replace 5 Shapes"));
+        buy(buyer, 5);
+        vm.prank(creator);
+        balancer.close();
+        vm.roll(vm.getBlockNumber() + 40);
+        pool.processAcquisitions(5);
+        worst = _max(worst, _calibrate("closed: reconcile 5 timed-out draws"));
+        emit log_named_uint("largest billed - measured (gas)", worst);
+        emit log_named_uint("configured overhead (gas)", overhead);
+        if (isolated) assertLe(worst, overhead, "the default overhead covers every operation class");
+    }
+
+    function _max(uint256 a, uint256 b) internal pure returns (uint256) { return a > b ? a : b; }
+
+    function _calibrate(string memory label) internal returns (uint256 outside) {
+        (uint256 reward, uint256 measured, int256 pnl, uint256 billed) = _paidBilled();
+        outside = billed > measured ? billed - measured : 0;
+        emit log(label);
+        emit log_named_uint("  measured gas", measured);
+        emit log_named_uint("  billed gas", billed);
+        emit log_named_uint("  billed - measured", outside);
+        emit log_named_decimal_uint("  paid (ETH)", reward, 18);
+        emit log_named_decimal_uint("  billed cost (ETH)", billed * gasPrice, 18);
+        emit log_named_decimal_int("  keeper net (ETH)", pnl, 18);
     }
 
     function _step(string memory label) internal returns (int256 pnl) {

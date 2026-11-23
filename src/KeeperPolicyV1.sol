@@ -3,33 +3,23 @@ pragma solidity 0.8.28;
 
 import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 
-/// @notice Immutable starting policy. The work fee follows completed draw sequences and created/listed Shape units,
-///         so splitting a job cannot duplicate service fees. Gas reimbursement and refunds can still favor splitting.
+/// @notice Stateless V1 pricing algorithm over the pool's effective economics. The work fee follows completed draw
+///         sequences and created/listed Shape units, so splitting a job cannot duplicate service fees. Gas reimbursement
+///         and refunds can still favor splitting. It holds no numbers: the factory or the pool supplies them.
 contract KeeperPolicyV1 is IKeeperPolicy {
-    uint256 public constant WORK_FEE = 0.00002 ether;
-    uint256 public constant MAX_GAS = 3_200_000;
-    uint256 public constant OVERHEAD_GAS = 50_000;
-    uint256 public constant GAS_PRICE_CEILING = 5 gwei;
-    uint256 public constant PRIORITY_ALLOWANCE = 0.05 gwei;
-    uint256 public constant RESTOCK_GAS = 900_000;
-    uint256 public constant RESTOCK_FLAT = 0.0002 ether;
-
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 1; }
-    function maxReward() public pure returns (uint256) {
-        return (MAX_GAS + OVERHEAD_GAS) * GAS_PRICE_CEILING + 10 * WORK_FEE;
-    }
-    function quoteReward(Work calldata w) external pure returns (uint256) {
-        uint256 measured = w.measuredGas > MAX_GAS ? MAX_GAS : w.measuredGas;
-        uint256 price = _price(w.baseFee);
+    function quoteReward(Work calldata w, Economics calldata e) external pure returns (uint256) {
+        uint256 measured = w.measuredGas > e.maxGas ? e.maxGas : w.measuredGas;
+        uint256 price = _price(w.baseFee, e);
         if (w.gasPrice < price) price = w.gasPrice;
-        return (measured + OVERHEAD_GAS) * price + (w.reconciledDraws + w.listedShapeUnits) * WORK_FEE;
+        return (measured + e.overheadGas) * price + (w.reconciledDraws + w.listedShapeUnits) * e.workFee;
     }
-    function quoteRestock(uint8, uint256 units, uint256 baseFee) external pure returns (uint256) {
-        return units * (RESTOCK_GAS * _price(baseFee) + RESTOCK_FLAT);
+    function quoteRestock(uint8, uint256 units, uint256 baseFee, Economics calldata e) external pure returns (uint256) {
+        return units * (e.restockGas * _price(baseFee, e) + e.restockFlat);
     }
-    function _price(uint256 baseFee) internal pure returns (uint256 price) {
-        price = baseFee + PRIORITY_ALLOWANCE;
-        if (price > GAS_PRICE_CEILING) price = GAS_PRICE_CEILING;
+    function _price(uint256 baseFee, Economics calldata e) internal pure returns (uint256 price) {
+        price = baseFee + e.priorityAllowance;
+        if (price > e.gasPriceCeiling) price = e.gasPriceCeiling;
     }
 }

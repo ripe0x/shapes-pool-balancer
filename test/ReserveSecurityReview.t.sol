@@ -21,15 +21,14 @@ contract ReviewHostilePolicy is IKeeperPolicy {
     address public target;
     function setMode(uint256 m) external { mode = m; }
     function setTarget(address b) external { target = b; }
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 1; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteReward(Work calldata w) external view returns (uint256) {
+    function quoteReward(Work calldata w, Economics calldata) external view returns (uint256) {
         require(w.baseFee == block.basefee && w.gasPrice == tx.gasprice, "work fee context");
         _attack();
         return type(uint256).max;
     }
-    function quoteRestock(uint8, uint256, uint256 baseFee) external view returns (uint256) {
+    function quoteRestock(uint8, uint256, uint256 baseFee, Economics calldata) external view returns (uint256) {
         require(baseFee == block.basefee, "listing fee context");
         _attack();
         return 0;
@@ -288,7 +287,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         assertEq(bal - address(balancer).balance, 0.011 ether, "unpaid path spends exact backing plus live mint fee");
         uint256[] memory ids = balancer.getActiveIds();
         (,,,,uint112 price) = balancer.items(ids[2]);
-        assertEq(price, 0.0125 ether + 0.000695 ether, "immutable recovery surcharge used");
+        assertEq(price, 0.0125 ether + 0.0007005 ether, "explicit fallback surcharge of the selected economics used");
         h.setMode(4);
         c[0] = 3;
         configure(plan(c));
@@ -401,16 +400,20 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256 credit = balancer.creatorCredit();
         assertEq(address(balancer).balance, credit);
         ReviewHostilePolicy h = new ReviewHostilePolicy();
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(h));
+        // While stopped, a policy change has no paid exposure; re-enabling is the funded transition.
+        vm.prank(creator); balancer.setKeeperPolicy(address(h));
+        assertFalse(balancer.paidUpkeepEnabled());
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(balancer.effectiveEconomics());
+        assertGt(required, 0);
         assertEq(shortfall, required);
         assertGe(credit, required, "total cash covers maintenance, but none of it is operating cash");
         uint256[] memory beforeIds = balancer.getActiveIds();
         uint112[] memory oldPrices = new uint112[](beforeIds.length);
         for (uint256 i; i < beforeIds.length; ++i) (,,,,oldPrices[i]) = balancer.items(beforeIds[i]);
-        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(h));
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setPaidUpkeepEnabled(true);
         assertEq(balancer.creatorCredit(), credit);
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        vm.prank(creator); balancer.setKeeperPolicy(address(h));
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
         assertEq(balancer.creatorCredit(), credit);
         for (uint256 i; i < beforeIds.length; ++i) {
             (,,,,uint112 nowPrice) = balancer.items(beforeIds[i]);
@@ -430,9 +433,9 @@ contract ReserveSecurityReviewTest is ForkBase {
         vm.prank(keeper);
         uint256 reward = balancer.performUpkeep(expected, 1, 0);
         uint256 billed = ReceiptGas.lastBilled();
-        assertLe(reward, 2_250_000 * 0.02 gwei + 0.00005 ether, "cheap expiry cap uses one actual process and reconcile");
+        assertLe(reward, (2_150_000 + V1_OVERHEAD) * 0.02 gwei + 0.00002 ether, "cheap expiry cap uses one actual process and reconcile");
         assertLt(reward, 0.0001 ether, "max-declared policy cannot draw theoretical heavy-call maximum");
-        assertGt(reward, 0.00005 ether, "nonzero low-gas attack surface reached");
+        assertGt(reward, 0.00002 ether, "nonzero low-gas attack surface reached: gas paid beyond the work fee");
         assertEq(before - address(balancer).balance, reward);
         assertEq(IReviewRefund(address(pool)).acquisitionRefundCredit(buyer), principal);
         assertEq(pool.ownerProceeds(), 0, "expired draw generated no owner income");

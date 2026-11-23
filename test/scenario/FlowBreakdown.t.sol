@@ -224,13 +224,15 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory pending = _buy(1);
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertEq(required, 0.00508 ether, "one outstanding request and one operating call at 0.5 gwei");
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(_econWith(address(v2)));
+        assertEq(required, _workingBufferAt(0.55 gwei) + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 0.00002 ether,
+            "one outstanding request and one operating call at 0.5 gwei");
         assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no top-up");
         vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
         alternativePolicy = true;
-        assertLt(address(balancer).balance - balancer.creatorCredit(), required, "existing underfunding does not block equal-exposure replacement");
+        // The single schedule leaves this board funded at its current exposure; the replacement adds none (shortfall 0).
+        assertGe(address(balancer).balance - balancer.creatorCredit(), required, "funded at the unchanged exposure");
         uint256 repriced;
         for (uint256 i; i < listed.length; ++i) {
             (,,,,, uint256 price,,) = pool.listings(listed[i]);
@@ -437,14 +439,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     function test_breakdown_minimumCapital() public {
         uint256[16] memory c;
         c[0] = 20;
-        Snap memory a = _launchWith(c, 0.2356 ether, 20);
-        assertEq(balancer.requiredReserve(), 0.00368 ether, "minimum default-paid funding actually stocked the board");
+        Snap memory a = _launchWith(c, 0.229565 ether, 20);
+        assertEq(balancer.requiredReserve(), 0.001993 ether, "minimum default-paid funding actually stocked the board");
         for (uint256 i; i < DRAWS; ++i) _single(i);
-        assertEq(deposited, 0.2356 ether, "no operating top-ups hidden in this regime");
+        assertEq(deposited, 0.229565 ether, "no operating top-ups hidden in this regime");
         Fact[] memory x = new Fact[](3);
-        x[0] = Fact("initial_opening_requirement_wei", 0.2356 ether);
+        x[0] = Fact("initial_opening_requirement_wei", 0.229565 ether);
         x[1] = Fact("operating_topups_wei", 0);
-        x[2] = Fact("stocked_working_buffer_wei", 0.00368 ether);
+        x[2] = Fact("stocked_working_buffer_wei", 0.001993 ether);
         _done("minimum_capital", a, x);
     }
 
@@ -916,7 +918,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 packSlot = slot;
             }
         }
-        assertEq(selectedFee, 0.0141 ether, "three Shape units each list with the 5gwei 0.0047ETH surcharge");
+        assertEq(selectedFee, 0.01425 ether, "three Shape units each list with the 5 gwei 0.00475 ETH surcharge");
         (uint256[] memory ids,,) = this.extBuy(1);
         assertEq(ids.length, 1);
         assertGt(drawFee[ids[0]], 0, "the pending draw has an expected surcharge contribution");
@@ -1434,7 +1436,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             if (who == keeper) {
                 uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
                 uint256 service = (rec + units) * 0.00002 ether;
-                uint256 overhead = 50_000;
+                uint256 overhead = V1_OVERHEAD;
                 if (alternativePolicy) {
                     price = feeNow + 0.02 gwei;
                     if (price > gasNow) price = gasNow;

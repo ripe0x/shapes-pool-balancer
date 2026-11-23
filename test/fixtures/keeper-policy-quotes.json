@@ -8,9 +8,9 @@
     "measuredGas": "864000",
     "processedDraws": "0",
     "reconciledDraws": "1",
-    "reward": "222800000000000",
+    "reward": "224800000000000",
     "shapeUnits": "1",
-    "surcharge": "380000000000000",
+    "surcharge": "382000000000000",
     "version": 1
   },
   "1": {
@@ -22,9 +22,9 @@
     "measuredGas": "864000",
     "processedDraws": "0",
     "reconciledDraws": "1",
-    "reward": "542700000000000",
+    "reward": "548200000000000",
     "shapeUnits": "1",
-    "surcharge": "695000000000000",
+    "surcharge": "700500000000000",
     "version": 1
   },
   "2": {
@@ -36,9 +36,9 @@
     "measuredGas": "864000",
     "processedDraws": "0",
     "reconciledDraws": "1",
-    "reward": "4610000000000000",
+    "reward": "4660000000000000",
     "shapeUnits": "1",
-    "surcharge": "4700000000000000",
+    "surcharge": "4750000000000000",
     "version": 1
   },
   "3": {
@@ -50,9 +50,9 @@
     "measuredGas": "6000000",
     "processedDraws": "0",
     "reconciledDraws": "5",
-    "reward": "16450000000000000",
+    "reward": "16500000000000000",
     "shapeUnits": "1",
-    "surcharge": "4700000000000000",
+    "surcharge": "4750000000000000",
     "version": 1
   },
   "4": {
@@ -64,9 +64,9 @@
     "measuredGas": "864000",
     "processedDraws": "0",
     "reconciledDraws": "1",
-    "reward": "582700000000000",
+    "reward": "588200000000000",
     "shapeUnits": "3",
-    "surcharge": "2085000000000000",
+    "surcharge": "2101500000000000",
     "version": 1
   },
   "5": {

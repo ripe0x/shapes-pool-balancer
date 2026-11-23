@@ -143,7 +143,7 @@ function permitted(actor: Address, to: Address|undefined, fn: string, data: Hex,
   if (journal.pools.some(p => p.demo.toLowerCase() === to.toLowerCase())) { assert.ok(fn === 'mint' || fn === 'approve'); eq(actor, journal.pools.find(p => p.demo.toLowerCase() === to.toLowerCase())!.creator); assert.equal(value, 0n); return; }
   if (to.toLowerCase() === factory().toLowerCase()) {
     if (fn === 'createBalancer') assert.ok([roles.creatorA,roles.creatorB].includes(actor));
-    else { assert.equal(fn, 'setDefaultKeeperPolicy'); eq(actor, roles.policyAdmin); }
+    else { assert.equal(fn, 'setEconomics'); eq(actor, roles.policyAdmin); }
     assert.equal(value, 0n); return;
   }
   if (journal.pools.some(p => p.pool.toLowerCase() === to.toLowerCase())) { assert.ok(['acquireBatch','withdrawAcquisitionRefund'].includes(fn)); eq(actor, roles.buyer); return; }
@@ -335,7 +335,8 @@ async function policies() {
   const p=journal.pools[0];
   // Policy changes are immediate and creator/policyAdmin-only (no delay, no public activation).
   await send(p.creator,p.balancer,poolBalancerAbi,'setKeeperPolicy',[policy()]);
-  await send(roles.policyAdmin,factory(),balancerFactoryAbi,'setDefaultKeeperPolicy',[policy()]);
+  const economics=await read<Record<string,unknown>>(factory(),balancerFactoryAbi,'economics');
+  await send(roles.policyAdmin,factory(),balancerFactoryAbi,'setEconomics',[{...economics,policy:policy()}]);
   eq(await read<Address>(p.balancer,poolBalancerAbi,'keeperPolicy'),policy());eq(await read<Address>(journal.pools[1].balancer,poolBalancerAbi,'keeperPolicy'),policy());
   await send(p.creator,p.balancer,poolBalancerAbi,'setPaidUpkeepEnabled',[false]);
   const settings=await read<Hash>(p.balancer,poolBalancerAbi,'settingsHash');

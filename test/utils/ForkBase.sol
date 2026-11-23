@@ -6,6 +6,7 @@ import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {KeeperPolicyV1} from "../../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
+import {IKeeperPolicy} from "../../src/interfaces/IKeeperPolicy.sol";
 import {MockNFT} from "./Mocks.sol";
 import {ListOne} from "./ListOne.sol";
 
@@ -79,11 +80,18 @@ abstract contract ForkBase is Test {
         vm.startPrank(owner);
         nft.approve(predicted, id);
         b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
-            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired), initial)));
+            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired,
+                factory.creationSettingsHash()), initial)));
         b.close();
         b.withdrawCurated(b.getActiveIds()[0], owner);
         if (seed > deposit) b.claimSurplus(seed - deposit, owner);
         vm.stopPrank();
+    }
+
+    /// @dev The factory's current economics with another algorithm.
+    function _econWith(address policy) internal view returns (IKeeperPolicy.Economics memory e) {
+        e = factory.economics();
+        e.policy = policy;
     }
 
     function createBalancer(uint256 deposit) internal returns (PoolBalancer b) {
@@ -131,21 +139,31 @@ abstract contract ForkBase is Test {
         vm.stopPrank();
     }
 
-    /// @dev Independent legacy-test arithmetic for the current immutable working-capital caps.
-    function _reconciliationBudget() internal view returns (uint256 cap) {
-        uint256 price = block.basefee + 0.1 gwei;
-        if (price > 50 gwei) price = 50 gwei;
-        cap = 2_250_000 * price + 0.00005 ether;
-        uint256 selected = balancer.policyMaxReward();
-        if (cap > selected) cap = selected;
+    /// @dev Independent arithmetic for the default (V1) economics: work fee 0.00002 ETH, 3.2M reimbursable gas,
+    ///      V1_OVERHEAD, 5 gwei ceiling, 0.05 gwei priority allowance, V1_RESTOCK_GAS + 0.0002 ETH per Shape; per-operation bounds 200k base, 1.8M per processed
+    ///      draw, 150k per reconcile, 700k per Shape unit, 150k per prize. Zero while paid upkeep is off.
+    uint256 internal constant V1_OVERHEAD = 60_000; // recalibrated default (BalancerFactory.OVERHEAD_GAS)
+    uint256 internal constant V1_RESTOCK_GAS = 910_000; // recalibrated default (BalancerFactory.RESTOCK_GAS)
+    function _v1Price() internal view returns (uint256 price) {
+        price = block.basefee + 0.05 gwei;
+        if (price > 5 gwei) price = 5 gwei;
     }
 
-    function _workingBuffer() internal view returns (uint256 cap) {
-        uint256 price = block.basefee + 0.1 gwei;
-        if (price > 50 gwei) price = 50 gwei;
-        cap = 5_300_000 * price + 0.0005 ether;
-        uint256 selected = balancer.policyMaxReward();
-        if (cap > selected) cap = selected;
+    /// @dev One owed draw: process + reconcile one, 200k + 1.8M + 150k gas.
+    function _reconciliationBudget() internal view returns (uint256) {
+        if (!balancer.paidUpkeepEnabled()) return 0;
+        return (2_150_000 + V1_OVERHEAD) * _v1Price() + 0.00002 ether;
+    }
+
+    function _workingBufferAt(uint256 price) internal pure returns (uint256) {
+        return (3_200_000 + V1_OVERHEAD) * price + 0.0002 ether;
+    }
+
+    /// @dev One operating call: both candidate calls reach the 3.2M reimbursable limit (five reconciles plus five
+    ///      Shape units, or two processed draws plus five reconciles); the first carries ten work fees.
+    function _workingBuffer() internal view returns (uint256) {
+        if (!balancer.paidUpkeepEnabled()) return 0;
+        return (3_200_000 + V1_OVERHEAD) * _v1Price() + 0.0002 ether;
     }
 
     function upkeep() internal {

@@ -9,29 +9,26 @@ import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
 
 contract ReviewEconomicPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 77; }
-    function maxReward() external pure returns (uint256) { return 0.03 ether; }
-    function quoteReward(Work calldata) external pure returns (uint256) { return 0.00003 ether; }
-    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) {
+    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
         return units * 0.000695 ether;
     }
 }
 
 contract ReviewSmallPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 76; }
-    function maxReward() external pure returns (uint256) { return 0.001 ether; }
-    function quoteReward(Work calldata) external pure returns (uint256) { return 0.00003 ether; }
-    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) { return units * 0.000695 ether; }
+    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.000695 ether; }
 }
 
 contract ReviewMaximumPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 78; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteReward(Work calldata) external pure returns (uint256) { return type(uint256).max; }
-    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) {
+    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return type(uint256).max; }
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
         return units * 0.000695 ether;
     }
 }
@@ -98,14 +95,14 @@ contract PolicyEconomicReviewTest is ForkBase {
         listCurated(1, 0.2 ether);
         vm.prank(creator);
         balancer.open();
-        assertEq(balancer.requiredReserve(), 0.2356 ether, "actual initial inventory, four listing bounds and one call buffer");
+        assertEq(balancer.requiredReserve(), 0.229565 ether, "actual initial inventory, four listing bounds and one call buffer");
         fillUp();
         assertEq(balancer.getActiveShapes()[0], 20);
         uint256 keeperPaid = keeper.balance - keeperStart;
         assertGt(keeperPaid, 0, "actual paid setup was reached");
         assertEq(address(balancer).balance, 5 ether - 0.22 ether - keeperPaid);
-        assertEq(_listedFees(balancer), 0.0139 ether, "20 future fees at 0.000695 each");
-        assertEq(balancer.requiredReserve(), 0.00368 ether, "stocked current-work buffer; unsold fees are never cash");
+        assertEq(_listedFees(balancer), 0.01401 ether, "20 future fees at 0.0007005 each");
+        assertEq(balancer.requiredReserve(), 0.001993 ether, "stocked current-work buffer; unsold fees are never cash");
         assertEq(pool.ownerProceeds(), 0, "zero demand: no proceeds exist");
         assertEq(balancer.creatorCredit(), 0, "zero demand: no earned profit exists");
         uint256[] memory all = balancer.getActiveIds();
@@ -119,30 +116,34 @@ contract PolicyEconomicReviewTest is ForkBase {
             else nftId = all[i];
         }
         assertEq(n, 20);
-        ReviewSmallPolicy inexpensive = new ReviewSmallPolicy();
-        vm.prank(creator); balancer.setKeeperPolicy(address(inexpensive));
-        assertEq(balancer.requiredReserve(), 0.001 ether, "smaller selected cap funds a smaller working buffer");
+        // Cheaper local economics: a 0.3 gwei ceiling and a 0.0000025 ETH work fee.
+        IKeeperPolicy.Economics memory inexpensive = _econWith(address(new ReviewSmallPolicy()));
+        inexpensive.gasPriceCeiling = 0.3 gwei;
+        inexpensive.workFee = 0.0000025 ether;
+        vm.prank(creator); balancer.setLocalEconomics(inexpensive);
+        uint256 small = (3_200_000 + V1_OVERHEAD) * 0.3 gwei + 10 * 0.0000025 ether;
+        assertEq(balancer.requiredReserve(), small, "smaller selected economics fund a smaller working buffer");
         uint256 claim = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(claim, creator);
-        assertEq(address(balancer).balance, 0.001 ether, "withdrawal retains precisely the selected working buffer");
-        ReviewEconomicPolicy replacement = new ReviewEconomicPolicy();
-        (uint256 required, uint256 topUp) = balancer.policyFunding(address(replacement));
-        assertEq(required, 0.00368 ether, "new bounded current-work buffer independently recomputed");
-        assertEq(topUp, 0.00268 ether, "the change requires the actual working-capital difference");
+        assertEq(address(balancer).balance, small, "withdrawal retains precisely the selected working buffer");
+        IKeeperPolicy.Economics memory replacement = _econWith(address(new ReviewEconomicPolicy()));
+        (uint256 required, uint256 topUp) = balancer.maintenanceFunding(replacement);
+        assertEq(required, 0.001993 ether, "new bounded current-work buffer independently recomputed");
+        assertEq(topUp, required - small, "the change requires the actual working-capital difference");
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);
-        balancer.setKeeperPolicy(address(replacement));
+        balancer.setLocalEconomics(replacement);
         vm.prank(creator);
         balancer.depositETH{value: topUp}();
         vm.prank(creator);
-        balancer.setKeeperPolicy(address(replacement));
+        balancer.setLocalEconomics(replacement);
         assertEq(address(balancer).balance, required);
         for (uint256 i; i < shapeIds.length; ++i) {
             (,,,,uint256 price) = balancer.items(shapeIds[i]);
             assertEq(price, oldPrices[i], "a policy change cannot retroactively reprice inventory");
         }
-        assertEq(_listedFees(balancer), 0.0139 ether);
+        assertEq(_listedFees(balancer), 0.01401 ether);
         vm.prank(creator); balancer.close();
         assertEq(balancer.requiredReserve(), 0, "remove demand and close: no draw claim remains");
         vm.prank(creator); balancer.unlistShapes(shapeIds);
@@ -158,7 +159,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         assertEq(pool.ownerProceeds(), 0);
         assertEq(nft.ownerOf(1), creator);
         emit log_named_decimal_uint("independent setup keeper pay", keeperPaid, 18);
-        emit log_named_decimal_uint("independent retained board reserve", 0.00368 ether, 18);
+        emit log_named_decimal_uint("independent retained board reserve", 0.001993 ether, 18);
         emit log_named_decimal_uint("independent policy activation top-up", topUp, 18);
         _context();
     }
@@ -169,8 +170,8 @@ contract PolicyEconomicReviewTest is ForkBase {
         buy(buyer, 2);
         assertEq(pool.lastIssuedSequence(), 2);
         ReviewMaximumPolicy replacement = new ReviewMaximumPolicy();
-        (,uint256 topUp) = balancer.policyFunding(address(replacement));
-        assertEq(topUp, 0, "an oversized declaration adds no hypothetical lifetime liability");
+        (,uint256 topUp) = balancer.maintenanceFunding(_econWith(address(replacement)));
+        assertEq(topUp, 0, "an oversized quote adds no hypothetical lifetime liability");
         vm.prank(creator); balancer.setKeeperPolicy(address(replacement));
         vm.roll(vm.getBlockNumber() + 40);
         assertEq(pool.unsettledAcquisitionCount(), 2, "two real unpaid draws await processing");
@@ -224,13 +225,13 @@ contract PolicyEconomicReviewTest is ForkBase {
         configure(plan16(counts));
         listCurated(1, 0.2 ether);
         vm.prank(creator); balancer.open();
-        assertEq(balancer.requiredReserve(), 0.27028 ether, "actual 23-Shape inventory and five canonical listing calls");
+        assertEq(balancer.requiredReserve(), 0.2640055 ether, "actual 23-Shape inventory and five canonical listing calls");
         fillUp();
         assertEq(balancer.getActiveShapes()[0], 20);
         assertEq(balancer.getActiveShapes()[10], 1);
         assertEq(balancer.listedShapePrizes(), 21);
-        assertEq(_listedFees(balancer), 0.015985 ether, "23 underlying Shapes each carry0.000695");
-        assertEq(balancer.requiredReserve(), 0.00368 ether, "fully stocked mixed board retains one working buffer");
+        assertEq(_listedFees(balancer), 0.0161115 ether, "23 underlying Shapes each carry 0.0007005");
+        assertEq(balancer.requiredReserve(), 0.001993 ether, "fully stocked mixed board retains one working buffer");
         uint256[] memory all = balancer.getActiveIds();
         uint256[] memory ids = new uint256[](21);
         uint256 nftId;
@@ -245,7 +246,7 @@ contract PolicyEconomicReviewTest is ForkBase {
                 if (denomination == 10) {
                     packListing = all[i];
                     assertEq(base, 0.0375 ether, "pack backing+three mint fees+15percent backing markup");
-                    assertEq(price, 0.039585 ether, "pack adds exactly three original policy fees");
+                    assertEq(price, 0.0396015 ether, "pack adds exactly three default policy fees");
                     (address collection,,,uint256 id,,,,) = pool.listings(all[i]);
                     assertEq(collection, packs);
                     packId = id;

@@ -74,13 +74,13 @@ describe('planner', () => {
 
   it('prices a Shape prize at cost, markup on its backing and a basefee-indexed restocking fee per Shape', () => {
     const GWEI = 10n ** 9n;
-    expect(restockFeeAt(GWEI)).toBe(900_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.001145 ETH
-    expect(restockFeeAt(80n * GWEI)).toBe(900_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.0047 ETH
+    expect(restockFeeAt(GWEI)).toBe(910_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.0011555 ETH (910k recalibrated restocking gas)
+    expect(restockFeeAt(80n * GWEI)).toBe(910_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.00475 ETH
     // 0.01 Shape: 0.01 + 0.001 mint fee + 0.0015 markup + one fee
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
-    expect(MAX_KEEPER_REWARD).toBe(16_450_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 10 work units * 0.00002
+    expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // (3.2M + 60k recalibrated overhead) * 5 gwei + 10 work units * 0.00002
   });
 
   it('predicts the unsettled draws the fill gate admits (test/TopHeavyGate.t.sol on the fork)', () => {
@@ -97,9 +97,9 @@ describe('planner', () => {
   it('creator estimates use explicit V1 gas context and work-based fees', () => {
     // all 0.01 Shapes: every draw wins one Shape, so keeper pay per draw is one replacement call
     const e = economics([10, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [], restockFee: restockFeeAt(5n * 10n ** 8n), baseFee: 5n * 10n ** 8n });
-    // Assumption: 864k measured span plus 50k overhead, 0.55 gwei bid, one draw and one listed Shape unit.
+    // Assumption: 864k measured span plus 60k overhead, 0.55 gwei bid, one draw and one listed Shape unit.
     expect(e.keeperCostKnown).toBe(true);
-    expect(e.keeperPayPerDraw).toBeCloseTo(0.0005427, 12);
+    expect(e.keeperPayPerDraw).toBeCloseTo(0.0005482, 12);
     expect(e.marginPerDraw).toBeCloseTo(e.retainedRevenuePerDraw - e.replacementCostsPerDraw - e.mintFeesPerDraw - e.keeperPayPerDraw!, 12);
   });
 
@@ -128,9 +128,9 @@ describe('planner', () => {
     const at = { ...inputs, curatedBases: [] };
     expect(suggestedCreatorRevenueBps([10], at)).toBe(366);
     const e = economics([10], at);
-    expect(e.ownerProceeds).toBe(0.013645);
-    expect(e.creatorEarningsPerDraw).toBe(0.000499407);
-    expect(e.retainedRevenuePerDraw).toBe(0.013145593);
+    expect(e.ownerProceeds).toBe(0.0136555);
+    expect(e.creatorEarningsPerDraw).toBe(0.0004997913);
+    expect(e.retainedRevenuePerDraw).toBe(0.0131557087);
   });
 
   it('keeps a reviewed rate through target, markup, fees and policy quote changes', () => {
@@ -162,18 +162,18 @@ describe('planner', () => {
   it('holds only missing inventory, canonical listing calls, present draws and one working buffer', () => {
     const ten = DENOMS.map((_, d) => d === 0 ? 10 : 0), none = DENOMS.map(() => 0);
     const fee = E / 1000n, baseFee = 500_000_000n;
-    expect(requiredReserveAt(ten, none, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(119_640_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(3_680_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee)).toBe(6_480_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee, false)).toBe(2_800_000_000_000_000n);
+    expect(requiredReserveAt(ten, none, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(115_779_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(1_993_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee)).toBe(4_464_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee, false)).toBe(2_471_000_000_000_000n);
     expect(requiredReserveAt(ten, none, fee, 2, 0n, baseFee)).toBe(110_000_000_000_000_000n);
     expect(evaluate(ten, { ...inputs, paidUpkeepEnabled: false }).requiredReserve).toBe(0n);
     const twenty = ten.map((n) => 2 * n);
     const breakdown = reserveBreakdownAt(twenty, none, fee, 0, MAX_KEEPER_REWARD, baseFee);
     expect(breakdown.inventoryCost).toBe(220_000_000_000_000_000n);
-    expect(breakdown.listingBudget).toBe(11_920_000_000_000_000n);
-    expect(breakdown.workingBuffer).toBe(3_680_000_000_000_000n);
-    expect(breakdown.total).toBe(235_600_000_000_000_000n);
+    expect(breakdown.listingBudget).toBe(7_572_000_000_000_000n);
+    expect(breakdown.workingBuffer).toBe(1_993_000_000_000_000n);
+    expect(breakdown.total).toBe(229_565_000_000_000_000n);
   });
 
   it('uses canonical Shape-unit, denomination and value-order grouping for actual setup work', () => {
@@ -188,10 +188,10 @@ describe('planner', () => {
   it('clamps a hostile quote to actual useful work, included price and declared maximum', () => {
     const w = { measuredGas: 6_000_000n, gasPrice: 150_000_000n, baseFee: 100_000_000n,
       processedDraws: 0n, reconciledDraws: 1n, listedShapeUnits: 0n, listedPrizes: 0n };
-    expect(paymentBound(w, E)).toBe(117_500_000_000_000n);
+    expect(paymentBound(w, E)).toBe(81_500_000_000_000n);
     expect(paymentBound(w, 1n)).toBe(1n);
-    expect(immutableWorkBudget(w, w.baseFee, E)).toBe(140_000_000_000_000n);
-    expect(paymentBound({ ...w, measuredGas: 1n }, E)).toBe(65_000_150_000_000n);
+    expect(immutableWorkBudget(w, w.baseFee, E)).toBe(81_500_000_000_000n);
+    expect(paymentBound({ ...w, measuredGas: 1n }, E)).toBe(29_000_150_000_000n);
   });
 
   it('quotes different pack surcharges and the selected policy maximum without a V1 fee inversion', () => {
@@ -238,7 +238,7 @@ describe('planner', () => {
     const low = maintenanceBudgetAt(2, oldMaximum, baseFee).total;
     const high = maintenanceBudgetAt(2, maximum, baseFee).total;
     expect(low).toBe(3_000_000_000_000_000n);
-    expect(high).toBe(6_480_000_000_000_000n);
+    expect(high).toBe(4_464_000_000_000_000n);
     expect(policyActivationFundingAt(2, maximum, oldMaximum, baseFee, true, true, 0n))
       .toMatchObject({ required: low, shortfall: 0n, canActivate: true });
     const increase = policyActivationFundingAt(2, oldMaximum, maximum, baseFee, true, true, high);
@@ -261,8 +261,8 @@ describe('V1 quote arithmetic from exported Solidity parameters', () => {
   it('matches the independent absolute policy quote exercised by Solidity', () => {
     const work = { measuredGas: 800_000n, gasPrice: 550_000_000n, baseFee: 500_000_000n,
       reconciledDraws: 1n, listedShapeUnits: 1n, listedPrizes: 1n, processedDraws: 0n };
-    expect(quoteV1(work)).toBe(507_500_000_000_000n);
-    expect(quoteV1({ ...work, gasPrice: 1n })).toBe(40_000_000_850_000n);
+    expect(quoteV1(work)).toBe(513_000_000_000_000n); // (800k + 60k) * 0.55 gwei + 2 * 0.00002
+    expect(quoteV1({ ...work, gasPrice: 1n })).toBe(40_000_000_860_000n);
   });
   it('caps measured gas and gas price while retaining verified-unit service fees', () => {
     const work = keeperWorkAt(100_000_000_000n, 200_000_000_000n, 0);

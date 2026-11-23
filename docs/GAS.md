@@ -1,5 +1,33 @@
 # Gas benchmarks and keeper bounds
 
+## Slice A3 keeper overhead recalibration, 2026-11-23
+
+`test/KeeperPay.t.sol test_overheadCoversBilledGasPerOperationClass`, `forge test --isolate` (Foundry 1.8.1 transaction
+gas: intrinsic, calldata and applied refunds), fork block 26,382,349, basefee 4.95 gwei and transaction price 5.00 gwei
+set with `vm.fee`/`vm.txGasPrice` and asserted inside a call. Pool: ten 0.01 ETH Shapes and one BAYC, default economics.
+
+| Operation class | measured (paid span) | billed | billed − measured | paid (ETH) | billed cost (ETH) | keeper net (ETH) |
+|---|---|---|---|---|---|---|
+| setup fill, 5 Shape units | 2,549,178 | 2,573,336 | 24,158 | 0.01309589 | 0.01286668 | +0.00022921 |
+| reconcile 1 draw already processed by FWA | 106,005 | 160,656 | **54,651** | 0.000800025 | 0.00080328 | −0.000003255 at 50k |
+| process + reconcile 1 timed-out draw | 130,803 | 165,523 | 34,720 | 0.000924015 | 0.000827615 | +0.0000964 |
+| reconcile 1 NFT win | 184,431 | 217,082 | 32,651 | 0.001192155 | 0.00108541 | +0.000106745 |
+| reconcile + replace 1 Shape | 874,619 | 865,570 | 0 (refunds) | 0.004663095 | 0.00432785 | +0.000335245 |
+| reconcile + replace 5 Shapes | 2,639,848 | 2,573,204 | 0 (refunds) | 0.01364924 | 0.01286602 | +0.00078322 |
+| closed: reconcile 5 timed-out draws | 140,263 | 196,987 | **56,724** | 0.001051315 | 0.000984935 | +0.00006638 |
+
+(Rows measured with the 50k overhead; "paid" includes work fees.) Out-of-span gas is intrinsic + calldata (~22k), the
+library payment call with the economics struct, the policy quote (cold), the bucket write, the ETH transfer (9k) and the
+event; refunds from in-span storage clears hide it in the heavier classes. The reconcile-only classes show it plainly.
+Reported (not re-measured here): at main the 5 gwei wallet test passed this class with only 60e9 wei to spare and failed from 7ed3335 by ~165e9 wei, i.e. it was covered only by the 0.00002 ETH work fee.
+**Default `overheadGas` is 60,000** (worst 56,724 + 5.8%). Re-run at 60k: every class passes with billed − measured ≤
+56,712 and the 5 gwei wallet run nets +0.00198 ETH over the setup, timed-out, NFT, 1- and 5-Shape calls.
+
+Consequence: the single-Shape reconcile-and-replace call at the ceiling now pays (874,586 + 60,000) × 5 gwei + 2 work
+fees = 0.00471293 ETH, above the 900k surcharge (0.0047). **Default `restockGas` is 910,000** (needs ≥ 902,586; V1's
+7,414 margin kept; surcharge 0.00475 ETH at the ceiling, 0.0007005 ETH at 0.5 gwei). Per-operation gas bounds were left
+unchanged: every class measured below its bound (largest ratio 874,619 / 1,200,000).
+
 ## Focused curated-proof follow-up, 2026-11-18
 
 [Current focused evidence](AUDIT-FOLLOWUP-RESULTS.md) supersedes historical admission measurements below.

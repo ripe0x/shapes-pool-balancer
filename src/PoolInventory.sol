@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolBalancer} from "./PoolBalancer.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
+import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 import {IFWAPool, IShapes, IShapePacks, IERC721Min} from "./interfaces/External.sol";
 
 /// @dev Compiler-linked immutable inventory implementation, not a creator-selected policy. Delegatecall preserves
@@ -30,13 +31,12 @@ library PoolInventory {
         uint256 plan;
         uint256 markup;
         uint256 keep;
-        uint256 maxReward;
+        IKeeperPolicy.Economics econ;
         uint256 draws;
         uint256 fee;
         address shapes;
         address packs;
         address pool;
-        address policy;
         bool paid;
     }
     uint256 constant MAX_OPS = 5;
@@ -286,13 +286,13 @@ library PoolInventory {
             // Only the candidate work's enforced bound is held, not the policy's unrelated full-call maximum.
             while (need != 0) {
                 uint256 reward = f.paid
-                    ? KeeperPolicyCalls.listingPaymentBound(f.maxReward, f.draws, used + need * w, n + need)
+                    ? KeeperPolicyCalls.listingPaymentBound(f.econ, f.draws, used + need * w, n + need)
                     : 0;
                 if (bal >= keep + need * each + reward) break;
                 --need;
             }
             if (need == 0) break; // stop at the first size not fully restocked, so restocking stays in value order
-            uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(f.policy, uint8(d), w, f.paid, block.basefee);
+            uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(f.econ, uint8(d), w, f.paid, block.basefee);
             if (d < SHAPE_DENOMS) {
                 uint256 first = SHAPES.mintBatch{value: need * each}(_amount(d), need);
                 emit ShapesMinted(uint8(d), first, need, need * each);

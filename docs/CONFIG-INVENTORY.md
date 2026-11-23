@@ -1,13 +1,95 @@
 # Community release — configuration inventory and economics design
 
-Status: 2026-11-23. Authoritative inventory and implementation design for the community pool release
+Status: 2026-11-23, updated by slice A3 (keeper economics). Authoritative inventory for the community pool release
 (spec `community-release-spec.md`, Part B overrides Part A). This is deliverable #2/#6 of the spec.
+Slice A3 implemented §1d, §2 and §3 below; the "as built" section (§0) is current and supersedes the ◻︎ design text
+kept further down as history.
 
 This document separates **what is implemented on `claude/community-release`** from **what is designed and
 remains to be implemented**, because the full keeper-economics rework is a large, fork-verified change that
 one implementation pass cannot land and verify to mainnet-candidate quality. Each row/section is marked.
 
 Legend: ✅ implemented + compiles · ◻︎ designed, not yet implemented · ⚠︎ decision/risk.
+
+---
+
+## 0. Keeper economics as built (slice A3) ✅
+
+### 0a. `IKeeperPolicy.Economics` (one struct; factory default, pool local or pinned copy)
+
+Set whole by `BalancerFactory.setEconomics(Economics)` (policyAdmin, immediate, O(1), `EconomicsChanged(e)`), or per
+pool by `setLocalEconomics(e)` (creator). Getters: `factory.economics()`, `pool.effectiveEconomics()`,
+`pool.economicsSource()`. Field widths are the only numeric bounds (they keep every product far below uint256 and
+every surcharge < 2^98, inside a listing's uint104 price record); only `policy` is validated (code +
+`interfaceVersion() == 2`).
+
+| Field | Type | Initial | Was | Meaning / consumers |
+|---|---|---|---|---|
+| `policy` | address | KeeperPolicyV1 (ctor arg) | per-pool snapshot of `defaultKeeperPolicy` | pricing algorithm; receives the struct with every quote (`quoteReward(w, e)`, `quoteRestock(d, units, baseFee, e)`) |
+| `workFee` | uint64 wei | 0.00002 ETH | V1 constant; envelope 0.00005 | per reconciled draw sequence and per listed Shape unit |
+| `maxGas` | uint32 | 3,200,000 | V1 constant; envelope 6M | reimbursable measured gas per call; caps the operation bounds |
+| `overheadGas` | uint32 | **60,000** (recalibrated) | V1 50k; envelope 100k | gas outside the measured span |
+| `gasPriceCeiling` | uint64 wei | 5 gwei | V1; envelope 50 gwei | reimbursed price cap |
+| `priorityAllowance` | uint64 wei | 0.05 gwei | V1; envelope 0.1 gwei | reimbursed price = min(basefee + allowance, ceiling, tx gas price) |
+| `restockGas` | uint32 | **910,000** (recalibrated) | V1 900k | surcharge gas per Shape; also the fallback schedule |
+| `restockFlat` | uint64 wei | 0.0002 ETH | V1 | surcharge flat per Shape; also the fallback |
+| `baseGas` / `processGas` / `reconcileGas` / `shapeGas` / `prizeGas` | uint32 | 200k / 1.8M / 150k / 700k / 150k | library constants | per-operation gas bounds: paid gas = min(measured, Σ bounds, maxGas); maintenance and reserve budgets |
+
+Derived, not stored (getters on the pool, from the effective economics):
+- maximum keeper payment `policyMaxReward() = (maxGas + overheadGas) * gasPriceCeiling + 10 * workFee` = **0.0165 ETH**
+  (V1 at 50k: 0.01645, asserted in `test/KeeperEconomics.t.sol`). 10 = MAX_RECONCILE + MAX_OPS.
+- maximum restocking surcharge `maxRestockSurchargePerShape() = restockGas * gasPriceCeiling + restockFlat` =
+  **0.00475 ETH** (V1 at 900k: 0.0047). A policy quote above `units *` this is refused (paid) or replaced by the fallback.
+- fallback restocking price = the same schedule at the current basefee (explicit, bounded, from the selected economics).
+
+Removed (no longer exist anywhere): `HARD_MAX_REWARD` 0.311 ETH, `MAX_RESTOCK_SURCHARGE` 0.102 ETH, the 50 gwei /
+0.1 gwei / 6M / 100k / 0.00005 ETH enforcement schedule, the fallback literals, `IKeeperPolicy.maxReward()`, the
+per-pool `maxReward` snapshot, `policyFunding(address)`, `hardMaxKeeperReward()`, `setDefaultKeeperPolicy`,
+`DefaultPolicyChanged`/`KeeperPolicyChanged`. One schedule enforces and prices; a different algorithm can only charge
+within it, and the owner raises the schedule by setter, never by redeploy.
+
+Recalibrations (fresh measurement, `docs/GAS.md` "Slice A3"): `overheadGas` 50k → 60k because isolated receipts at
+5 gwei billed up to 56,724 gas outside the measured span; `restockGas` 900k → 910k because at 60k overhead the
+single-Shape reconcile-and-replace call's pay (874,586 + 60,000 gas + two work fees) needs ≥ 902,586 for the
+surcharge to cover it at the ceiling (V1's 7,414-gas margin kept).
+
+### 0b. Per-pool keeper state (creator authority, all immediate)
+
+| Setting | Getter | Setter | Initial | Rules |
+|---|---|---|---|---|
+| source | `economicsSource()` 0 follow / 1 local / 2 pinned | `followFactoryEconomics()`, `setLocalEconomics(e)`, `pinEconomics()`, `setKeeperPolicy(p)` (= local with the effective numbers and `p`) | 0 follow | pin copies the complete effective struct; follow resumes with the latest factory struct |
+| paid upkeep | `paidUpkeepEnabled()` | `setPaidUpkeepEnabled(bool)` | true | only this setter re-enables; no source/policy change or factory update touches it |
+| bucket capacity / refill | `keeperBucketCapacity()`, `keeperBucketRefill()`, `availableKeeperAllowance()`, `keeperAllowance()`, `keeperAllowanceTime()` | `setKeeperBucket(uint128 capacity, uint96 refillPerSecond)` | factory defaults at creation: 0.622 ETH, floor(0.05 ETH / 12) = 4,166,666,666,666,666 wei/s | accrue at old rate, keep spent, clamp on decrease, no fill on increase, new rate from now; zero refill allowed; nothing else resets it |
+| generation | `policyGeneration()` | advances on every source, economics or paid-state change | 0 | part of `settingsHash` |
+
+Factory bucket defaults: `defaultBucketCapacity()`, `defaultBucketRefill()`, `setDefaultBucket(capacity, refill)`
+(policyAdmin, new pools only).
+
+### 0c. Resolver, hash, funding
+
+- Resolver `_econ()`: follow → `factory.economics()`, else the pool's copy. `_performUpkeep` resolves once and passes
+  the struct to the hash check, `PoolInventory.fill` (listing payment bounds + restocking price) and
+  `KeeperPolicyCalls.pay` (policy quote + envelope + bucket). Views (`requiredReserve`, `quoteKeeperReward`,
+  `restockFee*`, `maintenanceFunding`) resolve once each. Paid upkeep off = zero economics in the reserve.
+- `settingsHash() = keccak256(abi.encode(economics, source, generation, paidEnabled, SHAPES.mintFee()))`. Moves on any
+  factory change for followers, on any local change, on the live mint fee; a pinned or local pool's does not move on
+  factory updates. `performUpkeep(expected, …)` checks it before any work; creation requires
+  `CreationConfig.settingsHash == factory.creationSettingsHash()` before the clone is deployed.
+- Funding: local transitions (local, pin, follow, policy switch, re-enable) need `maintenanceBudget(next)` in operating
+  cash only when it exceeds the current paid exposure (zero while stopped); never missing inventory. Factory updates
+  check nothing per pool; `maintenanceFunding(e)` exposes `(required, shortfall)`, and a short follower's paid
+  upkeep reverts `PaymentUnavailable` beyond cash or bucket while unpaid upkeep, claims and recovery stay usable.
+- Mint fee cap: `configure`/creation reject an accepted fee above `type(uint96).max` (reserve and uint104 price safety).
+
+### 0d. Remaining immutable technical limits (not business preferences)
+
+| Limit | Value | Why |
+|---|---|---|
+| policy call gas | 100,000 | bounds an untrusted static call |
+| policy returndata | 32 bytes | returndata-bomb bound |
+| service units per call | 10 | MAX_RECONCILE + MAX_OPS; derives the maximum payment |
+| field widths | see §0a | arithmetic and price-record safety |
+| work per call | 5 / 4 / 2 / 5 / 20 | §1c, unchanged |
 
 ---
 
@@ -28,18 +110,18 @@ initial value, bounds, derived values and consumers. "Consumers" lists on-chain 
 | **`fillGateBps`** | ✅ | creator | `fillGateBps()` | `setFillGateBps` | **7000** | `0..10000` (0 drops target-fill req, keeps `prizeWeight<lost` check) | `PoolInventory.admission`, app preview (Phase B) |
 | **`backlogThreshold`** | ✅ | creator | `backlogThreshold()` | `setBacklogThreshold` | **5 (=MAX_BATCH)** | `>= 1`; no factory max this release | `PoolInventory.admission` (status 4), app |
 | `fillGateBps`/`backlog` at creation | ◻︎ Phase B | creator | — | add to `CreationConfig` + app creation flow | defaults above | — | creation UI |
-| bucket capacity | ◻︎ | creator | `keeperBucketCapacity()` (A2: read-only getter of the library constant) | `setKeeperBucket` (new) | 0.622 ETH | `>=0`; see §4 accrual | `pay`/`available` |
-| bucket refill/s | ◻︎ | creator | `keeperBucketRefill()` (A2: read-only getter of the library constant) | `setKeeperBucket` | `floor(0.05 ether/12)` | `>=0` (0 = no refill) | `pay`/`available` |
-| follow vs local | ◻︎ | creator | `economicsSource()` (new) | `followFactory()` / `setLocalEcon()` / `pinEconomics()` | follow | — | resolver §3 |
+| bucket capacity | ✅ A3 | creator | `keeperBucketCapacity()` | `setKeeperBucket(capacity, refill)` | factory default 0.622 ETH | uint128; see §0b | `pay`/`available` |
+| bucket refill/s | ✅ A3 | creator | `keeperBucketRefill()` | `setKeeperBucket` | factory default `floor(0.05 ether/12)` | uint96 (0 = no refill) | `pay`/`available` |
+| follow vs local | ✅ A3 | creator | `economicsSource()` | `followFactoryEconomics()` / `setLocalEconomics(e)` / `pinEconomics()` | follow | — | resolver §0c |
 | paid upkeep enabled | ✅ A2 immediate | creator | `paidUpkeepEnabled()`, `policyGeneration()` | `setPaidUpkeepEnabled(bool)`; re-enable checks maintenance budget vs zero paid exposure | true | bool; stop survives factory updates and creator transfer; only the creator re-enables | `_performUpkeep`, `settingsHash` |
-| keeper policy (algorithm) | ✅ A2 immediate | creator | `keeperPolicy()`, `policyMaxReward()` | `setKeeperPolicy(address)` (immediate; funding check on larger maintenance exposure only; enables paid upkeep) | factory default @ creation | `KeeperPolicyCalls.validate` | quote/pay/restock |
-| library value getters | ✅ A2 | — (read-only) | `hardMaxKeeperReward()` 0.311, `keeperBucketCapacity()` 0.622, `keeperBucketRefill()` 4_166_666_666_666_666 wei/s, `maxRestockSurchargePerShape()` 0.102 | A3 makes configurable | — | — | replaced the stale public constants `HARD_MAX_KEEPER_REWARD`, `KEEPER_BURST`, `KEEPER_REFILL_PER_SECOND`, `MAX_RESTOCK_SURCHARGE_PER_SHAPE`, `POLICY_DELAY`; `keeper/e2e.ts` reads `hardMaxKeeperReward` |
+| keeper policy (algorithm) | ✅ A3 | creator | `keeperPolicy()` (effective), `policyMaxReward()` (derived) | `setKeeperPolicy(address)`: local economics with the effective numbers and this algorithm; funding check on larger maintenance exposure only; **no longer enables paid upkeep** (A3 fix) | follows the factory | `KeeperPolicyCalls.validate` | quote/pay/restock |
+| former library value getters | ✅ A3 | — (views) | `keeperBucketCapacity()`/`keeperBucketRefill()` now the pool's own bucket; `maxRestockSurchargePerShape()` derived from effective economics (0.00475); `hardMaxKeeperReward()` **removed** (no outer ceiling); `policyMaxReward()` derived (0.0165) | — | — | — | `keeper/e2e.ts` reads `policyMaxReward` |
 
 ### 1b. Factory settings (`BalancerFactory`, `policyAdmin` unless noted)
 
 | Setting | Status | Authority | Getter | Update path | Initial | Bounds | Consumers |
 |---|---|---|---|---|---|---|---|
-| `defaultKeeperPolicy` | ✅ A2 immediate | policyAdmin | `defaultKeeperPolicy()` | `setDefaultKeeperPolicy` (immediate, `DefaultPolicyChanged`) | ctor arg | `validate` | new clones only |
+| `defaultKeeperPolicy` | ✅ A3: field of `economics()` | policyAdmin | `defaultKeeperPolicy()` (= `economics().policy`) | `setEconomics` (A2's `setDefaultKeeperPolicy` removed) | ctor arg | `validate` | every follower, immediately |
 | `maxPrizes` | ✅ A2 | policyAdmin | `productLimits().maxPrizes` | `setProductLimits(maxPrizes,min,max)` (immediate, `ProductLimitsChanged`) | **1000** | `1..65535` (uint16 width) | `validateTarget` at creation/configure only |
 | `minMarkupBps` | ✅ A2 | policyAdmin | `productLimits().minMarkupBps` | `setProductLimits` | **1000** | `1..maxMarkupBps` (0 marks an unconfigured pool) | `validateTarget` |
 | `maxMarkupBps` | ✅ A2 | policyAdmin | `productLimits().maxMarkupBps` | `setProductLimits` | **10000** | `minMarkupBps..65535` (uint16 width) | `validateTarget` |
@@ -50,7 +132,8 @@ markup even if it is now outside the range; any other markup must be in range. S
 re-save (e.g. to accept a mint fee) an existing design, but cannot grow past `max(current, maxPrizes)`; once the
 markup is changed the old out-of-range value is no longer "current". Creation always uses the current limits.
 Upkeep, recovery, withdrawals and existing listing prices never consult the limits.
-| factory **EconConfig** (whole struct) | ◻︎ | policyAdmin | `econConfig()` | `setEconConfig` (validated whole-struct) | V1 values (§2) | per-field arithmetic bounds §2 | resolver §3 → every money path |
+| factory **Economics** (whole struct) | ✅ A3 | policyAdmin | `economics()` | `setEconomics(e)` (policy validated; widths bound numbers) | §0a | §0a | resolver §0c → every money path |
+| factory bucket defaults | ✅ A3 | policyAdmin | `defaultBucketCapacity()`, `defaultBucketRefill()` | `setDefaultBucket` | 0.622 ETH, floor(0.05 ETH/12) | uint128 / uint96 | new pools only |
 | keeperAdmin / restricted / approved | existing | keeperAdmin | getters | setters (two-step admin) | — | — | `canKeep` |
 
 ⚠︎ The reusable branch `claude/pool-settings-rework` put **work-per-upkeep (maxOps/maxReconcile/maxProcess/
@@ -69,7 +152,7 @@ factory setters over.
 | curated batch | 20 | bounds the 100k-gas purchase-hook witness scan and `listNFTs` gas. |
 | `MAX_BATCH` | 5 | FWA `maxAcquisitionsPerTx`, verified against the FWA factory at creation. Protocol identity, not tunable. |
 
-### 1d. Immutable monetary ceilings to REMOVE (spec §4.6 — "arbitrary obstacles")
+### 1d. Immutable monetary ceilings to REMOVE (spec §4.6) — ✅ removed in A3, see §0a
 
 | Current literal | Where | Replacement |
 |---|---|---|
@@ -80,7 +163,7 @@ factory setters over.
 
 ---
 
-## 2. EconConfig initial values (spec §4 "start with V1", verify derived maxima)
+## 2. EconConfig initial values (A1 design, history; as built in §0a with 60k overhead and 910k restocking gas)
 
 ```
 workFee            = 0.00002 ether
@@ -117,7 +200,7 @@ The outer clamp becomes `config.maxReward` only; retain one absolute anti-overfl
 
 ---
 
-## 3. Config / resolver / pin / bucket / hash design (◻︎ core rework)
+## 3. Config / resolver / pin / bucket / hash design (A1 design, history; as built in §0b-§0c)
 
 Follows Part B §4 ("one factory config, optional local snapshot/override, one bucket, one resolver").
 

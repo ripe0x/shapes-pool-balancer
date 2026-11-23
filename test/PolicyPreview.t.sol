@@ -9,13 +9,12 @@ import {GasProbe} from "./utils/FlowBreakdown.sol";
 contract CallerSensitivePolicy is IKeeperPolicy {
     address immutable balancer;
     constructor(address b) { balancer = b; }
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 99; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteRestock(uint8, uint256 units, uint256) external view returns (uint256) {
-        return units * (msg.sender == balancer ? 0.102 ether : 0.0002 ether);
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external view returns (uint256) {
+        return units * (msg.sender == balancer ? 0.004 ether : 0.0002 ether);
     }
-    function quoteReward(Work calldata) external view returns (uint256) {
+    function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {
         return msg.sender == balancer ? 0.0003 ether : 0.0001 ether;
     }
 }
@@ -35,11 +34,11 @@ contract PolicyPreviewTest is ForkBase {
         fillUp();
         CallerSensitivePolicy policy = new CallerSensitivePolicy(address(balancer));
         vm.prank(creator); balancer.setKeeperPolicy(address(policy));
-        assertEq(policy.quoteRestock(0, 1, block.basefee), 0.0002 ether);
+        assertEq(policy.quoteRestock(0, 1, block.basefee, factory.economics()), 0.0002 ether);
         uint256 fee = balancer.restockFeeFor(0);
-        assertEq(fee, 0.102 ether);
+        assertEq(fee, 0.004 ether, "within the 0.0047 ETH per-Shape maximum of the effective economics");
         IKeeperPolicy.Work memory w = IKeeperPolicy.Work(1_000_000, 1 gwei, 0.5 gwei, 0, 1, 1, 0);
-        assertEq(policy.quoteReward(w), 0.0001 ether);
+        assertEq(policy.quoteReward(w, factory.economics()), 0.0001 ether);
         assertEq(balancer.quoteKeeperReward(w), 0.0003 ether);
         uint256[] memory ids = balancer.getActiveIds();
         uint256[] memory one = new uint256[](1);

@@ -11,11 +11,10 @@ import {GasProbe} from "./utils/FlowBreakdown.sol";
 
 /// @dev Immutable arithmetic policy for the literal cash/credit/reserve regression, not a production recommendation.
 contract ExactCashPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 1; }
+    function interfaceVersion() external pure returns (uint256) { return 2; }
     function version() external pure returns (uint256) { return 101; }
-    function maxReward() external pure returns (uint256) { return 0.1 ether; }
-    function quoteReward(Work calldata) external pure returns (uint256) { return 0; }
-    function quoteRestock(uint8, uint256 units, uint256) external pure returns (uint256) {
+    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0; }
+    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
         return units * 0.008 ether;
     }
 }
@@ -67,13 +66,13 @@ contract ProtectedRevenueAtomicTest is ForkBase {
     function _creation(uint256 t, uint16 rate)
         internal view returns (PoolBalancer.CreationConfig memory c, uint256 funding)
     {
-        c = PoolBalancer.CreationConfig(1500, rate, t, shapes.mintFee(), true);
+        c = PoolBalancer.CreationConfig(1500, rate, t, shapes.mintFee(), true, factory.creationSettingsHash());
         KeeperPolicyCalls.Reserve memory r;
         r.enabled = true;
         r.target = t;
         r.mintFee = c.mintFeeCap;
         r.baseFee = block.basefee;
-        funding = KeeperPolicyCalls.reserve(0.01645 ether, r);
+        funding = KeeperPolicyCalls.reserve(factory.economics(), r);
     }
 
     function _atomic(uint256 t, uint16 rate) internal {
@@ -258,8 +257,8 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         upkeep();
         uint256 credit = balancer.creatorCredit();
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertEq(required, 0.00368 ether, "one operating call at 0.5 gwei, no missing backing");
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(_econWith(address(v2)));
+        assertEq(required, _workingBuffer(), "one operating call at 0.5 gwei, no missing backing");
         assertEq(shortfall, 0);
         assertGt(balancer.requiredReserve(), 100 ether);
         uint256 allowance = balancer.keeperAllowance();
@@ -271,12 +270,16 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         assertGt(balancer.requiredReserve(), 100 ether);
         vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
-        (required, shortfall) = balancer.policyFunding(address(v2));
-        assertEq(required, 0.02753 ether);
+        // A policy change while stopped adds no paid exposure and leaves paid upkeep stopped.
+        address same = balancer.keeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(same);
+        assertFalse(balancer.paidUpkeepEnabled(), "a policy change never re-enables paid upkeep");
+        (required, shortfall) = balancer.maintenanceFunding(balancer.effectiveEconomics());
+        assertEq(required, (3_200_000 + V1_OVERHEAD) * 5 gwei + 0.0002 ether, "one operating call at the 5 gwei ceiling");
         assertGt(shortfall, 0, "re-enable compares with zero effective paid exposure");
-        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setPaidUpkeepEnabled(true);
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
         assertEq(address(balancer).balance - credit, required);
         assertGt(balancer.requiredReserve(), required, "funding maintenance does not restore inventory");
     }
@@ -295,8 +298,10 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         balancer = PoolBalancer(payable(factory.createBalancer{value: 1 ether}(salt, config, initial)));
         vm.stopPrank();
         pool = balancer.pool();
-        ExactCashPolicy policy = new ExactCashPolicy();
-        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
+        // The 0.008 ETH surcharge needs economics whose per-Shape maximum allows it: raise the flat part locally.
+        IKeeperPolicy.Economics memory e = _econWith(address(new ExactCashPolicy()));
+        e.restockFlat = 0.008 ether;
+        vm.prank(creator); balancer.setLocalEconomics(e);
         for (uint256 i; i < 4; ++i) {
             vm.prank(stranger); balancer.performUpkeepUnpaid();
         }
@@ -319,12 +324,13 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         GasProbe witness = new GasProbe(); witness.record();
         assertEq(witness.baseFee(), 20 gwei);
         assertEq(witness.gasPrice(), 20.05 gwei);
-        assertEq(balancer.requiredReserve(), 0.10 ether);
-        assertEq(balancer.withdrawableSurplus(), 0.10 ether, "credit is counted exactly once");
+        // One operating call at the 5 gwei ceiling of these economics: (3.2M + 60k) * 5 gwei + ten work fees.
+        assertEq(balancer.requiredReserve(), 0.0165 ether);
+        assertEq(balancer.withdrawableSurplus(), 0.1835 ether, "credit 0.02 counted exactly once, plus 0.18 - 0.0165");
         uint256 creatorBefore = creator.balance;
-        vm.prank(creator); balancer.claimSurplus(0.10 ether, creator);
-        assertEq(creator.balance - creatorBefore, 0.10 ether);
-        assertEq(address(balancer).balance, 0.10 ether);
+        vm.prank(creator); balancer.claimSurplus(0.1835 ether, creator);
+        assertEq(creator.balance - creatorBefore, 0.1835 ether);
+        assertEq(address(balancer).balance, 0.0165 ether);
         assertEq(balancer.creatorCredit(), 0);
         assertEq(balancer.withdrawableSurplus(), 0);
     }
@@ -403,9 +409,10 @@ contract ProtectedRevenueAtomicTest is ForkBase {
     function test_policyChangeChecksPendingRequestsAndBasefeeAtExecution() public {
         _atomic(20, 1000);
         _pruneSurplus();
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        (uint256 beforeRequired, uint256 beforeShortfall) = balancer.policyFunding(address(v2));
-        assertEq(beforeRequired, 0.00368 ether);
+        IKeeperPolicy.Economics memory higher = balancer.effectiveEconomics();
+        higher.gasPriceCeiling = 10 gwei;
+        (uint256 beforeRequired, uint256 beforeShortfall) = balancer.maintenanceFunding(higher);
+        assertEq(beforeRequired, _workingBuffer(), "below the old ceiling a higher ceiling changes nothing");
         assertEq(beforeShortfall, 0);
         vm.fee(5 gwei);
         vm.txGasPrice(5.05 gwei);
@@ -416,14 +423,16 @@ contract ProtectedRevenueAtomicTest is ForkBase {
         buy(buyer, 1);
         buy(stranger, 1);
         assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertEq(required, 0.05058 ether, "two actual processing bounds plus one bounded operating call at 5 gwei");
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(higher);
+        assertEq(required, 2 * ((2_150_000 + V1_OVERHEAD) * 5.05 gwei + 0.00002 ether)
+            + (3_200_000 + V1_OVERHEAD) * 5.05 gwei + 0.0002 ether,
+            "two actual processing bounds plus one bounded operating call at 5.05 gwei");
         assertEq(shortfall, required - (address(balancer).balance - balancer.creatorCredit()));
-        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(v2));
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setLocalEconomics(higher);
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
-        assertEq(balancer.keeperPolicy(), address(v2));
-        assertEq(pool.unsettledAcquisitionCount(), 2, "a policy change does not manufacture queue work");
+        vm.prank(creator); balancer.setLocalEconomics(higher);
+        assertEq(balancer.effectiveEconomics().gasPriceCeiling, 10 gwei);
+        assertEq(pool.unsettledAcquisitionCount(), 2, "an economics change does not manufacture queue work");
     }
 
     function test_atomicThousandPrizeCreationMintsNoneAndFirstUpkeepStaysBounded() public {

@@ -372,3 +372,16 @@ economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
   live fee while it is at most the cap; above it, minting stops and purchases of listed prizes and recovery
   continue; the reserve prices missing prizes at the cap. The app offers the save whenever the live fee differs
   from the cap (higher or lower) and passes the fee it shows.
+- R91. **One keeper economic configuration** (slice A3; spec §2, §4-§6, B§1, B§4). Factory `economics()` /
+  `setEconomics` (policyAdmin, immediate, constant work) holds the algorithm, the V1 pricing numbers and the
+  per-operation gas bounds; the 0.311 ETH, 0.102 ETH, 50 gwei and other enforcement literals are removed. Pools follow
+  by default, or the creator sets local economics, pins the complete effective configuration, or resumes following.
+  Supersedes R88's "policy" wording: a policy is now an algorithm inside the economics; `setKeeperPolicy` keeps the
+  paid-upkeep state (it no longer re-enables).
+- R92. **Per-pool spending bucket is a creator setting** (spec §5): `setKeeperBucket(capacity, refill)`, initial
+  0.622 ETH and floor(0.05 ETH / 12) wei/s from factory defaults; accrual rules as in the brief; nothing else resets it.
+- R93. **Settings hash covers the live Shapes mint fee** and binds creation and paid upkeep (spec §6).
+- R94. **Measured recalibration of two V1 numbers** (spec §10): overhead 50k → 60k gas and restocking gas 900k →
+  910k per Shape, so a paid call's reimbursement covers its billed gas and a replacement's surcharge covers the call
+  that lists it at the 5 gwei ceiling. Derived maxima 0.0165 ETH per payment and 0.00475 ETH per Shape (V1: 0.01645,
+  0.0047). **Owner visibility:** these differ from the brief's V1 list; both are factory settings and can be set back.

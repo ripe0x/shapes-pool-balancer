@@ -1,4 +1,4 @@
-import { BaseError, ChainMismatchError, UserRejectedRequestError, encodeFunctionData, type Address, type Hash, type PublicClient, type Transaction } from 'viem';
+import { BaseError, ChainMismatchError, UserRejectedRequestError, encodeFunctionData, zeroHash, type Address, type Hash, type Hex, type PublicClient, type Transaction } from 'viem';
 import { ConnectorAccountNotFoundError, ConnectorChainMismatchError, ConnectorNotConnectedError } from '@wagmi/core';
 import { balancerFactoryAbi, fwaPoolAbi, poolBalancerAbi } from '../../shared/abi';
 
@@ -14,7 +14,8 @@ export interface CreationAttempt {
   /** Observed on the actual submitted transaction, never a pre-wallet nonce estimate. */
   nonce?: number;
   fromBlock?: string;
-  config: { markupBps: number; creatorRevenueBps: number; target: string; mintFeeCap: string; curatedRequired?: boolean };
+  /** settingsHash: the factory's creationSettingsHash the creator reviewed; absent only in attempts saved before A3. */
+  config: { markupBps: number; creatorRevenueBps: number; target: string; mintFeeCap: string; curatedRequired?: boolean; settingsHash?: Hex };
   curated: { collection: Address; tokenId: string; base: string }[];
   value: string;
 }
@@ -28,7 +29,7 @@ export const sameCreation = (a?: CreationAttempt, b?: CreationAttempt) => !!a &&
   && sameAddress(a.predicted, b.predicted) && a.salt === b.salt && a.value === b.value
   && a.config.markupBps === b.config.markupBps && a.config.creatorRevenueBps === b.config.creatorRevenueBps
   && a.config.target === b.config.target && a.config.mintFeeCap === b.config.mintFeeCap
-  && !!a.config.curatedRequired === !!b.config.curatedRequired
+  && !!a.config.curatedRequired === !!b.config.curatedRequired && a.config.settingsHash === b.config.settingsHash
   && a.curated.length === b.curated.length && a.curated.every((n, i) => sameAddress(n.collection, b.curated[i].collection)
     && n.tokenId === b.curated[i].tokenId && n.base === b.curated[i].base);
 
@@ -64,7 +65,7 @@ type Remember = (next: CreationAttempt, previous?: CreationAttempt) => void;
 type CreationClient = Pick<PublicClient, 'getChainId' | 'getBlockNumber' | 'getBlock' | 'getTransactionCount' | 'readContract' | 'getTransactionReceipt' | 'getTransaction' | 'getLogs'>;
 const balancerCreated = balancerFactoryAbi.find(e => e.type === 'event' && e.name === 'BalancerCreated')!;
 const creationInput = (a: CreationAttempt) => encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer',
-  args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired },
+  args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired, settingsHash: a.config.settingsHash ?? zeroHash },
     a.curated.map(n => ({ ...n, tokenId: BigInt(n.tokenId), base: BigInt(n.base) }))] });
 const isCreationTransaction = (a: CreationAttempt, t: Transaction) => sameAddress(t.from, a.creator)
   && sameAddress(t.to ?? undefined, a.factory) && t.input === creationInput(a) && t.value === BigInt(a.value);
