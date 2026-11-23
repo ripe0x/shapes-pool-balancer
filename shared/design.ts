@@ -66,7 +66,7 @@ export const JACKPOT_MULTIPLE = 50;
  * numerous sizes to fit the Shape limit.
  */
 export function styleBonus(style: Style, d: DesignInputs, small: number): Counts {
-  const room = MAX_SHAPES_PER_PLAN - small;
+  const room = (d.maxPrizes ?? MAX_SHAPES_PER_PLAN) - small;
   if (style === 'lowPrice' || room <= 0) return NONE;
   if (style === 'balanced') {
     const b = [...NONE];
@@ -121,10 +121,11 @@ export const presetCounts = (style: Style, d: DesignInputs, small: number): Coun
  * compute for every count.
  */
 export function presetMaxSmall(style: Style, d: DesignInputs): number {
-  let lo = 1, hi = MAX_SHAPES_PER_PLAN;
+  const max = d.maxPrizes ?? MAX_SHAPES_PER_PLAN;
+  let lo = 1, hi = max;
   while (lo < hi) {
     const m = (lo + hi) >> 1;
-    if (m + shapeCount(styleBonus(style, d, m)) >= MAX_SHAPES_PER_PLAN) hi = m; else lo = m + 1;
+    if (m + shapeCount(styleBonus(style, d, m)) >= max) hi = m; else lo = m + 1;
   }
   return lo;
 }

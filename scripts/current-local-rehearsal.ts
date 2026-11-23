@@ -9,6 +9,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPublicClient, createTestClient, createWalletClient, decodeFunctionData, encodeFunctionData, decodeErrorResult, getContractAddress, http, keccak256, TransactionReceiptNotFoundError, WaitForTransactionReceiptTimeoutError, type Address, type Hash, type Hex } from 'viem';
 import { verifyActions } from './prepare-local-rehearsal';
+import { creationOrder, LIBRARIES } from './verify-deployment';
 import { recoverCreation, canRetryCreation, type CreationAttempt } from '../app/src/creation';
 import { Keeper, MAX_TRANSACTION_GAS } from '../keeper/keeper';
 import { balancerFactoryAbi, erc721Abi, poolBalancerAbi } from '../shared/abi';
@@ -108,8 +109,10 @@ export function validateCurrentBounds(p: any) {
     assert.deepEqual(Object.keys(p.artifacts), ARTIFACTS);
     assert.deepEqual(p.forgeArguments, forgeArguments(p));
     assert.ok(p.deployment.reduce((n: bigint, a: any) => n + BigInt(a.gasLimit) * BigInt(p.maxFeePerGas), 0n) + BigInt(SCENARIO.closeoutGasReserveWei) <= CAPS.gas, 'deployment reserves fit shared gas cap');
-    assert.equal(p.deployment.length, 8);
-    assert.deepEqual(p.deployment.map((a: any) => a.name), SYSTEM_NAMES);
+    // Reuse mode (the replacement release) creates no Packs or renderer; a library already on the fork is skipped.
+    assert.equal(p.reuseDependencies, true, 'current rehearsal exercises the replacement deployment');
+    const names = p.deployment.map((a: any) => a.name);
+    assert.deepEqual(names, creationOrder(p.reuseDependencies).filter(n => names.includes(n) || !LIBRARIES.includes(n)));
 }
 export function validateCurrentPlan(packet: any, approved: string, executedRoot = ROOT) {
     const p = packet.plan;
@@ -128,6 +131,7 @@ export function validateCurrentPlan(packet: any, approved: string, executedRoot 
     sourceCheck(p, executedRoot);
     return p;
 }
+export function deploymentEnvironment(p: any) { return { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin, REUSE_DEPENDENCIES: String(p.reuseDependencies) }; }
 export function validateCurrentForgeArguments(p: any, args: string[]) { assert.deepEqual(args, forgeArguments(p), 'only exact local deployment arguments'); }
 function ownership(p: any) {
     const n = p.node;
@@ -194,7 +198,7 @@ export async function prepareCurrentPlan() {
     const log = openSync(join(evidenceDirectory, 'anvil.log'), 'a');
     const child = spawn(command[0], command.slice(1), { detached: true, stdio: ['ignore', log, log] });
     child.unref();
-    const p: any = { schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS) };
+    const p: any = { schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS), reuseDependencies: true };
     const local = createPublicClient({ transport: http(p.rpc, { timeout: 1000, retryCount: 0 }), cacheTime: 0 });
     let ready = false;
     for (let n = 0; n < 120; n++) {
@@ -211,7 +215,7 @@ export async function prepareCurrentPlan() {
     p.forgeArguments = forgeArguments(p);
     const scratch = stage(p);
     const args = ['script', 'script/Deploy.s.sol', ...p.forgeArguments.filter((a: string) => a !== '--broadcast')];
-    const output = execFileSync('forge', args, { cwd: scratch, env: { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    const output = execFileSync('forge', args, { cwd: scratch, env: deploymentEnvironment(p), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     writeFileSync(join(evidenceDirectory, 'deployment-simulation.log'), output);
     p.simulationRoot = scratch;
     p.simulationHash = digest(readFileSync(join(scratch, 'broadcast/Deploy.s.sol/31337/dry-run/run-latest.json')));
@@ -546,7 +550,7 @@ export class CurrentRehearsal {
         this.save();
         const args = ['--current-local-rehearsal-plan', this.plan.planFile, '--approved-plan-hash', this.packet.planHash, ...this.plan.forgeArguments];
         try {
-            const output = execFileSync('bash', [join(scratch, 'script/deploy.sh'), ...args], { cwd: scratch, env: { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+            const output = execFileSync('bash', [join(scratch, 'script/deploy.sh'), ...args], { cwd: scratch, env: deploymentEnvironment(this.plan), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
             writeFileSync(join(this.directory, 'canonical-deployment.log'), output);
         }
         catch (e) {
@@ -555,8 +559,8 @@ export class CurrentRehearsal {
             throw e;
         }
         const raw = JSON.parse(readFileSync(join(scratch, 'broadcast/Deploy.s.sol/31337/run-latest.json'), 'utf8'));
-        assert.equal(raw.transactions.length, 8);
-        for (let i = 0; i < 8; i++) {
+        assert.equal(raw.transactions.length, this.plan.deployment.length);
+        for (let i = 0; i < this.plan.deployment.length; i++) {
             const a = raw.transactions[i], expected = this.plan.deployment[i], tx = a.transaction;
             assert.equal(keccak256(tx.input), expected.inputHash);
             eq(a.contractAddress, expected.predictedAddress);
@@ -590,8 +594,8 @@ async function main() {
         assert.equal(args[6], '--');
         validateCurrentForgeArguments(p, args.slice(7));
         if (args[5] === 'deploy')
-            for (const [name, role] of [['PACKS_ADMIN', 'packsAdmin'], ['KEEPER_ADMIN', 'keeperAdmin'], ['POLICY_ADMIN', 'policyAdmin']])
-                eq(process.env[name] ?? '', ROLES[role]);
+            for (const [name, value] of Object.entries(deploymentEnvironment(p)).filter(([name]) => name !== 'PATH' && name !== 'HOME'))
+                eq(process.env[name] ?? '', value!);
         console.log(json(await currentPreflight(p, args[5])));
         return;
     }

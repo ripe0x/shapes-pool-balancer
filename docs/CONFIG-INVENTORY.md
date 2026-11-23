@@ -107,8 +107,8 @@ initial value, bounds, derived values and consumers. "Consumers" lists on-chain 
 | `mintFeeCap` (accepted fee) | ✅ A2 binding | creator | `mintFeeCap()` | `configure(..., acceptedMintFee)`: reverts if live fee > accepted; lower accepted fee allowed with the same design | creation `CreationConfig.mintFeeCap` | `>= live fee` at save | upkeep mint gate (mints at live fee while live <= cap), reserve (priced at cap), app "accept fee" when live != cap |
 | `creatorRevenueBps` | existing | creator | `creatorRevenueBps()` | `setCreatorRevenueBps` | creation | `<= 10000` | `_collect` credit split |
 | `curatedRequired` | existing | creator | `curatedRequired()` | `setCuratedRequired` | creation | bool | admission (status 3/7), app |
-| **`fillGateBps`** | ✅ | creator | `fillGateBps()` | `setFillGateBps` | **7000** | `0..10000` (0 drops target-fill req, keeps `prizeWeight<lost` check) | `PoolInventory.admission`, app preview (Phase B) |
-| **`backlogThreshold`** | ✅ | creator | `backlogThreshold()` | `setBacklogThreshold` | **5 (=MAX_BATCH)** | `>= 1`; no factory max this release | `PoolInventory.admission` (status 4), app |
+| **`fillGateBps`** | ✅ | creator | `fillGateBps()` | `setFillGateBps` | **7000** | `0..10000` (0 drops target-fill req, keeps `prizeWeight<lost` check) | `PoolInventory.admission`, app Settings "Purchase pauses" + Design pause preview |
+| **`backlogThreshold`** | ✅ | creator | `backlogThreshold()` | `setBacklogThreshold` | **5 (=MAX_BATCH)** | `>= 1`; no factory max this release | `PoolInventory.admission` (status 4), app Settings "Purchase pauses" |
 | `fillGateBps`/`backlog` at creation | ◻︎ Phase B | creator | — | add to `CreationConfig` + app creation flow | defaults above | — | creation UI |
 | bucket capacity | ✅ A3 | creator | `keeperBucketCapacity()` | `setKeeperBucket(capacity, refill)` | factory default 0.622 ETH | uint128; see §0b | `pay`/`available` |
 | bucket refill/s | ✅ A3 | creator | `keeperBucketRefill()` | `setKeeperBucket` | factory default `floor(0.05 ether/12)` | uint96 (0 = no refill) | `pay`/`available` |

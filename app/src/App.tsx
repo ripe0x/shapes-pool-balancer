@@ -5,7 +5,7 @@ import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, ty
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
-  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, MAX_SHAPES_PER_PLAN, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
+  BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
 import { chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
@@ -18,6 +18,9 @@ import { policyAbi, policyEconomics, type Economics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
+import { LegacyKeeperPay, LegacyTag, LimitsNote, PurchasePauses, poolGeneration, readProductLimits } from './PoolSettings';
+import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit } from './limits';
+import { LEGACY_FACTORIES, legacyFactory } from '../../shared/legacy';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
@@ -103,6 +106,8 @@ function useBalancer(b?: Address) {
     // The keeper list is on the factory that deployed this Balancer.
     const factoryAddr = await r<Address>('factory');
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
+    // A legacy factory's pool (shared/legacy.ts) is managed with its own ABI, limits and fixed admission settings.
+    const generation = await poolGeneration(pub, b, factoryAddr, blockNumber);
     const [keeperPolicy, paidUpkeepEnabled, policyMaxReward, recommendedPolicy] = await Promise.all([
       r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<bigint>('policyMaxReward'),
       pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy', blockNumber }),
@@ -132,7 +137,7 @@ function useBalancer(b?: Address) {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
-      keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber,
+      keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber, ...generation,
     };
   }, [pub, b]);
   type Snapshot = Awaited<ReturnType<typeof load>>;
@@ -451,15 +456,18 @@ export function App() {
     // (and offers not yet accepted) drop out.
     // Every pool this factory created, then transfers to this wallet among only those pools: an address-filtered scan
     // stays within public RPC limits, where an unfiltered one would search every contract on chain.
-    const all = await pub.getLogs({ address: FACTORY, event: CREATED, fromBlock: FROM_BLOCK });
+    // Legacy factories' pools are listed too and open through the legacy route (their own ABI, marked Legacy).
+    const sources = [{ factory: FACTORY, fromBlock: FROM_BLOCK }, ...LEGACY_FACTORIES];
+    const all = (await Promise.all(sources.map((s) => pub.getLogs({ address: s.factory, event: CREATED, fromBlock: s.fromBlock })))).flat();
+    const factoryOf = new Map(all.map((l) => [l.args.balancer!.toLowerCase(), l.address as Address]));
     const created = all.filter((l) => chain.id === 31337 || l.args.creator?.toLowerCase() === address.toLowerCase());
     const pools = all.map((l) => l.args.balancer!);
-    const received = pools.length ? await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: FROM_BLOCK }) : [];
+    const received = pools.length ? await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: sources.reduce((m, s) => (s.fromBlock < m ? s.fromBlock : m), FROM_BLOCK) }) : [];
     const candidates = [...new Set([...created.map((l) => l.args.balancer!), ...received.map((l) => l.address as Address)])];
-    // Any contract can emit CreatorTransferred: only Balancers this dashboard's factory deployed are listed.
+    // Any contract can emit CreatorTransferred: only Balancers this dashboard's factories deployed are listed.
     const owned = await Promise.all(candidates.map(async (b) => {
       const [ours, c] = await Promise.all([
-        pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [b] }) as Promise<boolean>,
+        pub.readContract({ address: factoryOf.get(b.toLowerCase())!, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [b] }) as Promise<boolean>,
         pub.readContract({ address: b, abi: poolBalancerAbi, functionName: 'creator' }) as Promise<Address>,
       ]).catch(() => [false, undefined] as const);
       return ours && c?.toLowerCase() === address.toLowerCase() ? b : undefined;
@@ -494,8 +502,9 @@ export function App() {
     if (!pub || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)) return;
     setOpeningAddress(true); setAddressError(undefined);
     try {
-      const valid = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [poolAddress as Address] });
-      if (!valid) throw new Error('This factory did not create that pool.');
+      const valid = await Promise.all([FACTORY, ...LEGACY_FACTORIES.map((f) => f.factory)].map((factory) =>
+        pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [poolAddress as Address] })));
+      if (!valid.some(Boolean)) throw new Error('Neither the current nor a legacy factory created that pool.');
       open(poolAddress as Address);
     } catch (e) { setAddressError(explain(e)); }
     finally { setOpeningAddress(false); }
@@ -552,15 +561,15 @@ const HEADS: Record<number, string> = { 0: 'Open', 1: 'Closed', 2: 'Stocking', 3
 /** Every pool this wallet created, with its state and ETH, and the way to start another. */
 function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Record<string, string>; onOpen: (b: Address) => void; onNew: () => void }) {
   const pub = usePublicClient();
-  const [info, setInfo] = useState<Record<string, { head: string; eth: bigint }>>({});
+  const [info, setInfo] = useState<Record<string, { head: string; eth: bigint; factory: Address }>>({});
   useEffect(() => {
     if (!pub) return;
     let live = true;
     Promise.all(pools.map(async (b) => {
       const r = <T,>(functionName: string) => pub.readContract({ address: b, abi: poolBalancerAbi, functionName: functionName as never }) as Promise<T>;
-      const [admission, target, shapes, balance] = await Promise.all([r<number>('admissionStatus'), r<bigint>('target'), r<number[]>('getActiveShapes'), pub.getBalance({ address: b })]);
+      const [admission, target, shapes, balance, factory] = await Promise.all([r<number>('admissionStatus'), r<bigint>('target'), r<number[]>('getActiveShapes'), pub.getBalance({ address: b }), r<Address>('factory')]);
       const backing = shapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
-      return [b, { head: target ? HEADS[admission] ?? 'Check the pool' : 'Not set up', eth: balance + backing }] as const;
+      return [b, { head: target ? HEADS[admission] ?? 'Check the pool' : 'Not set up', eth: balance + backing, factory }] as const;
     })).then((rows) => live && setInfo(Object.fromEntries(rows))).catch(() => undefined);
     return () => { live = false; };
   }, [pub, pools]);
@@ -571,7 +580,7 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
       <div className="poollist">
         {[...pools].reverse().map((b) => (
           <button key={b} onClick={() => onOpen(b)}>
-            <span className="pl-id"><span className="t">{names[b] ?? `Pool ${short(b)}`}</span>{names[b] && <span className="mono muted">{short(b)}</span>}</span>
+            <span className="pl-id"><span className="t">{names[b] ?? `Pool ${short(b)}`}</span>{names[b] && <span className="mono muted">{short(b)}</span>}<LegacyTag legacy={legacyFactory(info[b]?.factory)} /></span>
             <span className="pl-state">{info[b]?.head ?? '…'}</span>
             <span className="pl-eth mono">{info[b] ? `${eth(info[b].eth)} ETH` : ''}</span>
             <span aria-hidden="true" className="muted">→</span>
@@ -613,6 +622,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
               <span className="mono">{d.balancer}</span>
               <button className="link quiet" onClick={() => navigator.clipboard?.writeText(d.balancer)}>Copy address</button>
               <a href={FWA_POOL_URL(d.pool)} target="_blank" rel="noreferrer">Pool on FWA ↗</a>
+              <LegacyTag legacy={d.legacy} />
             </div>
           </div>
         </div>
@@ -670,7 +680,6 @@ const markConnectIntent = () => { try { sessionStorage.setItem(INTENT_KEY, '1');
 const takeConnectIntent = () => { try { const v = sessionStorage.getItem(INTENT_KEY); sessionStorage.removeItem(INTENT_KEY); return !!v; } catch { return false; } };
 const DEFAULT_NFT: DraftNft = { value: '0.050' };
 const DEFAULT_MARKUP = 25;
-const MIN_MARKUP = 10; // PoolBalancer.MIN_MARKUP_BPS / 100
 const DEFAULT_SMALL = 10;
 /** A new design: the Balanced preset at ten 0.01 ETH Shapes (Balanced depends only on that count). */
 /** Drafts saved before `counts` used older preset keys: steady, board (Balanced) and balanced (More big wins). */
@@ -740,7 +749,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     const timer = setInterval(() => void check(), 5_000);
     return () => { current = false; clearInterval(timer); };
   }, [pub, attempt, walletChainId, me, recheck, tx.busy]);
-  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint }>();
+  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>> }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
   const [wallet, setWallet] = useState<bigint>();
@@ -748,12 +757,13 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     if (!pub) return;
     (async () => {
       const economics = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'economics' }) as Economics;
-      const [costs, edgeBps, mintFee, vrfFee] = await Promise.all([
+      const [costs, edgeBps, mintFee, vrfFee, productLimits] = await Promise.all([
         policyEconomics(pub, economics.policy, undefined, undefined, undefined, economics),
         pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
         pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }), liveVrfFee(pub),
+        readProductLimits(pub, FACTORY),
       ]);
-      setLive({ ...costs, edgeBps, mintFee, vrfFee });
+      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits });
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
   }, [pub, loadTry]);
@@ -865,7 +875,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
-  const [markup, setMarkup] = useState(has ? d.markupBps / 100 : Math.max(MIN_MARKUP, draft?.markup ?? DEFAULT_MARKUP));
+  // Factory product limits (live; the constructor values until they load). A saved pool may keep a design above them.
+  const limits = d.productLimits ?? INITIAL_LIMITS;
+  const markupRange = markupSliderRange(limits, has ? d.markupBps : 0);
+  const [markup, setMarkup] = useState(has ? d.markupBps / 100 : draft?.markup ?? DEFAULT_MARKUP);
+  useEffect(() => { if (!has) setMarkup((m) => Math.min(Math.max(m, markupRange.min), markupRange.max)); }, [has, markupRange.min, markupRange.max]);
   const savedCounts = has ? unpackPlan(d.target) : ZERO;
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
@@ -881,11 +895,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // new/changed design on the planner's computed prices (see `inputs` below).
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
+  const maxPrizes = prizeLimit(limits, shapeCount(savedCounts));
   const base: DesignInputs = {
-    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee ?? 0n,
+    curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee ?? 0n, maxPrizes,
     have: d.activeShapes, baseFee: d.baseFee, unreconciled: d.awaitingUpkeep, paidUpkeepEnabled: d.paidUpkeepEnabled, policyMaxReward: d.policyMaxReward, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes,
   };
-  const maxPrizes = MAX_SHAPES_PER_PLAN;
   // The prize count of each of the 16 sizes: the one record of the mix. Presets compute it; hand edits change it.
   const [counts, setCounts] = useState<Counts>(() => (has ? savedCounts
     : draft?.counts?.length === 16 ? draft.counts : draft ? mixOf(draft.small ?? DEFAULT_SMALL, draft.bonus) : defaultCounts(base)));
@@ -939,8 +953,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
   const vrfKnown = d.vrfFee !== undefined;
   const view = ev && playerView(ev).top ? playerView(ev) : undefined;
-  // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
-  const pausesAt = pendingDrawsAdmitted(counts) + 1;
+  // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unreconciled, before the backlog
+  // threshold does. A new pool takes the defaults.
+  const backlog = d.backlogThreshold ?? MAX_BATCH;
+  const pausesAt = pendingDrawsAdmitted(counts, d.fillGateBps ?? FILL_GATE_DEFAULT_BPS, backlog) + 1;
   // Saving (configure) is needed for a new design, a markup or mix change, or to accept a changed Shapes mint fee,
   // higher or lower. Configure binds the fee shown here as the accepted cap and reverts if the live fee is above it.
   const feeOnly = has && markupBps === d.markupBps && target === d.target && d.mintFee !== d.mintFeeCap;
@@ -1025,9 +1041,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
         : <span className="figure ghost">—</span>}</div>
       {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">Now {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
-      {ev && pausesAt < MAX_BATCH && <p className="note">{pausesAt === 1
+      {ev && pausesAt < backlog && <p className="note">{pausesAt === 1
         ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
-        : `With this mix, new purchases pause once ${pausesAt - 1} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>}
+        : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>}
     </div>
   );
   const gridBlock = (
@@ -1076,6 +1092,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : d.policyUnavailable ? 'Current fees are unavailable. Retrying.'
     : d.mintFeeUnavailable ? 'The Shapes mint fee is unavailable.'
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
+    : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
     : !ready ? undefined
     : !ev?.feasible ? undefined
@@ -1125,7 +1142,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           return undefined;
         }]);
       } else {
-        if (configChanged) steps.push([feeOnly ? 'Accept mint fee' : 'Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target, d.mintFee] })]);
+        // community-v1 configure takes no accepted fee: it accepts the fee live when the transaction runs.
+        if (configChanged) steps.push([feeOnly ? 'Accept mint fee' : 'Save design', () => d.legacy
+          ? tx.write({ address: balancer, abi: d.legacy.poolBalancerAbi, functionName: 'configure', args: [markupBps, target] })
+          : tx.write({ ...B, functionName: 'configure', args: [markupBps, target, d.mintFee] })]);
         steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
         if (shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 6)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
         if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
@@ -1148,8 +1168,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <p className="note error" style={{ marginBottom: 12 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
       <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible} onClick={run}>
-        {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : 'Save changes'}
+        {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
       </button>
+      {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
       {blocked && <p className="note" style={{ marginTop: 10 }}>{blocked}</p>}
       {refused && <p className="note error" style={{ marginTop: 10 }}>{refused}</p>}
       {fresh && tx.msg && !tx.msg.ok && <p className="note error" style={{ marginTop: 10 }}>{tx.msg.text}</p>}
@@ -1305,11 +1326,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
-              <input id="markup" type="range" min={MIN_MARKUP} max={100} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
+              <input id="markup" type="range" min={markupRange.min} max={markupRange.max} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
               <p className="note">Added to each new Shape listing price.</p>
               <p className="note" style={{ marginTop: 6 }}>0.01 ETH Shape restocking charge: {d.restockFee === undefined ? 'unavailable' : `${eth(d.restockFee, 5)} ETH`}.</p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
+            <div className="rule"><LimitsNote limits={limits} currentPrizes={shapeCount(savedCounts)} /></div>
           </div>
         </div>
 
@@ -1953,7 +1975,8 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send(d.curatedRequired ? 'Stop requiring a curated NFT' : 'Require a curated NFT', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setCuratedRequired', args: [!d.curatedRequired] })])}>{d.curatedRequired ? 'Continue with Shapes' : 'Pause without a curated NFT'}</button>
           </div>
         )}
-        <KeeperPay d={d} tx={tx} />
+        <PurchasePauses d={d} tx={tx} />
+        {d.legacy ? <LegacyKeeperPay d={{ ...d, legacy: d.legacy }} tx={tx} /> : <KeeperPay d={d} tx={tx} />}
         <div className="section">
           <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
           <div className="kv">
