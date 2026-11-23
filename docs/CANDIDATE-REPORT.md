@@ -1,7 +1,64 @@
 # Community release candidate report (2026-11-23)
 
-**Tested commit: `08be33f`** (contracts, tests, app, keeper, docs). The commit after it adds only this report and
-the deployment plan refresh. **Nothing was deployed or broadcast on mainnet.**
+**Tested commit: `a609277`** (contracts, tests, app, keeper, docs). The commit after it adds only this report and
+the deployment plan refresh. **Nothing was deployed or broadcast on mainnet.** `08be33f` (sections 4 operational pass
+and earlier evidence below) is superseded by the stuck-draw follow-up in section 0.
+
+## 0. Follow-up at `a609277`: draws without randomness are stuck too
+
+Owner intent: stuck draws are processed and paid after the grace so the game never stops (the `08be33f` brief wrongly
+limited stuck to Ready). `KeeperPolicyCalls.stuck` now also counts a head draw that is TimedOut, or Pending with
+`block.number > wordDeadlineBlock` (FWA's strict rule in the deployed `StandardPool` `0x85Faf…`; enum order and
+`acquisitionMeta` layout read from that source). Same requestBlock grace, same pay (gas plus one work fee per processed
+draw), same two-per-call cap; the draws behind the expired head proceed in the same call. Review repairs in the same
+commit: `validate` rejects a paused grace longer than the normal one (`InvalidGrace`); policy interface version 3
+(Economics changed the quote selectors), also in `Deploy.s.sol` postflight and `verify-deployment.ts`; local `process`
+renamed; `test_manufacturedStuckDrawLosesMoney` measures the keeper's real net from the transaction.
+
+Sizes: PoolBalancer **24,275** (301 spare, unchanged), KeeperPolicyCalls 9,332 (was 8,883), PoolInventory 12,210,
+BalancerFactory 5,387, PoolPage 1,194, KeeperPolicyV1 743.
+
+| Command (final code unless noted) | Result |
+| --- | --- |
+| `forge build --force --sizes` | pass (on the first edit; later edits rebuilt incrementally, sizes above) |
+| `npm run abi` | `shared/abi.ts` changed (`fwaPoolAbi` gains `acquisitionMeta`); committed |
+| `npm run typecheck`, `npm run build:app` | pass |
+| `forge test` ProcessQueue, KeeperPay `--isolate` | 15 / 15 |
+| `forge test` Settings, CommunityConfigAcceptance (both contracts), KeeperEconomics, PolicyPreview, ConcurrentRecovery | 50 / 50 |
+| `forge test` ReserveEconomicReview, ReserveSecurityReview, ProtectedRevenueAtomic, PolicyEconomicReview, PolicySecurityReview | 41 / 41 after repair (10 failed first, see below) |
+
+First runs: KeeperPay `test_splitCallsArePaidOncePerProcessedDraw` asserted the old rule (expired head not processed);
+its superseded line was removed. The five review suites (policy-interface bump touched them) had 10 failures that
+date from `08be33f`, which never ran them: 8 rolled 31 to 40 blocks and expected upkeep to process an expired draw at
+once, 2 lacked the second per-owed-draw work fee. They now roll past the 50-block grace and count the processing fee;
+only the 10 were rerun. Not run on this code: FlowBreakdown, Gas, Hardening, PolicyLifecycle, PolicyModelParity,
+ReserveCapital, ReserveCapitalMatrix, BatchSlippage, ProductLimits, MintFeeChange, Balancer, ParityFixture, vitest.
+
+New tests: `test_drawWithoutRandomnessProcessedAfterDeadlineAndGrace_drawBehindProceeds` (expired head plus the Ready
+draw behind it processed at requestBlock + 50, nothing at + 49, reward = (measured + 60,000) × 0.55 gwei + 4 work fees,
+measured 787,074); `test_headWaitingForRandomnessIsProcessedOnlyAfterItsDeadline` (nothing at the deadline block, both
+at deadline + 1); `Settings` grace validation on the factory and a pool. Manufactured stuck draw at 5 gwei: billed
+580,460 gas, paid 0.00364566 ETH, keeper net +0.00074336 ETH, against 0.0011004 ETH edge + 0.0117 ETH randomness fee
+lost.
+
+Fork rehearsal (fresh anvil port 18903, `--fork-url https://mainnet.gateway.tenderly.co --chain-id 31337`, fork block
+**26,480,830**, hash `0x104afa7f…f42e6` equal to mainnet's; fresh random impersonated deployer `0x1692ba5B…05eb`,
+keeperAdmin `0x11d04d4B…e6Fc`, policyAdmin `0xd7B79a64…4f8a`, creator, keeper `0xB04d4567…564E`, buyer; no anvil
+default keys; anvil stopped). Canonical `Deploy.s.sol`, `REUSE_DEPENDENCIES=true`: 5 receipts, 11,771,292 gas
+(KeeperPolicyCalls CREATE2 `0x0aB0D6ab1A152456010FC53251eAe6A02914D220` 2,074,580; PoolInventory CREATE2
+`0x8A5927A59D05e81314B54F470cd7377128887489` 2,698,051; PoolBalancer 5,366,517; KeeperPolicyV1 213,772;
+BalancerFactory 1,418,372). `verify-deployment.ts`: `DEPLOYMENT VERIFIED` (grace 50/10, policy interface 3). Two
+earlier attempts stopped before any draw: `Deploy.s.sol` postflight still required interface 2 (fixed), then a buy
+quoted at gas price 0 (harness). Then one pool (DevSetup), stocked by the keeper, one draw that never got randomness:
+request block 26,480,840, word deadline 26,480,870, sales open so grace 50. Upkeep at 26,480,889 reverted (nothing
+due). Upkeep at **26,480,890**: processed it (FWA status 3 Expired, `nextSequenceToProcess` 1 → 2, reconciled 1),
+billed 215,774 gas at 1.05 gwei, `KeeperPaid` 0.00029245465 ETH = (180,433 + 60,000) × 1.05 gwei + 2 × 0.00002 ETH
+exactly, keeper net +0.00006589195 ETH, paid from the Balancer's ETH; buyer holds 0.028668100418561609 ETH refund
+credit (the randomness fee does not come back).
+
+Mainnet: the new library addresses have no code at block 26,480,833. Deployment is still 5 transactions, so the CREATE
+addresses predicted below for nonce 4158 are unchanged; the library addresses in section 5 are superseded by the ones
+above.
 
 ## 1. What the candidate is
 
@@ -121,6 +178,8 @@ Gas measurements in tests: docs/GAS.md "Paid processing of stuck draws".
   `0x6b7e1D309798b1A9e8aB408D5436b3946B1B54FF` (4159), PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`
   (4160), KeeperPolicyV1 `0x526FbD402624B50861f54c081B592cdCeE322929` (4161), BalancerFactory
   `0x1abD8bF61c05be3efDDa7F3e34a11417036ddED4` (4162). The step 5 dry run in the deployment plan is the source of truth.
+  Superseded at `a609277`: KeeperPolicyCalls `0x0aB0D6ab1A152456010FC53251eAe6A02914D220`, PoolInventory
+  `0x8A5927A59D05e81314B54F470cd7377128887489` (CREATE2, init code changed).
 
 ## 6. Review and findings
 
@@ -131,11 +190,14 @@ Gas measurements in tests: docs/GAS.md "Paid processing of stuck draws".
   the cold FWA reads it moved (KeeperPay at 5 gwei: −0.00002075 ETH); the check is now ordinary paid upkeep work.
   (2) The first layout exceeded the size limit by 87 bytes; the scan and the processing call moved into
   `KeeperPolicyCalls`.
-- Not independently reviewed: this processing change itself (no separate reviewer ran on `08be33f`).
+- Independent review of `08be33f`'s processing change ran afterwards; its findings (strict deadline, grace ordering,
+  interface version, the refund-surplus wording, a shadowed name) are repaired in `a609277`. The repairs themselves
+  were not re-reviewed.
 
 ## 7. Remaining blockers (owner)
 
-1. New asset-flow gate run (`ASSET FLOW GATE: PASS`) and the owner's signature on the new source hash of this commit.
+1. New asset-flow gate run (`ASSET FLOW GATE: PASS`) and the owner's signature on the new source hash of `a609277`.
+   The suites listed as not run in section 0 belong to that frozen-candidate run.
 2. Merge to `main`, then the deployment plan's runbook from the main checkout.
 3. Deployer gas: 0.0523 ETH covers the deployment up to about 4 gwei; top up if fees are higher at signing time.
 4. Mainnet broadcast by the owner only (`--account ripe0x`), then verification, the post-cutover legacy scan and the

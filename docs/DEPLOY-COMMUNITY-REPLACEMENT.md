@@ -16,7 +16,7 @@ A generated `deployments/1.json` or a successful simulation is not a deployment.
 | --- | --- | --- |
 | KeeperPolicyCalls, PoolPage, PoolInventory libraries | created by CREATE2 if their init code changed; otherwise Forge skips them and links the address already on chain | receipt (created) or code at the linked CREATE2 address (skipped) |
 | PoolBalancer implementation | created (CREATE, deployer nonce) | receipt + readbacks |
-| KeeperPolicyV1 | created (CREATE). Required: the factory accepts only `interfaceVersion() == 2`, and the live 2026-11-22 policy `0x27c56f36…88Db` is interface 1 (fork check: `setEconomics` with it reverts `InvalidPolicy()`) | receipt + readbacks |
+| KeeperPolicyV1 | created (CREATE). Required: the factory accepts only `interfaceVersion() == 3`, and the live 2026-11-22 policy `0x27c56f36…88Db` is interface 1 (fork check: `setEconomics` with it reverts `InvalidPolicy()`) | receipt + readbacks |
 | BalancerFactory | created (CREATE) | receipt + readbacks |
 | Shapes `0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0` | reused | code hash `0x5128789a…87d7`, 22,460 bytes |
 | Draw Packs `0xfE11c0E794475fd86801fb3020d779bd7887cB2D` | reused | code hash `0xf8239826…3a7c`, 17,768 bytes; equals local `lib/shape-packs` build; `shapes()`, `renderer()`, `MIN_PACK_VALUE() = 0.02 ETH` |
@@ -39,12 +39,14 @@ getter readbacks at the checked block; no receipts).
   truth. The plan does not depend on a specific nonce; the verifier matches the broadcast to the reviewed dry run
   transaction for transaction (sender, nonce, kind, address, calldata).
 - CREATE2 library addresses depend only on init code (salt 0 via `0x4e59b44847b379578588920cA78FbF26c0B4956C`). A
-  library whose code did not change keeps its 2026-11-22 address and is not sent. At `08be33f`:
+  library whose code did not change keeps its 2026-11-22 address and is not sent. At the stuck-draw follow-up
+  (expired draws, interface 3; fork rehearsal 2026-11-23; `08be33f` addresses superseded):
   - PoolPage unchanged: reused at `0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf` (already on mainnet, not sent).
-  - KeeperPolicyCalls changed: new `0x8d1e84409f65415455d0Ec1Ad891002BC8DE442f` (old `0x1601A841…B8fb` stays for
+  - KeeperPolicyCalls changed: new `0x0aB0D6ab1A152456010FC53251eAe6A02914D220` (old `0x1601A841…B8fb` stays for
     legacy pools).
-  - PoolInventory changed: new `0x6b7e1D309798b1A9e8aB408D5436b3946B1B54FF` (old `0xD6e89D45…9fD0` stays).
-  Neither new address has code on mainnet at block 26,480,612.
+  - PoolInventory changed (metadata only: an imported interface changed): new
+    `0x8A5927A59D05e81314B54F470cd7377128887489` (old `0xD6e89D45…9fD0` stays).
+  Neither new address has code on mainnet at block 26,480,833.
 - Every transaction, CREATE2 libraries included, is sent by the deployer and uses one nonce. Order: KeeperPolicyCalls
   (N), PoolInventory (N+1), PoolBalancer (N+2), KeeperPolicyV1 (N+3), BalancerFactory (N+4): 5 transactions.
 - With N = 4158 (read at mainnet block 26,480,612; `cast compute-address`): PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`,
@@ -96,8 +98,8 @@ Check: `## main...origin/main` with no `[ahead`/`[behind` and the reviewed candi
 ```bash
 forge build --sizes 2>&1 | grep -E "^\| (PoolBalancer|BalancerFactory|KeeperPolicyV1|PoolInventory|PoolPage|KeeperPolicyCalls) "
 ```
-Check: every runtime size is below 24,576 bytes. At `08be33f`: PoolBalancer 24,275 (301 to spare), PoolInventory
-12,210, KeeperPolicyCalls 8,883, BalancerFactory 5,387, PoolPage 1,194, KeeperPolicyV1 743.
+Check: every runtime size is below 24,576 bytes. At the stuck-draw follow-up: PoolBalancer 24,275 (301 to spare),
+PoolInventory 12,210, KeeperPolicyCalls 9,332, BalancerFactory 5,387, PoolPage 1,194, KeeperPolicyV1 743.
 
 **3 → Cutover preflight (read-only).** Pins the head block, scans every legacy factory for created pools, verifies
 the reused dependencies and writes `deployments/1.preflight.json`.
@@ -201,7 +203,14 @@ Run by `Deploy.s.sol` (before and after the broadcast), `scripts/deployment-pref
 
 ## 7. Fork rehearsal evidence
 
-### 7a. Current: release candidate `08be33f` (2026-11-23)
+### 7a. Current: release candidate `a609277` (2026-11-23)
+
+Stuck draws without randomness, policy interface 3. Fork block 26,480,830, fresh random impersonated roles, canonical
+`Deploy.s.sol` `REUSE_DEPENDENCIES=true`: 5 receipts, 11,771,292 gas; KeeperPolicyCalls
+`0x0aB0D6ab1A152456010FC53251eAe6A02914D220`, PoolInventory `0x8A5927A59D05e81314B54F470cd7377128887489` (CREATE2);
+`verify-deployment.ts` `DEPLOYMENT VERIFIED`. Full record: docs/CANDIDATE-REPORT.md section 0.
+
+### 7a-prev. Superseded: release candidate `08be33f` (2026-11-23)
 
 Full record: docs/CANDIDATE-REPORT.md. Fresh anvil (`--fork-url https://mainnet.gateway.tenderly.co --chain-id 31337
 --port 18950`), fork block **26,480,609**, hash `0x1006c87388f1e4711e0e1469e891247052f5822e73c8546f1138603bfaf3f16e`
