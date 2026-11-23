@@ -136,16 +136,14 @@ async function record(hash: Hash, fn: string, category: string, nonce: number, i
 }
 function permitted(actor: Address, to: Address|undefined, fn: string, data: Hex, value: bigint) {
   const pool = journal.pools.find(p => to && p.balancer.toLowerCase() === to.toLowerCase());
-  const creatorFns = ['configure','listCuratedBatch','depositETH','open','close','withdrawCurated','unlistShapes','claimSurplus','proposeKeeperPolicy','cancelKeeperPolicy','setPaidUpkeepEnabled','performUpkeepUnpaid'];
+  const creatorFns = ['configure','listCuratedBatch','depositETH','open','close','withdrawCurated','unlistShapes','claimSurplus','setKeeperPolicy','setPaidUpkeepEnabled','performUpkeepUnpaid'];
   if (!to) { assert.ok([roles.creatorA, roles.creatorB].includes(actor)); assert.equal(fn, 'DemoNFT CREATE'); assert.equal(value, 0n); assert.equal(data, demoBytecode()); return; }
   if (pool && creatorFns.includes(fn)) { eq(actor, pool.creator); return; }
-  if (pool && fn === 'activateKeeperPolicy') { eq(actor, roles.keeper); assert.equal(value, 0n); return; }
   if (pool && fn === 'performUpkeep') { eq(actor, roles.keeper); assert.equal(value, 0n); return; }
   if (journal.pools.some(p => p.demo.toLowerCase() === to.toLowerCase())) { assert.ok(fn === 'mint' || fn === 'approve'); eq(actor, journal.pools.find(p => p.demo.toLowerCase() === to.toLowerCase())!.creator); assert.equal(value, 0n); return; }
   if (to.toLowerCase() === factory().toLowerCase()) {
     if (fn === 'createBalancer') assert.ok([roles.creatorA,roles.creatorB].includes(actor));
-    else if (fn === 'activateDefaultKeeperPolicy') eq(actor, roles.keeper);
-    else { assert.ok(['proposeDefaultKeeperPolicy','cancelDefaultKeeperPolicy'].includes(fn)); eq(actor, roles.policyAdmin); }
+    else { assert.equal(fn, 'setDefaultKeeperPolicy'); eq(actor, roles.policyAdmin); }
     assert.equal(value, 0n); return;
   }
   if (journal.pools.some(p => p.pool.toLowerCase() === to.toLowerCase())) { assert.ok(['acquireBatch','withdrawAcquisitionRefund'].includes(fn)); eq(actor, roles.buyer); return; }
@@ -335,11 +333,11 @@ async function outcomes() {
 }
 async function policies() {
   const p=journal.pools[0];
-  for(const fn of ['proposeKeeperPolicy','cancelKeeperPolicy','proposeKeeperPolicy'])await send(p.creator,p.balancer,poolBalancerAbi,fn,fn==='cancelKeeperPolicy'?[]:[policy()]);
-  for(const fn of ['proposeDefaultKeeperPolicy','cancelDefaultKeeperPolicy','proposeDefaultKeeperPolicy'])await send(roles.policyAdmin,factory(),balancerFactoryAbi,fn,fn==='cancelDefaultKeeperPolicy'?[]:[policy()]);
-  for(const [address,abi,fn]of [[p.balancer,poolBalancerAbi,'activateKeeperPolicy'],[factory(),balancerFactoryAbi,'activateDefaultKeeperPolicy']] as const){await assert.rejects(pub.simulateContract({account:roles.keeper,address,abi,functionName:fn,...await fees()} as never),(e:unknown)=>revertName(e)==='PolicyNotReady','early activation must revert with PolicyNotReady');}
-  await mutate('approved single policy time jump 172801 seconds',()=>test.increaseTime({seconds:172801}));await mine();
-  await send(roles.keeper,p.balancer,poolBalancerAbi,'activateKeeperPolicy');await send(roles.keeper,factory(),balancerFactoryAbi,'activateDefaultKeeperPolicy');
+  // Immediate switches: creator sets the pool policy, policyAdmin sets the factory default. No proposal/delay.
+  await assert.rejects(pub.simulateContract({account:roles.keeper,address:p.balancer,abi:poolBalancerAbi,functionName:'setKeeperPolicy',args:[policy()],...await fees()} as never),(e:unknown)=>revertName(e)==='Unauthorized','only the creator may set the pool policy');
+  await assert.rejects(pub.simulateContract({account:roles.keeper,address:factory(),abi:balancerFactoryAbi,functionName:'setDefaultKeeperPolicy',args:[policy()],...await fees()} as never),(e:unknown)=>revertName(e)==='Unauthorized','only the policyAdmin may set the factory default');
+  await send(p.creator,p.balancer,poolBalancerAbi,'setKeeperPolicy',[policy()]);
+  await send(roles.policyAdmin,factory(),balancerFactoryAbi,'setDefaultKeeperPolicy',[policy()]);
   eq(await read<Address>(p.balancer,poolBalancerAbi,'keeperPolicy'),policy());eq(await read<Address>(journal.pools[1].balancer,poolBalancerAbi,'keeperPolicy'),policy());
   await send(p.creator,p.balancer,poolBalancerAbi,'setPaidUpkeepEnabled',[false]);
   const settings=await read<Hash>(p.balancer,poolBalancerAbi,'settingsHash');

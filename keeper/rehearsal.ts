@@ -617,18 +617,16 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
     await sent(a, 'claimSurplus', [deficit.credit, a.creator]);
     assert.equal(await run.pub.getBalance({ address: a.balancer }), deficit.operating, 'credited earnings claim leaves operating cash unchanged');
     const v2 = await run.create(r.deployer, 'KeeperPolicyV2');
-    const oldHash = await read<Hex>(a.balancer, 'settingsHash'), allowance = await read<bigint>(a.balancer, 'keeperAllowance');
+    const oldHash = await read<Hex>(a.balancer, 'settingsHash');
     const [maintenance, shortfall] = await run.read<readonly [
         bigint,
         bigint
     ]>(a.balancer, poolBalancerAbi, 'policyFunding', [v2]);
     assert.equal(shortfall, 0n);
     assert.ok(maintenance < E);
-    await sent(a, 'proposeKeeperPolicy', [v2]);
-    await run.jump();
-    await run.send(r.keeper, a.balancer, poolBalancerAbi, 'activateKeeperPolicy');
+    // Immediate, creator-only switch (no proposal/delay). Keeper pay has no per-pool allowance to preserve.
+    await sent(a, 'setKeeperPolicy', [v2]);
     eqPrepared(await read<Address>(a.balancer, 'keeperPolicy'), v2);
-    assert.equal(await read<bigint>(a.balancer, 'keeperAllowance'), allowance);
     assert.notEqual(await read<Hex>(a.balancer, 'settingsHash'), oldHash);
     assert.equal((await read<readonly number[]>(a.balancer, 'getActiveShapes'))[4], 0);
     note('replacement-policy-without-settings-while-underfunded', { v2, maintenance, shortfall, inventoryReserve: await read<bigint>(a.balancer, 'requiredReserve') });

@@ -1,7 +1,12 @@
 import { decodeFunctionResult, encodeFunctionData, multicall3Abi, parseAbi, type Abi, type Address, type PublicClient, type Block, type Hex } from 'viem';
-import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound } from '../../shared/planner';
+import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound, KEEPER_LIMITS } from '../../shared/planner';
 
 const lesser = (a: bigint, b: bigint) => (a < b ? a : b);
+
+/** KeeperPolicyCalls.referencePrice: min(baseFee + 0.1 gwei, 50 gwei). */
+const referencePrice = (baseFee: bigint) => lesser(baseFee + KEEPER_LIMITS.priorityAllowance, KEEPER_LIMITS.gasPriceCeiling);
+/** KeeperPolicyCalls.restock per-Shape cap: 2x V1's 900k gas / 0.0002 ETH at the reference price, so V1 always passes. */
+const restockCapPerUnit = (baseFee: bigint) => 1_800_000n * referencePrice(baseFee) + 400_000_000_000_000n;
 
 export const policyAbi = parseAbi([
   'function interfaceVersion() view returns (uint256)',
@@ -60,7 +65,7 @@ export async function policyEconomics(pub: PublicClient, policy: Address, cached
     const [reconcile, ...replace] = balancer ? out : out.map((q, i) => lesser(q, paymentBound(work(ds[i]), maxReward)));
     return { reconcile, replace };
   })().catch(() => undefined);
-  if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n)) {
+  if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * restockCapPerUnit(baseFee))) {
     throw new Error('Policy surcharge exceeds the pool limit');
   }
   return { version, policyMaxReward: maxReward, baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };

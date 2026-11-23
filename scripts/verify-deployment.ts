@@ -15,7 +15,7 @@ const ORDER = [...LIBRARIES, 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 
 const abi = parseAbi([
   'function implementation() view returns (address)', 'function keeperAdmin() view returns (address)', 'function policyAdmin() view returns (address)',
   'function defaultKeeperPolicy() view returns (address)', 'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
-  'function pendingPolicyAdmin() view returns (address)', 'function pendingDefaultKeeperPolicy() view returns (address)', 'function creator() view returns (address)',
+  'function pendingPolicyAdmin() view returns (address)', 'function creator() view returns (address)',
   'function FWA_FACTORY() view returns (address)', 'function FWA_IMPLEMENTATION() view returns (address)', 'function SHAPES() view returns (address)',
   'function PACKS() view returns (address)', 'function ENS() view returns (address)', 'function shapes() view returns (address)', 'function MIN_PACK_VALUE() view returns (uint256)',
   'function admin() view returns (address)', 'function renderer() view returns (address)', 'function presentationLocked() view returns (bool)',
@@ -116,7 +116,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   await eq('factory', f, 'policyAdmin', roles.policyAdmin);
   await eq('factory', f, 'defaultKeeperPolicy', at.KeeperPolicyV1);
   await eq('factory', f, 'keepersRestricted', false);
-  for (const fn of ['pendingKeeperAdmin', 'pendingPolicyAdmin', 'pendingDefaultKeeperPolicy']) await eq('factory', f, fn, zeroAddress);
+  for (const fn of ['pendingKeeperAdmin', 'pendingPolicyAdmin']) await eq('factory', f, fn, zeroAddress);
   await eq('implementation', impl, 'creator', '0x0000000000000000000000000000000000000001');
   await eq('implementation', impl, 'FWA_FACTORY', c.fwaFactory);
   await eq('implementation', impl, 'FWA_IMPLEMENTATION', c.fwaImpl);

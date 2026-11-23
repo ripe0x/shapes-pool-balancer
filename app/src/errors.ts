@@ -14,14 +14,12 @@ const ERRORS: Record<string, string> = {
   ShapesNotCurated: 'Shapes cannot be listed as curated NFTs',
   ProtectedAsset: 'this contract does not hold that NFT outside FWA (listed, pending or not owned)',
   InvalidItem: 'not available for this action (check its FWA status)',
-  SettingOutOfRange: 'a value is outside its allowed range',
+  OutOfRange: 'a value is outside its allowed range',
   StaleSettings: 'the keeper policy changed; refresh and try again',
-  PolicyNotReady: 'the policy activation delay has not elapsed',
   InvalidPolicy: 'the address does not support the keeper policy interface',
   PolicyUnavailable: 'the policy could not quote payment; run unpaid maintenance',
   PaymentUnavailable: 'paid upkeep is unavailable; run unpaid maintenance',
   MinimumPaymentNotMet: 'the offered payment is below the transaction minimum',
-  KeeperBudgetExceeded: 'the pool payment allowance needs time to refill',
 };
 
 export function explain(e: unknown): string {
