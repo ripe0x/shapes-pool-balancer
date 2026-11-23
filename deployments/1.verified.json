@@ -2,12 +2,12 @@
   "verified": true,
   "source": "canonical receipts and contract reads",
   "chainId": 1,
-  "checkedAtBlock": "26453687",
-  "factoryDeploymentBlock": "26453686",
-  "balancerFactory": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
-  "poolBalancerImplementation": "0x46516fE3bd20B210985be9B2E65c22E46c1Ef6Ca",
-  "packs": "0x91582A79498B4A6B7cABb2bb72155145E15f439C",
-  "keeperPolicy": "0x13797a6a7CFBfDD3956006f1cAc8Cae749569117",
+  "checkedAtBlock": "26475475",
+  "factoryDeploymentBlock": "26475448",
+  "balancerFactory": "0x91C31Ad620555DE24e62290906aD1aA14C4CE281",
+  "poolBalancerImplementation": "0x9714b1319f57a543549451d5402aBDbc0B02E40E",
+  "packs": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+  "keeperPolicy": "0x27c56f36Fadf3d7CD2bF4669AA30ebc3432c88Db",
   "roles": {
     "deployer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
     "packsAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
@@ -15,70 +15,58 @@
     "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9"
   },
   "transactions": {
-    "KeeperPolicyCalls": {
-      "address": "0x1601A841C2C86f6AC574279b87F1168ff284B8fb",
-      "hash": "0x389039cdcd57ce59d06063a6c574b44daf9fdc5f0b25d6e6d5925360e469a96b",
-      "block": "26453677",
-      "blockHash": "0x0c904778992ca719617826e8175233e81ad0e08f48cc95cae5ae06c7a286805f",
-      "gasUsed": "1099810",
-      "effectiveGasPrice": "155236785"
-    },
-    "PoolPage": {
-      "address": "0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf",
-      "hash": "0x9e2d5b5522955710db7bd5cef39dcd0564a97ee475c5cdadc6ffeb958819e640",
-      "block": "26453680",
-      "blockHash": "0xfd104f50cf7d8cdab947f474ad94b9a3f324a19e7beafd4d7ee1ea85831f9dd2",
-      "gasUsed": "312318",
-      "effectiveGasPrice": "147008688"
-    },
     "PoolInventory": {
-      "address": "0x9154504fB111544725bBb593b813fa106FdcFF9E",
-      "hash": "0xa882d547f27d4bfb49ca274357c8e9ff338a8cd5552157cd735e86bd82d8503e",
-      "block": "26453681",
-      "blockHash": "0xb7c8b2f6be85499b682bae53569545d840f9a89f0dd60b3c89637ad03851e9ed",
-      "gasUsed": "2560264",
-      "effectiveGasPrice": "136067446"
+      "address": "0xD6e89D450Cb0E591A9a634696D173a7F2B979fD0",
+      "hash": "0xc3f9999ece0daa23723234daefea234b330b25e7c97ad82d763268b4cc485118",
+      "block": "26475414",
+      "blockHash": "0xa0fce418bb028dc3759cfcace4b2da31b06f64e54574cd2ef4f3bcd64b38235d",
+      "gasUsed": "2539484",
+      "effectiveGasPrice": "104929264"
     },
     "ShapePackRenderer": {
-      "address": "0x2c784265787926975fb8C6974609871271eF57AD",
-      "hash": "0x9b2625a60af9ececa642bb9f5c1cf74fc83b0089b4a82ae7bbcee951cc3427eb",
-      "block": "26453682",
-      "blockHash": "0xb949bd68827752e9e552adfdf8d81b02ffd4616f9b4f00f466771f70b144c477",
+      "address": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+      "hash": "0xfaa4943b3c09242eaf8e519f229653005bfe10ba643688ab7501819a4e73de8c",
+      "block": "26475443",
+      "blockHash": "0xa631f0ebd7a85f0ec53be264cd4e29d0be8435111e2432714cbdffce9afcdcf2",
       "gasUsed": "2079868",
-      "effectiveGasPrice": "141606772"
+      "effectiveGasPrice": "100013052"
     },
     "ShapePacks": {
-      "address": "0x91582A79498B4A6B7cABb2bb72155145E15f439C",
-      "hash": "0xa3dc709c691f2d52aca93b31a6dba4271e860f434ec8bf155a63708ba05ec8a0",
-      "block": "26453683",
-      "blockHash": "0x4bb1f9349440c8d358ef6d4df1f2bddeffe9f340acbe1cb20f65594e223c425b",
+      "address": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+      "hash": "0x3bb070f22d6d80f4fde658c60b11ce1106c191dc1c41bf723d96bab2e08a30fc",
+      "block": "26475444",
+      "blockHash": "0x7143d689a855ca8470a33d0aee73fe058f6846614965e0993582efde0861be13",
       "gasUsed": "4279090",
-      "effectiveGasPrice": "141230542"
+      "effectiveGasPrice": "105625849"
     },
     "PoolBalancer": {
-      "address": "0x46516fE3bd20B210985be9B2E65c22E46c1Ef6Ca",
-      "hash": "0x22bc859bc02dba5baa22bbf806a1741c4f396b313b9e38fa8afadd357cc78784",
-      "block": "26453684",
-      "blockHash": "0x1fb716b1a5aa19063863c9148f3f6892736674f2bd437a0f6172341d24d84786",
-      "gasUsed": "4547781",
-      "effectiveGasPrice": "141733665"
+      "address": "0x9714b1319f57a543549451d5402aBDbc0B02E40E",
+      "hash": "0x23ea0cc03538251d69093c810efb7f5b517573bf7b256915fba7dad6448f04b8",
+      "block": "26475445",
+      "blockHash": "0x9e3c6d8e0fccfc22408a6a87a259601bb8be1dfbdf709c046ae4a83a2a322176",
+      "gasUsed": "4563016",
+      "effectiveGasPrice": "102637021"
     },
     "KeeperPolicyV1": {
-      "address": "0x13797a6a7CFBfDD3956006f1cAc8Cae749569117",
-      "hash": "0x0b2fb6eac7f49610cf510062e347f40431571352c839b505dfee3180a92bfff4",
-      "block": "26453685",
-      "blockHash": "0xa3d74d12272b73c892253659352a46ad6d43636ae28eef14503dc77afc6f0ff4",
+      "address": "0x27c56f36Fadf3d7CD2bF4669AA30ebc3432c88Db",
+      "hash": "0xf8b6a886717e7874def831423b13b760ba247f6e934e98a754c209b57cfe43b3",
+      "block": "26475446",
+      "blockHash": "0xe7399fff327edad722d1e8bcec62f2a721bc0440f6323f5e3f550fb431c024b3",
       "gasUsed": "232232",
-      "effectiveGasPrice": "143771231"
+      "effectiveGasPrice": "105183817"
     },
     "BalancerFactory": {
-      "address": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
-      "hash": "0xb39ab31b5353aa6cba88f849d0701c5fd2f1023caa7b17e04e65c066741bd910",
-      "block": "26453686",
-      "blockHash": "0xf5576bf9294a1bafadbd66ee718096b1c13e9205168d1e6162165c6ad6fab81c",
-      "gasUsed": "898122",
-      "effectiveGasPrice": "146600835"
+      "address": "0x91C31Ad620555DE24e62290906aD1aA14C4CE281",
+      "hash": "0xeca6cca61499e9bac1f9c04e04ceb056f03bb1a54f2745788945bb6b20d1f3ca",
+      "block": "26475448",
+      "blockHash": "0x7a08fb675204dd598823614d2159b5e8b526339b4534de7333d131e68d645910",
+      "gasUsed": "901604",
+      "effectiveGasPrice": "105247021"
     }
   },
-  "deploymentGasWei": "2273501989525081"
+  "preexistingLibraries": {
+    "KeeperPolicyCalls": "0x1601A841C2C86f6AC574279b87F1168ff284B8fb",
+    "PoolPage": "0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf"
+  },
+  "deploymentGasWei": "1514115200020886"
 }
