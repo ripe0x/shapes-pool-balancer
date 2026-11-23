@@ -326,3 +326,6 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
   that capital (step B measured 100 ETH claimed against a 0.00508 ETH reserve, then a 100.005 ETH reserve). Accepted:
   only the creator's own capital moves, and `close()` or a smaller `configure` target reaches the same claim at any
   time. No contract change. The app and keeper findings of the same audits are fixed.
+- R83. No mainnet canary (owner, 2026-11-22: "i don't want to do the canary!!!"). Launch goes from the signed
+  outcomes and the recorded review straight to the production deploy through `script/deploy.sh`; no capped first
+  deployment or cap-raising plan. Supersedes the canary step of runbook 0b E for this launch.
