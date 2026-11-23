@@ -7,6 +7,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createPublicClient, decodeDeployData, getContractAddress, http, keccak256, type Address, type Hex } from 'viem';
+import { creationOrder, isReuse, LIBRARIES } from './verify-deployment';
 
 const REVISION = '04bc760d506fd29329a3a819c7f2e4a1480377dd';
 const MAINNET = 'https://mainnet.gateway.tenderly.co';
@@ -40,9 +41,13 @@ async function freePort() {
 }
 export function verifyActions(dir: string) {
   type Action = { transactionType: string; contractName: string; contractAddress: Address; transaction: { from: Address; to?: Address; input: Hex; nonce: Hex; gas: Hex; value: Hex } };
-  const raw = JSON.parse(readFileSync(join(dir, 'broadcast/Deploy.s.sol/31337/dry-run/run-latest.json'), 'utf8')) as { transactions: Action[] };
-  const names = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
-  assert.deepEqual(raw.transactions.map(a => a.contractName), names, 'review linked libraries plus five deployment contracts');
+  const raw = JSON.parse(readFileSync(join(dir, 'broadcast/Deploy.s.sol/31337/dry-run/run-latest.json'), 'utf8')) as { transactions: Action[]; libraries?: string[] };
+  // Full mode creates eight contracts; reuse mode creates no Packs or renderer, and Forge skips a library already on chain.
+  const reuse = isReuse(raw.transactions);
+  const created = raw.transactions.map(a => a.contractName);
+  assert.deepEqual(created, creationOrder(reuse).filter(n => created.includes(n) || !LIBRARIES.includes(n)), 'review linked libraries plus the created deployment contracts');
+  const linked = Object.fromEntries((raw.libraries ?? []).map(e => { const [, name, address] = e.split(':'); return [name, address as Address]; }));
+  const libraryAddress = (library: string) => (raw.transactions.find(t => t.contractName === library)?.contractAddress ?? linked[library])!;
   let gasReserve = 0n;
   const actions = raw.transactions.map((a, index) => {
     const tx = a.transaction;
@@ -56,7 +61,7 @@ export function verifyActions(dir: string) {
     const artifact = JSON.parse(readFileSync(join(dir, artifactPath), 'utf8'));
     let initcode = artifact.bytecode.object.slice(2) as string;
     for (const refs of Object.values(artifact.bytecode.linkReferences ?? {}) as any[]) for (const [library, locations] of Object.entries(refs)) {
-      const address = raw.transactions.find(t => t.contractName === library)!.contractAddress.slice(2).toLowerCase();
+      const address = libraryAddress(library).slice(2).toLowerCase();
       for (const ref of locations as any[]) { assert.equal(address.length, ref.length * 2); initcode = initcode.slice(0, ref.start * 2) + address + initcode.slice((ref.start + ref.length) * 2); }
     }
     const creationData = a.transactionType === 'CREATE2' ? tx.input.slice(66) : tx.input.slice(2);
@@ -82,7 +87,7 @@ export function verifyActions(dir: string) {
       assert.equal(word.length, length * 2); runtime = runtime.slice(0, start * 2) + word + runtime.slice((start + length) * 2);
     };
     for (const refs of Object.values(artifact.deployedBytecode.linkReferences ?? {}) as any[]) for (const [library, locations] of Object.entries(refs)) {
-      const address = raw.transactions.find(t => t.contractName === library)!.contractAddress;
+      const address = libraryAddress(library);
       for (const ref of locations as any[]) patch(ref.start, ref.length, address);
     }
     const immutable = artifact.deployedBytecode.immutableReferences ?? {};
@@ -107,20 +112,23 @@ export function verifyActions(dir: string) {
   assert.ok(gasReserve <= ETH, 'deployment reserved gas alone is below batch gas ceiling');
   const at = (name: string) => actions.find(a => a.name === name)!;
   const shapes = '0x6fe9193276bf7abcbee44ab7afd717d637d6faf0';
-  equal(String(at('ShapePackRenderer').constructorArguments[0]), shapes);
-  const packs = at('ShapePacks').constructorArguments;
-  equal(String(packs[0]), shapes); equal(String(packs[1]), at('ShapePackRenderer').predictedAddress);
-  equal(String(packs[2]), actors.packsAdmin);
-  assert.deepEqual(packs.slice(3), ['Pool Prize Packs', 'PRIZEPACK', 2n]);
+  if (!reuse) {
+    equal(String(at('ShapePackRenderer').constructorArguments[0]), shapes);
+    const packs = at('ShapePacks').constructorArguments;
+    equal(String(packs[0]), shapes); equal(String(packs[1]), at('ShapePackRenderer').predictedAddress);
+    equal(String(packs[2]), actors.packsAdmin);
+    assert.deepEqual(packs.slice(3), ['Pool Prize Packs', 'PRIZEPACK', 2n]);
+  }
+  // Constructor-dependent: the PoolBalancer and BalancerFactory argument positions below follow Deploy.s.sol _deploySystem.
   const impl = at('PoolBalancer').constructorArguments;
   equal(String(impl[0]), '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C');
   equal(String(impl[1]), '0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7');
   equal(String(impl[2]), '0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02');
-  equal(String(impl[3]), shapes); equal(String(impl[4]), at('ShapePacks').predictedAddress);
+  equal(String(impl[3]), shapes); equal(String(impl[4]), reuse ? '0xfE11c0E794475fd86801fb3020d779bd7887cB2D' : at('ShapePacks').predictedAddress);
   equal(String(impl[5]), '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e');
   const factory = at('BalancerFactory').constructorArguments;
   [at('PoolBalancer').predictedAddress, actors.keeperAdmin, actors.policyAdmin, at('KeeperPolicyV1').predictedAddress].forEach((value, i) => equal(String(factory[i]), value));
-  return { actions, gasReserve };
+  return { actions, gasReserve, reuse };
 }
 async function main() {
   assert.equal(process.argv.length, 2, 'no execution/broadcast flags are accepted');

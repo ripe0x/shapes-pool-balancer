@@ -2,16 +2,22 @@
 // `deployments/<chainId>.json` is written by Deploy.s.sol during its simulation (dry run included) and its `block` is the
 // simulation block, so it proves nothing. This check reads every broadcast transaction's receipt from the RPC, requires
 // its calldata to equal the reviewed dry run, and writes `deployments/<chainId>.verified.json` only when all checks pass.
+// The record separates contracts this broadcast created (each matched to its creation receipt) from reused dependencies
+// (reuse mode: verified by code hash and getter readbacks at the checked block, never given a receipt).
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { checkDependencies } from './deployment-preflight';
 import {
   createPublicClient, getAddress, getContractAddress, http, keccak256, parseAbi, slice, zeroAddress, type Address, type Hex, type PublicClient,
 } from 'viem';
 
 const CREATE2_DEPLOYER = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
-const LIBRARIES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory'];
-const ORDER = [...LIBRARIES, 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
+export const LIBRARIES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory'];
+/** Contracts Deploy.s.sol creates, in order. Reuse mode creates no Packs or renderer; any library may already be on chain. */
+export const creationOrder = (reuse: boolean) => [...LIBRARIES, ...(reuse ? [] : ['ShapePackRenderer', 'ShapePacks']), 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
+/** Reuse mode is a dry run that creates no Packs instance. */
+export const isReuse = (dry: { contractName: string }[]) => !dry.some(t => t.contractName === 'ShapePacks');
 const abi = parseAbi([
   'function implementation() view returns (address)', 'function keeperAdmin() view returns (address)', 'function policyAdmin() view returns (address)',
   'function defaultKeeperPolicy() view returns (address)', 'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
@@ -29,9 +35,12 @@ export function scriptConstants(source: string) {
     if (!m) throw new Error(`Deploy.s.sol constant ${name} not found`);
     return m[2].trim();
   };
+  const hash = (name: string) => get(name).toLowerCase() as Hex;
   return {
     fwaFactory: getAddress(get('FWA_FACTORY')), fwaImpl: getAddress(get('FWA_IMPL')), shapes: getAddress(get('SHAPES')), ens: getAddress(get('ENS')),
     packsName: get('PACKS_NAME'), packsSymbol: get('PACKS_SYMBOL'),
+    packs: getAddress(get('PACKS')), renderer: getAddress(get('RENDERER')), fwaCodehash: hash('FWA_CODEHASH'), shapesCodehash: hash('SHAPES_CODEHASH'),
+    packsCodehash: hash('PACKS_CODEHASH'), rendererCodehash: hash('RENDERER_CODEHASH'), fwaFactoryCodehash: hash('FWA_FACTORY_CODEHASH'),
   };
 }
 
@@ -50,7 +59,7 @@ export function linkedLibraries(path: string): Record<string, Address> {
 export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[]): string[] {
   const bad: string[] = [];
   const names = dry.map(t => t.contractName);
-  if (JSON.stringify(names) !== JSON.stringify(ORDER.filter(n => names.includes(n) || !LIBRARIES.includes(n)))) bad.push(`reviewed dry run is not the deployment order: ${names}`);
+  if (JSON.stringify(names) !== JSON.stringify(creationOrder(isReuse(dry)).filter(n => names.includes(n) || !LIBRARIES.includes(n)))) bad.push(`reviewed dry run is not the deployment order: ${names}`);
   if (sent.length !== dry.length) bad.push(`broadcast has ${sent.length} transactions, reviewed dry run ${dry.length}`);
   sent.forEach((t, i) => {
     const d = dry[i];
@@ -63,10 +72,12 @@ export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[]): string[] {
   return bad;
 }
 
-export async function verify(pub: PublicClient, dryPath: string, sentPath: string, roles: { deployer: Address; packsAdmin: Address; keeperAdmin: Address; policyAdmin: Address }, deploySource: string) {
+export async function verify(pub: PublicClient, dryPath: string, sentPath: string, roles: { deployer: Address; packsAdmin: Address; keeperAdmin: Address; policyAdmin: Address }, deploySource: string, outDir = 'out') {
   const c = scriptConstants(deploySource);
   const dry = txs(dryPath), sent = txs(sentPath);
   const bad = matchPlan(dry, sent);
+  const reuse = isReuse(dry);
+  if (!reuse && await pub.getChainId() === 1) bad.push('mainnet deployment must reuse the community dependencies');
   if (bad.length) return { bad };
   const at: Record<string, Address> = {};
   const deployed: Record<string, { address: Address; hash: Hex; block: string; blockHash: Hex; gasUsed: string; effectiveGasPrice: string }> = {};
@@ -110,7 +121,12 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     const norm = (v: unknown) => typeof v === 'string' && v.startsWith('0x') ? v.toLowerCase() : String(v);
     if (norm(got) !== norm(want)) bad.push(`${label}.${fn} = ${got}, expected ${want}`);
   };
-  const [f, impl, packs] = [at.BalancerFactory, at.PoolBalancer, at.ShapePacks];
+  const [f, impl] = [at.BalancerFactory, at.PoolBalancer];
+  const [packs, renderer] = reuse ? [c.packs, c.renderer] : [at.ShapePacks, at.ShapePackRenderer];
+  const head = await pub.getBlockNumber();
+  // Reused dependencies are checked at the same block as the record, after every created contract's receipt.
+  const reused = reuse ? await checkDependencies(pub, c, head, outDir) : undefined;
+  bad.push(...(reused?.bad ?? []));
   await eq('factory', f, 'implementation', impl);
   await eq('factory', f, 'keeperAdmin', roles.keeperAdmin);
   await eq('factory', f, 'policyAdmin', roles.policyAdmin);
@@ -126,18 +142,18 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   await eq('packs', packs, 'shapes', c.shapes);
   await eq('packs', packs, 'MIN_PACK_VALUE', 2n * 10n ** 16n);
   await eq('packs', packs, 'admin', roles.packsAdmin);
-  await eq('packs', packs, 'renderer', at.ShapePackRenderer);
+  await eq('packs', packs, 'renderer', renderer);
   await eq('packs', packs, 'presentationLocked', false);
   await eq('packs', packs, 'name', c.packsName);
   await eq('packs', packs, 'symbol', c.packsSymbol);
   if (bad.length) return { bad };
-  const head = await pub.getBlockNumber();
   return {
     bad,
     record: {
       verified: true, source: 'canonical receipts and contract reads', chainId: await pub.getChainId(), checkedAtBlock: head.toString(),
-      factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, keeperPolicy: at.KeeperPolicyV1,
-      roles, transactions: deployed, preexistingLibraries,
+      checkedAtBlockHash: (await pub.getBlock({ blockNumber: head })).hash,
+      factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer, keeperPolicy: at.KeeperPolicyV1,
+      roles, transactions: deployed, preexistingLibraries, reusedDependencies: reused?.dependencies ?? null,
       deploymentGasWei: Object.values(deployed).reduce((s, d) => s + BigInt(d.gasUsed) * BigInt(d.effectiveGasPrice), 0n).toString(),
     },
   };
@@ -147,7 +163,7 @@ async function main(argv: string[]) {
   const arg = (n: string) => { const i = argv.indexOf(n); return i < 0 ? undefined : argv[i + 1]; };
   const rpc = arg('--rpc-url'), dry = arg('--reviewed-dry-run'), sent = arg('--broadcast');
   const dryHash = arg('--reviewed-dry-run-sha256');
-  if (!rpc || !dry || !sent || !dryHash) { console.error('usage: verify-deployment.ts --rpc-url <url> --reviewed-dry-run <json> --reviewed-dry-run-sha256 <from the approved plan> --broadcast <run-latest.json>  (env DEPLOYER, PACKS_ADMIN, KEEPER_ADMIN, POLICY_ADMIN)'); return 2; }
+  if (!rpc || !dry || !sent || !dryHash) { console.error('usage: verify-deployment.ts --rpc-url <url> --reviewed-dry-run <json> --reviewed-dry-run-sha256 <from the approved plan> --broadcast <run-latest.json> [--out <file>]  (env DEPLOYER, PACKS_ADMIN, KEEPER_ADMIN, POLICY_ADMIN)'); return 2; }
   const actual = createHash('sha256').update(readFileSync(dry)).digest('hex');
   if (actual !== dryHash) { console.error(`reviewed dry run ${dry} has SHA-256 ${actual}, not the approved ${dryHash}`); return 1; }
   const env = (k: string) => { const v = process.env[k]; if (!v) throw new Error(`missing env ${k}`); return getAddress(v); };
@@ -156,8 +172,8 @@ async function main(argv: string[]) {
   console.log(JSON.stringify({ rpc }));
   const result = await verify(pub, dry, sent, roles, readFileSync('script/Deploy.s.sol', 'utf8'));
   if (result.bad.length) { console.error('DEPLOYMENT NOT VERIFIED\n' + result.bad.map(b => '  ' + b).join('\n')); return 1; }
-  const out = `deployments/${result.record!.chainId}.verified.json`;
-  writeFileSync(out, JSON.stringify(result.record, null, 2) + '\n');
+  const out = arg('--out') ?? `deployments/${result.record!.chainId}.verified.json`;
+  writeFileSync(out, JSON.stringify(result.record, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2) + '\n');
   console.log(`DEPLOYMENT VERIFIED: ${out}\n` + JSON.stringify({ factory: result.record!.balancerFactory, factoryDeploymentBlock: result.record!.factoryDeploymentBlock, deploymentGasWei: result.record!.deploymentGasWei }, null, 2));
   return 0;
 }
