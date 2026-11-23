@@ -127,6 +127,16 @@ describe('keeper policy economic model', () => {
     expect(r.accountingDifferenceWei).toBe('0');
   });
 
+  it('keeps selling Shapes without a curated NFT in standard mode', () => {
+    const r = runScenario({ ...base, nftValues: [], curatedRequired: false, target: DENOMS.map((_, d) => d === 0 ? 20 : 0),
+      initialCapital: parseEther('1'), markupBps: 1500, days: 1, drawsPerDay: 5 });
+    expect(r.endStatus).toBe('open');
+    expect(r.draws).toBe(5);
+    expect(r.blockedDraws).toBe(0);
+    expect(r.playerSpend).toBeGreaterThan(0);
+    expect(r.accountingDifferenceWei).toBe('0');
+  });
+
   it('claims the stored creator revenue share while a large replacement remains unfunded', () => {
     const r = runScenario({ ...base, days: 1, drawsPerDay: 1, forceFirstLargest: true });
     expect(r.missingPrizes).toBeGreaterThan(0);

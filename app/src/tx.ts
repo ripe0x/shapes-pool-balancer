@@ -66,22 +66,31 @@ export async function confirmAction(pub: ConfirmationClient, hash: Hash, intent:
   await verifyActionReceipt(pub, receipt, intent);
 }
 
-export interface PendingTransfer { hash: Hash; chainId: number; from: Address; to: Address; nonce: number }
+/** A reserved or sent ETH transfer. `hash` is set once the wallet returns it; `nonce` only once a node has shown that
+ *  transaction, so it is the transfer's own nonce, never one guessed before the wallet chose it. */
+export interface PendingTransfer { chainId: number; from: Address; to: Address; since: number; hash?: Hash; nonce?: number }
+
+/** How long a transfer no node has shown keeps blocking another one. Its nonce is unknown, so nothing on chain can
+ *  prove it will never mine. */
+export const UNSEEN_HOLD_MS = 24 * 60 * 60 * 1000;
 
 export const transferKey = (i: Pick<TransactionIntent, 'chainId' | 'from' | 'to'>) =>
   `pending-transfer:${i.chainId}:${i.from.toLowerCase()}:${i.to.toLowerCase()}`;
 
 /** ETH sent to a pool is not refundable, so a transfer whose outcome is unknown blocks another one to the same pool.
- *  It stays unresolved until it is mined or its nonce is used by another transaction (a replacement or cancellation).
- *  Without the transaction, the nonce read just before the wallet opened stands in; a wallet that queued a higher
- *  nonce can clear it early. RPC failures throw, so an unknown state never permits a second transfer. */
-export async function transferUnresolved(pub: Pick<PublicClient, 'getTransaction' | 'getTransactionCount'>, p: PendingTransfer) {
-  const transaction = await pub.getTransaction({ hash: p.hash }).catch((e: Error) => {
+ *  It is resolved once mined, or once its own nonce is used by another transaction (a replacement or cancellation).
+ *  A transfer never seen by the node blocks for UNSEEN_HOLD_MS. Returns the transaction's nonce when the node shows it,
+ *  for the caller to keep. RPC failures throw, so an unknown state never permits a second transfer. */
+export async function transferState(pub: Pick<PublicClient, 'getTransaction' | 'getTransactionCount'>, p: PendingTransfer,
+  now = Date.now()): Promise<{ unresolved: boolean; nonce?: number }> {
+  const transaction = p.hash ? await pub.getTransaction({ hash: p.hash }).catch((e: Error) => {
     if (e.name === 'TransactionNotFoundError') return undefined;
     throw e;
-  });
-  if (transaction?.blockNumber != null) return false;
-  return await pub.getTransactionCount({ address: p.from, blockTag: 'latest' }) <= (transaction?.nonce ?? p.nonce);
+  }) : undefined;
+  if (transaction?.blockNumber != null) return { unresolved: false };
+  const nonce = transaction?.nonce ?? p.nonce;
+  if (nonce === undefined) return { unresolved: now - p.since < UNSEEN_HOLD_MS };
+  return { unresolved: await pub.getTransactionCount({ address: p.from, blockTag: 'latest' }) <= nonce, nonce };
 }
 
 export type TransactionStep = (() => Promise<Hash | undefined>) | [string, () => Promise<Hash | undefined>];

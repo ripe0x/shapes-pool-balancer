@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BaseError } from 'viem';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { decide, gasLimitFor, Keeper, STUCK_TICKS, MAX_TRANSACTION_GAS, minimumPayment, paymentAt, paymentFloor, traceGasUsed, tracingUnsupported, UPKEEP_GAS_FLOOR } from './keeper';
 
 const GWEI = 10n ** 9n;
@@ -128,6 +131,19 @@ describe('health', () => {
     expect(k.health()).toMatchObject({ ok: false, stuck: [pool] });
     k.recordPool(pool);
     expect(k.health()).toMatchObject({ ok: true, stuck: [], errors: {} });
+  });
+
+  it('keeps the count across a restart', () => {
+    const stateFile = join(mkdtempSync(join(tmpdir(), 'keeper-health-')), 'state.json');
+    const opts = { rpcUrl: 'http://127.0.0.1:1', factory: '0x0000000000000000000000000000000000000002' as const, fromBlock: 1n,
+      stateFile, account: '0x0000000000000000000000000000000000000003' as const };
+    const first = new Keeper(opts);
+    for (let i = 0; i < 2; i++) first.recordPool(pool, new Error('x'));
+    first.save();
+    const second = new Keeper(opts);
+    second.lastTick = Date.now();
+    for (let i = 2; i < STUCK_TICKS; i++) second.recordPool(pool, new Error('x'));
+    expect(second.health()).toMatchObject({ ok: false, stuck: [pool] });
   });
 
   it('a success between errors restarts the count', () => {
