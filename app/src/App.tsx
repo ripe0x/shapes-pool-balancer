@@ -16,7 +16,7 @@ import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
 import { MAIN_POOL_OPEN, VAULT } from './main-pool';
-import { policyAbi, policyEconomics } from './policy';
+import { policyEconomics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
@@ -1843,7 +1843,7 @@ function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
 function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
   const [candidate, setCandidate] = useState<Address>(d.pendingKeeperPolicy !== ZERO_ADDR ? d.pendingKeeperPolicy : d.recommendedPolicy);
-  const [quote, setQuote] = useState<{ required: bigint; shortfall: bigint; version?: bigint }>();
+  const [quote, setQuote] = useState<{ required: bigint; shortfall: bigint }>();
   const [error, setError] = useState<string>();
   const [availablePolicies, setAvailablePolicies] = useState<Address[]>([]);
   const valid = /^0x[0-9a-fA-F]{40}$/.test(candidate);
@@ -1859,13 +1859,10 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     setError(undefined);
     if (!pub || !valid) return;
     let current = true;
-    (async () => {
-      const at = { blockNumber: d.blockNumber, gasPrice: d.baseFee + 50_000_000n, gas: 150_000n };
-      return Promise.all([
-        pub.readContract({ ...at, address: d.balancer, abi: poolBalancerAbi, functionName: 'policyFunding', args: [candidate] }),
-        pub.readContract({ ...at, address: candidate, abi: policyAbi, functionName: 'version' }).catch(() => undefined),
-      ]);
-    })().then(([funding, version]) => { if (current) setQuote({ required: funding[0], shortfall: funding[1], version }); })
+    // gasPrice keeps block.basefee nonzero inside the call; the spread passes it through readContract's types.
+    const at = { blockNumber: d.blockNumber, gasPrice: d.baseFee + 50_000_000n, gas: 150_000n };
+    pub.readContract({ ...at, address: d.balancer, abi: poolBalancerAbi, functionName: 'policyFunding', args: [candidate] })
+      .then((funding) => { if (current) setQuote({ required: funding[0], shortfall: funding[1] }); })
       .catch(() => { if (current) setError('Unable to read policy funding. Check the address and connection.'); });
     return () => { current = false; };
   }, [pub, candidate, valid, d.balancer, d.blockNumber, d.baseFee]);
@@ -1874,7 +1871,7 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
   const write = (label: string, functionName: string, args: unknown[] = []) => tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: functionName as never, args: args as never })]);
   return <div className="section">
     <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keeper payment policy</h2>
-    <div className="kv"><span className="k">Active policy</span><span title={d.keeperPolicy}>{short(d.keeperPolicy)} · {d.version === undefined ? 'Version unavailable' : `V${d.version}`}</span></div>
+    <div className="kv"><span className="k">Active policy</span><span title={d.keeperPolicy}>{short(d.keeperPolicy)}</span></div>
     <div className="kv"><span className="k">Factory recommendation</span><button className="link" onClick={() => setCandidate(d.recommendedPolicy)}>{short(d.recommendedPolicy)}</button></div>
     {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable.</p>}
     <div className="kv"><span className="k">Paid upkeep</span><span>{d.paidUpkeepEnabled ? 'Enabled' : 'Disabled'}</span></div>
@@ -1888,7 +1885,6 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     <input id="keeper-policy" className="input" list="known-policies" value={candidate} onChange={(e) => setCandidate(e.target.value as Address)} spellCheck={false} autoComplete="off" style={{ width: '100%' }} />
     <datalist id="known-policies">{availablePolicies.map((p) => <option key={p} value={p} />)}</datalist>
     {quote && <>
-      <div className="kv"><span className="k">Reported candidate version</span><span>{quote.version === undefined ? 'Unavailable' : `V${quote.version}`}</span></div>
       <p className="note" role="status">Candidate payment and restocking costs are unverified before activation.</p>
       <div className="kv"><span className="k">Candidate maintenance budget</span><span>{eth(quote.required, 6)} ETH</span></div>
       <div className="kv"><span className="k">Operating ETH needed to activate</span><span className={quote.shortfall > 0n ? 'error' : ''}>{eth(quote.shortfall, 6)} ETH</span></div>
