@@ -229,7 +229,7 @@ async function main() {
         const markup = round % 50 === 12 ? 1000 : 1500;
         const t = await read<bigint>(bB, poolBalancerAbi, 'target');
         await test.impersonateAccount({ address: CREATORS[1] });
-        await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [markup, t], account: CREATORS[1] });
+        await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [markup, t, await read<bigint>(bB, poolBalancerAbi, 'mintFeeCap')], account: CREATORS[1] });
         assert.equal(await status(bB), 0, 'a markup change with the target listed keeps purchases open');
         await buyAndSettle(bB, 1, `0x${(0xc0de0000 + round).toString(16).padStart(40, '0')}` as Address, [BigInt(keccak256(toHex(BigInt(round))))]);
         await mustOpen(bB, 'pool B restocked after a markup change', 60_000, true);
@@ -624,9 +624,7 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
     ]>(a.balancer, poolBalancerAbi, 'policyFunding', [v2]);
     assert.equal(shortfall, 0n);
     assert.ok(maintenance < E);
-    await sent(a, 'proposeKeeperPolicy', [v2]);
-    await run.jump();
-    await run.send(r.keeper, a.balancer, poolBalancerAbi, 'activateKeeperPolicy');
+    await sent(a, 'setKeeperPolicy', [v2]);
     eqPrepared(await read<Address>(a.balancer, 'keeperPolicy'), v2);
     assert.equal(await read<bigint>(a.balancer, 'keeperAllowance'), allowance);
     assert.notEqual(await read<Hex>(a.balancer, 'settingsHash'), oldHash);

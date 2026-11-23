@@ -12,7 +12,7 @@ One page. Rules live in `docs/SPEC.md`; measured numbers per regime in `docs/rec
 | Players | draw price + FWA randomness fee, paid to the FWA pool | a prize or the applicable timeout, slippage or failed-delivery refund entitlement |
 | Keepers (anyone, or the factory's approved list) | gas for `performUpkeep` | a bounded reward per call |
 | Keeper admin | nothing | nothing (controls the keeper list only) |
-| Policy admin | nothing | nothing (recommends a default for future pools after two days) |
+| Policy admin | nothing | nothing (sets the default policy for future pools and the product limits on new designs, immediately) |
 | Selected keeper policy | read-only validated work context | nothing (returns bounded economic quotes) |
 | FWA pool (owned by the Balancer) | custody of listings, draw escrow | 5% edge on each draw price, kept inside the FWA pool |
 | FWA randomness service | random words | 2,340,000 gas x gas price per draw, taken when the draw is bought |
@@ -61,9 +61,9 @@ The owner retains approximate current-board profit attribution to preserve concu
 ## Policy replacement and recovery (2026-11-17)
 
 No asset changes custodian when a policy changes. Activation changes the selected quote address and cached maximum
-only, after the two-day delay and operating-capital check. Uncollected listing surcharges are tracked as future income
-but never offset the current liquid reserve or become ETH already collected. A pending proposal reserves no
-right to withdraw: funding is checked again when activated. Existing listing price and markup records stay fixed.
+only, immediately (slice A2) after the operating-capital check. Uncollected listing surcharges are tracked as future income
+but never offset the current liquid reserve or become ETH already collected. Funding is checked in the
+changing transaction itself. Existing listing price and markup records stay fixed.
 
 Unpaid upkeep follows the same mint, listing, proceeds and reconciliation paths with zero keeper transfer, healthy active-policy listing surcharges and an immutable V1 recovery surcharge only when quoting fails. It is available even if the policy fails and paid eligibility is restricted.
 Closing releases inventory/setup/buffer requirements, keeps one current reconciliation budget per actual outstanding draw while paid upkeep is enabled, and never moves player
@@ -72,4 +72,4 @@ refund credits or FWA edge to the Balancer. Retirement still requires the existi
 Ratchets: policy generation, finalized reconciliation sequence and cumulative keeper spending increase; generation
 prevents stale offers replaying, reconciliation prevents repeated service fees, and bucket time never resets on
 configuration/policy/ownership changes. The bucket itself refills only to its immutable burst ceiling. These are
-engineering decisions under the owner's autonomous-implementation request, subject to reported economic review. Disabling paid upkeep releases payment budgets; delayed reenabling rechecks candidate funding. See [RESERVES.md](RESERVES.md) for the current kernel.
+engineering decisions under the owner's autonomous-implementation request, subject to reported economic review. Disabling paid upkeep releases payment budgets; immediate re-enabling rechecks funding. See [RESERVES.md](RESERVES.md) for the current kernel.

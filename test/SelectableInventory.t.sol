@@ -21,7 +21,7 @@ contract SelectableInventoryTest is ForkBase {
     function test_stagedBoardCannotPassAndPublicActivationRestoresAdmission() public {
         _launch();
         buy(buyer, 1);
-        vm.prank(creator); balancer.configure(1500, plan([uint256(100),0,0,0,0,0,0,0,0]));
+        vm.startPrank(creator); balancer.configure(1500, plan([uint256(100),0,0,0,0,0,0,0,0]), shapes.mintFee()); vm.stopPrank();
         for (uint256 i; i < 16; ++i) { vm.roll(vm.getBlockNumber() + 1); upkeep(); }
         assertEq(balancer.listedShapePrizes(), 100);
         assertEq(pool.activeListingCount(), 21, "80 backed Shapes remain nonselectable staging");
@@ -108,7 +108,7 @@ contract SelectableInventoryTest is ForkBase {
     function test_earlierReservedBatchesCountBeforeTheNextSelection() public {
         _launch();
         uint256[] memory first = buy(buyer, 3);
-        vm.prank(creator); balancer.configure(1500, plan([uint256(32),0,0,0,0,0,0,0,0]));
+        vm.startPrank(creator); balancer.configure(1500, plan([uint256(32),0,0,0,0,0,0,0,0]), shapes.mintFee()); vm.stopPrank();
         upkeep(); upkeep(); upkeep();
         assertEq(pool.activeListingCount(), 21);
         assertEq(pool.reservedStagedCount(), 0);
@@ -159,7 +159,7 @@ contract SelectableInventoryTest is ForkBase {
     function test_stagedWithdrawalHoleIsClearedExactlyOnce() public {
         _launch();
         buy(buyer, 1);
-        vm.prank(creator); balancer.configure(1500, plan([uint256(30),0,0,0,0,0,0,0,0]));
+        vm.startPrank(creator); balancer.configure(1500, plan([uint256(30),0,0,0,0,0,0,0,0]), shapes.mintFee()); vm.stopPrank();
         upkeep(); upkeep();
         uint256[] memory ids = balancer.getActiveIds();
         uint256[] memory one = new uint256[](1);

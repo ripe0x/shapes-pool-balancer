@@ -80,10 +80,11 @@ contract BalancerTest is ForkBase {
         uint256[] memory ids = new uint256[](1);
         ids[0] = curatedA;
         address[2] memory callers = [stranger, keeper];
+        uint256 fee = shapes.mintFee();
         for (uint256 i; i < 2; ++i) {
             vm.startPrank(callers[i]);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
-            balancer.configure(1500, planA);
+            balancer.configure(1500, planA, fee);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
             balancer.open();
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
@@ -433,8 +434,9 @@ contract BalancerTest is ForkBase {
         assertEq(have[2], 1, "the drawn 0.1 Shape was not replaced");
 
         // Re-configuring accepts the new fee; prices pass it through to players, so any markup works
-        vm.prank(creator);
-        balancer.configure(MARKUP, planA);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, planA, shapes.mintFee());
+        vm.stopPrank();
         fillUp();
         assertTrue(balancer.canPurchase(buyer));
         uint256[] memory ids = balancer.getActiveIds();
@@ -511,8 +513,9 @@ contract BalancerTest is ForkBase {
         assertEq(shapePrice, shapeBase + balancer.restockFee());
 
         // change the markup; existing listings are untouched
-        vm.prank(creator);
-        balancer.configure(3000, planA);
+        vm.startPrank(creator);
+        balancer.configure(3000, planA, shapes.mintFee());
+        vm.stopPrank();
         (,,,, uint112 priceAfter) = balancer.items(curatedA);
         assertEq(priceAfter, priceA, "existing curated price unchanged by a markup change");
         (,,,, uint112 shapeAfter) = balancer.items(shape);
@@ -574,16 +577,17 @@ contract BalancerTest is ForkBase {
     }
 
     function test_configureRejectsBadTargets() public {
+        uint256 fee = shapes.mintFee();
         vm.startPrank(creator);
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, 0); // empty
+        balancer.configure(1500, 0, fee); // empty
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0])); // > 1,000 prizes
-        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0])); // 1,000 is accepted
+        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0]), fee); // > 1,000 prizes
+        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0]), fee); // 1,000 is accepted
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, planA | (uint256(1) << 256 - 1)); // stray high bits above 16 counts
+        balancer.configure(1500, planA | (uint256(1) << 256 - 1), fee); // stray high bits above 16 counts
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
-        balancer.configure(10_001, planA); // markup too high
+        balancer.configure(10_001, planA, fee); // markup too high
         vm.stopPrank();
     }
 

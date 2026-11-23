@@ -48,8 +48,9 @@ contract KeeperAdversarialTest is ForkBase {
         creator = makeAddr(string.concat("cheap", vm.toString(curatedCount), vm.toString(curatedBase), vm.toString(target)));
         vm.deal(creator, 100 ether);
         createBalancer(10 ether);
-        vm.prank(creator);
-        balancer.configure(1000, target);
+        vm.startPrank(creator);
+        balancer.configure(1000, target, shapes.mintFee());
+        vm.stopPrank();
         for (uint256 i; i < curatedCount; ++i) {
             listCurated(500 + i, curatedBase);
         }
@@ -213,8 +214,9 @@ contract KeeperAdversarialTest is ForkBase {
     /// create it or coincide with it.
     function test_noPurchasesDuringCreatorWork() public {
         _cheapPool(2, 0.3 ether, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
-        vm.prank(creator);
-        balancer.configure(1000, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0])); // grow the target
+        vm.startPrank(creator);
+        balancer.configure(1000, plan([uint256(9), 6, 4, 0, 0, 0, 0, 0, 0]), shapes.mintFee()); // grow the target
+        vm.stopPrank();
         assertFalse(balancer.creatorWork(),"operating edits do not restart initial setup");
         assertEq(balancer.admissionStatus(),6,"real missing weight blocks purchases");
         assertFalse(balancer.canPurchase(atk));
@@ -274,8 +276,9 @@ contract KeeperAdversarialTest is ForkBase {
         fulfill(ids[0], uint256(keccak256("i6")));
         settle();
         // creator action that sets creator work: grow the target so restocking runs under the full incentive
-        vm.prank(creator);
-        balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.startPrank(creator);
+        balancer.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
+        vm.stopPrank();
         assertFalse(balancer.creatorWork(),"ordinary target growth uses inventory admission, not initial setup");
         assertEq(balancer.admissionStatus(),6,"grown target is genuinely below the70percent inventory threshold");
         bytes32 uh5 = balancer.settingsHash();

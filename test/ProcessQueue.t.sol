@@ -35,8 +35,9 @@ contract ProcessQueueTest is ForkBase {
         createBalancer(10 ether);
         uint256[16] memory c;
         (c[0], c[9], c[1], c[2], c[3]) = (24, 8, 12, 2, 1); // the launch board
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         listCurated(1, 0.2 ether);
         vm.prank(creator);
         balancer.open();

@@ -19,7 +19,7 @@ contract PolicyLifecycleTest is ForkBase {
         counts[9] = 1;
         counts[10] = 1;
         vm.startPrank(owner);
-        b.configure(1500, plan16(counts));
+        b.configure(1500, plan16(counts), shapes.mintFee());
         nft.mint(owner, salt);
         nft.approve(address(b), salt);
         PoolBalancer.CuratedInput[] memory inputs = new PoolBalancer.CuratedInput[](1);
@@ -114,10 +114,7 @@ contract PolicyLifecycleTest is ForkBase {
         _draw(first); _draw(second);
 
         KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        factory.proposeDefaultKeeperPolicy(address(v2));
-        vm.expectRevert(); factory.activateDefaultKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        factory.activateDefaultKeeperPolicy();
+        factory.setDefaultKeeperPolicy(address(v2));
         assertEq(first.keeperPolicy(), v1);
         assertEq(second.keeperPolicy(), v1);
         PoolBalancer third = _new(owner3, 103);
@@ -129,10 +126,7 @@ contract PolicyLifecycleTest is ForkBase {
         _select(first);
         buy(buyer, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1, "switch with live purchaser obligation");
-        vm.prank(creator); first.proposeKeeperPolicy(address(v2));
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); first.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        first.activateKeeperPolicy();
+        vm.prank(creator); first.setKeeperPolicy(address(v2));
         assertEq(first.keeperPolicy(), address(v2));
         assertEq(second.keeperPolicy(), v1);
         assertEq(third.keeperPolicy(), address(v2));
@@ -149,8 +143,7 @@ contract PolicyLifecycleTest is ForkBase {
         (uint256 required, uint256 shortfall) = first.policyFunding(address(broken));
         assertEq(required, first.requiredReserve(), "a higher declaration above the immutable current-work cap adds no hypothetical liability");
         vm.prank(creator); first.depositETH{value: shortfall}();
-        vm.prank(creator); first.proposeKeeperPolicy(address(broken));
-        vm.warp(vm.getBlockTimestamp() + 2 days); first.activateKeeperPolicy();
+        vm.prank(creator); first.setKeeperPolicy(address(broken));
         uint256 request = buy(buyer, 1)[0];
         fulfill(request, wordForSlot(2));
         uint256 received = stranger.balance;

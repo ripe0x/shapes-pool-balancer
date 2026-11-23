@@ -139,16 +139,15 @@ contract ConcurrentRecoveryTest is ForkBase {
     function _openMinimum(uint256 markup, bool custom, uint256 fee) internal {
         keeperStart = keeper.balance;
         createBalancer(0);
-        vm.prank(creator);
-        balancer.configure(uint16(markup), plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.startPrank(creator);
+        balancer.configure(uint16(markup), plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
+        vm.stopPrank();
         listCurated(1, 0.2 ether);
         if (custom) {
             policy = new HostileRecoveryPolicy();
             policy.setFee(fee);
             vm.prank(creator);
-            balancer.proposeKeeperPolicy(address(policy));
-            vm.warp(vm.getBlockTimestamp() + 2 days);
-            balancer.activateKeeperPolicy();
+            balancer.setKeeperPolicy(address(policy));
         }
         uint256 refPrice = block.basefee + 0.1 gwei;
         if (refPrice > 50 gwei) refPrice = 50 gwei;

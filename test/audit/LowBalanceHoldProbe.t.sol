@@ -13,8 +13,9 @@ contract LowBalanceHoldProbe is ForkBase {
         createBalancer(80 ether);
         uint256[16] memory c;
         c[15] = 1; // one 25 ETH Pack
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         listCurated(1, 1); // untrusted collection with the cheapest permitted listing
         vm.prank(creator);
         balancer.open();

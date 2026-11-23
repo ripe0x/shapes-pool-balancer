@@ -195,7 +195,7 @@ contract ReserveCapitalTest is ForkBase {
         assertGt(balancer.requiredReserve(),100 ether);
         assertEq(balancer.withdrawableSurplus(),balancer.creatorCredit(),"missing inventory reserves subsequent operating income");
         uint256 target=balancer.target();
-        vm.prank(creator); balancer.configure(1600,target);
+        vm.startPrank(creator); balancer.configure(1600,target, shapes.mintFee()); vm.stopPrank();
         assertFalse(balancer.creatorWork(),"ordinary markup change does not restart initial setup");
         assertEq(balancer.admissionStatus(),0);
         buy(buyer,1);
@@ -216,12 +216,9 @@ contract ReserveCapitalTest is ForkBase {
         (uint256 required,uint256 shortfall)=balancer.policyFunding(balancer.keeperPolicy());
         assertEq(required,0.00368 ether);
         assertEq(shortfall,required);
-        address policy=balancer.keeperPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(policy);
-        vm.warp(vm.getBlockTimestamp()+2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setPaidUpkeepEnabled(true);
         _deposit(shortfall);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
         assertTrue(balancer.paidUpkeepEnabled());
         assertEq(balancer.requiredReserve(),0.00368 ether);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);

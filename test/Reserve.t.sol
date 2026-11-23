@@ -271,11 +271,13 @@ contract ReserveTest is ForkBase {
     /// The minimum markup: the markup is the only profit that refills the reserve.
     function test_markupBelowTenPercentRejected() public {
         uint256 t = balancer.target();
+        uint256 fee = shapes.mintFee();
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
-        balancer.configure(999, t);
-        vm.prank(creator);
-        balancer.configure(1000, t);
+        balancer.configure(999, t, fee);
+        vm.startPrank(creator);
+        balancer.configure(1000, t, shapes.mintFee());
+        vm.stopPrank();
     }
 
 
@@ -334,8 +336,9 @@ contract ReserveTest is ForkBase {
     /// under the fill gate with nothing for upkeep to restock. The gate weighs prizes by backing, so it stays open.
     function test_lowerMarkupKeepsAFullBoardOpen() public {
         uint256 t = balancer.target();
-        vm.prank(creator);
-        balancer.configure(10_000, t);
+        vm.startPrank(creator);
+        balancer.configure(10_000, t, shapes.mintFee());
+        vm.stopPrank();
         // Relist every Shape at 100% markup.
         uint256[] memory ids = balancer.getActiveIds();
         uint256[] memory shapeIds = new uint256[](ids.length - 1);
@@ -346,8 +349,9 @@ contract ReserveTest is ForkBase {
         fillUp();
         assertEq(balancer.admissionStatus(), 0, "full board at 100% markup");
 
-        vm.prank(creator);
-        balancer.configure(1_000, t);
+        vm.startPrank(creator);
+        balancer.configure(1_000, t, shapes.mintFee());
+        vm.stopPrank();
         assertFalse(balancer.creatorWork(), "nothing to restock: every prize is listed");
         assertEq(balancer.admissionStatus(), 0, "a lower markup leaves a full board open");
         uint256[] memory d = buy(buyer, 1);
@@ -361,7 +365,7 @@ contract ReserveTest is ForkBase {
         nft.mint(creator, 50);
         vm.startPrank(creator);
         nft.approve(address(fresh), 50);
-        fresh.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]));
+        fresh.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
         uint256 lid = fresh.listCurated(address(nft), 50, 0.3 ether);
         vm.stopPrank();
         (,,,, uint112 price) = fresh.items(lid);

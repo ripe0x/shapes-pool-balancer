@@ -126,8 +126,9 @@ abstract contract ForkBase is Test {
 
     /// @dev Configure at MARKUP with prize target `t` (see `plan`, `plan16`).
     function configure(uint256 t) internal {
-        vm.prank(creator);
-        balancer.configure(MARKUP, t);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, t, shapes.mintFee());
+        vm.stopPrank();
     }
 
     /// @dev Independent legacy-test arithmetic for the current immutable working-capital caps.

@@ -476,8 +476,9 @@ contract OptionalCuratedTest is ForkBase {
         assertEq(balancer.admissionStatus(), 6, "depletion finally pauses on the weight gate");
 
         // Reconfiguring re-accepts the live fee; upkeep then restocks at the new fee.
-        vm.prank(creator);
-        balancer.configure(MARKUP, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
+        vm.stopPrank();
         assertEq(balancer.mintFeeCap(), shapes.mintFee(), "the live fee is re-accepted as the new cap");
         fillUp();
         assertEq(balancer.getActiveShapes()[0], 20, "restocked at the new fee");
@@ -539,8 +540,9 @@ contract OptionalCuratedTest is ForkBase {
         balancer.claimSurplus(1, creator);
 
         // Explicit acceptance: the reserve rises by exactly the four missing Shapes' extra fee, 4 x 9 x 0.001 ETH.
-        vm.prank(creator);
-        balancer.configure(MARKUP, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
+        vm.stopPrank();
         assertEq(balancer.mintFeeCap(), fee * 10, "the live fee is the new cap");
         assertEq(balancer.requiredReserve() - req, 4 * 9 * fee, "reserve now prices missing prizes at the new fee");
         assertEq(balancer.requiredReserve() - req, 0.036 ether);

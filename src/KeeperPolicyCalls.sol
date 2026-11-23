@@ -24,10 +24,11 @@ library KeeperPolicyCalls {
     error InvalidPolicy();
     error PolicyUnavailable();
 
+    /// @dev Restock quotes above this per Shape unit are refused (the V1 fallback prices unpaid work instead).
+    uint256 internal constant MAX_RESTOCK_SURCHARGE = 0.102 ether;
     struct State {
         address policy;
-        address pending;
-        uint64 activationTime;
+        /// @dev Advances on every policy or paid-upkeep change, so a disable/re-enable cycle changes `settingsHash`.
         uint64 generation;
         bool enabled;
         uint256 maxReward;
@@ -42,12 +43,9 @@ library KeeperPolicyCalls {
         uint256 mintFee;
         uint256 baseFee;
     }
-    event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
-    event KeeperPolicyCancelled(address indexed policy);
     event KeeperPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
     event PaidUpkeepChanged(bool enabled);
     event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed);
-    error PolicyNotReady();
     error PaymentUnavailable();
     error ReserveNotFunded();
 
@@ -59,39 +57,31 @@ library KeeperPolicyCalls {
         s.allowanceTime = uint64(block.timestamp);
         emit KeeperPolicyChanged(address(0), policy);
     }
-    function propose(State storage s, address policy) public {
-        validate(policy);
-        s.pending = policy;
-        s.activationTime = uint64(block.timestamp + 2 days);
-        emit KeeperPolicyProposed(policy, s.activationTime);
-    }
-    function cancel(State storage s) public {
-        emit KeeperPolicyCancelled(s.pending);
-        s.pending = address(0);
-        s.activationTime = 0;
-    }
-    function activate(State storage s, uint256 fund, Reserve memory r) public {
-        if (s.pending == address(0) || block.timestamp < s.activationTime) revert PolicyNotReady();
-        uint256 bound = validate(s.pending);
-        uint256 candidate = maintenanceBudget(bound, r);
-        uint256 previous = maintenanceBudget(s.enabled ? s.maxReward : 0, r);
-        // A lower bound need not quote less for each job; only immutable maintenance exposure is compared.
-        if (candidate > previous && fund < candidate) revert ReserveNotFunded();
-        emit KeeperPolicyChanged(s.policy, s.pending);
-        s.policy = s.pending;
+    /// @dev Immediate creator change. Only a larger maintenance exposure than the current one must be funded from
+    ///      operating capital; missing prize capital never enters this check. Selecting a policy enables paid upkeep.
+    function setPolicy(State storage s, address policy, uint256 fund, Reserve memory r) public {
+        uint256 bound = validate(policy);
+        _requireFunded(s, bound, fund, r);
+        emit KeeperPolicyChanged(s.policy, policy);
+        s.policy = policy;
         s.maxReward = bound;
-        s.enabled = true;
-        ++s.generation;
-        cancel(s);
-        emit PaidUpkeepChanged(true);
+        _set(s, true);
     }
-    function disable(State storage s, bool value) public {
-        if (value) revert PolicyNotReady();
-        s.enabled = false;
+    /// @dev Immediate emergency stop or re-enable. Re-enabling compares the policy's maintenance budget against zero
+    ///      paid exposure. The spending allowance is untouched either way, so no change refills it.
+    function setEnabled(State storage s, bool value, uint256 fund, Reserve memory r) public {
+        if (value) _requireFunded(s, s.maxReward, fund, r);
+        _set(s, value);
+    }
+    function _set(State storage s, bool value) private {
+        s.enabled = value;
         ++s.generation;
-        // An already matured proposal must not let a public executor undo the creator's emergency stop.
-        cancel(s);
-        emit PaidUpkeepChanged(false);
+        emit PaidUpkeepChanged(value);
+    }
+    function _requireFunded(State storage s, uint256 bound, uint256 fund, Reserve memory r) private view {
+        uint256 candidate = maintenanceBudget(bound, r);
+        // A lower bound need not quote less for each job; only immutable maintenance exposure is compared.
+        if (candidate > maintenanceBudget(s.enabled ? s.maxReward : 0, r) && fund < candidate) revert ReserveNotFunded();
     }
     function available(State storage s) public view returns (uint256) {
         uint256 elapsed = block.timestamp - s.allowanceTime;
@@ -121,7 +111,7 @@ library KeeperPolicyCalls {
         need += operating > process ? operating : process;
     }
 
-    /// @dev Full withdrawal/opening target. Missing prize capital never enters policy activation funding.
+    /// @dev Full withdrawal/opening target. Missing prize capital never enters policy-change funding.
     function reserve(uint256 maxReward, Reserve memory r) public pure returns (uint256 need) {
         need = maintenanceBudget(maxReward, r);
         if (!r.enabled) return need;
@@ -225,7 +215,7 @@ library KeeperPolicyCalls {
     function restock(address policy, uint8 d, uint256 units, bool paid, uint256 baseFee) public view returns (uint256) {
         (bool ok, uint256 quote) = word(policy, abi.encodeCall(IKeeperPolicy.quoteRestock, (d, units, baseFee)));
         // Unpaid callers cannot select cheaper pricing while the creator's chosen policy is healthy.
-        if (ok && quote <= units * 0.102 ether) return quote;
+        if (ok && quote <= units * MAX_RESTOCK_SURCHARGE) return quote;
         if (paid) revert PolicyUnavailable();
         uint256 price = baseFee + 0.05 gwei;
         if (price > 5 gwei) price = 5 gwei;

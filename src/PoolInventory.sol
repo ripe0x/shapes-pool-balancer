@@ -71,16 +71,23 @@ library PoolInventory {
     error InvalidPlan();
     error ProtectedAsset();
 
-    function validateTarget(uint256 plan, uint256 markup) public pure returns (uint256 weight) {
-        if (markup < 1_000 || markup > 10_000) revert InvalidConfig();
+    /// @dev Checks a newly submitted design against the factory's current limits. Lowering a limit never strands a
+    ///      pool already beyond it: a design may keep or reduce the current prize count (`max(current, maxPrizes)`) and
+    ///      keep the current markup. Any other markup must be in range. Upkeep, recovery and withdrawals never call this.
+    function validateTarget(uint256 plan, uint256 markup, uint256 oldPlan, uint256 oldMarkup, uint256 maxPrizes,
+        uint256 minMarkup, uint256 maxMarkup) public pure returns (uint256 weight)
+    {
+        if ((markup < minMarkup || markup > maxMarkup) && (markup != oldMarkup || markup == 0)) revert InvalidConfig();
         uint256 prizes;
+        uint256 old;
         for (uint256 d; d < DENOMS; ++d) {
             uint256 n = _count(plan, d);
+            old += _count(oldPlan, d);
             if (n == 0) continue;
             prizes += n;
             weight += n * _weight(d);
         }
-        if (prizes == 0 || prizes > 1_000) revert InvalidPlan();
+        if (prizes == 0 || prizes > (old > maxPrizes ? old : maxPrizes)) revert InvalidPlan();
     }
 
     function recoverUntracked(address pool, address factory, address collection, uint256 tokenId, address to) public {

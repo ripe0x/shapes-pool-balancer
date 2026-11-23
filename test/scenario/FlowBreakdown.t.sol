@@ -224,13 +224,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory pending = _buy(1);
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
         (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
         assertEq(required, 0.00508 ether, "one outstanding request and one operating call at 0.5 gwei");
-        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no activation top-up");
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.prank(stranger); balancer.activateKeeperPolicy();
+        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no top-up");
+        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
         assertEq(balancer.keeperPolicy(), address(v2));
         alternativePolicy = true;
         assertLt(address(balancer).balance - balancer.creatorCredit(), required, "existing underfunding does not block equal-exposure replacement");
@@ -959,8 +956,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         probe = new GasProbe();
         createBalancer(deposit);
         deposited += deposit;
-        vm.prank(creator);
-        balancer.configure(uint16(MARKUP_BPS), plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(uint16(MARKUP_BPS), plan16(c), shapes.mintFee());
+        vm.stopPrank();
         if (!noNft) _listNft();
         vm.prank(creator);
         balancer.open();
@@ -1347,8 +1345,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         } else {
             uint256[16] memory c;
             (c[0], c[9], c[1], c[2]) = (24, 8, 12, 2); // the launch design without the 0.5 ETH Shape
-            vm.prank(creator);
-            balancer.configure(uint16(MARKUP_BPS), plan16(c));
+            vm.startPrank(creator);
+            balancer.configure(uint16(MARKUP_BPS), plan16(c), shapes.mintFee());
+            vm.stopPrank();
         }
         _keeperPass();
     }

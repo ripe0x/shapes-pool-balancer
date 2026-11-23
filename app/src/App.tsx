@@ -103,9 +103,8 @@ function useBalancer(b?: Address) {
     // The keeper list is on the factory that deployed this Balancer.
     const factoryAddr = await r<Address>('factory');
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
-    const [keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, policyMaxReward, recommendedPolicy] = await Promise.all([
-      r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<Address>('pendingKeeperPolicy'),
-      r<bigint>('policyActivationTime'), r<bigint>('policyMaxReward'),
+    const [keeperPolicy, paidUpkeepEnabled, policyMaxReward, recommendedPolicy] = await Promise.all([
+      r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<bigint>('policyMaxReward'),
       pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy', blockNumber }),
     ]);
     const policyCosts = await policyEconomics(pub, keeperPolicy, policyMaxReward, b, block).catch(() => ({
@@ -133,7 +132,7 @@ function useBalancer(b?: Address) {
       balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
-      keepersRestricted, keeperPolicy, paidUpkeepEnabled, pendingKeeperPolicy, policyActivationTime, recommendedPolicy, factoryAddr, blockNumber,
+      keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber,
     };
   }, [pub, b]);
   type Snapshot = Awaited<ReturnType<typeof load>>;
@@ -942,8 +941,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const view = ev && playerView(ev).top ? playerView(ev) : undefined;
   // Fill gate (D8): a mix whose prize weight is small pauses sales while draws are unsettled.
   const pausesAt = pendingDrawsAdmitted(counts) + 1;
-  // Saving (configure) is needed for a new design, a markup or mix change, or to accept a risen Shapes mint fee.
-  const configChanged = !has || markupBps !== d.markupBps || target !== d.target || d.mintFee > d.mintFeeCap;
+  // Saving (configure) is needed for a new design, a markup or mix change, or to accept a changed Shapes mint fee,
+  // higher or lower. Configure binds the fee shown here as the accepted cap and reverts if the live fee is above it.
+  const feeOnly = has && markupBps === d.markupBps && target === d.target && d.mintFee !== d.mintFeeCap;
+  const configChanged = !has || markupBps !== d.markupBps || target !== d.target || feeOnly;
   // The reserve uses the accepted fee (PoolBalancer.requiredReserve): a pending configure accepts the live fee.
   const savedReserveFee = d.mintFeeCap;
   const reserveMintFee = configChanged ? d.mintFee : savedReserveFee;
@@ -1064,7 +1065,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
     ? [toList.length > 0 && `approve ${nftWord(toList.length)}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
-    : [configChanged && 'save the design', toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
+    : [configChanged && (feeOnly ? `accept the ${eth(d.mintFee, 6)} ETH Shapes mint fee` : 'save the design'), toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
       shortBy > 0n && `deposit ${eth(shortBy, 6)} ETH`, extra.length > 0 && `unlist ${word(extra.length)} extra prizes`,
       (toList.length > 0 || configChanged) && 'run upkeep'].filter(Boolean) as string[];
   const confirmations = mode === 'new' ? toList.length + 1
@@ -1122,7 +1123,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           return undefined;
         }]);
       } else {
-        if (configChanged) steps.push(['Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target] })]);
+        if (configChanged) steps.push([feeOnly ? 'Accept mint fee' : 'Save design', () => tx.write({ ...B, functionName: 'configure', args: [markupBps, target, d.mintFee] })]);
         steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
         if (shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 6)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
         if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
@@ -1670,7 +1671,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               <p className="note error">{missing === 1 ? `${goneLabel[0].toUpperCase()}${goneLabel.slice(1)} is` : `${missing} prizes are`} missing. {d.paidUpkeepEnabled ? 'Full target funding and paid maintenance need' : 'The target inventory needs'} {eth(short_, 6)} ETH more.</p>
               <div className="row" style={{ marginTop: 8 }}>
                 <button className="btn" disabled={!!tx.busy} onClick={() => tx.send(`Add ${eth(short_, 6)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub, tx, me, d.balancer)])}>Add {eth(short_, 6)} ETH</button>
-                <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => tx.send('Continue without them', [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed)] }), upkeepStep(pub, tx, me, d.balancer)])}>Continue without {goneLabel}</button>
+                <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => tx.send('Continue without them', [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed), d.mintFeeCap] }), upkeepStep(pub, tx, me, d.balancer)])}>Continue without {goneLabel}</button>
               </div>
             </div>
           )}
@@ -1798,7 +1799,7 @@ function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
 
 function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
-  const [candidate, setCandidate] = useState<Address>(d.pendingKeeperPolicy !== ZERO_ADDR ? d.pendingKeeperPolicy : d.recommendedPolicy);
+  const [candidate, setCandidate] = useState<Address>(d.recommendedPolicy);
   const [quote, setQuote] = useState<{ required: bigint; shortfall: bigint; version?: bigint }>();
   const [error, setError] = useState<string>();
   const [availablePolicies, setAvailablePolicies] = useState<Address[]>([]);
@@ -1825,9 +1826,8 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
       .catch(() => { if (current) setError('Unable to read policy funding. Check the address and connection.'); });
     return () => { current = false; };
   }, [pub, candidate, valid, d.balancer, d.blockNumber, d.baseFee]);
-  const pending = d.pendingKeeperPolicy !== ZERO_ADDR;
-  const mature = d.chainTimestamp >= d.policyActivationTime;
   const write = (label: string, functionName: string, args: unknown[] = []) => tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: functionName as never, args: args as never })]);
+  const same = valid && candidate.toLowerCase() === d.keeperPolicy.toLowerCase();
   return <div className="section">
     <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keeper payment policy</h2>
     <div className="kv"><span className="k">Active policy</span><span title={d.keeperPolicy}>{short(d.keeperPolicy)} · {d.version === undefined ? 'Version unavailable' : `V${d.version}`}</span></div>
@@ -1837,32 +1837,25 @@ function KeeperPay({ d, tx }: { d: D; tx: Tx }) {
     <div className="kv"><span className="k">Policy payment ceiling</span><span>{eth(d.policyMaxReward, 5)} ETH</span></div>
     <div className="kv"><span className="k">0.01 ETH Shape restocking charge</span><span>{d.restockFee === undefined ? 'Unavailable' : `${eth(d.restockFee, 6)} ETH`}</span></div>
     <div className="row" style={{ gap: 16, marginTop: 16 }}>
-      {d.paidUpkeepEnabled && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>}
+      {d.paidUpkeepEnabled
+        ? <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Disable paid upkeep', 'setPaidUpkeepEnabled', [false])}>Disable paid upkeep</button>
+        : <button className="btn" disabled={!!tx.busy} onClick={() => write('Enable paid upkeep', 'setPaidUpkeepEnabled', [true])}>Enable paid upkeep</button>}
       <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
     </div>
-    <label htmlFor="keeper-policy" className="ctl" style={{ display: 'block', marginTop: 24 }}>Replacement policy address</label>
+    <label htmlFor="keeper-policy" className="ctl" style={{ display: 'block', marginTop: 24 }}>Policy address</label>
     <input id="keeper-policy" className="input" list="known-policies" value={candidate} onChange={(e) => setCandidate(e.target.value as Address)} spellCheck={false} autoComplete="off" style={{ width: '100%' }} />
     <datalist id="known-policies">{availablePolicies.map((p) => <option key={p} value={p} />)}</datalist>
     {quote && <>
       <div className="kv"><span className="k">Reported candidate version</span><span>{quote.version === undefined ? 'Unavailable' : `V${quote.version}`}</span></div>
-      <p className="note" role="status">Candidate payment and restocking costs are unverified before activation.</p>
+      <p className="note" role="status">Candidate payment and restocking costs are unverified before the change.</p>
       <div className="kv"><span className="k">Candidate maintenance budget</span><span>{eth(quote.required, 6)} ETH</span></div>
-      <div className="kv"><span className="k">Operating ETH needed to activate</span><span className={quote.shortfall > 0n ? 'error' : ''}>{eth(quote.shortfall, 6)} ETH</span></div>
-      <div className="kv"><span className="k">Funding permits activation</span><span>{quote.shortfall === 0n ? 'Yes' : 'No'}</span></div>
+      <div className="kv"><span className="k">Operating ETH needed to switch</span><span className={quote.shortfall > 0n ? 'error' : ''}>{eth(quote.shortfall, 6)} ETH</span></div>
       <div className="kv"><span className="k">Current inventory and maintenance shortfall</span><span>{d.required === undefined ? 'Unavailable' : `${eth(d.required > d.balance - d.creatorCredit ? d.required - (d.balance - d.creatorCredit) : 0n, 6)} ETH`}</span></div>
       {quote.shortfall > 0n && <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Fund policy reserve', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'depositETH', value: quote.shortfall })])}>Deposit {eth(quote.shortfall, 6)} ETH</button>}
     </>}
     {error && <p className="note error" role="alert">{error}</p>}
-    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !valid} onClick={() => write('Propose keeper policy', 'proposeKeeperPolicy', [candidate])}>Propose policy · 2 day delay</button>
-    {pending && <div style={{ marginTop: 20 }}>
-      <div className="kv"><span className="k">Pending policy</span><span title={d.pendingKeeperPolicy}>{short(d.pendingKeeperPolicy)}</span></div>
-      <div className="kv"><span className="k">Activation time</span><time dateTime={new Date(Number(d.policyActivationTime) * 1000).toISOString()}>{new Date(Number(d.policyActivationTime) * 1000).toLocaleString()}</time></div>
-      <div className="row" style={{ gap: 16, marginTop: 12 }}>
-        <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Cancel keeper policy', 'cancelKeeperPolicy')}>Cancel proposal</button>
-        <button className="btn" disabled={!!tx.busy || !mature} onClick={() => write('Activate keeper policy', 'activateKeeperPolicy')}>Activate policy</button>
-      </div>
-    </div>}
-    <p className="note" style={{ marginTop: 12 }}>Existing listings keep their prices. A replacement with no greater maintenance exposure can activate without restoring inventory. Increased exposure needs its full maintenance budget. Re-enabling compares against zero paid exposure and requires the delay.</p>
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !valid || (same && d.paidUpkeepEnabled) || (quote?.shortfall ?? 0n) > 0n} onClick={() => write('Set keeper policy', 'setKeeperPolicy', [candidate])}>Use this policy</button>
+    <p className="note" style={{ marginTop: 12 }}>A policy change takes effect immediately and enables paid upkeep. Existing listings keep their prices. A larger maintenance exposure needs its maintenance budget in operating ETH; missing prizes do not. Re-enabling paid upkeep needs the current policy's maintenance budget.</p>
   </div>;
 }
 

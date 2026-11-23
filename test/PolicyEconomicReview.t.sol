@@ -72,19 +72,20 @@ contract PolicyEconomicReviewTest is ForkBase {
         _context();
     }
 
-    function test_emergencyDisableInvalidatesMaturedProposal() public {
+    /// Spec §2: no public path re-enables a creator's emergency stop. Replaces the former matured-proposal case; with
+    /// no proposals, a stranger's only routes are the creator-only setters.
+    function test_emergencyDisableHasNoPublicReenablePath() public {
         _open();
         KeeperPolicyV1 replacement = new KeeperPolicyV1();
         vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(replacement));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        assertEq(balancer.pendingKeeperPolicy(), address(replacement), "reached a matured approved change");
-        vm.prank(creator);
         balancer.setPaidUpkeepEnabled(false);
         assertFalse(balancer.paidUpkeepEnabled(), "creator's emergency stop took effect");
-        vm.prank(stranger);
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector);
-        balancer.activateKeeperPolicy();
+        vm.startPrank(stranger);
+        vm.expectRevert(PoolBalancer.Unauthorized.selector);
+        balancer.setKeeperPolicy(address(replacement));
+        vm.expectRevert(PoolBalancer.Unauthorized.selector);
+        balancer.setPaidUpkeepEnabled(true);
+        vm.stopPrank();
         assertFalse(balancer.paidUpkeepEnabled(), "public execution cannot undo emergency stop");
     }
 
@@ -119,31 +120,27 @@ contract PolicyEconomicReviewTest is ForkBase {
         }
         assertEq(n, 20);
         ReviewSmallPolicy inexpensive = new ReviewSmallPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(inexpensive));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(inexpensive));
         assertEq(balancer.requiredReserve(), 0.001 ether, "smaller selected cap funds a smaller working buffer");
         uint256 claim = balancer.withdrawableSurplus();
         vm.prank(creator);
         balancer.claimSurplus(claim, creator);
         assertEq(address(balancer).balance, 0.001 ether, "withdrawal retains precisely the selected working buffer");
         ReviewEconomicPolicy replacement = new ReviewEconomicPolicy();
-        vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(replacement));
         (uint256 required, uint256 topUp) = balancer.policyFunding(address(replacement));
         assertEq(required, 0.00368 ether, "new bounded current-work buffer independently recomputed");
-        assertEq(topUp, 0.00268 ether, "activation requires the actual working-capital difference");
-        vm.warp(vm.getBlockTimestamp() + 2 days);
+        assertEq(topUp, 0.00268 ether, "the change requires the actual working-capital difference");
+        vm.prank(creator);
         vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);
-        balancer.activateKeeperPolicy();
+        balancer.setKeeperPolicy(address(replacement));
         vm.prank(creator);
         balancer.depositETH{value: topUp}();
-        vm.prank(stranger);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator);
+        balancer.setKeeperPolicy(address(replacement));
         assertEq(address(balancer).balance, required);
         for (uint256 i; i < shapeIds.length; ++i) {
             (,,,,uint256 price) = balancer.items(shapeIds[i]);
-            assertEq(price, oldPrices[i], "activation cannot retroactively reprice inventory");
+            assertEq(price, oldPrices[i], "a policy change cannot retroactively reprice inventory");
         }
         assertEq(_listedFees(balancer), 0.0139 ether);
         vm.prank(creator); balancer.close();
@@ -172,12 +169,9 @@ contract PolicyEconomicReviewTest is ForkBase {
         buy(buyer, 2);
         assertEq(pool.lastIssuedSequence(), 2);
         ReviewMaximumPolicy replacement = new ReviewMaximumPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(replacement));
         (,uint256 topUp) = balancer.policyFunding(address(replacement));
         assertEq(topUp, 0, "an oversized declaration adds no hypothetical lifetime liability");
-        vm.prank(creator); balancer.depositETH{value: topUp}();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(replacement));
         vm.roll(vm.getBlockNumber() + 40);
         assertEq(pool.unsettledAcquisitionCount(), 2, "two real unpaid draws await processing");
         uint256 fund = address(balancer).balance;

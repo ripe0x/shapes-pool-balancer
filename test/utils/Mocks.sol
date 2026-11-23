@@ -158,7 +158,8 @@ contract NonRefundingBuyer {
 interface IBalancerCreator {
     function acceptCreator() external;
     function listCuratedBatch(PoolBalancer.CuratedInput[] calldata) external returns (uint256[] memory);
-    function configure(uint16, uint256) external;
+    function configure(uint16, uint256, uint256) external;
+    function mintFeeCap() external view returns (uint256);
     function target() external view returns (uint256);
 }
 
@@ -185,7 +186,7 @@ contract ReconfiguringNFT is MockNFT {
         address b = armedBalancer;
         if (b != address(0) && from != address(0)) {
             armedBalancer = address(0);
-            IBalancerCreator(b).configure(armedMarkup, IBalancerCreator(b).target());
+            IBalancerCreator(b).configure(armedMarkup, IBalancerCreator(b).target(), IBalancerCreator(b).mintFeeCap());
         }
     }
 }

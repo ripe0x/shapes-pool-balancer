@@ -205,7 +205,7 @@ contract HardeningTest is ForkBase {
         vm.prank(c);
         PoolBalancer b = _createFixture(c, bytes32(0), 10 ether);
         vm.startPrank(c);
-        b.configure(MARKUP, planA);
+        b.configure(MARKUP, planA, shapes.mintFee());
         nft.mint(c, 9001);
         nft.approve(address(b), 9001);
         b.listCurated(address(nft), 9001, 0.3 ether);
@@ -233,7 +233,7 @@ contract HardeningTest is ForkBase {
         vm.prank(c);
         PoolBalancer b = _createFixture(c, bytes32(0), 5 ether);
         vm.startPrank(c);
-        b.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(1000, plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
         nft.mint(c, 9101);
         nft.approve(address(b), 9101);
         b.listCurated(address(nft), 9101, 0.3 ether);
@@ -269,7 +269,7 @@ contract HardeningTest is ForkBase {
         vm.prank(c);
         PoolBalancer b = _createFixture(c, bytes32(0), 2 ether);
         vm.startPrank(c);
-        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(1000, plan([uint256(10), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
         nft.mint(c, 9200);
         nft.approve(address(b), 9200);
         b.listCurated(address(nft), 9200, 0.3 ether);
@@ -489,7 +489,7 @@ contract HardeningTest is ForkBase {
         r.allow(address(b));
         r.mint(c, 1);
         vm.startPrank(c);
-        b.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]));
+        b.configure(MARKUP, plan([uint256(1), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
         r.approve(address(b), 1);
         uint256 lid = b.listCurated(address(r), 1, 0.5 ether);
         b.open();

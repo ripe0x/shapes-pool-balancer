@@ -20,28 +20,36 @@ initial value, bounds, derived values and consumers. "Consumers" lists on-chain 
 
 | Setting | Status | Authority | Getter | Update path | Initial | Bounds | Consumers |
 |---|---|---|---|---|---|---|---|
-| `markupBps` | existing | creator | `markupBps()` | `configure(markup,target)` | creation | factory min/max markup (see 1b); today hardcoded 1000..10000 in `PoolInventory.validateTarget` | FWA listing price (`_prizeBase`), app sliders/preview |
-| `target` | existing | creator | `target()` | `configure` | creation | prizes 1..`maxPrizes` (hardcoded 1000 today) | fill gate, reserve, `fill`, app |
-| `mintFeeCap` (accepted fee) | existing; binding ◻︎ | creator | `mintFeeCap()` | `configure` (binds live fee at exec) | creation fee | `<= type(uint256)` | upkeep mint gate, reserve, app "accept fee" |
+| `markupBps` | ✅ A2 | creator | `markupBps()` | `configure(markup,target,acceptedMintFee)` | creation | factory `productLimits` min..max, or unchanged (§1b rule) | FWA listing price (`_prizeBase`), app sliders/preview |
+| `target` | ✅ A2 | creator | `target()` | `configure` | creation | prizes 1..`max(current count, maxPrizes)` (§1b rule) | fill gate, reserve, `fill`, app |
+| `mintFeeCap` (accepted fee) | ✅ A2 binding | creator | `mintFeeCap()` | `configure(..., acceptedMintFee)`: reverts if live fee > accepted; lower accepted fee allowed with the same design | creation `CreationConfig.mintFeeCap` | `>= live fee` at save | upkeep mint gate (mints at live fee while live <= cap), reserve (priced at cap), app "accept fee" when live != cap |
 | `creatorRevenueBps` | existing | creator | `creatorRevenueBps()` | `setCreatorRevenueBps` | creation | `<= 10000` | `_collect` credit split |
 | `curatedRequired` | existing | creator | `curatedRequired()` | `setCuratedRequired` | creation | bool | admission (status 3/7), app |
 | **`fillGateBps`** | ✅ | creator | `fillGateBps()` | `setFillGateBps` | **7000** | `0..10000` (0 drops target-fill req, keeps `prizeWeight<lost` check) | `PoolInventory.admission`, app preview (Phase B) |
 | **`backlogThreshold`** | ✅ | creator | `backlogThreshold()` | `setBacklogThreshold` | **5 (=MAX_BATCH)** | `>= 1`; no factory max this release | `PoolInventory.admission` (status 4), app |
 | `fillGateBps`/`backlog` at creation | ◻︎ Phase B | creator | — | add to `CreationConfig` + app creation flow | defaults above | — | creation UI |
-| bucket capacity | ◻︎ | creator | `keeperBucketCapacity()` (new) | `setKeeperBucket` (new) | 0.622 ETH | `>=0`; see §4 accrual | `pay`/`available` |
-| bucket refill/s | ◻︎ | creator | `keeperBucketRefill()` (new) | `setKeeperBucket` | `floor(0.05 ether/12)` | `>=0` (0 = no refill) | `pay`/`available` |
+| bucket capacity | ◻︎ | creator | `keeperBucketCapacity()` (A2: read-only getter of the library constant) | `setKeeperBucket` (new) | 0.622 ETH | `>=0`; see §4 accrual | `pay`/`available` |
+| bucket refill/s | ◻︎ | creator | `keeperBucketRefill()` (A2: read-only getter of the library constant) | `setKeeperBucket` | `floor(0.05 ether/12)` | `>=0` (0 = no refill) | `pay`/`available` |
 | follow vs local | ◻︎ | creator | `economicsSource()` (new) | `followFactory()` / `setLocalEcon()` / `pinEconomics()` | follow | — | resolver §3 |
-| paid upkeep enabled | existing; immediate ◻︎ | creator | `paidUpkeepEnabled()` | `setPaidUpkeepEnabled` (make immediate, no delay) | true | bool; emergency-disable survives factory updates | `_performUpkeep` |
-| keeper policy (algorithm) | existing; immediate ◻︎ | creator | `keeperPolicy()` | `setKeeperPolicy` (immediate, replaces propose/activate) | factory default @ creation | `KeeperPolicyCalls.validate` | quote/pay/restock |
+| paid upkeep enabled | ✅ A2 immediate | creator | `paidUpkeepEnabled()`, `policyGeneration()` | `setPaidUpkeepEnabled(bool)`; re-enable checks maintenance budget vs zero paid exposure | true | bool; stop survives factory updates and creator transfer; only the creator re-enables | `_performUpkeep`, `settingsHash` |
+| keeper policy (algorithm) | ✅ A2 immediate | creator | `keeperPolicy()`, `policyMaxReward()` | `setKeeperPolicy(address)` (immediate; funding check on larger maintenance exposure only; enables paid upkeep) | factory default @ creation | `KeeperPolicyCalls.validate` | quote/pay/restock |
+| library value getters | ✅ A2 | — (read-only) | `hardMaxKeeperReward()` 0.311, `keeperBucketCapacity()` 0.622, `keeperBucketRefill()` 4_166_666_666_666_666 wei/s, `maxRestockSurchargePerShape()` 0.102 | A3 makes configurable | — | — | replaced the stale public constants `HARD_MAX_KEEPER_REWARD`, `KEEPER_BURST`, `KEEPER_REFILL_PER_SECOND`, `MAX_RESTOCK_SURCHARGE_PER_SHAPE`, `POLICY_DELAY`; `keeper/e2e.ts` reads `hardMaxKeeperReward` |
 
 ### 1b. Factory settings (`BalancerFactory`, `policyAdmin` unless noted)
 
 | Setting | Status | Authority | Getter | Update path | Initial | Bounds | Consumers |
 |---|---|---|---|---|---|---|---|
-| `defaultKeeperPolicy` | existing; delay to be removed ◻︎ | policyAdmin | `defaultKeeperPolicy()` | `setDefaultKeeperPolicy` (immediate) | ctor arg | `validate` | new clones only |
-| `maxPrizes` | ◻︎ (reuse branch) | policyAdmin | `getSettings().maxPrizes` | `setMaxPrizes` | **1000** | `1..1000` | `validateTarget`, design-change rule §5 |
-| `minMarkupBps` | ◻︎ | policyAdmin | settings | `setMinMarkupBps` | **1000** | `1..maxMarkupBps` | `validateTarget` / markup range |
-| `maxMarkupBps` | ◻︎ | policyAdmin | settings | `setMaxMarkupBps` | **10000** | `minMarkupBps..10000` | `validateTarget` |
+| `defaultKeeperPolicy` | ✅ A2 immediate | policyAdmin | `defaultKeeperPolicy()` | `setDefaultKeeperPolicy` (immediate, `DefaultPolicyChanged`) | ctor arg | `validate` | new clones only |
+| `maxPrizes` | ✅ A2 | policyAdmin | `productLimits().maxPrizes` | `setProductLimits(maxPrizes,min,max)` (immediate, `ProductLimitsChanged`) | **1000** | `1..65535` (uint16 width) | `validateTarget` at creation/configure only |
+| `minMarkupBps` | ✅ A2 | policyAdmin | `productLimits().minMarkupBps` | `setProductLimits` | **1000** | `1..maxMarkupBps` (0 marks an unconfigured pool) | `validateTarget` |
+| `maxMarkupBps` | ✅ A2 | policyAdmin | `productLimits().maxMarkupBps` | `setProductLimits` | **10000** | `minMarkupBps..65535` (uint16 width) | `validateTarget` |
+
+**Rule for designs above a lowered limit (A2, tested in `test/ProductLimits.t.sol`):** a newly submitted design may
+have at most `max(current target prize count, maxPrizes)` Shape/Draw Pack prizes, and may keep the pool's current
+markup even if it is now outside the range; any other markup must be in range. So a creator can keep, shrink or
+re-save (e.g. to accept a mint fee) an existing design, but cannot grow past `max(current, maxPrizes)`; once the
+markup is changed the old out-of-range value is no longer "current". Creation always uses the current limits.
+Upkeep, recovery, withdrawals and existing listing prices never consult the limits.
 | factory **EconConfig** (whole struct) | ◻︎ | policyAdmin | `econConfig()` | `setEconConfig` (validated whole-struct) | V1 values (§2) | per-field arithmetic bounds §2 | resolver §3 → every money path |
 | keeperAdmin / restricted / approved | existing | keeperAdmin | getters | setters (two-step admin) | — | — | `canKeep` |
 
@@ -90,7 +98,7 @@ maxRestockSurcharge= restockGas*gasPriceCeiling + restockFlat          = 0.0047 
 // fallback (policy fails):
 fallbackGas=900_000 fallbackFlat=0.0002 ether fallbackCeiling=5 gwei fallbackPriority=0.05 gwei
 // bucket defaults (creator-overridable):
-bucketCapacity=0.622 ether  bucketRefill=floor(0.05 ether/12)=4_166_666_666_666 wei/s
+bucketCapacity=0.622 ether  bucketRefill=floor(0.05 ether/12)=4_166_666_666_666_666 wei/s
 ```
 
 Derivation check (at V1): `(3_200_000+50_000)*5e9 + 10*2e13 = 1.625e16 + 2e14 = 1.645e16 = 0.01645 ETH` ✓.
@@ -156,20 +164,18 @@ economics + disabled state. Test zero refill, capacity up/down, elapsed boundari
 
 ## 4. Other spec items — status and location
 
-- **§3 remove delays** ◻︎: delete `POLICY_DELAY`, `pending`/`activationTime`/`generation` machinery and the
-  propose/cancel/activate functions in `BalancerFactory` + `KeeperPolicyCalls` + `PoolBalancer`
-  (`proposeKeeperPolicy`/`activateKeeperPolicy`/`pendingKeeperPolicy`/`policyActivationTime`). Replace with
-  immediate `setKeeperPolicy` / `setDefaultKeeperPolicy` / immediate `setPaidUpkeepEnabled`. The reuse branch
-  already did this shape (`setPolicy`/`enable`/`disable`) — reuse it, but KEEP the bucket (it removed it).
-  Keep the two-step creator/keeperAdmin/policyAdmin ownership transfers. ⚠︎ Removing `generation` changes
-  `settingsHash`; the new hash (§3) must still distinguish disable→re-enable cycles — include `paidEnabled`
-  and resolved config so a re-enable after a fee move produces a distinct hash.
-- **§7 accepted-cap binding** ◻︎: `configure(uint16 markup, uint256 target, uint256 acceptedCap)` — `require
-  SHAPES.mintFee() <= acceptedCap`; set `mintFeeCap = acceptedCap`. Allows explicitly accepting a **lower**
-  cap. App `App.tsx:946` must treat `d.mintFee !== d.mintFeeCap` (not only `>`) as a config change so a lower
-  fee can be accepted without a mix/markup edit. ⚠︎ Blast radius: ~60 `.configure(` call sites in 32 (mostly
-  fork) test files + TS (`app`, `keeper`, `scripts`, `shared/abi.ts`). Land with a repo-wide call-site update
-  in the same commit or the tree will not compile.
+- **§3 remove delays** ✅ A2: `POLICY_DELAY`, `pending`/`activationTime` and the propose/cancel/activate
+  functions are gone from `BalancerFactory`, `KeeperPolicyCalls` and `PoolBalancer` (no `2 days` literal
+  remains). Immediate `setDefaultKeeperPolicy`, `setKeeperPolicy`, `setPaidUpkeepEnabled(true)`. The bucket is
+  KEPT unchanged and `generation` is KEPT (advances on every policy/paid change) so a disable→re-enable cycle
+  changes `settingsHash`; A3's new hash must keep that property. Two-step creator/keeperAdmin/policyAdmin
+  transfers are unchanged. App Keeper pay panel: immediate "Use this policy" and "Enable paid upkeep".
+- **§7 accepted-cap binding** ✅ A2: `configure(uint16 markup, uint256 target, uint256 acceptedMintFee)` reverts
+  `InvalidConfig` when `SHAPES.mintFee() > acceptedMintFee` and sets `mintFeeCap = acceptedMintFee`; a lower cap
+  can be accepted with the same design. `App.tsx` offers the save when `d.mintFee !== d.mintFeeCap` ("accept the
+  X ETH Shapes mint fee" when only the fee differs) and passes the shown fee. All call sites updated (Solidity
+  tests, `keeper/rehearsal.ts`, `scripts/run-local-rehearsal.ts`, `scripts/approved-local-rehearsal.ts`,
+  `shared/abi.ts`). Fork test `test/MintFeeChange.t.sol` (0.001 → 0.0005 → 0.001 via the real Shapes admin).
 - **§11 deploy reuse path** ◻︎: `Deploy.s.sol:49-52` unconditionally deploys renderer+packs. Add an explicit
   reuse branch gated on env (reuse addresses: shapes `0x6fE9…FAf0`, packs `0xfE11…cB2D`, renderer `0xA998…a65A`,
   FWA factory `0x8919…477C`, FWA impl `0x85Fa…Fee7`). Verify reused deps by code hash + getter readbacks

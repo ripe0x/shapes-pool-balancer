@@ -59,7 +59,7 @@ Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`
 
 Paid work can consume the buffer, and partial targets may trade while the real weight gate permits. If admission is paused and no proceeds remain, further demand cannot restart it. Use Add ETH, reduce the target or close. A large missing prize may take an unknown number of actual purchases to replenish; do not assume automatic creator deposits or NFT replacement. The dashboard identifies missing prizes and actual withdrawable capital.
 
-Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Reenabling remains delayed and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Creator credit is excluded from every paid and unpaid mint/payment affordability check. It stays withdrawable during depletion. Collection uses the stored revenue rate; listing turnover never recomputes that rate.
+Disabling paid upkeep releases keeper-related holds, but setup then requires an unpaid caller paying gas. Re-enabling is immediate and funded. Current gas determines budgets; a later gas or mint-fee increase can require additional working capital. Creator credit is excluded from every paid and unpaid mint/payment affordability check. It stays withdrawable during depletion. Collection uses the stored revenue rate; listing turnover never recomputes that rate.
 
 ## Collect and claim earnings
 
@@ -77,12 +77,11 @@ history view, not a reason to disable current claims, maintenance, closing or po
 ## Adopt a policy
 
 1. Read `keeperPolicy`, `policyMaxReward`, the new policy's version and `policyFunding(candidate)`. Use active Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a guaranteed pool offer.
-2. Creator: `proposeKeeperPolicy(candidate)`. Observe `KeeperPolicyProposed` and `policyActivationTime`.
-3. `policyFunding` returns candidate maintenance budget and activation shortfall. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
-4. After two days, anyone: `activateKeeperPolicy()`. Funding and compatibility are checked again atomically.
-5. Creator may `cancelKeeperPolicy()` or `setPaidUpkeepEnabled(false)` immediately. Reenabling requires delayed activation, even with the same policy. Ownership acceptance cancels the former creator's proposal.
+2. `policyFunding` returns candidate maintenance budget and shortfall. A nonincrease has zero shortfall regardless of inventory deficit; an increase needs the full candidate maintenance budget in operating cash. Deposit only the shortfall with `depositETH()`. Restoration shortfall is separate; existing prices and creator credit stay unchanged.
+3. Creator: `setKeeperPolicy(candidate)`. It takes effect in that transaction (no delay since slice A2); funding and compatibility are checked atomically, and it enables paid upkeep. Observe `KeeperPolicyChanged`.
+4. Creator may `setPaidUpkeepEnabled(false)` or `setPaidUpkeepEnabled(true)` immediately; re-enabling checks the current policy's maintenance budget. A creator transfer keeps the policy and the disabled state.
 
-Only the separate policy admin may propose/cancel a factory default. `proposeDefaultKeeperPolicy`, a two-day delay and permissionless `activateDefaultKeeperPolicy` affect future pools only. The keeper admin cannot select any pool's policy or change keeper economics.
+Only the separate policy admin may change the factory default, with `setDefaultKeeperPolicy` (immediate, future pools only), and the product limits, with `setProductLimits`. The keeper admin cannot select any pool's policy or change keeper economics.
 
 ## Broken policy or unavailable payment
 

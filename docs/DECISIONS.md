@@ -788,3 +788,44 @@ factory EconConfig + per-pool pin/local-override + restored creator-tunable buck
 resolver + fee-sensitive config hash; removal of the three policy delays while KEEPING the bucket; the
 accepted-mint-fee-cap binding on `configure`; factory `maxPrizes`/markup-range settings; the deploy reuse
 path + legacy-factory preflight scan; the CI fix; and the `CommunityConfigAcceptance` suite.
+
+## Community release slice A2: immediate policy changes, product limits, mint fee binding (2026-11-23)
+
+Supersedes, for the items below, the "designed but not implemented" list above (history kept).
+
+1. **The three policy delays are gone** (spec §3; R88). Factory `setDefaultKeeperPolicy`, pool `setKeeperPolicy`
+   and `setPaidUpkeepEnabled(true)` are immediate. Removed: `POLICY_DELAY`, `pendingDefaultKeeperPolicy`,
+   `defaultPolicyActivationTime`, `propose/cancel/activateDefaultKeeperPolicy`, `pendingKeeperPolicy`,
+   `policyActivationTime`, `propose/cancel/activateKeeperPolicy`, the library's `2 days` literal and the
+   `PolicyNotReady` error. Shape reused from `claude/pool-settings-rework` `b5521ca`, with two deliberate
+   differences: the per-pool spending bucket (`BURST`/`REFILL_PER_SECOND`, `allowance`, `allowanceTime`,
+   `available`) is kept exactly (b5521ca deleted it), and `generation` is kept so a disable/re-enable cycle
+   still changes `settingsHash` (b5521ca dropped it, which would let a keeper's pre-disable signature become
+   valid again). Funding check: a policy change or re-enable needs the maintenance budget only when it is larger
+   than the current paid exposure (re-enable compares against zero), never missing prize capital. A public
+   activation path no longer exists, so a creator's stop can only be undone by the creator (an ownership
+   transfer keeps the stop, the policy and the allowance). Tests that asserted a delay were replaced:
+   `Settings` (immediate + separate, funding, stop survives factory changes, creator transfer),
+   `PolicyEconomicReview`, `ReserveSecurityReview`, `ProtectedRevenueAtomic`, `PolicyLifecycle`, `FlowBreakdown`.
+2. **Factory product limits** (spec §4.1/§4.3; R89). One `ProductLimits` struct with one setter, so the markup
+   pair is validated together (`min <= max`). Rule chosen for designs above a lowered max: the prize count may be
+   at most `max(current count, maxPrizes)`, and the current markup may be kept. This is the smallest rule that
+   lets a creator keep, shrink or re-save (e.g. to accept a fee) an existing design without being forced into a
+   new range, while every genuinely new value (more prizes, a different markup, a new pool) meets current limits.
+   Rejected: grandfathering the whole design (would let a pool grow past a lowered max) and forcing the creator
+   into the new range on any save (would block fee acceptance and target reductions). Bounds are storage widths
+   only; the earlier "1,000 is its highest allowed value" (decision 91) is a default, not a ceiling, because
+   decision 91's own measurement shows pool size does not raise upkeep gas.
+3. **Accepted mint fee binds** (spec §7; R90). `configure` takes the creator's accepted fee and reverts when the
+   live fee is above it, instead of silently accepting whatever the fee is at execution. Accepting a lower fee
+   with an unchanged design works (and lowers the reserve by the missing prizes' fee difference). Fork test
+   `MintFeeChange` moves the real Shapes fee 0.001 -> 0.0005 -> 0.001 through the real Shapes admin and checks
+   exact mint payments (0.0105 / 0.011 ETH per 0.01 Shape), new listing bases (0.012 / 0.0125 ETH), reserve
+   deltas (2 x 0.0005 ETH each way), unchanged old prices, and that a fee above the cap stops minting only.
+   All ~100 Solidity call sites now pass `shapes.mintFee()` explicitly; a preceding `vm.prank` became
+   `vm.startPrank`/`vm.stopPrank` because the argument's external call would otherwise consume the prank.
+4. **Public mirrors replaced by getters** (spec §6). `HARD_MAX_KEEPER_REWARD`, `KEEPER_BURST`,
+   `KEEPER_REFILL_PER_SECOND`, `MAX_RESTOCK_SURCHARGE_PER_SHAPE` and `POLICY_DELAY` are gone from `PoolBalancer`;
+   `hardMaxKeeperReward()`, `keeperBucketCapacity()`, `keeperBucketRefill()` and `maxRestockSurchargePerShape()`
+   return the library values the money path enforces (slice A3 makes them configurable). The `0.102 ether`
+   restock literal is now the library constant `MAX_RESTOCK_SURCHARGE`.

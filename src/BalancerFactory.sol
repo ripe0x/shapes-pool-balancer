@@ -6,8 +6,9 @@ import {PoolBalancer} from "./PoolBalancer.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 
 /// @title BalancerFactory
-/// @notice Deploys immutable pool clones. Keeper eligibility and the recommended policy have separate authorities;
-///         a default-policy change only affects future clones, after a two-day publicly observable delay.
+/// @notice Deploys immutable pool clones. Keeper eligibility and the recommended policy have separate authorities.
+///         The policy admin's default-policy and product-limit changes take effect immediately: the default policy
+///         applies to future clones, and product limits apply to designs submitted after the change.
 contract BalancerFactory {
     address public immutable implementation;
 
@@ -18,26 +19,32 @@ contract BalancerFactory {
     /// @dev When true, only approved keepers (and each pool's creator) may run upkeep on this factory's Balancers.
     bool public keepersRestricted;
     mapping(address keeper => bool) public approvedKeeper;
-    uint256 public constant POLICY_DELAY = 2 days;
     address public policyAdmin;
     address public pendingPolicyAdmin;
     address public defaultKeeperPolicy;
-    address public pendingDefaultKeeperPolicy;
-    uint64 public defaultPolicyActivationTime;
+
+    /// @dev Limits on newly submitted designs (creation and `configure`), never on upkeep, recovery or withdrawals.
+    ///      `maxPrizes` counts the target's Shape and Draw Pack prizes, not curated NFTs. See `PoolInventory.validateTarget`
+    ///      for how a pool already above a lowered limit may still change its design.
+    struct ProductLimits {
+        uint16 maxPrizes;
+        uint16 minMarkupBps;
+        uint16 maxMarkupBps;
+    }
+    ProductLimits public productLimits;
 
     event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt);
     event KeeperAdminTransferStarted(address indexed keeperAdmin, address indexed pendingKeeperAdmin);
     event KeeperAdminTransferred(address indexed oldKeeperAdmin, address indexed newKeeperAdmin);
     event KeepersRestricted(bool restricted);
     event KeeperApproved(address indexed keeper, bool approved);
-    event DefaultPolicyProposed(address indexed policy, uint256 activationTime);
-    event DefaultPolicyCancelled(address indexed policy);
     event DefaultPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
     event PolicyAdminTransferStarted(address indexed admin, address indexed pendingAdmin);
     event PolicyAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+    event ProductLimitsChanged(uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps);
 
     error Unauthorized();
-    error PolicyNotReady();
+    error InvalidLimits();
 
     modifier onlyKeeperAdmin() {
         if (msg.sender != keeperAdmin) revert Unauthorized();
@@ -54,31 +61,29 @@ contract BalancerFactory {
         emit KeeperAdminTransferred(address(0), keeperAdmin_);
         emit PolicyAdminTransferred(address(0), policyAdmin_);
         emit DefaultPolicyChanged(address(0), policy_);
+        _setProductLimits(1_000, 1_000, 10_000);
     }
 
-    function proposeDefaultKeeperPolicy(address policy) external {
+    /// @notice Change the recommended policy for pools created after this call. Immediate; existing pools keep theirs.
+    function setDefaultKeeperPolicy(address policy) external {
         if (msg.sender != policyAdmin) revert Unauthorized();
         KeeperPolicyCalls.validate(policy);
-        pendingDefaultKeeperPolicy = policy;
-        defaultPolicyActivationTime = uint64(block.timestamp + POLICY_DELAY);
-        emit DefaultPolicyProposed(policy, defaultPolicyActivationTime);
+        emit DefaultPolicyChanged(defaultKeeperPolicy, policy);
+        defaultKeeperPolicy = policy;
     }
 
-    function cancelDefaultKeeperPolicy() external {
+    /// @notice Set the limits on newly submitted designs. Immediate; existing listings keep their prices.
+    /// @dev Bounds are storage widths, not product preferences: a target holds 16-bit counts and markup is a uint16.
+    ///      `minMarkupBps` stays above zero because a zero markup marks an unconfigured pool.
+    function setProductLimits(uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps) external {
         if (msg.sender != policyAdmin) revert Unauthorized();
-        emit DefaultPolicyCancelled(pendingDefaultKeeperPolicy);
-        pendingDefaultKeeperPolicy = address(0);
-        defaultPolicyActivationTime = 0;
+        _setProductLimits(maxPrizes, minMarkupBps, maxMarkupBps);
     }
 
-    function activateDefaultKeeperPolicy() external {
-        address next = pendingDefaultKeeperPolicy;
-        if (next == address(0) || block.timestamp < defaultPolicyActivationTime) revert PolicyNotReady();
-        KeeperPolicyCalls.validate(next);
-        emit DefaultPolicyChanged(defaultKeeperPolicy, next);
-        defaultKeeperPolicy = next;
-        pendingDefaultKeeperPolicy = address(0);
-        defaultPolicyActivationTime = 0;
+    function _setProductLimits(uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps) internal {
+        if (maxPrizes == 0 || minMarkupBps == 0 || minMarkupBps > maxMarkupBps) revert InvalidLimits();
+        productLimits = ProductLimits(maxPrizes, minMarkupBps, maxMarkupBps);
+        emit ProductLimitsChanged(maxPrizes, minMarkupBps, maxMarkupBps);
     }
 
     function transferPolicyAdmin(address next) external {
@@ -92,10 +97,6 @@ contract BalancerFactory {
         emit PolicyAdminTransferred(policyAdmin, msg.sender);
         policyAdmin = msg.sender;
         pendingPolicyAdmin = address(0);
-        // A departing authority cannot leave a queued default change for its successor.
-        emit DefaultPolicyCancelled(pendingDefaultKeeperPolicy);
-        pendingDefaultKeeperPolicy = address(0);
-        defaultPolicyActivationTime = 0;
     }
 
     /// @notice Whether `keeper` may run upkeep on this factory's Balancers (each Balancer also always admits its

@@ -9,10 +9,12 @@ import {PoolInventory} from "./PoolInventory.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
 
-/// @dev The deploying factory supplies initial policy selection and ongoing keeper eligibility.
+/// @dev The deploying factory supplies initial policy selection, ongoing keeper eligibility and the product limits
+///      checked on each newly submitted design.
 interface IBalancerFactory {
     function canKeep(address keeper) external view returns (bool);
     function defaultKeeperPolicy() external view returns (address);
+    function productLimits() external view returns (uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps);
 }
 
 /// @title PoolBalancer
@@ -78,12 +80,6 @@ contract PoolBalancer is ReentrancyGuard {
     ///      in one call measured 3.19M against the 3.2M pay cap.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
 
-    uint256 public constant POLICY_DELAY = 2 days;
-    uint256 public constant HARD_MAX_KEEPER_REWARD = 0.311 ether;
-    uint256 public constant KEEPER_BURST = 0.622 ether;
-    uint256 public constant KEEPER_REFILL_PER_SECOND = uint256(0.05 ether) / 12;
-    uint256 public constant MAX_RESTOCK_SURCHARGE_PER_SHAPE = 0.102 ether;
-
     uint256 internal constant ACQUISITIONS_ENABLED_KEY = 41; // FWAConfigKeys.ACQUISITIONS_ENABLED
     bytes4 internal constant ERC1271_MAGIC = 0x1626ba7e;
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
@@ -145,7 +141,8 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Only actual FWA owner proceeds create credit, including collections after closing.
     uint256 public creatorCredit;
     uint16 public creatorRevenueBps;
-    /// @dev The Shapes mint fee when the creator last configured; upkeep mints nothing while the live fee is above it.
+    /// @dev The highest Shapes mint fee the creator accepted. Upkeep mints at the live fee while it is at most this,
+    ///      and nothing above it; the reserve prices missing prizes at this cap.
     uint256 public mintFeeCap;
     /// @dev Weight (1e36 / `base`) of the listed prizes (staged or active, not yet reconciled as drawn) and of the
     ///      target. `base` leaves out the basefee-indexed restocking fee, so fill does not move with gas.
@@ -176,8 +173,6 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedRequirementChanged(bool required);
     event FillGateChanged(uint16 bps);
     event BacklogThresholdChanged(uint16 threshold);
-    event KeeperPolicyProposed(address indexed policy, uint256 activationTime);
-    event KeeperPolicyCancelled(address indexed policy);
     event KeeperPolicyChanged(address indexed previousPolicy, address indexed newPolicy);
     event PaidUpkeepChanged(bool enabled);
     event PurchasesOpened();
@@ -208,7 +203,6 @@ contract PoolBalancer is ReentrancyGuard {
     error Unauthorized();
     error KeeperNotApproved();
     error StaleSettings();
-    error PolicyNotReady();
     error PolicyUnavailable();
     error PaymentUnavailable();
     error MinimumPaymentNotMet();
@@ -285,7 +279,6 @@ contract PoolBalancer is ReentrancyGuard {
         SHAPES.setApprovalForAll(p, true);
         PACKS.setApprovalForAll(p, true);
 
-        if (SHAPES.mintFee() > config.mintFeeCap) revert InvalidConfig();
         // Admission defaults preserve the former hardcoded gate (70%) and unsettled-draw pause (MAX_BATCH).
         fillGateBps = 7_000;
         backlogThreshold = uint16(MAX_BATCH);
@@ -318,17 +311,21 @@ contract PoolBalancer is ReentrancyGuard {
         creator = msg.sender;
         ++pageEpoch;
         pendingCreator = address(0);
-        _cancelKeeperPolicy();
     }
 
-    /// @notice Set the markup for new listings and the target prize mix, and accept the current Shapes mint fee.
+    /// @notice Set the markup for new listings and the target prize mix, and accept a Shapes mint fee of up to
+    ///         `acceptedMintFee` (the fee shown to the creator). Reverts if the live fee is above it, so a rise between
+    ///         review and execution is never accepted silently. A lower accepted fee may be saved with the same design.
     /// @dev Existing listings keep their prices. A smaller target leaves extra prizes listed until `unlistShapes`.
-    function configure(uint16 newMarkupBps, uint256 newTarget) external onlyCreator nonReentrant {
-        _configure(newMarkupBps, newTarget, SHAPES.mintFee());
+    ///      Upkeep mints at the live fee while it is at most `mintFeeCap`; the reserve prices missing prizes at the cap.
+    function configure(uint16 newMarkupBps, uint256 newTarget, uint256 acceptedMintFee) external onlyCreator nonReentrant {
+        _configure(newMarkupBps, newTarget, acceptedMintFee);
     }
 
     function _configure(uint16 newMarkupBps, uint256 newTarget, uint256 fee) internal {
-        uint256 w = PoolInventory.validateTarget(newTarget, newMarkupBps);
+        if (SHAPES.mintFee() > fee) revert InvalidConfig();
+        (uint16 maxPrizes, uint16 minMarkup, uint16 maxMarkup) = factory.productLimits();
+        uint256 w = PoolInventory.validateTarget(newTarget, newMarkupBps, target, markupBps, maxPrizes, minMarkup, maxMarkup);
         markupBps = newMarkupBps;
         target = newTarget;
         targetWeight = w;
@@ -377,25 +374,27 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function keeperPolicy() external view returns (address) { return _keeper.policy; }
-    function pendingKeeperPolicy() external view returns (address) { return _keeper.pending; }
-    function policyActivationTime() external view returns (uint64) { return _keeper.activationTime; }
     function policyGeneration() external view returns (uint64) { return _keeper.generation; }
     function paidUpkeepEnabled() external view returns (bool) { return _keeper.enabled; }
     function policyMaxReward() external view returns (uint256) { return _keeper.maxReward; }
     function keeperAllowance() external view returns (uint256) { return _keeper.allowance; }
     function keeperAllowanceTime() external view returns (uint64) { return _keeper.allowanceTime; }
 
-    function proposeKeeperPolicy(address policy) external onlyCreator nonReentrant {
-        KeeperPolicyCalls.propose(_keeper, policy);
+    /// @notice Library values the keeper money path enforces, read here so off-chain readers hold no stale copy.
+    function hardMaxKeeperReward() external pure returns (uint256) { return KeeperPolicyCalls.HARD_MAX_REWARD; }
+    function keeperBucketCapacity() external pure returns (uint256) { return KeeperPolicyCalls.BURST; }
+    function keeperBucketRefill() external pure returns (uint256) { return KeeperPolicyCalls.REFILL_PER_SECOND; }
+    function maxRestockSurchargePerShape() external pure returns (uint256) { return KeeperPolicyCalls.MAX_RESTOCK_SURCHARGE; }
+
+    /// @notice Replace the keeper payment policy now and enable paid upkeep. Only a larger maintenance exposure than
+    ///         the current one must be funded (`policyFunding`); missing prizes are not. The spending allowance is kept.
+    function setKeeperPolicy(address policy) external onlyCreator nonReentrant {
+        KeeperPolicyCalls.setPolicy(_keeper, policy, address(this).balance - creatorCredit, _maintenanceInput());
     }
-    function cancelKeeperPolicy() external onlyCreator nonReentrant { _cancelKeeperPolicy(); }
-    function _cancelKeeperPolicy() internal { KeeperPolicyCalls.cancel(_keeper); }
-    function activateKeeperPolicy() external nonReentrant {
-        KeeperPolicyCalls.activate(_keeper, address(this).balance - creatorCredit, _maintenanceInput());
-    }
-    /// @notice Emergency stop. Re-enabling, including the same policy, always takes the full proposal delay.
+    /// @notice Emergency stop, or re-enable now under the same maintenance-funding check. Only the creator changes it;
+    ///         no factory change re-enables a stopped pool.
     function setPaidUpkeepEnabled(bool value) external onlyCreator nonReentrant {
-        KeeperPolicyCalls.disable(_keeper, value);
+        KeeperPolicyCalls.setEnabled(_keeper, value, address(this).balance - creatorCredit, _maintenanceInput());
     }
     function policyFunding(address policy) external view returns (uint256 required, uint256 shortfall) {
         KeeperPolicyCalls.Reserve memory snapshot = _maintenanceInput();

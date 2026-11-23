@@ -116,7 +116,7 @@ contract KeeperListTest is ForkBase {
         vm.prank(other);
         PoolBalancer second = _createFixture(other, bytes32(uint256(9)), 5 ether);
         vm.startPrank(other);
-        second.configure(1500, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]));
+        second.configure(1500, plan([uint256(5), 3, 2, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
         nft.mint(other, 777);
         nft.approve(address(second), 777);
         second.listCurated(address(nft), 777, 0.3 ether);

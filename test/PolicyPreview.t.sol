@@ -34,9 +34,7 @@ contract PolicyPreviewTest is ForkBase {
         vm.prank(creator); balancer.open();
         fillUp();
         CallerSensitivePolicy policy = new CallerSensitivePolicy(address(balancer));
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
         assertEq(policy.quoteRestock(0, 1, block.basefee), 0.0002 ether);
         uint256 fee = balancer.restockFeeFor(0);
         assertEq(fee, 0.102 ether);

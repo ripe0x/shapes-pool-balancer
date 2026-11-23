@@ -346,8 +346,29 @@ economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
   absolute outstanding-draw cap.
 - R86. **maxPrizes initial value is 1000** (new brief §4.1, factory-administered), reaffirming the value in
   the current `validateTarget`. Note: this supersedes the earlier "set max to 200" (2026-11-16) for the
-  community release; recorded as a discrepancy to confirm. Design only this pass.
+  community release; recorded as a discrepancy to confirm. Implemented in slice A2 (R89).
 - R87. The economics rework (factory EconConfig, pin/local/follow, creator-tunable bucket, one resolver,
-  fee-sensitive hash), removal of the three policy delays (keeping the bucket), accepted-mint-fee-cap
-  binding, deploy reuse path + legacy preflight, CI fix and the permanent acceptance suite are **designed,
-  not yet implemented** this pass. See `docs/CONFIG-INVENTORY.md`.
+  fee-sensitive hash), deploy reuse path + legacy preflight, CI fix and the permanent acceptance suite are
+  **designed, not yet implemented**. See `docs/CONFIG-INVENTORY.md`. (Delay removal, the accepted-mint-fee
+  binding and product limits are implemented: R88-R90.)
+- R88. **No policy delays** (spec §3). `BalancerFactory.setDefaultKeeperPolicy` (policyAdmin), pool
+  `setKeeperPolicy` (creator) and `setPaidUpkeepEnabled(true)` (creator) take effect in the authorized
+  transaction. Pool changes keep the maintenance-funding check (a larger maintenance exposure than the current
+  one must be funded; missing prizes never are). The per-pool spending bucket is kept unchanged and no change
+  refills it; `policyGeneration` advances on every policy/paid change so a disable/re-enable cycle changes
+  `settingsHash`. Only the creator can re-enable a stopped pool; no factory change does. Supersedes the two-day
+  default-policy delay, the two-day pool-policy delay and the delayed re-enable (D42-era timelocks).
+- R89. **Factory product limits** (spec §4.1/§4.3): `productLimits() = (maxPrizes 1000, minMarkupBps 1000,
+  maxMarkupBps 10000)`, set together by `setProductLimits` (policyAdmin, immediate, `ProductLimitsChanged`).
+  `maxPrizes` counts the target's Shape and Draw Pack prizes, never curated NFTs. Limits bind newly submitted
+  designs (creation and `configure`) only. **Rule for a pool beyond a lowered limit:** a design may have up to
+  `max(current target prize count, maxPrizes)` prizes, and may keep its current markup even if it is now out of
+  range; any other markup must be in range. Upkeep, recovery, withdrawals and existing prices never consult the
+  limits. Bounds are storage widths (`maxPrizes` 1..65535, `minMarkupBps` 1..`maxMarkupBps`, `maxMarkupBps`
+  ..65535), not product preferences.
+- R90. **Accepted mint fee binds** (spec §7): `configure(markupBps, target, acceptedMintFee)` reverts
+  `InvalidConfig` if the live Shapes fee is above `acceptedMintFee`, and stores it as `mintFeeCap`; creation
+  already bound `CreationConfig.mintFeeCap`. A lower fee can be accepted with the same design. Upkeep mints at the
+  live fee while it is at most the cap; above it, minting stops and purchases of listed prizes and recovery
+  continue; the reserve prices missing prizes at the cap. The app offers the save whenever the live fee differs
+  from the cap (higher or lower) and passes the fee it shows.

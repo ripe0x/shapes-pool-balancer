@@ -73,9 +73,7 @@ contract PolicySecurityReviewTest is ForkBase {
     }
 
     function _adopt(MutableReviewPolicy policy) internal {
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
     }
     function _expire() internal {
         buy(buyer, 1);
@@ -161,9 +159,7 @@ contract PolicySecurityReviewTest is ForkBase {
     }
     function test_unpaidMaintenanceRespectsHealthySelectedSurcharge() public {
         AlternativeSurchargePolicy policy = new AlternativeSurchargePolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(policy));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
         assertEq(balancer.restockFeeFor(0), 0.01 ether, "healthy selected policy quotes its price");
         uint256[] memory one = new uint256[](1);
         one[0] = balancer.getActiveIds()[1];

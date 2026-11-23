@@ -65,7 +65,7 @@ contract ReviewCreatorKeeper {
     uint256 public gasprice;
     constructor(PoolBalancer b) { balancer = b; }
     function accept() external { balancer.acceptCreator(); }
-    function configure(uint256 target) external { balancer.configure(1500, target); }
+    function configure(uint256 target) external { balancer.configure(1500, target, balancer.SHAPES().mintFee()); }
     function upkeep(bytes32 expected) external returns (uint256) { return balancer.performUpkeep(expected, 1, 0); }
     receive() external payable {
         callbackReached = true;
@@ -127,9 +127,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         h = new ReviewHostilePolicy();
         h.setTarget(address(balancer));
         vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(h));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        balancer.setKeeperPolicy(address(h));
     }
     function _claimAvailable() internal {
         uint256 n = balancer.withdrawableSurplus();
@@ -326,7 +324,9 @@ contract ReserveSecurityReviewTest is ForkBase {
         emit ReviewAmount("one shape billed gas", receipt);
     }
 
-    function test_noAllowanceResetByCloseConfigureOrPolicyAndEmergencyCancelsMaturedChange() public {
+    /// Spec §5: closing, reconfiguring, switching policy and toggling paid upkeep never refill a spent allowance; only
+    /// elapsed time does. Replaces the former matured-proposal/emergency-cancel case (proposals no longer exist).
+    function test_noAllowanceResetByCloseConfigurePolicyOrPaidToggle() public {
         _setup(1, 0);
         ReviewHostilePolicy h = _hostile();
         uint256[9] memory c;
@@ -334,45 +334,35 @@ contract ReserveSecurityReviewTest is ForkBase {
         configure(plan(c));
         upkeep();
         uint256 used = balancer.availableKeeperAllowance();
-        assertLt(used, balancer.KEEPER_BURST());
+        assertLt(used, balancer.keeperBucketCapacity());
         vm.startPrank(creator);
         balancer.close();
-        balancer.configure(2000, plan(c));
+        balancer.configure(2000, plan(c), shapes.mintFee());
         balancer.open();
         vm.stopPrank();
         assertEq(balancer.availableKeeperAllowance(), used);
-        vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(h));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
         c[0] = 3;
         configure(plan(c));
         upkeep();
         uint256 beforeSwitch = balancer.availableKeeperAllowance();
-        assertLt(beforeSwitch, balancer.KEEPER_BURST());
-        balancer.activateKeeperPolicy();
-        assertEq(balancer.availableKeeperAllowance(), beforeSwitch, "matured switch cannot refill recently spent allowance");
+        assertLt(beforeSwitch, balancer.keeperBucketCapacity());
         vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(h));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
+        balancer.setKeeperPolicy(address(h));
+        assertEq(balancer.availableKeeperAllowance(), beforeSwitch, "a switch cannot refill recently spent allowance");
         c[0] = 4;
         configure(plan(c));
         upkeep();
-        uint256 maturedAllowance = balancer.availableKeeperAllowance();
+        uint256 spent = balancer.availableKeeperAllowance();
         vm.prank(creator);
         balancer.setPaidUpkeepEnabled(false);
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector);
-        balancer.activateKeeperPolicy();
         assertFalse(balancer.paidUpkeepEnabled());
-        assertEq(balancer.pendingKeeperPolicy(), address(0));
-        assertEq(balancer.availableKeeperAllowance(), maturedAllowance);
+        assertEq(balancer.availableKeeperAllowance(), spent);
         vm.prank(creator);
-        balancer.proposeKeeperPolicy(address(h));
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector);
-        balancer.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        balancer.activateKeeperPolicy();
+        balancer.setPaidUpkeepEnabled(true);
         assertTrue(balancer.paidUpkeepEnabled());
-        assertEq(balancer.availableKeeperAllowance(), balancer.KEEPER_BURST(), "only elapsed time replenishes");
+        assertEq(balancer.availableKeeperAllowance(), spent, "re-enabling cannot refill");
+        vm.warp(vm.getBlockTimestamp() + 2 days);
+        assertEq(balancer.availableKeeperAllowance(), balancer.keeperBucketCapacity(), "only elapsed time replenishes");
     }
 
     function test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() public {
@@ -417,12 +407,10 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256[] memory beforeIds = balancer.getActiveIds();
         uint112[] memory oldPrices = new uint112[](beforeIds.length);
         for (uint256 i; i < beforeIds.length; ++i) (,,,,oldPrices[i]) = balancer.items(beforeIds[i]);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(h));
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setKeeperPolicy(address(h));
         assertEq(balancer.creatorCredit(), credit);
         vm.prank(creator); balancer.depositETH{value: shortfall}();
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setKeeperPolicy(address(h));
         assertEq(balancer.creatorCredit(), credit);
         for (uint256 i; i < beforeIds.length; ++i) {
             (,,,,uint112 nowPrice) = balancer.items(beforeIds[i]);
@@ -495,8 +483,9 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256[9] memory c;
         c[0] = 20;
         // Reprice one real relisting with high markup, then collect that board's actual sale.
-        vm.prank(creator);
-        balancer.configure(10_000, plan(c));
+        vm.startPrank(creator);
+        balancer.configure(10_000, plan(c), shapes.mintFee());
+        vm.stopPrank();
         uint256[] memory one = new uint256[](1);
         one[0] = balancer.getActiveIds()[1];
         vm.prank(creator);
