@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useConnect, usePublicClient, useWriteContract } from 'wagmi';
+import { useAccount, useConnect, usePublicClient, useSendTransaction, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash } from 'viem';
 import { normalize } from 'viem/ens';
@@ -9,11 +9,13 @@ import {
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
 import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { confirmAction, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
+import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
-import { HowItWorks } from './HowItWorks';
+import { HowItWorks, HowItWorksMain } from './HowItWorks';
+import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
+import { VAULT } from './main-pool';
 import { policyAbi, policyEconomics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -55,7 +57,7 @@ export const STATUS: Record<number, string> = {
   7: 'Curated proof needs refresh',
 };
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 interface Listing { id: bigint; kind: number; denom: number; state: number; base: bigint; price: bigint; collection: Address; tokenId: bigint; weight: bigint; fwaStatus: number }
 
@@ -260,15 +262,14 @@ const releasePending = (key: string, id: string) => {
   try { if (loadPending(key)?.id === id) localStorage.removeItem(key); } catch { /* the reservation stays and blocks */ }
 };
 
-function useTx(onDone: () => void) {
+export function useTx(onDone: () => void) {
   const pub = usePublicClient();
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const submitted = useRef<{ hash: Hash; intent: TransactionIntent }>();
-  // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
-  const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
-    const prepared = await prepareWrite(pub!, address, params);
-    const intent = reviewedIntent(prepared);
+  const { sendTransactionAsync } = useSendTransaction();
+  /** Every reviewed send: an ETH transfer first passes the pending-transfer guard, then the wallet submits. */
+  const submit = async (intent: TransactionIntent, send: () => Promise<Hash>, beforeWallet?: () => void) => {
     const key = intent.value > 0n ? transferKey(intent) : undefined;
     const reservation = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
     if (key) {
@@ -290,7 +291,7 @@ function useTx(onDone: () => void) {
     beforeWallet?.();
     let hash: Hash;
     try {
-      hash = await writeContractAsync(prepared as never);
+      hash = await send();
     } catch (e) {
       if (key) releasePending(key, reservation.id);
       throw e;
@@ -303,7 +304,17 @@ function useTx(onDone: () => void) {
     }
     submitted.current = { hash, intent };
     return hash;
+  };
+  // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
+  const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
+    const prepared = await prepareWrite(pub!, address, params);
+    return submit(reviewedIntent(prepared), () => writeContractAsync(prepared as never), beforeWallet);
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
+  /** A plain ETH transfer (to a contract's receive function), reviewed and guarded like `write`. */
+  const transfer = async (to: Address, value: bigint) => {
+    const { prepared, intent } = await prepareTransfer(pub!, address, to, value);
+    return submit(intent, () => sendTransactionAsync(prepared as never));
+  };
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last failure, readable right after `send` resolves (state updates land a render later).
@@ -335,7 +346,7 @@ function useTx(onDone: () => void) {
       onDone();
     }
   };
-  return { send, busy, msg, write, failure };
+  return { send, busy, msg, write, transfer, failure };
 }
 
 type Step = TransactionStep;
@@ -350,7 +361,7 @@ type Tab = 'overview' | 'nfts' | 'mix' | 'settings';
 const TAB_LABELS: Record<Tab, string> = { overview: 'Overview', nfts: 'NFTs', mix: 'Prices & mix', settings: 'Settings' };
 const ZERO: Counts = DENOMS.map(() => 0);
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
-const eth = (wei: bigint | undefined, d = 3) => (wei === undefined ? '–' : Number(formatEther(wei)).toFixed(d));
+export const eth = (wei: bigint | undefined, d = 3) => (wei === undefined ? '–' : Number(formatEther(wei)).toFixed(d));
 const signed = (x: number, d = 5) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}`;
 /** A per-draw amount: "0" when it rounds to nothing, else signed. */
 const perDraw = (x: number) => (Math.abs(x) < 5e-6 ? '0' : signed(x));
@@ -424,6 +435,14 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
   }
 }
 
+type Page = 'home' | 'list' | 'pool' | 'new' | 'main';
+const helpOf = (hash: string) => (hash === '#how' ? 'how' : hash === '#how-main' ? 'how-main' : undefined);
+/** The main pool tab a hash route names, or undefined when it names none. */
+const routeOf = (hash: string): MainTab | undefined => {
+  const m = /^#main(?:\/(vault|manager))?$/.exec(hash);
+  return m ? mainTabFor((m[1] as MainTab | undefined) ?? 'overview') : undefined;
+};
+
 export function App() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -431,8 +450,9 @@ export function App() {
   const [mine, setMine] = useState<Address[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Address>();
-  // Which page a connected wallet sees; undefined until its pools are loaded.
-  const [page, setPage] = useState<'list' | 'pool' | 'new'>();
+  // Everyone lands on Home, except a pool creation in progress (or a connect from the Design preview), which resumes.
+  const [page, setPage] = useState<Page>(() => (loadDraft()?.creation ? 'new' : routeOf(location.hash) ? 'main' : 'home'));
+  const [mainTab, setMainTab] = useState<MainTab>(() => routeOf(location.hash) ?? 'overview');
   const [tab, setTab] = useState<Tab>('overview');
   const [prereq, setPrereq] = useState<{ creation: boolean; impl: boolean }>();
   const [loaded, setLoaded] = useState(false);
@@ -440,10 +460,27 @@ export function App() {
   const [poolAddress, setPoolAddress] = useState('');
   const [openingAddress, setOpeningAddress] = useState(false);
   const [addressError, setAddressError] = useState<string>();
-  // How it works lives at #how, so it can be linked to and the back button leaves it.
-  const [help, setHelpState] = useState(() => location.hash === '#how');
-  useEffect(() => { const h = () => { const on = location.hash === '#how'; setHelpState(on); if (on) window.scrollTo(0, 0); }; window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h); }, []);
-  const setHelp = (on: boolean) => { if (on !== (location.hash === '#how')) location.hash = on ? 'how' : ''; setHelpState(on); if (on) window.scrollTo(0, 0); };
+  // How it works lives at #how and #how-main, and the main pool at #main, #main/vault and #main/manager, so each can be
+  // linked to and the back button leaves it.
+  const [help, setHelpState] = useState(() => helpOf(location.hash));
+  useEffect(() => {
+    const h = () => {
+      const on = helpOf(location.hash);
+      const tab = routeOf(location.hash);
+      setHelpState(on);
+      if (tab) { setPage('main'); setMainTab(tab); } else if (!on) setPage((p) => (p === 'main' ? 'home' : p));
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', h);
+    return () => window.removeEventListener('hashchange', h);
+  }, []);
+  const go = (p: Page, t: MainTab = 'overview') => {
+    const tab = mainTabFor(t);
+    const hash = p === 'main' ? (tab === 'overview' ? 'main' : `main/${tab}`) : '';
+    setHelpState(undefined); setPage(p); setMainTab(tab);
+    if (location.hash.replace(/^#/, '') !== hash) location.hash = hash;
+    window.scrollTo(0, 0);
+  };
 
   const loadMine = useCallback(async () => {
     if (!pub || !address || !FACTORY) return;
@@ -470,16 +507,16 @@ export function App() {
     // Direct address recovery is independent of event discovery. Wallet/context changes clear the selection.
     setSelected((s) => s ?? (list.length === 1 ? list[0] : undefined));
     // Connecting from the preview continues the design being worked on, even for a wallet that already has pools.
-    // Otherwise: no pools opens a new one, one pool opens it, several open the list.
+    // Your community pools with none to list opens the Design preview instead.
     const intent = takeConnectIntent();
-    setPage((p) => p === 'pool' ? p : loadDraft()?.creation || intent ? 'new' : p ?? (!list.length ? 'new' : list.length === 1 ? 'pool' : 'list'));
+    setPage((p) => (loadDraft()?.creation || intent ? 'new' : p === 'list' && !list.length ? 'new' : p));
     setLoaded(true);
     const ens = await Promise.all(list.map((b) => pub.getEnsName({ address: b }).catch(() => null)));
     setNames(Object.fromEntries(list.flatMap((b, i) => (ens[i] ? [[b, ens[i]!]] : []))));
   }, [pub, address]);
   // A failed discovery still opens the designer; the address field above it is the way into an existing pool.
-  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => { setLoadFailed(true); setPage((p) => p ?? 'new'); }); }, [loadMine]);
-  useEffect(() => { setLoaded(false); setPage(loadDraft()?.creation ? 'new' : undefined); setSelected(undefined); reload(); }, [reload]);
+  const reload = useCallback(() => { setLoadFailed(false); loadMine().catch(() => setLoadFailed(true)); }, [loadMine]);
+  useEffect(() => { setLoaded(false); setPage((p) => (loadDraft()?.creation ? 'new' : p === 'pool' ? 'list' : p)); setSelected(undefined); reload(); }, [reload]);
   useEffect(() => {
     if (!pub) return;
     Promise.all([
@@ -489,7 +526,12 @@ export function App() {
   }, [pub]);
 
   const dev = connectors.filter((c) => c.type === 'mock');
-  const fresh = !isConnected || (page === 'new' && (loaded || loadFailed || !!loadDraft()?.creation));
+  // A wallet's own pages need a wallet: without one, Community pools is the Design preview.
+  const view: Page = !isConnected && (page === 'list' || page === 'pool') ? 'new' : page;
+  const community = view === 'list' || view === 'pool' || view === 'new';
+  const fresh = view === 'new' && (!isConnected || loaded || loadFailed || !!loadDraft()?.creation);
+  const toCommunity = () => go(!isConnected || (loaded && !mine.length) ? 'new' : 'list');
+  const intent = () => { if (view === 'new') markConnectIntent(); };
   const open = (b: Address) => { setTab('overview'); setSelected(b); setPage('pool'); };
   const openAddress = async () => {
     if (!pub || !/^0x[0-9a-fA-F]{40}$/.test(poolAddress)) return;
@@ -504,15 +546,16 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); setHelp(false); if (isConnected && loaded) setPage(mine.length ? 'list' : 'new'); window.scrollTo(0, 0); }}>{APP_NAME}</a>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); go('home'); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
-          {isConnected && loaded && <button aria-current={!help && page === 'list' ? 'page' : undefined} onClick={() => { setHelp(false); setPage('list'); }}>Your community pools</button>}
-          <button aria-current={help ? 'page' : undefined} onClick={() => setHelp(true)}>How it works</button>
+          <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
+          {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
+          <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = view === 'main' ? 'how-main' : 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (
           <div className="right">
-            {dev.map((c) => <button key={c.uid} className="btn sec" onClick={() => { markConnectIntent(); connect({ connector: c, chainId: chain.id }); }}>Local dev account</button>)}
-            <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet</button>}</ConnectButton.Custom>
+            {dev.map((c) => <button key={c.uid} className="btn sec" onClick={() => { intent(); connect({ connector: c, chainId: chain.id }); }}>Local dev account</button>)}
+            <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn" onClick={() => { intent(); openConnectModal(); }}>Connect wallet</button>}</ConnectButton.Custom>
           </div>
         )}
         {isConnected && (
@@ -524,9 +567,12 @@ export function App() {
         )}
       </header>
       {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
-      {help && <HowItWorks onDesign={() => { setHelp(false); if (isConnected) setPage('new'); }} />}
-      <div hidden={help}>
-      {isConnected && page !== 'pool' && (loadFailed || !loaded) && <main className="page narrow-page">
+      {help === 'how' && <HowItWorks onDesign={() => go('new')} />}
+      {help === 'how-main' && <HowItWorksMain />}
+      <div hidden={!!help}>
+      {view === 'home' && <Home hasPools={isConnected && loaded && mine.length > 0} onNew={() => go('new')} onList={() => go('list')} onMain={(t) => go('main', t)} />}
+      {view === 'main' && <MainPool tab={mainTab} setTab={(t) => go('main', t)} />}
+      {isConnected && (view === 'list' || view === 'new') && (loadFailed || !loaded) && <main className="page narrow-page">
         {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your community pools…</p>}
         {/* Opening a pool by address is the way in only while discovery is failing. */}
         {loadFailed && <>
@@ -540,8 +586,8 @@ export function App() {
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
           onCreated={(b) => { open(b); reload(); }} />
       )}
-      {isConnected && loaded && page === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setPage('new'); }} />}
-      {isConnected && page === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} />}
+      {isConnected && loaded && view === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setPage('new'); }} />}
+      {isConnected && view === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} />}
       </div>
     </>
   );

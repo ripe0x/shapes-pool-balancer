@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, MAX_KEEPER_REWARD, capitalOf, economics, evaluate, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
+import { useVault } from './MainPool';
+import { MANAGER_FACTORY, VAULT } from './main-pool';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -71,6 +73,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const reserve = capital.workingBuffer;
   return (
     <main className="page hiw">
+      {VAULT && <p className="note hiw-switch">Community pools · <a className="link" href="#how-main">Main pool</a></p>}
       <h1 className="title">How it works</h1>
       <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
@@ -173,3 +176,55 @@ const FAQ: [string, string][] = [
   ['When does a new earnings rate apply?', 'Changing the rate collects currently available owner proceeds using the old percentage, then stores the new percentage. Later collections use the new percentage, including earlier purchases that settle afterward. Existing credit stays unchanged. A 100% rate leaves no new proceeds for operations.'],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];
+
+/** The main pool page: what the shared vault and personal managers do with ETH. Live figures come from the vault. */
+export function HowItWorksMain() {
+  const { data: v } = useVault();
+  const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'an amount set from FWA\'s live fees';
+  return (
+    <main className="page hiw">
+      <p className="note hiw-switch"><a className="link" href="#how">Community pools</a> · Main pool</p>
+      <h1 className="title">How the main pool works</h1>
+      <p className="lead">The shared vault{MANAGER_FACTORY ? ' and personal managers' : ''} put ETH to work on FWA's main pool. Each builds Shape packs and lists them with ETH backing.</p>
+
+      <section className="hiw-sec">
+        <h2 className="h3">1. The pack</h2>
+        <p className="hiw-p">Each pack is one 0.05 ETH Shape and one 0.01 ETH Shape, minted straight into a ShapePack: <b>0.06 ETH</b> of Shapes that redeem for exactly that ETH.</p>
+      </section>
+
+      <section className="hiw-sec">
+        <h2 className="h3">2. Listing with backing</h2>
+        <p className="hiw-p">A pack is listed on FWA's main pool with <b>{backing}</b> of backing. While it is listed it earns a share of every acquisition fee on the pool. Backing is set so that a buyer who draws the pack does better keeping it than taking FWA's bid.</p>
+      </section>
+
+      <section className="hiw-sec">
+        <h2 className="h3">3. Keep or bid</h2>
+        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack comes back and is listed again.</p>
+      </section>
+
+      <section className="hiw-sec">
+        <h2 className="h3">4. The shared vault's checkpoints</h2>
+        <p className="hiw-p">Holders own shares that can't be transferred. Deposits and redemptions wait for the next <b>checkpoint</b>, which runs at most once every 12 hours, in FWA's quiet window, and prices them together.</p>
+        <p className="hiw-p">A deposit can be cancelled for a full refund until it is priced. A redemption locks shares; each checkpoint fills it from the vault's free ETH and the rest stays invested until filled. Filled ETH waits for you to <b>claim</b> it.</p>
+      </section>
+
+      {MANAGER_FACTORY && (
+        <section className="hiw-sec">
+          <h2 className="h3">5. Personal managers</h2>
+          <p className="hiw-p">A manager runs the same strategy with only your ETH, in a contract only you can withdraw from. The factory that created it keeps no control. There are no shares or checkpoints: idle ETH can be withdrawn at any time.</p>
+          <p className="hiw-p"><b>Exit mode</b> unlists every pack and turns it back into ETH. A pack a buyer has already drawn returns once FWA settles it. You can leave exit mode later; listing stays paused until you resume it.</p>
+        </section>
+      )}
+
+      <section className="hiw-sec">
+        <h2 className="h3">{MANAGER_FACTORY ? '6' : '5'}. Costs</h2>
+        <p className="hiw-p">Every Shape minted pays the Shapes mint fee, which goes to the Shapes creator. Keepers who build, list and sync packs are paid from the account's own ETH, within budgets that refill daily. {v ? (v.requestCharge > 0n ? `A vault deposit or redemption request pays a ${eth(v.requestCharge, 6)} ETH request charge toward its checkpoint` : 'Vault requests pay a request charge toward their checkpoint') : 'Vault requests pay a request charge toward their checkpoint'}, and a deposit's building and listing charge stays in the vault. There is no vault fee and no factory fee.</p>
+      </section>
+
+      <section className="hiw-sec">
+        <h2 className="h3">{MANAGER_FACTORY ? '7' : '6'}. Risks</h2>
+        <p className="hiw-p">Results quoted for the main pool are model results, not forecasts. Small amounts have a wide loss tail: with few packs the outcome is mostly the luck of which listings are drawn and whether buyers keep or bid. FWA's owner can change fees and settings, and its conditions can pause new investment; withdrawals and redemptions continue.</p>
+      </section>
+    </main>
+  );
+}
