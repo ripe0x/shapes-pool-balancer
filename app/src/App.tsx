@@ -206,8 +206,11 @@ function useBalancer(b?: Address) {
   }, error, refresh };
 }
 
-/** Ledger events from FROM_BLOCK, fetched once and then only from the last fetched block (less a reorg window, whose
+/** Ledger events from POOL_LOGS_FROM, fetched once and then only from the last fetched block (less a reorg window, whose
  *  events are replaced), instead of rescanning the whole range on every refresh. */
+/** A pool's own logs start no earlier than its factory's deployment: the earliest of the creation factory and every
+ *  legacy factory, so an earlier factory's pool keeps its full history. */
+const POOL_LOGS_FROM = LEGACY_FACTORIES.reduce((m, f) => (f.fromBlock < m ? f.fromBlock : m), FROM_BLOCK);
 const ledgerCache = new Map<string, { through: bigint; logs: Awaited<ReturnType<typeof fetchLedger>> }>();
 const REORG_WINDOW = 64n;
 const fetchLedger = (pub: NonNullable<ReturnType<typeof usePublicClient>>, balancer: Address, fromBlock: bigint, toBlock: bigint) =>
@@ -216,7 +219,7 @@ async function ledgerLogs(pub: NonNullable<ReturnType<typeof usePublicClient>>, 
   const key = `${pub.chain?.id}:${balancer.toLowerCase()}`;
   const cached = ledgerCache.get(key);
   if (cached && cached.through >= toBlock) return cached.logs.filter((l) => l.blockNumber! <= toBlock);
-  const { from, keepThrough } = incrementalRange(cached?.through, FROM_BLOCK, REORG_WINDOW);
+  const { from, keepThrough } = incrementalRange(cached?.through, POOL_LOGS_FROM, REORG_WINDOW);
   const fresh = await fetchLedger(pub, balancer, from, toBlock);
   const logs = [...(cached?.logs.filter((l) => l.blockNumber! <= keepThrough) ?? []), ...fresh];
   ledgerCache.set(key, { through: toBlock, logs });
@@ -2379,7 +2382,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
   }, [d.admission, d.balancer, opened]);
   useEffect(() => {
     if (!pub || d.admission !== 2) return;
-    pub.getLogs({ address: d.factoryAddr, event: CREATED, args: { balancer: d.balancer }, fromBlock: FROM_BLOCK })
+    pub.getLogs({ address: d.factoryAddr, event: CREATED, args: { balancer: d.balancer }, fromBlock: POOL_LOGS_FROM })
       .then((ls) => ls[0] && setCreated({ block: ls[0].blockNumber!, hash: ls[0].transactionHash! })).catch(() => undefined);
   }, [pub, d.factoryAddr, d.balancer, d.admission]);
   if (!(d.admission === 2 && !done) && !opened) return null;

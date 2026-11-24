@@ -12,7 +12,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { poolBalancerAbi } from '../shared/abi';
-import { LEGACY_FACTORIES } from '../shared/legacy';
+import { selectLegacyFactories } from '../shared/legacy';
 import { SETUP_LISTING_MAX_BASEFEE, setupListingWaits } from '../shared/listing';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
@@ -766,8 +766,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     rpcUrl,
     factory,
     fromBlock: BigInt(env('FROM_BLOCK')),
-    // Pools of earlier factories (deployments/1.legacy.json) stay serviced with their own ABI. LEGACY_FACTORIES=0 opts out.
-    legacyFactories: process.env.LEGACY_FACTORIES === '0' ? [] : LEGACY_FACTORIES,
+    // Pools of earlier factories (deployments/1.legacy.json) stay serviced with their own ABI. LEGACY_FACTORIES: 0 none,
+    // unset all, or labels such as community-v2.
+    legacyFactories: selectLegacyFactories(process.env.LEGACY_FACTORIES, factory),
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '50')),
@@ -793,7 +794,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (!factoryCode || factoryCode === '0x') throw new Error('factory has no deployed code');
   // Validate the writable volume before enabling the HTTP endpoint or starting a tick.
   k.save();
-  console.log(JSON.stringify({ t: new Date().toISOString(), msg: 'keeper started', chainId, keeper: k.address, factory: env('FACTORY'), fromBlock: env('FROM_BLOCK'), legacyFactories: process.env.LEGACY_FACTORIES === '0' ? 0 : LEGACY_FACTORIES.length, maxGasPriceGwei: env('MAX_GAS_PRICE_GWEI', '50'), maxLossWei: env('MAX_LOSS_WEI', '200000000000000'), canary: Boolean(guard) }));
+  console.log(JSON.stringify({ t: new Date().toISOString(), msg: 'keeper started', chainId, keeper: k.address, factory: env('FACTORY'), fromBlock: env('FROM_BLOCK'), legacyFactories: selectLegacyFactories(process.env.LEGACY_FACTORIES, factory).map((f) => f.label), maxGasPriceGwei: env('MAX_GAS_PRICE_GWEI', '50'), maxLossWei: env('MAX_LOSS_WEI', '200000000000000'), canary: Boolean(guard) }));
   k.serveHealth(port);
   process.on('SIGINT', () => { k.save(); process.exit(0); });
   process.on('SIGTERM', () => { k.save(); process.exit(0); });
