@@ -664,3 +664,35 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .nrow .field, .nrow .rm { grid-column: 2; justify-self: start; }
   .rulerow { grid-template-columns: 1fr; }
 }
+
+/* Creating (turn 7b): the progress panel replaces the button and wallet steps; the editor locks. */
+.design .locked { opacity: .4; pointer-events: none; }
+.progress { border: 1px solid var(--line); padding: 28px; }
+.progress .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.progress .cnt { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.progress .cnt.error { color: var(--error); }
+.progress .pd { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; overflow-wrap: anywhere; }
+.pbar { height: 4px; background: var(--line); margin-top: 18px; }
+.pbar i { display: block; height: 100%; background: var(--ink); }
+.pbar.bad i { background: var(--error); }
+.psteps { list-style: none; margin: 18px 0 0; padding: 0; }
+.ps { display: grid; grid-template-columns: 28px minmax(0, 1fr); padding: 12px 0; border-top: 1px solid var(--line); }
+.ps .mk { font: 700 13px var(--font-mono); padding-top: 2px; color: var(--ink); }
+.ps .lb { display: block; font-size: 15px; }
+.ps .sb { display: block; font-size: 13px; margin-top: 3px; }
+.ps.done .lb, .ps.skipped .lb { color: var(--ink-foot); }
+.ps.done .sb, .ps.skipped .sb { color: var(--ink-3); }
+.ps.wallet .lb, .ps.submitted .lb, .ps.failed .lb { font-weight: 600; }
+.ps.wallet .sb, .ps.submitted .sb { color: var(--ink-2); }
+.ps.next .mk { color: var(--ink-4); }
+.ps.next .lb { color: var(--ink-3); }
+.ps.next .sb { color: var(--ink-4); }
+.ps.failed .mk, .ps.failed .sb { color: var(--error); }
+.ps a { text-decoration: underline; text-underline-offset: 3px; }
+.pacts { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.pacts .btn { flex: 1; }
+.btn.busy:disabled { opacity: 1; background: var(--line); border-color: var(--line); color: var(--ink-foot); cursor: default; }
+.progress .note { margin-top: 12px; }
+@media (max-width: 900px) {
+  .design > section.side .pin .progress { max-height: 70vh; overflow-y: auto; padding: 20px; }
+}

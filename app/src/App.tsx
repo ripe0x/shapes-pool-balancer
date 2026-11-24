@@ -896,6 +896,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
+  // Completed fee loads, so a retry after a revert runs once the refreshed fees are in.
+  const [fetched, setFetched] = useState(0);
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
@@ -917,12 +919,17 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
         liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number),
       ]);
       setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill } });
+      setFetched((n) => n + 1);
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
   }, [pub, loadTry]);
   useEffect(() => { if (!loadError) return; const t = setTimeout(() => setLoadTry((n) => n + 1), 30_000); return () => clearTimeout(t); }, [loadError]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
-  if (attempt) return <main className="page narrow-page">
+  // During a creation started on this visit the design page's progress panel reports it; the pending page takes over
+  // after a reload, or when a submitted creation is still unresolved once the send ends (not after a revert, which the
+  // panel offers to retry).
+  const reverted = !!tx.steps?.some((x) => x.state === 'failed' && x.error === creationStatus('reverted'));
+  if (attempt && !tx.busy && (!tx.steps || (!!attempt.hash && !reverted))) return <main className="page narrow-page">
     <h1 className="title t2">Pool creation</h1>
     <p className="lead">{creationStatus(outcome)}</p>
     <p className="note">Account {attempt.creator} · Chain {attempt.chainId}</p>
@@ -937,10 +944,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <>
-    <TxLine tx={tx} />
-    <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1) }} />
-  </>;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -1000,7 +1004,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number };
 type Bucket = { capacity: bigint; refill: bigint };
 
 /**
@@ -1337,7 +1341,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
         saveDraft(current());
-        steps.push(['Create and stock pool', async () => {
+        steps.push([`Create the pool and deposit ${eth(deposit, 5)} ETH`, async () => {
           await submitCreation(attempt,
             (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
               args: [salt, config, curated], value: deposit }, beforeWallet),
@@ -1404,6 +1408,77 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <div className="row2"><span className="k">Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
     </div>
   );
+  // Progress panel (7b): while a creation started here runs, and after it stops on an error, in place of the button and
+  // the wallet steps. The editor is locked meanwhile.
+  const live = mode === 'new' ? tx.steps : undefined;
+  const failedAt = live ? live.findIndex((x) => x.state === 'failed') : -1;
+  const showPanel = !!live && (!!tx.busy || failedAt >= 0);
+  const [retryAfter, setRetryAfter] = useState<number>();
+  useEffect(() => {
+    if (retryAfter === undefined || (create?.fetched ?? 0) <= retryAfter) return;
+    setRetryAfter(undefined);
+    void run();
+  }, [create?.fetched]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once the refreshed fees arrive
+  const [editor, editorRef] = useState<HTMLElement | null>(null);
+  useEffect(() => { editor?.toggleAttribute('inert', showPanel); }, [editor, showPanel]);
+  const panel = showPanel && live && (() => {
+    const n = live.length;
+    const failed = failedAt >= 0 ? live[failedAt] : undefined;
+    const at = failed ? failedAt : Math.max(0, live.findIndex((x) => x.state === 'wallet' || x.state === 'submitted'));
+    const now = live[at];
+    const isCreate = at === n - 1;
+    const revert = failed?.error === creationStatus('reverted');
+    const finished = live.filter((x) => x.state === 'done' || x.state === 'skipped').length;
+    const fill = failed ? (finished + 0.5) / n : (finished + (now?.state === 'wallet' || now?.state === 'submitted' ? 0.5 : 0)) / n;
+    const link = (h?: Hash) => h && (txUrl(h) ? <a href={txUrl(h)} target="_blank" rel="noreferrer">{short(h)} ↗</a> : <span className="mono">{short(h)}</span>);
+    const sub = (x: StepState, k: number) => {
+      switch (x.state) {
+        case 'done': return k === n - 1 ? <>Created · {link(x.hash)}</> : <>Approved{x.hash && <> · {link(x.hash)}</>}</>;
+        case 'skipped': return 'Already approved · skipped';
+        case 'wallet': return 'Confirm in your wallet';
+        case 'submitted': return <>Waiting for block · {link(x.hash)}</>;
+        case 'failed': return x.declined ? 'Declined in your wallet' : x.hash ? <>Failed · {link(x.hash)}</> : 'Failed';
+        default: return failed ? 'Not started' : '';
+      }
+    };
+    const desc = !failed
+      ? now?.state === 'submitted' ? "Your transaction is sent. The pool exists once it's in a block and checked." : 'Confirm each step in your wallet. Editing is locked until this finishes or you stop.'
+      : failed.declined ? `You declined ${isCreate ? 'creating the pool' : 'the approval'} in your wallet. Your design is saved and no ETH was spent.`
+        : revert ? `The transaction failed, so no pool exists and your ${eth(deposit, 5)} ETH stayed in your wallet. Only the gas was spent.`
+          : failed.error ?? 'Something went wrong.';
+    const approvedAlready = live.slice(0, n - 1).filter((x) => x.state === 'done' || x.state === 'skipped').length;
+    const foot = !failed
+      ? now?.state === 'submitted' ? 'Usually under a minute. You can leave this page; it picks up where it left off.' : "To stop, decline in your wallet. Approvals already made stay, and won't be asked for again."
+      : revert ? 'Often fees moved since you reviewed. Trying again refreshes them first.'
+        : approvedAlready > 0 ? `Trying again skips the approval${approvedAlready === 1 ? '' : 's'} you already made: ${n - approvedAlready} confirmation${n - approvedAlready === 1 ? '' : 's'} left.` : undefined;
+    const clearAttempt = () => { const saved = loadDraft()?.creation; if (saved) create?.rejectCreation(saved); };
+    const tryAgain = () => {
+      clearAttempt();
+      tx.reset();
+      if (revert) { setRetryAfter(create?.fetched ?? 0); create?.reload?.(); } else void run();
+    };
+    return <div className="progress" role="status" aria-live="polite">
+      <div className="ph"><h2 className="side-h">{failed ? 'Nothing was created' : 'Creating your pool'}</h2>
+        <span className={`cnt${failed ? ' error' : ''}`}>{failed ? `${revert ? 'Failed' : 'Stopped'} at step ${at + 1}` : `Step ${at + 1} of ${n}`}</span></div>
+      <p className="pd">{desc}</p>
+      <div className={`pbar${failed ? ' bad' : ''}`}><i style={{ width: `${Math.round(fill * 100)}%` }} /></div>
+      <ol className="psteps">
+        {live.map((x, k) => {
+          const label = k === n - 1 ? x.label : x.label.replace(/^Approve /, 'Approve ');
+          return <li key={k} className={`ps ${x.state}`}>
+            <span className="mk">{x.state === 'done' || x.state === 'skipped' ? '✓' : x.state === 'failed' ? '✕' : x.state === 'wallet' || x.state === 'submitted' ? '●' : k + 1}</span>
+            <div><span className="lb">{label}</span>{sub(x, k) && <span className="sb">{sub(x, k)}</span>}</div>
+          </li>;
+        })}
+      </ol>
+      <div className="pacts">
+        {failed
+          ? <><button className="btn" onClick={tryAgain}>Try again</button><button className="btn sec" onClick={() => { clearAttempt(); tx.reset(); }}>Edit design</button></>
+          : <button className="btn busy" disabled>{now?.state === 'submitted' ? 'Confirming…' : 'Waiting for your wallet…'}</button>}
+      </div>
+      {foot && <p className="note">{foot}</p>}
+    </div>;
+  })();
   // Phones: the pinned bar also shows the draw price, since the sidebar is not beside the editor there.
   const pinPrice = <span className="pin-price">{ev ? <><b>{eth(ev.drawPrice, 5)}</b> ETH a draw</> : '–'}</span>;
   const save = mode === 'preview' ? (
@@ -1432,7 +1507,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       </div>
       {mode !== 'new' && !blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
-      {fresh && tx.msg && !tx.msg.ok && <p className="note error" style={{ marginTop: 10 }}>{tx.msg.text}</p>}
     </div>
   );
 
@@ -1523,7 +1597,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   return (
     <main className="page cols design">
       {values.modal}
-      <section>
+      <section ref={editorRef} className={showPanel ? 'locked' : undefined}>
         {mode === 'pool'
           ? <h2 className="title t2">Prices & mix</h2>
           : <><span className="crumb">Community pools /</span><h1 className="page-t">Design your pool</h1></>}
@@ -1670,8 +1744,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         )}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
-        {save}
-        {walletSteps}
+        {panel ? <div className="pin">{panel}</div> : <>{save}{walletSteps}</>}
       </section>
     </main>
   );
