@@ -610,3 +610,17 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .design > section.side .pin .btn.lg { height: auto; min-height: 52px; padding: 8px 14px; white-space: normal; line-height: 1.2; }
   .design .steps-note, .more-hint { display: none; }
 }
+
+@media (min-width: 901px) {
+  /* Tighter sidebar: draw price, grid, totals and For players fit common laptop heights without scrolling. */
+  .design > section.side .side-inner { gap: 18px; }
+  .design > section.side .figure { font-size: 48px; }
+  .design > section.side .pay { margin-top: 2px; }
+  .design > section.side .note { margin-top: 4px; }
+  .design > section.side .grid100 { margin: 10px 0; }
+  .design > section.side .seg button { height: 32px; }
+  .design > section.side .totals > div { min-height: 44px; padding: 6px 0; }
+  .design > section.side .kv { min-height: 36px; }
+  .design > section.side .players .ctl { margin-bottom: 4px; font-size: 15px; }
+  .design > section.side .pin { padding-top: 12px; margin-top: 4px; }
+}

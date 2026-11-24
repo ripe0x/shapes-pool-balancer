@@ -1613,7 +1613,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="side-inner">
         <div className="desktop-only">{payBlock}</div>
         <div className="desktop-only">{gridBlock}</div>
-        {playBlock && <div className="desktop-only">{playBlock}</div>}
         <div className="totals">
           {fresh ? (
             <div><span>To create the pool</span>{figureEth(ev && deposit, 6)}</div>
@@ -1630,6 +1629,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         </div>
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
+        {playBlock && <div className="desktop-only">{playBlock}</div>}
         </div>
         </div>
         {more && <button className="disclose more-hint" onClick={() => list?.scrollBy({ top: list.clientHeight * 0.7, behavior: 'smooth' })}>More below ▾</button>}
