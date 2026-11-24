@@ -569,21 +569,21 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .st .srow .ctl-col { align-items: flex-start; text-align: left; }
 }
 
-/* Confirm NFT values: one list of every curated NFT and the value it will be listed at. */
-.modal { background: var(--bg); color: var(--ink); border: 1px solid var(--ink); padding: 32px; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); }
-.modal::backdrop { background: rgba(0, 0, 0, .75); }
+/* Confirm NFT values: every curated NFT with the value it will be listed at. */
+.modal { background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); padding: 32px; width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow-y: auto; }
+.modal::backdrop { background: rgba(0, 0, 0, .8); }
 .modal .h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
 .modal .desc { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; }
-.modal .warn { font-size: 15px; line-height: 1.5; color: var(--error); margin-top: 12px; }
-.mixrow .s.error { color: var(--error); }
-.modal-rows { margin-top: 20px; }
-.modal-rows .kv { font-size: 15px; min-height: 56px; }
-.modal-rows .kv .k { color: var(--ink); display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
-.modal-rows .kv .sub { font-size: 13px; color: var(--ink-foot); }
-.modal-rows .kv .sub.error { color: var(--error); }
-.modal-rows .kv .v { font-weight: 700; white-space: nowrap; }
-.modal .acts { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
-@media (max-width: 640px) { .modal { padding: 20px; } }
+.modal .warn { font-size: 15px; line-height: 1.5; color: var(--error); margin-top: 20px; }
+.modal-rows { margin-top: 24px; border-top: 1px solid var(--line); }
+.modal .mrow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.modal .mrow .t { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.modal .mrow .s { font-size: 13px; color: var(--ink-foot); margin-top: 2px; }
+.modal .mrow .s.error { color: var(--error); }
+.modal .mrow .amt { white-space: nowrap; font-size: 15px; text-align: right; }
+.modal .u13 { font: 500 13px var(--font-mono); color: var(--ink-3); margin-left: 6px; }
+.modal .acts { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+@media (max-width: 640px) { .modal { padding: 20px; } .modal .mrow { grid-template-columns: 40px minmax(0, 1fr); } .modal .mrow .amt { grid-column: 2; text-align: left; } }
 
 /* Design page details: notes, keeper pay rates and All numbers, below the editor. */
 .design .details { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }

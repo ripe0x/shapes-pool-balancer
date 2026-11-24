@@ -1703,21 +1703,32 @@ function useConfirmValues() {
 function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (ok: boolean) => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
+  // Exact listed amounts, padded to the same number of decimals so the column lines up.
+  const amounts = items.map((n) => formatEther(ethOr(n.value, 0n)));
+  const places = Math.max(0, ...amounts.map((x) => x.split('.')[1]?.length ?? 0));
+  const pad = (x: string) => { const [w, f = ''] = x.split('.'); return places ? `${w}.${f.padEnd(places, '0')}` : w; };
+  const below = items.filter(belowFloor).length;
   return <dialog ref={ref} className="modal" aria-labelledby="confirm-values" onCancel={(e) => { e.preventDefault(); onClose(false); }}>
     <h2 className="h" id="confirm-values">Confirm NFT values</h2>
-    <p className="desc">Each NFT is listed on FWA at the value below.</p>
-    {items.some(belowFloor) && <p className="warn">{items.filter(belowFloor).length === 1 ? 'One NFT is' : `${word(items.filter(belowFloor).length)} NFTs are`} valued below {items.filter(belowFloor).length === 1 ? 'its' : 'their'} collection floor.</p>}
+    <p className="desc">Each NFT is listed on FWA at this value.</p>
     <div className="modal-rows">
-      {items.map((n) => {
-        const below = belowFloor(n);
-        return <div className="kv" key={nftKey(n.collection!, n.tokenId!)}>
-          <span className="k">{nftLabel(n)}{n.floor !== undefined && <span className={`sub${below ? ' error' : ''}`}>{n.value === floorValue(n.floor) ? 'Collection floor' : below ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</span>}</span>
-          <span className="v">{n.value} ETH</span>
+      {items.map((n, i) => {
+        const low = belowFloor(n);
+        return <div className="mrow" key={nftKey(n.collection!, n.tokenId!)}>
+          <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
+          <div className="mid">
+            <div className="t">{nftLabel(n)}</div>
+            {n.floor !== undefined && <div className={`s${low ? ' error' : ''}`}>
+              {n.value === floorValue(n.floor) ? 'At the collection floor' : `${low ? 'Below' : 'Above'} the ${floorValue(n.floor)} ETH collection floor`}
+            </div>}
+          </div>
+          <div className="amt"><b>{pad(amounts[i])}</b><span className="u13">ETH</span></div>
         </div>;
       })}
     </div>
+    {below > 0 && <p className="warn">{below === 1 ? 'One NFT is' : `${cap(word(below))} NFTs are`} below {below === 1 ? 'its' : 'their'} collection floor.</p>}
     <div className="acts">
-      <button className="btn" autoFocus onClick={() => onClose(true)}>Confirm {items.length === 1 ? 'value' : `${items.length} values`}</button>
+      <button className="btn" autoFocus onClick={() => onClose(true)}>{below > 0 ? 'Confirm anyway' : `Confirm ${items.length === 1 ? 'value' : `${items.length} values`}`}</button>
       <button className="btn sec" onClick={() => onClose(false)}>Back</button>
     </div>
   </dialog>;
