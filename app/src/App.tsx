@@ -1148,7 +1148,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [refused, setRefused] = useState<string>();
   const [staleReview, setStaleReview] = useState<Hex>();
   const [open, setOpen] = useState({ bonus: false, numbers: false, rates: false });
-  const [gridView, setGridView] = useState<'inventory' | 'draws'>('draws');
+  const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const salt = useMemo(() => draft?.salt ?? `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as Hash, []);
@@ -1322,8 +1322,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     <div>
       <div className="grid-head">
         <div className="seg sm" role="group" aria-label="View">
-          <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
           <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
+          <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
         </div>
         {view && <button className="disclose key" aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>Key {showKey ? '▴' : '▾'}</button>}
       </div>
