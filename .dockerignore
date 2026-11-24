@@ -3,13 +3,17 @@
 !package.json
 !package-lock.json
 !keeper/
+keeper/**
 !keeper/Dockerfile
 !keeper/keeper.ts
 !shared/
+shared/**
 !shared/abi.ts
 !shared/legacy.ts
 !shared/listing.ts
 !deployments/
+deployments/**
 !deployments/1.legacy.json
 !scripts/
+scripts/**
 !scripts/canary-guard.ts
