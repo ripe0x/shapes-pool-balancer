@@ -55,11 +55,11 @@ Generic wallet actions confirm only when the included successful transaction mat
 
 Configure `FACTORY`, `FROM_BLOCK`, `RPC_URL=https://mainnet.gateway.tenderly.co`, `STATE_FILE`, and the keeper's signing identity through the existing environment/secret store, then run `npm run keeper`. Never place a private key in a command literal, file, or log. `KEEPER_ADDRESS` selects an unlocked account for isolated local forks only.
 
-- Each tick discovers all pools created by the factory and reads each pool's selected policy, payment state, and generation hash. It simulates the actual offered reward with fee fields and the same executable gas limit it would send. Core-compatible new policies need no keeper code change. Bidding caps are operator configuration; policy economics are learned only through bounded quotes and complete transaction simulation. No settings metadata is read.
+- Each tick discovers all pools created by the factory and reads each pool's effective economics (or, on a legacy community-v1 pool, its policy address), payment state and settings hash. It simulates the actual offered reward with fee fields and the same executable gas limit it would send, so economics changes need no keeper code change. Bidding caps are operator configuration; policy economics are learned only through bounded quotes and complete transaction simulation. No settings metadata is read.
 - The send condition budgets execution expense, `OPERATING_COST_WEI`, and the configured `MAX_LOSS_WEI` (default 0.0002 ETH per attempted successful call). Setting the loss allowance to zero requests no modeled loss; it does not guarantee inclusion or profit. Failed attempts remain operator costs and are included in receipt stats.
 - `eth_estimateGas` sets the executable limit with 30% headroom and a 4M floor, bounded by EIP-7825's 16,777,216. It is not the gas ultimately billed. An optional top-level `debug_traceCall` estimates billed expense; receipt comparisons report its calibration. If tracing is unavailable, estimation is conservative and may skip profitable work. No formula is recovered by dividing compensation or listing fees.
-- Paid calls use `performUpkeep(settingsHash, minimumFixed, minimumGas)`: minimumFixed budgets operating costs, while minimumGas budgets traced/estimated billed gas less a conservative conversion of the configured loss allowance. The atomic floor follows the transaction's actual included gas price, avoiding false fixed-wei reverts when basefee falls. Quote failure, stale policy generation, disabled payments, insufficient operating funds/allowance, or reward below the minimum reverts all work. Another caller can change work between simulation and inclusion, so atomic checks protect the minimum, not the operator's spent gas.
-- Pending nonce state is saved before broadcast. Every replacement refreshes policy/hash, simulation, expense and gas limit, raises fees by 25%, and uses the same nonce only while the offer remains acceptable. Each hash keeps its own offered policy/payment for receipt attribution. Lost responses and node eviction recover without allocating a duplicate nonce. Do not delete pending state as a normal recovery step.
+- Paid calls use `performUpkeep(settingsHash, minimumFixed, minimumGas)`: minimumFixed budgets operating costs, while minimumGas budgets traced/estimated billed gas less a conservative conversion of the configured loss allowance. The atomic floor follows the transaction's actual included gas price, avoiding false fixed-wei reverts when basefee falls. Stale settings, disabled payments, insufficient operating funds/allowance, or reward below the minimum reverts all work. Another caller can change work between simulation and inclusion, so atomic checks protect the minimum, not the operator's spent gas.
+- Pending nonce state is saved before broadcast. Every replacement refreshes the settings hash, simulation, expense and gas limit, raises fees by 25%, and uses the same nonce only while the offer remains acceptable. Each hash keeps its own offered policy/payment for receipt attribution. Lost responses and node eviction recover without allocating a duplicate nonce. Do not delete pending state as a normal recovery step.
 - Health: `GET http://localhost:8787/health`; per-pool errors do not stop unrelated pools. Discovery rescans a 64-block window and drops creations absent after a reorg. Receipt stats reconcile actual gas costs and received compensation.
 - The persisted receipt journal covers 64 blocks and at most 1,000 entries. Recent orphaned receipts reverse their gas/reward counters; pending accounting survives a pool disappearing from discovery. Lost response hashes are recovered by the sender nonce using historical account reads and the actual canonical transaction. Historical-RPC failure retains the accounting entry and exposes an error. Reward events must originate from the tracked pool and name this keeper.
 - `health.accounting` reports retry nonces, errors, coverage and `journalPrunedThrough`. `legacy-unverified` means pre-journal counters were not reconstructed; `history-unverified` means pruned/deep history requires external reconciliation. A normal `journal` status does not promise unbounded historical finality. If a genuinely different operator transaction consumes a tracked nonce, that external transaction is outside service financial totals. A later reorg of that external cancellation followed by original-upkeep reinclusion requires manual canonical reconciliation; there is no retained external-consumption tombstone. Do not clear state to conceal these limits.
@@ -89,36 +89,34 @@ markup, gas and policy changes never change it. At 100%, all collected revenue i
 History and failed-delivery discovery load separately with their own errors. A historical failure is a gap in that
 history view, not a reason to disable current claims, maintenance, closing or policy recovery.
 
-## Adopt a policy
+## Change a pool's keeper economics
 
-A pool uses one of three economics sources: **follow** (the factory's current `economics()`, the default for new
-pools), **local** (its own values) or **pinned** (a frozen copy of the values in effect when pinned). Every change
-below takes effect in its own transaction, increments `policyGeneration` and emits `EconomicsSelected`.
+A pool uses one of two economics sources (R96): **follow** (the factory's current `economics()`, the default for new
+pools) or **local** (its own values). "Pin current factory values" in the app is a local save of the factory's values
+shown to the creator. Pay and restocking prices are the in-library formula over these numbers (R95); there is no
+policy contract to choose. Every change below takes effect in its own transaction, increments `policyGeneration` and
+emits `EconomicsSelected`.
 
-1. Read `keeperPolicy`, `policyMaxReward`, `paidUpkeepEnabled` and `maintenanceFunding(e)` for the full economics `e`
-   you intend to use (the current effective values with the new `policy`, or your own numbers). Use active
-   Balancer-context views for current estimates; a candidate policy's direct response is unverified and is not a
-   guaranteed pool offer.
+1. Read `effectiveEconomics`, `policyMaxReward`, `paidUpkeepEnabled` and `maintenanceFunding(e)` for the full economics
+   `e` you intend to use.
 2. `maintenanceFunding(e)` returns `e`'s maintenance budget at the current state and the operating cash it lacks. While
    paid upkeep is on, a change is refused (`ReserveNotFunded`) only when `e`'s budget exceeds the current one and
    operating cash is below it; a nonincrease needs nothing. Deposit only the shortfall with `depositETH()`. Missing
    prize capital never enters this check; existing prices and creator credit stay unchanged.
-3. Creator: `setKeeperPolicy(candidate)` keeps the effective numbers, swaps the pricing algorithm and makes the pool
-   local (it stops following factory changes). `setLocalEconomics(e)` sets every value at once. The algorithm must
-   report interface version 3, or the call reverts `InvalidPolicy`; a paused grace longer than the normal one reverts
-   `InvalidGrace`. Neither call changes paid upkeep: a disabled pool
-   stays disabled, and no funding check runs while it is disabled.
+3. Creator: `setLocalEconomics(e)` sets every value at once and stops following factory changes. To pin, pass the
+   factory's current `economics()` read at the block you reviewed. A paused grace longer than the normal one reverts
+   `InvalidGrace`. Paid upkeep is unchanged: a disabled pool stays disabled, and no funding check runs while it is
+   disabled.
 4. Creator: `setPaidUpkeepEnabled(false)` stops paid upkeep immediately. `setPaidUpkeepEnabled(true)` re-enables it
    only if operating cash covers the effective economics' full maintenance budget. No factory change re-enables a
    stopped pool. A creator transfer keeps the economics source and the disabled state.
-5. `pinEconomics()` freezes the effective values; `followFactoryEconomics()` returns to the factory's current values,
-   under the same funding check as step 2. The spending bucket (`setKeeperBucket`) is separate and none of these
-   change it.
+5. `followFactoryEconomics()` returns to the factory's current values, under the same funding check as step 2. The
+   spending bucket (`setKeeperBucket`) is separate and none of these change it.
 
-Only the separate policy admin may change the factory economics, with `setEconomics` (immediate; followers use the new
-values at their next operation, pinned and local pools are unaffected), the default spending bucket for future pools,
-with `setDefaultBucket`, and the product limits, with `setProductLimits`. The keeper admin cannot select any pool's
-policy or change keeper economics.
+Only the factory admin (`policyAdmin`, trusted, R97) may change the factory economics, with `setEconomics` (immediate;
+followers use the new values at their next operation, local pools are unaffected), the default spending bucket for
+future pools, with `setDefaultBucket`, and the product limits, with `setProductLimits`. The keeper admin cannot change
+any pool's economics.
 
 ## Keeper economics and purchase limits
 
@@ -127,15 +125,15 @@ policy or change keeper economics.
   (T + 4 outstanding draws).
 - Paid upkeep reimburses gas at no more than `gasPriceCeiling` (5 gwei initially). Above it a paid call costs the keeper
   more than it pays, so paid upkeep stops and pools rely on `performUpkeepUnpaid()` until gas falls.
-- `pinEconomics()` freezes the values in effect at that moment, including any factory change made just before.
-  `setLocalEconomics(e)` sets the pool's own values and detaches it from later factory changes;
-  `followFactoryEconomics()` rejoins.
+- A pin (`setLocalEconomics(factory.economics())`) freezes the factory values read at that moment; a factory change
+  mined between the read and the pin is not included. `setLocalEconomics(e)` sets the pool's own values and detaches it
+  from later factory changes; `followFactoryEconomics()` rejoins.
 - A creator's local `restockFlat` raises the restocking surcharge, and with it the pool's listing prices, beyond the
   markup range; buyers see and pay that price.
 
-## Broken policy or unavailable payment
+## Unavailable payment
 
-Use `performUpkeepUnpaid()`. It pays zero and retains valid bounded active-policy listing quotes. If a price quote reverts, burns its stipend, is malformed, or exceeds the immutable limit, it uses the immutable V1 recovery surcharge. It remains public under keeper restrictions and pays zero. No assets migrate. Existing listings retain their original prices. Inventory still needs capital, and dependencies' own pause/settlement restrictions remain effective.
+Use `performUpkeepUnpaid()`. It pays zero and prices new listings with the same formula as paid upkeep (R95; the former broken-policy fallback no longer exists). It remains public under keeper restrictions. No assets migrate. Existing listings retain their original prices. Inventory still needs capital, and dependencies' own pause/settlement restrictions remain effective.
 
 ## Failed NFT delivery
 

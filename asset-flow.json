@@ -71,7 +71,7 @@
   "outcomes": [
     {
       "id": "O1",
-      "text": "Keepers receive the selected read-only quote for immutable verified work, capped by the cached policy maximum, operation-sensitive measured-gas/service envelope, 0.311 ETH absolute maximum, real operating liquidity and persistent 0.622 ETH burst/floor(0.05 ETH per12seconds) allowance. Caller minimum is atomic. V1 quotes remain measured gas plus50k overhead and0.00002 ETH per finalized draw or Shape unit listed. In the explicitly named reference regimes, the measured compensation above billed gas, after subtracting the stated gas-overhead and service allowances, is at most 80,000 gas per draw. This is the retained-refund metric, not total EVM refunds or a universal immutable refund cap. Independent processing-only measurements are reported with that narrower scope.",
+      "text": "Keepers are paid by the in-library V1 formula for verified work (R95): (min(measured gas, operation gas bound, maxGas) + overhead) x min(transaction gas price, basefee + priority allowance, gas price ceiling) + the work fee per processed draw, reconciled draw and listed Shape unit, limited by real operating liquidity and the pool's 0.622 ETH / floor(0.05 ETH per 12 seconds) spending bucket. There is no separate absolute payment ceiling. Caller minimum is atomic. Initial economics: 60k overhead gas and 0.00002 ETH work fee. In the explicitly named reference regimes, the measured compensation above billed gas, after subtracting the stated gas-overhead and service allowances, is at most 80,000 gas per draw. This is the retained-refund metric, not total EVM refunds or a universal immutable refund cap. Independent processing-only measurements are reported with that narrower scope.",
       "metric": "facts.keeper_refund_gas_kept_per_draw",
       "max": 80000,
       "regimes": [
@@ -107,7 +107,7 @@
     },
     {
       "id": "O2",
-      "text": "Restocking surcharges are included in Shape/Pack listing prices and realized indirectly through successful purchases, not collected on listing. Creators front actual minting and operating expenses. In the explicitly named V1 reference regimes, expected surcharge contribution still listed is at most 0.26 ETH (55 contained Shape units at the 5 gwei cap imply 0.2585 ETH). This scenario check is neither liquid cash nor capital locked upfront, and is not a limit for larger boards or replacement-policy pricing.",
+      "text": "Restocking surcharges are included in Shape/Pack listing prices and realized indirectly through successful purchases, not collected on listing. Creators front actual minting and operating expenses. In the explicitly named V1 reference regimes, expected surcharge contribution still listed is at most 0.26 ETH (55 contained Shape units at the 5 gwei cap imply 0.2585 ETH). This scenario check is neither liquid cash nor capital locked upfront, and is not a limit for larger boards or other economics.",
       "metric": "facts.restock_fees_outstanding_wei",
       "max": 260000000000000000,
       "regimes": [
@@ -143,7 +143,7 @@
     },
     {
       "id": "O3",
-      "text": "Closing releases missing inventory, setup and working-buffer requirements. While paid upkeep is enabled, only actual unreconciled draws times their current immutable reconciliation budget are retained. Disabling paid upkeep releases that hold; reenabling is delayed and funded. Buyer refunds and FWA edge remain in FWA. Completed paid work receives its atomic bounded quote; future work is not a keeper debt.",
+      "text": "Closing releases missing inventory, setup and working-buffer requirements. While paid upkeep is enabled, only actual unreconciled draws times their current immutable reconciliation budget are retained. Disabling paid upkeep releases that hold; re-enabling is immediate and needs the maintenance budget funded. Buyer refunds and FWA edge remain in FWA. Completed paid work receives its atomic formula payment; future work is not a keeper debt.",
       "metric": "facts.unclaimable_after_close_beyond_held_pay_wei",
       "max": 0,
       "regimes": [
@@ -199,7 +199,7 @@
     },
     {
       "id": "O8",
-      "text": "Actual collected FWA owner proceeds create floor(amount \u00d7 stored creatorRevenueBps / 10,000) credit exactly once. Capital returns create none. Paid and unpaid work protect existing credit; claims remain available during inventory depletion. Historical markup attribution and its drift threshold are superseded; previous signatures do not approve this changed outcome.",
+      "text": "Actual collected FWA owner proceeds create floor(amount × stored creatorRevenueBps / 10,000) credit exactly once. Capital returns create none. Paid and unpaid work protect existing credit; claims remain available during inventory depletion. Historical markup attribution and its drift threshold are superseded; previous signatures do not approve this changed outcome.",
       "metric": "facts.creator_credit_error_wei",
       "max": 0,
       "regimes": [
@@ -290,7 +290,7 @@
     },
     {
       "id": "O14",
-      "text": "Delayed policy replacement with outstanding draws changes only the selected economic policy, preserves all existing listing prices, funds the exposed operating shortfall before activation, and reconciles through closeout without moving assets to another pool.",
+      "text": "An immediate local economics change with outstanding draws (R95: there is no policy to replace) changes only the pool's economics, preserves all existing listing prices, needs operating funding only when the maintenance exposure grows, and reconciles through closeout without moving assets to another pool.",
       "metric": "facts.policy_repriced_listings",
       "max": 0,
       "regimes": [

@@ -54,6 +54,27 @@ fees = 0.00471293 ETH, above the 900k surcharge (0.0047). **Default `restockGas`
 7,414 margin kept; surcharge 0.00475 ETH at the ceiling, 0.0007005 ETH at 0.5 gwei). Per-operation gas bounds were left
 unchanged: every class measured below its bound (largest ratio 874,619 / 1,200,000).
 
+## Audit repair (R95): no policy call, 2026-11-23
+
+Removing the external policy (owner decision R95) takes the policy staticcall out of both spans: the restocking quote
+inside the measured span and the reward quote outside it. Fresh `test/KeeperPay.t.sol`
+`test_overheadCoversBilledGasPerOperationClass` (`--isolate`, 5 gwei, code `f549bf9`):
+
+| Class | measured | billed | billed - measured |
+|---|---|---|---|
+| setup fill, 5 Shape units (two calls) | 2,543,761 / 2,524,901 | 2,566,101 / 2,547,241 | 22,340 |
+| reconcile 1 timed-out draw (also when processed on FWA) | 109,749 | 157,582 | 47,833 |
+| reconcile 1 NFT win | 188,174 | 214,008 | 25,834 |
+| reconcile + replace 1 Shape | 869,191 | 858,325 | 0 (refunds) |
+| reconcile + replace 5 Shapes | 2,634,423 | 2,565,961 | 0 (refunds) |
+| process 1 stuck draw and reconcile 2 | 678,901 | 589,499 | 0 (refunds) |
+| closed: reconcile 5 timed-out draws | 144,098 | 194,008 | **49,910** |
+
+Largest out-of-span gas 49,910 (was 56,724): the 60,000 `overheadGas` now has a 20.2% margin (was 5.8%); it is left
+at 60,000. The single-Shape reconcile-and-replace call pays (869,191 + 60,000) x 5 gwei + 2 work fees, so the
+restocking surcharge needs restockGas >= 897,191 at the ceiling; 910,000 leaves 12,809 gas (was 7,414). Both are
+factory settings; neither was changed here.
+
 ## Focused curated-proof follow-up, 2026-11-18
 
 [Current focused evidence](AUDIT-FOLLOWUP-RESULTS.md) supersedes historical admission measurements below.

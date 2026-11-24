@@ -1,5 +1,9 @@
 # Replaceable keeper policies
 
+> **Superseded (owner decision R95, 2026-11-23).** There is no replaceable keeper policy any more: payment and
+> restocking are the in-library formula in `KeeperPolicyCalls`, and changing it is a new release. See
+> `docs/DECISIONS.md` "Audit repair" and `docs/CONFIG-INVENTORY.md`. This document is history.
+
 Current specification, 2026-11-18. Protected credit, metadata removal, one paid entry point and maintenance-only
 activation replace earlier policy documentation. [Implementation evidence](PROTECTED-REVENUE-RESULTS.md) records
 verification separately. No mainnet deployment or real spending is authorized.

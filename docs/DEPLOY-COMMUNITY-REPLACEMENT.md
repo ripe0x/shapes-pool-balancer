@@ -1,11 +1,12 @@
 # Community replacement deployment plan (unsigned)
 
 **Status: unsigned plan, nothing broadcast.** This replaces the 2026-11-22 community factory
-(`0x91C31Ad620555DE24e62290906aD1aA14C4CE281`, now legacy) with a new BalancerFactory, PoolBalancer implementation,
-KeeperPolicyV1 and any changed linked libraries, while **reusing** the existing Shapes, Draw Packs, renderer and FWA
-contracts. Contract-dependent parts are filled in against the community release candidate `08be33f` (contracts and
-tests; the following commit adds only this plan and docs/CANDIDATE-REPORT.md). Recheck sizes, library addresses and
-section 7 against the commit you sign: any later source change to a created contract or library moves them.
+(`0x91C31Ad620555DE24e62290906aD1aA14C4CE281`, now legacy) with a new BalancerFactory, PoolBalancer implementation
+and any changed linked libraries, while **reusing** the existing Shapes, Draw Packs, renderer and FWA contracts. There
+is **no keeper policy contract** (owner decision R95, 2026-11-23): the payment formula is in the `KeeperPolicyCalls`
+library. Contract-dependent parts are filled in against the audit-repair candidate `f549bf9` (section 7a). Recheck
+sizes, library addresses and section 7 against the commit you sign: any later source change to a created contract or
+library moves them.
 
 A generated `deployments/1.json` or a successful simulation is not a deployment. Only step 7's
 `DEPLOYMENT VERIFIED` against mined receipts establishes one.
@@ -16,7 +17,7 @@ A generated `deployments/1.json` or a successful simulation is not a deployment.
 | --- | --- | --- |
 | KeeperPolicyCalls, PoolPage, PoolInventory libraries | created by CREATE2 if their init code changed; otherwise Forge skips them and links the address already on chain | receipt (created) or code at the linked CREATE2 address (skipped) |
 | PoolBalancer implementation | created (CREATE, deployer nonce) | receipt + readbacks |
-| KeeperPolicyV1 | created (CREATE). Required: the factory accepts only `interfaceVersion() == 3`, and the live 2026-11-22 policy `0x27c56f36…88Db` is interface 1 (fork check: `setEconomics` with it reverts `InvalidPolicy()`) | receipt + readbacks |
+| ~~KeeperPolicyV1~~ | not created since R95 (the 2026-11-22 policy `0x27c56f36…88Db` stays only for legacy pools) | — |
 | BalancerFactory | created (CREATE) | receipt + readbacks |
 | Shapes `0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0` | reused | code hash `0x5128789a…87d7`, 22,460 bytes |
 | Draw Packs `0xfE11c0E794475fd86801fb3020d779bd7887cB2D` | reused | code hash `0xf8239826…3a7c`, 17,768 bytes; equals local `lib/shape-packs` build; `shapes()`, `renderer()`, `MIN_PACK_VALUE() = 0.02 ETH` |
@@ -39,26 +40,26 @@ getter readbacks at the checked block; no receipts).
   truth. The plan does not depend on a specific nonce; the verifier matches the broadcast to the reviewed dry run
   transaction for transaction (sender, nonce, kind, address, calldata).
 - CREATE2 library addresses depend only on init code (salt 0 via `0x4e59b44847b379578588920cA78FbF26c0B4956C`). A
-  library whose code did not change keeps its 2026-11-22 address and is not sent. At the stuck-draw follow-up
-  (expired draws, interface 3; fork rehearsal 2026-11-23; `08be33f` addresses superseded):
-  - PoolPage unchanged: reused at `0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf` (already on mainnet, not sent).
-  - KeeperPolicyCalls changed: new `0x0aB0D6ab1A152456010FC53251eAe6A02914D220` (old `0x1601A841…B8fb` stays for
+  library whose code did not change keeps its 2026-11-22 address and is not sent. At `f549bf9` (fork rehearsal
+  2026-11-23, section 7a; earlier addresses superseded):
+  - PoolPage unchanged: reused at `0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf` (already on mainnet, 1,194 bytes, not sent).
+  - KeeperPolicyCalls changed: new `0x5c6322442650A1177b4aFbF5f95166A59Ef7e7f7` (old `0x1601A841…B8fb` stays for
     legacy pools).
-  - PoolInventory changed (metadata only: an imported interface changed): new
-    `0x8A5927A59D05e81314B54F470cd7377128887489` (old `0xD6e89D45…9fD0` stays).
-  Neither new address has code on mainnet at block 26,480,833.
+  - PoolInventory changed: new `0xb89B48F0b574BC84d513fC3C2962a6A2dE7Cc9f7` (old `0xD6e89D45…9fD0` stays).
+  Neither new address has code on mainnet at block 26,481,996.
 - Every transaction, CREATE2 libraries included, is sent by the deployer and uses one nonce. Order: KeeperPolicyCalls
-  (N), PoolInventory (N+1), PoolBalancer (N+2), KeeperPolicyV1 (N+3), BalancerFactory (N+4): 5 transactions.
-- With N = 4158 (read at mainnet block 26,480,612; `cast compute-address`): PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`,
-  KeeperPolicyV1 `0x526FbD402624B50861f54c081B592cdCeE322929`, BalancerFactory
-  `0x1abD8bF61c05be3efDDa7F3e34a11417036ddED4`. Illustrative: step 5's dry run is the address source of truth.
+  (N), PoolInventory (N+1), PoolBalancer (N+2), BalancerFactory (N+3): 4 transactions, 11,129,506 gas on the fork.
+- Mainnet nonce read 2026-11-23 at block 26,481,996: **4158** (unchanged); balance 0.052298546834342702 ETH. With
+  N = 4158 (`cast compute-address`): PoolBalancer `0x43d08cC10e6F441D5DF2DDF2650eB03A5eaA2445`, BalancerFactory
+  `0x526FbD402624B50861f54c081B592cdCeE322929` (the address the former plan gave KeeperPolicyV1, one nonce earlier).
+  Illustrative: step 5's dry run is the address source of truth.
 
 ## 3. Administrators and initial settings
 
 | Role | Address | Source |
 | --- | --- | --- |
 | keeperAdmin (keeper eligibility) | `0xCB43078C32423F5348Cab5885911C3B5faE217F9` | `KEEPER_ADMIN` env, factory constructor |
-| policyAdmin (default policy, factory economics and product limits) | `0xCB43078C32423F5348Cab5885911C3B5faE217F9` | `POLICY_ADMIN` env, factory constructor |
+| policyAdmin (factory economics, default bucket and product limits; trusted, R97) | `0xCB43078C32423F5348Cab5885911C3B5faE217F9` | `POLICY_ADMIN` env, factory constructor |
 | Draw Packs presentation admin (reused, unchanged) | `0xCB43078C32423F5348Cab5885911C3B5faE217F9` | readback only; `PACKS_ADMIN` env is the expected value |
 
 Initial factory settings, all set by the `BalancerFactory` constructor (no setup transaction) and listed in
@@ -66,11 +67,10 @@ Initial factory settings, all set by the `BalancerFactory` constructor (no setup
 
 | Getter | Initial value |
 | --- | --- |
-| `economics()` | policy = the new KeeperPolicyV1; workFee 0.00002 ETH; maxGas 3,200,000; overheadGas **60,000**; gasPriceCeiling 5 gwei; priorityAllowance 0.05 gwei; restockGas **910,000**; restockFlat 0.0002 ETH; baseGas 200,000; processGas 1,800,000; reconcileGas 150,000; shapeGas 700,000; prizeGas 150,000; processGraceBlocks **50**; pausedProcessGraceBlocks **10** |
-| `defaultKeeperPolicy()` | `economics().policy` |
+| `economics()` | workFee 0.00002 ETH; maxGas 3,200,000; overheadGas **60,000**; gasPriceCeiling 5 gwei; priorityAllowance 0.05 gwei; restockGas **910,000**; restockFlat 0.0002 ETH; baseGas 200,000; processGas 1,800,000; reconcileGas 150,000; shapeGas 700,000; prizeGas 150,000; processGraceBlocks **50**; pausedProcessGraceBlocks **10** |
 | `defaultBucketCapacity()` / `defaultBucketRefill()` | 0.622 ETH / 4,166,666,666,666,666 wei per second (`floor(0.05 ether / 12)`) |
 | `productLimits()` | maxPrizes 1,000; minMarkupBps 1,000; maxMarkupBps 10,000 |
-| `creationSettingsHash()` | `keccak256(abi.encode(poolHash, defaultBucketCapacity(), defaultBucketRefill()))` with `poolHash = keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; at mint fee 0.001 ETH with the 7a fork policy address: pool hash `0x2fb30e3b…9af4`, creation hash `0x19cf24eb…730c` (depends on the policy address, so it differs on mainnet) |
+| `creationSettingsHash()` | `keccak256(abi.encode(poolHash, defaultBucketCapacity(), defaultBucketRefill()))` with `poolHash = keccak256(abi.encode(economics(), 0 follow, 0 generation, true, SHAPES.mintFee()))`; no address enters it since R95, so at mint fee 0.001 ETH it is `0x2b71d8007106d084bb50b843220eae92fcf61c12fb542ff011835be449ec70ae` on the fork and on mainnet alike |
 | `keepersRestricted()` / `pendingKeeperAdmin()` / `pendingPolicyAdmin()` | false / zero / zero |
 
 Overhead 60k and restocking 910k are measured recalibrations of V1's 50k and 900k (CONFIG-INVENTORY §0a). Derived
@@ -96,10 +96,10 @@ Check: `## main...origin/main` with no `[ahead`/`[behind` and the reviewed candi
 
 **2 → Build.** Compiles with the pinned profiles and prints runtime sizes.
 ```bash
-forge build --sizes 2>&1 | grep -E "^\| (PoolBalancer|BalancerFactory|KeeperPolicyV1|PoolInventory|PoolPage|KeeperPolicyCalls) "
+forge build --sizes 2>&1 | grep -E "^\| (PoolBalancer|BalancerFactory|PoolInventory|PoolPage|KeeperPolicyCalls) "
 ```
-Check: every runtime size is below 24,576 bytes. At the stuck-draw follow-up: PoolBalancer 24,275 (301 to spare),
-PoolInventory 12,210, KeeperPolicyCalls 9,332, BalancerFactory 5,387, PoolPage 1,194, KeeperPolicyV1 743.
+Check: every runtime size is below 24,576 bytes. At `f549bf9`: PoolBalancer 23,408 (1,168 to spare), PoolInventory
+12,119, KeeperPolicyCalls 8,435, BalancerFactory 5,290, PoolPage 1,194.
 
 **3 → Cutover preflight (read-only).** Pins the head block, scans every legacy factory for created pools, verifies
 the reused dependencies and writes `deployments/1.preflight.json`.
@@ -114,8 +114,8 @@ factories stay permissionless); each pool is listed in the file and stays manage
 ```bash
 cast nonce $DEPLOYER --rpc-url $RPC && cast balance $DEPLOYER --rpc-url $RPC --ether
 ```
-Check: a nonce N (4158 at block 26,480,612) and a balance of at least 11.7M gas at the intended max fee plus margin
-(0.0117 ETH at 1 gwei; 0.0523 ETH held at block 26,480,612 covers up to about 4.4 gwei, 4.0 gwei with a 10% margin). Send nothing else from this
+Check: a nonce N (4158 at block 26,481,996) and a balance of at least 11.2M gas at the intended max fee plus margin
+(0.0112 ETH at 1 gwei; 0.0523 ETH held at block 26,481,996 covers up to about 4.7 gwei, 4.3 gwei with a 10% margin). Send nothing else from this
 account until step 7.
 
 **5 → Reviewed dry run (no broadcast).** Runs the asset-flow gate and simulates the deployment against mainnet.
@@ -123,14 +123,14 @@ account until step 7.
 script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow && cp broadcast/Deploy.s.sol/1/dry-run/run-latest.json deployments/1.replacement.reviewed-dry-run.json && shasum -a 256 deployments/1.replacement.reviewed-dry-run.json
 ```
 Check: `ASSET FLOW GATE: PASS`, then `Packs 0xfE11c0E794475fd86801fb3020d779bd7887cB2D (reused)`; the transaction list
-is exactly `KeeperPolicyCalls`, `PoolInventory`, `PoolBalancer`, `KeeperPolicyV1`, `BalancerFactory` at nonces N..N+4
-(no `ShapePacks`, `ShapePackRenderer` or `PoolPage`); note the printed SHA-256 as `DRY_SHA`.
+is exactly `KeeperPolicyCalls`, `PoolInventory`, `PoolBalancer`, `BalancerFactory` at nonces N..N+3
+(no `KeeperPolicyV1`, `ShapePacks`, `ShapePackRenderer` or `PoolPage`); note the printed SHA-256 as `DRY_SHA`.
 
 **6 → Broadcast.** The only step that signs.
 ```bash
 script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow --broadcast && cp broadcast/Deploy.s.sol/1/run-latest.json deployments/1.replacement.broadcast.json
 ```
-Check: `ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.` and the same three addresses printed as in step 5.
+Check: `ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.` and the same addresses printed as in step 5.
 
 **7 → Verify from canonical receipts.** Matches every mined transaction to the reviewed dry run and reads back the
 created and reused contracts.
@@ -139,23 +139,24 @@ node --import tsx scripts/verify-deployment.ts --rpc-url $RPC --reviewed-dry-run
 ```
 Check: `DEPLOYMENT VERIFIED: deployments/1.replacement.verified.json`.
 
-**8 → Postflight readbacks.** Independent `cast` reads of the wiring (set `F`, `I`, `P` from step 7's record:
-factory, implementation, keeperPolicy).
+**8 → Postflight readbacks.** Independent `cast` reads of the wiring (set `F`, `I` from step 7's record: factory,
+implementation).
 ```bash
-cast call $F "implementation()(address)" --rpc-url $RPC && cast call $F "keeperAdmin()(address)" --rpc-url $RPC && cast call $F "policyAdmin()(address)" --rpc-url $RPC && cast call $F "defaultKeeperPolicy()(address)" --rpc-url $RPC && cast call $F "keepersRestricted()(bool)" --rpc-url $RPC && cast call $I "creator()(address)" --rpc-url $RPC && cast call $I "PACKS()(address)" --rpc-url $RPC && cast call $I "SHAPES()(address)" --rpc-url $RPC && cast call $I "FWA_FACTORY()(address)" --rpc-url $RPC && cast call $I "FWA_IMPLEMENTATION()(address)" --rpc-url $RPC
+cast call $F "implementation()(address)" --rpc-url $RPC && cast call $F "keeperAdmin()(address)" --rpc-url $RPC && cast call $F "policyAdmin()(address)" --rpc-url $RPC && cast call $F "keepersRestricted()(bool)" --rpc-url $RPC && cast call $I "creator()(address)" --rpc-url $RPC && cast call $I "PACKS()(address)" --rpc-url $RPC && cast call $I "SHAPES()(address)" --rpc-url $RPC && cast call $I "FWA_FACTORY()(address)" --rpc-url $RPC && cast call $I "FWA_IMPLEMENTATION()(address)" --rpc-url $RPC
 ```
 Check, in order: `$I`, `0xCB43078C32423F5348Cab5885911C3B5faE217F9`, `0xCB43078C32423F5348Cab5885911C3B5faE217F9`,
-`$P`, `false`, `0x0000000000000000000000000000000000000001`, `0xfE11c0E794475fd86801fb3020d779bd7887cB2D`,
+`false`, `0x0000000000000000000000000000000000000001`, `0xfE11c0E794475fd86801fb3020d779bd7887cB2D`,
 `0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0`, `0x8919814D825a5Af238cC04DE06b1C18c9eaA477C`,
 `0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7`.
 
 Then the initial settings (section 3):
 ```bash
-cast call $F "economics()((address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16))" --rpc-url $RPC && cast call $F "defaultBucketCapacity()(uint128)" --rpc-url $RPC && cast call $F "defaultBucketRefill()(uint96)" --rpc-url $RPC && cast call $F "productLimits()(uint16,uint16,uint16)" --rpc-url $RPC && cast call $P "interfaceVersion()(uint256)" --rpc-url $RPC && cast call $F "pendingKeeperAdmin()(address)" --rpc-url $RPC && cast call $F "pendingPolicyAdmin()(address)" --rpc-url $RPC
+cast call $F "economics()((uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16))" --rpc-url $RPC && cast call $F "defaultBucketCapacity()(uint128)" --rpc-url $RPC && cast call $F "defaultBucketRefill()(uint96)" --rpc-url $RPC && cast call $F "productLimits()(uint16,uint16,uint16)" --rpc-url $RPC && cast call $F "pendingKeeperAdmin()(address)" --rpc-url $RPC && cast call $F "pendingPolicyAdmin()(address)" --rpc-url $RPC && cast call $F "creationSettingsHash()(bytes32)" --rpc-url $RPC
 ```
-Check: `($P, 20000000000000, 3200000, 60000, 5000000000, 50000000, 910000, 200000000000000, 200000, 1800000, 150000,
-700000, 150000, 50, 10)`, `622000000000000000`, `4166666666666666`, `1000 1000 10000`, `2`, zero address twice.
-`creationSettingsHash()` is checked by step 7.
+Check: `(20000000000000, 3200000, 60000, 5000000000, 50000000, 910000, 200000000000000, 200000, 1800000, 150000,
+700000, 150000, 50, 10)`, `622000000000000000`, `4166666666666666`, `1000 1000 10000`, zero address twice, and
+`0x2b71d8007106d084bb50b843220eae92fcf61c12fb542ff011835be449ec70ae` while the Shapes mint fee is 0.001 ETH (step 7
+also recomputes it).
 
 **9 → Post-cutover legacy scan.** Rescans the old factories at a block after the deployment, so the record covers any
 pool created during the cutover.
@@ -203,7 +204,49 @@ Run by `Deploy.s.sol` (before and after the broadcast), `scripts/deployment-pref
 
 ## 7. Fork rehearsal evidence
 
-### 7a. Current: release candidate `a609277` (2026-11-23)
+### 7a. Current: audit-repair candidate `f549bf9` (2026-11-23)
+
+Own anvil on port 18900, `--fork-url https://mainnet.gateway.tenderly.co --chain-id 31337` at the current head:
+fork block **26,481,989**, hash `0x1156e5e51eef688cc11e146016367ac0bef749cec44dfee8dad5cd9f036ca0c0` (equal to
+mainnet's). Fresh random impersonated roles (no anvil default keys): deployer `0x5f26fCF6…6eC3`, keeperAdmin
+`0xE67e2Bf6…2C84`, policyAdmin `0x99C5bAc7…c8dc`, keeper `0x5c2BF54b…69e8`. Canonical `script/Deploy.s.sol`,
+`REUSE_DEPENDENCIES=true`, dry run then broadcast:
+
+| Contract | Address | Runtime bytes | Gas |
+| --- | --- | --- | --- |
+| KeeperPolicyCalls (CREATE2) | `0x5c6322442650A1177b4aFbF5f95166A59Ef7e7f7` | 8,435 | 1,880,315 |
+| PoolInventory (CREATE2) | `0xb89B48F0b574BC84d513fC3C2962a6A2dE7Cc9f7` | 12,119 | 2,677,990 |
+| PoolBalancer | `0x48A9A24a92df3De756fa1abfF51a07aDB8B05AFd` | 23,408 | 5,178,924 |
+| BalancerFactory | `0x24729ccA7D244739ED1D57CD167486863B1F3e1f` | 5,290 | 1,392,277 |
+| PoolPage (reused, not sent) | `0x67C828Ad820490C02CDCBbCCc3A303c64207fBcf` | 1,194 | — |
+
+Total 11,129,506 gas. `verify-deployment.ts`: `DEPLOYMENT VERIFIED` (4 transactions, PoolPage preexisting, reused
+dependencies matching, `creationSettingsHash` `0x2b71d800…70ae` at mint fee 0.001 ETH). `deployment-preflight.ts`
+on the fork at block 26,481,993: ok, 0 pools on both old factories. Then the production `keeper/keeper.ts` process
+(the only upkeep caller) and a driver acting as creators, players, the factory admin and the coordinator
+(owner-approved exception); all 14 driver checks passed, none failed:
+
+1. Two following pools (A, B) and one pinned pool P: `setLocalEconomics(factory.economics())` read at the reviewed
+   block, source 1, same values and restocking price as the followers.
+2. Every keeper payment in every round equals the formula: (measured + 60,000) x min(effective gas price, basefee +
+   0.05 gwei, 5 gwei) plus whole work fees (remainder 0).
+3. Factory `setEconomics` (work fee 0.00002 -> 0.00003 ETH, restock flat 0.0002 -> 0.0003 ETH; 49,008 gas): A and B
+   moved at once (settings hash, work fee, restocking fee +0.0001 ETH); P did not (hash, work fee, restocking fee,
+   maximum reward). New listings: A at 910,000 x 1.05 gwei + 0.0003 = 0.0012555 ETH per Shape, P at + 0.0002; payments
+   after the change at 0.00003 ETH per unit on A and 0.00002 on P.
+4. One draw without randomness on A: request block 26,482,040, word deadline 26,482,070, processable from 26,482,090;
+   untouched at 26,482,088; processed in block 26,482,091 and paid 0.00029415315 ETH = (163,003 + 60,000) x 1.05 gwei
+   + 2 x 0.00003 ETH (process and reconcile); status Expired, buyer refund credit equal to the quoted 0.028103710218775585 ETH.
+5. Complete exit of B with two draws outstanding: close, the keeper reconciled them, 10 Shape listings unlisted and
+   redeemed for 0.4 ETH, two curated NFTs back with the creator, proceeds collected, 3.014976515064827093 ETH claimed;
+   Balancer 0 ETH, no listings, no owner proceeds left.
+
+Keeper: 13 upkeep transactions mined, 0 reverted. Receipts and the full step log: `drive.json`, `rehearse.log`,
+`keeper.log` in the session scratchpad `v5/` folder (not committed). Two earlier attempts of the same rehearsal stopped
+in the driver before any pool existed (its file was CommonJS; then `forge script` priced DevSetup below the pinned
+1 gwei basefee); both were rerun from a fresh anvil.
+
+### 7a-prior. Release candidate `a609277` (2026-11-23, superseded by `f549bf9`)
 
 Stuck draws without randomness, policy interface 3. Fork block 26,480,830, fresh random impersonated roles, canonical
 `Deploy.s.sol` `REUSE_DEPENDENCIES=true`: 5 receipts, 11,771,292 gas; KeeperPolicyCalls

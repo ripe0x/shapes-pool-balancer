@@ -388,3 +388,28 @@ economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
   910k per Shape, so a paid call's reimbursement covers its billed gas and a replacement's surcharge covers the call
   that lists it at the 5 gwei ceiling. Derived maxima 0.0165 ETH per payment and 0.00475 ETH per Shape (V1: 0.01645,
   0.0047). **Owner visibility:** these differ from the brief's V1 list; both are factory settings and can be set back.
+
+## Audit repair decisions (owner, 2026-11-23)
+
+Owner decisions D1-D3 after the independent audit of the community candidate `be50aa0`. They supersede R39-R45's
+replaceable policy, R66's replaceable `quoteReward`/`quoteRestock` interface, R88/R91's policy wording and R91's pin
+mode. Earlier text above is kept as history. No numerical outcome signature follows from them.
+
+- R95. **One payment formula, inside the library (D1).** No external keeper policy in the money path. Pay and restock
+  prices come from the pool's effective economics by the V1 formula: reward = (min(measured gas, operation gas bound,
+  maxGas) + overheadGas) x min(tx gas price, basefee + priorityAllowance, gasPriceCeiling) + workFee x (processed +
+  reconciled draws + listed Shape units); restock price per Shape = restockGas x min(basefee + priorityAllowance,
+  gasPriceCeiling) + restockFlat. Unpaid callers use the same formula. Every numeric economics field, the processing
+  graces, the bucket, follow/local, `settingsHash`, the paid-upkeep switch and the maintenance-funding checks stay.
+  **Changing the payment formula requires a new release** (supersedes R39's policy replacement).
+- R96. **No contract pin mode (D2).** Two modes: follow the factory, or local values. "Pin" is an app button that reads
+  the factory's current economics at the reviewed block and saves them with `setLocalEconomics` in one transaction,
+  labelled "Pin current factory values", explaining that it freezes those numbers. `settingsHash` = economics + source
+  + generation + paid state + Shapes mint fee.
+- R97. **Trusted factory admin (D3; recorded 2026-11-23 in DECISIONS "trusted factory admin").** Pools that follow the
+  factory adopt its economics immediately; no safeguard against admin updates.
+- R98. **Default bucket (D3).** 0.622 ETH capacity, `floor(0.05 ether / 12)` wei per second refill (R92 unchanged).
+- R99. **Paid processing of stuck draws only (D3; DECISIONS "paid processing of stuck draws only").** Upkeep processes a
+  stuck head (Ready, TimedOut, or Pending with `block.number > wordDeadlineBlock`) only 50 blocks after its request
+  block, 10 while purchases are paused BUSY or LOW_INVENTORY, at most 2 per call, paid gas plus a work fee per
+  processed draw.

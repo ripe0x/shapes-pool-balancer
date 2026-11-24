@@ -105,3 +105,31 @@ numbers, and none moved: worst O1 60,372 gas (`burst`), O2 0.2585 ETH, O10 14,71
 4873250. The fee-above-cap reserve itself is covered by `test_mintFeeAboveCapReserveUsesAcceptedFee`
 (test/OptionalCurated.t.sol): 3 missing 0.01 ETH Shapes at a 10x live fee reserve 0.03854 ETH (0.06554 ETH under the
 old rule); acceptance raises the reserve by exactly 4 x 9 x 0.001 = 0.036 ETH.
+
+## Audit-repair candidate (2026-11-23, unsigned)
+
+Source hash `7a9dd1ecd2c7b05641bd8c095131cb5e9a4cba6ceae9eba8990eaab5e6918559` (code commit `f549bf9`). One
+`python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py .` run (it reran all 30 FlowBreakdown cases, 28 regimes)
+returned **INCOMPLETE (exit 2)**: the approval no longer matches, and four outcomes fail against their signed targets.
+No target or signature was edited. Outcome **prose** was updated where it described removed mechanisms (O1's 0.311 ETH
+ceiling and policy quote, O2's replacement policy, O3's delayed re-enabling and quote, O14's delayed policy
+replacement), so the outcomes hash to sign is now `df89103614a0c65b3fdd149195b74b95d641b84ee5b7226a4e146899be66f90b`
+(signed: `d3b9ba83…d992`).
+
+Scenario changes (timing and end state only): `burst` and `no_processor*` take the day-end measurement after the
+50-block processing grace (`_pastProcessingGrace`), so draws legitimately inside the grace no longer count as
+unsettled at day end; `restock_in_flight` ends with the creator running upkeep, because the rational keeper had left the
+last delivered draw unreconciled (reconciling it was unprofitable), so the Balancer's prize counters, which drop at
+reconciliation, still counted the won 0.01 ETH Shape: the gate read held - counters = -0.01 ETH with exactly one
+unreconciled draw. That was a timing artifact, not a counter defect; the run now ends reconciled with no mismatch.
+`policy_switch` switches to local economics with half the work fee (R95: no `KeeperPolicyV2`).
+
+| Outcome | Signed target | Measured now | Regimes failing | Cause |
+| --- | --- | --- | --- | --- |
+| O1 refund gas kept per draw | at most 80,000 | 96,590 (burst), 84,987 (no_processor_5_gwei), 84,909 (no_processor); all others at most 12,915 | burst, no_processor, no_processor_5_gwei | Upkeep processes stuck draws itself after the grace (owner decision D3/R99), and the day-end wait now lets it do so for the draws left at day end. Processing is paid on its measured span while FWA's storage refunds lower the billed gas, so the keeper keeps the refund (DECISIONS "paid processing of stuck draws", item 6: up to about 210,613 gas per call measured then). Worst single call here 245,382 gas. The value before the timing change is not preserved (this run overwrote the earlier scorecards), so how much of the excess the timing change adds is not measured |
+| O2 restock fees still listed | at most 0.26 ETH | 0.26125 ETH | gas_5_gwei, no_processor_5_gwei | 55 Shape units x 0.00475 ETH = 0.26125: the target assumed 0.0047 ETH per Shape (900k restock gas). R94's measured recalibration to 910k raised the per-Shape surcharge at the 5 gwei cap. Not caused by this repair |
+| O13 unsettled draws at day end | at most 0 | 0 | none (was 4 / 4 / 3) | fixed by the timing change above |
+| O15 initial opening requirement | exactly 0.2356 ETH | 0.229565 ETH | minimum_capital | The target came from the former looser enforcement schedule (6M gas, 100k overhead, 0.00005 ETH fee) in the reserve; slice A3 made one schedule (3.2M, 60k, 0.00002 ETH), so opening twenty 0.01 ETH Shapes at 0.5 gwei needs 0.22 + four listing bounds + one call buffer = 0.229565 ETH (asserted by `PolicyEconomicReview`). Not caused by this repair |
+| restock_in_flight counter vs holding | no mismatch | no mismatch | none (was -0.01 ETH) | fixed by the scenario end above |
+
+All other outcomes hold: O3, O4, O6, O7, O8, O11, O12, O16 at 0; O5 0; O10 14,694 bps (at most 15,000); O14 0.

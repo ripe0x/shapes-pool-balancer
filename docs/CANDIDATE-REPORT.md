@@ -1,5 +1,57 @@
 # Community release candidate report (2026-11-23)
 
+## A. Audit repair at `f549bf9` (current)
+
+**Tested commit: `f549bf9`** (contracts, tests, app, keeper, scripts). The commits after it change documentation and
+`asset-flow.json` outcome prose only. **Nothing was deployed or broadcast on mainnet.** Sections 0 onward are the
+earlier candidates `a609277` and `08be33f`, kept as history.
+
+What changed (owner decisions D1-D3 of 2026-11-23, R95-R99; DECISIONS "Audit repair"):
+- **D1 / R95:** no external keeper policy. `KeeperPolicyCalls.reward` and `.restock` are the one V1 formula over the
+  effective economics, for paid and unpaid callers. `KeeperPolicyV1`, `IKeeperPolicy`, `Economics.policy`,
+  `setKeeperPolicy`, `keeperPolicy()`, `defaultKeeperPolicy()`, policy validation, `PolicyUnavailable` and the fallback
+  are gone. The deployment creates 4 contracts (was 5).
+- **D2 / R96:** no contract pin mode; the app's "Pin current factory values" calls `setLocalEconomics` with the
+  factory values it showed.
+- **Audit E1:** admission refuses at `prizeWeight <= lost` in both branches (fill gate 0 no longer admits a draw that
+  every listed prize could already cover); planner and copy follow.
+- **Audit E2:** covered by acceptance case 1 (local pool's price and pay unchanged by a factory change, followers'
+  changed), now through the app-style pin; also shown live in the fork rehearsal.
+- **Audit E3:** scenario timing for O13 and the restock_in_flight end fixed; outcome prose updated; four outcomes still
+  fail their signed targets (table below) and await the owner.
+
+Sizes (`forge build --force --sizes`): PoolBalancer **23,408** (1,168 spare; was 24,275), PoolInventory 12,119,
+KeeperPolicyCalls 8,435, BalancerFactory 5,290, PoolPage 1,194. All under 24,576.
+
+| Step | Command | Result |
+| --- | --- | --- |
+| V1 | `forge build --force --sizes`; `npm run abi`; `npm run typecheck`; `npm run build:app` | pass, pass (ABI regenerated, committed), pass, pass |
+| V2 | `CANDIDATE_RUN=1 forge test --no-match-path "test/{audit/**,scenario/FlowBreakdown.t.sol}"` | 40 suites, **282 / 283**; the one failure `EconFork test_econBigWin` ran out of the default 2^30 test gas (1,073,720,760); rerun alone with `--gas-limit 100000000000`: pass (1,557,961,368 gas). It was in no earlier recorded pass |
+| V2 | `forge test --match-path "test/{Gas,KeeperPay}.t.sol" --isolate` | 34 / 34 |
+| V2 | `forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000 --isolate` | 30 / 30 |
+| V2 | `forge test --match-contract ParityFixture` | 1 / 1 |
+| V3 | `CANDIDATE_RUN=1 npm run test:ts` | 24 files passed, 1 skipped; 235 tests passed, 16 skipped |
+| V4 | `python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py .` | **INCOMPLETE (exit 2)**: approval hash mismatch (prose changed) and O1, O2, O15 failing; O13 and the counter mismatch fixed. Source hash `7a9dd1ec…8559`, outcomes hash to sign `df891036…f90b` |
+| V5 | fork rehearsal, `docs/DEPLOY-COMMUNITY-REPLACEMENT.md` section 7a | `DEPLOYMENT VERIFIED`, preflight ok, 14 / 14 driver checks, 13 keeper transactions mined, 0 reverted |
+
+Outcomes for the owner (no target or signature edited; details in `docs/ASSET-FLOW-GATE.md`):
+
+| Outcome | Signed target | Measured | Cause |
+| --- | --- | --- | --- |
+| O1 refund gas kept per draw | <= 80,000 | 96,590 burst, 84,987 no_processor_5_gwei, 84,909 no_processor; others <= 12,915 | Paid processing of stuck draws (D3) pays the measured span while FWA's refunds lower billed gas; the regimes now process after the grace |
+| O2 restock fees still listed | <= 0.26 ETH | 0.26125 ETH (gas_5_gwei, no_processor_5_gwei) | 55 units x 0.00475 ETH: R94's 910k restock gas; the target assumed 0.0047 |
+| O13 unsettled at day end | 0 | 0 | fixed (was 4) |
+| O15 opening requirement | exactly 0.2356 ETH | 0.229565 ETH | the reserve uses the one 3.2M / 60k / 0.00002 schedule since slice A3; the target came from the older looser enforcement schedule |
+| restock_in_flight counters | no mismatch | none | fixed (was -0.01 ETH with one unreconciled draw: the rational keeper skipped an unprofitable last reconcile) |
+
+Overhead after removing the policy call (`KeeperPay` isolate, 5 gwei): largest billed - measured **49,910** gas (was
+56,724), so `overheadGas` 60,000 has a 20.2% margin; `restockGas` 910,000 needs >= 897,191 (margin 12,809). Unchanged.
+
+Not done in this pass: no browser preview of the new Settings "Pin current factory values" button or the creation
+review (typecheck and build only; `app/src/policy.test.ts` covers the preview formula); no independent review of this
+repair.
+
+
 **Tested commit: `a609277`** (contracts, tests, app, keeper, docs). The commits after it add this report, the
 deployment plan refresh, five stale test fixes (test files only) and documentation; `src/` is unchanged. **Nothing was deployed or broadcast on mainnet.** `08be33f` (sections 4 operational pass
 and earlier evidence below) is superseded by the stuck-draw follow-up in section 0.

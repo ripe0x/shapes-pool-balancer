@@ -959,3 +959,49 @@ per-owed-draw literals carry the extra work fee (`ForkBase`, `ReserveCapital`, `
 grace, paused-grace, waiting-head and abuse tests; `KeeperPay` calibration gains a stuck-draw class. `Balancer`
 `test_reentrantCollectionCannotReenter` no longer asserts delivery: the re-entrant upkeep's added queue reads push
 the hostile hook past FWA's 150k delivery gas (both re-entries still fail).
+
+## Audit repair: one in-library payment formula, no contract pin mode, admission boundary (2026-11-23)
+
+Owner decisions D1-D3 of 2026-11-23 after the independent audit of `be50aa0` (OWNER-REQUIREMENTS R95-R99). They
+supersede the replaceable-policy decisions of 2026-11-17 (R39-R45, decision 99's policy half, slice A3 items 2 and 3)
+and the A3 pin mode. History above is kept.
+
+1. **One payment formula, in the library (R95).** `KeeperPolicyCalls.reward` pays
+   `(min(measured gas, operation gas bound, maxGas) + overheadGas) x min(tx gas price, basefee + priorityAllowance,
+   gasPriceCeiling) + workFee x (processed + reconciled draws + listed Shape units)` and `KeeperPolicyCalls.restock`
+   prices a listing at `units x (restockGas x min(basefee + priorityAllowance, gasPriceCeiling) + restockFlat)`, for
+   paid and unpaid callers alike. Deleted: `KeeperPolicyV1`, `IKeeperPolicy` (its two structs moved into
+   `KeeperPolicyCalls`), the `policy` field of `Economics`, `setKeeperPolicy`, `keeperPolicy()`,
+   `defaultKeeperPolicy()`, interface-version validation, `InvalidPolicy`, `PolicyUnavailable`, the fallback path and
+   the quote-versus-envelope duality. For the V1 numbers the amounts are unchanged: V1's quote was never below the
+   envelope, so `min(quote, envelope)` already was the envelope. Changing the formula needs a new release. Kept: every
+   numeric field, the processing graces, the bucket, follow/local, `settingsHash` (now without a policy address), the
+   paid-upkeep switch and the maintenance-funding checks. The factory constructor takes no policy argument; the
+   deployment creates four contracts plus any changed CREATE2 library. `OVERHEAD_GAS` 60k was calibrated with the
+   policy staticcall outside the measured span; that call is gone, so the margin grew (receipts in `docs/GAS.md`).
+2. **No contract pin mode (R96).** Sources are follow (0) and local (1). The app's "Pin current factory values"
+   button saves the factory's current `economics()`, read at the block the creator reviewed, with
+   `setLocalEconomics` in one transaction, and says that it freezes those numbers. `settingsHash` = economics +
+   source + generation + paid state + Shapes mint fee, as before.
+3. **Trusted factory admin, bucket, stuck-draw processing (R97-R99).** The decisions of the same day above stand: no
+   safeguard against factory updates; default bucket 0.622 ETH and floor(0.05 ETH / 12) wei/s; paid processing of a
+   stuck head (Ready, TimedOut, or Pending with `block.number > wordDeadlineBlock`) only 50 blocks after its request
+   block (10 while BUSY or LOW_INVENTORY), at most two per call, gas plus a work fee per processed draw.
+4. **Admission boundary (audit E1).** `PoolInventory.admission` refused LOW_INVENTORY only when `prizeWeight < lost`,
+   so with `fillGateBps = 0` and equal weights a sixth draw was admitted while five unreconciled draws could already
+   take all five prizes. Both branches now refuse at `prizeWeight <= lost`: a draw is admitted only while some listed
+   prize weight is not already claimable by an unreconciled draw. With a fill gate above zero nothing changes (the
+   gate already required positive remaining weight). The planner's `pendingDrawsAdmitted` follows it (16 x 0.01 ETH at
+   gate 0: 15, was 16). Permanent fork regression `test_case07e_zeroFillRefusesADrawAgainstNoUnreservedPrize`.
+
+Tests whose assertions changed because of these decisions (and why): the test policy contracts (`KeeperPolicyV2`,
+`HostilePolicy`, `AcceptancePolicy`, `CallerSensitivePolicy`, `ReviewHostilePolicy`, `MutableReviewPolicy`,
+`AlternativeSurchargePolicy`, `CheapRestockPolicy`, `ExactCashPolicy`, the reserve-review max/low policies,
+`HostileRecoveryPolicy`) are removed with the interface they implemented; where they stood in for different numbers,
+the test now sets local economics with those numbers (zero surcharge, a 0.008 ETH flat charge, a cheaper flat charge,
+half the work fee). Removed outright because their subject no longer exists: policy-failure loops, malformed and
+returndata-bomb policies, static-reentry policies, policy-owner callbacks, the cold-versus-warm quote gas comparison
+(`test/PolicyGasOverhead.t.sol`). `pinEconomics()` calls became `setLocalEconomics(factory.economics())` with source 1.
+`CommunityConfigAcceptance` case 07c: "two unavailable, two prizes" now refuses (E1); `shared/planner.test.ts` 16 -> 15.
+Fixture tests (`keeper-policy-quotes.json`, `keeper-policy-money-path.json`) now carry the one formula only.
+`FlowBreakdown` policy_switch regime switches to local economics with half the work fee instead of `KeeperPolicyV2`.
