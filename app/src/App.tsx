@@ -368,6 +368,7 @@ export function useTx(onDone: () => void) {
       return true;
     } catch (e) {
       failure.current = `${current}: ${explain(e)}`;
+      console.error(`[tx] ${failure.current}`, e);
       setMsg({ ok: false, text: failure.current });
       return false;
     } finally {
@@ -586,7 +587,8 @@ export function App() {
   // A wallet's own pages need a wallet: without one, Community pools is the Design preview.
   const view: Page = !isConnected && (page === 'list' || page === 'pool') ? 'new' : page;
   const community = view === 'list' || view === 'pool' || view === 'new';
-  const fresh = view === 'new' && (!isConnected || loaded || loadFailed || !!loadDraft()?.creation);
+  // The design page never waits on pool discovery: a discovery reload (a wallet event) must not unmount it mid-creation.
+  const fresh = view === 'new';
   const toCommunity = () => go(!isConnected || (loaded && !mine.length) ? 'new' : 'list');
   const intent = () => { if (view === 'new') markConnectIntent(); };
   const open = (b: Address) => { setTab('overview'); setSelected(b); setPage('pool'); };
@@ -630,7 +632,7 @@ export function App() {
       <div hidden={!!help}>
       {view === 'home' && <Home hasPools={isConnected && loaded && mine.length > 0} onNew={() => go('new')} onList={() => go('list')} onMain={(t) => go('main', t)} />}
       {view === 'main' && <MainPool tab={mainTab} setTab={(t) => go('main', t)} />}
-      {isConnected && (view === 'list' || view === 'new') && (loadFailed || !loaded) && <main className="page narrow-page">
+      {isConnected && view === 'list' && (loadFailed || !loaded) && <main className="page narrow-page">
         {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your community pools…</p>}
         {/* Opening a pool by address is the way in only while discovery is failing. */}
         {loadFailed && <>
@@ -897,7 +899,10 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1) }} />;
+  return <>
+    <TxLine tx={tx} />
+    <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1) }} />
+  </>;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
