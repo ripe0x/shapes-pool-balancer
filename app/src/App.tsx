@@ -849,6 +849,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const [attempt, setAttempt] = useState<CreationAttempt | undefined>(() => loadDraft()?.creation);
   const [outcome, setOutcome] = useState<CreationOutcome>('unknown');
   const [checking, setChecking] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date>();
   const [recheck, setRecheck] = useState(0);
   const created = useRef(onCreated);
   created.current = onCreated;
@@ -886,7 +887,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
         if (current) setOutcome('unknown');
       } finally {
         inFlight = false;
-        if (current) setChecking(false);
+        if (current) { setChecking(false); setCheckedAt(new Date()); }
       }
     };
     void check();
@@ -929,16 +930,40 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   // after a reload, or when a submitted creation is still unresolved once the send ends (not after a revert, which the
   // panel offers to retry).
   const reverted = !!tx.steps?.some((x) => x.state === 'failed' && x.error === creationStatus('reverted'));
-  if (attempt && !tx.busy && (!tx.steps || (!!attempt.hash && !reverted))) return <main className="page narrow-page">
-    <h1 className="title t2">Pool creation</h1>
-    <p className="lead">{creationStatus(outcome)}</p>
-    <p className="note">Account {attempt.creator} · Chain {attempt.chainId}</p>
-    <p className="note">Predicted pool {attempt.predicted}</p>
-    {attempt.hash && <p className="note mono">Transaction {attempt.hash}</p>}
-    <button className="btn" disabled={checking} onClick={() => setRecheck((n) => n + 1)}>{checking ? 'Checking…' : 'Check creation'}</button>
-    {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY }) && <button className="btn sec" onClick={() => rejectCreation(attempt)}>Return to saved design</button>}
-    {(tx.busy || tx.msg) && <p className="txline">{tx.busy ? `${tx.busy}…` : tx.msg?.text}</p>}
-  </main>;
+  if (attempt && !tx.busy && (!tx.steps || (!!attempt.hash && !reverted))) {
+    // Creation pending (7c): the saved attempt's steps, its outcome and where it stands, rechecked every 5 seconds.
+    const names = loadDraft()?.nfts ?? [];
+    const label = (c: { collection: string; tokenId: string }) => {
+      const n = names.find((x) => x.collection && nftKey(x.collection, x.tokenId!) === nftKey(c.collection, c.tokenId));
+      return n ? nftLabel(n) : `${short(c.collection)} #${c.tokenId}`;
+    };
+    const stopped = ['cancelled', 'replaced', 'reverted', 'mismatch'].includes(outcome);
+    const state = ({ pending: 'Waiting for block', unknown: 'Unconfirmed', context: 'Waiting for your wallet', cancelled: 'Cancelled', replaced: 'Replaced', reverted: 'Failed', mismatch: "Doesn't match", confirmed: 'Created' } as Record<CreationOutcome, string>)[outcome];
+    const total = attempt.curated.length + 1;
+    const url = attempt.hash && txUrl(attempt.hash);
+    return <main className="page narrow-page creating">
+      <span className="crumb">Community pools /</span>
+      <h1 className="page-t">Creating your pool</h1>
+      <p className="pd">{outcome === 'context' ? `Switch to ${short(attempt.creator)} on ${chain.name} to check this pool.` : creationStatus(outcome)}</p>
+      <div className={`pbar${stopped ? ' bad' : ''}`}><i style={{ width: `${Math.round(((attempt.curated.length + (stopped ? 0.5 : 0.5)) / total) * 100)}%` }} /></div>
+      <ol className="psteps">
+        {attempt.curated.map((c, k) => <li key={k} className="ps done pend"><span className="mk">✓</span><span className="lb">Approve {label(c)}</span><span className="st">Done</span></li>)}
+        <li className={`ps pend ${stopped ? 'failed' : 'submitted'}`}><span className="mk">{stopped ? '✕' : '●'}</span><span className="lb">Create the pool and deposit {eth(BigInt(attempt.value), 5)} ETH</span><span className="st">{state}</span></li>
+      </ol>
+      <div className="kvs">
+        {attempt.hash && <div className="kv"><span className="k">Transaction</span><span className="mono">{url ? <a href={url} target="_blank" rel="noreferrer">{short(attempt.hash)} ↗</a> : short(attempt.hash)}</span></div>}
+        <div className="kv"><span className="k">Pool address, once created</span><span className="mono">{short(attempt.predicted)}</span></div>
+        <div className="kv"><span className="k">From</span><span className="mono">{short(attempt.creator)} · {chain.name}</span></div>
+      </div>
+      <div className="row" style={{ gap: 16, marginTop: 24 }}>
+        {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY })
+          ? <button className="btn" onClick={() => rejectCreation(attempt)}>Back to your design</button>
+          : outcome === 'mismatch' ? <button className="btn" onClick={() => created.current(attempt.predicted)}>Open pool</button>
+            : outcome !== 'context' && <button className="btn sec" disabled={checking} onClick={() => setRecheck((n) => n + 1)}>{checking ? 'Checking…' : 'Check now'}</button>}
+        {checkedAt && <span className="note">Last checked {checkedAt.toLocaleTimeString()}</span>}
+      </div>
+    </main>;
+  }
   // The designer shows without current fees: costs stay hidden and creation blocked until they load.
   // Until the factory economics load, nothing is budgeted for paid upkeep (paidUpkeepEnabled false) and creation is blocked.
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
