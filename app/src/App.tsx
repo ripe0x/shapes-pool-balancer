@@ -480,10 +480,10 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
         : { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     }
     case 2: return d.upkeep.needed
-      ? { head: 'Stocking.', body: 'Purchases open once every target prize is listed.', act: 'upkeep' }
+      ? { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' }
       : shortfall > 0n
         ? { head: 'Stocking.', body: `Add ${ethUp(shortfall)} ETH to fund ${d.paidUpkeepEnabled ? 'the target and paid maintenance' : 'the target inventory'}.`, act: 'fund', label: 'Add ETH' }
-        : { head: 'Stocking.', body: 'Purchases open once every target prize is listed.', act: 'upkeep' };
+        : { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' };
     case 3: return { head: 'Paused · no curated NFTs.', body: 'This pool requires a curated NFT. List one, or stop requiring one in Settings.', act: 'nfts', label: 'Add an NFT' };
     case 4: return { head: 'Busy.', body: 'Draws are settling on FWA. Purchases wait for settlement.' };
     // First-release pools only: they pause purchases while the mint fee is above the accepted one.
@@ -2061,12 +2061,15 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const claims = L?.claims ?? [];
 
   return (
+    <>
+    {isCreator && <SetupBlock d={d} tx={tx} me={me} setTab={setTab} />}
     <main className="page cols ov">
       <section>
         <div className="blk">
           <h2 className="h">Draw price</h2>
           <div style={{ marginTop: 12 }}><span className="fig56">{d.fee ? eth(d.fee, 5) : '–'}</span><span className="u13">ETH</span></div>
           <p className="desc">What a player pays for one draw. It follows the prizes listed and your markup, so it moves as prizes are won and restocked.{d.vrfFee !== undefined && ` FWA adds its own randomness fee on top, about ${eth(d.vrfFee, 5)} ETH at current gas.`}</p>
+          {d.admission === 2 && <p className="foot">Projected until the Shapes are listed.</p>}
         </div>
 
         <div className="blk">
@@ -2250,7 +2253,78 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         </div>
       </section>
     </main>
+    </>
   );
+}
+
+const setupKey = (b: Address) => `pool-setup-done:${b.toLowerCase()}`;
+/** Pool created (7d): while a new pool stocks, what happened and what comes next. When purchases open during the visit it
+ *  says so once and records a per-pool flag, so later visits skip it. */
+function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: Tab) => void }) {
+  const pub = usePublicClient();
+  const B = { address: d.balancer, abi: poolBalancerAbi } as const;
+  const sawStocking = useRef(false);
+  const [opened, setOpened] = useState(false);
+  const [created, setCreated] = useState<{ block: bigint; hash: Hash }>();
+  const [copied, setCopied] = useState(false);
+  const done = (() => { try { return localStorage.getItem(setupKey(d.balancer)) === '1'; } catch { return false; } })();
+  if (d.admission === 2) sawStocking.current = true;
+  useEffect(() => {
+    if (sawStocking.current && d.admission === 0 && !opened) {
+      setOpened(true);
+      try { localStorage.setItem(setupKey(d.balancer), '1'); } catch { /* storage unavailable */ }
+    }
+  }, [d.admission, d.balancer, opened]);
+  useEffect(() => {
+    if (!pub || d.admission !== 2) return;
+    pub.getLogs({ address: d.factoryAddr, event: CREATED, args: { balancer: d.balancer }, fromBlock: FROM_BLOCK })
+      .then((ls) => ls[0] && setCreated({ block: ls[0].blockNumber!, hash: ls[0].transactionHash! })).catch(() => undefined);
+  }, [pub, d.factoryAddr, d.balancer, d.admission]);
+  if (!(d.admission === 2 && !done) && !opened) return null;
+  const target = shapeCount(unpackPlan(d.target));
+  const listedN = shapeCount(listedShapeCounts(d.listings));
+  const nfts = d.listings.filter((l) => l.kind === 1 && (isSelectable(l) || isStaged(l)));
+  const st = statusLine(d);
+  const fund = d.balance - d.creatorCredit;
+  const short_ = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
+  const stalled = !opened && st.act === 'fund' && short_ > 0n;
+  const url = created && txUrl(created.hash);
+  const upkeep = () => tx.send('Run maintenance', [() => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  const copy = () => { void navigator.clipboard?.writeText(FWA_POOL_URL(d.pool)).then(() => setCopied(true)); };
+  return <section className="setup">
+    <div>
+      <h2 className="page-t">{opened ? 'Purchases are open' : 'Your pool is created'}</h2>
+      <p className="pd">{opened ? 'Every prize is listed. Players can buy draws now.'
+        : `${nfts.length ? 'Your NFTs are listed and the pool' : 'The pool'} holds your ${eth(d.balance, 5)} ETH. Next, the Shapes are minted and listed on FWA. Players can buy draws once every prize is listed.`}</p>
+      <ol className="psteps setup-steps">
+        <li className="ps pend done"><span className="mk">✓</span><span className="lb">Pool created</span>
+          <span className="st">{created ? <>Block {created.block.toLocaleString()}{created && <> · {url ? <a href={url} target="_blank" rel="noreferrer">{short(created.hash)} ↗</a> : short(created.hash)}</>}</> : ''}</span></li>
+        {nfts.length > 0 && <li className="ps pend done"><span className="mk">✓</span><span className="lb">{nfts.length} curated NFT{nfts.length === 1 ? '' : 's'} listed</span>
+          <span className="st">{nfts.map((l) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`).join(' · ')}</span></li>}
+        <li className={`ps pend ${opened ? 'done' : stalled ? 'failed' : 'submitted'}`}>
+          <span className="mk">{opened ? '✓' : stalled ? '✕' : '●'}</span>
+          <div>
+            <span className="lb">Shapes listed</span>
+            {!opened && <div className="pbar sm"><i style={{ width: `${target ? Math.round((listedN / target) * 100) : 0}%` }} /></div>}
+            {!opened && (stalled
+              ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
+              : <span className="sb">Maintenance mints and lists them, paid from operating ETH. {d.paidUpkeepEnabled ? 'Keepers pick this up on their own, and large mixes are listed over several runs.' : 'Paid upkeep is off, so someone has to run it.'} You can also run it now; you pay the gas.</span>)}
+          </div>
+          <span className="st">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
+        </li>
+        <li className={`ps pend ${opened ? 'done' : 'next'}`}><span className="mk">{opened ? '✓' : '○'}</span><span className="lb">Purchases open</span><span className="st">{opened ? 'Open' : 'Automatic, once every prize is listed'}</span></li>
+      </ol>
+    </div>
+    <div className="setup-side">
+      {!opened && <span className="lbl">WHILE YOU WAIT</span>}
+      {!opened && <button className="btn" disabled={!!tx.busy} onClick={upkeep}>Run maintenance now</button>}
+      <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
+      {!opened && <div className="setup-links">
+        <button className="link quiet" onClick={() => setTab('settings')}><span>Give it an ENS name</span><span>Settings →</span></button>
+        <button className="link quiet" onClick={() => setTab('nfts')}><span>Add more curated NFTs</span><span>NFTs →</span></button>
+      </div>}
+    </div>
+  </section>;
 }
 
 /** Deposits or withdrawals: one row naming the single participant ("by you"), or a total with a row per participant. */

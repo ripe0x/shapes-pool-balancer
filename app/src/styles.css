@@ -711,3 +711,27 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .creating .kv { font-size: 15px; min-height: 48px; }
 .creating .kv .k { color: var(--ink-2); }
 .creating .kv a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Pool created (turn 7d): the setup block above a new pool's Overview while it stocks. */
+.setup { margin: 40px var(--gutter) 0; border: 1px solid var(--line-control); padding: 32px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 56px; }
+.setup .page-t { font-weight: 700; font-size: 32px; letter-spacing: -.03em; line-height: 1.1; margin: 0; }
+.setup .pd { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 10px; max-width: 620px; }
+.setup-steps { margin-top: 24px; }
+.setup .ps.pend { padding: 14px 0; }
+.setup .ps .lb { font-size: 15px; }
+.setup .ps.submitted .lb, .setup .ps.failed .lb { font-weight: 600; }
+.setup .ps.done .lb { color: var(--ink); }
+.setup .ps.next .mk { color: var(--ink-3); }
+.setup .sb { display: block; font-size: 13px; line-height: 1.5; color: var(--ink-foot); max-width: 460px; margin-top: 0; }
+.setup .sb.error { color: var(--error); }
+.setup a { text-decoration: underline; text-underline-offset: 3px; }
+.pbar.sm { width: 320px; max-width: 100%; margin: 8px 0; }
+.setup-side { display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--line); padding-left: 32px; }
+.setup-side .lbl { font: 500 13px var(--font-mono); color: var(--ink-3); }
+.setup-links { display: flex; flex-direction: column; margin-top: 8px; }
+.setup-links .link { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); font-size: 15px; font-weight: 400; color: var(--ink); white-space: normal; }
+.setup-links .link span:last-child { color: var(--ink-foot); }
+@media (max-width: 900px) {
+  .setup { grid-template-columns: 1fr; gap: 24px; padding: 20px; }
+  .setup-side { border-left: 0; padding-left: 0; }
+}
