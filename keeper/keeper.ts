@@ -102,6 +102,8 @@ export interface KeeperConfig {
   priorityGwei?: number; // operator's bid, independent of a policy's reimbursement formula
   maxLossWei?: bigint;
   operatingCostWei?: bigint;
+  lowBalanceWei?: bigint; // alert only; transaction affordability is still checked by the node
+  healthStaleMs?: number;
   replaceAfterBlocks?: number;
   maxReplacements?: number;
   logChunk?: bigint;
@@ -153,6 +155,7 @@ export class Keeper {
   audit: AuditEntry[] = [];
   lastTick = 0;
   lastBlock = 0n;
+  balanceWei: bigint | undefined;
   policies: Record<string, { address?: Address; paid: boolean; settingsHash: Hash; economics?: Record<string, string> }> = {};
   private traceAvailable = true;
   private abis = new Map<string, Abi>();
@@ -163,7 +166,10 @@ export class Keeper {
   get failures() { return this.state.failures; }
 
   constructor(cfg: KeeperConfig) {
-    this.c = { legacyFactories: [], reorgWindow: 64, maxGasPriceGwei: 50, setupMaxBaseFeeWei: SETUP_LISTING_MAX_BASEFEE, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { legacyFactories: [], reorgWindow: 64, maxGasPriceGwei: 50, setupMaxBaseFeeWei: SETUP_LISTING_MAX_BASEFEE, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, lowBalanceWei: 0n, healthStaleMs: 120_000, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    if (!Number.isFinite(this.c.maxGasPriceGwei) || this.c.maxGasPriceGwei <= 0 || !Number.isFinite(this.c.priorityGwei) || this.c.priorityGwei < 0 || this.c.priorityGwei > this.c.maxGasPriceGwei) throw new Error('invalid keeper gas price limits');
+    if (this.c.maxLossWei < 0n || this.c.operatingCostWei < 0n || this.c.lowBalanceWei < 0n || this.c.setupMaxBaseFeeWei < 0n) throw new Error('keeper amounts must be nonnegative');
+    if (!Number.isSafeInteger(this.c.healthStaleMs) || this.c.healthStaleMs <= 0) throw new Error('invalid health stale interval');
     // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
     const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
@@ -278,8 +284,11 @@ export class Keeper {
         this.log('pool error', { balancer: b, error: this.errors[b] });
       }
     }
-    this.lastTick = Date.now();
+    const balance = await this.pub.getBalance({ address: this.address });
     this.save();
+    this.balanceWei = balance;
+    this.lastTick = Date.now();
+    this.log('tick complete', { factory: this.c.factory, block: head.toString(), balancers: this.state.balancers.length, balanceWei: balance.toString(), stuck: this.health().stuck });
   }
 
   /** Local operator bidding limits. The selected policy makes no promise to reimburse this bid. */
@@ -662,8 +671,23 @@ export class Keeper {
 
   health() {
     const stuck = Object.keys(this.failures).filter((b) => this.failures[b] >= STUCK_TICKS);
+    const tick = this.lastTick > 0 && Date.now() - this.lastTick < this.c.healthStaleMs;
+    const balance = this.c.lowBalanceWei === 0n || (tick && this.balanceWei !== undefined && this.balanceWei >= this.c.lowBalanceWei);
+    const pools = Object.keys(this.accountingErrors).length === 0 && stuck.length === 0;
+    const alerts = [
+      ...(!tick ? ['tick_stale'] : []),
+      ...(!balance ? [this.balanceWei === undefined || !tick ? 'balance_unknown' : 'balance_low'] : []),
+      ...(stuck.length ? ['pools_stuck'] : []),
+      ...(Object.keys(this.accountingErrors).length ? ['accounting_error'] : []),
+    ];
     return {
-      ok: Date.now() - this.lastTick < 120_000 && Object.keys(this.accountingErrors).length === 0 && stuck.length === 0,
+      ok: tick && balance && pools,
+      checks: { live: true, tick, balance, pools },
+      alerts,
+      healthStaleMs: this.c.healthStaleMs,
+      balanceWei: this.balanceWei?.toString() ?? null,
+      lowBalanceWei: this.c.lowBalanceWei.toString(),
+      stuckTicks: STUCK_TICKS,
       stuck,
       lastTick: new Date(this.lastTick).toISOString(),
       block: this.lastBlock.toString(),
@@ -681,7 +705,10 @@ export class Keeper {
   serveHealth(port: number) {
     return createServer((req, res) => {
       const h = this.health();
-      res.writeHead(req.url === '/health' && h.ok ? 200 : req.url === '/health' ? 503 : 404, { 'content-type': 'application/json' });
+      const check = req.url?.startsWith('/health/') ? req.url.slice('/health/'.length) : undefined;
+      const known = check !== undefined && Object.hasOwn(h.checks, check);
+      const ok = req.url === '/health' ? h.ok : known ? h.checks[check as keyof typeof h.checks] : undefined;
+      res.writeHead(ok === undefined ? 404 : ok ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify(h));
     }).listen(port);
   }
@@ -705,6 +732,17 @@ export function revertName(e: unknown): string | undefined {
   return r?.data?.errorName;
 }
 
+/** A local unlocked identity must never become a mainnet signer; delegated accounts may forward their rewards. */
+export function validateRuntimeIdentity(p: { chainId: number; rpcUrl: string; address: Address; signed: boolean; code?: string; expectedChainId?: number; expectedAddress?: Address }) {
+  if (p.expectedChainId !== undefined && p.chainId !== p.expectedChainId) throw new Error('RPC chain does not match EXPECTED_CHAIN_ID');
+  if (p.expectedAddress && getAddress(p.address) !== getAddress(p.expectedAddress)) throw new Error('signer does not match KEEPER_EXPECTED_ADDRESS');
+  if (p.chainId === 1) {
+    if (p.rpcUrl !== MAINNET_RPC) throw new Error(`mainnet keeper must use ${MAINNET_RPC}`);
+    if (!p.signed) throw new Error('mainnet keeper requires KEEPER_PRIVATE_KEY from the secret store');
+    if (p.code && p.code !== '0x') throw new Error('mainnet keeper must be an EOA without delegation');
+  } else if (!p.signed && (p.chainId !== 31337 || !['127.0.0.1', 'localhost', '[::1]'].includes(new URL(p.rpcUrl).hostname))) throw new Error('KEEPER_ADDRESS is for local chain 31337 only');
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const env = (k: string, d?: string) => {
     const v = process.env[k] ?? d;
@@ -713,6 +751,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   // KEEPER_PRIVATE_KEY is read from the environment only and never written anywhere.
   const pk = process.env.KEEPER_PRIVATE_KEY as `0x${string}` | undefined;
+  if (pk && (!/^0x[0-9a-fA-F]{64}$/.test(pk) || BigInt(pk) === 0n || BigInt(pk) >= 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n)) throw new Error('invalid KEEPER_PRIVATE_KEY in secret store');
   const account = pk ? privateKeyToAccount(pk) : (env('KEEPER_ADDRESS') as Address);
   const plan = process.env.CANARY_PLAN;
   const canary = plan ? await import('../scripts/canary-guard') : undefined;
@@ -722,9 +761,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (guard && !guard.plan.accounts.keeper) throw new Error('CANARY_PLAN has no keeper account');
   if (guard && guard.plan.accounts.keeper.address.toLowerCase() !== address.toLowerCase()) throw new Error('CANARY_PLAN keeper account differs from this signer');
   const rpcUrl = env('RPC_URL', MAINNET_RPC);
+  const factory = getAddress(env('FACTORY'));
   const k = new Keeper({
     rpcUrl,
-    factory: env('FACTORY') as Address,
+    factory,
     fromBlock: BigInt(env('FROM_BLOCK')),
     // Pools of earlier factories (deployments/1.legacy.json) stay serviced with their own ABI. LEGACY_FACTORIES=0 opts out.
     legacyFactories: process.env.LEGACY_FACTORIES === '0' ? [] : LEGACY_FACTORIES,
@@ -736,13 +776,27 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     // Explicit operator subsidy allowance against the conservative execution budget; actual spend is in receipts.
     maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
     operatingCostWei: BigInt(env('OPERATING_COST_WEI', '0')),
+    lowBalanceWei: BigInt(env('LOW_BALANCE_WEI', '0')),
+    healthStaleMs: Number(env('HEALTH_STALE_MS', '120000')),
     beforeSend: guard?.keeperHook(address, 'keeper-run', (m, e) => console.log(JSON.stringify({ t: new Date().toISOString(), msg: m, ...e }))),
   });
   // R3: mainnet keeper reads and sends go through the Tenderly public endpoint; local forks use their own chain id.
-  if (await k.pub.getChainId() === 1 && rpcUrl !== MAINNET_RPC) throw new Error(`mainnet keeper must use ${MAINNET_RPC}`);
-  k.serveHealth(Number(env('HEALTH_PORT', '8787')));
+  const chainId = await k.pub.getChainId();
+  validateRuntimeIdentity({ chainId, rpcUrl, address: k.address, signed: Boolean(pk),
+    code: chainId === 1 ? await k.pub.getCode({ address: k.address }) : undefined,
+    expectedChainId: process.env.EXPECTED_CHAIN_ID === undefined ? undefined : Number(process.env.EXPECTED_CHAIN_ID),
+    expectedAddress: process.env.KEEPER_EXPECTED_ADDRESS as Address | undefined });
+  const port = Number(env('HEALTH_PORT', '8787'));
+  const pollMs = Number(env('POLL_MS', '12000'));
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65535 || !Number.isSafeInteger(pollMs) || pollMs < 1) throw new Error('invalid keeper port or poll interval');
+  const factoryCode = await k.pub.getCode({ address: factory });
+  if (!factoryCode || factoryCode === '0x') throw new Error('factory has no deployed code');
+  // Validate the writable volume before enabling the HTTP endpoint or starting a tick.
+  k.save();
+  console.log(JSON.stringify({ t: new Date().toISOString(), msg: 'keeper started', chainId, keeper: k.address, factory: env('FACTORY'), fromBlock: env('FROM_BLOCK'), legacyFactories: process.env.LEGACY_FACTORIES === '0' ? 0 : LEGACY_FACTORIES.length, maxGasPriceGwei: env('MAX_GAS_PRICE_GWEI', '50'), maxLossWei: env('MAX_LOSS_WEI', '200000000000000'), canary: Boolean(guard) }));
+  k.serveHealth(port);
   process.on('SIGINT', () => { k.save(); process.exit(0); });
   process.on('SIGTERM', () => { k.save(); process.exit(0); });
-  k.runForever(Number(env('POLL_MS', '12000')));
+  k.runForever(pollMs);
 }
 

@@ -1,0 +1,59 @@
+primary_region = "iad"
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "keeper/Dockerfile"
+
+[env]
+  EXPECTED_CHAIN_ID = "1"
+  FACTORY = "0x526FbD402624B50861f54c081B592cdCeE322929"
+  FROM_BLOCK = "26482707"
+  RPC_URL = "https://mainnet.gateway.tenderly.co"
+  LEGACY_FACTORIES = "0"
+  STATE_FILE = "/data/keeper-state.json"
+  POLL_MS = "12000"
+  HEALTH_PORT = "8787"
+  HEALTH_STALE_MS = "120000"
+  LOW_BALANCE_WEI = "7000000000000000"
+  MAX_LOSS_WEI = "0"
+  MAX_GAS_PRICE_GWEI = "1.5"
+  PRIORITY_GWEI = "0.05"
+  SETUP_MAX_BASEFEE_WEI = "1000000000"
+  OPERATING_COST_WEI = "0"
+
+[[mounts]]
+  source = "keeper_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  # Keep diagnostic endpoints reachable when an operational check fails.
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/health/live"
+
+[checks.keeper]
+  port = 8787
+  type = "http"
+  grace_period = "120s"
+  interval = "30s"
+  timeout = "5s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
+
+[[restart]]
+  policy = "always"
