@@ -483,3 +483,88 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .tabs.sub button { white-space: nowrap; }
 }
 .legacy-tag { border: 1px solid var(--line-strong); padding: 3px 6px; color: var(--ink-2); align-self: flex-start; }
+
+/* Pool page (Overview and Settings): five sizes only, 56 / 32 / 20 / 15 / 13. Hierarchy otherwise comes from colour:
+   white values and headings, --ink-2 labels and descriptions, --ink-foot footnotes, --ink-3 table heads, red problems. */
+:root { --ink-foot: #9a9a9a; }
+.pp .ph-name { font-weight: 700; font-size: 32px; letter-spacing: -.03em; }
+.pp .crumb, .pp .crumb .link, .pp .ph-meta, .pp .ph-meta .link { font-size: 13px; }
+.pp .status, .pp .tabs button { font-size: 15px; }
+.pp .status { color: var(--ink-2); }
+.pp .txline { font-size: 13px; }
+.pp .btn { font-size: 15px; font-weight: 700; }
+.pp .link { font-size: 15px; }
+.pp .h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
+.pp .desc { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; }
+.pp .foot { font-size: 13px; line-height: 1.5; color: var(--ink-foot); margin-top: 12px; }
+.pp .warn { font-size: 15px; line-height: 1.5; color: var(--error); margin-top: 12px; }
+.pp .fig56 { font-weight: 700; font-size: 56px; letter-spacing: -.04em; line-height: 1; }
+.pp .fig32 { font-weight: 700; font-size: 32px; letter-spacing: -.03em; line-height: 1.1; }
+.pp .u13 { font: 500 13px var(--font-mono); color: var(--ink-3); margin-left: 8px; text-transform: uppercase; }
+.pp .mono { font-size: 13px; }
+
+/* Overview blocks: heading, description, content, footnote. */
+.ov .blk { padding-top: 40px; border-top: 1px solid var(--line); margin-top: 56px; }
+.ov section > .blk:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
+.ov .blk-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.ov .blk-head .tag { font-size: 15px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.ov .blk-head .tag.bad { color: var(--error); }
+.ov .blk-head .total { font-weight: 700; font-size: 20px; letter-spacing: -.02em; white-space: nowrap; }
+.ov .kv { min-height: 48px; font-size: 15px; }
+.ov .kv .k { color: var(--ink-2); }
+.ov .kv.sum { border-top-color: var(--ink); font-weight: 600; }
+.ov .kv.sum .k { color: var(--ink); }
+.ov .kv:last-child { border-bottom: 0; }
+.ov .rows { margin-top: 20px; }
+.ov .sub { font-size: 15px; font-weight: 600; margin: 28px 0 0; }
+.ov .acts { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.ov .grid100 .miss { border: 1.5px dashed var(--error); }
+.ov .bar { position: relative; height: 8px; background: var(--line); margin-top: 20px; overflow: hidden; }
+.ov .bar > i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--ink); }
+.ov .bar > b { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, var(--error) 0 2px, transparent 2px 6px); }
+.ov .bar-l { display: flex; justify-content: space-between; gap: 16px; font-size: 15px; color: var(--ink-2); margin-top: 10px; }
+.ov .bar-l b { color: var(--ink); font-weight: 600; }
+.ov .ptab { margin-top: 20px; }
+.ov .ptab .tr { display: grid; grid-template-columns: minmax(0, 1fr) 120px 160px; gap: 12px; align-items: center; min-height: 48px; border-top: 1px solid var(--line); font-size: 15px; }
+.ov .ptab .th { font: 500 13px var(--font-mono); color: var(--ink-3); text-transform: uppercase; min-height: 32px; border-top: 0; }
+.ov .ptab .tr > :first-child { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ov .ptab .tr.sum { border-top-color: var(--ink); font-weight: 600; }
+.ov .ptab .sw.miss { border: 1.5px dashed var(--error); }
+.ov .ptab .off { color: var(--ink-foot); }
+.ov .hist .kv { min-height: 44px; }
+@media (max-width: 640px) {
+  .pp .fig56 { font-size: 44px; }
+  .ov .ptab .tr { grid-template-columns: minmax(0, 1fr) 72px 96px; }
+}
+
+/* Settings: a left index and four groups of label | value + control rows. */
+.st { display: grid; grid-template-columns: 200px minmax(0, 860px); gap: 80px; align-items: start; }
+.st .idx { position: sticky; top: 48px; display: flex; flex-direction: column; gap: 12px; }
+.st .idx button { background: none; border: 0; padding: 0; text-align: left; font-size: 15px; color: var(--ink-2); cursor: pointer; }
+.st .idx button[aria-current="true"] { color: var(--ink); font-weight: 600; }
+.st .grp + .grp { margin-top: 56px; }
+.st .grp { scroll-margin-top: 48px; }
+.st .srow { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; padding: 20px 0; border-top: 1px solid var(--line); }
+.st .srow:first-of-type { margin-top: 20px; }
+.st .srow .lab { font-size: 15px; font-weight: 600; }
+.st .srow .sd { font-size: 15px; line-height: 1.5; color: var(--ink-foot); margin-top: 4px; }
+.st .srow .meta { font-size: 13px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; }
+.st .srow .ctl-col { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; text-align: right; font-size: 15px; }
+.st .srow .wide { grid-column: 1 / -1; }
+.st .obtn { height: auto; padding: 8px 16px; background: transparent; color: var(--ink); border: 1px solid var(--ink); font-size: 15px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.st .obtn:disabled { color: var(--ink-4); border-color: var(--ink-4); cursor: not-allowed; }
+.st .obtn.danger { color: var(--error); border-color: var(--error); }
+.st .ulink { background: none; border: 0; padding: 0; font-size: 15px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.st .seg { margin: 0; }
+.st .seg button { font-size: 15px; height: 38px; }
+.st .err { font-size: 13px; color: var(--error); }
+.st .field { width: 160px; }
+.st .kv { font-size: 15px; min-height: 44px; }
+.st .kv .k { color: var(--ink-2); }
+.st .note { font-size: 13px; color: var(--ink-foot); }
+@media (max-width: 900px) {
+  .st { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .st .idx { display: none; }
+  .st .srow { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .st .srow .ctl-col { align-items: flex-start; text-align: left; }
+}
