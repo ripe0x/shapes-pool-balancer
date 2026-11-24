@@ -161,6 +161,8 @@ contract PoolBalancer is ReentrancyGuard {
     event Initialized(address indexed creator, address indexed pool);
     event CreatorTransferStarted(address indexed creator, address indexed pendingCreator);
     event CreatorTransferred(address indexed oldCreator, address indexed newCreator);
+    /// @dev ERC-173 view of the creator role, so tooling that reads `owner()` finds the creator.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Configured(uint16 markupBps, uint256 target, uint256 mintFeeCap);
     event CreatorRevenueChanged(uint16 previousBps, uint16 newBps);
     event CuratedRequirementChanged(bool required);
@@ -283,6 +285,7 @@ contract PoolBalancer is ReentrancyGuard {
         if (curated.length != 0) _listCurated(curated, creator_);
         _open();
         emit Initialized(creator_, p);
+        emit OwnershipTransferred(address(0), creator_);
         if (msg.value != 0) emit Deposited(creator_, msg.value);
     }
 
@@ -300,9 +303,15 @@ contract PoolBalancer is ReentrancyGuard {
         emit CreatorTransferStarted(msg.sender, newCreator);
     }
 
+    /// @notice ERC-173 owner: the creator. Ownership moves only through transferCreator then acceptCreator.
+    function owner() external view returns (address) {
+        return creator;
+    }
+
     function acceptCreator() external nonReentrant {
         if (msg.sender != pendingCreator || msg.sender == address(0)) revert Unauthorized();
         emit CreatorTransferred(creator, msg.sender);
+        emit OwnershipTransferred(creator, msg.sender);
         creator = msg.sender;
         ++pageEpoch;
         pendingCreator = address(0);

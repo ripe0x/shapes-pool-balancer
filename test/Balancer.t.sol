@@ -56,7 +56,19 @@ contract BalancerTest is ForkBase {
         address other = makeAddr("other");
         vm.deal(other, 1 ether);
         vm.prank(other);
+        vm.recordLogs();
         PoolBalancer b2 = _createFixture(other, bytes32(uint256(7)), 0);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 owned;
+        for (uint256 i; i < logs.length; ++i) {
+            if (logs[i].emitter == address(b2) && logs[i].topics[0] == PoolBalancer.OwnershipTransferred.selector) {
+                assertEq(logs[i].topics[1], bytes32(0));
+                assertEq(logs[i].topics[2], bytes32(uint256(uint160(other))));
+                ++owned;
+            }
+        }
+        assertEq(owned, 1, "creation emits OwnershipTransferred(0, creator)");
+        assertEq(b2.owner(), other);
         assertEq(address(b2), factory.predictBalancer(other, bytes32(uint256(7))));
         assertTrue(address(b2.pool()) != address(pool));
         assertEq(b2.pool().owner(), address(b2));
@@ -120,12 +132,16 @@ contract BalancerTest is ForkBase {
         vm.prank(creator);
         balancer.transferCreator(next);
         assertEq(balancer.creator(), creator);
+        assertEq(balancer.owner(), creator);
         vm.prank(stranger);
         vm.expectRevert(PoolBalancer.Unauthorized.selector);
         balancer.acceptCreator();
+        vm.expectEmit(true, true, false, false, address(balancer));
+        emit PoolBalancer.OwnershipTransferred(creator, next);
         vm.prank(next);
         balancer.acceptCreator();
         assertEq(balancer.creator(), next);
+        assertEq(balancer.owner(), next);
         assertEq(balancer.pendingCreator(), address(0));
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.Unauthorized.selector);
