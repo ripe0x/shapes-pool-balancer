@@ -119,7 +119,7 @@ contract PoolBalancer is ReentrancyGuard {
     uint256 public target;
     uint16 public markupBps;
     /// @dev Creator fill gate in bps (inverse backing-weight threshold), default 7000. Zero drops the target-fill
-    ///      requirement but keeps the conservative `prizeWeight < lost` unavailable-inventory check (see PoolInventory).
+    ///      requirement but keeps the conservative unavailable-inventory check (see PoolInventory).
     uint16 public fillGateBps;
     /// @dev Creator unsettled-draw count that pauses purchases (BUSY), default MAX_BATCH. Distinct from FWA's
     ///      per-transaction batch cap: FWA checks admission before a batch of up to MAX_BATCH, so T allows up to

@@ -940,6 +940,29 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(pool.lastIssuedSequence(), 6);
     }
 
+    /// E1 edge: with no unreconciled draw nothing is at risk, so fill 0 with no Shapes listed and a curated prize listed
+    /// is not refused by the inventory check (0 <= 0 refused before). The fill-gate percentage check is unchanged.
+    function test_case07f_zeroFillNoOutstandingDrawsNoShapesAdmits() public {
+        PoolBalancer b = _create(creator, 76, 2, 1 ether, false, 0);
+        _use(b);
+        _fillAll(b);
+        uint256[] memory sids = b.getActiveIds();
+        listCurated(7_601, 0.01 ether);
+        vm.startPrank(creator);
+        b.unlistShapes(sids);
+        b.setFillGateBps(0);
+        vm.stopPrank();
+        assertEq(b.prizeWeight(), 0, "no Shapes listed");
+        assertEq(pool.activeListingCount(), 1, "the curated prize is listed");
+        assertEq(pool.lastIssuedSequence() - b.reconciledSequence(), 0, "no outstanding draws");
+        assertFalse(b.creatorWork());
+        assertEq(b.admissionStatus(), 0, "nothing at risk: not refused by the inventory check");
+        assertTrue(b.canPurchase(buyer));
+        vm.prank(creator);
+        b.setFillGateBps(1);
+        assertEq(b.admissionStatus(), 6, "a fill gate above zero still refuses an empty Shape board");
+    }
+
     function test_case07d_backlogThreshold_allowsTPlusFourOutstanding() public {
         _fundFwaVrfSubscription(50 ether);
         PoolBalancer b = _create(creator, 74, 30, 2 ether, false, 0);

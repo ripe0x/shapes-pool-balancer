@@ -101,7 +101,8 @@ library PoolInventory {
     ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
     /// @dev `fillGateBps` (creator, 0..10000) is the inverse-backing-weight threshold; zero drops the target-fill
     ///      requirement but keeps the conservative unavailable-inventory check: purchases stop once every listed prize could
-    ///      already be taken by an unreconciled draw (`prizeWeight <= lost`), so no draw is admitted against no prize. `backlogThreshold`
+    ///      already be taken by an unreconciled draw (`lost != 0 && prizeWeight <= lost`), so no draw is admitted against no
+    ///      unreserved prize; with no unreconciled draw nothing is at risk and only the fill gate applies. `backlogThreshold`
     ///      (creator, >=1) is the unsettled-draw count that pauses purchases; it is distinct from FWA's per-transaction
     ///      batch cap (MAX_BATCH), so a threshold T allows up to T+MAX_BATCH-1 outstanding when other checks permit.
     function admission(State storage s, IFWAPool pool, bool curatedRequired,
@@ -119,7 +120,7 @@ library PoolInventory {
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {
             uint256 lost = unavailable * (1e36 / 0.01 ether);
-            return prizeWeight <= lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
+            return (lost != 0 && prizeWeight <= lost) || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
         }
         uint256 shapeBound = unavailable + stageUpper;
         uint256 tracked = s.activeIds.length;
@@ -131,7 +132,7 @@ library PoolInventory {
         if (afterActivation > unavailable) unavailable = afterActivation;
         if (shapeBound < unavailable) unavailable = shapeBound;
         uint256 lost = unavailable * (1e36 / 0.01 ether);
-        if (prizeWeight <= lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
+        if ((lost != 0 && prizeWeight <= lost) || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
         return 0;
     }
 
