@@ -1422,7 +1422,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
   </div>;
   const backingWei = ready ? capitalOf(counts) : 0n;
-  const costBlock = mode === 'new' && (
+  // The cost shows for a new design, connected or not; an existing pool's Prices & mix shows its operating rows instead.
+  const costBlock = mode !== 'pool' && (
     <div className="cost">
       <div className="sum"><span>To create the pool</span><span><b>{ev ? eth(deposit, 5) : '–'}</b><span className="u13">ETH</span></span></div>
       {capital && <>
@@ -1753,7 +1754,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="desktop-only">{payBlock}</div>
         {playBlock && <div className="desktop-only">{playBlock}</div>}
         <div className="desktop-only">{gridBlock}</div>
-        {mode === 'new' ? costBlock : (
+        {mode !== 'pool' ? costBlock : (
         <div className="totals">
           {(
             <>
