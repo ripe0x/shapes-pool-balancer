@@ -20,7 +20,7 @@ import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from '.
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
-import { KeeperEconomics, LegacyKeeperPay, LegacyTag, LimitsNote, PurchasePauses, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
+import { AutomaticPauses, LegacyKeeperPay, LegacyTag, LimitsNote, Maintenance, SRow, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
 import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit, refillPerDay } from './limits';
 import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/legacy';
 
@@ -2000,14 +2000,9 @@ function rateCheck(d: D) {
 const rateStep = (tx: Tx, balancer: Address, bps: number): Step =>
   ['Update earnings rate', () => tx.write({ address: balancer, abi: poolBalancerAbi, functionName: 'setCreatorRevenueBps', args: [bps] })];
 
-function EarningsRate({ d, tx, canFix }: { d: D; tx: Tx; canFix: boolean }) {
-  const check = rateCheck(d);
-  return <>
-    <div className="kv"><span className="k">Earnings rate</span><span>{d.creatorRevenueBps / 100}% of sales</span></div>
-    {check?.stale && <p className="note error">Out of date. This markup and prize mix set {check.suggested / 100}% of sales.</p>}
-    {check?.stale && canFix && <button className="btn" disabled={!!tx.busy} onClick={() => tx.send('Update earnings rate', [rateStep(tx, d.balancer, check.suggested)])}>Update to {check.suggested / 100}%</button>}
-  </>;
-}
+const GROUPS = [
+  ['general', 'General'], ['pauses', 'Automatic pauses'], ['maintenance', 'Maintenance'], ['handoff', 'Hand off or retire'],
+] as const;
 
 function Settings({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
@@ -2016,6 +2011,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
   const [step, setStep] = useState<'transfer' | 'retire'>();
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [at, setAt] = useState<string>('general');
   const backing = d.activeShapes.reduce((s, n, i) => s + BigInt(n) * DENOMS[i], 0n);
   useEffect(() => {
     if (!ens.name) return;
@@ -2024,87 +2020,86 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
     return () => { live = false; };
   }, [pub, ens.name]);
   const forwardOk = ens.forward?.toLowerCase() === d.balancer.toLowerCase();
+  const go = (id: string) => { setAt(id); document.getElementById(`set-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const write = (label: string, functionName: string, args: unknown[] = []) =>
+    tx.send(label, [() => tx.write({ ...B, functionName: functionName as never, args: args as never })]);
+  const group = (id: string, title: string, desc: string, rows: React.ReactNode) => (
+    <div className="grp" id={`set-${id}`}>
+      <h2 className="h">{title}</h2>
+      <p className="desc">{desc}</p>
+      {rows}
+    </div>
+  );
   return (
-    <main className="page design settings">
+    <main className="page st">
+      <nav className="idx" aria-label="Settings sections">
+        {GROUPS.map(([id, title]) => <button key={id} aria-current={at === id} onClick={() => go(id)}>{title}</button>)}
+      </nav>
       <section>
-        <h2 className="title t2">Settings</h2>
-        <div className="section">
-          <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>ENS name</h2>
-          <p className="note" style={{ marginBottom: 12 }}>Sets this pool's primary ENS name, so apps show the name instead of the address. Works when you own the name and its ETH address points to this pool.</p>
-          <div className="kv">
-            <span className="mono">{d.ensName ?? 'None'}</span>
-            <button className="link" onClick={() => setEns({ ...ens, open: !ens.open, name: ens.name || d.ensName || '' })}>{ens.open ? 'Cancel' : 'Change'}</button>
-          </div>
-          {ens.open && (
-            <>
-              <div className="row" style={{ marginTop: 12 }}>
+        {group('general', 'General', 'Whether players can buy draws, and how the pool appears in other apps.', <>
+          <SRow label="Purchases" desc="Closing stops new draws. Draws already bought still settle." value={d.retired ? 'Retired' : d.enabled ? 'Open' : 'Closed'}>
+            {d.enabled
+              ? <button className="obtn" disabled={!!tx.busy} onClick={() => write('Close purchases', 'close')}>Close purchases</button>
+              : <button className="obtn" disabled={!!tx.busy || d.target === 0n || d.retired} onClick={() => write('Open purchases', 'open')}>Open purchases</button>}
+          </SRow>
+          {d.curatedRequired !== undefined && (
+            <SRow label="When no curated NFT is available" desc="For example after a player wins your last one, until you list another.">
+              <div className="seg" role="group" aria-label="When no curated NFT is available">
+                <button aria-pressed={d.curatedRequired} disabled={!!tx.busy} onClick={() => !d.curatedRequired && write('Pause purchases without a curated NFT', 'setCuratedRequired', [true])}>Pause purchases</button>
+                <button aria-pressed={!d.curatedRequired} disabled={!!tx.busy} onClick={() => d.curatedRequired && write('Keep selling Shapes', 'setCuratedRequired', [false])}>Keep selling Shapes</button>
+              </div>
+            </SRow>
+          )}
+          <SRow label="ENS name" desc="Apps show the name instead of the address. You need to own the name, and its ETH address must point to this pool."
+            value={<span className="mono">{d.ensName ?? 'None'}</span>}
+            wide={ens.open && <>
+              <div className="row">
                 <div className="field" style={{ flex: 1 }}><input aria-label="ENS name" className="mono" placeholder="name.eth" value={ens.name} onChange={(e) => setEns({ ...ens, name: e.target.value, forward: undefined })} /></div>
-                <button className="btn" disabled={!!tx.busy || !ens.name} onClick={() => tx.send('Set ENS name', [() => tx.write({ ...B, functionName: 'setENSName', args: [ens.name] })])}>Set name</button>
-                {d.ensName && <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Clear ENS name', [() => tx.write({ ...B, functionName: 'setENSName', args: [''] })])}>Clear</button>}
+                <button className="obtn" disabled={!!tx.busy || !ens.name} onClick={() => write('Set ENS name', 'setENSName', [ens.name])}>Set name</button>
+                {d.ensName && <button className="obtn" disabled={!!tx.busy} onClick={() => write('Clear ENS name', 'setENSName', [''])}>Clear</button>}
               </div>
               {ens.name && ens.forward !== undefined && (
                 <p className={`note${forwardOk ? '' : ' error'}`} style={{ marginTop: 8 }}>
                   {forwardOk ? `${ens.name} points to this pool.` : `${ens.name} points to ${ens.forward ? short(ens.forward) : 'nothing'}. Set its ETH address to ${short(d.balancer)} in the ENS app.`}
                 </p>
               )}
-            </>
-          )}
-        </div>
-        <div className="section">
-          <h2 className="h3">Earnings rate</h2>
-          <EarningsRate d={d} tx={tx} canFix />
-          <p className="note">Set by markup and prize mix.</p>
-        </div>
-        {d.curatedRequired !== undefined && (
-          <div className="section">
-            <h2 className="h3">Curated NFTs</h2>
-            <div className="kv"><span className="k">Purchases without an available curated NFT</span><span>{d.curatedRequired ? 'Paused' : 'Continue with Shapes'}</span></div>
-            <button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send(d.curatedRequired ? 'Stop requiring a curated NFT' : 'Require a curated NFT', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setCuratedRequired', args: [!d.curatedRequired] })])}>{d.curatedRequired ? 'Continue with Shapes' : 'Pause without a curated NFT'}</button>
-          </div>
-        )}
-        <PurchasePauses d={d} tx={tx} />
-        {d.legacy ? <LegacyKeeperPay d={{ ...d, legacy: d.legacy, keeperPolicy: d.keeperPolicy!, recommendedPolicy: d.recommendedPolicy! }} tx={tx} /> : d.keeper && <KeeperEconomics d={{ ...d, keeper: d.keeper }} tx={tx} />}
-        <div className="section">
-          <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
-          <div className="kv">
-            <div><div style={{ fontWeight: 700 }}>{d.keepersRestricted ? 'Approved keepers only' : 'Anyone'}</div><p className="note">Who can run upkeep and earn its reward, set for all pools. You can always run it yourself.</p></div>
-          </div>
-        </div>
-        <div className="section">
-        <h2 className="h3" style={{ fontSize: 22 }}>Close down</h2>
-        <p className="note" style={{ margin: '8px 0 20px' }}>Get your ETH back or hand the pool to someone else. These steps affect players, so each one asks you to confirm.</p>
-        <div className="kv">
-          <div><div style={{ fontWeight: 700 }}>Purchases</div><p className="note">{d.enabled ? 'Open. Closing stops new draws; draws already bought still settle.' : 'Closed.'}</p></div>
-          {d.enabled
-            ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Close purchases', [() => tx.write({ ...B, functionName: 'close' })])}>Close purchases</button>
-            : <button className="link" disabled={!!tx.busy || d.target === 0n || d.retired} onClick={() => tx.send('Open purchases', [() => tx.write({ ...B, functionName: 'open' })])}>Open purchases</button>}
-        </div>
-        <div className="kv">
-          <div><div style={{ fontWeight: 700 }}>Unlist prizes</div><p className="note">{d.enabled ? 'Close purchases first.' : `Returns the ${eth(backing)} ETH held in prizes to the pool, 20 at a time.`}</p></div>
-          <button className="link" disabled={!!tx.busy || d.enabled || backing === 0n} onClick={() => tx.send('Unlist prizes', [() => tx.write({ ...B, functionName: 'unlistShapes', args: [d.listings.filter((l) => l.kind === 2 && l.state === 1).slice(0, 20).map((l) => l.id)] })])}>Unlist</button>
-        </div>
-        <div className="kv">
-          <div><div style={{ fontWeight: 700 }}>Transfer to another creator</div><p className="note">{d.pendingCreator !== ZERO_ADDR ? `Offered to ${short(d.pendingCreator)}. They accept before anything changes.` : 'They accept before anything changes.'}</p></div>
-          <button className="link" onClick={() => setStep(step === 'transfer' ? undefined : 'transfer')}>{step === 'transfer' ? 'Cancel' : 'Start'}</button>
-        </div>
-        {step === 'transfer' && (
-          <div className="row" style={{ padding: '12px 0' }}>
-            <div className="field" style={{ flex: 1 }}><input aria-label="New creator address" className="mono" placeholder="0x…" value={next} onChange={(e) => setNext(e.target.value)} /></div>
-            <button className="btn" disabled={!!tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(next)} onClick={() => tx.send('Start transfer', [() => tx.write({ ...B, functionName: 'transferCreator', args: [next as Address] })])}>Offer pool</button>
-          </div>
-        )}
-        <div className="kv">
-          <div><div style={{ fontWeight: 700 }}>Retire pool</div><p className="note">{d.retired ? 'Retired.' : `Closes ${poolName(d)} for good. You type RETIRE to confirm.`}</p></div>
-          <button className="link danger" disabled={d.retired} onClick={() => setStep(step === 'retire' ? undefined : 'retire')}>{step === 'retire' ? 'Cancel' : 'Retire'}</button>
-        </div>
-        {step === 'retire' && (
-          <div className="row" style={{ padding: '12px 0' }}>
-            <div className="field" style={{ flex: 1 }}><input aria-label="Type RETIRE to confirm" className="mono" placeholder="RETIRE" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>
-            <button className="btn" disabled={!!tx.busy || d.enabled || confirm !== 'RETIRE'} onClick={() => tx.send('Retire', [() => tx.write({ ...B, functionName: 'retire' })])}>Retire for good</button>
-            {d.enabled && <p className="note" style={{ width: '100%' }}>Close purchases first.</p>}
-          </div>
-        )}
-        </div>
+            </>}>
+            <button className="obtn" onClick={() => setEns({ ...ens, open: !ens.open, name: ens.name || d.ensName || '' })}>{ens.open ? 'Cancel' : d.ensName ? 'Change' : 'Set name'}</button>
+          </SRow>
+        </>)}
+        {group('pauses', 'Automatic pauses', "Purchases pause on their own when either limit is reached, and resume once it clears. They stop the pool selling draws it can't back.",
+          <AutomaticPauses d={d} tx={tx} />)}
+        {group('maintenance', 'Maintenance', 'Maintenance restocks won prizes and settles draws. Keepers run it and are paid from operating ETH. You can always run it yourself, unpaid.',
+          d.legacy ? <>
+            <SRow label="Who can run it" desc="Set by the factory for every pool." value={d.keepersRestricted ? 'Approved keepers only' : 'Anyone'} />
+            <SRow label="Keeper payment policy" desc="Legacy pools propose a policy, wait two days, then activate it."
+              wide={<LegacyKeeperPay d={{ ...d, legacy: d.legacy, keeperPolicy: d.keeperPolicy!, recommendedPolicy: d.recommendedPolicy! }} tx={tx} />} />
+            <SRow label="Run maintenance now" desc="Unpaid, from your wallet. Use it when a keeper hasn't.">
+              <button className="obtn" disabled={!!tx.busy} onClick={() => tx.send('Run maintenance', [() => tx.write({ address: d.balancer, abi: d.legacy!.poolBalancerAbi, functionName: 'performUpkeepUnpaid' })])}>Run maintenance</button>
+            </SRow>
+          </> : d.keeper ? <Maintenance d={{ ...d, keeper: d.keeper }} tx={tx} /> : <p className="foot">Keeper settings unavailable.</p>)}
+        {group('handoff', 'Hand off or retire', 'These affect players, so each asks you to confirm. Listed from least to most final.', <>
+          <SRow label="Transfer to another creator"
+            desc={<>Nothing changes until they accept. Earnings not yet withdrawn go with the pool.{d.pendingCreator !== ZERO_ADDR && ` Offered to ${short(d.pendingCreator)}.`}</>}
+            wide={step === 'transfer' && <div className="row">
+              <div className="field" style={{ flex: 1 }}><input aria-label="New creator address" className="mono" placeholder="0x…" value={next} onChange={(e) => setNext(e.target.value)} /></div>
+              <button className="obtn" disabled={!!tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(next)} onClick={() => tx.send('Offer pool', [() => tx.write({ ...B, functionName: 'transferCreator', args: [next as Address] })])}>Offer pool</button>
+            </div>}>
+            <button className="obtn" onClick={() => setStep(step === 'transfer' ? undefined : 'transfer')}>{step === 'transfer' ? 'Cancel' : 'Offer pool'}</button>
+          </SRow>
+          <SRow label="Unlist Shapes" desc={`Moves the ${eth(backing, 5)} ETH backing listed Shapes into operating ETH, 20 per transaction, so you can withdraw it.`}
+            meta={d.enabled ? 'Close purchases first.' : undefined}>
+            <button className="obtn" disabled={!!tx.busy || d.enabled || backing === 0n} onClick={() => tx.send('Unlist Shapes', [() => tx.write({ ...B, functionName: 'unlistShapes', args: [d.listings.filter((l) => l.kind === 2 && l.state === 1).slice(0, 20).map((l) => l.id)] })])}>Unlist</button>
+          </SRow>
+          <SRow label="Retire pool" desc={d.retired ? 'Retired. Withdrawals still work.' : 'Stops sales for good. Withdrawals still work.'}
+            meta={d.retired ? undefined : 'Close purchases first, then type RETIRE to confirm.'}
+            wide={step === 'retire' && <div className="row">
+              <div className="field" style={{ flex: 1 }}><input aria-label="Type RETIRE to confirm" className="mono" placeholder="RETIRE" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>
+              <button className="obtn danger" disabled={!!tx.busy || d.enabled || confirm !== 'RETIRE'} onClick={() => tx.send('Retire', [() => tx.write({ ...B, functionName: 'retire' })])}>Retire for good</button>
+            </div>}>
+            <button className="obtn danger" disabled={d.retired} onClick={() => setStep(step === 'retire' ? undefined : 'retire')}>{step === 'retire' ? 'Cancel' : 'Retire'}</button>
+          </SRow>
+        </>)}
       </section>
     </main>
   );
