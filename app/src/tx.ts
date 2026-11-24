@@ -113,11 +113,13 @@ export type TransactionStep = (() => Promise<Hash | undefined>) | [string, () =>
 
 /** A confirmation failure stops dependent wallet actions and caller success effects. */
 export async function runTransactionSteps(label: string, steps: TransactionStep[],
-  onStep: (name: string, index: number) => void, confirm: (hash: Hash) => Promise<void>) {
+  onStep: (name: string, index: number) => void, confirm: (hash: Hash) => Promise<void>,
+  onDone?: (index: number, hash: Hash | undefined) => void) {
   for (const [index, step] of steps.entries()) {
     const [name, run] = Array.isArray(step) ? step : [label, step];
     onStep(name, index);
     const hash = await run();
     if (hash) await confirm(hash);
+    onDone?.(index, hash);
   }
 }

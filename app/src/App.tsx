@@ -11,7 +11,7 @@ import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCo
 import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
-import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
+import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
@@ -329,6 +329,7 @@ export function useTx(onDone: () => void) {
     }
     submitted.current = { hash, intent };
     setHash(hash);
+    markStep(stepIndex.current, { state: 'submitted', hash });
     return hash;
   };
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
@@ -345,6 +346,10 @@ export function useTx(onDone: () => void) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last transaction the wallet submitted in the current or latest `send`, for its explorer link.
   const [hash, setHash] = useState<Hash>();
+  // Each step of the current or latest `send`: next, in the wallet, submitted, done, skipped (nothing to send) or failed.
+  const [steps, setSteps] = useState<StepState[]>();
+  const stepIndex = useRef(-1);
+  const markStep = (k: number, patch: Partial<StepState>) => setSteps((xs) => xs?.map((x, i) => (i === k ? { ...x, ...patch } : x)));
   // The last failure, readable right after `send` resolves (state updates land a render later).
   const failure = useRef<string>();
   // A step may carry its own label (shown as "label (2 of 5)") and may return undefined to skip itself.
@@ -353,22 +358,26 @@ export function useTx(onDone: () => void) {
     setBusy(label);
     setMsg(undefined);
     setHash(undefined);
+    setSteps(calls.map((c) => ({ label: Array.isArray(c) ? c[0] : label, state: 'next' })));
     try {
       await runTransactionSteps(label, calls, (name, k) => {
         current = name;
+        stepIndex.current = k;
+        markStep(k, { state: 'wallet' });
         setBusy(Array.isArray(calls[k]) && calls.length > 1 ? `${name} (${k + 1} of ${calls.length})` : name);
       }, async (hash) => {
         const reviewed = submitted.current;
         if (reviewed?.hash !== hash) throw new Error('Confirmation is unverified: the reviewed transaction is unavailable.');
         await confirmAction(pub!, hash, reviewed.intent, confirmationTimeout);
         if (submitted.current === reviewed) submitted.current = undefined;
-      });
+      }, (k, sent) => setSteps((xs) => xs?.map((x, i) => (i === k ? { ...x, state: sent || x.state === 'submitted' ? 'done' : 'skipped' } : x))));
       setMsg({ ok: true, text: `${label}: confirmed` });
       failure.current = undefined;
       return true;
     } catch (e) {
       failure.current = `${current}: ${explain(e)}`;
       console.error(`[tx] ${failure.current}`, e);
+      markStep(stepIndex.current, { state: 'failed', declined: creationNotSubmitted(e), error: explain(e) });
       setMsg({ ok: false, text: failure.current });
       return false;
     } finally {
@@ -376,8 +385,12 @@ export function useTx(onDone: () => void) {
       onDone();
     }
   };
-  return { send, busy, msg, hash, write, transfer, failure };
+  const reset = () => { setMsg(undefined); setSteps(undefined); setHash(undefined); };
+  return { send, busy, msg, hash, steps, reset, write, transfer, failure };
 }
+
+/** A step of a `send`, as the progress panel shows it. `declined`: the wallet refused it (nothing was submitted). */
+type StepState = { label: string; state: 'next' | 'wallet' | 'submitted' | 'done' | 'skipped' | 'failed'; hash?: Hash; declined?: boolean; error?: string };
 
 const txUrl = (hash: Hash) => (chain.id === 1 ? `https://etherscan.io/tx/${hash}` : undefined);
 /** The current or last transaction: what it is waiting for or how it ended, with a link to it. Stays in view. */
