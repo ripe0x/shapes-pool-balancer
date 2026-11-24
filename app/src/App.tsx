@@ -800,6 +800,31 @@ const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
 /** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
  *  picked. */
 const nftKey = (collection: string, tokenId: bigint | string) => `${collection}:${tokenId}`.toLowerCase();
+/** Whether `me` holds each chosen NFT now (ownerOf), by nftKey. A failed read counts as not held. */
+async function heldBy(pub: Pub, me: Address, list: DraftNft[]) {
+  const chosen = list.filter((n) => n.collection && n.tokenId);
+  const owners = await Promise.all(chosen.map((n) => (pub.readContract({ address: n.collection!, abi: erc721Abi, functionName: 'ownerOf', args: [BigInt(n.tokenId!)] }) as Promise<string>)
+    .then((o) => o.toLowerCase() === me.toLowerCase(), () => false)));
+  return Object.fromEntries(chosen.map((n, i) => [nftKey(n.collection!, n.tokenId!), owners[i]])) as Record<string, boolean>;
+}
+/** Chosen NFTs the wallet does not hold, rechecked whenever the choice or wallet changes and every 15 seconds: a saved
+ *  design can hold an NFT that has since left the wallet. `checking` is true until the current choice has been read. */
+function useHeld(pub: Pub | undefined, me: Address | undefined, list: DraftNft[]) {
+  const keys = list.filter((n) => n.collection && n.tokenId).map((n) => nftKey(n.collection!, n.tokenId!)).join();
+  const [held, setHeld] = useState<{ keys: string; map: Record<string, boolean> }>({ keys: '', map: {} });
+  useEffect(() => {
+    if (!pub || !me || !keys) return;
+    let live = true;
+    const check = () => heldBy(pub, me, list).then((map) => live && setHeld({ keys, map }), () => undefined);
+    void check();
+    const timer = setInterval(check, 15_000);
+    return () => { live = false; clearInterval(timer); };
+  }, [pub, me, keys]); // eslint-disable-line react-hooks/exhaustive-deps -- keys identifies the list
+  const notHeld = (n: DraftNft) => !!n.collection && held.keys === keys && held.map[nftKey(n.collection, n.tokenId!)] === false;
+  return { notHeld, checking: !!keys && !!me && held.keys !== keys };
+}
+const NOT_HELD = "This wallet doesn't hold this NFT. Remove it to continue.";
+
 const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)']);
 type Prereq = { creation: boolean; impl: boolean };
 
@@ -989,6 +1014,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // Listed rows stay fixed while new NFTs are selected.
   const isListed = (n: DraftNft) => !!n.collection && listedKeys.has(nftKey(n.collection, n.tokenId!));
   const pending = nfts.map((n, i) => ({ n, i })).filter(({ n }) => !isListed(n));
+  const holding = useHeld(pub, me, pending.map(({ n }) => n));
   // Every NFT the design counts: listed ones, then rows with a value. Once connected, only rows with a chosen token.
   const rows = [
     ...listed.map((l) => ({ key: `l${l.id}`, name: nftName(l), base: l.base })),
@@ -1244,6 +1270,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
+    : toList.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold."
+    : toList.length > 0 && holding.checking ? 'Checking that this wallet holds your NFTs…'
     : !ready ? undefined
     : !ev?.feasible ? undefined
         : mode === 'new' && create?.prereq && !(create.prereq.creation && create.prereq.impl) ? 'Pool creation is not available right now.'
@@ -1268,6 +1296,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         setStaleReview(reviewedHash ?? '0x');
         return;
       }
+      // Recheck at send time: an NFT can leave the wallet after the last check.
+      const nowHeld = await heldBy(pub, me, toList);
+      const gone = toList.filter((n) => !nowHeld[nftKey(n.collection!, n.tokenId!)]);
+      if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
       if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
       const balancer = mode === 'new'
         ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
@@ -1420,6 +1452,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
                 <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
                 {belowFloor(n) && <p className="note error" style={{ marginTop: 6 }}>Below the {floorValue(n.floor)} ETH collection floor</p>}
+                {holding.notHeld(n) && <p className="note error" style={{ marginTop: 6 }}>{NOT_HELD}</p>}
               </div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
@@ -1750,7 +1783,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const bases = listed.map((l) => l.base);
   const keyOf = (n: DraftNft) => nftKey(n.collection!, n.tokenId!);
   const key = picks.map(keyOf).join();
-  const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const holding = useHeld(pub, me, picks);
+  const valued = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const ready = valued && !holding.checking && !picks.some(holding.notHeld);
   const values = useConfirmValues();
   const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
   const plan = d.target ? listedShapeCounts(d.listings) : undefined;
@@ -1765,6 +1800,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;
+    const nowHeld = await heldBy(pub, me, picks);
+    const gone = picks.filter((n) => !nowHeld[keyOf(n)]);
+    if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
     if (restricted !== key && await refusesContracts(pub, me, picks)) { setRestricted(key); return; }
     const r = await refusedApprovals(pub, me, d.balancer, picks);
     setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
@@ -1786,6 +1824,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
           <div style={{ minWidth: 0 }}>
             <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
+            {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
             {n.floor && <div className={`s${belowFloor(n) ? ' error' : ''}`}>{belowFloor(n) ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</div>}
           </div>
           <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
@@ -1810,7 +1849,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
       {refused && <p className="note error" style={{ marginTop: 16 }}>{refused}</p>}
       {picks.length > 0 && (
         <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !ready} onClick={list}>
-          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
+          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : picks.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold" : valued && holding.checking ? 'Checking your NFTs…' : 'Set a value for each NFT'}
         </button>
       )}
       {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>New listings may be staged while draws settle.</p>}
