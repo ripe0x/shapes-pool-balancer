@@ -743,3 +743,10 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 @keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @media (prefers-reduced-motion: reduce) { .pbar.indet i { animation: none; width: 100%; opacity: .4; } }
 .tabs button:disabled { cursor: default; }
+
+/* Setup block on the progress panel layout: heading with step count, overall bar, step rows. */
+.setup .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.setup .cnt { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.setup .cnt.error { color: var(--error); }
+.setup > div > .pbar { margin-top: 20px; }
+.setup .sb.live { color: var(--ink); margin-bottom: 4px; }

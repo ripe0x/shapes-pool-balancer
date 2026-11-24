@@ -731,7 +731,8 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
   const B = { address: balancer, abi: poolBalancerAbi } as const;
   const st = statusLine(d);
   const tabs: Tab[] = ['overview', 'nfts', 'mix', 'settings'];
-  const upkeep = () => tx.send('Run maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  // While stocking, the same run is "List Shapes", so the setup block shows its progress.
+  const upkeep = () => tx.send(d.admission === 2 ? 'List Shapes' : 'Run maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
   const action = st.act === 'activate' ? <button className="link" disabled={!!tx.busy} onClick={() => activateListings(d, tx)}>Activate staged listings</button>
     : st.act === 'proof' ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Refresh curated proof', [() => {
       const witness = curatedWitness(d.listings);
@@ -2325,13 +2326,23 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
   const short_ = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
   const stalled = !opened && st.act === 'fund' && short_ > 0n;
   const url = created && txUrl(created.hash);
-  const upkeep = () => tx.send('Run maintenance', [() => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  const upkeep = () => tx.send('List Shapes', [() => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  // The creator's own listing run, as the creation panel shows a step: in the wallet, waiting for its block, or done.
+  const mine = tx.steps?.length === 1 && tx.steps[0].label === 'List Shapes' ? tx.steps[0] : undefined;
+  const runLink = (h?: Hash) => h && (txUrl(h) ? <a href={txUrl(h)} target="_blank" rel="noreferrer">{short(h)} ↗</a> : <span className="mono">{short(h)}</span>);
+  const stepsN = nfts.length ? 4 : 3;
+  const shapesAt = stepsN - 1;
+  const fill = opened ? 1 : (shapesAt - 1 + (target ? listedN / target : 0)) / stepsN;
   const copy = () => { void navigator.clipboard?.writeText(FWA_POOL_URL(d.pool)).then(() => setCopied(true)); };
   return <section className="setup">
     <div>
-      <h2 className="page-t">{opened ? 'Purchases are open' : 'Your pool is created'}</h2>
+      <div className="ph">
+        <h2 className="page-t">{opened ? 'Purchases are open' : 'Your pool is created'}</h2>
+        <span className={`cnt${stalled ? ' error' : ''}`}>{opened ? `Step ${stepsN} of ${stepsN}` : stalled ? `Stopped at step ${shapesAt}` : `Step ${shapesAt} of ${stepsN}`}</span>
+      </div>
       <p className="pd">{opened ? 'Every prize is listed. Players can buy draws now.'
         : `${nfts.length ? 'Your NFTs are listed and the pool' : 'The pool'} holds your ${eth(d.balance, 5)} ETH. Next, the Shapes are minted and listed on FWA. Players can buy draws once every prize is listed.`}</p>
+      <div className={`pbar${stalled ? ' bad' : ''}`}><i style={{ width: `${Math.round(fill * 100)}%` }} /></div>
       <ol className="psteps setup-steps">
         <li className="ps pend done"><span className="mk">✓</span><span className="lb">Pool created</span>
           <span className="pst">{created ? <>Block {created.block.toLocaleString()}{created && <> · {url ? <a href={url} target="_blank" rel="noreferrer">{short(created.hash)} ↗</a> : short(created.hash)}</>}</> : ''}</span></li>
@@ -2342,6 +2353,12 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
           <div>
             <span className="lb">{opened ? 'Shapes listed' : 'Listing your Shapes'}</span>
             {!opened && <div className="pbar sm"><i style={{ width: `${target ? Math.round((listedN / target) * 100) : 0}%` }} /></div>}
+            {!opened && mine && mine.state !== 'next' && <span className={`sb ${mine.state === 'failed' ? 'error' : 'live'}`}>
+              {mine.state === 'wallet' ? 'Your run: confirm in your wallet'
+                : mine.state === 'submitted' ? <>Your run: waiting for block · {runLink(mine.hash)}</>
+                  : mine.state === 'done' ? <>Your run listed a batch · {runLink(mine.hash)}</>
+                    : mine.declined ? 'Your run: declined in your wallet' : `Your run failed: ${mine.error ?? 'unknown error'}`}
+            </span>}
             {!opened && (stalled
               ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
               : <span className="sb">{d.paidUpkeepEnabled
@@ -2356,7 +2373,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
     <div className="setup-side">
       {!opened && <span className="lbl">WHILE YOU WAIT</span>}
       {!opened && <>
-        <button className="btn" disabled={!!tx.busy} onClick={upkeep}>{d.paidUpkeepEnabled ? 'List Shapes now' : 'List the next batch'}</button>
+        <button className={`btn${tx.busy ? ' busy' : ''}`} disabled={!!tx.busy} onClick={upkeep}>{mine && tx.busy ? (mine.state === 'submitted' ? 'Listing…' : 'Waiting for your wallet…') : d.paidUpkeepEnabled ? 'List Shapes now' : 'List the next batch'}</button>
         <p className="note">{d.paidUpkeepEnabled ? "Optional. Lists the next batch from your wallet instead of waiting for a keeper; you pay that run's gas." : 'Lists the next batch from your wallet; you pay the gas.'}</p>
       </>}
       <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
