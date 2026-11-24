@@ -761,3 +761,4 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .ps.pend { grid-template-columns: 28px minmax(0, 1fr); }
   .ps.pend .pst { grid-column: 2; margin-top: 2px; }
 }
+.link.inline { font-size: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; white-space: normal; }

@@ -2426,7 +2426,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
             {!opened && (stalled
               ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
               : <span className="sb">{lm.mode === 'auto'
-                ? "Listing automatically. A keeper mints and lists your Shapes in batches, paid from the listing budget you deposited. Players can buy draws once every Shape is listed."
+                ? <>Listing automatically. A keeper mints and lists your Shapes in batches of up to 5, paid from the listing budget you deposited, so this usually takes a few minutes{target - listedN > 5 ? ` (about ${Math.ceil((target - listedN) / 5)} more batches)` : ''}. Players can buy draws once every Shape is listed. <button className="link inline" disabled={!!tx.busy} onClick={upkeep}>List the next batch yourself</button> (you pay the gas).</>
                 : lm.mode === 'paused'
                   ? `Automatic listing is paused: gas is ${lm.gwei(d.baseFee)} gwei, above the ${lm.gwei(lm.limit)} gwei limit that keeps listing within the budget you deposited. It resumes on its own when gas falls.`
                   : 'Keeper pay is off, so you list your Shapes: each run mints and lists the next batch, and you pay the gas.'}</span>)}
