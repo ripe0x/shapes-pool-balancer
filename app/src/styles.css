@@ -568,3 +568,17 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .st .srow { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .st .srow .ctl-col { align-items: flex-start; text-align: left; }
 }
+
+/* Confirm NFT values: one list of every curated NFT and the value it will be listed at. */
+.modal { background: var(--bg); color: var(--ink); border: 1px solid var(--ink); padding: 32px; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); }
+.modal::backdrop { background: rgba(0, 0, 0, .75); }
+.modal .h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
+.modal .desc { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; }
+.modal-rows { margin-top: 20px; }
+.modal-rows .kv { font-size: 15px; min-height: 56px; }
+.modal-rows .kv .k { color: var(--ink); display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.modal-rows .kv .sub { font-size: 13px; color: var(--ink-foot); }
+.modal-rows .kv .sub.error { color: var(--error); }
+.modal-rows .kv .v { font-weight: 700; white-space: nowrap; }
+.modal .acts { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
+@media (max-width: 640px) { .modal { padding: 20px; } }

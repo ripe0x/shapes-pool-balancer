@@ -751,9 +751,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
 }
 
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
-/** `confirmed`: the creator confirmed `value` as their asking price; editing the value clears it. Nothing is listed
- *  unconfirmed, so a defaulted floor value never goes out by accident. */
-type DraftNft = { value: string; confirmed?: boolean; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
+type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
 /** A chosen NFT's starting value: its collection's floor, or empty when there is none. */
 const floorValue = (floor?: number) => (floor && floor >= 0.000001 ? floor.toFixed(6).replace(/\.?0+$/, '') : '');
 /** Design work before submission, retained across wallet connection and reloads. */
@@ -922,7 +920,6 @@ async function refusedApprovals(pub: Pub, me: Address, balancer: Address, list: 
  *  limit on the total. */
 const LIST_BATCH = 20;
 const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId: bigint; base: bigint }[]) => Promise<Hash | undefined>) => {
-  if (ns.some((n) => !n.confirmed)) throw new Error("Confirm each NFT's value first.");
   const steps: Step[] = [];
   for (let k = 0; k < ns.length; k += LIST_BATCH) {
     const batch = ns.slice(k, k + LIST_BATCH);
@@ -973,6 +970,7 @@ function Design(props: DesignProps) {
 }
 function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const pub = usePublicClient();
+  const values = useConfirmValues();
   const fresh = mode !== 'pool';
   const has = d.target !== 0n;
   const [draft] = useState(() => (fresh ? loadDraft() : undefined));
@@ -1218,7 +1216,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
-    : toList.some((n) => !n.confirmed) ? "Confirm each curated NFT's value."
     : !ready ? undefined
     : !ev?.feasible ? undefined
         : mode === 'new' && create?.prereq && !(create.prereq.creation && create.prereq.impl) ? 'Pool creation is not available right now.'
@@ -1243,7 +1240,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         setStaleReview(reviewedHash ?? '0x');
         return;
       }
-      if (toList.some((n) => !n.confirmed)) return;
       if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
       const balancer = mode === 'new'
         ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
@@ -1282,6 +1278,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
         steps.push(upkeepStep(pub, tx, me, balancer));
       }
+      if (!(await values.confirm(toList))) return;
       const ok = await tx.send(mode === 'new' ? 'Create pool' : 'Save', steps, mode === 'new' ? 15_000 : undefined);
       if (mode !== 'new' && ok) { clearDraft(); setNfts([]); }
     } finally {
@@ -1338,8 +1335,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       onPick={(xs) => {
         const at = nfts[i] ?? DEFAULT_NFT;
         setPicking(undefined);
-        setNfts([...nfts.slice(0, i), { ...at, ...xs[0], value: floorValue(xs[0].floor), confirmed: false }, ...nfts.slice(i + 1),
-          ...xs.slice(1).map((x) => ({ ...x, value: floorValue(x.floor), confirmed: false }))]);
+        setNfts([...nfts.slice(0, i), { ...at, ...xs[0], value: floorValue(xs[0].floor) }, ...nfts.slice(i + 1),
+          ...xs.slice(1).map((x) => ({ ...x, value: floorValue(x.floor) }))]);
       }} />
   );
   const removeRow = (i: number) => { setPicking(undefined); setNfts(nfts.filter((_, j) => j !== i)); };
@@ -1385,8 +1382,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               </div>
               <div className="val">
                 <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
-                <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value, confirmed: false })} inputMode="decimal" /><span className="u">ETH</span></div>
-                {n.collection && <ConfirmValue n={n} onChange={(confirmed) => setNft(i, { confirmed })} />}
+                <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               </div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
@@ -1411,6 +1407,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
   return (
     <main className="page cols design">
+      {values.modal}
       <section>
         {mode === 'pool'
           ? <h2 className="title t2">Prices & mix</h2>
@@ -1656,14 +1653,36 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   );
 }
 
-/** The creator confirms a curated NFT's value before it can be listed. A value at the collection floor says so. */
-function ConfirmValue({ n, onChange }: { n: DraftNft; onChange: (confirmed: boolean) => void }) {
-  const v = ethOr(n.value, 0n);
-  const atFloor = !!n.floor && n.value === floorValue(n.floor);
-  return <label className="check" style={{ marginTop: 8 }}>
-    <input type="checkbox" checked={!!n.confirmed} disabled={v === 0n} onChange={(e) => onChange(e.target.checked)} />
-    <span>Confirm {v === 0n ? 'a value' : `${n.value} ETH`}{atFloor && ' (collection floor)'}</span>
-  </label>;
+/** A modal that lists each curated NFT with the value it will be listed at, before any transaction is sent. `confirm`
+ *  resolves true on Confirm and false on Back or Escape; with no NFTs it resolves true at once. */
+function useConfirmValues() {
+  const [ask, setAsk] = useState<{ items: DraftNft[]; done: (ok: boolean) => void }>();
+  const confirm = (items: DraftNft[]) => (items.length ? new Promise<boolean>((done) => setAsk({ items, done })) : Promise.resolve(true));
+  const close = (ok: boolean) => { ask?.done(ok); setAsk(undefined); };
+  return { confirm, modal: ask && <ConfirmValuesModal items={ask.items} onClose={close} /> };
+}
+
+function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (ok: boolean) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  return <dialog ref={ref} className="modal" aria-labelledby="confirm-values" onCancel={(e) => { e.preventDefault(); onClose(false); }}>
+    <h2 className="h" id="confirm-values">Confirm NFT values</h2>
+    <p className="desc">Each NFT is listed on FWA at the value below.</p>
+    <div className="modal-rows">
+      {items.map((n) => {
+        const v = Number(n.value);
+        const below = !!n.floor && v < n.floor;
+        return <div className="kv" key={nftKey(n.collection!, n.tokenId!)}>
+          <span className="k">{nftLabel(n)}{n.floor !== undefined && <span className={`sub${below ? ' error' : ''}`}>{n.value === floorValue(n.floor) ? 'Collection floor' : below ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</span>}</span>
+          <span className="v">{n.value} ETH</span>
+        </div>;
+      })}
+    </div>
+    <div className="acts">
+      <button className="btn" autoFocus onClick={() => onClose(true)}>Confirm {items.length === 1 ? 'value' : `${items.length} values`}</button>
+      <button className="btn sec" onClick={() => onClose(false)}>Back</button>
+    </div>
+  </dialog>;
 }
 
 /** Lists one more NFT on a live pool, showing what it does to the draw price and NFT odds under the saved mix first. */
@@ -1677,8 +1696,8 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const bases = listed.map((l) => l.base);
   const keyOf = (n: DraftNft) => nftKey(n.collection!, n.tokenId!);
   const key = picks.map(keyOf).join();
-  const valued = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
-  const ready = valued && picks.every((n) => n.confirmed);
+  const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const values = useConfirmValues();
   const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
   const plan = d.target ? listedShapeCounts(d.listings) : undefined;
   const livePrices: bigint[][] = [];
@@ -1696,6 +1715,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     const r = await refusedApprovals(pub, me, d.balancer, picks);
     setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
     if (r.length) return;
+    if (!(await values.confirm(picks))) return;
     const ok = await tx.send('List NFTs', [
       ...approveSteps(pub, tx, me, d.balancer, picks),
       ...listSteps(picks, (batch) => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'listCuratedBatch', args: [batch] })),
@@ -1705,6 +1725,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   };
   return (
     <>
+      {values.modal}
       <h2 className="ctl" style={{ fontSize: 22 }}>Add NFTs</h2>
       {picks.map((n, i) => (
         <div className="mixrow" key={keyOf(n)} style={i === 0 ? { marginTop: 12 } : undefined}>
@@ -1713,16 +1734,13 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
             <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
             {n.floor && <div className="s">Collection floor {floorText(n.floor)}</div>}
           </div>
-          <div>
-            <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value, confirmed: false } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
-            <ConfirmValue n={n} onChange={(confirmed) => setPicks(picks.map((x, j) => (j === i ? { ...x, confirmed } : x)))} />
-          </div>
+          <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
           <button className="link quiet" aria-label={`Remove ${nftLabel(n)}`} onClick={() => setPicks(picks.filter((_, j) => j !== i))}>×</button>
         </div>
       ))}
       {choosing || !picks.length ? (
         <NftChooser me={me} exclude={[...d.listings.filter((l) => l.kind === 1 && l.state === 1).map((l) => nftKey(l.collection, l.tokenId)), ...picks.map(keyOf)]}
-          onPick={(xs) => { setPicks([...picks, ...xs.map((x) => ({ ...x, value: floorValue(x.floor), confirmed: false }))]); setChoosing(false); setRefused(undefined); }} />
+          onPick={(xs) => { setPicks([...picks, ...xs.map((x) => ({ ...x, value: floorValue(x.floor) }))]); setChoosing(false); setRefused(undefined); }} />
       ) : <button className="disclose" style={{ marginTop: 12 }} onClick={() => setChoosing(true)}>+ Add more</button>}
       {after && (
         <div className="section">
@@ -1738,7 +1756,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
       {refused && <p className="note error" style={{ marginTop: 16 }}>{refused}</p>}
       {picks.length > 0 && (
         <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !ready} onClick={list}>
-          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : valued ? "Confirm each NFT's value" : 'Set a value for each NFT'}
+          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
         </button>
       )}
       {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>New listings may be staged while draws settle.</p>}
