@@ -515,7 +515,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .ov .kv.sum { border-top-color: var(--ink); font-weight: 600; }
 .ov .kv.sum .k { color: var(--ink); }
 .ov .kv:last-child { border-bottom: 0; }
-.ov .rows { margin-top: 20px; }
+.ov .kvs { margin-top: 20px; }
 .ov .sub { font-size: 15px; font-weight: 600; margin: 28px 0 0; }
 .ov .acts { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
 .ov .grid100 .miss { border: 1.5px dashed var(--error); }
@@ -556,7 +556,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .st .obtn.danger { color: var(--error); border-color: var(--error); }
 .st .ulink { background: none; border: 0; padding: 0; font-size: 15px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .st .seg { margin: 0; }
-.st .seg button { font-size: 15px; height: 38px; }
+.st .seg button { font-size: 15px; height: 38px; padding: 0 12px; white-space: nowrap; }
 .st .err { font-size: 13px; color: var(--error); }
 .st .field { width: 160px; }
 .st .kv { font-size: 15px; min-height: 44px; }

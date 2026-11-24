@@ -1828,7 +1828,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {d.historyLoading && <p className="foot">Updating pool history…</p>}
           {d.historyError && <p className="foot error">Pool history unavailable: {d.historyError}</p>}
           {L && <>
-            <div className="rows">
+            <div className="kvs">
               <div className="kv"><span className="k">Draw sales</span><span>{signedEth(L.sales)} ETH</span></div>
               <div className="kv"><span className="k">Prizes won by players</span><span>{signedEth(-L.prizesWon)} ETH</span></div>
               <div className="kv"><span className="k">Shapes mint fees</span><span>{signedEth(-L.mintFees)} ETH</span></div>
@@ -1910,12 +1910,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           )}
           <p className="foot">{d.surplus === undefined ? 'Operating surplus unavailable. Earnings remain withdrawable.' : "Withdrawals take earnings first, then any operating ETH above what's needed."}{d.surplus !== undefined && d.surplus < idle && ' More becomes available as pending draws settle.'}</p>
           {econ ? <>
-            <div className="rows">
+            <div className="kvs">
               <div className="kv"><span className="k">Estimated earnings</span><span className={month < 0 ? 'error' : undefined}>{signed(month)} ETH a month</span></div>
             </div>
             <p className="foot">{perDraw(econ.creatorEarningsPerDraw)} ETH a draw, at {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button>. Assumes sales continue at today's mix. <button className="link" style={{ fontSize: 13 }} onClick={() => setHow(!how)}>How this is worked out</button></p>
             {assume.open && <div className="acts"><div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div></div>}
-            {how && <div className="rows">
+            {how && <div className="kvs">
               <div className="kv"><span className="k">Expected settled owner proceeds</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
               <div className="kv"><span className="k">Revenue retained per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
               <div className="kv"><span className="k">Expected replacement mint costs</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
@@ -1925,7 +1925,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
             </div>}
           </> : <p className="foot">{d.policyUnavailable ? 'Estimate unavailable while keeper quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Earnings appear once an NFT is listed and a mix is saved.'}</p>}
           <h3 className="sub">Withdrawals</h3>
-          {L ? (claims.length ? <div className="rows hist" style={{ marginTop: 8 }}>
+          {L ? (claims.length ? <div className="kvs hist" style={{ marginTop: 8 }}>
             {(allClaims ? claims : claims.slice(0, 5)).map((c) => {
               const url = txUrl(c.hash);
               return <div className="kv" key={`${c.hash}-${c.index}`}>
@@ -1940,7 +1940,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         <div className="blk">
           <div className="blk-head"><h2 className="h">ETH in the pool</h2><span className="total">{eth(backing + stagedBacking + d.balance + d.proceeds, 5)} ETH</span></div>
           <p className="desc">Everything the pool holds, what it's for, and where it came from.</p>
-          <div className="rows">
+          <div className="kvs">
             <div className="kv"><span className="k">Backing listed prizes</span><span>{eth(backing, 5)} ETH</span></div>
             {stagedBacking > 0n && <div className="kv"><span className="k">Staged prize backing</span><span>{eth(stagedBacking, 5)} ETH</span></div>}
             <div className="kv"><span className="k">Operating ETH</span><span>{eth(fund, 5)} ETH</span></div>
@@ -1950,7 +1950,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {d.proceeds > 0n && <div className="acts"><button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Collect from sales', [() => tx.write({ ...B, functionName: 'collectProceeds' })])}>Collect {eth(d.proceeds, 5)} ETH</button></div>}
           <h3 className="sub">Where it came from</h3>
           {L ? <>
-            <div className="rows" style={{ marginTop: 8 }}>
+            <div className="kvs" style={{ marginTop: 8 }}>
               <Flows label="Deposited" flows={L.depositors} total={L.deposited} sign={1n} me={me} />
               <Flows label="Withdrawn" flows={L.recipients} total={L.withdrawn} sign={-1n} me={me} />
               <div className="kv"><span className="k">Operating result</span><span className={L.operatingResult < 0n ? 'error' : undefined}>{signedEth(L.operatingResult)} ETH</span></div>
@@ -2020,6 +2020,16 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
     return () => { live = false; };
   }, [pub, ens.name]);
   const forwardOk = ens.forward?.toLowerCase() === d.balancer.toLowerCase();
+  // The index marks the group nearest the top of the viewport.
+  useEffect(() => {
+    const els = GROUPS.map(([id]) => document.getElementById(`set-${id}`)).filter((e): e is HTMLElement => !!e);
+    const io = new IntersectionObserver((entries) => {
+      const top = entries.filter((e) => e.isIntersecting).sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
+      if (top) setAt(top.target.id.slice(4));
+    }, { rootMargin: '0px 0px -60% 0px' });
+    els.forEach((e) => io.observe(e));
+    return () => io.disconnect();
+  }, []);
   const go = (id: string) => { setAt(id); document.getElementById(`set-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const write = (label: string, functionName: string, args: unknown[] = []) =>
     tx.send(label, [() => tx.write({ ...B, functionName: functionName as never, args: args as never })]);

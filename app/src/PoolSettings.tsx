@@ -252,7 +252,7 @@ export function Maintenance({ d, tx }: { d: KeeperView; tx: Tx }) {
       <button className="obtn" onClick={() => setLimit(!limit)}>{limit ? 'Cancel' : 'Edit'}</button>
     </SRow>
     <SRow label="Keeper pay rates" desc="Work fee, gas ceiling and gas bounds. Following the factory applies its changes immediately; your own rates stay fixed until you change them."
-      meta={<>Maintenance budget at these rates: {ethx(k.current.required)}.{d.policyUnavailable && <span className="error"> Keeper quotes unavailable.</span>}
+      meta={<>Maintenance budget at these rates: {Number(formatEther(k.current.required)).toFixed(5)} ETH.{d.policyUnavailable && <span className="error"> Keeper quotes unavailable.</span>}
         {d.paidUpkeepEnabled && k.current.shortfall > 0n && <span className="error"> Operating ETH is {ethx(k.current.shortfall)} below it. Paid maintenance pays only from operating ETH and the spending limit.</span>}
         {followNeed > 0n && <span className="error"> Following or keeping the factory's rates needs {formatEther(followNeed)} more operating ETH first.</span>}</>}
       wide={<>
