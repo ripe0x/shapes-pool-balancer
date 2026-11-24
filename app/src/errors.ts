@@ -18,8 +18,8 @@ const ERRORS: Record<string, string> = {
   StaleSettings: 'the keeper settings changed; refresh and try again',
   InvalidPolicy: 'the address does not support the keeper policy interface',
   InvalidGrace: 'the paused processing wait cannot be longer than the normal one',
-  PolicyUnavailable: 'the policy could not quote payment; run unpaid maintenance',
-  PaymentUnavailable: 'paid upkeep is unavailable; run unpaid maintenance',
+  PolicyUnavailable: 'the policy could not quote payment; run maintenance yourself',
+  PaymentUnavailable: 'keeper pay is unavailable; run maintenance yourself',
   MinimumPaymentNotMet: 'the offered payment is below the transaction minimum',
   KeeperBudgetExceeded: 'the pool payment allowance needs time to refill',
 };
