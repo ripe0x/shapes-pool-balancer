@@ -5,7 +5,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {ForkBase, ITimeout} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
 
 interface IConcurrentFwaCash {
@@ -17,32 +17,10 @@ interface IConcurrentFwaCash {
     function withdrawAcquisitionRefund() external returns (uint256);
 }
 
-/// @dev Deliberately mutable, untrusted creator-selected economics, accepted by the real pool interface.
-contract HostileRecoveryPolicy is IKeeperPolicy {
-    uint256 public fee;
-    bool public maximum;
-    bool public broken;
-    function setFee(uint256 value) external { fee = value; }
-    function setMaximum(bool value) external { maximum = value; }
-    function setBroken(bool value) external { broken = value; }
-    function interfaceVersion() external pure returns (uint256) { return 1; }
-    function version() external pure returns (uint256) { return 91; }
-    function maxReward() external pure returns (uint256) { return 0.311 ether; }
-    function quoteReward(Work calldata) external view returns (uint256) {
-        require(!broken, "unavailable policy");
-        return maximum ? type(uint256).max : 0.0001 ether;
-    }
-    function quoteRestock(uint8, uint256 units, uint256) external view returns (uint256) {
-        require(!broken, "unavailable policy");
-        return units * fee;
-    }
-}
-
 /// @notice Minimum-capital concurrent purchaser refund rights survive a hostile policy, gas growth and full creator exit.
 ///         Uses real FWA cash and inventory paths; inherited controlled coordinator delivery does not prove VRF timing.
 contract ConcurrentRecoveryTest is ForkBase {
     GasProbe internal probe;
-    HostileRecoveryPolicy internal policy;
     uint256 internal deposited;
     uint256 internal collected;
     uint256 internal claimed;
@@ -62,9 +40,9 @@ contract ConcurrentRecoveryTest is ForkBase {
 
     function test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() public {
         _context(0.5 gwei, 0.55 gwei);
-        _openMinimum(2_500, true, 0.000695 ether);
+        _openMinimum(2_500);
         _claimAll();
-        assertEq(address(balancer).balance, 0.00368 ether, "claim leaves only ordinary working capital");
+        assertEq(address(balancer).balance, 0.001993 ether, "claim leaves only ordinary working capital");
         (uint256 fee, uint256 vrf,) = pool.quoteAcquisitionPrice(1);
         assertEq(vrf, 0.001287 ether, "actual nonrefundable service charge at the witnessed bid");
         uint256 first = buy(buyer, 1)[0];
@@ -73,32 +51,34 @@ contract ConcurrentRecoveryTest is ForkBase {
         assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 2 * fee);
         _assertFwaCash();
         vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        // Owner decision 2026-11-23: upkeep processes only Ready stuck draws, so a third party processes the two expired
+        // draws on FWA (refund credit is FWA's) and upkeep reconciles them. Before, upkeep processed them itself.
+        vm.prank(address(0xBEEF), address(0xBEEF));
+        pool.processAcquisitions(5);
         uint256 before = vm.snapshotState();
         uint256 poolCash = address(pool).balance;
         uint256 creatorFund = address(balancer).balance;
-        policy.setMaximum(true);
         _upkeep();
         uint256 reward = creatorFund - address(balancer).balance;
         assertGt(reward, 0);
-        assertLe(reward, 0.0028 ether, "immutable actual-work envelope, not hostile declared maximum");
+        assertLe(reward, 0.0028 ether, "actual-work formula (R95; formerly the envelope over a hostile maximum quote)");
         assertEq(address(pool).balance, poolCash, "maximum keeper reward used no FWA escrow");
         assertEq(IConcurrentFwaCash(address(pool)).acquisitionRefundCredit(buyer), fee);
         assertEq(IConcurrentFwaCash(address(pool)).acquisitionRefundCredit(stranger), fee);
         _ledger("hostile maximum payment");
         assertTrue(vm.revertToState(before));
-        policy.setBroken(true);
-        bytes32 expected = balancer.settingsHash();
-        vm.prank(keeper, keeper);
-        vm.expectRevert(PoolBalancer.PolicyUnavailable.selector);
-        balancer.performUpkeep(expected, 0, 0);
-        assertEq(pool.unsettledAcquisitionCount(), 2, "failed paid operation reverted all FWA processing atomically");
-        assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 2 * fee);
-        policy.setBroken(false);
-        policy.setMaximum(true);
+        // R95: no external policy, so the former broken-policy refusal of paid upkeep no longer exists.
+        assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
+        assertEq(IConcurrentFwaCash(address(pool)).acquisitionEscrowTotal(), 0, "FWA already moved escrow to refund credit");
+        assertEq(IConcurrentFwaCash(address(pool)).acquisitionRefundCredit(buyer), fee);
         vm.prank(creator);
         balancer.close();
         _claimAll();
-        assertEq(address(balancer).balance, 0.0028 ether, "only actual pending work's current-fee hold remains");
+        // Two owed draws (2 x 0.0012555: process and reconcile gas plus two work fees each) now exceed the remaining
+        // one-call buffer, so nothing more is claimable.
+        assertEq(balancer.requiredReserve(), 0.002511 ether, "only actual pending work's current-fee hold remains");
+        assertEq(address(balancer).balance, 0.001993 ether);
+        assertEq(balancer.withdrawableSurplus(), 0);
         uint256 base = 0.5 gwei;
         for (uint256 i; i < 31; ++i) {
             uint256 prior = base;
@@ -110,15 +90,25 @@ contract ConcurrentRecoveryTest is ForkBase {
         }
         assertGt(balancer.requiredReserve(), address(balancer).balance,
             "later high-fee paid continuity can be short without purchaser insolvency");
-        expected = balancer.settingsHash();
+        bytes32 expected = balancer.settingsHash();
+        // The 5 gwei payment ceiling keeps the actual work payable from the remaining cash at ~19 gwei.
+        uint256 snap = vm.snapshotState();
+        uint256 cash = address(balancer).balance;
+        vm.prank(keeper, keeper);
+        uint256 continuity = balancer.performUpkeep(expected, 0, 0);
+        assertLe(continuity, cash, "paid only within actual cash");
+        assertEq(address(pool).balance, poolCash, "purchaser cash untouched");
+        assertTrue(vm.revertToState(snap));
+        // A creator-emptied bucket makes paid work unavailable; unpaid recovery still completes.
+        vm.prank(creator); balancer.setKeeperBucket(0, 0);
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.PaymentUnavailable.selector);
         balancer.performUpkeep(expected, 0, 0);
-        assertEq(pool.unsettledAcquisitionCount(), 2);
+        assertEq(pool.lastIssuedSequence() - balancer.reconciledSequence(), 2);
         assertEq(address(pool).balance, poolCash);
         uint256 priorPaid = paid;
         balancer.performUpkeepUnpaid();
-        assertEq(pool.unsettledAcquisitionCount(), 0);
+        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence());
         assertEq(paid, priorPaid, "public unpaid recovery takes no keeper reward");
         (,,,, uint8 firstStatus,) = pool.acquisitions(first);
         (,,,, uint8 secondStatus,) = pool.acquisitions(second);
@@ -136,25 +126,16 @@ contract ConcurrentRecoveryTest is ForkBase {
         emit log_named_decimal_uint("nonrefundable VRF cost for the two expired draws", 2 * vrf, 18);
     }
 
-    function _openMinimum(uint256 markup, bool custom, uint256 fee) internal {
+    function _openMinimum(uint256 markup) internal {
         keeperStart = keeper.balance;
         createBalancer(0);
-        vm.prank(creator);
-        balancer.configure(uint16(markup), plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]));
+        vm.startPrank(creator);
+        balancer.configure(uint16(markup), plan([uint256(20), 0, 0, 0, 0, 0, 0, 0, 0]), shapes.mintFee());
+        vm.stopPrank();
         listCurated(1, 0.2 ether);
-        if (custom) {
-            policy = new HostileRecoveryPolicy();
-            policy.setFee(fee);
-            vm.prank(creator);
-            balancer.proposeKeeperPolicy(address(policy));
-            vm.warp(vm.getBlockTimestamp() + 2 days);
-            balancer.activateKeeperPolicy();
-        }
-        uint256 refPrice = block.basefee + 0.1 gwei;
-        if (refPrice > 50 gwei) refPrice = 50 gwei;
-        uint256 cap = balancer.policyMaxReward();
-        uint256 listing = _min(cap, 4_550_000 * refPrice + 0.00025 ether);
-        uint256 buffer = _min(cap, 5_300_000 * refPrice + 0.0005 ether);
+        // Default economics: five Shape units per listing call and the operating call both reach the 3.2M limit.
+        uint256 listing = (3_200_000 + V1_OVERHEAD) * _v1Price() + 5 * 0.00002 ether;
+        uint256 buffer = _workingBufferAt(_v1Price());
         deposited = 0.22 ether + 4 * listing + buffer;
         vm.prank(creator);
         balancer.depositETH{value: deposited}();

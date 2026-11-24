@@ -1,5 +1,80 @@
 # Gas benchmarks and keeper bounds
 
+## Paid processing of stuck draws, 2026-11-23
+
+Owner decision (docs/DECISIONS.md "Paid processing of stuck draws only"). Fork block 26,382,349, Forge 1.8.1,
+`--isolate` (transaction gas with refunds). Upkeep processes only stuck draws (Ready, or expired without randomness) requested at least the grace ago (50
+blocks, 10 while paused), paid as measured gas at the usual price plus one work fee per processed draw.
+
+| Call | measured (paid span) | billed | paid (ETH) | billed cost (ETH) | keeper net (ETH) |
+|---|---|---|---|---|---|
+| process 1 stuck draw + reconcile 2, 5 gwei (`KeeperPay` calibration) | 679,189 | 594,417 | 0.003755945 | 0.002972085 | +0.00078386 |
+| process 1 stuck draw + reconcile 1, 0.55 gwei (`ProcessQueue` grace test) | 678,012 | n/a | (678,012 + 60,000) x 0.55 gwei + 2 x 0.00002 | | |
+| staged-restock draws, three processing calls, 0.55 gwei (`ProcessQueue` D16 test) | 1,201,540 / 1,274,397 / 931,522 | 1,005,498 / 1,063,784 / 809,650 | 0.000773847 / 0.000813918 / 0.000585337 | | +0.000221 / +0.000229 / +0.000140 |
+| reconcile 1 timed-out draw processed on FWA by a third party, 5 gwei | 110,171 | 162,632 | 0.000870855 | 0.00081316 | +0.000057695 |
+
+Largest billed − measured across the calibration classes: 54,540 gas (closed, reconcile 5), under the 60,000
+overhead. Measured exceeds billed on processing calls because FWA's storage refunds are applied after the span.
+
+Self-made stuck draws do not pay (`test_manufacturedStuckDrawLosesMoney`, launch board, 5 gwei, `--isolate`): a draw
+costs 0.023108 ETH of which FWA's edge is 0.0011004 ETH, plus a 0.0117 ETH randomness fee at 5 gwei; neither comes
+back. The processing call is paid on its measured span, which FWA's storage refunds put above the billed gas: billed
+580,460 gas, paid 0.00364566 ETH, keeper net **+0.00074336 ETH** against 0.0128004 ETH lost on the draw. The largest
+measured − billed gap seen (210,613 gas, staged-restock processing above) would net about 0.0014 ETH per processing
+call at 5 gwei. That can exceed the edge plus randomness fee when the draw was bought at low gas and processed at the
+5 gwei ceiling: bought at 0.1 gwei, the edge plus randomness fee is 0.00133 ETH. What keeps manufacture a loss is
+the creator markup of at least 10% that the buyer pays over the prize's value (about 0.002 ETH on the test board),
+plus basefee having to rise about 50 times within the ~50-block grace.
+
+## Slice A3 keeper overhead recalibration, 2026-11-23
+
+`test/KeeperPay.t.sol test_overheadCoversBilledGasPerOperationClass`, `forge test --isolate` (Foundry 1.8.1 transaction
+gas: intrinsic, calldata and applied refunds), fork block 26,382,349, basefee 4.95 gwei and transaction price 5.00 gwei
+set with `vm.fee`/`vm.txGasPrice` and asserted inside a call. Pool: ten 0.01 ETH Shapes and one BAYC, default economics.
+
+| Operation class | measured (paid span) | billed | billed − measured | paid (ETH) | billed cost (ETH) | keeper net (ETH) |
+|---|---|---|---|---|---|---|
+| setup fill, 5 Shape units | 2,549,178 | 2,573,336 | 24,158 | 0.01309589 | 0.01286668 | +0.00022921 |
+| reconcile 1 draw already processed by FWA | 106,005 | 160,656 | **54,651** | 0.000800025 | 0.00080328 | −0.000003255 at 50k |
+| process + reconcile 1 timed-out draw | 130,803 | 165,523 | 34,720 | 0.000924015 | 0.000827615 | +0.0000964 |
+| reconcile 1 NFT win | 184,431 | 217,082 | 32,651 | 0.001192155 | 0.00108541 | +0.000106745 |
+| reconcile + replace 1 Shape | 874,619 | 865,570 | 0 (refunds) | 0.004663095 | 0.00432785 | +0.000335245 |
+| reconcile + replace 5 Shapes | 2,639,848 | 2,573,204 | 0 (refunds) | 0.01364924 | 0.01286602 | +0.00078322 |
+| closed: reconcile 5 timed-out draws | 140,263 | 196,987 | **56,724** | 0.001051315 | 0.000984935 | +0.00006638 |
+
+(Rows measured with the 50k overhead; "paid" includes work fees.) Out-of-span gas is intrinsic + calldata (~22k), the
+library payment call with the economics struct, the policy quote (cold), the bucket write, the ETH transfer (9k) and the
+event; refunds from in-span storage clears hide it in the heavier classes. The reconcile-only classes show it plainly.
+Reported (not re-measured here): at main the 5 gwei wallet test passed this class with only 60e9 wei to spare and failed from 7ed3335 by ~165e9 wei, i.e. it was covered only by the 0.00002 ETH work fee.
+**Default `overheadGas` is 60,000** (worst 56,724 + 5.8%). Re-run at 60k: every class passes with billed − measured ≤
+56,712 and the 5 gwei wallet run nets +0.00198 ETH over the setup, timed-out, NFT, 1- and 5-Shape calls.
+
+Consequence: the single-Shape reconcile-and-replace call at the ceiling now pays (874,586 + 60,000) × 5 gwei + 2 work
+fees = 0.00471293 ETH, above the 900k surcharge (0.0047). **Default `restockGas` is 910,000** (needs ≥ 902,586; V1's
+7,414 margin kept; surcharge 0.00475 ETH at the ceiling, 0.0007005 ETH at 0.5 gwei). Per-operation gas bounds were left
+unchanged: every class measured below its bound (largest ratio 874,619 / 1,200,000).
+
+## Audit repair (R95): no policy call, 2026-11-23
+
+Removing the external policy (owner decision R95) takes the policy staticcall out of both spans: the restocking quote
+inside the measured span and the reward quote outside it. Fresh `test/KeeperPay.t.sol`
+`test_overheadCoversBilledGasPerOperationClass` (`--isolate`, 5 gwei, code `f549bf9`):
+
+| Class | measured | billed | billed - measured |
+|---|---|---|---|
+| setup fill, 5 Shape units (two calls) | 2,543,761 / 2,524,901 | 2,566,101 / 2,547,241 | 22,340 |
+| reconcile 1 timed-out draw (also when processed on FWA) | 109,749 | 157,582 | 47,833 |
+| reconcile 1 NFT win | 188,174 | 214,008 | 25,834 |
+| reconcile + replace 1 Shape | 869,191 | 858,325 | 0 (refunds) |
+| reconcile + replace 5 Shapes | 2,634,423 | 2,565,961 | 0 (refunds) |
+| process 1 stuck draw and reconcile 2 | 678,901 | 589,499 | 0 (refunds) |
+| closed: reconcile 5 timed-out draws | 144,098 | 194,008 | **49,910** |
+
+Largest out-of-span gas 49,910 (was 56,724): the 60,000 `overheadGas` now has a 20.2% margin (was 5.8%); it is left
+at 60,000. The single-Shape reconcile-and-replace call pays (869,191 + 60,000) x 5 gwei + 2 work fees, so the
+restocking surcharge needs restockGas >= 897,191 at the ceiling; 910,000 leaves 12,809 gas (was 7,414). Both are
+factory settings; neither was changed here.
+
 ## Focused curated-proof follow-up, 2026-11-18
 
 [Current focused evidence](AUDIT-FOLLOWUP-RESULTS.md) supersedes historical admission measurements below.

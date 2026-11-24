@@ -1,4 +1,8 @@
-# Current candidate local rehearsal
+# Current candidate local rehearsal (historical)
+
+**Historical (2026-11-23).** This route rehearsed the 2026-11-18 protected-revenue candidate. Its scenario switches
+keeper policy with `setKeeperPolicy`, removed by R95, so it is not evidence for the community release; that release
+rehearses as in [DEPLOY-COMMUNITY-REPLACEMENT.md](DEPLOY-COMMUNITY-REPLACEMENT.md) section 7.
 
 This route prepares and executes one new protected-revenue candidate on a fresh, task-owned Anvil fork with synthetic actor funds. It uses `script/deploy.sh` and `script/Deploy.s.sol`, the production `Keeper`, and the prepared-node entry point in `keeper/rehearsal.ts`. It neither inherits archived local approval nor grants production approval. The historical plan validators, archived driver and production asset-flow/signature gate remain intact.
 

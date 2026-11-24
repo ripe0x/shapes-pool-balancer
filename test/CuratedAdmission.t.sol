@@ -84,7 +84,8 @@ contract CuratedAdmissionTest is ForkBase {
         (,,,,,, uint256 slot, uint8 status) = pool.listings(stagedCurated);
         assertEq(slot, 0);
         assertEq(status, 5);
-        vm.roll(block.number + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block processing grace applies");
+        vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace (sales open)
         upkeep();
         assertEq(pool.unsettledAcquisitionCount(), 0);
         vm.prank(creator); balancer.withdrawCurated(originalCurated, creator);
@@ -96,9 +97,9 @@ contract CuratedAdmissionTest is ForkBase {
         assertEq(slot, 0);
         assertEq(status, 5, "sole curated NFT remains behind twelve unreserved Shapes");
         (uint256 fee, uint256 vrf, uint256 payment) = pool.quoteAcquisitionPrice(1);
-        assertEq(fee, 0.01385475 ether);
+        assertEq(fee, 0.013860525 ether); // 20 Shapes at 0.0132005 (910k restocking gas) plus the 5% edge
         assertEq(vrf, 0.001287 ether);
-        assertEq(payment, 0.01514175 ether);
+        assertEq(payment, 0.015147525 ether);
         uint256 buyerCash = address(actor).balance;
         uint256 poolCash = address(pool).balance;
         uint256 serviceCash = VRF_SERVICE.balance;

@@ -71,8 +71,9 @@ contract ChallengePriceTest is ForkBase {
         createBalancer(5 ether);
         uint256[16] memory c;
         (c[0], c[9], c[1], c[2], c[3]) = (24, 8, 12, 2, 1);
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         uint256 id = 300;
         address holder;
         while ((holder = IERC721Min(BAYC).ownerOf(id)).code.length != 0) ++id;
@@ -116,8 +117,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         uint256[16] memory c;
         c[0] = 1; // 0.01 ETH Shape
         c[15] = 1; // 25 ETH Pack
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         uint256 id = 300;
         address holder;
         while ((holder = IERC721Min(BAYC).ownerOf(id)).code.length != 0) ++id;
@@ -164,8 +166,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         createBalancer(80 ether);
         uint256[16] memory c;
         c[15] = 1; // 25 ETH Pack is the sole Shape/Pack prize
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         uint256 id = 300;
         address holder;
         while ((holder = IERC721Min(BAYC).ownerOf(id)).code.length != 0) ++id;
@@ -206,8 +209,9 @@ contract ChallengeTopHeavyGateTest is ForkBase {
         emit log_named_decimal_uint("top target reserve before pivot", balancer.requiredReserve(), 18);
         c[15] = 0;
         c[0] = 1; // continue with 0.01 ETH Shape
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         assertEq(balancer.admissionStatus(), 6, "new empty target pauses at the inventory gate without restarting initial setup");
         bytes32 uh3 = balancer.settingsHash();
         vm.prank(keeper, keeper);

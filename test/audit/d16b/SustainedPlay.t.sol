@@ -47,8 +47,9 @@ contract D16bSustainedPlayTest is ForkBase {
         createBalancer(10 ether);
         uint256[16] memory c;
         (c[0], c[9], c[1], c[2], c[3]) = (24, 8, 12, 2, 1);
-        vm.prank(creator);
-        balancer.configure(2500, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(2500, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         for (uint256 i; i < 10; ++i) listCurated(1 + i, 0.2 ether);
         vm.prank(creator);
         balancer.open();

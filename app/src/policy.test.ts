@@ -1,8 +1,11 @@
-import { createPublicClient, custom, http, toFunctionSelector, toHex, type Address } from 'viem';
+import { createPublicClient, custom, http, parseAbi, toFunctionSelector, toHex, type Address } from 'viem';
 import { expect, it } from 'vitest';
 import { poolBalancerAbi } from '../../shared/abi';
 import { DENOMS, SHAPES_IN } from '../../shared/planner';
-import { policyAbi, policyEconomics, readsAt } from './policy';
+import { policyEconomics, readsAt } from './policy';
+
+/** Interface v1 of the policy deployed with the legacy (2026-11-22) factory; legacy pools still price with it. */
+const legacyPolicyAbi = parseAbi(['function quoteRestock(uint8 denomination,uint256 shapeUnits,uint256 baseFee) view returns (uint256)']);
 
 const rpc = process.env.POLICY_PREVIEW_RPC;
 const balancer = process.env.POLICY_PREVIEW_BALANCER as Address | undefined;
@@ -17,18 +20,19 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
     return actual.transport.request(request);
   } }), cacheTime: 0 });
   expect(await pub.getChainId()).toBe(31337);
-  const [policy, maxReward] = await Promise.all([
-    pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'keeperPolicy' }),
+  const [economics, maxReward] = await Promise.all([
+    pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'effectiveEconomics' }),
     pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'policyMaxReward' }),
   ]);
-  const costs = await policyEconomics(pub, policy, maxReward, balancer);
+  const costs = await policyEconomics(pub, economics, balancer);
   expect(costs.restockQuoteVerified).toBe(true);
   expect(costs.keeperQuotes).toBeDefined();
   for (const quote of [...costs.keeperQuotes!.replace, costs.keeperQuotes!.reconcile]) {
     expect(quote).toBeGreaterThanOrEqual(0n);
     expect(quote).toBeLessThanOrEqual(maxReward);
   }
-  costs.restockFees.forEach((fee, d) => expect(fee).toBeLessThanOrEqual(BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n));
+  const perShape = await pub.readContract({ address: balancer!, abi: poolBalancerAbi, functionName: 'maxRestockSurchargePerShape' }) as bigint;
+  costs.restockFees.forEach((fee, d) => expect(fee).toBeLessThanOrEqual(BigInt(SHAPES_IN[d]) * perShape));
   const settingsSelector = toFunctionSelector('settings()');
   expect(requests.some(request => request.method === 'eth_call' && JSON.stringify(request.params).includes(settingsSelector.slice(2)))).toBe(false);
   expect(costs.restockFees).toHaveLength(DENOMS.length);
@@ -44,10 +48,19 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
 });
 
 // Failure injection is permitted for off-chain services; no successful answer is fabricated.
-it('reports failed policy economics as unavailable instead of substituting V1', async () => {
+it('reports failed pool quotes as unavailable instead of substituting a local estimate', async () => {
   const pub = createPublicClient({ transport: custom({ request: async () => { throw new Error('RPC unavailable'); } }, { retryCount: 0 }), cacheTime: 0 });
   const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
-  await expect(policyEconomics(pub, '0x0000000000000000000000000000000000000001', 100_000_000_000_000n, undefined, snapshot)).rejects.toThrow('RPC unavailable');
+  const economics = { workFee: 20_000_000_000_000n, maxGas: 3_200_000,
+    overheadGas: 60_000, gasPriceCeiling: 5_000_000_000n, priorityAllowance: 50_000_000n, restockGas: 910_000, restockFlat: 200_000_000_000_000n,
+    baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000,
+    processGraceBlocks: 50, pausedProcessGraceBlocks: 10 };
+  await expect(policyEconomics(pub, economics, '0x0000000000000000000000000000000000000001', snapshot)).rejects.toThrow('RPC unavailable');
+  // A pool not created yet previews the in-library formula: 910k x 0.55 gwei + 0.0002 ETH per Shape.
+  const preview = await policyEconomics(pub, economics, undefined, snapshot);
+  expect(preview.restockFees[0]).toBe(700_500_000_000_000n);
+  expect(preview.restockFees[9]).toBe(2n * 700_500_000_000_000n); // 0.02 ETH pack: two Shapes
+  expect(preview.restockQuoteVerified).toBe(false);
 });
 
 // Opt-in read-only mainnet check: MAINNET_RPC=https://mainnet.gateway.tenderly.co. The deployed KeeperPolicyV1 answers
@@ -60,10 +73,10 @@ it.skipIf(!process.env.MAINNET_RPC)('batches restock quotes into one request wit
   const block = await actual.getBlock();
   const baseFee = block.baseFeePerGas!;
   const at = { blockNumber: block.number!, gasPrice: baseFee + 50_000_000n, gasPerRead: 150_000n };
-  const batched = await readsAt(pub, DENOMS.map((_, d) => ({ address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] })), at);
+  const batched = await readsAt(pub, DENOMS.map((_, d) => ({ address: policy, abi: legacyPolicyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] })), at);
   expect(requests).toHaveLength(1);
   const single: bigint[] = [];
-  for (let d = 0; d < DENOMS.length; d++) single.push(await actual.readContract({ address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee], blockNumber: block.number!, gasPrice: at.gasPrice, gas: 150_000n } as never) as bigint);
+  for (let d = 0; d < DENOMS.length; d++) single.push(await actual.readContract({ address: policy, abi: legacyPolicyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee], blockNumber: block.number!, gasPrice: at.gasPrice, gas: 150_000n } as never) as bigint);
   expect(batched).toEqual(single);
   // V1: units x (900,000 gas x min(basefee + 0.05 gwei, 5 gwei) + 0.0002 ETH)
   const price = baseFee + 50_000_000n > 5_000_000_000n ? 5_000_000_000n : baseFee + 50_000_000n;

@@ -229,7 +229,7 @@ async function main() {
         const markup = round % 50 === 12 ? 1000 : 1500;
         const t = await read<bigint>(bB, poolBalancerAbi, 'target');
         await test.impersonateAccount({ address: CREATORS[1] });
-        await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [markup, t], account: CREATORS[1] });
+        await send({ address: bB, abi: poolBalancerAbi, functionName: 'configure', args: [markup, t, await read<bigint>(bB, poolBalancerAbi, 'mintFeeCap')], account: CREATORS[1] });
         assert.equal(await status(bB), 0, 'a markup change with the target listed keeps purchases open');
         await buyAndSettle(bB, 1, `0x${(0xc0de0000 + round).toString(16).padStart(40, '0')}` as Address, [BigInt(keccak256(toHex(BigInt(round))))]);
         await mustOpen(bB, 'pool B restocked after a markup change', 60_000, true);
@@ -412,7 +412,7 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
         }
         if (i === 0)
             await run.creationReceiptProbe(creator, curated, fee);
-        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee, curatedRequired: p.scenario.curatedRequired[i] }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
+        const receipt = await run.send(creator, run.factory, balancerFactoryAbi, 'createBalancer', [zero, { markupBps: p.scenario.markupBps, creatorRevenueBps: p.scenario.creatorRevenueBps, target: BigInt(b.target), mintFeeCap: fee, curatedRequired: p.scenario.curatedRequired[i], settingsHash: await run.read<Hex>(run.factory, balancerFactoryAbi, 'creationSettingsHash') }, curated], BigInt(p.scenario.initialDeposits[i]), 'atomic-creation');
         b.pool = await read<Address>(balancer, 'pool');
         run.save();
         eqPrepared(await read<Address>(balancer, 'creator'), creator);
@@ -618,15 +618,14 @@ export async function runPreparedRehearsal(run: CurrentRehearsal) {
     assert.equal(await run.pub.getBalance({ address: a.balancer }), deficit.operating, 'credited earnings claim leaves operating cash unchanged');
     const v2 = await run.create(r.deployer, 'KeeperPolicyV2');
     const oldHash = await read<Hex>(a.balancer, 'settingsHash'), allowance = await read<bigint>(a.balancer, 'keeperAllowance');
+    const economics = await read<Record<string, unknown>>(a.balancer, 'effectiveEconomics');
     const [maintenance, shortfall] = await run.read<readonly [
         bigint,
         bigint
-    ]>(a.balancer, poolBalancerAbi, 'policyFunding', [v2]);
+    ]>(a.balancer, poolBalancerAbi, 'maintenanceFunding', [{ ...economics, policy: v2 }]);
     assert.equal(shortfall, 0n);
     assert.ok(maintenance < E);
-    await sent(a, 'proposeKeeperPolicy', [v2]);
-    await run.jump();
-    await run.send(r.keeper, a.balancer, poolBalancerAbi, 'activateKeeperPolicy');
+    await sent(a, 'setKeeperPolicy', [v2]);
     eqPrepared(await read<Address>(a.balancer, 'keeperPolicy'), v2);
     assert.equal(await read<bigint>(a.balancer, 'keeperAllowance'), allowance);
     assert.notEqual(await read<Hex>(a.balancer, 'settingsHash'), oldHash);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from '../test/fixtures/parity.json';
-import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan, suggestedCreatorRevenueBps, maintenanceBudgetAt, policyActivationFundingAt, quoteV1, keeperWorkAt, reserveBreakdownAt, listingBatches, paymentBound, immutableWorkBudget, DENOMS, prizeRestockFee } from './planner';
+import { BPS, economics, pendingDrawsAdmitted, evaluate, MAX_KEEPER_REWARD, NUM, packPlan, prizePrice, requiredReserveAt, restockFeeAt, unpackPlan, suggestedCreatorRevenueBps, maintenanceBudgetAt, quoteV1, keeperWorkAt, reserveBreakdownAt, listingBatches, paymentBound, workBudget, DENOMS, prizeRestockFee, V1_ECONOMICS } from './planner';
 
 const EDGE = 500;
 
@@ -8,7 +8,8 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
   for (const [k, c] of Object.entries(fixture as Record<string, any>)) {
     it(`case ${k}`, () => {
       const counts = unpackPlan(BigInt(c.target ?? c.plan));
-      const inputs = { baseFee: BigInt(c.baseFee), curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee), restockFee: BigInt(c.restockFee), policyMaxReward: BigInt(c.maxReward ?? MAX_KEEPER_REWARD) };
+      const inputs = { baseFee: BigInt(c.baseFee), curatedBases: c.bases.map((b: string | number) => BigInt(b)), markupBps: c.markupBps, edgeBps: EDGE, mintFee: BigInt(c.mintFee), restockFee: BigInt(c.restockFee), economics: V1_ECONOMICS };
+      if (c.maxReward !== undefined) expect(BigInt(c.maxReward)).toBe(MAX_KEEPER_REWARD);
       const ev = evaluate(counts, inputs);
       expect(ev.drawPrice).toBe(BigInt(c.drawPrice));
       expect(ev.curatedOddsBps).toBe(Number(c.curatedOddsBps));
@@ -19,7 +20,7 @@ describe('planner parity with on-chain FWA (fork fixture)', () => {
 
 describe('planner', () => {
   const E = 10n ** 18n;
-  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n), baseFee: 10n ** 9n, v1Preview: true, policyMaxReward: MAX_KEEPER_REWARD };
+  const inputs = { curatedBases: [3n * E / 10n, E / 2n], markupBps: 1500, edgeBps: EDGE, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n), baseFee: 10n ** 9n, v1Preview: true, economics: V1_ECONOMICS };
 
   it('prices curated NFTs at their value, at any markup, and listed ones at their live FWA price', () => {
     const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
@@ -34,7 +35,7 @@ describe('planner', () => {
 
   it('prices listed Shapes at their live FWA price, so a historical board matches FWA\'s fee formula (E8)', () => {
     const edge = EDGE;
-    const at = { baseFee: 10n ** 9n, curatedBases: [E / 2n], markupBps: 2000, edgeBps: edge, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n), policyMaxReward: MAX_KEEPER_REWARD };
+    const at = { baseFee: 10n ** 9n, curatedBases: [E / 2n], markupBps: 2000, edgeBps: edge, mintFee: E / 1000n, restockFee: restockFeeAt(10n ** 9n), economics: V1_ECONOMICS };
     // Four 0.01 Shapes listed earlier at 10% markup, before the creator raised it to 20%; FWA keeps their old price.
     const listedPrice = prizePrice(0, { ...at, markupBps: 1000 });
     const counts = unpackPlan(packPlan([4, 0, 0, 0, 0, 0, 0, 0, 0]));
@@ -74,13 +75,13 @@ describe('planner', () => {
 
   it('prices a Shape prize at cost, markup on its backing and a basefee-indexed restocking fee per Shape', () => {
     const GWEI = 10n ** 9n;
-    expect(restockFeeAt(GWEI)).toBe(900_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.001145 ETH
-    expect(restockFeeAt(80n * GWEI)).toBe(900_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.0047 ETH
+    expect(restockFeeAt(GWEI)).toBe(910_000n * (GWEI + GWEI / 20n) + 2n * 10n ** 14n); // 0.0011555 ETH (910k recalibrated restocking gas)
+    expect(restockFeeAt(80n * GWEI)).toBe(910_000n * 5n * GWEI + 2n * 10n ** 14n); // capped at 5 gwei: 0.00475 ETH
     // 0.01 Shape: 0.01 + 0.001 mint fee + 0.0015 markup + one fee
     expect(prizePrice(0, inputs)).toBe(E / 100n + E / 1000n + 15n * E / 10_000n + restockFeeAt(GWEI));
     // 0.03 pack: three Shapes, three mint fees and three restocking fees
     expect(prizePrice(10, inputs)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 3n * restockFeeAt(GWEI));
-    expect(MAX_KEEPER_REWARD).toBe(16_450_000_000_000_000n); // (3.2M + 50k) * 5 gwei + 10 work units * 0.00002
+    expect(MAX_KEEPER_REWARD).toBe(16_500_000_000_000_000n); // (3.2M + 60k recalibrated overhead) * 5 gwei + 10 work units * 0.00002
   });
 
   it('predicts the unsettled draws the fill gate admits (test/TopHeavyGate.t.sol on the fork)', () => {
@@ -92,14 +93,22 @@ describe('planner', () => {
     // 17 x 0.01 Shapes is the smallest all-0.01 board that never pauses before FWA's limit
     expect(pendingDrawsAdmitted(counts([[0, 16]]))).toBe(4);
     expect(pendingDrawsAdmitted(counts([[0, 17]]))).toBe(5);
+    // Creator fill gate: 16 x 0.01 admits floor(16 x (1 - gate)); 0 keeps only the unavailable-inventory check, which
+    // since audit E1 refuses once the unreconciled draws could take every prize: 15, not 16 (16 would admit a 17th draw
+    // against 16 prizes).
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 5_000, 100)).toBe(8);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 0, 100)).toBe(15);
+    expect(pendingDrawsAdmitted(counts([[0, 5]]), 0, 100)).toBe(4); // test_case07e: five prizes, five outstanding refuse
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 10_000, 100)).toBe(0);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 7_000, 3)).toBe(3);
   });
 
   it('creator estimates use explicit V1 gas context and work-based fees', () => {
     // all 0.01 Shapes: every draw wins one Shape, so keeper pay per draw is one replacement call
     const e = economics([10, 0, 0, 0, 0, 0, 0, 0, 0], { ...inputs, curatedBases: [], restockFee: restockFeeAt(5n * 10n ** 8n), baseFee: 5n * 10n ** 8n });
-    // Assumption: 864k measured span plus 50k overhead, 0.55 gwei bid, one draw and one listed Shape unit.
+    // Assumption: 864k measured span plus 60k overhead, 0.55 gwei bid, one draw and one listed Shape unit.
     expect(e.keeperCostKnown).toBe(true);
-    expect(e.keeperPayPerDraw).toBeCloseTo(0.0005427, 12);
+    expect(e.keeperPayPerDraw).toBeCloseTo(0.0005482, 12);
     expect(e.marginPerDraw).toBeCloseTo(e.retainedRevenuePerDraw - e.replacementCostsPerDraw - e.mintFeesPerDraw - e.keeperPayPerDraw!, 12);
   });
 
@@ -128,9 +137,9 @@ describe('planner', () => {
     const at = { ...inputs, curatedBases: [] };
     expect(suggestedCreatorRevenueBps([10], at)).toBe(366);
     const e = economics([10], at);
-    expect(e.ownerProceeds).toBe(0.013645);
-    expect(e.creatorEarningsPerDraw).toBe(0.000499407);
-    expect(e.retainedRevenuePerDraw).toBe(0.013145593);
+    expect(e.ownerProceeds).toBe(0.0136555);
+    expect(e.creatorEarningsPerDraw).toBe(0.0004997913);
+    expect(e.retainedRevenuePerDraw).toBe(0.0131557087);
   });
 
   it('keeps a reviewed rate through target, markup, fees and policy quote changes', () => {
@@ -162,18 +171,19 @@ describe('planner', () => {
   it('holds only missing inventory, canonical listing calls, present draws and one working buffer', () => {
     const ten = DENOMS.map((_, d) => d === 0 ? 10 : 0), none = DENOMS.map(() => 0);
     const fee = E / 1000n, baseFee = 500_000_000n;
-    expect(requiredReserveAt(ten, none, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(119_640_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 0, MAX_KEEPER_REWARD, baseFee)).toBe(3_680_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee)).toBe(6_480_000_000_000_000n);
-    expect(requiredReserveAt(ten, ten, fee, 2, MAX_KEEPER_REWARD, baseFee, false)).toBe(2_800_000_000_000_000n);
-    expect(requiredReserveAt(ten, none, fee, 2, 0n, baseFee)).toBe(110_000_000_000_000_000n);
+    expect(requiredReserveAt(ten, none, fee, 0, V1_ECONOMICS, baseFee)).toBe(115_779_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 0, V1_ECONOMICS, baseFee)).toBe(1_993_000_000_000_000n);
+    // Each owed draw: (2.15M + 60k) gas at 0.55 gwei plus a processing and a reconciling work fee (since 2026-11-23).
+    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee)).toBe(4_504_000_000_000_000n);
+    expect(requiredReserveAt(ten, ten, fee, 2, V1_ECONOMICS, baseFee, false)).toBe(2_511_000_000_000_000n);
+    expect(requiredReserveAt(ten, none, fee, 2, undefined, baseFee)).toBe(110_000_000_000_000_000n);
     expect(evaluate(ten, { ...inputs, paidUpkeepEnabled: false }).requiredReserve).toBe(0n);
     const twenty = ten.map((n) => 2 * n);
-    const breakdown = reserveBreakdownAt(twenty, none, fee, 0, MAX_KEEPER_REWARD, baseFee);
+    const breakdown = reserveBreakdownAt(twenty, none, fee, 0, V1_ECONOMICS, baseFee);
     expect(breakdown.inventoryCost).toBe(220_000_000_000_000_000n);
-    expect(breakdown.listingBudget).toBe(11_920_000_000_000_000n);
-    expect(breakdown.workingBuffer).toBe(3_680_000_000_000_000n);
-    expect(breakdown.total).toBe(235_600_000_000_000_000n);
+    expect(breakdown.listingBudget).toBe(7_572_000_000_000_000n);
+    expect(breakdown.workingBuffer).toBe(1_993_000_000_000_000n);
+    expect(breakdown.total).toBe(229_565_000_000_000_000n);
   });
 
   it('uses canonical Shape-unit, denomination and value-order grouping for actual setup work', () => {
@@ -185,24 +195,29 @@ describe('planner', () => {
       .toEqual([[4, 2], [3, 1], [3, 1]]);
   });
 
-  it('clamps a hostile quote to actual useful work, included price and declared maximum', () => {
+  it('clamps a hostile quote to actual useful work and the included price under the selected economics', () => {
     const w = { measuredGas: 6_000_000n, gasPrice: 150_000_000n, baseFee: 100_000_000n,
       processedDraws: 0n, reconciledDraws: 1n, listedShapeUnits: 0n, listedPrizes: 0n };
-    expect(paymentBound(w, E)).toBe(117_500_000_000_000n);
-    expect(paymentBound(w, 1n)).toBe(1n);
-    expect(immutableWorkBudget(w, w.baseFee, E)).toBe(140_000_000_000_000n);
-    expect(paymentBound({ ...w, measuredGas: 1n }, E)).toBe(65_000_150_000_000n);
+    expect(paymentBound(w, V1_ECONOMICS)).toBe(81_500_000_000_000n); // (350k + 60k) * 0.15 gwei + one work fee
+    expect(paymentBound(w, undefined)).toBe(0n); // paid upkeep off
+    expect(workBudget(w, w.baseFee, V1_ECONOMICS)).toBe(81_500_000_000_000n);
+    expect(paymentBound({ ...w, measuredGas: 1n }, V1_ECONOMICS)).toBe(29_000_150_000_000n);
+    // A factory change applies directly: a doubled work fee and overhead move the bound, no outer literal clamps it.
+    const raised = { ...V1_ECONOMICS, workFee: 2n * V1_ECONOMICS.workFee, overheadGas: 120_000 };
+    expect(paymentBound(w, raised)).toBe((350_000n + 120_000n) * 150_000_000n + 40_000_000_000_000n);
   });
 
   it('quotes different pack surcharges and the selected policy maximum without a V1 fee inversion', () => {
     const counts = unpackPlan(packPlan([3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]));
     const fees = Array(16).fill(123n); fees[10] = 999n;
-    const custom = { ...inputs, policyMaxReward: E / 10n, restockFees: fees,
+    const selected = { ...V1_ECONOMICS, workFee: E / 10_000n };
+    const custom = { ...inputs, economics: selected, restockFees: fees,
       keeperQuotes: { reconcile: E / 100n, replace: Array(16).fill(E / 50n) } };
     expect(prizeRestockFee(10, custom)).toBe(999n);
     expect(prizePrice(10, custom)).toBe(3n * E / 100n + 3n * E / 1000n + 45n * E / 10_000n + 999n);
     const ev = evaluate(counts, custom);
-    expect(ev.requiredReserve).toBe(requiredReserveAt(counts, counts, inputs.mintFee, 0, E / 10n, inputs.baseFee));
+    expect(ev.requiredReserve).toBe(requiredReserveAt(counts, counts, inputs.mintFee, 0, selected, inputs.baseFee));
+    expect(ev.requiredReserve).toBeGreaterThan(requiredReserveAt(counts, counts, inputs.mintFee, 0, V1_ECONOMICS, inputs.baseFee));
     const econ = economics(counts, custom);
     expect(econ.keeperCostKnown).toBe(true);
     expect(econ.keeperPayPerDraw).toBeGreaterThan(0.01);
@@ -216,8 +231,8 @@ describe('planner', () => {
   });
 
   it('requires a selected maximum and complete quotes instead of substituting V1', () => {
-    const at = { ...inputs, v1Preview: false, policyMaxReward: undefined };
-    expect(() => economics([2], at)).toThrow('Policy maximum unavailable');
+    const at = { ...inputs, v1Preview: false, economics: undefined };
+    expect(() => economics([2], at)).toThrow('Keeper economics unavailable');
     const partial = economics([2], { ...inputs, v1Preview: false, keeperQuotes: { replace: [], reconcile: 1n } });
     expect(partial.keeperCostKnown).toBe(false);
     expect(partial.keeperPayPerDraw).toBeUndefined();
@@ -231,38 +246,28 @@ describe('planner', () => {
     expect(e.replacementCostsPerDraw).toBeGreaterThan(0);
   });
 
-  it('separates maintenance activation funding from a 100 ETH inventory deficit', () => {
+  it('separates maintenance funding from a 100 ETH inventory deficit', () => {
     const baseFee = 500_000_000n;
-    const oldMaximum = 1_000_000_000_000_000n;
-    const maximum = MAX_KEEPER_REWARD;
-    const low = maintenanceBudgetAt(2, oldMaximum, baseFee).total;
-    const high = maintenanceBudgetAt(2, maximum, baseFee).total;
-    expect(low).toBe(3_000_000_000_000_000n);
-    expect(high).toBe(6_480_000_000_000_000n);
-    expect(policyActivationFundingAt(2, maximum, oldMaximum, baseFee, true, true, 0n))
-      .toMatchObject({ required: low, shortfall: 0n, canActivate: true });
-    const increase = policyActivationFundingAt(2, oldMaximum, maximum, baseFee, true, true, high);
-    expect(increase).toMatchObject({ required: high, shortfall: 0n, canActivate: true });
-    expect(policyActivationFundingAt(2, oldMaximum, maximum, baseFee, true, true, high - low))
-      .toMatchObject({ required: high, shortfall: low, canActivate: false });
-    expect(policyActivationFundingAt(2, maximum, maximum, baseFee, true, false, 0n))
-      .toMatchObject({ oldBudget: 0n, required: high, shortfall: high, canActivate: false });
+    // Two outstanding draws at (2.15M + 60k) gas and two work fees each, plus the larger operating call at
+    // (3.2M + 60k) gas, 0.55 gwei.
+    const high = maintenanceBudgetAt(2, V1_ECONOMICS, baseFee).total;
+    expect(high).toBe(4_504_000_000_000_000n);
+    expect(maintenanceBudgetAt(2, { ...V1_ECONOMICS, workFee: 0n }, baseFee).total).toBe(4_224_000_000_000_000n);
+    expect(maintenanceBudgetAt(2, undefined, baseFee).total).toBe(0n);
     const target = DENOMS.map((_, d) => d === 8 ? 1 : 0);
-    expect(requiredReserveAt(target, DENOMS.map(() => 0), inputs.mintFee, 2, maximum, baseFee))
+    expect(requiredReserveAt(target, DENOMS.map(() => 0), inputs.mintFee, 2, V1_ECONOMICS, baseFee))
       .toBeGreaterThan(100n * E);
-    expect(increase.required).toBeLessThan(E / 100n);
-    expect(policyActivationFundingAt(3, oldMaximum, maximum, baseFee, true, true, high).shortfall).toBeGreaterThan(0n);
-    expect(policyActivationFundingAt(2, oldMaximum, maximum, 5_000_000_000n, true, true, high).shortfall).toBeGreaterThan(0n);
+    expect(high).toBeLessThan(E / 100n);
   });
 
 });
 
 describe('V1 quote arithmetic from exported Solidity parameters', () => {
-  it('matches the independent absolute policy quote exercised by Solidity', () => {
+  it('matches the independent absolute payment exercised by Solidity', () => {
     const work = { measuredGas: 800_000n, gasPrice: 550_000_000n, baseFee: 500_000_000n,
       reconciledDraws: 1n, listedShapeUnits: 1n, listedPrizes: 1n, processedDraws: 0n };
-    expect(quoteV1(work)).toBe(507_500_000_000_000n);
-    expect(quoteV1({ ...work, gasPrice: 1n })).toBe(40_000_000_850_000n);
+    expect(quoteV1(work)).toBe(513_000_000_000_000n); // (800k + 60k) * 0.55 gwei + 2 * 0.00002
+    expect(quoteV1({ ...work, gasPrice: 1n })).toBe(40_000_000_860_000n);
   });
   it('caps measured gas and gas price while retaining verified-unit service fees', () => {
     const work = keeperWorkAt(100_000_000_000n, 200_000_000_000n, 0);

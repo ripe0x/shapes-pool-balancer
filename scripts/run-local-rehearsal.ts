@@ -13,7 +13,7 @@ import {
 } from 'viem';
 import { Keeper, MAX_TRANSACTION_GAS, revertName } from '../keeper/keeper';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../shared/abi';
-import { MAX_KEEPER_REWARD, requiredReserveAt, type Counts } from '../shared/planner';
+import { requiredReserveAt, type Counts, type Economics } from '../shared/planner';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const EVIDENCE = join(ROOT, 'docs/receipts/rehearsal-04bc760-preparation');
@@ -136,16 +136,14 @@ async function record(hash: Hash, fn: string, category: string, nonce: number, i
 }
 function permitted(actor: Address, to: Address|undefined, fn: string, data: Hex, value: bigint) {
   const pool = journal.pools.find(p => to && p.balancer.toLowerCase() === to.toLowerCase());
-  const creatorFns = ['configure','listCuratedBatch','depositETH','open','close','withdrawCurated','unlistShapes','claimSurplus','proposeKeeperPolicy','cancelKeeperPolicy','setPaidUpkeepEnabled','performUpkeepUnpaid'];
+  const creatorFns = ['configure','listCuratedBatch','depositETH','open','close','withdrawCurated','unlistShapes','claimSurplus','setKeeperPolicy','setPaidUpkeepEnabled','performUpkeepUnpaid'];
   if (!to) { assert.ok([roles.creatorA, roles.creatorB].includes(actor)); assert.equal(fn, 'DemoNFT CREATE'); assert.equal(value, 0n); assert.equal(data, demoBytecode()); return; }
   if (pool && creatorFns.includes(fn)) { eq(actor, pool.creator); return; }
-  if (pool && fn === 'activateKeeperPolicy') { eq(actor, roles.keeper); assert.equal(value, 0n); return; }
   if (pool && fn === 'performUpkeep') { eq(actor, roles.keeper); assert.equal(value, 0n); return; }
   if (journal.pools.some(p => p.demo.toLowerCase() === to.toLowerCase())) { assert.ok(fn === 'mint' || fn === 'approve'); eq(actor, journal.pools.find(p => p.demo.toLowerCase() === to.toLowerCase())!.creator); assert.equal(value, 0n); return; }
   if (to.toLowerCase() === factory().toLowerCase()) {
     if (fn === 'createBalancer') assert.ok([roles.creatorA,roles.creatorB].includes(actor));
-    else if (fn === 'activateDefaultKeeperPolicy') eq(actor, roles.keeper);
-    else { assert.ok(['proposeDefaultKeeperPolicy','cancelDefaultKeeperPolicy'].includes(fn)); eq(actor, roles.policyAdmin); }
+    else { assert.equal(fn, 'setEconomics'); eq(actor, roles.policyAdmin); }
     assert.equal(value, 0n); return;
   }
   if (journal.pools.some(p => p.pool.toLowerCase() === to.toLowerCase())) { assert.ok(['acquireBatch','withdrawAcquisitionRefund'].includes(fn)); eq(actor, roles.buyer); return; }
@@ -254,11 +252,11 @@ async function setup(creator:Address, counts:Counts) {
   await send(creator,factory(),balancerFactoryAbi,'createBalancer',[ZERO]);
   p.pool=await read<Address>(balancer,poolBalancerAbi,'pool');save();
   eq(await read<Address>(balancer,poolBalancerAbi,'creator'),creator);eq(await read<Address>(p.pool,fwaPoolAbi,'owner'),balancer);
-  await send(creator,balancer,poolBalancerAbi,'configure',[1500,p.target]);
+  await send(creator,balancer,poolBalancerAbi,'configure',[1500,p.target,await read<bigint>(await read<Address>(balancer,poolBalancerAbi,'SHAPES'),shapesAbi,'mintFee')]);
   for(let id=1n;id<=2n;id++) { journal.curatedContributions.push({creator,demo,tokenId:String(id),notionalWei:String(id*ETH/4n),initial:true});save();await send(creator,demo,demoAbi,'mint',[creator,id]);await send(creator,demo,erc721Abi,'approve',[balancer,id]); }
   await send(creator,balancer,poolBalancerAbi,'listCuratedBatch',[[{collection:demo,tokenId:1n,base:ETH/4n},{collection:demo,tokenId:2n,base:ETH/2n}]]);
   const b=await pub.getBlock(),fee=await read<bigint>(await read<Address>(balancer,poolBalancerAbi,'SHAPES'),shapesAbi,'mintFee');
-  const amount=requiredReserveAt(counts,Array(16).fill(0),fee,0,MAX_KEEPER_REWARD,b.baseFeePerGas??0n);
+  const amount=requiredReserveAt(counts,Array(16).fill(0),fee,0,await read<Economics>(balancer,poolBalancerAbi,'effectiveEconomics'),b.baseFeePerGas??0n);
   await send(creator,balancer,poolBalancerAbi,'depositETH',[],amount);
   const opened=await send(creator,balancer,poolBalancerAbi,'open');
   const actual=await read<bigint>(balancer,poolBalancerAbi,'requiredReserve',[],{blockNumber:opened.receipt.blockNumber});
@@ -335,11 +333,10 @@ async function outcomes() {
 }
 async function policies() {
   const p=journal.pools[0];
-  for(const fn of ['proposeKeeperPolicy','cancelKeeperPolicy','proposeKeeperPolicy'])await send(p.creator,p.balancer,poolBalancerAbi,fn,fn==='cancelKeeperPolicy'?[]:[policy()]);
-  for(const fn of ['proposeDefaultKeeperPolicy','cancelDefaultKeeperPolicy','proposeDefaultKeeperPolicy'])await send(roles.policyAdmin,factory(),balancerFactoryAbi,fn,fn==='cancelDefaultKeeperPolicy'?[]:[policy()]);
-  for(const [address,abi,fn]of [[p.balancer,poolBalancerAbi,'activateKeeperPolicy'],[factory(),balancerFactoryAbi,'activateDefaultKeeperPolicy']] as const){await assert.rejects(pub.simulateContract({account:roles.keeper,address,abi,functionName:fn,...await fees()} as never),(e:unknown)=>revertName(e)==='PolicyNotReady','early activation must revert with PolicyNotReady');}
-  await mutate('approved single policy time jump 172801 seconds',()=>test.increaseTime({seconds:172801}));await mine();
-  await send(roles.keeper,p.balancer,poolBalancerAbi,'activateKeeperPolicy');await send(roles.keeper,factory(),balancerFactoryAbi,'activateDefaultKeeperPolicy');
+  // Policy changes are immediate and creator/policyAdmin-only (no delay, no public activation).
+  await send(p.creator,p.balancer,poolBalancerAbi,'setKeeperPolicy',[policy()]);
+  const economics=await read<Record<string,unknown>>(factory(),balancerFactoryAbi,'economics');
+  await send(roles.policyAdmin,factory(),balancerFactoryAbi,'setEconomics',[{...economics,policy:policy()}]);
   eq(await read<Address>(p.balancer,poolBalancerAbi,'keeperPolicy'),policy());eq(await read<Address>(journal.pools[1].balancer,poolBalancerAbi,'keeperPolicy'),policy());
   await send(p.creator,p.balancer,poolBalancerAbi,'setPaidUpkeepEnabled',[false]);
   const settings=await read<Hash>(p.balancer,poolBalancerAbi,'settingsHash');
@@ -366,7 +363,7 @@ async function closeout() {
   await outcomes();assert.ok(journal.draws.some(d=>d.outcome===2),'at least one real fulfilled draw');
   let rewards=0n;for(const p of journal.pools){const logs=await pub.getLogs({address:p.balancer,event:parseAbiItem('event KeeperPaid(address indexed keeper,uint256 amount,uint256 gasUsed)'),args:{keeper:roles.keeper},fromBlock:BigInt(prepared.forkBlock),toBlock:'latest'});for(const l of logs)rewards+=l.args.amount!;}
   const keeperGas=journal.receipts.filter(r=>r.actor.toLowerCase()===roles.keeper.toLowerCase()).reduce((n,r)=>n+BigInt(r.cost),0n);
-  assert.equal(await pub.getBalance({address:roles.keeper}),funding.keeper+rewards-keeperGas,'keeper actual balance reconciles including policy activation gas');
+  assert.equal(await pub.getBalance({address:roles.keeper}),funding.keeper+rewards-keeperGas,'keeper actual balance reconciles rewards and gas');
   journal.reports.push({keeperRewardsWei:rewards,keeperAllGasWei:keeperGas,keeperNetWei:rewards-keeperGas});
   journal.reports.push({curatedContributions:journal.curatedContributions,syntheticNftNotionalWei:journal.curatedContributions.reduce((n,c)=>n+BigInt(c.notionalWei),0n),creatorProfitClaim:'not measured; synthetic NFT contributions are not real market value'});
   journal.reports.push({closed:true,gasWei:paid(),depositsWei:journal.deposits,buyerSubmittedWei:journal.buyer,edgeReservedWei:journal.edge,edgeActualWei:journal.draws.filter(d=>d.outcome===2).reduce((n,d)=>n+BigInt(d.edgeReserveWei),0n),vrfActualWei:journal.vrf,fulfilled:journal.draws.filter(d=>d.outcome===2).length,refunded:journal.draws.filter(d=>d.outcome===4).length,keeperHealth:keeper.health(),limitations:['controlled Keeper ticks, not CLI','coordinator impersonation, not real randomness','development unlocked accounts, not real wallet signatures','UI writes not executed by this driver']});journal.completed=true;save();
@@ -421,7 +418,7 @@ else if(flag('--self-check')){
   assert.ok(caps.rounds*5+2<=caps.draws);assert.ok(prepared.actions.every((a:any)=>BigInt(a.gasLimit)<=MAX_TRANSACTION_GAS));
   assert.ok(BigInt(prepared.deploymentGasReserveWei)+EXIT_RESERVE<caps.gas);
   budget(1n,0n);assert.throws(()=>budget(caps.gas,0n),'reserve cannot be spent by normal calls');
-  assert.equal(decodeFunctionData({abi:poolBalancerAbi,data:encodeFunctionData({abi:poolBalancerAbi,functionName:'configure',args:[1500,20n]})}).functionName,'configure');
+  assert.equal(decodeFunctionData({abi:poolBalancerAbi,data:encodeFunctionData({abi:poolBalancerAbi,functionName:'configure',args:[1500,20n,0n]})}).functionName,'configure');
   console.log(stringify({selfCheck:'pass',planHash,route,caps,mutationCount:0}));
 }else if(option('--approved-plan-hash'))execute().catch(e=>{if(journal){journal.failure=String(e);save();}console.error(e);process.exitCode=1;});
 else console.log(stringify({planHash,plan,reportOnlyMissingSourcePaths,sourceVerification:'not performed; execution requires exact frozen archive inputs',execution:'not authorized; no node requests or writes made'}));

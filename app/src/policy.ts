@@ -1,15 +1,8 @@
 import { decodeFunctionResult, encodeFunctionData, multicall3Abi, parseAbi, type Abi, type Address, type PublicClient, type Block, type Hex } from 'viem';
-import { DENOMS, SHAPES_IN, keeperWorkAt, paymentBound } from '../../shared/planner';
+import { DENOMS, SHAPES_IN, keeperWorkAt, maxPaymentOf, maxSurchargeOf, paymentBound, restockFeeAt, type Economics } from '../../shared/planner';
 
-const lesser = (a: bigint, b: bigint) => (a < b ? a : b);
+export { maxPaymentOf, maxSurchargeOf, type Economics };
 
-export const policyAbi = parseAbi([
-  'function interfaceVersion() view returns (uint256)',
-  'function version() view returns (uint256)',
-  'function maxReward() view returns (uint256)',
-  'function quoteRestock(uint8 denomination,uint256 shapeUnits,uint256 baseFee) view returns (uint256)',
-  'function quoteReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work) view returns (uint256)',
-]);
 const poolQuoteAbi = parseAbi([
   'function restockFeeFor(uint8 denomination) view returns (uint256)',
   'function quoteKeeperReward((uint256 measuredGas,uint256 gasPrice,uint256 baseFee,uint256 reconciledDraws,uint256 listedShapeUnits,uint256 listedPrizes,uint256 processedDraws) work) view returns (uint256)',
@@ -31,39 +24,26 @@ export async function readsAt(pub: PublicClient, reads: Read[], at: { blockNumbe
   return results.map((r, i) => decodeFunctionResult({ abi: reads[i].abi, functionName: reads[i].functionName, data: r.returnData } as never) as unknown);
 }
 
-/** Existing pools quote through Balancer; a not-yet-created pool has only unverified direct previews. */
-export async function policyEconomics(pub: PublicClient, policy: Address, cachedMaximum?: bigint, balancer?: Address, snapshot?: Pick<Block, 'number' | 'baseFeePerGas' | 'timestamp'>) {
+/** Existing pools quote through Balancer under their effective economics. A pool not created yet has no quote of its
+ *  own: its preview is the same in-library formula (KeeperPolicyCalls.reward / restock) evaluated here on the factory's
+ *  `economics`, an estimate at the snapshot's basefee. */
+export async function policyEconomics(pub: PublicClient, economics: Economics, balancer?: Address, snapshot?: Pick<Block, 'number' | 'baseFeePerGas' | 'timestamp'>) {
   const block = snapshot ?? await pub.getBlock();
-  const at = { address: policy, blockNumber: block.number!, gas: 100_000n };
   const baseFee = block.baseFeePerGas ?? 0n;
-  const [version, declaredMaximum] = await Promise.all([
-    pub.readContract({ ...at, abi: policyAbi, functionName: 'version' }).catch(() => undefined),
-    cachedMaximum === undefined ? pub.readContract({ ...at, abi: policyAbi, functionName: 'maxReward' }) : Promise.resolve(cachedMaximum),
-  ]);
-  const maxReward = cachedMaximum ?? declaredMaximum;
-  // A preview bid is a local assumption; only bounded pool quotes promise compensation.
+  // A preview bid is a local assumption; only the pool's own quotes promise compensation.
   const gasPrice = baseFee + 50_000_000n;
   const callContext = { blockNumber: block.number!, gasPrice, gasPerRead: 150_000n };
-  const restockFees = await readsAt(pub, DENOMS.map((_, d) => balancer
-    ? { address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] }
-    : { address: policy, abi: policyAbi, functionName: 'quoteRestock', args: [d, BigInt(SHAPES_IN[d]), baseFee] }), callContext) as bigint[];
-  // An existing pool quotes keeper pay itself. A pool not created yet has no quote of its own: the preview asks the
-  // policy directly and applies the pool's bound (KeeperPolicyCalls.reward), an unverified estimate like its restocking
-  // fees. Either way a failed quote leaves keeper costs unknown.
-  const keeperQuotes = await (async () => {
-    const work = (d?: number) => keeperWorkAt(baseFee, gasPrice, d);
-    const quote = (d?: number) => balancer
-      ? { address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] }
-      : { address: policy, abi: policyAbi, functionName: 'quoteReward', args: [work(d)] };
-    const ds = [undefined, ...DENOMS.map((_, d) => d)];
-    const out = await readsAt(pub, ds.map(quote), callContext) as bigint[];
-    const [reconcile, ...replace] = balancer ? out : out.map((q, i) => lesser(q, paymentBound(work(ds[i]), maxReward)));
-    return { reconcile, replace };
-  })().catch(() => undefined);
-  if (restockFees.some((fee, d) => fee > BigInt(SHAPES_IN[d]) * 102_000_000_000_000_000n)) {
-    throw new Error('Policy surcharge exceeds the pool limit');
-  }
-  return { version, policyMaxReward: maxReward, baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };
+  const work = (d?: number) => keeperWorkAt(baseFee, gasPrice, d);
+  const ds = [undefined, ...DENOMS.map((_, d) => d)];
+  const restockFees = balancer
+    ? await readsAt(pub, DENOMS.map((_, d) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] })), callContext) as bigint[]
+    : DENOMS.map((_, d) => BigInt(SHAPES_IN[d]) * restockFeeAt(baseFee, economics));
+  // A failed pool quote rejects like a failed restock read: callers show keeper costs as unavailable.
+  const [reconcile, ...replace] = balancer
+    ? await readsAt(pub, ds.map((d) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] })), callContext) as bigint[]
+    : ds.map((d) => paymentBound(work(d), economics));
+  const keeperQuotes = { reconcile, replace };
+  return { economics, policyMaxReward: maxPaymentOf(economics), baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };
 }
 
 export type PolicyEconomics = Awaited<ReturnType<typeof policyEconomics>>;

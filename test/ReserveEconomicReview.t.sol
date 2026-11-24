@@ -3,26 +3,15 @@ pragma solidity 0.8.28;
 
 import {ForkBase, ITimeout} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 
-/// @dev An accepted creator-selected counterparty, deliberately requesting every allowed wei and no surcharge.
-contract ReserveReviewMaxPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 1;}
-    function version() external pure returns(uint256){return 1;}
-    function maxReward() external pure returns(uint256){return 0.311 ether;}
-    function quoteReward(Work calldata) external pure returns(uint256){return type(uint256).max;}
-    function quoteRestock(uint8,uint256,uint256) external pure returns(uint256){return 0;}
-}
-
-contract ReserveReviewLowPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 1;}
-    function version() external pure returns(uint256){return 1;}
-    function maxReward() external pure returns(uint256){return 0.00005 ether;}
-    function quoteReward(Work calldata) external pure returns(uint256){return 0.00005 ether;}
-    function quoteRestock(uint8,uint256,uint256) external pure returns(uint256){return 0;}
+/// @dev R95 replaced the max-requesting, zero-surcharge test policies this suite used with local economics that charge
+///      no restocking surcharge; the reward is the in-library formula, which is what the policy's maximum was capped to.
+function _noSurcharge(KeeperPolicyCalls.Economics memory e) pure returns (KeeperPolicyCalls.Economics memory) {
+    e.restockGas = 0;
+    e.restockFlat = 0;
+    return e;
 }
 
 /// @dev Creator-created collection, which FWA accepts without an allowlist.
@@ -59,23 +48,26 @@ contract ReserveEconomicReviewTest is ForkBase {
         createBalancer(1 ether);
         configure(plan([uint256(20),0,0,0,0,0,0,0,0]));
         listCurated(1,0.2 ether);
-        address hostile=address(new ReserveReviewMaxPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(hostile);
-        vm.warp(vm.getBlockTimestamp()+2 days);
-        balancer.activateKeeperPolicy();
+        KeeperPolicyCalls.Economics memory local=_noSurcharge(factory.economics());
+        vm.prank(creator);balancer.setLocalEconomics(local);
         vm.prank(creator);balancer.open();
         fillUp();
         assertEq(balancer.getActiveShapes()[0],20);
-        assertEq(balancer.requiredReserve(),0.00103265 ether,"one current call, no hypothetical full future board");
+        assertEq(balancer.requiredReserve(),(3_200_000+V1_OVERHEAD)*0.0505 gwei+0.0002 ether,"one current call, no hypothetical full future board");
     }
 
+    /// @dev Outage-only economic note, not an abuse path: a buyer cannot cause undelivered randomness, so this draw
+    ///      expires only during a randomness outage. At this suite's 0.001 gwei the buyer-keeper coalition nets the
+    ///      creator-paid reward minus the randomness fee; with buyer gas counted the net is positive only below about
+    ///      0.017 gwei.
     function test_manufacturedExpiredDrawPaysBuyerKeeperButCostsTheirCreator() public {
         uint256 creatorStart=address(balancer).balance;
         uint256 bkStart=buyer.balance+keeper.balance;
         (uint256 price,uint256 vrf,uint256 total)=pool.quoteAcquisitionPrice(1);
         assertEq(vrf,2_340_000_000_000,"deployed VRF fee at .001 gwei");
         buy(buyer,1);
-        vm.roll(block.number+ITimeout(address(pool)).selectionTimeoutBlocks()+1);
+        assertLt(ITimeout(address(pool)).selectionTimeoutBlocks(),50);
+        vm.roll(block.number+50); // past FWA's word deadline and the 50-block processing grace
         upkeep();
         assertEq(balancer.reconciledSequence(),1,"expired draw was actually reconciled");
         assertEq(ReserveReviewRefund(address(pool)).acquisitionRefundCredit(buyer),price);
@@ -100,7 +92,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         upkeep();
         assertEq(balancer.getActiveShapes()[0],20);
         uint256 reward=keeper.balance-keeperStart;
-        assertGt(reward,0.00005 ether);
+        assertGt(reward,0.00002 ether,"gas paid beyond the one work fee");
         assertEq(creatorStart+keeperStart-address(balancer).balance-keeper.balance,0.001 ether,"only new mint fee leaves coalition before gas");
         assertEq(_listedFees(balancer),0,"hostile zero quote never becomes imagined cash");
     }
@@ -117,8 +109,8 @@ contract ReserveEconomicReviewTest is ForkBase {
         vm.prank(creator);balancer.open();fillUp();
         uint256 surplus=balancer.withdrawableSurplus();
         vm.prank(creator);balancer.claimSurplus(surplus,creator);
-        assertEq(address(balancer).balance,0.00368 ether,"only current-call buffer remains liquid");
-        assertEq(_listedFees(balancer),0.0139 ether,"unsold fee expectation is distinct from liquid ETH");
+        assertEq(address(balancer).balance,0.001993 ether,"only current-call buffer remains liquid");
+        assertEq(_listedFees(balancer),0.01401 ether,"unsold fee expectation is distinct from liquid ETH");
         uint256 top;uint256 topSlot;uint256 token;
         uint256[] memory ids=balancer.getActiveIds();
         for(uint256 i;i<ids.length;++i){(uint8 kind,uint8 d,,,)=balancer.items(ids[i]);if(kind==2&&d==8){top=ids[i];(,,,token,,,topSlot,)=pool.listings(top);break;}}
@@ -166,8 +158,10 @@ contract ReserveEconomicReviewTest is ForkBase {
         assertEq(probe.observedBaseFee(),0.5 gwei);assertEq(probe.observedGasPrice(),0.55 gwei);
         vm.prank(creator);balancer=_createFixture(creator, bytes32(uint256(2)), 1 ether);
         pool=balancer.pool();configure(plan([uint256(20),0,0,0,0,0,0,0,0]));listCurated(3,0.2 ether);
-        address low=address(new ReserveReviewLowPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(low);vm.warp(vm.getBlockTimestamp()+2 days);balancer.activateKeeperPolicy();
+        // Minimal local economics: no gas reimbursement and a 0.000005 ETH work fee, so one call can cost at most 0.00005.
+        KeeperPolicyCalls.Economics memory low=_noSurcharge(factory.economics());
+        low.gasPriceCeiling=0;low.workFee=0.000005 ether;
+        vm.prank(creator);balancer.setLocalEconomics(low);
         vm.prank(creator);balancer.open();fillUp();
         uint256 free=balancer.withdrawableSurplus();vm.prank(creator);balancer.claimSurplus(free,creator);
         assertEq(address(balancer).balance,0.00005 ether);
@@ -175,15 +169,14 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256 oldShape;uint112 oldBase;uint112 oldPrice;
         for(uint256 i;i<listings.length;++i){(uint8 kind,,,uint112 bs,uint112 pr)=balancer.items(listings[i]);if(kind==2){oldShape=listings[i];oldBase=bs;oldPrice=pr;break;}}
         assertEq(oldPrice,0.0125 ether);
-        address higher=address(new ReserveReviewMaxPolicy());
-        vm.prank(creator);balancer.proposeKeeperPolicy(higher);vm.warp(vm.getBlockTimestamp()+2 days);
+        KeeperPolicyCalls.Economics memory higher=_noSurcharge(factory.economics());
         uint256[] memory request=buy(buyer,1);
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),1);
-        (uint256 required,uint256 shortfall)=balancer.policyFunding(higher);
-        assertEq(required,0.00508 ether,"one current-call .00368 plus one actual draw .0014");
-        assertEq(shortfall,0.00503 ether);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);balancer.activateKeeperPolicy();
-        vm.prank(creator);balancer.depositETH{value:shortfall}();balancer.activateKeeperPolicy();
+        (uint256 required,uint256 shortfall)=balancer.maintenanceFunding(higher);
+        assertEq(required,_workingBufferAt(0.55 gwei)+(2_150_000+V1_OVERHEAD)*0.55 gwei+0.00004 ether,"one current call plus one actual draw");
+        assertEq(shortfall,required-0.00005 ether);
+        vm.prank(creator);vm.expectRevert(PoolBalancer.ReserveNotFunded.selector);balancer.setLocalEconomics(higher);
+        vm.prank(creator);balancer.depositETH{value:shortfall}();vm.prank(creator);balancer.setLocalEconomics(higher);
         (,,,uint112 afterBase,uint112 afterPrice)=balancer.items(oldShape);
         assertEq(afterBase,oldBase);assertEq(afterPrice,oldPrice,"activation never reprices unsold old inventory");
         fulfill(request[0],0);upkeep();

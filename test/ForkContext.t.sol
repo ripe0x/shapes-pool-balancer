@@ -43,10 +43,10 @@ contract ForkContextTest is ForkBase {
         uint256[] memory ids = balancer.getActiveIds();
         assertEq(ids.length, 1, "one Shape listed");
         (,,,, uint112 price) = balancer.items(ids[0]);
-        uint256 restock = 900_000 * (0.5 gwei + 0.05 gwei) + 0.0002 ether;
+        uint256 restock = V1_RESTOCK_GAS * (0.5 gwei + 0.05 gwei) + 0.0002 ether;
         uint256 expected = 0.01 ether + shapes.mintFee() + 0.01 ether * uint256(MARKUP) / 10_000 + restock;
         assertEq(price, expected, "listing carries the restocking fee at the real basefee");
-        assertGt(restock, 900_000 * 0.05 gwei + 0.0002 ether, "not the zero-basefee fee");
+        assertGt(restock, V1_RESTOCK_GAS * 0.05 gwei + 0.0002 ether, "not the zero-basefee fee");
 
         listCurated(1, 0.1 ether);
         (uint256 fee,, uint256 total) = pool.quoteAcquisitionPrice(1);

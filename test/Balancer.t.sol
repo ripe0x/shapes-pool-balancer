@@ -67,10 +67,10 @@ contract BalancerTest is ForkBase {
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false), new PoolBalancer.CuratedInput[](0));
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/
@@ -80,10 +80,11 @@ contract BalancerTest is ForkBase {
         uint256[] memory ids = new uint256[](1);
         ids[0] = curatedA;
         address[2] memory callers = [stranger, keeper];
+        uint256 fee = shapes.mintFee();
         for (uint256 i; i < 2; ++i) {
             vm.startPrank(callers[i]);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
-            balancer.configure(1500, planA);
+            balancer.configure(1500, planA, fee);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
             balancer.open();
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
@@ -413,7 +414,11 @@ contract BalancerTest is ForkBase {
         uint256[] memory ids = buy(buyer, 1);
         fulfill(ids[0], wordForSlot(slot));
         settle();
-        assertEq(evil.ownerOf(1), buyer);
+        assertGt(evil.attempts(), 0, "the delivery transfer tried to re-enter");
+        assertFalse(evil.reentered(), "neither re-entry succeeded");
+        // Delivery itself is not asserted: since 2026-11-23 the re-entrant upkeep also reads FWA's queue head, and this
+        // hook's two re-entry attempts measured over FWA's 150k delivery gas, so FWA quarantines the NFT (a collection
+        // whose transfer needs more than that is SECURITY G-1). Before, they fitted and the NFT reached the buyer.
         upkeep();
         assertTrue(balancer.canPurchase(buyer));
     }
@@ -433,8 +438,9 @@ contract BalancerTest is ForkBase {
         assertEq(have[2], 1, "the drawn 0.1 Shape was not replaced");
 
         // Re-configuring accepts the new fee; prices pass it through to players, so any markup works
-        vm.prank(creator);
-        balancer.configure(MARKUP, planA);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, planA, shapes.mintFee());
+        vm.stopPrank();
         fillUp();
         assertTrue(balancer.canPurchase(buyer));
         uint256[] memory ids = balancer.getActiveIds();
@@ -456,7 +462,7 @@ contract BalancerTest is ForkBase {
     /// A fully stocked board needs a bounded working buffer, with no duplicate prize backing.
     function test_reserveMath() public view {
         uint256 expected = _workingBuffer();
-        assertEq(expected, 0.00368 ether, "independent normal-gas working buffer");
+        assertEq(expected, 0.001993 ether, "independent normal-gas working buffer");
         assertEq(balancer.requiredReserve(), expected);
         assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
     }
@@ -511,8 +517,9 @@ contract BalancerTest is ForkBase {
         assertEq(shapePrice, shapeBase + balancer.restockFee());
 
         // change the markup; existing listings are untouched
-        vm.prank(creator);
-        balancer.configure(3000, planA);
+        vm.startPrank(creator);
+        balancer.configure(3000, planA, shapes.mintFee());
+        vm.stopPrank();
         (,,,, uint112 priceAfter) = balancer.items(curatedA);
         assertEq(priceAfter, priceA, "existing curated price unchanged by a markup change");
         (,,,, uint112 shapeAfter) = balancer.items(shape);
@@ -574,16 +581,17 @@ contract BalancerTest is ForkBase {
     }
 
     function test_configureRejectsBadTargets() public {
+        uint256 fee = shapes.mintFee();
         vm.startPrank(creator);
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, 0); // empty
+        balancer.configure(1500, 0, fee); // empty
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0])); // > 1,000 prizes
-        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0])); // 1,000 is accepted
+        balancer.configure(1500, plan([uint256(1_001), 0, 0, 0, 0, 0, 0, 0, 0]), fee); // > 1,000 prizes
+        balancer.configure(1500, plan([uint256(1_000), 0, 0, 0, 0, 0, 0, 0, 0]), fee); // 1,000 is accepted
         vm.expectRevert(PoolBalancer.InvalidPlan.selector);
-        balancer.configure(1500, planA | (uint256(1) << 256 - 1)); // stray high bits above 16 counts
+        balancer.configure(1500, planA | (uint256(1) << 256 - 1), fee); // stray high bits above 16 counts
         vm.expectRevert(PoolBalancer.InvalidConfig.selector);
-        balancer.configure(10_001, planA); // markup too high
+        balancer.configure(10_001, planA, fee); // markup too high
         vm.stopPrank();
     }
 
