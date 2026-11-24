@@ -517,6 +517,8 @@ export function App() {
   const [mine, setMine] = useState<Address[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Address>();
+  // The pool just created on this visit: its page says so while its data loads.
+  const [justCreated, setJustCreated] = useState<Address>();
   // Everyone lands on Home (Community pools until the main pool opens), except a pool creation in progress (or a connect
   // from the Design preview), which resumes.
   const [page, setPage] = useState<Page>(() => (loadDraft()?.creation ? 'new' : routeOf(location.hash) ? 'main' : LANDING));
@@ -657,10 +659,10 @@ export function App() {
       </main>}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b) => { open(b); reload(); }} />
+          onCreated={(b) => { setJustCreated(b); open(b); reload(); }} />
       )}
       {isConnected && loaded && view === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setPage('new'); }} />}
-      {isConnected && view === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} />}
+      {isConnected && view === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address!} tab={tab} setTab={setTab} onBack={() => setPage('list')} created={justCreated?.toLowerCase() === selected.toLowerCase()} />}
       </div>
     </>
   );
@@ -702,17 +704,28 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
   );
 }
 
-function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void }) {
+function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; created?: boolean }) {
   const { data: d, error, refresh } = useBalancer(balancer);
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
+  // While the pool's reads load: its header and tabs, and a clear loading block (it names a pool just created).
   if (!d) return <div className="pp">
-    <div className="poolhead"><div className="ph-row"><div className="ph-id">
-      <span className="crumb"><button className="link quiet" onClick={onBack}>Community pools</button> /</span>
-      <h1 className="ph-name">Pool {short(balancer)}</h1>
-      <div className="ph-meta"><span className="mono">{balancer}</span></div>
-    </div></div></div>
-    <p className="txline">Loading the pool…</p>
+    <div className="poolhead">
+      <div className="ph-row"><div className="ph-id">
+        <span className="crumb"><button className="link quiet" onClick={onBack}>Community pools</button> /</span>
+        <h1 className="ph-name">Pool {short(balancer)}</h1>
+        <div className="ph-meta"><span className="mono">{balancer}</span></div>
+      </div></div>
+      <nav className="tabs" aria-label="Sections">{(['overview', 'nfts', 'mix', 'settings'] as Tab[]).map((t) => <button key={t} disabled aria-current={tab === t ? 'page' : undefined}>{TAB_LABELS[t]}</button>)}</nav>
+    </div>
+    <div className="status" role="status"><span><b>Loading.</b> Reading the pool from the chain.</span></div>
+    <section className="setup loading" aria-busy="true">
+      <div>
+        <h2 className="page-t">{created ? 'Your pool is created' : 'Loading the pool'}</h2>
+        <p className="pd">{created ? 'Loading its prizes, balances and history. This takes a few seconds.' : 'Loading its prizes, balances and history.'}</p>
+        <div className="pbar sm indet"><i /></div>
+      </div>
+    </section>
   </div>;
   const isCreator = d.creator.toLowerCase() === me.toLowerCase();
   const B = { address: balancer, abi: poolBalancerAbi } as const;
@@ -725,7 +738,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
       if (!witness) throw new Error('No selectable curated listing is available.');
       return tx.write({ ...B, functionName: 'refreshCuratedWitness', args: [witness.id] });
     }])}>Refresh curated proof</button>
-    : st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>Run maintenance</button>
+    : st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>{d.admission === 2 ? 'List Shapes now' : 'Run maintenance'}</button>
     : st.act === 'fund' ? <button className="link" onClick={() => {
       setTab('overview');
       requestAnimationFrame(() => document.getElementById('operating-eth')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -2327,11 +2340,13 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
         <li className={`ps pend ${opened ? 'done' : stalled ? 'failed' : 'submitted'}`}>
           <span className="mk">{opened ? '✓' : stalled ? '✕' : '●'}</span>
           <div>
-            <span className="lb">Shapes listed</span>
+            <span className="lb">{opened ? 'Shapes listed' : 'Listing your Shapes'}</span>
             {!opened && <div className="pbar sm"><i style={{ width: `${target ? Math.round((listedN / target) * 100) : 0}%` }} /></div>}
             {!opened && (stalled
               ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
-              : <span className="sb">Maintenance mints and lists them, paid from operating ETH. {d.paidUpkeepEnabled ? 'Keepers pick this up on their own, and large mixes are listed over several runs.' : 'Paid upkeep is off, so someone has to run it.'} You can also run it now; you pay the gas.</span>)}
+              : <span className="sb">{d.paidUpkeepEnabled
+                ? "Each Shape is minted and listed on FWA by a keeper, paid from the listing budget you deposited. Each run lists a batch, so it takes several runs. Players can't buy draws until every Shape is listed."
+                : "Keeper pay is off, so you list them: each run mints and lists the next batch, and you pay the gas. Players can't buy draws until every Shape is listed."}</span>)}
           </div>
           <span className="pst">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
         </li>
@@ -2340,7 +2355,10 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
     </div>
     <div className="setup-side">
       {!opened && <span className="lbl">WHILE YOU WAIT</span>}
-      {!opened && <button className="btn" disabled={!!tx.busy} onClick={upkeep}>Run maintenance now</button>}
+      {!opened && <>
+        <button className="btn" disabled={!!tx.busy} onClick={upkeep}>{d.paidUpkeepEnabled ? 'List Shapes now' : 'List the next batch'}</button>
+        <p className="note">{d.paidUpkeepEnabled ? "Optional. Lists the next batch from your wallet instead of waiting for a keeper; you pay that run's gas." : 'Lists the next batch from your wallet; you pay the gas.'}</p>
+      </>}
       <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
       {!opened && <div className="setup-links">
         <button className="link quiet" onClick={() => setTab('settings')}><span>Give it an ENS name</span><span>Settings →</span></button>

@@ -735,3 +735,11 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .setup { grid-template-columns: 1fr; gap: 24px; padding: 20px; }
   .setup-side { border-left: 0; padding-left: 0; }
 }
+
+/* Pool page loading: header, disabled tabs and an indeterminate bar instead of an empty page. */
+.setup.loading { grid-template-columns: minmax(0, 1fr); }
+.pbar.indet { overflow: hidden; margin-top: 20px; }
+.pbar.indet i { width: 30%; animation: indet 1.2s ease-in-out infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .pbar.indet i { animation: none; width: 100%; opacity: .4; } }
+.tabs button:disabled { cursor: default; }
