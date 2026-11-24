@@ -1,6 +1,57 @@
 # Community release candidate report (2026-11-23)
 
-## B. Approved outcome bounds and E1 edge at `bb0deba` (current)
+## C. Final pass at `a9b4d3a` (current)
+
+**Final tested commit: `a9b4d3a`** (parent `78b6be7`, owner-signed outcomes `25faf114…d297`). This report section is
+the only later change. **Nothing deployed or broadcast.**
+
+Independent audits of the community candidate:
+- **First audit (of `be50aa0`):** found the replaceable keeper policy in the money path, the pin mode and E1-E3
+  (admission boundary, local-versus-factory evidence, scenario timing). Owner decisions D1-D3 (R95-R99) and repairs at
+  `f549bf9`, the E1 edge at `bb0deba`, and approved bounds O1/O2/O15 (R100-R103) closed them (sections A and B).
+- **Second audit (of the signed candidate):** two behaviors the owner accepted as designed (A1, A2 below) and three
+  repairs (F1-F3); no contract behavior change. Neither audit's report is stored in this repository; this summary
+  is from the owner's brief.
+
+Accepted decisions (owner, 2026-11-23, "yes go"; OWNER-REQUIREMENTS R104, R105; DECISIONS "Owner acceptance"):
+- **A1 batch overshoot:** FWA checks the purchase gate once per `acquireBatch` of up to 5 draws; on a nearly empty
+  board up to 4 draws of one purchase can find no prize. FWA refunds their draw price as pull credit, not the buyer's
+  randomness fee. `PoolInventory.admission` comment corrected; the app's purchase-pauses view states it.
+- **A2 restocking charge:** local `restockGas`/`restockFlat` have width-only bounds and can raise Shape prices beyond
+  the markup range; the markup limits do not cap them. The local-economics form shows the per-Shape charge at the gas
+  price ceiling for the entered values with that fact.
+
+Repairs: F1 `test/KeeperEconomics.t.sol` fresh struct copy, asserts factory and local values differ; F2
+`app/src/policy.ts` rejects on a failed keeper-quote batch, so the app's existing unavailable path shows; F3
+`keeper/e2e.ts`, `scripts/current-local-rehearsal.ts`, `docs/CURRENT-LOCAL-REHEARSAL.md`, `script/deploy.sh` and the
+README mark that route historical (it calls removed policy functions).
+
+| Step | Command | Result |
+| --- | --- | --- |
+| C1 | `forge build --sizes` | pass; PoolBalancer 23,408 (1,168 spare), PoolInventory 12,151, KeeperPolicyCalls 8,435, BalancerFactory 5,290 (unchanged) |
+| C2 | `npm run typecheck` | pass |
+| C3 | `npm run build:app` | pass (existing chunk-size warning) |
+| C4 | `forge test --match-path "test/{KeeperEconomics,CommunityConfigAcceptance}.t.sol"` | 3 suites, **37 / 37** |
+| C5 | `npx vitest run app/src/policy.test.ts scripts/current-local-rehearsal.test.ts scripts/local-rehearsal-gate.test.ts` | 3 files, 41 passed, 2 skipped (opt-in RPC tests in `policy.test.ts`) |
+| C6 | `python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py .` | **PASS (exit 0)** with the existing owner signature; all 15 outcomes OK; source hash `c293a329…c95d`; "review: none recorded for the current source" |
+
+Every check passed on its single run; nothing was rerun. Limits: no browser preview of the two new notes (build and
+typecheck only); the F2 path where restock quotes succeed and keeper quotes fail has no automated test (it needs a
+deployed pool; the opt-in tests are skipped without one); full suites and the fork rehearsal were not rerun (they
+predate `bb0deba`).
+
+**CREATE2 addresses:** the comment edit changes PoolInventory's metadata hash, so its CREATE2 address (and PoolBalancer's
+linked bytecode) differ from `0x77dE…61C8`. The deployment dry run from the final merged commit on `main` recomputes
+them ([DEPLOY-COMMUNITY-REPLACEMENT.md](DEPLOY-COMMUNITY-REPLACEMENT.md) section 2). No rehearsal now.
+
+Remaining owner steps:
+1. Merge PR #33 to `main`.
+2. Run the deployment dry run from `main` (step 5 of the deployment plan); it is the address source of truth.
+3. Deployer `0xCB43…17F9` holds **0.0523 ETH**: covers the ~11.1M gas deployment only below **~4 gwei** (0.0523 ETH /
+   11.13M gas = 4.7 gwei with no margin for gas-limit headroom or priority fee). Top up or wait for low gas.
+4. Broadcast (owner only), then verify, legacy rescan and dashboard switch.
+
+## B. Approved outcome bounds and E1 edge at `bb0deba`
 
 **Tested commit: `bb0deba`**. Changes since `f549bf9`: `PoolInventory.admission` refuses on inventory only while draws
 are outstanding (`lost != 0 && prizeWeight <= lost`, both branches; fill-gate check unchanged), regression
