@@ -752,6 +752,8 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
 
 /** An NFT row on the Design page: its value, and once a wallet is connected, which token it is. */
 type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: string; image?: string; floor?: number; slug?: string };
+/** A value entered below the NFT's collection floor (both known). */
+const belowFloor = (n: DraftNft) => !!n.floor && n.value.trim() !== '' && Number(n.value) < n.floor;
 /** A chosen NFT's starting value: its collection's floor, or empty when there is none. */
 const floorValue = (floor?: number) => (floor && floor >= 0.000001 ? floor.toFixed(6).replace(/\.?0+$/, '') : '');
 /** Design work before submission, retained across wallet connection and reloads. */
@@ -1372,7 +1374,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         {pending.map(({ n, i }) => {
           if (unchosenRows.includes(i)) return placeholder(i);
           const name = nftLabel(n);
-          const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorText(n.floor)}`].filter(Boolean).join(' · ');
+          const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorValue(n.floor)} ETH`].filter(Boolean).join(' · ');
           return (
             <div className="nft-row" key={i}>
               {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} />}
@@ -1383,6 +1385,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <div className="val">
                 <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
                 <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
+                {belowFloor(n) && <p className="note error" style={{ marginTop: 6 }}>Below the {floorValue(n.floor)} ETH collection floor</p>}
               </div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
@@ -1668,10 +1671,10 @@ function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (o
   return <dialog ref={ref} className="modal" aria-labelledby="confirm-values" onCancel={(e) => { e.preventDefault(); onClose(false); }}>
     <h2 className="h" id="confirm-values">Confirm NFT values</h2>
     <p className="desc">Each NFT is listed on FWA at the value below.</p>
+    {items.some(belowFloor) && <p className="warn">{items.filter(belowFloor).length === 1 ? 'One NFT is' : `${word(items.filter(belowFloor).length)} NFTs are`} valued below {items.filter(belowFloor).length === 1 ? 'its' : 'their'} collection floor.</p>}
     <div className="modal-rows">
       {items.map((n) => {
-        const v = Number(n.value);
-        const below = !!n.floor && v < n.floor;
+        const below = belowFloor(n);
         return <div className="kv" key={nftKey(n.collection!, n.tokenId!)}>
           <span className="k">{nftLabel(n)}{n.floor !== undefined && <span className={`sub${below ? ' error' : ''}`}>{n.value === floorValue(n.floor) ? 'Collection floor' : below ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</span>}</span>
           <span className="v">{n.value} ETH</span>
@@ -1732,7 +1735,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
           <div style={{ minWidth: 0 }}>
             <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
-            {n.floor && <div className="s">Collection floor {floorText(n.floor)}</div>}
+            {n.floor && <div className={`s${belowFloor(n) ? ' error' : ''}`}>{belowFloor(n) ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</div>}
           </div>
           <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
           <button className="link quiet" aria-label={`Remove ${nftLabel(n)}`} onClick={() => setPicks(picks.filter((_, j) => j !== i))}>×</button>

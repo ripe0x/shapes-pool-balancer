@@ -574,6 +574,8 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .modal::backdrop { background: rgba(0, 0, 0, .75); }
 .modal .h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
 .modal .desc { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 6px; }
+.modal .warn { font-size: 15px; line-height: 1.5; color: var(--error); margin-top: 12px; }
+.mixrow .s.error { color: var(--error); }
 .modal-rows { margin-top: 20px; }
 .modal-rows .kv { font-size: 15px; min-height: 56px; }
 .modal-rows .kv .k { color: var(--ink); display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
