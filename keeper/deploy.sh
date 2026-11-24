@@ -24,4 +24,4 @@ machine_count=$(fly machines list --app "$KEEPER_APP" --json | python3 -c 'impor
 [[ "$machine_count" -le 1 ]] || fail "Expected at most one Machine. Reconcile the existing signer processes before deploying."
 
 printf 'Deploying keeper commit %s to %s for public signer %s\n' "$KEEPER_RELEASE" "$KEEPER_APP" "$KEEPER_ADDRESS"
-exec fly deploy --config keeper/fly.toml --app "$KEEPER_APP" --env "KEEPER_EXPECTED_ADDRESS=$KEEPER_ADDRESS" --ha=false --strategy rolling --max-concurrent 1 --remote-only
+exec fly deploy . --config keeper/fly.toml --app "$KEEPER_APP" --env "KEEPER_EXPECTED_ADDRESS=$KEEPER_ADDRESS" --ha=false --strategy rolling --max-concurrent 1 --remote-only

@@ -69,4 +69,21 @@ exactly 0.00002 ETH per listed Shape. Successful fee quotes are not supplied by 
 - A 0.01 ETH account cannot cover two concurrent 4M × 1.5 gwei maximum commitments. A single Machine and local volume
   also have host-failure downtime. No cumulative spending cap was requested.
 
+## First deployment path repair
+
+The first authorized `keeper/deploy.sh` invocation from main commit `949ee1d` exited 1 before building or starting a
+Machine: `dockerfile '/Users/dd/CascadeProjects/fwa-pool-balancer/keeper/keeper/Dockerfile' not found`.
+Fly resolves the configured Dockerfile relative to the configuration file. The repair sets `dockerfile = "Dockerfile"`
+inside `keeper/fly.toml` and explicitly passes the repository root (`.`) as the deploy build context.
+Shell syntax, strict Fly configuration validation, resolved-file existence and whitespace checks passed.
+The next real deployment remains the image-build and startup verification; prior fork and application evidence stays valid.
+
+Independent review also found that unignoring a directory allowed its unlisted descendants into the build context.
+The repair re-excludes each subtree before allowing its exact runtime files. One focused check using Fly's real
+`github.com/moby/patternmatcher v0.6.1` and ignorefile parser passed (exit 0): 9 runtime paths included, 17 unexpected
+paths excluded, including `keeper/state.json`, `deployments/1.json`, `scripts/.env`, and nested key/temp paths.
+No secret contents were read or source uploaded. The isolated verified Go 1.27.4 toolchain and check are under
+`/tmp/keeper-ignore-proof-xnsbfgsh`; `.dockerignore` SHA-256 is
+`3918f8a58f31261316c5843226cd7f7eca006da26ba47fb83dea216796b9ea74`.
+
 Things that don't make sense: none beyond these documented capital, environment and availability limits.
