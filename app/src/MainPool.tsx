@@ -72,7 +72,7 @@ function Connect({ label = 'Connect wallet', className = 'btn' }: { label?: stri
   return <ConnectButton.Custom>{({ openConnectModal }) => <button className={className} onClick={openConnectModal}>{label}</button>}</ConnectButton.Custom>;
 }
 
-function StatusBar({ head, body, link }: { head: string; body: string; link?: { href?: string; label: string } }) {
+export function StatusBar({ head, body, link }: { head: string; body: string; link?: { href?: string; label: string } }) {
   return (
     <div className="status bar" role="status">
       <span><b>{head}</b> {body}</span>

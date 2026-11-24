@@ -2,8 +2,8 @@ import { useEffect, type CSSProperties } from 'react';
 import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, V1_ECONOMICS, capitalOf, economics, evaluate, maxSurchargeOf, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
-import { useVault } from './MainPool';
-import { MANAGER_FACTORY, VAULT } from './main-pool';
+import { StatusBar, useVault } from './MainPool';
+import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -57,6 +57,19 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
   );
 }
 
+/** Tabs between the two How it works pages; community pools and the main pool are separate products. */
+function HiwTabs({ main }: { main: boolean }) {
+  if (!VAULT) return null;
+  return (
+    <nav className="tabs sub" aria-label="How it works">
+      <button aria-current={main ? undefined : 'page'} onClick={() => { location.hash = 'how'; }}>Community pools</button>
+      <button aria-current={main ? 'page' : undefined} onClick={() => { location.hash = 'how-main'; }}>
+        Main pool{!MAIN_POOL_OPEN && <span className="tab-tag">Coming soon</span>}
+      </button>
+    </nav>
+  );
+}
+
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   useEffect(() => { document.getElementById(location.hash.slice(1))?.scrollIntoView(); }, []);
   const counts = presetCounts('balanced', EXAMPLE, SMALL);
@@ -73,8 +86,10 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const initialCosts = capital.inventoryCost - inPrizes + capital.listingBudget;
   const reserve = capital.workingBuffer;
   return (
+    <>
+    <HiwTabs main={false} />
     <main className="page hiw">
-      {VAULT && <p className="note hiw-switch">Community pools · <a className="link" href="#how-main">Main pool</a></p>}
+      {VAULT && <p className="note hiw-switch">Pools a creator designs and runs with their own prizes.</p>}
       <h1 className="title">How it works</h1>
       <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
@@ -167,6 +182,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         </div>
       </section>
     </main>
+    </>
   );
 }
 
@@ -190,8 +206,11 @@ export function HowItWorksMain() {
   const { data: v } = useVault();
   const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'an amount set from FWA\'s live fees';
   return (
+    <>
+    <HiwTabs main />
+    {!MAIN_POOL_OPEN && <StatusBar head="Not open yet." body={`The shared vault${MANAGER_FACTORY ? ' and personal managers are' : ' is'} coming soon.`} />}
     <main className="page hiw">
-      <p className="note hiw-switch"><a className="link" href="#how">Community pools</a> · Main pool</p>
+      <p className="note hiw-switch">Earning on FWA's main pool through the shared vault{MANAGER_FACTORY ? ' or a personal manager' : ''}.</p>
       <h1 className="title">How the main pool works</h1>
       <p className="lead">The shared vault{MANAGER_FACTORY ? ' and personal managers' : ''} put ETH to work on FWA's main pool. Each builds Shape packs and lists them with ETH backing.</p>
 
@@ -234,5 +253,6 @@ export function HowItWorksMain() {
         <p className="hiw-p">Results quoted for the main pool are model results, not forecasts. Small amounts have a wide loss tail: with few packs the outcome is mostly the luck of which listings are drawn and whether buyers keep or bid. FWA's owner can change fees and settings, and its conditions can pause new investment; withdrawals and redemptions continue.</p>
       </section>
     </main>
+    </>
   );
 }

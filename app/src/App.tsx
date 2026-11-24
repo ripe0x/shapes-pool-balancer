@@ -571,7 +571,7 @@ export function App() {
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
           {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
-          <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = view === 'main' ? 'how-main' : 'how'; }}>How it works</button>
+          <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (
           <div className="right">
