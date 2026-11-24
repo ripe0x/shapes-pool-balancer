@@ -464,9 +464,18 @@ function listingMode(d: D) {
   return { mode, limit, gwei: (x: bigint) => Number(formatGwei(x)).toLocaleString('en-US', { maximumFractionDigits: 2 }) };
 }
 
+/** Listed prizes the creator can take back: curated NFTs by withdrawal, Shapes and Packs by unlisting (redeemed to ETH).
+ *  Prizes awaiting FWA delivery are excluded; they come back through recovery once refunded. */
+const reclaimable = (d: D) => d.listings.filter((l) => (l.kind === 1 || l.kind === 2) && (isSelectable(l) || isStaged(l)));
+
 /** One sentence for the pool's state, and the action or tab that resolves it. */
-function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | 'fund' | Tab; label?: string } {
-  if (d.retired) return { head: 'Retired.', body: 'The pool no longer sells draws. Withdrawals still work.' };
+function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | 'fund' | 'reclaim' | Tab; label?: string } {
+  if (d.retired) {
+    const left = reclaimable(d).length > 0 || (d.surplus ?? 0n) > 0n;
+    return left
+      ? { head: 'Retired.', body: 'Sales have stopped. Your prizes and ETH are still in the pool.', act: 'reclaim', label: 'Take everything back' }
+      : { head: 'Retired.', body: 'Sales have stopped. Nothing is left to take back.' };
+  }
   const fund = d.balance - d.creatorCredit;
   const shortfall = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
   const target = unpackPlan(d.target);
@@ -758,6 +767,7 @@ function PoolList({ pools, names, onOpen, onNew }: { pools: Address[]; names: Re
 
 function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Address; me: Address; tab: Tab; setTab: (t: Tab) => void; onBack: () => void; created?: boolean }) {
   const { data: d, error, refresh } = useBalancer(balancer);
+  const pub = usePublicClient();
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
   // While the pool's reads load: its header and tabs, and a clear loading block (it names a pool just created).
@@ -786,7 +796,25 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
   // While stocking, the same run is "List Shapes", so the setup block shows its progress.
   const upkeep = () => tx.send(d.admission === 2 ? 'List Shapes' : 'Run maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
   const viewer = me === ZERO_ADDR;
-  const action = viewer ? null : st.act === 'activate' ? <button className="link" disabled={!!tx.busy} onClick={() => activateListings(d, tx)}>Activate staged listings</button>
+  // Retired pool: each curated NFT back to the wallet, Shapes unlisted (redeemed, at most 20 per transaction), then all
+  // withdrawable ETH, read when that step runs so it includes the redeemed Shapes.
+  const reclaim = () => {
+    const left = reclaimable(d);
+    const nfts = left.filter((l) => l.kind === 1);
+    const shapes = left.filter((l) => l.kind === 2).map((l) => l.id);
+    const steps: Step[] = nfts.map((l) => [`Withdraw ${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`, () => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })]);
+    for (let i = 0; i < shapes.length; i += 20) {
+      const batch = shapes.slice(i, i + 20);
+      steps.push([`Unlist ${batch.length} Shape${batch.length === 1 ? '' : 's'}`, () => tx.write({ ...B, functionName: 'unlistShapes', args: [batch] })]);
+    }
+    steps.push(['Withdraw ETH', async () => {
+      const amount = await pub!.readContract({ ...B, functionName: 'withdrawableSurplus' }) as bigint;
+      return amount > 0n ? tx.write({ ...B, functionName: 'claimSurplus', args: [amount, me] }) : undefined;
+    }]);
+    return tx.send('Take everything back', steps);
+  };
+  const action = viewer ? null : st.act === 'reclaim' ? (isCreator ? <button className="link" disabled={!!tx.busy} onClick={reclaim}>{st.label}</button> : null)
+    : st.act === 'activate' ? <button className="link" disabled={!!tx.busy} onClick={() => activateListings(d, tx)}>Activate staged listings</button>
     : st.act === 'proof' ? <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Refresh curated proof', [() => {
       const witness = curatedWitness(d.listings);
       if (!witness) throw new Error('No selectable curated listing is available.');
