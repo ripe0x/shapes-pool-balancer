@@ -735,3 +735,29 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .setup { grid-template-columns: 1fr; gap: 24px; padding: 20px; }
   .setup-side { border-left: 0; padding-left: 0; }
 }
+
+/* Pool page loading: header, disabled tabs and an indeterminate bar instead of an empty page. */
+.setup.loading { grid-template-columns: minmax(0, 1fr); }
+.pbar.indet { overflow: hidden; margin-top: 20px; }
+.pbar.indet i { width: 30%; animation: indet 1.2s ease-in-out infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .pbar.indet i { animation: none; width: 100%; opacity: .4; } }
+.tabs button:disabled { cursor: default; }
+
+/* Setup block on the progress panel layout: heading with step count, overall bar, step rows. */
+.setup .ph { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.setup .cnt { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.setup .cnt.error { color: var(--error); }
+.setup > div > .pbar { margin-top: 20px; }
+.setup .sb.live { color: var(--ink); margin-bottom: 4px; }
+
+/* Active progress: diagonal stripes drift across the unfilled part of the track while work is happening. */
+.pbar.active { background: repeating-linear-gradient(-45deg, var(--line) 0 6px, #3a3a3a 6px 12px); background-size: 34px 100%; animation: pbar-stripes 1s linear infinite; }
+@keyframes pbar-stripes { from { background-position: 0 0; } to { background-position: 34px 0; } }
+@media (prefers-reduced-motion: reduce) { .pbar.active { animation: none; } }
+
+@media (max-width: 640px) {
+  /* Checklist rows: the right-hand status goes under the label on narrow screens. */
+  .ps.pend { grid-template-columns: 28px minmax(0, 1fr); }
+  .ps.pend .pst { grid-column: 2; margin-top: 2px; }
+}
