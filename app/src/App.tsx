@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useConnect, usePublicClient, useSendTransaction, useWriteContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { formatEther, formatGwei, keccak256, parseAbi, parseAbiItem, parseEther, toBytes, type Address, type Hash, type Hex } from 'viem';
+import { formatEther, formatGwei, parseAbi, parseAbiItem, parseEther, type Address, type Hash, type Hex } from 'viem';
 import { normalize } from 'viem/ens';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
@@ -21,7 +21,7 @@ import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listed
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
 import { KeeperEconomics, LegacyKeeperPay, LegacyTag, LimitsNote, PurchasePauses, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
-import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit } from './limits';
+import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit, refillPerDay } from './limits';
 import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/legacy';
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
@@ -986,9 +986,14 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const total = shapeCount(counts);
   const target = packPlan(counts);
   // A saved pool shows its listed prizes at their actual prices until the design differs from it; a projection of an
-  // edited design prices the new Shapes at the current markup instead.
+  // edited design prices the new Shapes at the current markup instead. So does a saved pool with fewer Shape prizes
+  // listed than its target: the listed board alone has no draw price to show.
   const edited = !has || target !== d.target || markupBps !== d.markupBps || pending.some(({ n }) => n.collection);
-  const inputs: DesignInputs = has && !edited ? { ...base, shapePrices: livePrices } : base;
+  const listedCounts = listedShapeCounts(d.listings);
+  const stocking = has && shapeCount(listedCounts) < shapeCount(savedCounts);
+  const projected = stocking && !edited;
+  const actual = has && !edited && !stocking;
+  const inputs: DesignInputs = actual ? { ...base, shapePrices: livePrices } : base;
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
   // A new pool takes the suggested rate: earnings are what the markup brings in above the 10% that runs the pool. An
   // existing pool keeps its stored rate until changed in Settings.
@@ -1017,7 +1022,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // The pool-size control steps through the 0.01 ETH Shapes: a preset recomputes its mix at that count.
   const setSmall = (n: number) => setCounts(style ? presetCounts(style, base, n) : counts.map((x, j) => (j === 0 ? n : x)));
   const ready = total > 0;
-  const quotedCounts = has && !edited ? listedShapeCounts(d.listings) : counts;
+  const quotedCounts = actual ? listedCounts : counts;
   // Prices and costs need current fees; without them every figure shows as a dash.
   const ev = ready && !d.policyUnavailable && !d.mintFeeUnavailable ? evaluate(quotedCounts, inputs) : undefined;
   // Player return figures are against the full price a player pays: the draw price plus FWA's VRF fee (gas is on top).
@@ -1038,8 +1043,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const needed = ready ? ethNeeded(counts, { ...inputs, mintFee: reserveMintFee, enabled: fundForOpen }) : 0n;
   const capital = ready ? reserveBreakdownAt(counts, d.activeShapes, reserveMintFee, d.awaitingUpkeep, d.paidUpkeepEnabled ? d.economics : undefined, d.baseFee, fundForOpen) : undefined;
   // An existing pool being edited: each figure shows its value after saving, with the value now beside it.
-  const savedEv = has ? evaluate(listedShapeCounts(d.listings), { ...base, markupBps: d.markupBps, shapePrices: livePrices }) : undefined;
-  // A pool still stocking has no selectable prize to compare against.
+  const savedEv = !has ? undefined : stocking ? evaluate(savedCounts, { ...base, markupBps: d.markupBps })
+    : evaluate(listedCounts, { ...base, markupBps: d.markupBps, shapePrices: livePrices });
   const savedView = savedEv && playerView(savedEv).top ? playerView(savedEv) : undefined;
   const editing = has && configChanged && !!savedEv;
   const now = (before: string, after: string) => (editing && before !== after ? <span className="was">now {before}</span> : null);
@@ -1110,7 +1115,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <div className="pay">{ev
         ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
         : <span className="figure ghost">—</span>}</div>
-      {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">Now {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
+      {ev && projected && <p className="note">Projected: {shapeCount(listedCounts) === 0 ? 'prizes not listed yet' : 'some prizes not listed yet'}.</p>}
+      {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">{stocking ? 'Saved design, projected:' : 'Now'} {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
       {ev && pausesAt < backlog && <p className="note">{pausesAt === 1
         ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
         : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>}
@@ -1243,7 +1249,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{formatEther(maxSurchargeOf(e))} ETH</span></div>
       {create?.bucket && <>
         <div className="kv"><span className="k">Spending bucket capacity</span><span>{formatEther(create.bucket.capacity)} ETH</span></div>
-        <div className="kv"><span className="k">Spending bucket refill</span><span title={`${create.bucket.refill} wei per second`}>{formatEther(create.bucket.refill * 86_400n)} ETH per day</span></div>
+        <div className="kv"><span className="k">Spending bucket refill</span><span title={`${create.bucket.refill} wei per second`}>{formatEther(refillPerDay(create.bucket.refill))} ETH per day</span></div>
       </>}
     </> : <p className="note">Loading.</p>}
     <p className="note">Factory economics changes apply to the pool immediately. The pool keeps this spending bucket. After creation you can pin the current factory values or set your own, and change the bucket, in Settings.</p>
@@ -1473,7 +1479,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <div className="numbers">
                 <div className="kv-group">
                   <span className="label">For players</span>
-                  <div className="kv"><span className="k">Draw price</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
+                  <div className="kv"><span className="k">{projected ? 'Draw price, projected' : 'Draw price'}</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
                   {vrfKnown && <div className="kv"><span className="k">FWA's randomness fee, at today's gas</span><span>{eth(d.vrfFee!, 5)} ETH</span></div>}
                   {common && <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}×</span></div>}
                   {bases.length > 0 && <div className="kv"><span className="k">Wins a curated NFT</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>}
@@ -1885,10 +1891,6 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   );
 }
 
-/** FWA's pool-page profile, in its schema's key order (the hash covers JSON.stringify of exactly this). */
-const PROFILE_KEYS = ['avatarUrl', 'bannerUrl', 'description', 'websiteUrl', 'xUrl', 'discordUrl'] as const;
-const PROFILE_LABELS: Record<string, string> = { avatarUrl: 'Avatar URL', bannerUrl: 'Banner URL', websiteUrl: 'Website', xUrl: 'X', discordUrl: 'Discord' };
-
 function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
   const [rate, setRate] = useState(String(d.creatorRevenueBps / 100));
   const bps = Math.round(Number(rate) * 100);
@@ -1916,10 +1918,6 @@ function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
 function Settings({ d, tx }: { d: D; tx: Tx }) {
   const pub = usePublicClient();
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
-  const [name, setName] = useState('');
-  const [profile, setProfile] = useState<Record<string, string>>(Object.fromEntries(PROFILE_KEYS.map((k) => [k, ''])));
-  const [more, setMore] = useState(false);
-  const [result, setResult] = useState<string>();
   const [ens, setEns] = useState<{ open: boolean; name: string; forward?: string | null }>({ open: false, name: '' });
   const [step, setStep] = useState<'transfer' | 'retire'>();
   const [next, setNext] = useState('');
@@ -1931,47 +1929,14 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
     pub?.getEnsAddress({ name: normalize(ens.name) }).then((a) => live && setEns((e) => ({ ...e, forward: a }))).catch(() => live && setEns((e) => ({ ...e, forward: null })));
     return () => { live = false; };
   }, [pub, ens.name]);
-  const publish = async () => {
-    // FWA hashes its schema's parsed metadata, which trims these fields; hash the same bytes.
-    const trimmed = (k: string, v: string) => (k === 'avatarUrl' || k === 'bannerUrl' ? v : v.trim());
-    const metadata = { name: name.trim(), profile: Object.fromEntries(PROFILE_KEYS.map((k) => [k, trimmed(k, profile[k] ?? '')])) };
-    const issuedAt = new Date().toISOString();
-    const hash = keccak256(toBytes(JSON.stringify(metadata)));
-    if (!(await tx.send('Approve pool page', [() => tx.write({ ...B, functionName: 'approvePoolPage', args: [issuedAt, hash] })]))) return;
-    // The Balancer ignores signature bytes. 66 zero bytes: viem-style verifiers reject very short signatures
-    // before calling ERC-1271, and a non-65-byte value cannot be read as an ECDSA signature.
-    const body = { pool: d.pool, issuedAt, metadata, signature: `0x${'00'.repeat(66)}` };
-    if (chain.id !== 1) { setResult('Approved on this test network. On mainnet the page is then sent to FWA.'); return; }
-    try {
-      const res = await fetch('https://pools.fwa.fun/api/fwa/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-      setResult(res.ok ? 'FWA accepted the page.' : `FWA rejected it (${res.status}): ${await res.text()}`);
-    } catch (e) {
-      setResult(`Could not reach FWA from this page: ${(e as Error).message}`);
-    }
-  };
   const forwardOk = ens.forward?.toLowerCase() === d.balancer.toLowerCase();
   return (
     <main className="page design settings">
       <section>
         <h2 className="title t2">Settings</h2>
         <div className="section">
-          <h2 className="h3" style={{ fontSize: 22 }}>Page on FWA</h2>
-          <label className="form-label" htmlFor="pname">Pool name</label>
-          <div className="field"><input id="pname" value={name} onChange={(e) => setName(e.target.value)} placeholder="2 to 64 characters" /></div>
-          <label className="form-label" htmlFor="about">About</label>
-          <div className="field area"><textarea id="about" value={profile.description} onChange={(e) => setProfile({ ...profile, description: e.target.value })} /></div>
-          <button className="disclose quiet" style={{ marginTop: 12 }} onClick={() => setMore(!more)}>Links and images {more ? '▴' : '▾'}</button>
-          {more && PROFILE_KEYS.filter((k) => k !== 'description').map((k) => (
-            <div key={k}><label className="form-label" htmlFor={k}>{PROFILE_LABELS[k]}</label><div className="field"><input id={k} value={profile[k]} onChange={(e) => setProfile({ ...profile, [k]: e.target.value })} /></div></div>
-          ))}
-          <div className="row" style={{ marginTop: 20, gap: 16 }}>
-            <button className="btn" disabled={!!tx.busy || name.trim().length < 2 || name.trim().length > 64} onClick={publish}>Approve and publish</button>
-            <span className="note">One confirmation in your wallet. FWA has not confirmed it accepts pools owned by a contract, so it may reject the page.</span>
-          </div>
-          {result && <p className="note" style={{ marginTop: 10 }}>{result}</p>}
-        </div>
-        <div className="section">
           <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>ENS name</h2>
+          <p className="note" style={{ marginBottom: 12 }}>Sets this pool's primary ENS name, so apps show the name instead of the address. Works when you own the name and its ETH address points to this pool.</p>
           <div className="kv">
             <span className="mono">{d.ensName ?? 'None'}</span>
             <button className="link" onClick={() => setEns({ ...ens, open: !ens.open, name: ens.name || d.ensName || '' })}>{ens.open ? 'Cancel' : 'Change'}</button>

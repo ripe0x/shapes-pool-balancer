@@ -7,7 +7,7 @@ import { balancerFactoryAbi, poolBalancerAbi } from '../../shared/abi';
 import { MAX_BATCH, maxPaymentOf, maxSurchargeOf, pendingDrawsAdmitted, unpackPlan, type Economics } from '../../shared/planner';
 import { legacyFactory, type LegacyFactory } from '../../shared/legacy';
 import {
-  BACKLOG_DEFAULT, FILL_GATE_DEFAULT_BPS, LEGACY_LIMITS, maxUnsettled, validBacklog, validFillGate, type ProductLimits,
+  BACKLOG_DEFAULT, FILL_GATE_DEFAULT_BPS, LEGACY_LIMITS, maxUnsettled, refillPerDay, validBacklog, validFillGate, type ProductLimits,
 } from './limits';
 import type { TransactionStep } from './tx';
 
@@ -324,7 +324,7 @@ function PaidUpkeep({ d, tx, write, deposit }: { d: KeeperView; tx: Tx } & Write
 function KeeperBucket({ d, tx, write }: { d: KeeperView; tx: Tx } & Pick<Writers, 'write'>) {
   const k = d.keeper;
   const [cap, setCap] = useState(formatEther(k.capacity));
-  const [perDay, setPerDay] = useState(formatEther(k.refill * DAY));
+  const [perDay, setPerDay] = useState(formatEther(refillPerDay(k.refill)));
   const capWei = parseEth(cap);
   const dayWei = parseEth(perDay);
   // The contract stores wei per second: an ETH-per-day entry rounds down to whole wei per second.
@@ -334,15 +334,15 @@ function KeeperBucket({ d, tx, write }: { d: KeeperView; tx: Tx } & Pick<Writers
   return <div className="section">
     <h2 className="h3">Spending bucket</h2>
     <div className="kv"><span className="k">Capacity</span><span>{ethx(k.capacity)}</span></div>
-    <div className="kv"><span className="k">Refill</span><span title={`${k.refill} wei per second`}>{ethx(k.refill * DAY)} per day</span></div>
+    <div className="kv"><span className="k">Refill</span><span title={`${k.refill} wei per second`}>{ethx(refillPerDay(k.refill))} per day</span></div>
     <div className="kv"><span className="k">Available now</span><span>{ethx(k.available)}</span></div>
     <label htmlFor="bucket-cap" className="form-label" style={{ marginTop: 16, display: 'block' }}>Capacity</label>
     <div className="field"><input id="bucket-cap" inputMode="decimal" value={cap} onChange={(e) => setCap(e.target.value)} /><span className="u">ETH</span></div>
     <label htmlFor="bucket-refill" className="form-label" style={{ marginTop: 12, display: 'block' }}>Refill per day</label>
     <div className="field"><input id="bucket-refill" inputMode="decimal" value={perDay} onChange={(e) => setPerDay(e.target.value)} /><span className="u">ETH / DAY</span></div>
-    {ok && refill! * DAY !== dayWei && <p className="note" style={{ marginTop: 8 }}>Stored as {refill!.toString()} wei per second: {formatEther(refill! * DAY)} ETH per day.</p>}
+    {ok && refillPerDay(refill!) !== dayWei && <p className="note" style={{ marginTop: 8 }}>Stored as {refill!.toString()} wei per second: {formatEther(refillPerDay(refill!))} ETH per day.</p>}
     {!ok && <p className="note error" style={{ marginTop: 8 }}>Enter amounts in ETH.</p>}
     <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !changed} onClick={() => write('Change spending bucket', 'setKeeperBucket', [capWei, refill])}>Apply</button>
-    <p className="note" style={{ marginTop: 12 }}>The bucket limits how fast paid upkeep spends. A change first adds the time since the last update at the old rate, keeps spent allowance spent and lowers the available allowance to a lower capacity. A higher capacity adds no allowance. The new rate applies from the change.</p>
+    <p className="note" style={{ marginTop: 12 }}>It caps how fast paid upkeep can spend this pool's ETH. A change first adds the time since the last update at the old rate, keeps spent allowance spent and lowers the available allowance to a lower capacity. A higher capacity adds no allowance. The new rate applies from the change.</p>
   </div>;
 }

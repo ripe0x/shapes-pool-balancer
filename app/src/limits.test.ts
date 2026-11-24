@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INITIAL_LIMITS, LEGACY_LIMITS, markupAllowed, markupSliderRange, maxUnsettled, prizeLimit, validBacklog, validFillGate } from './limits';
+import { INITIAL_LIMITS, LEGACY_LIMITS, markupAllowed, markupSliderRange, maxUnsettled, prizeLimit, refillPerDay, validBacklog, validFillGate } from './limits';
 import { LEGACY_FACTORIES, legacyFactory } from '../../shared/legacy';
 
 describe('product limits (PoolInventory.validateTarget)', () => {
@@ -48,5 +48,16 @@ describe('legacy factories', () => {
     expect(fns).toContain('proposeKeeperPolicy');
     expect(fns).not.toContain('setFillGateBps');
     expect(legacyFactory('0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece')).toBeUndefined();
+  });
+});
+
+describe('spending bucket refill per day', () => {
+  it('shows the roundest per-day amount that stores back to the same wei per second', () => {
+    const DAY = 86_400n;
+    expect(refillPerDay(4_166_666_666_666_666n)).toBe(360n * 10n ** 18n);
+    expect(360n * 10n ** 18n / DAY).toBe(4_166_666_666_666_666n);
+    expect(refillPerDay(0n)).toBe(0n);
+    expect(refillPerDay(1n)).toBe(100_000n);
+    for (const r of [1n, 7n, 4_166_666_666_666_666n, 11_574_074_074_074n, 2n ** 96n - 1n]) expect(refillPerDay(r) / DAY).toBe(r);
   });
 });
