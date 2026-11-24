@@ -2,9 +2,9 @@
   "schema": "community-deployment-preflight-v1",
   "chainId": 1,
   "checkedBlock": {
-    "number": "26479663",
-    "hash": "0xe18978d1d865892344356116593192141668d6a8222e16806823ff8f993a7573",
-    "timestamp": "1795458947"
+    "number": "26482720",
+    "hash": "0x2306b51a0d851a293b97d16261396c8c54723bcf82eecf351125bd51714d4cce",
+    "timestamp": "1795495691"
   },
   "ok": true,
   "problems": [],
@@ -13,7 +13,7 @@
       "label": "community-v1",
       "balancerFactory": "0x91C31Ad620555DE24e62290906aD1aA14C4CE281",
       "scannedFromBlock": "26475448",
-      "scannedToBlock": "26479663",
+      "scannedToBlock": "26482720",
       "poolCount": 0,
       "pools": [],
       "abiName": "community-v1",
@@ -27,7 +27,7 @@
       "label": "community-v0",
       "balancerFactory": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
       "scannedFromBlock": "26453686",
-      "scannedToBlock": "26479663",
+      "scannedToBlock": "26482720",
       "poolCount": 0,
       "pools": [],
       "abiName": null,
