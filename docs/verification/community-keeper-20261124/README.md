@@ -70,3 +70,12 @@ exactly 0.00002 ETH per listed Shape. Successful fee quotes are not supplied by 
   also have host-failure downtime. No cumulative spending cap was requested.
 
 Things that don't make sense: none beyond these documented capital, environment and availability limits.
+
+## First deployment path repair
+
+The first authorized `keeper/deploy.sh` invocation from main commit `949ee1d` exited 1 before building or starting a
+Machine: `dockerfile '/Users/dd/CascadeProjects/fwa-pool-balancer/keeper/keeper/Dockerfile' not found`.
+Fly resolves the configured Dockerfile relative to the configuration file. The repair sets `dockerfile = "Dockerfile"`
+inside `keeper/fly.toml` and explicitly passes the repository root (`.`) as the deploy build context.
+Shell syntax, strict Fly configuration validation, resolved-file existence and whitespace checks passed.
+The next real deployment remains the image-build and startup verification; prior fork and application evidence stays valid.

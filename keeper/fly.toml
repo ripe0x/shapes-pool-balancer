@@ -3,7 +3,7 @@ kill_signal = "SIGTERM"
 kill_timeout = "30s"
 
 [build]
-  dockerfile = "keeper/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   EXPECTED_CHAIN_ID = "1"
