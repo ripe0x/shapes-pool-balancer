@@ -481,3 +481,21 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .tabs.sub button { white-space: nowrap; }
 }
 .legacy-tag { border: 1px solid var(--line-strong); padding: 3px 6px; color: var(--ink-2); align-self: flex-start; }
+
+/* Main-pool forms stay scoped away from deployed community-pool controls. */
+.mp > section { min-width: 0; }
+.mp-settings summary, .mp-exit summary, .mp-contributions summary { cursor: pointer; }
+.mp-settings .input, .mp-exit .input { min-width: 0; width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--line-control); padding: 10px; font: 13px var(--font-mono); }
+.mp-settings .kv .input { max-width: 48%; text-align: right; }
+.mp-settings fieldset { margin: 24px 0; border: 1px solid var(--line); padding: 12px; }
+.mp-settings table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 12px; overflow-wrap: anywhere; table-layout: fixed; }
+.mp-settings th, .mp-settings td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.mp-settings .acts, .mp-exit .acts, .mp-contributions .acts { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.mp-settings .note, .mp-exit .note, .mp-contributions .note { margin: 12px 0; }
+.mp-settings .btn, .mp-exit .btn, .mp-contributions .btn { height: auto; min-height: 40px; max-width: 100%; white-space: normal; padding: 10px 14px; }
+.mp-exit .ctl { display: block; margin: 16px 0 8px; }
+@media (max-width: 640px) { .mp-settings .kv { align-items: flex-start; flex-direction: column; gap: 8px; } .mp-settings .kv .input { max-width: 100%; text-align: left; } }
+
+.main-renewal-state { padding: 16px var(--gutter); display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; border-bottom: 1px solid var(--line); }
+.main-renewal-state .kv { min-width: 0; min-height: 56px; padding: 8px 0; border: 0; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 6px; font-size: 14px; overflow-wrap: anywhere; }
+.main-renewal-state .note { grid-column: 1 / -1; }

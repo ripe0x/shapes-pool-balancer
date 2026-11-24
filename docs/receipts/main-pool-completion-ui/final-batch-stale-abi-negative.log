@@ -1,0 +1,11 @@
+file:///Users/dd/CascadeProjects/shapes-pool-app-completion/scripts/export-main-pool-abi.mjs:52
+    if (readFileSync(file, 'utf8') !== expected) throw new Error(`Stale main integration output: ${file}; regenerate from the reviewed main build`);
+                                                       ^
+
+Error: Stale main integration output: shared/main-pool-abi.ts; regenerate from the reviewed main build
+    at file:///Users/dd/CascadeProjects/shapes-pool-app-completion/scripts/export-main-pool-abi.mjs:52:56
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.19.0

@@ -1,0 +1,26 @@
+{
+  "engine": "156.0.8078.4",
+  "node": "http://127.0.0.1:18647",
+  "deployment": "Final candidate deployed by checkpoint worker; read-only interactions during campaign",
+  "transactions": 0,
+  "checks": [
+    "connected existing local dev actor without wallet extension",
+    "review shows old and new gas ceiling; no save submitted",
+    "settings reset restores live chain values",
+    "all 28 named gas fields rendered",
+    "zero exit spending limit refused before signing",
+    "owned real manager renders renewal mode, eligible counts, float, routine cash and permission",
+    "manager owner settings enabled for its individual owner",
+    "community navigation remains reachable after main manager view"
+  ],
+  "errors": [],
+  "writes": [],
+  "observedBlock": 26484871,
+  "appSources": {
+    "app/src/MainPool.tsx": "e710a5d0355d42b3134bcbcb0c1fd91b6627d271e0c1ff4462dc7134d5604a83",
+    "app/src/MainPoolExit.tsx": "448d988dbaa6f7f6be7b75ecd38a967a275f9d14ff6c2392c5b48077d2ae1acc",
+    "app/src/main-pool.ts": "c85457079b1935bc8c0c1f9355789aa5a43ff6f46dcb06eab978b582b12d2942",
+    "app/src/main-pool-exit.ts": "21b4132c78a64e24552ac4bcb64bc1631360bab2a2c7a758371ac0a8e4889dbc",
+    "app/src/styles.css": "db16cd695b3023c03d27d44e08bf2d8dd820a35821ebe7ea702e7ea0358498a6"
+  }
+}

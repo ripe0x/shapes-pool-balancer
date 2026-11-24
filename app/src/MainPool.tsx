@@ -5,13 +5,15 @@ import { formatEther, parseEther, type Address } from 'viem';
 import { packManagerAbi, packManagerFactoryAbi, packVaultAbi } from '../../shared/main-pool-abi';
 import { chain } from './chain';
 import { explain } from './errors';
+import { MainPoolSettings } from './MainPoolSettings';
+import { CallerFundedExit, CheckpointContributions } from './MainPoolExit';
 import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
 import { eth, short, useTx } from './App';
 import {
-  MAIN_POOL_OPEN, MANAGER_FACTORY, MANAGER_PARAMS, MIN_DEPOSIT, POSITION_VALUE, VAULT, checkCreation, clearManagerCreation,
-  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge,
-  saveManagerCreation, vaultStatus, type CreationState, type Manager, type ManagerCreation, type Vault,
+  MAIN_POOL_INTERACTIVE, MANAGER_FACTORY, MANAGER_PARAMS, VAULT, checkCreation, clearManagerCreation,
+  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge, renewalWaits,
+  saveManagerCreation, vaultStatus, previewManager, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
 
 export type MainTab = 'overview' | 'vault' | 'manager';
@@ -100,12 +102,12 @@ export function Home({ hasPools, onNew, onList, onMain }: { hasPools: boolean; o
         <section>
           <span className="eyebrow">For depositors</span>
           <h1 className="title">Main pool</h1>
-          <p className="lead">Earn on FWA's main pool. Your ETH builds 0.06 ETH Shape packs and lists them. Deposit with other holders, or run your own manager.</p>
+          <p className="lead">Earn on FWA's main pool. Your ETH builds 0.03 ETH Shape packs and lists them. Deposit with other holders, or run your own manager.</p>
           <div className="acts">
             <button className="btn big" onClick={() => onMain('vault')}>Deposit in the shared vault</button>
             {MANAGER_FACTORY && <button className="link" onClick={() => onMain('manager')}>Create a manager →</button>}
           </div>
-          {v && <p className="fact">Shared vault: {eth(v.book.nav, 2)} ETH, {v.book.listed} packs listed.</p>}
+          {v && <p className="fact">Shared vault: {eth(v.book.nav, 2)} ETH {v.book.navCurrent ? 'current value' : 'booked principal'}, {v.book.listed} packs listed.</p>}
         </section>
       )}
     </main>
@@ -127,9 +129,9 @@ export function MainPool({ tab, setTab }: { tab: MainTab; setTab: (t: MainTab) =
         </nav>
       )}
       {t === 'overview' && <Compare v={vault.data} hasManager={!!managers.data?.managers.length} setTab={setTab} />}
-      {t === 'vault' && (MAIN_POOL_OPEN ? <VaultPage vault={vault} me={me} />
+      {t === 'vault' && (MAIN_POOL_INTERACTIVE ? <VaultPage vault={vault} me={me} />
         : <Soon title="Shared vault" lead="Deposit ETH with other holders. The vault builds Shape packs, lists them on FWA's main pool, and you own a share of everything it holds." />)}
-      {t === 'manager' && (MAIN_POOL_OPEN ? <ManagerTab v={vault.data} me={me} managers={managers} />
+      {t === 'manager' && (MAIN_POOL_INTERACTIVE ? <ManagerTab v={vault.data} me={me} managers={managers} />
         : <Soon title="Personal manager" lead="Your own account that runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee." />)}
     </>
   );
@@ -150,27 +152,28 @@ function Soon({ title, lead }: { title: string; lead: string }) {
 
 const COMPARE: [string, string, string][] = [
   ['Your ETH', 'Pooled with other holders. You hold shares.', 'In a contract only you can withdraw from.'],
-  ['In and out', 'Priced at the next checkpoint, within 12 h.', 'Idle ETH any time. Listed packs return through exit mode.'],
+  ['In and out', 'Priced at an eligible quiet-window checkpoint.', 'Idle ETH any time. Listed packs return through exit mode.'],
 ];
 
 function Compare({ v, hasManager, setTab }: { v?: Vault; hasManager: boolean; setTab: (t: MainTab) => void }) {
-  const cost = v && v.edge[2] ? packCost(v.edge[1], v.deployCharge) : undefined;
-  const onePack = cost === undefined ? '–' : ethText(cost + MANAGER_PARAMS.reserve, 2);
+  const pub = usePublicClient();
+  const preview = usePolled(pub && MANAGER_FACTORY ? `manager-preview:${pub.chain.id}:${MANAGER_FACTORY}:${MANAGER_PARAMS.acceptedMintFee}` : undefined, () => previewManager(pub!, MANAGER_FACTORY!, MANAGER_PARAMS));
+  const onePack = preview.data === undefined ? '–' : ethText(preview.data.openingCash, 3);
   const rows: [string, string, string][] = [
     ...COMPARE,
-    ['Smallest amount', 'Any deposit above a small minimum.', `About ${onePack} ETH for one pack. 0.5 to 1 ETH spreads the outcome.`],
-    ['Cost', v === undefined ? '–' : v.requestCharge > 0n ? `${ethText(v.requestCharge, 5)} ETH per deposit or redemption. No vault fee.` : 'No request charge until the next checkpoint. No vault fee.',
-      'About 474,000 gas to create. No factory fee.'],
-    ['Same capital, modelled', 'Earned more in every run: one reserve, more ETH at work.', 'Less, because more ETH sits idle.'],
+    ['Initial capital', 'Any deposit above the account minimum.', `Funding estimate: ${onePack} ETH for one pack, maintenance reserve and renewal float. Listing is conditional.`],
+    ['Cost', v === undefined ? '–' : v.requestCharge > 0n ? `${ethText(v.requestCharge, 5)} ETH per deposit or redemption. No vault fee.` : 'Checkpoint already funded. No vault fee.',
+      'Creation gas. No factory fee.'],
+    ['Ownership', 'You own vault shares.', 'You own the manager and its settings.'],
   ];
   const head = (k: 'vault' | 'manager') => (k === 'vault'
-    ? <><h2>Shared vault</h2><p>Deposit with other holders and own a share of everything the vault holds.</p>{MAIN_POOL_OPEN ? <button className="btn big" onClick={() => setTab('vault')}>Deposit ETH</button> : <button className="btn big" disabled>Coming soon</button>}</>
-    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p>{MAIN_POOL_OPEN ? <button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button> : <button className="btn sec big" disabled>Coming soon</button>}</>);
+    ? <><h2>Shared vault</h2><p>Deposit with other holders and own a share of everything the vault holds.</p>{MAIN_POOL_INTERACTIVE ? <button className="btn big" onClick={() => setTab('vault')}>Deposit ETH</button> : <button className="btn big" disabled>Coming soon</button>}</>
+    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p>{MAIN_POOL_INTERACTIVE ? <button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button> : <button className="btn sec big" disabled>Coming soon</button>}</>);
   return (
     <main className="page mp-overview">
       <div className="intro">
         <h1 className="title">Earn on FWA's main pool</h1>
-        <p className="lead">Your ETH builds 0.06 ETH Shape packs and lists them on the main pool with ETH backing. When a buyer keeps a pack, the backing comes back and a new pack is built. When a buyer bids instead, the pack comes back and is listed again.</p>
+        <p className="lead">Your ETH builds 0.03 ETH Shape packs and lists them on the main pool with ETH backing. When a buyer keeps a pack, the backing comes back and a new pack is built. Returned packs follow the account's renewal mode: fresh paid replacement or reuse.</p>
         <a className="disclose" href="#how-main">How the main pool works ▾</a>
       </div>
       <div className="compare">
@@ -223,11 +226,11 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
   // Deposit: ETH in, shares out at the next checkpoint. Redeem: shares in, ETH to claim after it.
   const fee = mode === 'deposit' ? v.requestCharge : value === undefined ? v.requestCharge : redeemCharge(value, v);
   const net = value !== undefined && value > v.requestCharge ? value - v.requestCharge : 0n;
-  const building = (net * v.deployCharge) / (POSITION_VALUE + v.deployCharge);
+  const building = (net * v.deployCharge) / (v.referencePositionValue + v.deployCharge);
   const disabled = !me ? undefined
     : !value ? 'Enter an amount'
     : mode === 'deposit' ? (v.depositsPaused || v.windingDown ? 'Deposits are paused'
-      : value < MIN_DEPOSIT + v.requestCharge ? 'Below the minimum deposit'
+      : value < v.params.minDeposit + v.requestCharge ? 'Below the minimum deposit'
       : v.lastNav + v.pendingDepositTotal + value - v.requestCharge > v.params.tvlCap ? "Above the vault's deposit limit"
       : h && value > h.wallet ? `Your wallet has ${eth(h.wallet)} ETH` : undefined)
     : h && value > h.shares ? `You have ${shares3(h.shares)} shares` : undefined;
@@ -235,17 +238,18 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
   const submit = () => {
     if (!value) return;
     const step = mode === 'deposit'
-      ? () => tx.write({ ...V, functionName: 'deposit', value })
-      : () => tx.write({ ...V, functionName: 'requestRedeem', args: [value], value: redeemCharge(value, v) });
+      ? () => tx.write({ ...V, functionName: 'deposit', args: [v.configHash], value })
+      : () => tx.write({ ...V, functionName: 'requestRedeem', args: [value, v.configHash], value: redeemCharge(value, v) });
     tx.send(label, [step]).then((ok) => ok && setAmount(''));
   };
   const cancel = () => tx.send('Cancel deposit', [() => tx.write({ ...V, functionName: 'cancelDeposit' })]);
   const claim = () => tx.send('Claim', [() => tx.write({ ...V, functionName: 'claim' })]);
-  const parts = [['Shapes in packs', v.book.tracked], ['Backing posted on FWA', v.book.backing], ['FWA fees not yet collected', v.book.fees], ['Free cash', v.book.freeEth]] as const;
+  const parts = [['Shapes in packs', v.book.tracked], ['Backing posted on FWA', v.book.backing], [v.book.navCurrent ? 'FWA fees not yet collected' : 'Known FWA credit; active fees unpriced', v.book.fees], ['Free cash', v.book.freeEth]] as const;
 
   return (
     <>
       <StatusBar {...st} link={{ href: etherscan(VAULT), label: 'Vault on Etherscan ↗' }} />
+      <RenewalStatus account={v} />
       {error && <p className="txline bad">{error}</p>}
       <main className="page cols design mp">
         <section>
@@ -254,8 +258,8 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
           <button className="disclose" style={{ marginTop: 14 }} aria-expanded={how} onClick={() => setHow(!how)}>How the vault works {how ? '▴' : '▾'}</button>
           {how && (
             <ol className="how">
-              <li>Deposits and redemptions wait for the next checkpoint, which runs once every 12 hours in FWA's quiet window and prices them all at once.</li>
-              <li>Until its checkpoint, a deposit can be cancelled for a full refund.</li>
+              <li>Deposits and redemptions wait for the next checkpoint, which runs at most once per 12-hour interval in an eligible quiet window.</li>
+              <li>Gross escrow can be cancelled until pricing. Unused checkpoint sponsorship is refunded separately after its era closes.</li>
               <li>A redemption locks shares. Each checkpoint fills it from the vault's free ETH; the rest stays invested until it is filled. Filled ETH is yours to claim.</li>
               <li><a className="link" href="#how-main">More in How it works</a></li>
             </ol>
@@ -281,24 +285,33 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
               </div>
             )}
           </Group>
-          <Group title="Where the vault's ETH is" desc={`${eth(v.book.nav, 2)} ETH across ${v.book.listed} listed packs. Each pack is one 0.05 and one 0.01 ETH Shape.`}>
+          <Group title="Where the vault's ETH is" desc={`${eth(v.book.nav, 2)} ETH of ${v.book.navCurrent ? 'current book value' : 'booked principal; NAV pending maintenance'}. ${v.book.listed} packs listed. Fresh launch packs contain three paid 0.01 ETH Shapes.`}>
             <div className="group-body tight">
               <div className="hiw-bar" role="img" aria-label={parts.map(([l, x]) => `${l} ${eth(x, 2)} ETH`).join(', ')}>
                 {parts.map(([l, x], i) => <span key={l} style={{ flexGrow: Number(formatEther(x)), background: BAR[i] }} />)}
               </div>
               <div className="kvs">
                 {parts.map(([l, x], i) => <div className="kv" key={l}><span className="sw" style={{ background: BAR[i] }} /><span className="k">{l}</span><span>{eth(x, 2)} ETH</span></div>)}
+                <div className="kv"><span className="k">Recovery packs awaiting incremental redemption</span><span>{v.book.recovery}</span></div>
               </div>
               <p className="note">Held apart for holders, not counted above: {eth(v.pendingDepositTotal, 2)} ETH in deposits waiting for pricing, {eth(v.claims, 2)} ETH in claims.</p>
             </div>
           </Group>
+          {me && v.requestCharge > 0n && (v.pendingDepositTotal > 0n || v.lockedShares > 0n) && <Group title="Required checkpoint funding"><div className="group-body">
+            <div className="kv"><span className="k">Current sponsorship topup</span><span>{ethText(v.requestCharge, 6)} ETH</span></div>
+            <p className="note">Unused sponsorship is claimable by its payer after the era closes.</p>
+            <button className="btn sec" disabled={busy} onClick={() => tx.send('Fund required checkpoint', [() => tx.write({ address: V.address, abi: packVaultAbi, functionName: 'fundCheckpoint', args: [v.configHash], value: v.requestCharge })])}>Contribute {ethText(v.requestCharge, 6)} ETH</button>
+          </div></Group>}
+          {me && <><CheckpointContributions key={`refunds:${VAULT}:${me}`} vault={VAULT} payer={me} refresh={refresh} />
+            <CallerFundedExit key={`exit:${VAULT}:${me}`} vault={VAULT} holder={me} refresh={refresh} /></>}
+          <MainPoolSettings key={VAULT} address={VAULT} vault params={v.params} configHash={v.configHash} mintFee={v.mintFee} tx={tx} enabled={me?.toLowerCase() === v.owner.toLowerCase()} />
         </section>
 
         <section className="sticky results">
           <div>
             <span className="soft" style={{ fontSize: 15 }}>One share is worth</span>
             <div className="pay"><span className="figure">{Number(formatEther(v.pricePerShare)).toFixed(4)}</span><span className="unit">ETH</span></div>
-            <p className="note">{v.lastCheckpoint ? `At the last checkpoint, ${ago(v.now - v.lastCheckpoint.at)}.` : 'At the seed price. No checkpoint yet.'}</p>
+            <p className="note">{!v.historyComplete && v.epoch > 0n ? 'At the last checkpoint. History loading.' : v.lastCheckpoint ? `At the last checkpoint, ${ago(v.now - v.lastCheckpoint.at)}.` : 'At the seed price. No checkpoint yet.'}</p>
           </div>
           <div className="seg" role="group" aria-label="Action">
             <button aria-pressed={mode === 'deposit'} onClick={() => { setMode('deposit'); setAmount(''); }}>Deposit</button>
@@ -311,7 +324,7 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
               <div className="kv"><span className="k">You get about</span><span>{shares3(value ? depositShares(value, v) : 0n)} shares</span></div>
               <div className="kv"><span className="k">Priced</span><span>Next checkpoint</span></div>
               <div className="kv"><span className="k">Request charge</span><span>{ethText(fee, 6)} ETH</span></div>
-              <div className="kv"><span className="k">Building and listing charge</span><span>{ethText(building, 6)} ETH</span></div>
+              <div className="kv"><span className="k">Estimated construction allowance at commitment</span><span>{ethText(building, 6)} ETH</span></div>
             </> : <>
               <div className="kv"><span className="k">You get about</span><span>{eth(value ? (value * v.pricePerShare) / 10n ** 18n : 0n)} ETH</span></div>
               <div className="kv"><span className="k">Priced</span><span>Next checkpoint</span></div>
@@ -331,12 +344,14 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
               <div className="kv"><span className="k">High-water mark</span><span>{Number(formatEther(v.highWaterMark)).toFixed(4)} ETH a share</span></div>
               <div className="kv"><span className="k">Free cash</span><span>{eth(v.book.freeEth, 4)} ETH</span></div>
               <div className="kv"><span className="k">Reserve</span><span>{eth(v.params.reserve, 4)} ETH</span></div>
-              <div className="kv"><span className="k">Open listings</span><span>{v.book.ids.length}</span></div>
+              <div className="kv"><span className="k">Open listings</span><span>{v.book.openCount.toString()}</span></div>
+              <div className="kv"><span className="k">Recovery packs awaiting bounded redemption</span><span>{v.book.recovery}</span></div>
               <div className="kv"><span className="k">Allocated exposure</span><span>{eth(v.book.allocated, 4)} ETH</span></div>
-              <div className="kv"><span className="k">Last checkpoint block</span><span>{v.lastCheckpoint ? v.lastCheckpoint.block.toString() : 'None yet'}</span></div>
+              <div className="kv"><span className="k">Last checkpoint block</span><span>{!v.historyComplete ? 'History loading' : v.lastCheckpoint ? v.lastCheckpoint.block.toString() : 'None yet'}</span></div>
               <div className="kv"><span className="k">Next checkpoint window</span><span>{nextWindow(v)}</span></div>
-              <div className="kv"><span className="k">Keeper pay since the last checkpoint</span><span>{eth(v.keeperPaySince, 5)} ETH</span></div>
-              <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{eth(v.tokensBurned, 2)} FWA · valued at 0</span></div>
+              <div className="kv"><span className="k">Actual primary mint fees paid</span><span>{v.historyComplete ? `${eth(v.actualMintFees, 6)} ETH` : 'History loading'}</span></div>
+              <div className="kv"><span className="k">Keeper pay since the last checkpoint</span><span>{v.historyComplete ? `${eth(v.keeperPaySince, 5)} ETH` : 'History loading'}</span></div>
+              <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{v.historyComplete ? `${eth(v.tokensBurned, 2)} FWA · valued at 0` : 'History loading'}</span></div>
             </div>
           )}
         </section>
@@ -431,26 +446,29 @@ const loadAmount = () => { try { return (JSON.parse(localStorage.getItem(DRAFT_K
 function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreated: () => void }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
+  const [params, setParams] = useState(MANAGER_PARAMS);
   const [amount, setAmountState] = useState(loadAmount);
   const setAmount = (a: string) => { setAmountState(a); try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ amount: a })); } catch { /* storage unavailable */ } };
   const value = parse(amount);
-  const cost = v && v.edge[2] ? packCost(v.edge[1], v.deployCharge) : undefined;
-  const threshold = cost === undefined ? undefined : cost + MANAGER_PARAMS.reserve;
-  const packs = cost !== undefined && value !== undefined ? packsFor(value, MANAGER_PARAMS.reserve, cost) : undefined;
-  const disabled = !v ? 'Current costs are unavailable'
-    : cost === undefined ? "FWA conditions don't allow new packs right now"
+  const preview = usePolled(pub && MANAGER_FACTORY ? `manager-preview:${pub.chain.id}:${MANAGER_FACTORY}:${params.acceptedMintFee}` : undefined, () => previewManager(pub!, MANAGER_FACTORY!, params));
+  const quoted = preview.data;
+  const cost = quoted ? quoted.openingCash - params.reserve - quoted.floatRequired : undefined;
+  const threshold = quoted?.openingCash;
+  const packs = cost !== undefined && value !== undefined ? packsFor(value, params.reserve + (quoted?.floatRequired ?? 0n), cost) : undefined;
+  const disabled = !quoted ? preview.error ?? 'Current costs are unavailable'
+    : quoted.mintFee > params.acceptedMintFee ? 'Accept the current mint fee first'
     : !value ? 'Enter an amount'
-    : value < threshold! ? `At least ${ethText(threshold!, 2)} ETH to list a pack`
-    : v.holder && value > v.holder.wallet ? `Your wallet has ${eth(v.holder.wallet)} ETH` : undefined;
+    : value < threshold! ? `At least ${ethText(threshold!, 2)} ETH for this funding estimate`
+    : v?.holder && value > v.holder.wallet ? `Your wallet has ${eth(v.holder.wallet)} ETH` : undefined;
   const run = async () => {
-    if (!pub || !me || !value || disabled || !MANAGER_FACTORY) return;
+    if (!pub || !me || !value || disabled || !MANAGER_FACTORY || !quoted) return;
     const record: ManagerCreation = { chainId: chain.id, factory: MANAGER_FACTORY, owner: me, value: String(value),
       fromBlock: String(await pub.getBlockNumber()), since: Date.now() };
     const ok = await tx.send('Create manager', [['Create manager', async () => {
       let hash;
       try {
         // Saved before the wallet opens, so a reload during or after signing resumes this creation.
-        hash = await tx.write({ address: MANAGER_FACTORY!, abi: packManagerFactoryAbi, functionName: 'create', args: [me, MANAGER_PARAMS], value },
+        hash = await tx.write({ address: MANAGER_FACTORY!, abi: packManagerFactoryAbi, functionName: 'create', args: [me, params, quoted.configHash], value },
           () => saveManagerCreation(record));
       } catch (e) {
         if (creationNotSubmitted(e)) clearManagerCreation();
@@ -469,22 +487,33 @@ function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreate
         <section>
           <h1 className="title">Create a personal manager</h1>
           <p className="lead">It runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee.</p>
+          <p className="note">Provisional local candidate: 0.03 ETH packs, 70,000 bps backing, fresh paid replacements, one renewal float, 25 bps uplift limit.</p>
+          {quoted && <Group title="Conditional opening funding estimate"><div className="group-body">
+            <div className="kv"><span className="k">Shapes principal per pack</span><span>{ethText(quoted.principal)} ETH</span></div>
+            <div className="kv"><span className="k">FWA backing per pack</span><span>{ethText(quoted.backing)} ETH</span></div>
+            <div className="kv"><span className="k">Fresh mint fees per pack</span><span>{ethText(quoted.mintCost)} ETH</span></div>
+            <div className="kv"><span className="k">Renewal float</span><span>{ethText(quoted.floatRequired)} ETH</span></div>
+            <div className="kv"><span className="k">Maintenance reserve</span><span>{ethText(params.reserve)} ETH</span></div>
+            <div className="kv"><span className="k">Live / accepted mint fee per Shape</span><span>{ethText(quoted.mintFee)} / {ethText(params.acceptedMintFee)} ETH</span></div>
+            <p className="note">Funding estimate includes quoted initial keeper work. FWA admission and live economics are checked on the created manager. Creation starts idle; wallet creation gas is additional.</p>
+            {quoted.mintFee !== params.acceptedMintFee && <button className="btn sec" onClick={() => setParams((p) => ({ ...p, acceptedMintFee: quoted.mintFee }))}>Use {ethText(quoted.mintFee, 6)} ETH as this manager's accepted mint fee maximum</button>}
+          </div></Group>}
           <Group title="Before you start">
             <div className="rows">
-              <div><div><h3 className="ctl">About {threshold === undefined ? '–' : ethText(threshold, 2)} ETH lists one pack</h3><p>With one pack the result is mostly luck. 0.5 to 1 ETH spreads it over several.</p></div></div>
+              <div><div><h3 className="ctl">About {threshold === undefined ? '–' : ethText(threshold, 2)} ETH funds this one-pack estimate</h3><p>With few packs, individual acquisition outcomes have a large effect. Returns are not guaranteed.</p></div></div>
             </div>
           </Group>
         </section>
         <section className="sticky results">
           <Amount label="Fund it with" value={amount} onChange={setAmount} unit="ETH" />
           <div className="kvs">
-            <div className="kv"><span className="k">Packs it can list</span><span>{packs === undefined ? '–' : packs.toString()}</span></div>
-            <div className="kv"><span className="k">To create</span><span>About 474,000 gas</span></div>
+            <div className="kv"><span className="k">Estimated packs if admitted</span><span>{packs === undefined ? '–' : packs.toString()}</span></div>
+            <div className="kv"><span className="k">To create</span><span>Creation gas varies</span></div>
             <div className="kv"><span className="k">Fee</span><span>None</span></div>
           </div>
           <div className="pin">
             {!me ? <Connect className="btn lg" />
-              : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : disabled ?? `Create manager with ${amount} ETH`}</button>}
+              : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : disabled ?? `Create idle manager with ${amount} ETH`}</button>}
             <TxHelper tx={tx}>One confirmation.</TxHelper>
           </div>
         </section>
@@ -502,8 +531,8 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   const [numbers, setNumbers] = useState(false);
   if (!m) return <p className={`txline${error ? ' bad' : ''}`}>{error ?? 'Loading your manager…'}</p>;
   const M = { address: manager, abi: packManagerAbi } as const;
-  // One more pack's ETH: its Shapes, this manager's live backing and the work to build it (the vault's quote).
-  const cost = v && m.edge[2] ? packCost(m.edge[1], v.deployCharge) : undefined;
+  // Each manager prices its own recipe and work under its own configuration.
+  const cost = m.edge[2] ? packCost(m.packValue, m.edge[1], m.buildCost) : undefined;
   const st = managerStatus(m, cost);
   const seg = mode ?? (m.book.listed === 0 ? 'add' : 'withdraw');
   const value = parse(amount);
@@ -520,15 +549,16 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   };
   const control = (name: string, fn: string, args: unknown[]) => tx.send(name, [() => tx.write({ ...M, functionName: fn, args } as never)]);
   const squares: CSSProperties[] = [
-    ...Array<CSSProperties>(m.book.listed).fill({ background: '#fff' }),
-    ...Array<CSSProperties>(m.book.bought).fill({ outline: '2px dashed #fff', outlineOffset: -2 }),
-    ...Array<CSSProperties>(m.book.idle).fill({ background: '#333' }),
+    ...Array<CSSProperties>(Math.min(64, m.book.listed)).fill({ background: '#fff' }),
+    ...Array<CSSProperties>(Math.min(64, m.book.bought)).fill({ outline: '2px dashed #fff', outlineOffset: -2 }),
+    ...Array<CSSProperties>(Math.min(64, m.book.idle)).fill({ background: '#333' }),
   ];
-  const canList = cost === undefined ? undefined : packsFor(m.balance + (value ?? 0n), m.params.reserve, cost);
+  const canList = cost === undefined ? undefined : packsFor(m.balance + (value ?? 0n), m.operatingReserve, cost);
   const budget = (cap: bigint, rate: bigint, now: bigint) => `${eth(now, 4)} of ${eth(cap, 3)} ETH · ${eth(rate, 3)} ETH a day`;
   return (
     <>
       <StatusBar head={st.head} body={st.body} link={{ href: etherscan(manager), label: 'Manager on Etherscan ↗' }} />
+      <RenewalStatus account={m} />
       {error && <p className="txline bad">{error}</p>}
       <main className="page cols design mp">
         <section>
@@ -541,17 +571,18 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
           <div className="addr"><span className="mono">{manager}</span><button className="link quiet" onClick={() => navigator.clipboard?.writeText(manager)}>Copy address</button></div>
           <p className="lead">Your own account on FWA's main pool. Only you can withdraw. The factory that created it has no access.</p>
           {!owner && <p className="note error" style={{ marginTop: 10 }}>The connected wallet does not own this manager.</p>}
-          <Group title="Packs" desc={m.edge[2] ? `Each is one 0.05 and one 0.01 ETH Shape, listed with ${ethText(m.edge[1], 4)} ETH backing.` : 'Each is one 0.05 and one 0.01 ETH Shape.'}>
+          <Group title="Packs" desc={`Selected fresh recipe: ${ethText(m.packValue, 2)} ETH, ${m.mintCount} paid primary mints.${m.edge[2] ? ` New backing: ${ethText(m.edge[1], 4)} ETH.` : ''} Existing packs retain their contents.`}>
             <div className="group-body tight">
-              {squares.length > 0 ? <div className="packs" aria-hidden="true">{squares.map((s, i) => <span key={i} style={s} />)}</div> : <p className="note">No packs yet. Keepers build them from the manager's ETH.</p>}
+              {squares.length > 0 ? <div className="packs" aria-hidden="true">{squares.map((s, i) => <span key={i} style={s} />)}</div> : <p className="note">{m.book.recovery > 0 ? 'Recovery inventory awaits incremental redemption.' : "No packs yet. Keepers build them from the manager's ETH."}</p>}
               <div className="legend row-legend">
                 {m.book.listed > 0 && <div><span className="sw" style={{ background: '#fff' }} />Listed {m.book.listed}</div>}
                 {m.book.bought > 0 && <div><span className="sw" style={{ border: '1px dashed #fff' }} />Bought, waiting on keep or bid {m.book.bought}</div>}
                 {m.book.idle > 0 && <div><span className="sw" style={{ background: '#333' }} />Idle {m.book.idle}</div>}
+                {m.book.recovery > 0 && <div>Recovery packs {m.book.recovery}</div>}
               </div>
               <div className="kvs">
-                <div className="kv"><span className="k">Kept by buyers, then rebuilt</span><span>{m.keeps}</span></div>
-                <div className="kv"><span className="k">Bid back, then relisted</span><span>{m.bids}</span></div>
+                <div className="kv"><span className="k">Keep receipts recorded</span><span>{m.historyComplete ? m.recordedKeeps : 'History loading'}</span></div>
+                <div className="kv"><span className="k">Other resolved selections</span><span>{m.historyComplete ? m.otherResolved : 'History loading'}</span></div>
               </div>
             </div>
           </Group>
@@ -571,14 +602,15 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
               </div>
               <div>
                 <div><h3 className="ctl">Withdraw idle packs</h3><p className="h">Takes unlisted packs to your wallet.{m.book.idle === 0 ? ' None are idle now.' : ''}</p></div>
-                <button className="btn sec" disabled={busy || !owner || m.book.idle === 0} onClick={() => control('Withdraw packs', 'withdrawPacks', [me, BigInt(m.book.idle)])}>Withdraw packs</button>
+                <button className="btn sec" disabled={busy || !owner || m.book.idle === 0} onClick={() => control('Withdraw packs', 'withdrawPacks', [me, BigInt(Math.min(16, m.book.idle))])}>Withdraw up to 16 packs</button>
               </div>
             </div>
           </Group>
+          <MainPoolSettings key={manager} address={manager} params={m.params} configHash={m.configHash} mintFee={m.mintFee} tx={tx} enabled={owner} />
         </section>
         <section className="sticky results">
           <div>
-            <span className="soft" style={{ fontSize: 15 }}>Value</span>
+            <span className="soft" style={{ fontSize: 15 }}>{m.book.navCurrent ? 'Value' : 'Booked principal; NAV pending maintenance'}</span>
             <div className="pay"><span className="figure">{eth(m.book.nav)}</span><span className="unit">ETH</span></div>
           </div>
           <div className="seg" role="group" aria-label="Action">
@@ -589,8 +621,8 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
           <div className="kvs">
             {seg === 'withdraw' ? <>
               <div className="kv"><span className="k">Available now</span><span>{eth(m.balance)} ETH</span></div>
-              <div className="kv"><span className="k">In listed packs</span><span>{eth(m.book.inListed)} ETH</span></div>
-              {m.book.inBought > 0n && <div className="kv"><span className="k">In the bought pack{m.book.bought === 1 ? '' : 's'}</span><span>{eth(m.book.inBought)} ETH</span></div>}
+              <div className="kv"><span className="k">Backing on FWA</span><span>{eth(m.book.inListed)} ETH</span></div>
+              {m.book.inBought > 0n && <div className="kv"><span className="k">Allocated Shapes</span><span>{eth(m.book.inBought)} ETH</span></div>}
             </> : <>
               <div className="kv"><span className="k">Packs it can list</span><span>{canList === undefined ? '–' : canList.toString()}</span></div>
               <div className="kv"><span className="k">Reserve kept</span><span>{eth(m.params.reserve)} ETH</span></div>
@@ -604,15 +636,15 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
           {numbers && (
             <div className="kvs">
               <div className="kv"><span className="k">Reserve</span><span>{eth(m.params.reserve, 4)} ETH</span></div>
+              <div className="kv"><span className="k">Actual primary mint fees paid</span><span>{m.historyComplete ? `${eth(m.actualMintFees, 6)} ETH` : 'History loading'}</span></div>
               <div className="kv"><span className="k">Routine keeper budget</span><span>{budget(m.params.routineCap, m.params.routineRate, m.budget[0])}</span></div>
               <div className="kv"><span className="k">Essential keeper budget</span><span>{budget(m.params.essentialCap, m.params.essentialRate, m.budget[1])}</span></div>
               <div className="kv"><span className="k">Gas ceiling</span><span>{(Number(m.params.gasCeiling) / 1e9).toFixed(2)} gwei</span></div>
               <div className="kv"><span className="k">Min edge</span><span>{(m.params.minEdgeBps / 100).toFixed(2)}%</span></div>
-              <div className="kv"><span className="k">Pack recipe</span><span>0.05 + 0.01 ETH Shapes</span></div>
               <div className="kv"><span className="k">Shapes mint fee now</span><span>{eth(m.mintFee, 4)} ETH a Shape</span></div>
-              <div className="kv"><span className="k">Keeper pay to date</span><span>{eth(m.keeperPay, 5)} ETH</span></div>
-              <div className="kv"><span className="k">Withdrawn to date</span><span>{eth(m.withdrawn, 4)} ETH</span></div>
-              <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{eth(m.tokensBurned, 2)} FWA · valued at 0</span></div>
+              <div className="kv"><span className="k">Keeper pay to date</span><span>{m.historyComplete ? `${eth(m.keeperPay, 5)} ETH` : 'History loading'}</span></div>
+              <div className="kv"><span className="k">Withdrawn to date</span><span>{m.historyComplete ? `${eth(m.withdrawn, 4)} ETH` : 'History loading'}</span></div>
+              <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{m.historyComplete ? `${eth(m.tokensBurned, 2)} FWA · valued at 0` : 'History loading'}</span></div>
             </div>
           )}
         </section>
@@ -621,3 +653,24 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   );
 }
 
+
+function RenewalStatus({ account }: { account: Pick<Manager, 'params' | 'mintFee' | 'renewalState' | 'budget' | 'operatingReserve' | 'minimumRenewalQuote' | 'renewalCashRequired' | 'renewalInventoryReady' | 'mintCount' | 'packValue' | 'keeperCash' | 'edge'> }) {
+  const [returned, kept, float, cash] = account.renewalState;
+  const waits = renewalWaits(account);
+  return <div className="group-body main-renewal-state" role="status">
+    <div className="kv"><span className="k">Selected fresh pack value / primary mints</span><span>{eth(account.packValue, 2)} ETH / {account.mintCount.toString()}</span></div>
+    <div className="kv"><span className="k">Live / accepted mint fee per Shape</span><span>{eth(account.mintFee, 6)} / {eth(account.params.acceptedMintFee, 6)} ETH</span></div>
+    <div className="kv"><span className="k">Renewal</span><span>{account.params.renewalMode === 0 ? 'Fresh after acquisition; every fresh Shape pays a mint fee' : 'Reuse returned packs'}</span></div>
+    <div className="kv"><span className="k">Eligible returned / kept replacements</span><span>{returned.toString()} / {kept.toString()}</span></div>
+    <div className="kv"><span className="k">Maintenance reserve / renewal float</span><span>{eth(account.params.reserve, 5)} / {eth(float, 5)} ETH</span></div>
+    <div className="kv"><span className="k">Renewal cash available</span><span>{eth(cash, 5)} ETH</span></div>
+    <div className="kv"><span className="k">Routine cash / spending permission</span><span>{eth(account.keeperCash, 5)} / {eth(account.budget[0], 5)} ETH</span></div>
+    {waits.feeNotAccepted && <p className="note error">Fresh minting waits: the live mint fee exceeds the accepted maximum.</p>}
+    {account.params.packUnitsMask === 0n && <p className="note">Fresh minting is disabled. Existing unselected inventory may still be relisted.</p>}
+    {returned > 0n && !account.renewalInventoryReady && <p className="note">Eligible return needs recovery or bounded inventory discovery.</p>}
+    {!account.edge[2] && <p className="note">New listing admission is currently unavailable.</p>}
+    {account.minimumRenewalQuote > 0n && <div className="kv"><span className="k">Quoted renewal work before fee collection</span><span>{eth(account.minimumRenewalQuote, 6)} ETH</span></div>}
+    {waits.cashShort && <p className="note error">Renewal needs cash or eligible fee collection. Raising spending permission adds no ETH.</p>}
+    {waits.allowanceTooSmall && <p className="note error">Renewal waits for spending permission. The allowance cannot cover the quoted renewal work.</p>}
+  </div>;
+}

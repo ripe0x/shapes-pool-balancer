@@ -1,0 +1,100 @@
+{
+  "stage": "exit",
+  "engine": "156.0.8078.4",
+  "block": 26484943,
+  "checks": [
+    "Request redemption of all shares",
+    "Unlist a bounded batch for holder liquidity",
+    "Redeem idle or recovery packs for holder liquidity",
+    "Price the next redemption fill",
+    "Claim priced ETH",
+    "Complete exit: no deposit, shares, redemption or priced claim remains",
+    "Claim 0.0000000009165 ETH contribution refund"
+  ],
+  "errors": [],
+  "writes": [
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x3b7041d20000000000000000000000000000000000000000000000000155dbfcc959313ca80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x63411",
+          "maxFeePerGas": "0x3b9ad463",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x28eda30e8d00"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x31047f12000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000019073",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0xdc11d",
+          "maxFeePerGas": "0x3b9ad316",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x54210dce0000000000000000000000000000000000000000000000000000000000000010",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x71974",
+          "maxFeePerGas": "0x3b9ad1f6",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x72d5146c0000000000000000000000000000000000000000000000000000000000000000",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x4dabb",
+          "maxFeePerGas": "0x3b9ad0fd",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x4e71d92d",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x24b70",
+          "maxFeePerGas": "0x3b9ad020",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0xcc4b616200000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000a",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x1a810",
+          "maxFeePerGas": "0x3b9acf5e",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc"
+        }
+      ]
+    }
+  ]
+}

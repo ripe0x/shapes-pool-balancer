@@ -1,0 +1,16 @@
+{
+  "localRpc": "http://127.0.0.1:18647",
+  "chainId": 31337,
+  "preview": "http://127.0.0.1:5217",
+  "browser": "Chromium156.0.8078.4",
+  "localActor": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+  "setupFailures": [
+    "RequestedPlaywrightbrowserrevision1234absent;reusedcachedChromium156shell1248.",
+    "Earlierpreview5217notrunning;startedtaskownedlocalpreviewwith31337flags.",
+    "OneCLIreadusedwrongholderStatereturnarity;correctedfromactualcompiledABI3outputs;nochainmutation.",
+    "Initialevidencebinderselectedfirsthistoricalcampaigncontext;correctedtolatestsource-Rcontextandverifiedall5actualruntimesand8sources."
+  ],
+  "protocolTransactionsAllSucceeded": true,
+  "privateKeysOrSecretsWritten": false,
+  "publicNetworkTransactions": 0
+}

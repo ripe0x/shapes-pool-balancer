@@ -1,0 +1,31 @@
+{
+ "before": {
+  "pending": 99954990801500000,
+  "pool": 45009198500000,
+  "shares": 0,
+  "supply": 1000000000000000,
+  "nav": 10137877518825612
+ },
+ "after": {
+  "pending": 0,
+  "pool": 0,
+  "shares": 9732477209666297,
+  "supply": 10732477209666297,
+  "nav": 110092868320325612,
+  "refundReserve": 45015017500000
+ },
+ "actor": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+ "vault": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+ "caller": "0x6B401c3364dFb17fe7D54237fC04aba3f7739dd0",
+ "normalPaidCheckpoint": true,
+ "receipt": {
+  "transactionHash": "0x57928388355fb1eecbe52769ae479d79cde483b29caa279086339aa63cb6c406",
+  "status": "0x1",
+  "blockNumber": "0x19420bc",
+  "blockHash": "0xd7cd8ca5350649e2f6440fcb8e6541bede0ff9cd3fa75ab6ea11d2cd9ef4335c",
+  "gasUsed": "0x50993",
+  "effectiveGasPrice": "0x2fb20b5"
+ },
+ "keeperPaidWei": 45006170500000,
+ "keeperGasCostWei": 16510624146671
+}

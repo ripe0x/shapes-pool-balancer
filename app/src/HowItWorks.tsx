@@ -188,7 +188,7 @@ const FAQ: [string, string][] = [
 /** The main pool page: what the shared vault and personal managers do with ETH. Live figures come from the vault. */
 export function HowItWorksMain() {
   const { data: v } = useVault();
-  const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'an amount set from FWA\'s live fees';
+  const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'the account owner\'s configured amount';
   return (
     <main className="page hiw">
       <p className="note hiw-switch"><a className="link" href="#how">Community pools</a> · Main pool</p>
@@ -197,23 +197,23 @@ export function HowItWorksMain() {
 
       <section className="hiw-sec">
         <h2 className="h3">1. The pack</h2>
-        <p className="hiw-p">Each pack is one 0.05 ETH Shape and one 0.01 ETH Shape, minted straight into a ShapePack: <b>0.06 ETH</b> of Shapes that redeem for exactly that ETH.</p>
+        <p className="hiw-p">The launch pack contains three directly minted 0.01 ETH Shapes: <b>0.03 ETH</b> of Shapes that redeem for exactly that ETH.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">2. Listing with backing</h2>
-        <p className="hiw-p">A pack is listed on FWA's main pool with <b>{backing}</b> of backing. While it is listed it earns a share of every acquisition fee on the pool. Backing is set so that a buyer who draws the pack does better keeping it than taking FWA's bid.</p>
+        <p className="hiw-p">A pack is listed on FWA's main pool with <b>{backing}</b> of backing. While it is listed it earns a share of every acquisition fee on the pool. The account owner sets the backing ratio. The buyer chooses whether to keep the pack or take a bid.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">3. Keep or bid</h2>
-        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack comes back and is listed again.</p>
+        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack returns. In fresh renewal mode it is retired and replaced with paid new Shapes when funded; in reuse mode it is relisted.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">4. The shared vault's checkpoints</h2>
         <p className="hiw-p">Holders own shares that can't be transferred. Deposits and redemptions wait for the next <b>checkpoint</b>, which runs at most once every 12 hours, in FWA's quiet window, and prices them together.</p>
-        <p className="hiw-p">A deposit can be cancelled for a full refund until it is priced. A redemption locks shares; each checkpoint fills it from the vault's free ETH and the rest stays invested until filled. Filled ETH waits for you to <b>claim</b> it.</p>
+        <p className="hiw-p">A deposit can be cancelled until it is priced. Checkpoint sponsorship may remain refundable separately. A redemption locks shares; each checkpoint fills it from the vault's free ETH and the rest stays invested until filled. Filled ETH waits for you to <b>claim</b> it.</p>
       </section>
 
       {MANAGER_FACTORY && (
