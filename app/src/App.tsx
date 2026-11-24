@@ -995,11 +995,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const actual = has && !edited && !stocking;
   const inputs: DesignInputs = actual ? { ...base, shapePrices: livePrices } : base;
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
-  // A new pool takes the suggested rate: earnings are what the markup brings in above the 10% that runs the pool. An
-  // existing pool keeps its stored rate until changed in Settings.
+  // Earnings are what the markup brings in above the 10% that runs the pool. A new pool takes this rate; saving an
+  // existing pool's markup or mix sets it again.
   const [curatedRequired, setCuratedRequired] = useState(!!draft?.curatedRequired);
-  const reviewedRate = fresh ? suggestedRate : d.creatorRevenueBps;
-  const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
   const current = (): Draft => ({ salt, curatedRequired, markup, counts, style: style ?? null, nfts });
   useEffect(() => {
@@ -1036,6 +1034,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // higher or lower. Configure binds the fee shown here as the accepted cap and reverts if the live fee is above it.
   const feeOnly = has && markupBps === d.markupBps && target === d.target && d.mintFee !== d.mintFeeCap;
   const configChanged = !has || markupBps !== d.markupBps || target !== d.target || feeOnly;
+  const reviewedRate = fresh || (configChanged && !d.legacy) ? suggestedRate : d.creatorRevenueBps;
+  const rateChange = has && !d.legacy && reviewedRate !== d.creatorRevenueBps;
+  const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
   // The reserve uses the accepted fee (PoolBalancer.requiredReserve): a pending configure accepts the live fee.
   const savedReserveFee = d.mintFeeCap;
   const reserveMintFee = configChanged ? d.mintFee : savedReserveFee;
@@ -1157,11 +1158,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
     ? [toList.length > 0 && `approve ${nftWord(toList.length)}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
-    : [configChanged && (feeOnly ? `accept the ${eth(d.mintFee, 6)} ETH Shapes mint fee` : 'save the design'), toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
+    : [configChanged && (feeOnly ? `accept the ${eth(d.mintFee, 6)} ETH Shapes mint fee` : 'save the design'),
+      rateChange && `set the earnings rate to ${reviewedRate / 100}% of sales`, toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
       shortBy > 0n && `deposit ${eth(shortBy, 6)} ETH`, extra.length > 0 && `unlist ${word(extra.length)} extra prizes`,
       (toList.length > 0 || configChanged) && 'run upkeep'].filter(Boolean) as string[];
   const confirmations = mode === 'new' ? toList.length + 1
-    : (shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
+    : (shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (rateChange ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
   const blocked = (d as { feesLoading?: boolean }).feesLoading ? 'Loading current fees…'
@@ -1226,6 +1228,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         if (configChanged) steps.push([feeOnly ? 'Accept mint fee' : 'Save design', () => d.legacy
           ? tx.write({ address: balancer, abi: d.legacy.poolBalancerAbi, functionName: 'configure', args: [markupBps, target] })
           : tx.write({ ...B, functionName: 'configure', args: [markupBps, target, d.mintFee] })]);
+        if (rateChange) steps.push(rateStep(tx, balancer, reviewedRate));
         steps.push(...listSteps(toList, (batch) => tx.write({ ...B, functionName: 'listCuratedBatch', args: [batch] })));
         if (shortBy > 0n) steps.push([`Deposit ${eth(shortBy, 6)} ETH`, () => tx.write({ ...B, functionName: 'depositETH', value: shortBy })]);
         if (extra.length) steps.push(['Unlist extra prizes', () => tx.write({ ...B, functionName: 'unlistShapes', args: [extra.map((listing) => listing.id)] })]);
@@ -1782,7 +1785,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           {stagedBacking > 0n && <div className="kv"><span className="k">Staged prize backing</span><span>{eth(stagedBacking, 6)} ETH</span></div>}
           <div className="kv"><span className="k">Operating ETH</span><span>{eth(fund, 6)} ETH</span></div>
           <div className="kv"><span className="k">Accrued earnings</span><span>{eth(d.creatorCredit, 6)} ETH</span></div>
-          <div className="kv"><span className="k">Earnings rate</span><span>{d.creatorRevenueBps / 100}% of sales</span></div>
+          <EarningsRate d={d} tx={tx} canFix={isCreator} />
           {isCreator && <button className="btn" disabled={!!tx.busy || d.creatorCredit === 0n} onClick={() => tx.send('Claim earnings', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [d.creatorCredit, me] })])}>Claim {eth(d.creatorCredit, 6)} ETH earnings</button>}
           {d.surplus === undefined && <p className="note">Operating surplus unavailable. Accrued earnings remain claimable.</p>}
           <div className="kv"><span className="k">Required operating reserve</span><span>{d.required === undefined ? 'Unavailable' : eth(d.required, 6)} ETH</span></div>
@@ -1793,7 +1796,11 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               <p className="note error">{missing === 1 ? `${goneLabel[0].toUpperCase()}${goneLabel.slice(1)} is` : `${missing} prizes are`} missing. {d.paidUpkeepEnabled ? 'Full target funding and paid maintenance need' : 'The target inventory needs'} {eth(short_, 6)} ETH more.</p>
               <div className="row" style={{ marginTop: 8 }}>
                 <button className="btn" disabled={!!tx.busy} onClick={() => tx.send(`Add ${eth(short_, 6)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub, tx, me, d.balancer)])}>Add {eth(short_, 6)} ETH</button>
-                <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => tx.send('Continue without them', [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed), d.mintFeeCap] }), upkeepStep(pub, tx, me, d.balancer)])}>Continue without {goneLabel}</button>
+                <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => {
+                  const rate = d.legacy || d.restockFee === undefined ? d.creatorRevenueBps : rateFor(d, trimmed);
+                  tx.send('Continue without them', [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed), d.mintFeeCap] }),
+                    ...(rate !== d.creatorRevenueBps ? [rateStep(tx, d.balancer, rate)] : []), upkeepStep(pub, tx, me, d.balancer)]);
+                }}>Continue without {goneLabel}</button>
               </div>
             </div>
           )}
@@ -1891,28 +1898,36 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   );
 }
 
-function RevenueShare({ d, tx }: { d: D; tx: Tx }) {
-  const [rate, setRate] = useState(String(d.creatorRevenueBps / 100));
-  const bps = Math.round(Number(rate) * 100);
-  const valid = rate.trim() !== '' && Number.isFinite(bps) && bps >= 0 && bps <= 10_000;
-  // The rate a new pool would take for the current markup and target mix: earnings are the markup above 10%.
+/** The earnings rate for a mix at the pool's markup, every Shape priced at the current markup and fees: the rate the
+ *  design page sets when markup or mix is saved. */
+function rateFor(d: D, counts: Counts, shapePrices?: bigint[][]) {
   const curated = d.listings.filter((l) => l.kind === 1 && isSelectable(l));
+  return suggestedCreatorRevenueBps(counts, { curatedBases: curated.map((l) => l.base), curatedPrices: curated.map((l) => l.price),
+    shapePrices, markupBps: d.markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!, baseFee: d.baseFee });
+}
+
+/** The stored rate is current when it is within max(0.25 points, 10%) of the rate for the saved design, or for the board
+ *  as listed (listings keep the restocking fee of their listing time, so gas moves the first alone). */
+function rateCheck(d: D) {
+  if (d.legacy || d.restockFee === undefined || !d.target) return undefined;
+  const counts = unpackPlan(d.target);
   const shapePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (shapePrices[l.denom] ??= []).push(l.price);
-  const suggested = d.restockFee === undefined ? undefined : suggestedCreatorRevenueBps(unpackPlan(d.target), {
-    curatedBases: curated.map((l) => l.base), curatedPrices: curated.map((l) => l.price), shapePrices, markupBps: d.markupBps,
-    edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee, baseFee: d.baseFee,
-  });
-  return <div className="section">
-    <h2 className="h3">Earnings rate</h2>
-    <div className="kv"><span className="k">Now</span><span>{d.creatorRevenueBps / 100}% of sales</span></div>
-    {suggested !== undefined && <div className="kv"><span className="k">Suggested for your markup and mix</span><span>{suggested / 100}% of sales {suggested !== d.creatorRevenueBps && <button className="link" onClick={() => setRate(String(suggested / 100))}>Use</button>}</span></div>}
-    <label htmlFor="revenue-share" className="ctl">New rate, % of sales</label>
-    <div className="field"><input id="revenue-share" type="number" min="0" max="100" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} /><span>%</span></div>
-    <button className="btn" disabled={!!tx.busy || !valid || bps === d.creatorRevenueBps} onClick={() => tx.send('Change earnings rate', [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName: 'setCreatorRevenueBps', args: [bps] })])}>Apply</button>
-    <p className="note">The rate does not follow markup changes. Sales already available are collected at the old rate first.</p>
-    {bps === 10_000 && <p className="note error">100% leaves no new owner proceeds for pool operations.</p>}
-  </div>;
+  const suggested = rateFor(d, counts);
+  const near = (bps: number) => Math.abs(d.creatorRevenueBps - bps) <= Math.max(25, bps / 10);
+  return { suggested, stale: !near(suggested) && !near(rateFor(d, counts, shapePrices)) };
+}
+
+const rateStep = (tx: Tx, balancer: Address, bps: number): Step =>
+  ['Update earnings rate', () => tx.write({ address: balancer, abi: poolBalancerAbi, functionName: 'setCreatorRevenueBps', args: [bps] })];
+
+function EarningsRate({ d, tx, canFix }: { d: D; tx: Tx; canFix: boolean }) {
+  const check = rateCheck(d);
+  return <>
+    <div className="kv"><span className="k">Earnings rate</span><span>{d.creatorRevenueBps / 100}% of sales</span></div>
+    {check?.stale && <p className="note error">Out of date. This markup and prize mix set {check.suggested / 100}% of sales.</p>}
+    {check?.stale && canFix && <button className="btn" disabled={!!tx.busy} onClick={() => tx.send('Update earnings rate', [rateStep(tx, d.balancer, check.suggested)])}>Update to {check.suggested / 100}%</button>}
+  </>;
 }
 
 function Settings({ d, tx }: { d: D; tx: Tx }) {
@@ -1956,7 +1971,11 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
             </>
           )}
         </div>
-        <RevenueShare d={d} tx={tx} />
+        <div className="section">
+          <h2 className="h3">Earnings rate</h2>
+          <EarningsRate d={d} tx={tx} canFix />
+          <p className="note">Set by markup and prize mix.</p>
+        </div>
         {d.curatedRequired !== undefined && (
           <div className="section">
             <h2 className="h3">Curated NFTs</h2>
