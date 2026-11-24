@@ -20,6 +20,7 @@ import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from '.
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
+import { setupListingLimit, setupListingWaits } from '../../shared/listing';
 import { AutomaticPauses, LegacyKeeperPay, LegacyTag, Maintenance, SRow, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
 import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit, refillPerDay } from './limits';
 import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/legacy';
@@ -440,6 +441,14 @@ const mixText = (c: Counts) => {
 };
 const poolName = (d: D) => d.ensName ?? `Pool ${short(d.balancer)}`;
 
+/** How a stocking pool's Shapes get listed: automatically by keepers, paused while gas is above the first-listing limit,
+ *  or by the creator when keeper pay is off. */
+function listingMode(d: D) {
+  const limit = setupListingLimit(d.economics?.gasPriceCeiling);
+  const mode = !d.paidUpkeepEnabled ? 'manual' as const : setupListingWaits(d.admission, d.baseFee, limit) ? 'paused' as const : 'auto' as const;
+  return { mode, limit, gwei: (x: bigint) => Number(formatGwei(x)).toLocaleString('en-US', { maximumFractionDigits: 2 }) };
+}
+
 /** One sentence for the pool's state, and the action or tab that resolves it. */
 function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | 'fund' | Tab; label?: string } {
   if (d.retired) return { head: 'Retired.', body: 'The pool no longer sells draws. Withdrawals still work.' };
@@ -479,11 +488,16 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
         ? { head: 'Closed.', body: `Opening requires ${ethUp(needed)} ETH more operating ETH.`, act: 'fund', label: 'Add ETH' }
         : { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     }
-    case 2: return d.upkeep.needed
-      ? { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' }
-      : shortfall > 0n
-        ? { head: 'Stocking.', body: `Add ${ethUp(shortfall)} ETH to fund ${d.paidUpkeepEnabled ? 'the target and paid maintenance' : 'the target inventory'}.`, act: 'fund', label: 'Add ETH' }
-        : { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' };
+    case 2: {
+      const lm = listingMode(d);
+      const all = shapeCount(target);
+      if (shortfall > 0n && !d.upkeep.needed) return { head: 'Stocking.', body: `Add ${ethUp(shortfall)} ETH to fund ${d.paidUpkeepEnabled ? 'the target and paid maintenance' : 'the target inventory'}.`, act: 'fund', label: 'Add ETH' };
+      return lm.mode === 'auto'
+        ? { head: 'Stocking.', body: `Listing your ${all} Shapes automatically. Purchases open once all are listed.` }
+        : lm.mode === 'paused'
+          ? { head: 'Stocking.', body: `Automatic listing is paused while gas is above ${lm.gwei(lm.limit)} gwei. Purchases open once all ${all} Shapes are listed.`, act: 'upkeep', label: 'List them yourself' }
+          : { head: 'Stocking.', body: `Keeper pay is off, so you list the Shapes. Purchases open once all ${all} are listed.`, act: 'upkeep', label: 'List the next batch' };
+    }
     case 3: return { head: 'Paused · no curated NFTs.', body: 'This pool requires a curated NFT. List one, or stop requiring one in Settings.', act: 'nfts', label: 'Add an NFT' };
     case 4: return { head: 'Busy.', body: 'Draws are settling on FWA. Purchases wait for settlement.' };
     // First-release pools only: they pause purchases while the mint fee is above the accepted one.
@@ -739,7 +753,7 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
       if (!witness) throw new Error('No selectable curated listing is available.');
       return tx.write({ ...B, functionName: 'refreshCuratedWitness', args: [witness.id] });
     }])}>Refresh curated proof</button>
-    : st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>{d.admission === 2 ? 'List Shapes now' : 'Run maintenance'}</button>
+    : st.act === 'upkeep' ? <button className="link" disabled={!!tx.busy} onClick={upkeep}>{st.label ?? 'Run maintenance'}</button>
     : st.act === 'fund' ? <button className="link" onClick={() => {
       setTab('overview');
       requestAnimationFrame(() => document.getElementById('operating-eth')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -770,7 +784,7 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
         <span><b>{st.head}</b> {st.body}</span>
         <span className="actions">
           {action}
-          {d.upkeep.needed && st.act !== 'upkeep' && <button className="link quiet" disabled={!!tx.busy} onClick={upkeep}>Run maintenance</button>}
+          {d.upkeep.needed && st.act !== 'upkeep' && d.admission !== 2 && <button className="link quiet" disabled={!!tx.busy} onClick={upkeep}>Run maintenance</button>}
         </span>
       </div>
       <TxLine tx={tx} />
@@ -2327,6 +2341,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
   const stalled = !opened && st.act === 'fund' && short_ > 0n;
   const url = created && txUrl(created.hash);
   const upkeep = () => tx.send('List Shapes', [() => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  const lm = listingMode(d);
   // The creator's own listing run, as the creation panel shows a step: in the wallet, waiting for its block, or done.
   const mine = tx.steps?.length === 1 && tx.steps[0].label === 'List Shapes' ? tx.steps[0] : undefined;
   const runLink = (h?: Hash) => h && (txUrl(h) ? <a href={txUrl(h)} target="_blank" rel="noreferrer">{short(h)} ↗</a> : <span className="mono">{short(h)}</span>);
@@ -2361,9 +2376,11 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
             </span>}
             {!opened && (stalled
               ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
-              : <span className="sb">{d.paidUpkeepEnabled
-                ? "Each Shape is minted and listed on FWA by a keeper, paid from the listing budget you deposited. Each run lists a batch, so it takes several runs. Players can't buy draws until every Shape is listed."
-                : "Keeper pay is off, so you list them: each run mints and lists the next batch, and you pay the gas. Players can't buy draws until every Shape is listed."}</span>)}
+              : <span className="sb">{lm.mode === 'auto'
+                ? "Listing automatically. A keeper mints and lists your Shapes in batches, paid from the listing budget you deposited. Players can buy draws once every Shape is listed."
+                : lm.mode === 'paused'
+                  ? `Automatic listing is paused: gas is ${lm.gwei(d.baseFee)} gwei, above the ${lm.gwei(lm.limit)} gwei limit that keeps listing within the budget you deposited. It resumes on its own when gas falls.`
+                  : 'Keeper pay is off, so you list your Shapes: each run mints and lists the next batch, and you pay the gas.'}</span>)}
           </div>
           <span className="pst">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
         </li>
@@ -2372,9 +2389,9 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
     </div>
     <div className="setup-side">
       {!opened && <span className="lbl">WHILE YOU WAIT</span>}
-      {!opened && <>
-        <button className={`btn${tx.busy ? ' busy' : ''}`} disabled={!!tx.busy} onClick={upkeep}>{mine && tx.busy ? (mine.state === 'submitted' ? 'Listing…' : 'Waiting for your wallet…') : d.paidUpkeepEnabled ? 'List Shapes now' : 'List the next batch'}</button>
-        <p className="note">{d.paidUpkeepEnabled ? "Optional. Lists the next batch from your wallet instead of waiting for a keeper; you pay that run's gas." : 'Lists the next batch from your wallet; you pay the gas.'}</p>
+      {!opened && (lm.mode !== 'auto' || (mine && tx.busy)) && <>
+        <button className={`btn${tx.busy ? ' busy' : ''}`} disabled={!!tx.busy} onClick={upkeep}>{mine && tx.busy ? (mine.state === 'submitted' ? 'Listing…' : 'Waiting for your wallet…') : lm.mode === 'paused' ? 'List them yourself' : 'List the next batch'}</button>
+        <p className="note">{lm.mode === 'paused' ? "Lists the next batch now from your wallet. You pay that run's gas at today's price; the pool doesn't." : 'Lists the next batch from your wallet; you pay the gas.'}</p>
       </>}
       <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
       {!opened && <div className="setup-links">

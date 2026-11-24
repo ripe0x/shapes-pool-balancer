@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { poolBalancerAbi } from '../shared/abi';
 import { LEGACY_FACTORIES } from '../shared/legacy';
+import { SETUP_LISTING_MAX_BASEFEE, setupListingWaits } from '../shared/listing';
 
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 /** Reverts that only mean this keeper has nothing to do there now: no work, or the pool's creator has restricted
@@ -97,6 +98,7 @@ export interface KeeperConfig {
   account: Account | Address; // Address = unlocked dev node account
   reorgWindow?: number; // blocks re-scanned every tick
   maxGasPriceGwei?: number; // operator bid ceiling; compensation is checked by complete simulation
+  setupMaxBaseFeeWei?: bigint; // a pool's first listing (SETTING_UP) waits while basefee is above this
   priorityGwei?: number; // operator's bid, independent of a policy's reimbursement formula
   maxLossWei?: bigint;
   operatingCostWei?: bigint;
@@ -161,7 +163,7 @@ export class Keeper {
   get failures() { return this.state.failures; }
 
   constructor(cfg: KeeperConfig) {
-    this.c = { legacyFactories: [], reorgWindow: 64, maxGasPriceGwei: 50, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
+    this.c = { legacyFactories: [], reorgWindow: 64, maxGasPriceGwei: 50, setupMaxBaseFeeWei: SETUP_LISTING_MAX_BASEFEE, priorityGwei: 0.05, maxLossWei: 2n * 10n ** 14n, operatingCostWei: 0n, replaceAfterBlocks: 3, maxReplacements: 5, logChunk: 10_000n, ...cfg };
     // Public RPCs can take ~30s on eth_getLogs (Tenderly, measured 27.5s); viem's default gives up after 10s.
     const transport = http(cfg.rpcUrl, { timeout: 60_000 });
     this.pub = createPublicClient({ transport }) as PublicClient;
@@ -330,6 +332,15 @@ export class Keeper {
     const pending = this.state.pending[b];
     if (pending && (await this.resolvePending(b, pending, head, baseFee, context))) return;
     if (!context.paid) return;
+    // A first listing at high gas would spend the creator's operating ETH beyond the listing budget: wait for gas to fall.
+    if (baseFee > this.c.setupMaxBaseFeeWei) {
+      const admission = await this.pub.readContract({ address: b, abi: this.abi(b), functionName: 'admissionStatus', blockNumber: head } as never)
+        .then(Number, () => undefined);
+      if (admission !== undefined && setupListingWaits(admission, baseFee, this.c.setupMaxBaseFeeWei)) {
+        this.log('skip: first listing waits for lower gas', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9, limitGwei: Number(this.c.setupMaxBaseFeeWei) / 1e9 });
+        return;
+      }
+    }
     const { priority, max, cap } = this.fees(baseFee);
     if (baseFee + priority > cap) {
       this.log('skip: basefee above bid cap', { balancer: b, baseFeeGwei: Number(baseFee) / 1e9 });
@@ -720,6 +731,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     stateFile: env('STATE_FILE', 'keeper/state.json'),
     account,
     maxGasPriceGwei: Number(env('MAX_GAS_PRICE_GWEI', '50')),
+    setupMaxBaseFeeWei: BigInt(env('SETUP_MAX_BASEFEE_WEI', SETUP_LISTING_MAX_BASEFEE.toString())),
     priorityGwei: Number(env('PRIORITY_GWEI', '0.05')),
     // Explicit operator subsidy allowance against the conservative execution budget; actual spend is in receipts.
     maxLossWei: BigInt(env('MAX_LOSS_WEI', '200000000000000')),
