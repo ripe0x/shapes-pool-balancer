@@ -11,7 +11,7 @@ import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCo
 import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
 import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
-import { canRetryCreation, creationContextMatches, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
+import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
@@ -329,6 +329,7 @@ export function useTx(onDone: () => void) {
     }
     submitted.current = { hash, intent };
     setHash(hash);
+    markStep(stepIndex.current, { state: 'submitted', hash });
     return hash;
   };
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
@@ -345,6 +346,10 @@ export function useTx(onDone: () => void) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last transaction the wallet submitted in the current or latest `send`, for its explorer link.
   const [hash, setHash] = useState<Hash>();
+  // Each step of the current or latest `send`: next, in the wallet, submitted, done, skipped (nothing to send) or failed.
+  const [steps, setSteps] = useState<StepState[]>();
+  const stepIndex = useRef(-1);
+  const markStep = (k: number, patch: Partial<StepState>) => setSteps((xs) => xs?.map((x, i) => (i === k ? { ...x, ...patch } : x)));
   // The last failure, readable right after `send` resolves (state updates land a render later).
   const failure = useRef<string>();
   // A step may carry its own label (shown as "label (2 of 5)") and may return undefined to skip itself.
@@ -353,22 +358,26 @@ export function useTx(onDone: () => void) {
     setBusy(label);
     setMsg(undefined);
     setHash(undefined);
+    setSteps(calls.map((c) => ({ label: Array.isArray(c) ? c[0] : label, state: 'next' })));
     try {
       await runTransactionSteps(label, calls, (name, k) => {
         current = name;
+        stepIndex.current = k;
+        markStep(k, { state: 'wallet' });
         setBusy(Array.isArray(calls[k]) && calls.length > 1 ? `${name} (${k + 1} of ${calls.length})` : name);
       }, async (hash) => {
         const reviewed = submitted.current;
         if (reviewed?.hash !== hash) throw new Error('Confirmation is unverified: the reviewed transaction is unavailable.');
         await confirmAction(pub!, hash, reviewed.intent, confirmationTimeout);
         if (submitted.current === reviewed) submitted.current = undefined;
-      });
+      }, (k, sent) => setSteps((xs) => xs?.map((x, i) => (i === k ? { ...x, state: sent || x.state === 'submitted' ? 'done' : 'skipped' } : x))));
       setMsg({ ok: true, text: `${label}: confirmed` });
       failure.current = undefined;
       return true;
     } catch (e) {
       failure.current = `${current}: ${explain(e)}`;
       console.error(`[tx] ${failure.current}`, e);
+      markStep(stepIndex.current, { state: 'failed', declined: creationNotSubmitted(e), error: explain(e) });
       setMsg({ ok: false, text: failure.current });
       return false;
     } finally {
@@ -376,8 +385,12 @@ export function useTx(onDone: () => void) {
       onDone();
     }
   };
-  return { send, busy, msg, hash, write, transfer, failure };
+  const reset = () => { setMsg(undefined); setSteps(undefined); setHash(undefined); };
+  return { send, busy, msg, hash, steps, reset, write, transfer, failure };
 }
+
+/** A step of a `send`, as the progress panel shows it. `declined`: the wallet refused it (nothing was submitted). */
+type StepState = { label: string; state: 'next' | 'wallet' | 'submitted' | 'done' | 'skipped' | 'failed'; hash?: Hash; declined?: boolean; error?: string };
 
 const txUrl = (hash: Hash) => (chain.id === 1 ? `https://etherscan.io/tx/${hash}` : undefined);
 /** The current or last transaction: what it is waiting for or how it ended, with a link to it. Stays in view. */
@@ -467,10 +480,10 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
         : { head: 'Closed.', body: 'You closed purchases.', act: 'open' };
     }
     case 2: return d.upkeep.needed
-      ? { head: 'Stocking.', body: 'Purchases open once every target prize is listed.', act: 'upkeep' }
+      ? { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' }
       : shortfall > 0n
         ? { head: 'Stocking.', body: `Add ${ethUp(shortfall)} ETH to fund ${d.paidUpkeepEnabled ? 'the target and paid maintenance' : 'the target inventory'}.`, act: 'fund', label: 'Add ETH' }
-        : { head: 'Stocking.', body: 'Purchases open once every target prize is listed.', act: 'upkeep' };
+        : { head: 'Stocking.', body: `Purchases open once all ${shapeCount(target)} Shapes are listed.`, act: 'upkeep' };
     case 3: return { head: 'Paused · no curated NFTs.', body: 'This pool requires a curated NFT. List one, or stop requiring one in Settings.', act: 'nfts', label: 'Add an NFT' };
     case 4: return { head: 'Busy.', body: 'Draws are settling on FWA. Purchases wait for settlement.' };
     // First-release pools only: they pause purchases while the mint fee is above the accepted one.
@@ -800,6 +813,31 @@ const GAME_STYLES: { key: Style; label: string; hint: string }[] = [
 /** Prize sizes offered for adjusting by hand, smallest first: 0.05 to 25 ETH (Shapes and Packs), plus any size a style
  *  picked. */
 const nftKey = (collection: string, tokenId: bigint | string) => `${collection}:${tokenId}`.toLowerCase();
+/** Whether `me` holds each chosen NFT now (ownerOf), by nftKey. A failed read counts as not held. */
+async function heldBy(pub: Pub, me: Address, list: DraftNft[]) {
+  const chosen = list.filter((n) => n.collection && n.tokenId);
+  const owners = await Promise.all(chosen.map((n) => (pub.readContract({ address: n.collection!, abi: erc721Abi, functionName: 'ownerOf', args: [BigInt(n.tokenId!)] }) as Promise<string>)
+    .then((o) => o.toLowerCase() === me.toLowerCase(), () => false)));
+  return Object.fromEntries(chosen.map((n, i) => [nftKey(n.collection!, n.tokenId!), owners[i]])) as Record<string, boolean>;
+}
+/** Chosen NFTs the wallet does not hold, rechecked whenever the choice or wallet changes and every 15 seconds: a saved
+ *  design can hold an NFT that has since left the wallet. `checking` is true until the current choice has been read. */
+function useHeld(pub: Pub | undefined, me: Address | undefined, list: DraftNft[]) {
+  const keys = list.filter((n) => n.collection && n.tokenId).map((n) => nftKey(n.collection!, n.tokenId!)).join();
+  const [held, setHeld] = useState<{ keys: string; map: Record<string, boolean> }>({ keys: '', map: {} });
+  useEffect(() => {
+    if (!pub || !me || !keys) return;
+    let live = true;
+    const check = () => heldBy(pub, me, list).then((map) => live && setHeld({ keys, map }), () => undefined);
+    void check();
+    const timer = setInterval(check, 15_000);
+    return () => { live = false; clearInterval(timer); };
+  }, [pub, me, keys]); // eslint-disable-line react-hooks/exhaustive-deps -- keys identifies the list
+  const notHeld = (n: DraftNft) => !!n.collection && held.keys === keys && held.map[nftKey(n.collection, n.tokenId!)] === false;
+  return { notHeld, checking: !!keys && !!me && held.keys !== keys };
+}
+const NOT_HELD = "This wallet doesn't hold this NFT. Remove it to continue.";
+
 const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)']);
 type Prereq = { creation: boolean; impl: boolean };
 
@@ -811,6 +849,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const [attempt, setAttempt] = useState<CreationAttempt | undefined>(() => loadDraft()?.creation);
   const [outcome, setOutcome] = useState<CreationOutcome>('unknown');
   const [checking, setChecking] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date>();
   const [recheck, setRecheck] = useState(0);
   const created = useRef(onCreated);
   created.current = onCreated;
@@ -848,7 +887,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
         if (current) setOutcome('unknown');
       } finally {
         inFlight = false;
-        if (current) setChecking(false);
+        if (current) { setChecking(false); setCheckedAt(new Date()); }
       }
     };
     void check();
@@ -858,6 +897,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
+  // Completed fee loads, so a retry after a revert runs once the refreshed fees are in.
+  const [fetched, setFetched] = useState(0);
   const [wallet, setWallet] = useState<bigint>();
   useEffect(() => {
     if (!pub) return;
@@ -879,30 +920,56 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
         liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number),
       ]);
       setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill } });
+      setFetched((n) => n + 1);
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
   }, [pub, loadTry]);
   useEffect(() => { if (!loadError) return; const t = setTimeout(() => setLoadTry((n) => n + 1), 30_000); return () => clearTimeout(t); }, [loadError]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
-  if (attempt) return <main className="page narrow-page">
-    <h1 className="title t2">Pool creation</h1>
-    <p className="lead">{creationStatus(outcome)}</p>
-    <p className="note">Account {attempt.creator} · Chain {attempt.chainId}</p>
-    <p className="note">Predicted pool {attempt.predicted}</p>
-    {attempt.hash && <p className="note mono">Transaction {attempt.hash}</p>}
-    <button className="btn" disabled={checking} onClick={() => setRecheck((n) => n + 1)}>{checking ? 'Checking…' : 'Check creation'}</button>
-    {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY }) && <button className="btn sec" onClick={() => rejectCreation(attempt)}>Return to saved design</button>}
-    {(tx.busy || tx.msg) && <p className="txline">{tx.busy ? `${tx.busy}…` : tx.msg?.text}</p>}
-  </main>;
+  // During a creation started on this visit the design page's progress panel reports it; the pending page takes over
+  // after a reload, or when a submitted creation is still unresolved once the send ends (not after a revert, which the
+  // panel offers to retry).
+  const reverted = !!tx.steps?.some((x) => x.state === 'failed' && x.error === creationStatus('reverted'));
+  if (attempt && !tx.busy && (!tx.steps || (!!attempt.hash && !reverted))) {
+    // Creation pending (7c): the saved attempt's steps, its outcome and where it stands, rechecked every 5 seconds.
+    const names = loadDraft()?.nfts ?? [];
+    const label = (c: { collection: string; tokenId: string }) => {
+      const n = names.find((x) => x.collection && nftKey(x.collection, x.tokenId!) === nftKey(c.collection, c.tokenId));
+      return n ? nftLabel(n) : `${short(c.collection)} #${c.tokenId}`;
+    };
+    const stopped = ['cancelled', 'replaced', 'reverted', 'mismatch'].includes(outcome);
+    const state = ({ pending: 'Waiting for block', unknown: 'Unconfirmed', context: 'Waiting for your wallet', cancelled: 'Cancelled', replaced: 'Replaced', reverted: 'Failed', mismatch: "Doesn't match", confirmed: 'Created' } as Record<CreationOutcome, string>)[outcome];
+    const total = attempt.curated.length + 1;
+    const url = attempt.hash && txUrl(attempt.hash);
+    return <main className="page narrow-page creating">
+      <span className="crumb">Community pools /</span>
+      <h1 className="page-t">Creating your pool</h1>
+      <p className="pd">{outcome === 'context' ? `Switch to ${short(attempt.creator)} on ${chain.name} to check this pool.` : creationStatus(outcome)}</p>
+      <div className={`pbar${stopped ? ' bad' : ''}`}><i style={{ width: `${Math.round(((attempt.curated.length + (stopped ? 0.5 : 0.5)) / total) * 100)}%` }} /></div>
+      <ol className="psteps">
+        {attempt.curated.map((c, k) => <li key={k} className="ps done pend"><span className="mk">✓</span><span className="lb">Approve {label(c)}</span><span className="pst">Done</span></li>)}
+        <li className={`ps pend ${stopped ? 'failed' : 'submitted'}`}><span className="mk">{stopped ? '✕' : '●'}</span><span className="lb">Create the pool and deposit {eth(BigInt(attempt.value), 5)} ETH</span><span className="pst">{state}</span></li>
+      </ol>
+      <div className="kvs">
+        {attempt.hash && <div className="kv"><span className="k">Transaction</span><span className="mono">{url ? <a href={url} target="_blank" rel="noreferrer">{short(attempt.hash)} ↗</a> : short(attempt.hash)}</span></div>}
+        <div className="kv"><span className="k">Pool address, once created</span><span className="mono">{short(attempt.predicted)}</span></div>
+        <div className="kv"><span className="k">From</span><span className="mono">{short(attempt.creator)} · {chain.name}</span></div>
+      </div>
+      <div className="row" style={{ gap: 16, marginTop: 24 }}>
+        {canRetryCreation(outcome, attempt, { chainId: walletChainId, creator: me, factory: FACTORY })
+          ? <button className="btn" onClick={() => rejectCreation(attempt)}>Back to your design</button>
+          : outcome === 'mismatch' ? <button className="btn" onClick={() => created.current(attempt.predicted)}>Open pool</button>
+            : outcome !== 'context' && <button className="btn sec" disabled={checking} onClick={() => setRecheck((n) => n + 1)}>{checking ? 'Checking…' : 'Check now'}</button>}
+        {checkedAt && <span className="note">Last checked {checkedAt.toLocaleTimeString()}</span>}
+      </div>
+    </main>;
+  }
   // The designer shows without current fees: costs stay hidden and creation blocked until they load.
   // Until the factory economics load, nothing is budgeted for paid upkeep (paidUpkeepEnabled false) and creation is blocked.
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <>
-    <TxLine tx={tx} />
-    <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1) }} />
-  </>;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -962,7 +1029,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number };
 type Bucket = { capacity: bigint; refill: bigint };
 
 /**
@@ -989,6 +1056,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // Listed rows stay fixed while new NFTs are selected.
   const isListed = (n: DraftNft) => !!n.collection && listedKeys.has(nftKey(n.collection, n.tokenId!));
   const pending = nfts.map((n, i) => ({ n, i })).filter(({ n }) => !isListed(n));
+  const holding = useHeld(pub, me, pending.map(({ n }) => n));
   // Every NFT the design counts: listed ones, then rows with a value. Once connected, only rows with a chosen token.
   const rows = [
     ...listed.map((l) => ({ key: `l${l.id}`, name: nftName(l), base: l.base })),
@@ -1006,30 +1074,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [refused, setRefused] = useState<string>();
   const [staleReview, setStaleReview] = useState<Hex>();
   const [open, setOpen] = useState({ bonus: false, numbers: false, rates: false });
-  const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
+  const [gridView, setGridView] = useState<'inventory' | 'draws'>('draws');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  // Desktop sidebar: as tall as the space from its top to 24px above the screen's bottom, at every scroll position, so its
-  // pinned button never falls below the fold and no gap opens under it. `more` marks a list that scrolls further.
-  // Callback refs: the sidebar mounts after the page's loading state, so the effect runs when it appears.
-  const [side, sideRef] = useState<HTMLElement | null>(null);
-  const [list, listRef] = useState<HTMLDivElement | null>(null);
-  const [more, setMore] = useState(false);
-  useEffect(() => {
-    if (!side || !list) return;
-    const fit = () => {
-      side.style.setProperty('--side-top', `${Math.max(24, side.getBoundingClientRect().top)}px`);
-      setMore(list.scrollHeight - list.scrollTop - list.clientHeight > 4);
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(list);
-    if (list.firstElementChild) ro.observe(list.firstElementChild);
-    addEventListener('scroll', fit, { passive: true });
-    addEventListener('resize', fit);
-    list.addEventListener('scroll', fit, { passive: true });
-    return () => { ro.disconnect(); removeEventListener('scroll', fit); removeEventListener('resize', fit); list.removeEventListener('scroll', fit); };
-  }, [side, list]);
   const salt = useMemo(() => draft?.salt ?? `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as Hash, []);
   const creationStarting = useRef(false);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
@@ -1175,36 +1222,43 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const avgText = (v: NonNullable<typeof view>) => `${(v.avgReturn * 100).toFixed(0)}% of the price`;
   const playBlock = view ? (
     <div className="players">
-      <h3 className="ctl">For players</h3>
       {bases.length > 0 && <div className="kv"><span className="k">Win a curated NFT</span><span>{oneIn(view.curated)}{savedView && now(oneIn(savedView.curated), oneIn(view.curated))}</span></div>}
       <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}{savedView && now(oneIn(savedView.winMore), oneIn(view.winMore))}</span></div>
-      <div className="kv"><span className="k">Top prize</span><span>{topText(view)}{savedView && now(topText(savedView), topText(view))}</span></div>
       <div className="kv"><span className="k">Average prize</span><span>{avgText(view)}{savedView && now(avgText(savedView), avgText(view))}</span></div>
     </div>
   ) : null;
+  const pauseNote = ev && pausesAt < backlog && <p className="note">{pausesAt === 1
+    ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
+    : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>;
   const payBlock = (
     <div>
-      <span className="soft" style={{ fontSize: 15 }}>Draw price</span>
+      <h2 className="side-h">Draw price</h2>
       <div className="pay">{ev
-        ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
-        : <span className="figure ghost">—</span>}</div>
-      {ev && projected && <p className="note">Projected: {shapeCount(listedCounts) === 0 ? 'prizes not listed yet' : 'some prizes not listed yet'}.</p>}
+        ? <><span className="fig56">{eth(ev.drawPrice, 5)}</span><span className="u13">ETH</span></>
+        : <span className="fig56 ghost">—</span>}</div>
+      {ev && mode !== 'pool' && <p className="note">Projected. Prizes aren't listed until the pool is created.</p>}
+      {ev && mode === 'pool' && projected && <p className="note">Projected: {shapeCount(listedCounts) === 0 ? 'prizes not listed yet' : 'some prizes not listed yet'}.</p>}
       {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">{stocking ? 'Saved design, projected:' : 'Now'} {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
-      {ev && pausesAt < backlog && <p className="note">{pausesAt === 1
-        ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
-        : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>}
+      {mode === 'pool' && pauseNote}
     </div>
   );
+  // The inventory view shows at most the 100 squares the 100-draw view uses, so both are the same height.
+  const shownItems = items.slice(0, 100);
   const gridBlock = (
     <div>
-      <div className="seg" role="group" aria-label="View">
-        <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
-        <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+      <div className="grid-head">
+        <div className="seg sm" role="group" aria-label="View">
+          <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+          <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
+        </div>
+        {view && <button className="disclose key" aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>Key {showKey ? '▴' : '▾'}</button>}
       </div>
-      {!view ? null
-        : gridView === 'inventory' ? <InventoryGrid items={items} />
-          : <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>}
-      {view && <button className="disclose" style={{ fontSize: 14 }} aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>{showKey ? 'Hide key ▴' : 'Show key ▾'}</button>}
+      <div className="g20">
+        {!view ? null
+          : gridView === 'inventory' ? <InventoryGrid items={shownItems} />
+            : <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>}
+      </div>
+      {view && gridView === 'inventory' && items.length > shownItems.length && <p className="note">+ {(items.length - shownItems.length).toLocaleString()} more</p>}
       {view && showKey && (gridView === 'inventory' ? (
         <div className="legend">
           {ordered.map(({ g }) => (g.nft
@@ -1226,6 +1280,27 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : <span><span className="figure-s">{eth(v, dp)}</span><span className="unit">ETH</span></span>);
   // What saving does, in order. The predicted address receives approvals before atomic creation.
   const toList = pending.filter(({ n }) => n.collection && ethOr(n.value, 0n) > 0n).map(({ n }) => n);
+  // NFTs a new pool still needs approval for, checked against the predicted pool so the wallet steps list (and its
+  // count) leaves out approvals already made. Unknown counts as needed.
+  const [approved, setApproved] = useState<Record<string, boolean>>({});
+  const approvalKey = mode === 'new' ? toList.map((n) => nftKey(n.collection!, n.tokenId!)).join() : '';
+  useEffect(() => {
+    if (!pub || !me || !approvalKey) return;
+    let live = true;
+    (async () => {
+      const predicted = (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address;
+      const entries = await Promise.all(toList.map(async (n) => {
+        const [one, all] = await Promise.all([
+          pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'getApproved', args: [BigInt(n.tokenId!)] }).catch(() => ZERO_ADDR),
+          pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, predicted] }).catch(() => false),
+        ]);
+        return [nftKey(n.collection!, n.tokenId!), !!all || (one as string).toLowerCase() === predicted.toLowerCase()] as const;
+      }));
+      if (live) setApproved(Object.fromEntries(entries));
+    })().catch(() => undefined);
+    return () => { live = false; };
+  }, [pub, me, salt, approvalKey, tx.busy]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
+  const toApprove = toList.filter((n) => !approved[nftKey(n.collection!, n.tokenId!)]);
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
@@ -1244,6 +1319,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
+    : toList.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold."
+    : toList.length > 0 && holding.checking ? 'Checking that this wallet holds your NFTs…'
     : !ready ? undefined
     : !ev?.feasible ? undefined
         : mode === 'new' && create?.prereq && !(create.prereq.creation && create.prereq.impl) ? 'Pool creation is not available right now.'
@@ -1268,6 +1345,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         setStaleReview(reviewedHash ?? '0x');
         return;
       }
+      // Recheck at send time: an NFT can leave the wallet after the last check.
+      const nowHeld = await heldBy(pub, me, toList);
+      const gone = toList.filter((n) => !nowHeld[nftKey(n.collection!, n.tokenId!)]);
+      if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
       if (restricted !== restrictKey && await refusesContracts(pub, me, toList)) { setRestricted(restrictKey); return; }
       const balancer = mode === 'new'
         ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
@@ -1285,7 +1366,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
         saveDraft(current());
-        steps.push(['Create and stock pool', async () => {
+        steps.push([`Create the pool and deposit ${eth(deposit, 5)} ETH`, async () => {
           await submitCreation(attempt,
             (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
               args: [salt, config, curated], value: deposit }, beforeWallet),
@@ -1332,6 +1413,97 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     </> : <p className="note">Loading.</p>)}
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
+  const walletSteps = mode === 'new' && <div className="wsteps">
+    <span className="lbl">{toApprove.length + 1} wallet confirmation{toApprove.length ? 's' : ''}</span>
+    <ol>
+      {toApprove.map((n, k) => <li key={nftKey(n.collection!, n.tokenId!)}><span className="n">{k + 1}</span><span>Approve {nftLabel(n)}</span></li>)}
+      <li><span className="n">{toApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
+    </ol>
+    {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
+  </div>;
+  const backingWei = ready ? capitalOf(counts) : 0n;
+  const costBlock = mode === 'new' && (
+    <div className="cost">
+      <div className="sum"><span>To create the pool</span><span><b>{ev ? eth(deposit, 5) : '–'}</b><span className="u13">ETH</span></span></div>
+      {capital && <>
+        <div className="sub"><span>Shape backing</span><span>{eth(backingWei, 5)}</span></div>
+        <div className="sub"><span>Shapes mint fees</span><span>{eth(capital.inventoryCost - backingWei, 5)}</span></div>
+        <div className="sub"><span>Listing and maintenance budget</span><span>{eth(deposit - capital.inventoryCost, 5)}</span></div>
+      </>}
+      <div className="row2"><span className="k">Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+    </div>
+  );
+  // Progress panel (7b): while a creation started here runs, and after it stops on an error, in place of the button and
+  // the wallet steps. The editor is locked meanwhile.
+  const live = mode === 'new' ? tx.steps : undefined;
+  const failedAt = live ? live.findIndex((x) => x.state === 'failed') : -1;
+  const showPanel = !!live && (!!tx.busy || failedAt >= 0);
+  const [retryAfter, setRetryAfter] = useState<number>();
+  useEffect(() => {
+    if (retryAfter === undefined || (create?.fetched ?? 0) <= retryAfter) return;
+    setRetryAfter(undefined);
+    void run();
+  }, [create?.fetched]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once the refreshed fees arrive
+  const [editor, editorRef] = useState<HTMLElement | null>(null);
+  useEffect(() => { editor?.toggleAttribute('inert', showPanel); }, [editor, showPanel]);
+  const panel = showPanel && live && (() => {
+    const n = live.length;
+    const failed = failedAt >= 0 ? live[failedAt] : undefined;
+    const at = failed ? failedAt : Math.max(0, live.findIndex((x) => x.state === 'wallet' || x.state === 'submitted'));
+    const now = live[at];
+    const isCreate = at === n - 1;
+    const revert = failed?.error === creationStatus('reverted');
+    const finished = live.filter((x) => x.state === 'done' || x.state === 'skipped').length;
+    const fill = failed ? (finished + 0.5) / n : (finished + (now?.state === 'wallet' || now?.state === 'submitted' ? 0.5 : 0)) / n;
+    const link = (h?: Hash) => h && (txUrl(h) ? <a href={txUrl(h)} target="_blank" rel="noreferrer">{short(h)} ↗</a> : <span className="mono">{short(h)}</span>);
+    const sub = (x: StepState, k: number) => {
+      switch (x.state) {
+        case 'done': return k === n - 1 ? <>Created · {link(x.hash)}</> : <>Approved{x.hash && <> · {link(x.hash)}</>}</>;
+        case 'skipped': return 'Already approved · skipped';
+        case 'wallet': return 'Confirm in your wallet';
+        case 'submitted': return <>Waiting for block · {link(x.hash)}</>;
+        case 'failed': return x.declined ? 'Declined in your wallet' : x.hash ? <>Failed · {link(x.hash)}</> : 'Failed';
+        default: return failed ? 'Not started' : '';
+      }
+    };
+    const desc = !failed
+      ? now?.state === 'submitted' ? "Your transaction is sent. The pool exists once it's in a block and checked." : 'Confirm each step in your wallet. Editing is locked until this finishes or you stop.'
+      : failed.declined ? `You declined ${isCreate ? 'creating the pool' : 'the approval'} in your wallet. Your design is saved and no ETH was spent.`
+        : revert ? `The transaction failed, so no pool exists and your ${eth(deposit, 5)} ETH stayed in your wallet. Only the gas was spent.`
+          : failed.error ?? 'Something went wrong.';
+    const approvedAlready = live.slice(0, n - 1).filter((x) => x.state === 'done' || x.state === 'skipped').length;
+    const foot = !failed
+      ? now?.state === 'submitted' ? 'Usually under a minute. You can leave this page; it picks up where it left off.' : "To stop, decline in your wallet. Approvals already made stay, and won't be asked for again."
+      : revert ? 'Often fees moved since you reviewed. Trying again refreshes them first.'
+        : approvedAlready > 0 ? `Trying again skips the approval${approvedAlready === 1 ? '' : 's'} you already made: ${n - approvedAlready} confirmation${n - approvedAlready === 1 ? '' : 's'} left.` : undefined;
+    const clearAttempt = () => { const saved = loadDraft()?.creation; if (saved) create?.rejectCreation(saved); };
+    const tryAgain = () => {
+      clearAttempt();
+      tx.reset();
+      if (revert) { setRetryAfter(create?.fetched ?? 0); create?.reload?.(); } else void run();
+    };
+    return <div className="progress" role="status" aria-live="polite">
+      <div className="ph"><h2 className="side-h">{failed ? 'Nothing was created' : 'Creating your pool'}</h2>
+        <span className={`cnt${failed ? ' error' : ''}`}>{failed ? `${revert ? 'Failed' : 'Stopped'} at step ${at + 1}` : `Step ${at + 1} of ${n}`}</span></div>
+      <p className="pd">{desc}</p>
+      <div className={`pbar${failed ? ' bad' : ''}`}><i style={{ width: `${Math.round(fill * 100)}%` }} /></div>
+      <ol className="psteps">
+        {live.map((x, k) => {
+          const label = k === n - 1 ? x.label : x.label.replace(/^Approve /, 'Approve ');
+          return <li key={k} className={`ps ${x.state}`}>
+            <span className="mk">{x.state === 'done' || x.state === 'skipped' ? '✓' : x.state === 'failed' ? '✕' : x.state === 'wallet' || x.state === 'submitted' ? '●' : k + 1}</span>
+            <div><span className="lb">{label}</span>{sub(x, k) && <span className="sb">{sub(x, k)}</span>}</div>
+          </li>;
+        })}
+      </ol>
+      <div className="pacts">
+        {failed
+          ? <><button className="btn" onClick={tryAgain}>Try again</button><button className="btn sec" onClick={() => { clearAttempt(); tx.reset(); }}>Edit design</button></>
+          : <button className="btn busy" disabled>{now?.state === 'submitted' ? 'Confirming…' : 'Waiting for your wallet…'}</button>}
+      </div>
+      {foot && <p className="note">{foot}</p>}
+    </div>;
+  })();
   // Phones: the pinned bar also shows the draw price, since the sidebar is not beside the editor there.
   const pinPrice = <span className="pin-price">{ev ? <><b>{eth(ev.drawPrice, 5)}</b> ETH a draw</> : '–'}</span>;
   const save = mode === 'preview' ? (
@@ -1350,17 +1522,16 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       {restricted === restrictKey && toList.length > 0 && (
         <p className="note error" style={{ marginBottom: 12 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
+      {blocked && <p className="note" style={{ marginBottom: 12 }}>{blocked}</p>}
+      {refused && <p className="note error" style={{ marginBottom: 12 }}>{refused}</p>}
       <div className="pin-bar">
         {pinPrice}
         <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible || staleShown} onClick={run}>
-          {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
+          {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool · ${eth(deposit, 5)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
         </button>
       </div>
-      {!blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
+      {mode !== 'new' && !blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
-      {blocked && <p className="note" style={{ marginTop: 10 }}>{blocked}</p>}
-      {refused && <p className="note error" style={{ marginTop: 10 }}>{refused}</p>}
-      {fresh && tx.msg && !tx.msg.ok && <p className="note error" style={{ marginTop: 10 }}>{tx.msg.text}</p>}
     </div>
   );
 
@@ -1391,13 +1562,18 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   );
   const unchosenRows = pending.filter(({ n }) => !n.collection).map(({ i }) => i);
   const slots = listed.length + pending.length === 0 ? [nfts.length] : unchosenRows;
+  // Numbered sections: 01 Curated NFTs, 02 Shapes, 03 Before you create (a pool's Prices & mix has no NFT section).
+  const secNo = (k: number) => String(has ? k - 1 : k).padStart(2, '0');
+  const secHead = (k: number, title: string, desc: string, extra?: string) => (
+    <div className="sec-head">
+      <span className="sec-n">{secNo(k)}</span>
+      <div><h2 className="sec-t">{title}{extra && <span className="sec-x"> {extra}</span>}</h2><p className="sec-d">{desc}</p></div>
+    </div>
+  );
   const nftGroup = (
-    <div className="group">
-      <div className="group-head">
-        <span className="mk mk-nft" aria-hidden="true" />
-        <div><h2>Curated NFTs</h2><p className="desc">Optional rare prizes from your wallet. The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.</p></div>
-      </div>
-      <div className="group-body nfts-list">
+    <div className="dsec">
+      {secHead(1, 'Curated NFTs', "Rare prizes from your wallet. The value is your asking price: across the draws until it's won, players pay about that. A higher value makes it rarer.", 'Optional')}
+      <div className="sec-body nfts-list">
         {listed.map((l) => (
           <div className="nft-row" key={l.id.toString()}>
             <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
@@ -1408,35 +1584,36 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         {pending.map(({ n, i }) => {
           if (unchosenRows.includes(i)) return placeholder(i);
           const name = nftLabel(n);
-          const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorValue(n.floor)} ETH`].filter(Boolean).join(' · ');
+          const sub = [oddsLine(`d${i}`), n.floor && `floor ${floorValue(n.floor)} ETH`].filter(Boolean).join(' · ');
           return (
-            <div className="nft-row" key={i}>
-              {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} />}
+            <div className="nrow" key={i}>
+              {n.collection ? <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} /> : <span />}
               <div className="id">
                 <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{name}</a> : name}</div>
                 {sub && <div className="s">{sub}</div>}
+                {belowFloor(n) && <div className="s error">Below the {floorValue(n.floor)} ETH floor. A buyer could win it for much less than it's worth.</div>}
+                {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
               </div>
-              <div className="val">
-                <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
-                <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-                {belowFloor(n) && <p className="note error" style={{ marginTop: 6 }}>Below the {floorValue(n.floor)} ETH collection floor</p>}
-              </div>
+              <div className={`field${belowFloor(n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
           );
         })}
         {slots.filter((i) => i === nfts.length).map(placeholder)}
         {!slots.length && (
-          <div>
+          <div className="addrow">
             <button className="link" onClick={() => setPicking(picking === nfts.length ? undefined : nfts.length)}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
             {chooser(nfts.length)}
           </div>
         )}
         {fresh && rows.length > 0 && (
-          <label className="check" style={{ marginTop: 14 }}>
-            <input type="checkbox" checked={curatedRequired} onChange={(e) => setCuratedRequired(e.target.checked)} />
-            <span>Pause purchases while no curated NFT is available</span>
-          </label>
+          <div className="rulerow">
+            <div><div className="t">When no curated NFT is available</div><div className="s">For example after a player wins your last one. You can change this later in Settings.</div></div>
+            <div className="seg" role="group" aria-label="When no curated NFT is available">
+              <button aria-pressed={curatedRequired} onClick={() => setCuratedRequired(true)}>Pause purchases</button>
+              <button aria-pressed={!curatedRequired} onClick={() => setCuratedRequired(false)}>Keep selling Shapes</button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -1445,10 +1622,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   return (
     <main className="page cols design">
       {values.modal}
-      <section>
+      <section ref={editorRef} className={showPanel ? 'locked' : undefined}>
         {mode === 'pool'
           ? <h2 className="title t2">Prices & mix</h2>
-          : <h1 className="title">Design your pool</h1>}
+          : <><span className="crumb">Community pools /</span><h1 className="page-t">Design your pool</h1></>}
         <p className="lead">{has
           ? `What players pay and which Shapes the pool keeps. Your ${rows.length === 1 ? 'NFT stays' : `${rows.length} NFTs stay`} as listed; change ${rows.length === 1 ? 'it' : 'them'} on the NFTs tab.`
           : 'Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: curated NFTs from your wallet, and Shapes you fund with ETH.'}</p>
@@ -1469,15 +1646,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
         {!has && nftGroup}
 
-        <div className="group">
-          <div className="group-head">
-            <span className="mk mk-shapes" aria-hidden="true"><span style={{ background: '#333' }} /><span style={{ background: '#7a7a7a' }} /><span style={{ background: '#fff' }} /></span>
-            <div><h2>Shapes</h2><p className="desc">ETH-backed prizes that make up most draws. Upkeep replenishes won Shapes when operating ETH is available.</p></div>
-          </div>
-          <div className="group-body">
+        <div className="dsec">
+          {secHead(2, 'Shapes', 'ETH-backed prizes that make up most draws. When one is won, maintenance replaces it from operating ETH.')}
+          <div className="sec-body">
             <div>
-              <h3 className="ctl" id="style-label">Shape style</h3>
-              <div className="tiles" role="group" aria-labelledby="style-label">
+              <div className="tiles four" role="group" aria-label="Shape style">
                 {GAME_STYLES.map((g) => (
                   <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
                     <span className="t">{g.label}</span><span className="s">{g.hint}</span>
@@ -1509,28 +1682,28 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{total} <small>prize{total === 1 ? '' : 's'}</small></span></div>
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Number of Shapes</label><span className="big-v">{total}</span></div>
               <input id="small" type="range" min={style ? 1 : 0} max={maxSmall} step={1} value={counts[0]} aria-valuetext={`${total} prizes`}
                 onChange={(e) => setSmall(Number(e.target.value))} />
-              <p className="note">More prizes make curated NFTs rarer and the draw cheaper.</p>
+              <p className="note">More Shapes make curated NFTs rarer and the draw cheaper.</p>
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={markupRange.min} max={markupRange.max} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
-              <p className="note">Added to each new Shape listing price.</p>
-              <p className="note" style={{ marginTop: 6 }}>Each new Shape's price also includes a restocking charge that follows gas when it is listed. <a className="link" href="#how-restock">How the restocking charge works</a></p>
+              <p className="note">Added to each Shape's listing price; your earnings come from it. Each price also includes a restocking charge that follows gas. <a className="link" href="#how-restock">How it works</a></p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>
         </div>
 
-        <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{gridBlock}{playBlock}</div>
+        <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{playBlock}{gridBlock}</div>
 
-        <div className="details">
-          <h2 className="ctl" style={{ fontSize: 22 }}>{fresh ? 'Before you create' : 'Before you save'}</h2>
+        <div className="dsec">
+          {secHead(3, fresh ? 'Before you create' : 'Before you save', 'Costs are quoted at current gas and mint fees. If either rises, the pool needs more ETH, and Shapes may be listed in stages.')}
+          <div className="sec-body">
           {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
           {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
-          <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
+          {mode !== 'pool' && pauseNote}
           {!d.paidUpkeepEnabled && <p className="note">Keeper pay is off. Setup and restocking need someone to run maintenance unpaid; the caller pays transaction gas.</p>}
           {creationEconomics}
           {view && ev && econ && (
@@ -1571,20 +1744,18 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               )}
             </div>
           )}
+          </div>
         </div>
 
       </section>
 
-      <section className="sticky results side" ref={sideRef}>
-        <div className={`side-list${more ? ' more' : ''}`} ref={listRef}>
-        <div className="side-inner">
+      <section className="sticky results side">
         <div className="desktop-only">{payBlock}</div>
-        <div className="desktop-only">{gridBlock}</div>
         {playBlock && <div className="desktop-only">{playBlock}</div>}
+        <div className="desktop-only">{gridBlock}</div>
+        {mode === 'new' ? costBlock : (
         <div className="totals">
-          {fresh ? (
-            <div><span>To create the pool</span>{figureEth(ev && deposit, 6)}</div>
-          ) : (
+          {(
             <>
               <div><span>Required operating capital{savedEv && now(`${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee, enabled: fundForOpen }))} ETH`, `${eth(needed)} ETH`)}</span>{figureEth(ev && needed, 6)}</div>
               <div><span>Available in the pool</span>{figureEth(have)}</div>
@@ -1595,12 +1766,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           )}
           <div><span>Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
         </div>
+        )}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
-        </div>
-        </div>
-        {more && <button className="disclose more-hint" onClick={() => list?.scrollBy({ top: list.clientHeight * 0.7, behavior: 'smooth' })}>More below ▾</button>}
-        {save}
+        {panel ? <div className="pin">{panel}</div> : <>{save}{walletSteps}</>}
       </section>
     </main>
   );
@@ -1750,7 +1919,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const bases = listed.map((l) => l.base);
   const keyOf = (n: DraftNft) => nftKey(n.collection!, n.tokenId!);
   const key = picks.map(keyOf).join();
-  const ready = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const holding = useHeld(pub, me, picks);
+  const valued = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const ready = valued && !holding.checking && !picks.some(holding.notHeld);
   const values = useConfirmValues();
   const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
   const plan = d.target ? listedShapeCounts(d.listings) : undefined;
@@ -1765,6 +1936,9 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const what = picks.length === 1 ? nftLabel(picks[0]) : `${word(picks.length)} NFTs`;
   const list = async () => {
     if (!pub || !ready) return;
+    const nowHeld = await heldBy(pub, me, picks);
+    const gone = picks.filter((n) => !nowHeld[keyOf(n)]);
+    if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
     if (restricted !== key && await refusesContracts(pub, me, picks)) { setRestricted(key); return; }
     const r = await refusedApprovals(pub, me, d.balancer, picks);
     setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
@@ -1786,6 +1960,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
           <Thumb n={{ collection: n.collection!, tokenId: BigInt(n.tokenId!), image: n.image }} small />
           <div style={{ minWidth: 0 }}>
             <div className="t"><a className="tlink" href={openSeaAsset(n.collection!, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{nftLabel(n)}</a></div>
+            {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
             {n.floor && <div className={`s${belowFloor(n) ? ' error' : ''}`}>{belowFloor(n) ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</div>}
           </div>
           <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
@@ -1810,7 +1985,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
       {refused && <p className="note error" style={{ marginTop: 16 }}>{refused}</p>}
       {picks.length > 0 && (
         <button className="btn lg" style={{ marginTop: 20 }} disabled={!!tx.busy || !ready} onClick={list}>
-          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : 'Set a value for each NFT'}
+          {tx.busy ? `${tx.busy}…` : restricted === key && key ? 'List anyway' : ready ? `List ${what}` : picks.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold" : valued && holding.checking ? 'Checking your NFTs…' : 'Set a value for each NFT'}
         </button>
       )}
       {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>New listings may be staged while draws settle.</p>}
@@ -1886,12 +2061,15 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const claims = L?.claims ?? [];
 
   return (
+    <>
+    {isCreator && <SetupBlock d={d} tx={tx} me={me} setTab={setTab} />}
     <main className="page cols ov">
       <section>
         <div className="blk">
           <h2 className="h">Draw price</h2>
           <div style={{ marginTop: 12 }}><span className="fig56">{d.fee ? eth(d.fee, 5) : '–'}</span><span className="u13">ETH</span></div>
           <p className="desc">What a player pays for one draw. It follows the prizes listed and your markup, so it moves as prizes are won and restocked.{d.vrfFee !== undefined && ` FWA adds its own randomness fee on top, about ${eth(d.vrfFee, 5)} ETH at current gas.`}</p>
+          {d.admission === 2 && <p className="foot">Projected until the Shapes are listed.</p>}
         </div>
 
         <div className="blk">
@@ -2075,7 +2253,78 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         </div>
       </section>
     </main>
+    </>
   );
+}
+
+const setupKey = (b: Address) => `pool-setup-done:${b.toLowerCase()}`;
+/** Pool created (7d): while a new pool stocks, what happened and what comes next. When purchases open during the visit it
+ *  says so once and records a per-pool flag, so later visits skip it. */
+function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: Tab) => void }) {
+  const pub = usePublicClient();
+  const B = { address: d.balancer, abi: poolBalancerAbi } as const;
+  const sawStocking = useRef(false);
+  const [opened, setOpened] = useState(false);
+  const [created, setCreated] = useState<{ block: bigint; hash: Hash }>();
+  const [copied, setCopied] = useState(false);
+  const done = (() => { try { return localStorage.getItem(setupKey(d.balancer)) === '1'; } catch { return false; } })();
+  if (d.admission === 2) sawStocking.current = true;
+  useEffect(() => {
+    if (sawStocking.current && d.admission === 0 && !opened) {
+      setOpened(true);
+      try { localStorage.setItem(setupKey(d.balancer), '1'); } catch { /* storage unavailable */ }
+    }
+  }, [d.admission, d.balancer, opened]);
+  useEffect(() => {
+    if (!pub || d.admission !== 2) return;
+    pub.getLogs({ address: d.factoryAddr, event: CREATED, args: { balancer: d.balancer }, fromBlock: FROM_BLOCK })
+      .then((ls) => ls[0] && setCreated({ block: ls[0].blockNumber!, hash: ls[0].transactionHash! })).catch(() => undefined);
+  }, [pub, d.factoryAddr, d.balancer, d.admission]);
+  if (!(d.admission === 2 && !done) && !opened) return null;
+  const target = shapeCount(unpackPlan(d.target));
+  const listedN = shapeCount(listedShapeCounts(d.listings));
+  const nfts = d.listings.filter((l) => l.kind === 1 && (isSelectable(l) || isStaged(l)));
+  const st = statusLine(d);
+  const fund = d.balance - d.creatorCredit;
+  const short_ = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
+  const stalled = !opened && st.act === 'fund' && short_ > 0n;
+  const url = created && txUrl(created.hash);
+  const upkeep = () => tx.send('Run maintenance', [() => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
+  const copy = () => { void navigator.clipboard?.writeText(FWA_POOL_URL(d.pool)).then(() => setCopied(true)); };
+  return <section className="setup">
+    <div>
+      <h2 className="page-t">{opened ? 'Purchases are open' : 'Your pool is created'}</h2>
+      <p className="pd">{opened ? 'Every prize is listed. Players can buy draws now.'
+        : `${nfts.length ? 'Your NFTs are listed and the pool' : 'The pool'} holds your ${eth(d.balance, 5)} ETH. Next, the Shapes are minted and listed on FWA. Players can buy draws once every prize is listed.`}</p>
+      <ol className="psteps setup-steps">
+        <li className="ps pend done"><span className="mk">✓</span><span className="lb">Pool created</span>
+          <span className="pst">{created ? <>Block {created.block.toLocaleString()}{created && <> · {url ? <a href={url} target="_blank" rel="noreferrer">{short(created.hash)} ↗</a> : short(created.hash)}</>}</> : ''}</span></li>
+        {nfts.length > 0 && <li className="ps pend done"><span className="mk">✓</span><span className="lb">{nfts.length} curated NFT{nfts.length === 1 ? '' : 's'} listed</span>
+          <span className="pst">{nfts.map((l) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`).join(' · ')}</span></li>}
+        <li className={`ps pend ${opened ? 'done' : stalled ? 'failed' : 'submitted'}`}>
+          <span className="mk">{opened ? '✓' : stalled ? '✕' : '●'}</span>
+          <div>
+            <span className="lb">Shapes listed</span>
+            {!opened && <div className="pbar sm"><i style={{ width: `${target ? Math.round((listedN / target) * 100) : 0}%` }} /></div>}
+            {!opened && (stalled
+              ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
+              : <span className="sb">Maintenance mints and lists them, paid from operating ETH. {d.paidUpkeepEnabled ? 'Keepers pick this up on their own, and large mixes are listed over several runs.' : 'Paid upkeep is off, so someone has to run it.'} You can also run it now; you pay the gas.</span>)}
+          </div>
+          <span className="pst">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
+        </li>
+        <li className={`ps pend ${opened ? 'done' : 'next'}`}><span className="mk">{opened ? '✓' : '○'}</span><span className="lb">Purchases open</span><span className="pst">{opened ? 'Open' : 'Automatic, once every prize is listed'}</span></li>
+      </ol>
+    </div>
+    <div className="setup-side">
+      {!opened && <span className="lbl">WHILE YOU WAIT</span>}
+      {!opened && <button className="btn" disabled={!!tx.busy} onClick={upkeep}>Run maintenance now</button>}
+      <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
+      {!opened && <div className="setup-links">
+        <button className="link quiet" onClick={() => setTab('settings')}><span>Give it an ENS name</span><span>Settings →</span></button>
+        <button className="link quiet" onClick={() => setTab('nfts')}><span>Add more curated NFTs</span><span>NFTs →</span></button>
+      </div>}
+    </div>
+  </section>;
 }
 
 /** Deposits or withdrawals: one row naming the single participant ("by you"), or a total with a row per participant. */
