@@ -1,0 +1,19 @@
+// Throwaway RC audit check (untracked): does the shipped failure test distinguish 0c5291f's policy.ts from bb0deba's?
+// Failure injection only; no successful RPC answer is supplied.
+import { createPublicClient, custom } from 'viem';
+import { expect, it } from 'vitest';
+import { policyEconomics as now } from './policy';
+import { policyEconomics as before } from './policy_bb0deba';
+
+const economics = { workFee: 20_000_000_000_000n, maxGas: 3_200_000, overheadGas: 60_000, gasPriceCeiling: 5_000_000_000n,
+  priorityAllowance: 50_000_000n, restockGas: 910_000, restockFlat: 200_000_000_000_000n, baseGas: 200_000, processGas: 1_800_000,
+  reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000, processGraceBlocks: 50, pausedProcessGraceBlocks: 10 };
+const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
+const calls: string[] = [];
+const pub = createPublicClient({ transport: custom({ request: async (r) => { calls.push(r.method); throw new Error('RPC unavailable'); } }, { retryCount: 0 }), cacheTime: 0 });
+
+it('both revisions reject when every read fails: the shipped test passes on the parent too', async () => {
+  await expect(now(pub, economics, '0x0000000000000000000000000000000000000001', snapshot)).rejects.toThrow('RPC unavailable');
+  await expect(before(pub, economics, '0x0000000000000000000000000000000000000001', snapshot)).rejects.toThrow('RPC unavailable');
+  expect(calls).toEqual(['eth_call', 'eth_call']); // the restock read fails first in both; the keeper read is never reached
+});

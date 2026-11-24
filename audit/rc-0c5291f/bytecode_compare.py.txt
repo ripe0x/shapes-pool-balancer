@@ -1,0 +1,18 @@
+# Compare every bytecode/deployedBytecode object built from src at two checkouts, stripping CBOR metadata.
+import json, glob, os, sys
+a_root, b_root = sys.argv[1], sys.argv[2]
+def strip(h):
+    h = h[2:] if h.startswith('0x') else h
+    return h[:-(int(h[-4:], 16) * 2 + 4)] if len(h) >= 4 else h
+identical = meta_only = 0; real = []
+for f in sorted(glob.glob(f'{a_root}/out/**/*.json', recursive=True)):
+    if 'build-info' in f: continue
+    g = f.replace(a_root, b_root, 1)
+    if not os.path.exists(g): continue
+    A, B = json.load(open(f)), json.load(open(g))
+    for k in ('bytecode', 'deployedBytecode'):
+        x, y = A.get(k, {}).get('object', ''), B.get(k, {}).get('object', '')
+        if x == y: identical += 1
+        elif strip(x) == strip(y): meta_only += 1; print('metadata-only:', os.path.relpath(f, a_root), k)
+        else: real.append((f, k))
+print('identical', identical, 'metadata-only', meta_only, 'real differences', real)
