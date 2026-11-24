@@ -970,6 +970,24 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     const timer = setInterval(() => void check(), 5_000);
     return () => { current = false; clearInterval(timer); };
   }, [pub, attempt, walletChainId, me, recheck, tx.busy]);
+  // The draft's pool address is fixed by (wallet, salt), so a pool at it means this design was already created, even if
+  // its tracked attempt was lost (dismissed, or a wallet error after broadcast). Open it instead of offering the draft again.
+  useEffect(() => {
+    if (!pub || !me || attempt || tx.busy) return;
+    let live = true;
+    const check = async () => {
+      const salt = loadDraft()?.salt;
+      if (!salt) return;
+      const predicted = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] }) as Address;
+      const exists = await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [predicted] });
+      if (!live || !exists || loadDraft()?.salt !== salt || loadDraft()?.creation) return;
+      clearDraft();
+      created.current(predicted);
+    };
+    void check().catch(() => undefined);
+    const timer = setInterval(() => void check().catch(() => undefined), 15_000);
+    return () => { live = false; clearInterval(timer); };
+  }, [pub, me, attempt, tx.busy]);
   const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
