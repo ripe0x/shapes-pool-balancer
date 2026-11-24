@@ -349,7 +349,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .results .grid100 { margin: 16px 0; }
 @media (min-width: 641px) {
   .results .figure { font-size: 60px; }
-  .results .grid100 { grid-template-columns: repeat(10, minmax(0, 28px)); }
+  .results .grid100 { grid-template-columns: repeat(10, minmax(0, 18px)); }
   .results .grid100 > span, .results .grid100 .cell { width: auto; height: auto; aspect-ratio: 1; }
 }
 .results .legend { margin-top: 14px; }
@@ -585,14 +585,28 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .modal .acts { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
 @media (max-width: 640px) { .modal { padding: 20px; } }
 
-/* Design page: the results sidebar stays in view while the main section scrolls. It is often taller than the screen,
-   so it scrolls on its own instead of scrolling away with the page. */
-@media (min-width: 901px) {
-  /* 152px: the sidebar starts 128px down at the top of the page, plus a 24px margin, so its pinned button is never below the fold. */
-  .design > section.sticky { max-height: calc(100vh - 152px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 24px; }
-}
+/* Design page details: notes, keeper pay rates and All numbers, below the editor. */
+.design .details { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.pin-bar { display: flex; gap: 12px; align-items: center; }
+.pin-bar > .btn { flex: 1; min-width: 0; }
+.pin-price { display: none; }
+.more-hint { font-size: 13px; color: var(--ink-2); margin-top: 8px; align-self: flex-start; }
 
 @media (min-width: 901px) {
-  /* The create or save button stays at the bottom of the scrolling sidebar. */
-  .design > section.sticky .pin { position: sticky; bottom: -24px; background: var(--bg); padding: 16px 0 24px; border-top: 1px solid var(--line); z-index: 2; }
+  /* The sidebar fills the space from its top to 24px above the screen's bottom (--side-top is set as the page scrolls):
+     its list scrolls when it is taller, with a fade and a hint, and the button below it never scrolls. */
+  .design > section.side { display: flex; flex-direction: column; gap: 0; max-height: calc(100vh - var(--side-top, 128px) - 24px); }
+  .side-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--ink-4) transparent; }
+  .side-list.more { mask-image: linear-gradient(to bottom, #000 calc(100% - 72px), transparent); }
+  .side-inner { display: flex; flex-direction: column; gap: 32px; }
+  .design > section.side .pin { flex: none; position: static; border-top: 1px solid var(--line); padding: 16px 0 0; margin-top: 8px; }
+}
+@media (max-width: 900px) {
+  /* Phones and narrow windows: a bar fixed to the screen's bottom with the draw price and the button. */
+  .design { padding-bottom: 132px; }
+  .design > section.side .pin { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--bg); border-top: 1px solid var(--line); padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom)); }
+  .pin-price { display: block; flex: none; font-size: 13px; color: var(--ink-2); line-height: 1.2; }
+  .pin-price b { display: block; font-size: 20px; color: var(--ink); letter-spacing: -.02em; }
+  .design > section.side .pin .btn.lg { height: auto; min-height: 52px; padding: 8px 14px; white-space: normal; line-height: 1.2; }
+  .design .steps-note, .more-hint { display: none; }
 }

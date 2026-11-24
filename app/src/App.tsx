@@ -1004,6 +1004,27 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  // Desktop sidebar: as tall as the space from its top to 24px above the screen's bottom, at every scroll position, so its
+  // pinned button never falls below the fold and no gap opens under it. `more` marks a list that scrolls further.
+  // Callback refs: the sidebar mounts after the page's loading state, so the effect runs when it appears.
+  const [side, sideRef] = useState<HTMLElement | null>(null);
+  const [list, listRef] = useState<HTMLDivElement | null>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    if (!side || !list) return;
+    const fit = () => {
+      side.style.setProperty('--side-top', `${Math.max(24, side.getBoundingClientRect().top)}px`);
+      setMore(list.scrollHeight - list.scrollTop - list.clientHeight > 4);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(list);
+    if (list.firstElementChild) ro.observe(list.firstElementChild);
+    addEventListener('scroll', fit, { passive: true });
+    addEventListener('resize', fit);
+    list.addEventListener('scroll', fit, { passive: true });
+    return () => { ro.disconnect(); removeEventListener('scroll', fit); removeEventListener('resize', fit); list.removeEventListener('scroll', fit); };
+  }, [side, list]);
   const salt = useMemo(() => draft?.salt ?? `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as Hash, []);
   const creationStarting = useRef(false);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
@@ -1306,9 +1327,14 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     </> : <p className="note">Loading.</p>)}
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
+  // Phones: the pinned bar also shows the draw price, since the sidebar is not beside the editor there.
+  const pinPrice = <span className="pin-price">{ev ? <><b>{eth(ev.drawPrice, 5)}</b> ETH a draw</> : '–'}</span>;
   const save = mode === 'preview' ? (
     <div className="pin">
-      <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
+      <div className="pin-bar">
+        {pinPrice}
+        <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
+      </div>
     </div>
   ) : (
     <div className="pin">
@@ -1319,9 +1345,13 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       {restricted === restrictKey && toList.length > 0 && (
         <p className="note error" style={{ marginBottom: 12 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
-      <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible || staleShown} onClick={run}>
-        {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
-      </button>
+      <div className="pin-bar">
+        {pinPrice}
+        <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible || staleShown} onClick={run}>
+          {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
+        </button>
+      </div>
+      {!blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
       {blocked && <p className="note" style={{ marginTop: 10 }}>{blocked}</p>}
       {refused && <p className="note error" style={{ marginTop: 10 }}>{refused}</p>}
@@ -1491,9 +1521,58 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
         <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{gridBlock}{playBlock}</div>
 
+        <div className="details">
+          <h2 className="ctl" style={{ fontSize: 22 }}>{fresh ? 'Before you create' : 'Before you save'}</h2>
+          {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
+          {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
+          <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
+          {!d.paidUpkeepEnabled && <p className="note">Keeper pay is off. Setup and restocking need someone to run maintenance unpaid; the caller pays transaction gas.</p>}
+          {creationEconomics}
+          {view && ev && econ && (
+            <div>
+              <button className="disclose" aria-expanded={open.numbers} onClick={() => toggle('numbers')}>All numbers {open.numbers ? '▴' : '▾'}</button>
+              {open.numbers && (
+                <div className="numbers">
+                  <div className="kv-group">
+                    <span className="label">For players</span>
+                    <div className="kv"><span className="k">{projected ? 'Draw price, projected' : 'Draw price'}</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
+                    {vrfKnown && <div className="kv"><span className="k">FWA's randomness fee, at today's gas</span><span>{eth(d.vrfFee!, 5)} ETH</span></div>}
+                    {common && <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}×</span></div>}
+                    {bases.length > 0 && <div className="kv"><span className="k">Wins a curated NFT</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>}
+                    <div className="kv"><span className="k">Wins more than the draw price</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
+                    <div className="kv"><span className="k">Wins 2× or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
+                    <div className="kv"><span className="k">Top prize</span><span>{eth(view.top.value, 3).replace(/\.?0+$/, '')} ETH · {oneIn(view.top.odds)}</span></div>
+                    <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of the draw price</span></div>
+                  </div>
+                  <div className="kv-group">
+                    <span className="label">For you</span>
+                    {fresh && <>
+                      <div className="kv"><span className="k">Initial mint fees</span><span>{eth((capital?.inventoryCost ?? 0n) - capitalOf(counts), 6)} ETH</span></div>
+                      <div className="kv"><span className="k">Initial paid listing budget</span><span>{eth(capital?.listingBudget ?? 0n, 6)} ETH</span></div>
+                      <div className="kv"><span className="k">Maintenance buffer</span><span>{eth(capital?.workingBuffer ?? 0n, 6)} ETH</span></div>
+                      {deposit > needed && <div className="kv"><span className="k">Rounded up</span><span>{eth(deposit - needed, 6)} ETH</span></div>}
+                    </>}
+                    <div className="kv"><span className="k">Prize backing</span><span>{eth(ev.capital)} ETH</span></div>
+                    <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Required operating capital'}</span><span>{eth(needed)} ETH</span></div>
+                    <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
+                    <div className="kv"><span className="k">Sales kept by the pool per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
+                    <div className="kv"><span className="k">Restocking backing per draw</span><span>{perDraw(-econ.replacementCostsPerDraw)} ETH</span></div>
+                    <div className="kv"><span className="k">Left after restocking, per draw</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
+                    <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
+                    <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
+                    <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{eth(d.restockFee!, 5)} ETH</span></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
       </section>
 
-      <section className="sticky results">
+      <section className="sticky results side" ref={sideRef}>
+        <div className={`side-list${more ? ' more' : ''}`} ref={listRef}>
+        <div className="side-inner">
         <div className="desktop-only">{payBlock}</div>
         <div className="desktop-only">{gridBlock}</div>
         {playBlock && <div className="desktop-only">{playBlock}</div>}
@@ -1511,53 +1590,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           )}
           <div><span>Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
         </div>
-        {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
-        {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
-        <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
-        {!d.paidUpkeepEnabled && <p className="note">Keeper pay is off. Setup and restocking need someone to run maintenance unpaid; the caller pays transaction gas.</p>}
-        {creationEconomics}
+        </div>
+        </div>
+        {more && <button className="disclose more-hint" onClick={() => list?.scrollBy({ top: list.clientHeight * 0.7, behavior: 'smooth' })}>More below ▾</button>}
         {save}
-        {view && ev && econ && (
-          <div>
-            <button className="disclose" aria-expanded={open.numbers} onClick={() => toggle('numbers')}>All numbers {open.numbers ? '▴' : '▾'}</button>
-            {open.numbers && (
-              <div className="numbers">
-                <div className="kv-group">
-                  <span className="label">For players</span>
-                  <div className="kv"><span className="k">{projected ? 'Draw price, projected' : 'Draw price'}</span><span>{eth(ev.drawPrice, 5)} ETH</span></div>
-                  {vrfKnown && <div className="kv"><span className="k">FWA's randomness fee, at today's gas</span><span>{eth(d.vrfFee!, 5)} ETH</span></div>}
-                  {common && <div className="kv"><span className="k">Most draws ({pctOf(common.odds)})</span><span>{prize(common)} · {common.multiple.toFixed(2)}×</span></div>}
-                  {bases.length > 0 && <div className="kv"><span className="k">Wins a curated NFT</span><span>{oneIn(view.curated)} · {pctOf(view.curated)}</span></div>}
-                  <div className="kv"><span className="k">Wins more than the draw price</span><span>{oneIn(view.winMore)} · {pctOf(view.winMore)}</span></div>
-                  <div className="kv"><span className="k">Wins 2× or more</span><span>{oneIn(view.win2x)} · {pctOf(view.win2x)}</span></div>
-                  <div className="kv"><span className="k">Top prize</span><span>{eth(view.top.value, 3).replace(/\.?0+$/, '')} ETH · {oneIn(view.top.odds)}</span></div>
-                  <div className="kv"><span className="k">Average prize value</span><span>{(view.avgReturn * 100).toFixed(0)}% of the draw price</span></div>
-                </div>
-                <div className="kv-group">
-                  <span className="label">For you</span>
-                  {fresh && <>
-                    <div className="kv"><span className="k">Initial mint fees</span><span>{eth((capital?.inventoryCost ?? 0n) - capitalOf(counts), 6)} ETH</span></div>
-                    <div className="kv"><span className="k">Initial paid listing budget</span><span>{eth(capital?.listingBudget ?? 0n, 6)} ETH</span></div>
-                    <div className="kv"><span className="k">Maintenance buffer</span><span>{eth(capital?.workingBuffer ?? 0n, 6)} ETH</span></div>
-                    {deposit > needed && <div className="kv"><span className="k">Rounded up</span><span>{eth(deposit - needed, 6)} ETH</span></div>}
-                  </>}
-                  <div className="kv"><span className="k">Prize backing</span><span>{eth(ev.capital)} ETH</span></div>
-                  <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Required operating capital'}</span><span>{eth(needed)} ETH</span></div>
-                  <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
-                  <div className="kv"><span className="k">Sales kept by the pool per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
-                  <div className="kv"><span className="k">Restocking backing per draw</span><span>{perDraw(-econ.replacementCostsPerDraw)} ETH</span></div>
-                  <div className="kv"><span className="k">Left after restocking, per draw</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
-                  <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
-                  <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
-                  <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{eth(d.restockFee!, 5)} ETH</span></div>
-                </div>
-                {mode !== 'preview' && !blocked && ev.feasible && actions.length > 0 && <p className="note" style={{ marginTop: 14 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
-              </div>
-            )}
-          </div>
-        )}
       </section>
     </main>
   );
