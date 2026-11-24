@@ -947,8 +947,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
       <p className="pd">{outcome === 'context' ? `Switch to ${short(attempt.creator)} on ${chain.name} to check this pool.` : creationStatus(outcome)}</p>
       <div className={`pbar${stopped ? ' bad' : ''}`}><i style={{ width: `${Math.round(((attempt.curated.length + (stopped ? 0.5 : 0.5)) / total) * 100)}%` }} /></div>
       <ol className="psteps">
-        {attempt.curated.map((c, k) => <li key={k} className="ps done pend"><span className="mk">✓</span><span className="lb">Approve {label(c)}</span><span className="st">Done</span></li>)}
-        <li className={`ps pend ${stopped ? 'failed' : 'submitted'}`}><span className="mk">{stopped ? '✕' : '●'}</span><span className="lb">Create the pool and deposit {eth(BigInt(attempt.value), 5)} ETH</span><span className="st">{state}</span></li>
+        {attempt.curated.map((c, k) => <li key={k} className="ps done pend"><span className="mk">✓</span><span className="lb">Approve {label(c)}</span><span className="pst">Done</span></li>)}
+        <li className={`ps pend ${stopped ? 'failed' : 'submitted'}`}><span className="mk">{stopped ? '✕' : '●'}</span><span className="lb">Create the pool and deposit {eth(BigInt(attempt.value), 5)} ETH</span><span className="pst">{state}</span></li>
       </ol>
       <div className="kvs">
         {attempt.hash && <div className="kv"><span className="k">Transaction</span><span className="mono">{url ? <a href={url} target="_blank" rel="noreferrer">{short(attempt.hash)} ↗</a> : short(attempt.hash)}</span></div>}
@@ -1571,7 +1571,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     </div>
   );
   const nftGroup = (
-    <div className="sec">
+    <div className="dsec">
       {secHead(1, 'Curated NFTs', "Rare prizes from your wallet. The value is your asking price: across the draws until it's won, players pay about that. A higher value makes it rarer.", 'Optional')}
       <div className="sec-body nfts-list">
         {listed.map((l) => (
@@ -1646,7 +1646,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
         {!has && nftGroup}
 
-        <div className="sec">
+        <div className="dsec">
           {secHead(2, 'Shapes', 'ETH-backed prizes that make up most draws. When one is won, maintenance replaces it from operating ETH.')}
           <div className="sec-body">
             <div>
@@ -1698,7 +1698,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
         <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{playBlock}{gridBlock}</div>
 
-        <div className="sec">
+        <div className="dsec">
           {secHead(3, fresh ? 'Before you create' : 'Before you save', 'Costs are quoted at current gas and mint fees. If either rises, the pool needs more ETH, and Shapes may be listed in stages.')}
           <div className="sec-body">
           {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
@@ -2298,9 +2298,9 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
         : `${nfts.length ? 'Your NFTs are listed and the pool' : 'The pool'} holds your ${eth(d.balance, 5)} ETH. Next, the Shapes are minted and listed on FWA. Players can buy draws once every prize is listed.`}</p>
       <ol className="psteps setup-steps">
         <li className="ps pend done"><span className="mk">✓</span><span className="lb">Pool created</span>
-          <span className="st">{created ? <>Block {created.block.toLocaleString()}{created && <> · {url ? <a href={url} target="_blank" rel="noreferrer">{short(created.hash)} ↗</a> : short(created.hash)}</>}</> : ''}</span></li>
+          <span className="pst">{created ? <>Block {created.block.toLocaleString()}{created && <> · {url ? <a href={url} target="_blank" rel="noreferrer">{short(created.hash)} ↗</a> : short(created.hash)}</>}</> : ''}</span></li>
         {nfts.length > 0 && <li className="ps pend done"><span className="mk">✓</span><span className="lb">{nfts.length} curated NFT{nfts.length === 1 ? '' : 's'} listed</span>
-          <span className="st">{nfts.map((l) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`).join(' · ')}</span></li>}
+          <span className="pst">{nfts.map((l) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`).join(' · ')}</span></li>}
         <li className={`ps pend ${opened ? 'done' : stalled ? 'failed' : 'submitted'}`}>
           <span className="mk">{opened ? '✓' : stalled ? '✕' : '●'}</span>
           <div>
@@ -2310,9 +2310,9 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
               ? <><span className="sb error">{st.body}</span><button className="btn" style={{ marginTop: 10 }} disabled={!!tx.busy || !pub} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [() => tx.write({ ...B, functionName: 'depositETH', value: short_ }), upkeepStep(pub!, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button></>
               : <span className="sb">Maintenance mints and lists them, paid from operating ETH. {d.paidUpkeepEnabled ? 'Keepers pick this up on their own, and large mixes are listed over several runs.' : 'Paid upkeep is off, so someone has to run it.'} You can also run it now; you pay the gas.</span>)}
           </div>
-          <span className="st">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
+          <span className="pst">{listedN.toLocaleString()} of {target.toLocaleString()}</span>
         </li>
-        <li className={`ps pend ${opened ? 'done' : 'next'}`}><span className="mk">{opened ? '✓' : '○'}</span><span className="lb">Purchases open</span><span className="st">{opened ? 'Open' : 'Automatic, once every prize is listed'}</span></li>
+        <li className={`ps pend ${opened ? 'done' : 'next'}`}><span className="mk">{opened ? '✓' : '○'}</span><span className="lb">Purchases open</span><span className="pst">{opened ? 'Open' : 'Automatic, once every prize is listed'}</span></li>
       </ol>
     </div>
     <div className="setup-side">

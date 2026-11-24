@@ -605,7 +605,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .design .crumb { display: block; font-size: 13px; color: var(--ink-foot); }
 .design .page-t { font-weight: 700; font-size: 32px; letter-spacing: -.03em; line-height: 1.1; margin: 10px 0 0; }
 .design .lead { font-size: 15px; }
-.sec { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 32px; }
+.dsec { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 32px; }
 .sec-head { display: flex; gap: 16px; align-items: baseline; }
 .sec-n { font: 500 13px var(--font-mono); color: var(--ink-3); width: 24px; flex: none; }
 .sec-t { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
@@ -704,9 +704,9 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .creating .pd { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin-top: 10px; }
 .creating .pbar { margin-top: 24px; }
 .ps.pend { grid-template-columns: 28px minmax(0, 1fr) auto; gap: 0 12px; align-items: baseline; }
-.ps.pend .st { font-size: 13px; color: var(--ink-2); }
-.ps.pend.done .st { color: var(--ink-foot); }
-.ps.pend.failed .st { color: var(--error); }
+.ps.pend .pst { font-size: 13px; color: var(--ink-2); }
+.ps.pend.done .pst { color: var(--ink-foot); }
+.ps.pend.failed .pst { color: var(--error); }
 .creating .kvs { margin-top: 28px; }
 .creating .kv { font-size: 15px; min-height: 48px; }
 .creating .kv .k { color: var(--ink-2); }
