@@ -79,6 +79,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .status .actions { margin-left: auto; display: flex; gap: 24px; align-items: center; }
 .txline { padding: 10px var(--gutter); border-bottom: 1px solid var(--line); font: 500 13px var(--font-mono); color: var(--ink-2); }
 .txline.bad { color: var(--error); }
+.sticky-tx { position: sticky; top: 0; z-index: 20; background: var(--bg); }
+.txline a { text-decoration: underline; text-underline-offset: 3px; }
 .mobile-only { display: none; }
 @media (max-width: 760px) {
   .poolhead { padding-top: 22px; }

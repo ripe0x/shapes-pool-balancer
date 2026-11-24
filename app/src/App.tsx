@@ -316,6 +316,7 @@ export function useTx(onDone: () => void) {
       try { if (loadPending(key)?.id === reservation.id) savePending(key, { ...reservation, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
     }
     submitted.current = { hash, intent };
+    setHash(hash);
     return hash;
   };
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
@@ -330,6 +331,8 @@ export function useTx(onDone: () => void) {
   };
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
+  // The last transaction the wallet submitted in the current or latest `send`, for its explorer link.
+  const [hash, setHash] = useState<Hash>();
   // The last failure, readable right after `send` resolves (state updates land a render later).
   const failure = useRef<string>();
   // A step may carry its own label (shown as "label (2 of 5)") and may return undefined to skip itself.
@@ -337,6 +340,7 @@ export function useTx(onDone: () => void) {
     let current = label;
     setBusy(label);
     setMsg(undefined);
+    setHash(undefined);
     try {
       await runTransactionSteps(label, calls, (name, k) => {
         current = name;
@@ -359,7 +363,18 @@ export function useTx(onDone: () => void) {
       onDone();
     }
   };
-  return { send, busy, msg, write, transfer, failure };
+  return { send, busy, msg, hash, write, transfer, failure };
+}
+
+const txUrl = (hash: Hash) => (chain.id === 1 ? `https://etherscan.io/tx/${hash}` : undefined);
+/** The current or last transaction: what it is waiting for or how it ended, with a link to it. Stays in view. */
+function TxLine({ tx }: { tx: Tx }) {
+  if (!tx.busy && !tx.msg) return null;
+  const url = tx.hash && txUrl(tx.hash);
+  return <p className={`txline sticky-tx${tx.msg && !tx.msg.ok ? ' bad' : ''}`} aria-live="polite">
+    {tx.busy ? `${tx.busy}${tx.hash ? ': waiting for confirmation' : ': confirm in your wallet'}…` : tx.msg!.text}
+    {tx.hash && (url ? <> · <a href={url} target="_blank" rel="noreferrer">View transaction ↗</a></> : <> · <span title={tx.hash}>{short(tx.hash)}</span></>)}
+  </p>;
 }
 
 type Step = TransactionStep;
@@ -696,7 +711,7 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
           {d.upkeep.needed && st.act !== 'upkeep' && <button className="link quiet" disabled={!!tx.busy} onClick={upkeep}>Run upkeep</button>}
         </span>
       </div>
-      {(tx.busy || tx.msg) && <p className={`txline${tx.msg && !tx.msg.ok ? ' bad' : ''}`} aria-live="polite">{tx.busy ? `${tx.busy}…` : tx.msg!.text}</p>}
+      <TxLine tx={tx} />
       {d.pendingCreator.toLowerCase() === me.toLowerCase() && (
         <p className="txline">You were offered this pool. <button className="link" disabled={!!tx.busy} onClick={() => tx.send('Accept pool', [() => tx.write({ ...B, functionName: 'acceptCreator' })])}>Accept</button></p>
       )}
