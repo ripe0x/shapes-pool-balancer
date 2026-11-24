@@ -92,3 +92,16 @@ describe('prepareWrite', () => {
     expect(sent).toEqual(['eth_sendTransaction']);
   });
 });
+
+describe('withTip', () => {
+  it('raises a near-zero tip to the minimum and the fee cap by the same amount', async () => {
+    const { withTip, MIN_PRIORITY_FEE } = await import('./tx');
+    expect(withTip({ maxFeePerGas: 400_000_000n, maxPriorityFeePerGas: 121_170n }))
+      .toEqual({ maxFeePerGas: 400_000_000n + MIN_PRIORITY_FEE - 121_170n, maxPriorityFeePerGas: MIN_PRIORITY_FEE });
+  });
+  it('keeps a tip at or above the minimum unchanged', async () => {
+    const { withTip } = await import('./tx');
+    expect(withTip({ maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 100_000_000n }))
+      .toEqual({ maxFeePerGas: 2_000_000_000n, maxPriorityFeePerGas: 100_000_000n });
+  });
+});
