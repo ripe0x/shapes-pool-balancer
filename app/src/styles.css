@@ -584,3 +584,9 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .modal-rows .kv .v { font-weight: 700; white-space: nowrap; }
 .modal .acts { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
 @media (max-width: 640px) { .modal { padding: 20px; } }
+
+/* Design page: the results sidebar stays in view while the main section scrolls. It is often taller than the screen,
+   so it scrolls on its own instead of scrolling away with the page. */
+@media (min-width: 901px) {
+  .design > section.sticky { max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 24px; }
+}
