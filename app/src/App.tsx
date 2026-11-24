@@ -15,7 +15,7 @@ import { canRetryCreation, creationContextMatches, creationStatus, recoverCreati
 import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
-import { MAIN_POOL_OPEN, VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, MAIN_MANAGER_OPEN, MAIN_POOL_VISIBLE } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -450,7 +450,7 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
 
 type Page = 'home' | 'list' | 'pool' | 'new' | 'main';
 // 'list' falls through to the Design page when disconnected or once the pool list loads empty.
-const LANDING: Page = MAIN_POOL_OPEN ? 'home' : 'list';
+const LANDING: Page = MAIN_POOL_OPEN || MAIN_MANAGER_OPEN ? 'home' : 'list';
 // #how-<section> opens How it works at that section; #how-main is the main pool's page.
 const helpOf = (hash: string) => (hash === '#how-main' ? 'how-main' : /^#how(-[a-z]+)?$/.test(hash) ? 'how' : undefined);
 /** The main pool tab a hash route names, or undefined when it names none. */
@@ -567,10 +567,10 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN || MAIN_MANAGER_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
-          {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
+          {MAIN_POOL_VISIBLE && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
           <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = view === 'main' ? 'how-main' : 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (
@@ -587,7 +587,7 @@ export function App() {
           </div>
         )}
       </header>
-      {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
+      {!FACTORY && community && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
       {help === 'how' && <HowItWorks onDesign={() => go('new')} />}
       {help === 'how-main' && <HowItWorksMain />}
       <div hidden={!!help}>

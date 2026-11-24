@@ -8,10 +8,26 @@ import { incrementalRange } from './ledger';
 /** Launch switch: while false the main pool pages show their content but take no deposits or creations, and the app
  * lands on Community pools instead of Home. */
 export const MAIN_POOL_OPEN = false;
+export const MAIN_MANAGER_OPEN = false;
 export const localMainPoolPreview = (chainId: number, requested: string | undefined) => chainId === 31337 && requested === 'true';
-export const MAIN_POOL_INTERACTIVE = MAIN_POOL_OPEN || localMainPoolPreview(Number(import.meta.env?.VITE_CHAIN_ID ?? 1), import.meta.env?.VITE_MAIN_POOL_PREVIEW);
 export const VAULT = (import.meta.env?.VITE_VAULT as string | undefined || undefined) as Address | undefined;
 export const MANAGER_FACTORY = (import.meta.env?.VITE_MANAGER_FACTORY as string | undefined || undefined) as Address | undefined;
+export function mainProductAccess(input: { chainId: number; vault?: Address; factory?: Address; vaultOpen: boolean; managerOpen: boolean; vaultPreview?: string; managerPreview?: string }) {
+  return {
+    visible: !!input.vault || !!input.factory,
+    vault: !!input.vault && (input.vaultOpen || localMainPoolPreview(input.chainId, input.vaultPreview)),
+    manager: !!input.factory && (input.managerOpen || localMainPoolPreview(input.chainId, input.managerPreview)),
+  };
+}
+const access = mainProductAccess({ chainId: Number(import.meta.env?.VITE_CHAIN_ID ?? 1), vault: VAULT, factory: MANAGER_FACTORY,
+  vaultOpen: MAIN_POOL_OPEN, managerOpen: MAIN_MANAGER_OPEN, vaultPreview: import.meta.env?.VITE_MAIN_POOL_PREVIEW,
+  managerPreview: import.meta.env?.VITE_MAIN_MANAGER_PREVIEW });
+export const MAIN_POOL_INTERACTIVE = access.vault;
+export const MAIN_MANAGER_INTERACTIVE = access.manager;
+export const MAIN_POOL_VISIBLE = access.visible;
+export function mainTabForProducts<T extends 'overview' | 'vault' | 'manager'>(tab: T, vault: boolean, manager: boolean): T | 'vault' | 'manager' {
+  return !vault && manager ? 'manager' : vault && !manager ? 'vault' : tab;
+}
 /** Block the manager factory was deployed in: manager discovery scans its events from here. */
 export const MAIN_FROM_BLOCK = BigInt(import.meta.env?.VITE_MAIN_FROM_BLOCK as string | undefined ?? 0);
 
@@ -86,10 +102,11 @@ export function navWitnessCandidates(ids: bigint[], positions: { state: number; 
 async function readBook(pub: Pub, address: Address, abi: typeof packVaultAbi | typeof packManagerAbi, fwa: Address, blockNumber: bigint) {
   const r = <T,>(functionName: string, args: unknown[] = []) =>
     pub.readContract({ address, abi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
-  const [totals, openCount, idlePacks, recoveryPacks, freeEth, credit] = await Promise.all([
+  const [totals, openCount, idlePacks, recoveryPacks, freeEth, credit, pendingReceipts] = await Promise.all([
     r<readonly [bigint, bigint, bigint, bigint, bigint, bigint]>('totals'), r<bigint>('openListingCount'), r<bigint>('idlePackCount'),
     r<bigint>('recoveryPackCount'),
     r<bigint>('freeEth'), pub.readContract({ address: fwa, abi: fwaV2Abi, functionName: 'feeCredit', args: [address], blockNumber }),
+    r<bigint>('pendingReceipts'),
   ]);
   const [tracked, idleValue, backing, activeCount, , allocated] = totals;
   const key = `${pub.chain?.id}:${address.toLowerCase()}`;
@@ -109,7 +126,7 @@ async function readBook(pub: Pub, address: Address, abi: typeof packVaultAbi | t
   bookPages.set(key, { next: page.next, witness });
   const principal = freeEth + tracked + backing + credit;
   return {
-    ids, openCount, listed: Number(activeCount), bought: Number(openCount - activeCount), idle: Number(idlePacks), recovery: Number(recoveryPacks),
+    ids, openCount, credit, pendingReceipts, listed: Number(activeCount), bought: Number(openCount - activeCount), idle: Number(idlePacks), recovery: Number(recoveryPacks),
     tracked, idleValue, backing, freeEth, allocated, witness, navCurrent: provenNav !== undefined,
     nav: provenNav ?? principal, fees: provenNav === undefined ? credit : provenNav - freeEth - tracked - backing,
     // Allocated Shapes are known exactly; detailed position values are shown only in the bounded inventory page.
@@ -271,7 +288,7 @@ export async function readManager(pub: Pub, manager: Address) {
   const keeps = named(logs, 'CashReceipt').map((l) => argsOf<{ listingId: bigint; outcome: number }>(l)).filter((a) => a.outcome === 1).map((a) => a.listingId);
   const total = (name: string) => named(logs, name).reduce((t, l) => t + argsOf<{ amount: bigint }>(l).amount, 0n);
   return {
-    manager, blockNumber, listingPaused, exiting, ...config, budget, book, balance: book.freeEth,
+    manager, fwa, blockNumber, listingPaused, exiting, ...config, budget, book, balance: book.freeEth,
     historyComplete: logCache.get(`${pub.chain?.id}:${manager.toLowerCase()}`)?.through === blockNumber,
     actualMintFees: named(logs, 'PrimaryMinted').reduce((t, l) => t + argsOf<{ mintFees: bigint }>(l).mintFees, 0n),
     ...observedResolutions(updates, keeps), keeperPay: total('KeeperPaid'), tokensBurned: total('TokensBurned'), withdrawn: total('Withdrawn'),
@@ -280,7 +297,7 @@ export async function readManager(pub: Pub, manager: Address) {
 
 /** `cost` is one more pack's ETH (`packCost`), undefined when unknown. */
 export function managerStatus(m: Pick<Manager, 'exiting' | 'listingPaused' | 'edge' | 'book' | 'balance' | 'operatingReserve' | 'params'>, cost: bigint | undefined) {
-  if (m.exiting) return { head: 'Exiting.', body: 'Packs are being unlisted and turned back into ETH.' };
+  if (m.exiting) return { head: 'Exiting.', body: 'Review owner-paid closeout steps below. FWA settlement can require waiting.' };
   if (m.listingPaused) return { head: 'Listing paused.', body: 'Listed packs stay listed. New packs are not built.' };
   if (m.params.packUnitsMask === 0n) return { head: 'Fresh minting disabled.', body: 'Existing unselected packs may still be relisted. Withdrawals remain available.' };
   if (!m.edge[2]) return { head: 'New investment paused.', body: "FWA conditions don't allow new packs right now. Withdrawals still work." };

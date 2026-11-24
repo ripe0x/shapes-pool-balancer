@@ -11,14 +11,14 @@ import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
 import { eth, short, useTx } from './App';
 import {
-  MAIN_POOL_INTERACTIVE, MANAGER_FACTORY, MANAGER_PARAMS, VAULT, checkCreation, clearManagerCreation,
+  MAIN_POOL_INTERACTIVE, MAIN_MANAGER_INTERACTIVE, MAIN_POOL_VISIBLE, MANAGER_FACTORY, MANAGER_PARAMS, VAULT, mainTabForProducts, checkCreation, clearManagerCreation,
   depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge, renewalWaits,
   saveManagerCreation, vaultStatus, previewManager, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
 
 export type MainTab = 'overview' | 'vault' | 'manager';
 /** Without a manager factory there is nothing to compare: the section is the vault alone. */
-export const mainTabFor = (t: MainTab): MainTab => (MANAGER_FACTORY ? t : 'vault');
+export const mainTabFor = (t: MainTab): MainTab => mainTabForProducts(t, !!VAULT, !!MANAGER_FACTORY);
 const TABS: { key: MainTab; label: string }[] = [
   { key: 'overview', label: 'Overview' }, { key: 'vault', label: 'Shared vault' }, { key: 'manager', label: 'Your manager' },
 ];
@@ -57,7 +57,7 @@ function usePolled<T>(key: string | undefined, load: () => Promise<T>) {
 
 export function useVault(me?: Address) {
   const pub = usePublicClient();
-  return usePolled<Vault>(pub && VAULT ? `${pub.chain.id}:${VAULT}:${me ?? ''}` : undefined, () => readVault(pub!, VAULT!, me));
+  return usePolled<Vault>(pub && VAULT && MAIN_POOL_INTERACTIVE ? `${pub.chain.id}:${VAULT}:${me ?? ''}` : undefined, () => readVault(pub!, VAULT!, me));
 }
 
 export function useManager(manager: Address | undefined) {
@@ -67,7 +67,7 @@ export function useManager(manager: Address | undefined) {
 
 function useManagers(me?: Address) {
   const pub = usePublicClient();
-  return usePolled(pub && me && MANAGER_FACTORY ? `${pub.chain.id}:${MANAGER_FACTORY}:${me}` : undefined, () => findManagers(pub!, MANAGER_FACTORY!, me!));
+  return usePolled(pub && me && MANAGER_FACTORY && MAIN_MANAGER_INTERACTIVE ? `${pub.chain.id}:${MANAGER_FACTORY}:${me}` : undefined, () => findManagers(pub!, MANAGER_FACTORY!, me!));
 }
 
 function Connect({ label = 'Connect wallet', className = 'btn' }: { label?: string; className?: string }) {
@@ -88,7 +88,7 @@ function StatusBar({ head, body, link }: { head: string; body: string; link?: { 
 export function Home({ hasPools, onNew, onList, onMain }: { hasPools: boolean; onNew: () => void; onList: () => void; onMain: (t: MainTab) => void }) {
   const { data: v } = useVault();
   return (
-    <main className={`home${VAULT ? '' : ' single'}`}>
+    <main className={`home${MAIN_POOL_VISIBLE ? '' : ' single'}`}>
       <section>
         <span className="eyebrow">For creators</span>
         <h1 className="title">Community pools</h1>
@@ -98,14 +98,14 @@ export function Home({ hasPools, onNew, onList, onMain }: { hasPools: boolean; o
           {hasPools && <button className="link" onClick={onList}>Your community pools →</button>}
         </div>
       </section>
-      {VAULT && (
+      {MAIN_POOL_VISIBLE && (
         <section>
           <span className="eyebrow">For depositors</span>
           <h1 className="title">Main pool</h1>
           <p className="lead">Earn on FWA's main pool. Your ETH builds 0.03 ETH Shape packs and lists them. Deposit with other holders, or run your own manager.</p>
           <div className="acts">
-            <button className="btn big" onClick={() => onMain('vault')}>Deposit in the shared vault</button>
-            {MANAGER_FACTORY && <button className="link" onClick={() => onMain('manager')}>Create a manager →</button>}
+            {MAIN_POOL_INTERACTIVE && <button className="btn big" onClick={() => onMain('vault')}>Deposit in the shared vault</button>}
+            {MANAGER_FACTORY && <button className="link" onClick={() => onMain('manager')}>Personal managers →</button>}
           </div>
           {v && <p className="fact">Shared vault: {eth(v.book.nav, 2)} ETH {v.book.navCurrent ? 'current value' : 'booked principal'}, {v.book.listed} packs listed.</p>}
         </section>
@@ -121,17 +121,18 @@ export function MainPool({ tab, setTab }: { tab: MainTab; setTab: (t: MainTab) =
   const vault = useVault(me);
   const managers = useManagers(me);
   const t = mainTabFor(tab);
+  const tabs = TABS.filter((x) => x.key === 'overview' ? !!VAULT && !!MANAGER_FACTORY : x.key === 'vault' ? !!VAULT : !!MANAGER_FACTORY);
   return (
     <>
-      {MANAGER_FACTORY && (
+      {tabs.length > 1 && (
         <nav className="tabs sub" aria-label="Main pool">
-          {TABS.map((x) => <button key={x.key} aria-current={t === x.key ? 'page' : undefined} onClick={() => setTab(x.key)}>{x.label}</button>)}
+          {tabs.map((x) => <button key={x.key} aria-current={t === x.key ? 'page' : undefined} onClick={() => setTab(x.key)}>{x.label}</button>)}
         </nav>
       )}
       {t === 'overview' && <Compare v={vault.data} hasManager={!!managers.data?.managers.length} setTab={setTab} />}
       {t === 'vault' && (MAIN_POOL_INTERACTIVE ? <VaultPage vault={vault} me={me} />
         : <Soon title="Shared vault" lead="Deposit ETH with other holders. The vault builds Shape packs, lists them on FWA's main pool, and you own a share of everything it holds." />)}
-      {t === 'manager' && (MAIN_POOL_INTERACTIVE ? <ManagerTab v={vault.data} me={me} managers={managers} />
+      {t === 'manager' && (MAIN_MANAGER_INTERACTIVE ? <ManagerTab me={me} managers={managers} />
         : <Soon title="Personal manager" lead="Your own account that runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee." />)}
     </>
   );
@@ -168,7 +169,7 @@ function Compare({ v, hasManager, setTab }: { v?: Vault; hasManager: boolean; se
   ];
   const head = (k: 'vault' | 'manager') => (k === 'vault'
     ? <><h2>Shared vault</h2><p>Deposit with other holders and own a share of everything the vault holds.</p>{MAIN_POOL_INTERACTIVE ? <button className="btn big" onClick={() => setTab('vault')}>Deposit ETH</button> : <button className="btn big" disabled>Coming soon</button>}</>
-    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p>{MAIN_POOL_INTERACTIVE ? <button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button> : <button className="btn sec big" disabled>Coming soon</button>}</>);
+    : <><h2>Personal manager</h2><p>Create your own account that runs the same strategy with only your ETH.</p>{MAIN_MANAGER_INTERACTIVE ? <button className="btn sec big" onClick={() => setTab('manager')}>{hasManager ? 'Open your manager' : 'Create a manager'}</button> : <button className="btn sec big" disabled>Coming soon</button>}</>);
   return (
     <main className="page mp-overview">
       <div className="intro">
@@ -387,8 +388,9 @@ function TxHelper({ tx, children }: { tx: ReturnType<typeof useTx>; children?: R
 
 // ------------------------------------------------------------------ Personal manager
 
-function ManagerTab({ v, me, managers }: { v?: Vault; me?: Address; managers: ReturnType<typeof useManagers> }) {
+function ManagerTab({ me, managers }: { me?: Address; managers: ReturnType<typeof useManagers> }) {
   const pub = usePublicClient();
+  const wallet = usePolled<bigint>(pub && me ? `manager-wallet:${pub.chain.id}:${me}` : undefined, () => pub!.getBalance({ address: me! }));
   const [index, setIndex] = useState(0);
   const [record, setRecord] = useState<ManagerCreation | undefined>(() => loadManagerCreation());
   const [creation, setCreation] = useState<CreationState>();
@@ -412,13 +414,13 @@ function ManagerTab({ v, me, managers }: { v?: Vault; me?: Address; managers: Re
     const timer = setInterval(() => { managers.refresh(); }, 5_000);
     return () => { live = false; clearInterval(timer); };
   }, [pub, mine?.hash, mine?.since, managers.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  const created = () => { setRecord(loadManagerCreation()); managers.refresh(); };
+  const created = () => { setRecord(loadManagerCreation()); managers.refresh(); wallet.refresh(); };
 
   if (me && !managers.data) return <p className={`txline${managers.error ? ' bad' : ''}`}>{managers.error ?? 'Looking for your managers…'}</p>;
   if (mine) return <CreationView record={mine} state={creation} onDiscard={() => { clearManagerCreation(); setRecord(undefined); setCreation(undefined); }} />;
   const selected = list[Math.min(index, list.length - 1)];
-  if (!me || !selected) return <CreateManager v={v} me={me} onCreated={created} />;
-  return <ManagerPage key={selected} manager={selected} v={v} me={me} count={list.length} index={list.indexOf(selected)} setIndex={setIndex} />;
+  if (!me || !selected) return <CreateManager wallet={wallet.data} me={me} onCreated={created} />;
+  return <ManagerPage key={selected} manager={selected} wallet={wallet.data} refreshWallet={wallet.refresh} me={me} count={list.length} index={list.indexOf(selected)} setIndex={setIndex} />;
 }
 
 function CreationView({ record, state, onDiscard }: { record: ManagerCreation; state?: CreationState; onDiscard: () => void }) {
@@ -443,7 +445,7 @@ function CreationView({ record, state, onDiscard }: { record: ManagerCreation; s
 const DRAFT_KEY = 'manager-draft';
 const loadAmount = () => { try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as { amount?: string } | null)?.amount ?? '1.00'; } catch { return '1.00'; } };
 
-function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreated: () => void }) {
+function CreateManager({ wallet, me, onCreated }: { wallet?: bigint; me?: Address; onCreated: () => void }) {
   const pub = usePublicClient();
   const tx = useTx(() => undefined);
   const [params, setParams] = useState(MANAGER_PARAMS);
@@ -459,7 +461,7 @@ function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreate
     : quoted.mintFee > params.acceptedMintFee ? 'Accept the current mint fee first'
     : !value ? 'Enter an amount'
     : value < threshold! ? `At least ${ethText(threshold!, 2)} ETH for this funding estimate`
-    : v?.holder && value > v.holder.wallet ? `Your wallet has ${eth(v.holder.wallet)} ETH` : undefined;
+    : me && wallet === undefined ? 'Wallet balance unavailable' : wallet !== undefined && value > wallet ? `Your wallet has ${eth(wallet)} ETH` : undefined;
   const run = async () => {
     if (!pub || !me || !value || disabled || !MANAGER_FACTORY || !quoted) return;
     const record: ManagerCreation = { chainId: chain.id, factory: MANAGER_FACTORY, owner: me, value: String(value),
@@ -522,12 +524,12 @@ function CreateManager({ v, me, onCreated }: { v?: Vault; me?: Address; onCreate
   );
 }
 
-function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Address; v?: Vault; me: Address; count: number; index: number; setIndex: (i: number) => void }) {
+function ManagerPage({ manager, wallet, refreshWallet, me, count, index, setIndex }: { manager: Address; wallet?: bigint; refreshWallet: () => void; me: Address; count: number; index: number; setIndex: (i: number) => void }) {
   const { data: m, error, refresh } = useManager(manager);
-  const tx = useTx(refresh);
+  const changed = () => { refresh(); refreshWallet(); };
+  const tx = useTx(changed);
   const [mode, setMode] = useState<'add' | 'withdraw'>();
   const [amount, setAmount] = useState('');
-  const [confirmExit, setConfirmExit] = useState(false);
   const [numbers, setNumbers] = useState(false);
   if (!m) return <p className={`txline${error ? ' bad' : ''}`}>{error ?? 'Loading your manager…'}</p>;
   const M = { address: manager, abi: packManagerAbi } as const;
@@ -540,7 +542,7 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   const owner = m.owner.toLowerCase() === me.toLowerCase();
   const disabled = !owner ? 'Only the owner can do this' : !value ? 'Enter an amount'
     : seg === 'withdraw' && value > m.balance ? `${eth(m.balance)} ETH is available`
-    : seg === 'add' && v?.holder && value > v.holder.wallet ? `Your wallet has ${eth(v.holder.wallet)} ETH` : undefined;
+    : seg === 'add' && wallet === undefined ? 'Wallet balance unavailable' : seg === 'add' && wallet !== undefined && value > wallet ? `Your wallet has ${eth(wallet)} ETH` : undefined;
   const label = disabled ?? (seg === 'withdraw' ? `Withdraw ${amount} ETH` : `Add ${amount} ETH`);
   const submit = () => {
     if (!value) return;
@@ -593,12 +595,10 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
                 <button className="btn sec" disabled={busy || !owner || m.exiting} onClick={() => control(m.listingPaused ? 'Resume listings' : 'Pause new listings', 'setListingPaused', [!m.listingPaused])}>{m.listingPaused ? 'Resume' : 'Pause'}</button>
               </div>
               <div>
-                <div><h3 className="ctl">Exit mode</h3><p className="h">{confirmExit ? 'Every pack will be unlisted and turned back into ETH. Confirm to send.' : 'Unlists every pack and turns it back into ETH. You can leave exit mode later.'}</p></div>
+                <div><h3 className="ctl">Exit mode</h3><p className="h">{m.exiting ? 'New investment is stopped. Review each owner-paid closeout step below.' : 'Complete closeout below stops investment first. Exit work is not automatic.'}</p></div>
                 {m.exiting
                   ? <button className="btn sec" disabled={busy || !owner} onClick={() => control('Leave exit mode', 'setExiting', [false])}>Leave exit mode</button>
-                  : confirmExit
-                    ? <span className="row"><button className="link quiet" onClick={() => setConfirmExit(false)}>Cancel</button><button className="btn sec" disabled={busy} onClick={() => { setConfirmExit(false); control('Start exit', 'setExiting', [true]); }}>Confirm exit</button></span>
-                    : <button className="btn sec" disabled={busy || !owner} onClick={() => setConfirmExit(true)}>Start exit</button>}
+                  : <a className="link" href={`#manager-exit-${manager}`} onClick={(event) => { event.preventDefault(); document.getElementById(`manager-exit-${manager}`)?.scrollIntoView(); }}>Review closeout below</a>}
               </div>
               <div>
                 <div><h3 className="ctl">Withdraw idle packs</h3><p className="h">Takes unlisted packs to your wallet.{m.book.idle === 0 ? ' None are idle now.' : ''}</p></div>
@@ -606,6 +606,7 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
               </div>
             </div>
           </Group>
+          <CallerFundedExit manager vault={manager} holder={me} refresh={changed} enabled={owner} />
           <MainPoolSettings key={manager} address={manager} params={m.params} configHash={m.configHash} mintFee={m.mintFee} tx={tx} enabled={owner} />
         </section>
         <section className="sticky results">
@@ -630,7 +631,7 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
           </div>
           <div className="pin">
             <button className="btn lg" disabled={busy || !!disabled} onClick={submit}>{tx.busy ? `${tx.busy}…` : label}</button>
-            <TxHelper tx={tx}>{seg === 'withdraw' ? 'To withdraw ETH in listed packs, start exit mode.' : undefined}</TxHelper>
+            <TxHelper tx={tx}>{seg === 'withdraw' ? 'For listed or recovery packs, use the owner-paid closeout below.' : undefined}</TxHelper>
           </div>
           <button className="disclose" aria-expanded={numbers} onClick={() => setNumbers(!numbers)}>All numbers {numbers ? '▴' : '▾'}</button>
           {numbers && (

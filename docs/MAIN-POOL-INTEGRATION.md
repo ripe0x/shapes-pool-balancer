@@ -2,7 +2,8 @@
 
 The main pool uses the contracts and defaults exported from `ripe0x/shapes-fwa-pool`.
 Community contracts, keeper behavior, current factory selection and legacy handling are unchanged.
-The production launch switch remains `MAIN_POOL_OPEN = false`.
+The shared-vault production switch remains `MAIN_POOL_OPEN = false`. Personal managers have a separate
+`MAIN_MANAGER_OPEN = false` switch; neither is enabled by this implementation.
 
 ## Updating the contract interface
 
@@ -26,7 +27,9 @@ quotes and settings; existing inventory is not assumed to have the current fresh
 
 Use the main candidate's isolated fork deployment, fresh checked rehearsal wallet and local RPC.
 Set `VITE_CHAIN_ID=31337`, the fork's `VITE_VAULT`, `VITE_MANAGER_FACTORY` and deployment block,
-and `VITE_MAIN_POOL_PREVIEW=true`, then run `npm run dev`.
+and `VITE_MAIN_POOL_PREVIEW=true`, then run `npm run dev`. For a manager-only preview, leave
+`VITE_VAULT` unset and `VITE_MAIN_POOL_PREVIEW=false`; set `VITE_MAIN_MANAGER_PREVIEW=true`
+and the manager factory/deployment block. Wallet balance, discovery and manager reads do not use the vault.
 The preview flag has no effect on mainnet. Do not change the community factory, its deployment
 selection or production application configuration to preview the main pool.
 
@@ -73,3 +76,42 @@ The focused app batch covers request arithmetic, bounded reads, configuration sc
 fee-change errors, caller spending limits, creation recovery and preserved chain/community flows.
 It must also exercise the UI against real candidate contracts on a local fork. Typechecking and
 an app build alone do not establish contract integration, keeper liveness or economic returns.
+
+## Owner-paid manager closeout
+
+The manager page offers one reviewed transaction at a time under its own durable wallet spending limit.
+It first enables exit mode, then uses unpaid bounded recovery, unlisting and ordinary/oversized pack
+redemption. When an outstanding FWA queue blocks required work, the owner can review
+`FWA.processAcquisitions(16)` only if real simulation reports positive completed progress. Otherwise
+randomness, its actual request deadline or the crown exit delay requires waiting. There is no assumed
+unpaid keeper or external queue processor.
+
+The closeout collects remaining FWA fee credit before withdrawing all available ETH to the current owner.
+It has no holder shares, pricing checkpoint, deposit contribution, refund or token-burn step. Zero keeper
+budgets and unprofitable reimbursement do not hide necessary owner-paid calls. The owner pays wallet gas;
+these transactions request no keeper compensation. Vault return measurements do not establish manager returns.
+
+Manager closeout reuses the vault flow's Web Lock and conservative signed-maximum ledger with a separate
+manager key. A pending step records its exact target, calldata, owner, value, chain and nonce. Targets are
+restricted to the manager's exit selectors or its live immutable FWA dependency with the exact bounded
+queue-processing calldata. Unknown wallet outcomes survive reload and block another step. Replacement
+transactions can only raise reserved maxima; claims, withdrawals, reverts and reorganizations do not free
+previously signed allowance. Owner withdrawal recipient and amount remain part of the signed intent.
+
+Final manager acceptance must include an actual local manager-only page with no vault configured, zero
+keeper spending permission, real outstanding queue progress, ordinary/recovery inventory, a refused tiny
+wallet cap, explicit bounded steps and a complete final owner withdrawal. Hardware-wallet behavior remains
+a separate limitation when an unlocked local wallet bridge is used. Production/community deployment
+selection and live routes remain unchanged until separately authorized.
+
+The focused manager acceptance exercised the actual local page with no vault address: creation,
+pause/resume, zero keeper capacities/refills, a one-wei cap refusal, a genuine pending request,
+owner-paid queue progress after its real expiry and complete withdrawal. The manager's ETH,
+inventory, receipts and fee credit all ended at zero. Raw receipts and limitations are in the
+main repository's `docs/receipts/manager-ui.json` and `manager-closeout.json`.
+
+The app currently requires its quoted opening funding for creation. That is a UI restriction;
+the contract and unsigned CLI template permit smaller idle accounts. Hardware signing,
+recovery-only oversized inventory and a standalone credited harvest were not reached in this
+new UI run. The latter contract paths retain their separate real-fork coverage. Both public
+launch switches remain false. No live application cutover is included.

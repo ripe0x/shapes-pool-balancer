@@ -3,7 +3,7 @@ import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, V1_ECONOMICS, capitalOf, economics, evaluate, maxSurchargeOf, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
 import { useVault } from './MainPool';
-import { MANAGER_FACTORY, VAULT } from './main-pool';
+import { MANAGER_FACTORY, MAIN_POOL_VISIBLE } from './main-pool';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -74,7 +74,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const reserve = capital.workingBuffer;
   return (
     <main className="page hiw">
-      {VAULT && <p className="note hiw-switch">Community pools · <a className="link" href="#how-main">Main pool</a></p>}
+      {MAIN_POOL_VISIBLE && <p className="note hiw-switch">Community pools · <a className="link" href="#how-main">Main pool</a></p>}
       <h1 className="title">How it works</h1>
       <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
@@ -220,7 +220,7 @@ export function HowItWorksMain() {
         <section className="hiw-sec">
           <h2 className="h3">5. Personal managers</h2>
           <p className="hiw-p">A manager runs the same strategy with only your ETH, in a contract only you can withdraw from. The factory that created it keeps no control. There are no shares or checkpoints: idle ETH can be withdrawn at any time.</p>
-          <p className="hiw-p"><b>Exit mode</b> unlists every pack and turns it back into ETH. A pack a buyer has already drawn returns once FWA settles it. You can leave exit mode later; listing stays paused until you resume it.</p>
+          <p className="hiw-p"><b>Owner-paid closeout</b> stops new investment. You choose a wallet spending limit and confirm each bounded settlement, queue-processing, unlisting, pack redemption, fee collection and final withdrawal step. Randomness, request deadlines and crown exit delays can require waiting. Keeper profitability does not block these owner-paid steps. You can leave exit mode later; listing stays paused until you resume it.</p>
         </section>
       )}
 

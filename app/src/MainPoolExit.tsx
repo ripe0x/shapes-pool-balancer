@@ -7,7 +7,8 @@ import { creationNotSubmitted } from './creation';
 import { explain } from './errors';
 import { chain } from './chain';
 import { assertExitReplacementNonce, exitSpendKey, parseSpend, readContributions, reserveExitReplacement, reserveExitSpend, reviewExit, settleExitSpend, signedExitMaximum, withExitSpendLock, type ExitReview, type SavedExitSpend } from './main-pool-exit';
-import { assertTransactionIntent } from './tx';
+import { assertTransactionIntent, reviewedIntent } from './tx';
+import { managerExitSpendKey, reviewManagerExit, requireManagerQueueProgress, validateManagerExitIntent, validateManagerExitPending } from './main-manager-exit';
 
 export function CheckpointContributions({ vault, payer, refresh }: { vault: Address; payer: Address; refresh: () => void }) {
   const pub = usePublicClient();
@@ -40,10 +41,10 @@ export function CheckpointContributions({ vault, payer, refresh }: { vault: Addr
   </div></details>;
 }
 
-export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; holder: Address; refresh: () => void }) {
+export function CallerFundedExit({ vault, holder, refresh, manager = false, enabled = true }: { vault: Address; holder: Address; refresh: () => void; manager?: boolean; enabled?: boolean }) {
   const pub = usePublicClient();
   const tx = useTx(refresh);
-  const key = exitSpendKey(chain.id, vault, holder);
+  const key = (manager ? managerExitSpendKey : exitSpendKey)(chain.id, vault, holder);
   const readSaved = (): SavedExitSpend | undefined => {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null') as SavedExitSpend | null;
     if (!value) return undefined;
@@ -58,7 +59,12 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
   const [recoveryHash, setRecoveryHash] = useState('');
   // Only callers holding the per-account Web Lock may mutate this durable record.
   const persist = (next: SavedExitSpend) => { localStorage.setItem(key, JSON.stringify(next)); setSaved(next); };
+  const validatePending = async (current: SavedExitSpend) => {
+    if (manager) await validateManagerExitPending(pub!, current);
+    else if (current.pending?.to && current.pending.to.toLowerCase() !== vault.toLowerCase()) throw new Error('The pending vault exit targets another contract.');
+  };
   const reconcileLocked = async (current: SavedExitSpend) => {
+    await validatePending(current);
     const next = await settleExitSpend(pub!, current);
     if (next !== current) { persist(next); refresh(); }
     return next;
@@ -89,7 +95,7 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
     return () => { live = false; clearInterval(timer); };
   }, [pub, key, saved?.pending?.hash]);
   const prepare = async () => {
-    if (!pub) return;
+    if (!pub || !enabled) return;
     setLoading(true); setError(undefined); setReview(undefined);
     try {
       const requested = parseEther(limit);
@@ -103,12 +109,12 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
         persist(next);
         return next;
       });
-      setReview(await reviewExit(pub, vault, holder, parseSpend(current)));
+      setReview(await (manager ? reviewManagerExit : reviewExit)(pub, vault, holder, parseSpend(current)));
     } catch (e) { setError(explain(e)); }
     finally { setLoading(false); }
   };
   const execute = async () => {
-    if (!pub || !review || review.done) return;
+    if (!pub || !enabled || !review || review.done) return;
     setError(undefined); setLoading(true);
     try {
       await withExitSpendLock(key, async () => {
@@ -116,9 +122,13 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
         if (!current) throw new Error('The durable spending review is unavailable. Review again.');
         const before = await reconcileLocked(current);
         const prepared = review.prepared;
+        if (manager) {
+          await validateManagerExitIntent(pub, vault, holder, reviewedIntent(prepared), true);
+          if (prepared.address.toLowerCase() !== vault.toLowerCase()) await requireManagerQueueProgress(pub, prepared);
+        }
         const minimumNonce = await pub.getTransactionCount({ address: holder, blockTag: 'pending' });
         const reserved = reserveExitSpend(before, review.reviewedLimit, review.maximumDebit, {
-          id: crypto.randomUUID(), minimumNonce, maximumDebit: String(review.maximumDebit), value: String(prepared.value), input: encodeFunctionData(prepared as never),
+          id: crypto.randomUUID(), minimumNonce, maximumDebit: String(review.maximumDebit), value: String(prepared.value), input: encodeFunctionData(prepared as never), to: prepared.address,
         });
         let pending = false;
         await tx.send(review.call.label, [async () => {
@@ -128,7 +138,7 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
             persist(sent);
             const transaction = await pub.getTransaction({ hash }).catch(() => undefined);
             if (transaction) {
-              assertTransactionIntent({ chainId: sent.chainId, from: holder, to: vault, input: sent.pending.input, value: BigInt(sent.pending.value) }, transaction);
+              assertTransactionIntent({ chainId: sent.chainId, from: holder, to: sent.pending.to ?? vault, input: sent.pending.input, value: BigInt(sent.pending.value) }, transaction);
               sent = { ...sent, pending: { ...sent.pending, nonce: transaction.nonce } };
               persist(sent);
               persist(reserveExitReplacement(sent, signedExitMaximum(transaction)));
@@ -147,15 +157,16 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
   };
   const spend = saved ? parseSpend(saved) : undefined;
   const track = async () => {
-    if (!pub || !/^0x[0-9a-fA-F]{64}$/.test(recoveryHash)) return;
+    if (!pub || !enabled || !/^0x[0-9a-fA-F]{64}$/.test(recoveryHash)) return;
     try {
       await withExitSpendLock(key, async () => {
         const current = readSaved();
         if (!current?.pending) throw new Error('No unresolved wallet step remains.');
         if (current.pending.id !== saved?.pending?.id) throw new Error('The pending wallet step changed. Refresh before tracking a transaction.');
+        await validatePending(current);
         const transaction = await pub.getTransaction({ hash: recoveryHash as Hash });
         assertExitReplacementNonce(current.pending, transaction.nonce);
-        assertTransactionIntent({ chainId: current.chainId, from: current.holder, to: current.vault,
+        assertTransactionIntent({ chainId: current.chainId, from: current.holder, to: current.pending.to ?? current.vault,
           input: current.pending.input, value: BigInt(current.pending.value) }, transaction);
         const bounded = reserveExitReplacement(current, signedExitMaximum(transaction));
         const next = { ...bounded, pending: { ...bounded.pending!, nonce: transaction.nonce, hash: recoveryHash as Hash } };
@@ -177,10 +188,11 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
       setError(undefined);
     } catch (e) { setError(explain(e)); }
   };
-  return <details className="group mp-exit"><summary className="group-head"><h2>Complete a caller-funded withdrawal</h2></summary><div className="group-body">
-    <p className="note">You pay wallet gas for bounded settlement, unlisting, pack redemption, checkpoints and claims. Each step requires its own confirmation. FWA settlement and quiet checkpoint windows can require waiting.</p>
+  return <details className={`group mp-exit${manager ? ' mp-manager-exit' : ''}`} id={manager ? `manager-exit-${vault}` : undefined}><summary className="group-head"><h2>{manager ? 'Complete an owner-paid manager exit' : 'Complete a caller-funded withdrawal'}</h2></summary><div className="group-body">
+    <p className="note">{manager ? 'You pay wallet gas to stop investment, recover settlements, process eligible FWA requests, unlist, redeem packs, collect earnings and withdraw ETH to your wallet. Each bounded step needs its own confirmation. FWA randomness, request deadlines and crown exit delays can require waiting.' : 'You pay wallet gas for bounded settlement, unlisting, pack redemption, checkpoints and claims. Each step requires its own confirmation. FWA settlement and quiet checkpoint windows can require waiting.'}</p>
+    {!enabled && <p className="note error">Only the current owner can close this manager.</p>}
     <label className="ctl" htmlFor={`exit-limit-${vault}`}>Total wallet debit limit (ETH)</label>
-    <input id={`exit-limit-${vault}`} className="input" inputMode="decimal" value={limit} disabled={!!tx.busy || loading} onChange={(e) => { setLimit(e.target.value); setReview(undefined); }} />
+    <input id={`exit-limit-${vault}`} className="input" inputMode="decimal" value={limit} disabled={!enabled || !!tx.busy || loading} onChange={(e) => { setLimit(e.target.value); setReview(undefined); }} />
     <p className="note">Every signed maximum stays reserved toward this limit, including reverted steps. Refunds, claims and lower observed gas do not replenish it.</p>
     <p className="note">The limit covers app-reviewed requests. Wallet changes already signed cannot be undone; a larger signed maximum blocks further steps until explicitly reviewed.</p>
     {spend && <div className="kvs">
@@ -191,19 +203,19 @@ export function CallerFundedExit({ vault, holder, refresh }: { vault: Address; h
     </div>}
     {saved?.pending && <p className="note" role="status">{saved.pending.hash ? `Waiting for ${saved.pending.hash}.` : 'Wallet outcome is unknown. The maximum debit remains reserved. Check your wallet before another action.'}</p>}
     {saved?.pending && <div>
-      <button className="btn sec" disabled={loading || !!tx.busy} onClick={raisePendingLimit}>Raise the pending step's flow limit</button>
+      <button className="btn sec" disabled={!enabled || loading || !!tx.busy} onClick={raisePendingLimit}>Raise the pending step's flow limit</button>
       <label className="ctl" htmlFor={`exit-hash-${vault}`}>Transaction or replacement hash from your wallet</label>
       <input id={`exit-hash-${vault}`} className="input" value={recoveryHash} onChange={(e) => setRecoveryHash(e.target.value)} spellCheck={false} />
-      <button className="btn sec" disabled={!/^0x[0-9a-fA-F]{64}$/.test(recoveryHash)} onClick={track}>Track the reviewed transaction</button>
+      <button className="btn sec" disabled={!enabled || !/^0x[0-9a-fA-F]{64}$/.test(recoveryHash)} onClick={track}>Track the reviewed transaction</button>
     </div>}
-    <button className="btn sec" disabled={loading || !!tx.busy || !!saved?.pending} onClick={prepare}>{loading ? 'Reviewing…' : 'Review next exit step'}</button>
-    {review && (review.done ? <p className="note" role="status">No deposit, unlocked shares, redemption or priced claim remains. Check contribution refunds separately.</p>
+    <button className="btn sec" disabled={!enabled || loading || !!tx.busy || !!saved?.pending} onClick={prepare}>{loading ? 'Reviewing…' : manager ? 'Review next manager exit step' : 'Review next exit step'}</button>
+    {review && (review.done ? <p className="note" role="status">{manager ? 'Manager closeout complete: no booked packs, pending receipts, FWA earnings or ETH remain.' : 'No deposit, unlocked shares, redemption or priced claim remains. Check contribution refunds separately.'}</p>
       : <div role="status"><h3>{review.call.label}</h3>
         <div className="kv"><span className="k">Estimated wallet gas expense</span><span>{formatEther(review.expectedWalletGas)} ETH</span></div>
         <div className="kv"><span className="k">ETH sent</span><span>{formatEther(review.call.value ?? 0n)} ETH</span></div>
         <div className="kv"><span className="k">Maximum wallet debit for this step</span><span>{formatEther(review.maximumDebit)} ETH</span></div>
         <p className="note">Reviewed at block {review.reviewedBlock.toString()}. Required recovery runs even when keeper reimbursement would be unprofitable.</p>
-        <button className="btn" disabled={!!tx.busy || loading || !!saved?.pending} onClick={execute}>Confirm this bounded step</button>
+        <button className="btn" disabled={!enabled || !!tx.busy || loading || !!saved?.pending} onClick={execute}>Confirm this bounded step</button>
       </div>)}
     {(error || tx.msg) && <p className={`note${error || !tx.msg?.ok ? ' error' : ''}`} role="status">{error ?? tx.msg?.text}</p>}
   </div></details>;
