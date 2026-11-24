@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+// Throwaway RC audit attacks for 0c5291f (untracked; copied to the report folder).
+import {KeeperEconomicsTest} from "./KeeperEconomics.t.sol";
+import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
+
+contract AuditRC0c5291f is KeeperEconomicsTest {
+    /// Control for the memory-alias fix: the parent revision's `mine = original` makes the "factory restored"
+    /// write carry the local values, so the old final assertion compared a value with itself.
+    function test_rc_aliasControl() public {
+        KeeperPolicyCalls.Economics memory original = factory.economics();
+        KeeperPolicyCalls.Economics memory mine = original;
+        mine.workFee = 0.00001 ether;
+        assertEq(original.workFee, 0.00001 ether, "alias: original changed with mine");
+        factory.setEconomics(original);
+        assertEq(factory.economics().workFee, 0.00001 ether, "old flow put the local work fee on the factory");
+    }
+
+    /// Local economics survive a third factory value; a follower moves; restock quotes follow each source.
+    function test_rc_localSurvivesThirdFactoryValue() public {
+        address o = makeAddr("rc-owner");
+        PoolBalancer a = _pool(creator, 31);
+        PoolBalancer b = _pool(o, 32);
+        KeeperPolicyCalls.Economics memory mine = factory.economics();
+        mine.workFee = 0.00001 ether;
+        mine.restockFlat = 0.0005 ether;
+        vm.prank(o); b.setLocalEconomics(mine);
+        bytes32 hb = b.settingsHash();
+        KeeperPolicyCalls.Economics memory x = factory.economics();
+        x.workFee = 0.0003 ether;
+        x.restockFlat = 0.0001 ether;
+        factory.setEconomics(x);
+        assertTrue(_eq(b.effectiveEconomics(), mine), "local kept");
+        assertTrue(_eq(a.effectiveEconomics(), x), "follower moved");
+        assertEq(b.settingsHash(), hb, "local hash unchanged");
+        assertEq(b.restockFee() - a.restockFee(), 0.0004 ether, "restock differs only by the flat charge");
+        assertEq(b.restockFee(), 910_000 * 0.55 gwei + 0.0005 ether, "absolute local restock fee at 0.5 gwei basefee");
+    }
+
+    /// R105: local restock fields at their width maxima. The pool's per-Shape maximum equals the app's displayed
+    /// formula restockGas x gasPriceCeiling + restockFlat; the live quote uses the capped reference price.
+    function test_rc_restockChargeAtWidthMax() public {
+        address o = makeAddr("rc-owner2");
+        PoolBalancer b = _pool(o, 33);
+        KeeperPolicyCalls.Economics memory e = factory.economics();
+        e.restockGas = type(uint32).max;
+        e.restockFlat = type(uint64).max;
+        vm.prank(o); b.setLocalEconomics(e);
+        uint256 appMax = uint256(e.restockGas) * e.gasPriceCeiling + e.restockFlat;
+        assertEq(b.maxRestockSurchargePerShape(), appMax, "pool maximum = app note formula");
+        assertEq(b.restockFee(), uint256(e.restockGas) * 0.55 gwei + e.restockFlat, "live quote at reference price");
+        emit log_named_uint("max restock charge per Shape (wei)", appMax);
+        assertGt(appMax, 20 ether, "a creator can add > 20 ETH per Shape, outside the markup range (R105)");
+        assertLt(appMax, 2 ** 98, "below the documented 2^98 bound");
+    }
+
+    /// quoteKeeperReward cannot revert on the app's work values, so a pool's restock and keeper reads fail together
+    /// (RPC failure) rather than separately: the policy.ts change only alters the partial-failure display.
+    function test_rc_rewardNoRevertAtWidthMax() public pure {
+        KeeperPolicyCalls.Economics memory e;
+        e.workFee = type(uint64).max; e.maxGas = type(uint32).max; e.overheadGas = type(uint32).max;
+        e.gasPriceCeiling = type(uint64).max; e.priorityAllowance = type(uint64).max;
+        e.restockGas = type(uint32).max; e.restockFlat = type(uint64).max; e.baseGas = type(uint32).max;
+        e.processGas = type(uint32).max; e.reconcileGas = type(uint32).max; e.shapeGas = type(uint32).max;
+        e.prizeGas = type(uint32).max;
+        uint256 bf = 10_000 gwei;
+        KeeperPolicyCalls.Work memory w = KeeperPolicyCalls.Work(3_000_000, bf + 0.05 gwei, bf, 1, 4, 1, 0);
+        uint256 r = KeeperPolicyCalls.reward(e, w);
+        assertGt(r, 0);
+    }
+}

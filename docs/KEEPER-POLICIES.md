@@ -1,5 +1,9 @@
 # Replaceable keeper policies
 
+> **Superseded (owner decision R95, 2026-11-23).** There is no replaceable keeper policy any more: payment and
+> restocking are the in-library formula in `KeeperPolicyCalls`, and changing it is a new release. See
+> `docs/DECISIONS.md` "Audit repair" and `docs/CONFIG-INVENTORY.md`. This document is history.
+
 Current specification, 2026-11-18. Protected credit, metadata removal, one paid entry point and maintenance-only
 activation replace earlier policy documentation. [Implementation evidence](PROTECTED-REVENUE-RESULTS.md) records
 verification separately. No mainnet deployment or real spending is authorized.
@@ -13,13 +17,15 @@ capability, purchase-operator authority, or authority to decide useful work. Cal
 An interface-compatible contract need not be honest or stateless; all financial protection assumes it may be malicious.
 
 Each clone snapshots its factory's default policy at initialization. The keeper eligibility admin only manages
-eligibility. A separate `policyAdmin` proposes a new factory recommendation; anyone activates after two days.
-This changes future clones only. Both admin roles transfer by two-step acceptance.
+eligibility. A separate `policyAdmin` sets the factory recommendation with `setDefaultKeeperPolicy`, effective
+immediately for future clones only. Both admin roles transfer by two-step acceptance.
 
-The creator calls `proposeKeeperPolicy(address)`. Anyone may call `activateKeeperPolicy()` after two days, with
-funding rechecked in the activation transaction. `cancelKeeperPolicy()` removes the proposal. A transfer of creator
-ownership cancels the old creator's proposal. `setPaidUpkeepEnabled(false)` disables payments and cancels any pending replacement immediately;
-reenabling requires delayed activation, even for the same policy. Events expose every proposal, cancellation and switch.
+The creator calls `setKeeperPolicy(address)`, effective in that transaction (community release slice A2; the former
+two-day propose/activate flow is removed). A larger maintenance exposure than the current one must be funded in the
+same transaction; missing prizes never are. `setPaidUpkeepEnabled(false)` disables payments immediately and
+`setPaidUpkeepEnabled(true)` re-enables immediately under the same funding check (against zero paid exposure). Only
+the creator can do either; no factory change re-enables a stopped pool, and a creator transfer keeps the policy, the
+stop and the spending allowance. `KeeperPolicyChanged` and `PaidUpkeepChanged` expose every switch.
 
 Pool immutability means an already deployed OLD PoolBalancer implementation cannot gain this feature. Pools deployed
 with this implementation can change economics without redeployment. No existing production pool is migrated or changed.

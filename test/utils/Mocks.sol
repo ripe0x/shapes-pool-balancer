@@ -57,7 +57,7 @@ contract ReentrantNFT is MockNFT {
             (bool ok,) = target.call(abi.encodeCall(IReenterTarget.performUpkeep, (IReenterTarget(target).settingsHash(), 0, 0)));
             ++attempts;
             if (ok) reentered = true;
-            PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(1500, 1000, 1, 0.001 ether, false);
+            PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(1500, 1000, 1, 0.001 ether, false, bytes32(0));
             (ok,) = target.call(abi.encodeCall(PoolBalancer.initialize,
                 (address(this), config, new PoolBalancer.CuratedInput[](0))));
             ++initializationAttempts;
@@ -158,7 +158,8 @@ contract NonRefundingBuyer {
 interface IBalancerCreator {
     function acceptCreator() external;
     function listCuratedBatch(PoolBalancer.CuratedInput[] calldata) external returns (uint256[] memory);
-    function configure(uint16, uint256) external;
+    function configure(uint16, uint256, uint256) external;
+    function mintFeeCap() external view returns (uint256);
     function target() external view returns (uint256);
 }
 
@@ -185,7 +186,7 @@ contract ReconfiguringNFT is MockNFT {
         address b = armedBalancer;
         if (b != address(0) && from != address(0)) {
             armedBalancer = address(0);
-            IBalancerCreator(b).configure(armedMarkup, IBalancerCreator(b).target());
+            IBalancerCreator(b).configure(armedMarkup, IBalancerCreator(b).target(), IBalancerCreator(b).mintFeeCap());
         }
     }
 }

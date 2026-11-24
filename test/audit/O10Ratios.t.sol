@@ -44,8 +44,9 @@ contract O10Ratios is ForkBase {
 
     function _open(uint256[16] memory c, uint16 markup, uint256 deposit, uint256 nftBase) internal {
         createBalancer(deposit);
-        vm.prank(creator);
-        balancer.configure(markup, plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(markup, plan16(c), shapes.mintFee());
+        vm.stopPrank();
         listCurated(1, nftBase);
         vm.prank(creator);
         balancer.open();

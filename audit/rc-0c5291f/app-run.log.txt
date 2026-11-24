@@ -1,0 +1,13 @@
+
+ RUN  v3.2.7 /private/tmp/claude-501/-Users-dd-CascadeProjects-fwa-pool-balancer--claude-worktrees-frosty-gauss-be08da/f6f6adc8-6198-4e57-b89f-f6808563b6df/scratchpad/wt-attack
+
+ ✓ shared/planner.test.ts (29 tests) 9ms
+ ✓ app/src/policy.test.ts (3 tests | 2 skipped) 5ms
+
+ Test Files  2 passed (2)
+      Tests  30 passed | 2 skipped (32)
+   Start at  23:27:51
+   Duration  445ms (transform 87ms, setup 0ms, collect 265ms, tests 14ms, environment 0ms, prepare 85ms)
+
+vitest exit 0
+tsc exit 0

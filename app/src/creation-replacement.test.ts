@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { BaseError, createPublicClient, createWalletClient, custom, decodeErrorResult, decodeFunctionData, encodeFunctionData, http, isHex, parseAbi, parseEther, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, type Address, type Hash, type TransactionReceipt } from 'viem';
+import { BaseError, createPublicClient, createWalletClient, custom, decodeErrorResult, decodeFunctionData, encodeFunctionData, http, isHex, zeroHash, parseAbi, parseEther, UserRejectedRequestError, WaitForTransactionReceiptTimeoutError, type Address, type Hash, type TransactionReceipt } from 'viem';
 import { expect, it } from 'vitest';
 import { balancerFactoryAbi, poolBalancerAbi } from '../../shared/abi';
 import { canRetryCreation, recoverCreation, submitCreation, waitForCreation, type CreationAttempt } from './creation';
@@ -161,7 +161,8 @@ it.skipIf(!rpc || !broadcast)('reconciles actual cancelled, repriced and late re
     const salt = `0x${(0x7265706c61636500n + BigInt(index)).toString(16).padStart(64, '0')}` as Hash;
     const predicted = await pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [creator, salt] });
     expect(await pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'isBalancer', args: [predicted] })).toBe(false);
-    const config = { markupBps: 2500, creatorRevenueBps: valid ? 1234 : 10001, target: 1n, mintFeeCap: 1_000_000_000_000_000n, curatedRequired: false };
+    const settingsHash = await pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' });
+    const config = { markupBps: 2500, creatorRevenueBps: valid ? 1234 : 10001, target: 1n, mintFeeCap: 1_000_000_000_000_000n, curatedRequired: false, settingsHash };
     const value = valid ? parseEther('0.025') : 0n;
     if (valid) {
       expect(await pub.getCode({ address: nft })).toBeTruthy();
@@ -235,7 +236,7 @@ it.skipIf(!rpc || !broadcast)('reconciles actual cancelled, repriced and late re
       expect(a.curated).toEqual([{ collection: nft, tokenId: String(tokenId), base: '10000000000000000' }]);
       expect(a.value).toBe('25000000000000000');
       expect(await pub.readContract({ address: factory, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [creator, a.salt] })).toBe(a.predicted);
-      const data = encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer', args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired }, a.curated.map(n => ({ ...n, tokenId: BigInt(n.tokenId), base: BigInt(n.base) }))] });
+      const data = encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer', args: [a.salt, { ...a.config, target: BigInt(a.config.target), mintFeeCap: BigInt(a.config.mintFeeCap), curatedRequired: !!a.config.curatedRequired, settingsHash: a.config.settingsHash ?? zeroHash }, a.curated.map(n => ({ ...n, tokenId: BigInt(n.tokenId), base: BigInt(n.base) }))] });
       const tx = await pub.getTransaction({ hash: a.hash! });
       expect(tx.hash).toBe(a.hash);
       expect(tx.from.toLowerCase()).toBe(creator.toLowerCase());

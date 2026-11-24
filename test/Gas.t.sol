@@ -23,8 +23,9 @@ contract GasBench is ForkBase {
     }
 
     function _configure(uint256 target) internal {
-        vm.prank(creator);
-        balancer.configure(MARKUP, target);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, target, shapes.mintFee());
+        vm.stopPrank();
         vm.prank(creator);
         balancer.open();
     }

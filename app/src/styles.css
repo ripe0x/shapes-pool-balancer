@@ -480,3 +480,4 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .tabs.sub { gap: 22px; }
   .tabs.sub button { white-space: nowrap; }
 }
+.legacy-tag { border: 1px solid var(--line-strong); padding: 3px 6px; color: var(--ink-2); align-self: flex-start; }

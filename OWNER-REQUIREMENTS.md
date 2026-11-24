@@ -329,3 +329,115 @@ numerical outcome is approved here; the updated outcomes in `asset-flow.json` aw
 - R83. No mainnet canary (owner, 2026-11-22: "i don't want to do the canary!!!"). Launch goes from the signed
   outcomes and the recorded review straight to the production deploy through `script/deploy.sh`; no capped first
   deployment or cap-raising plan. Supersedes the canary step of runbook 0b E for this launch.
+
+## Community release (owner brief, 2026-11-23) — Phase A in progress
+
+The community-pool release brief (`scratchpad/community-release-spec.md`, Part B overrides Part A) is the
+current product direction and deliberately changes earlier decisions. Authoritative configuration inventory,
+economics design and per-requirement status: `docs/CONFIG-INVENTORY.md`.
+
+- R84. **Fill gate is a creator setting** `fillGateBps` (0..10000, default 7000); zero removes the
+  target-fill requirement but keeps the conservative unavailable-inventory check (Part B §2). No factory
+  minimum. Implemented (`PoolBalancer.setFillGateBps`, `PoolInventory.admission`). Supersedes the fixed 70%
+  gate and the earlier proposal to put the gate on the factory.
+- R85. **Backlog threshold is a creator setting** `backlogThreshold` (>=1, default 5), independent of FWA's
+  per-transaction batch cap `MAX_BATCH` (Part B §3). A threshold `T` can allow up to `T+MAX_BATCH-1`
+  outstanding draws. Implemented (`PoolBalancer.setBacklogThreshold`). Clarifies that five was never an
+  absolute outstanding-draw cap.
+- R86. **maxPrizes initial value is 1000** (new brief §4.1, factory-administered), reaffirming the value in
+  the current `validateTarget`. Note: this supersedes the earlier "set max to 200" (2026-11-16) for the
+  community release; recorded as a discrepancy to confirm. Implemented in slice A2 (R89).
+- R87. The economics rework (factory EconConfig, pin/local/follow, creator-tunable bucket, one resolver,
+  fee-sensitive hash), deploy reuse path + legacy preflight, CI fix and the permanent acceptance suite are
+  **designed, not yet implemented**. See `docs/CONFIG-INVENTORY.md`. (Delay removal, the accepted-mint-fee
+  binding and product limits are implemented: R88-R90.)
+  **Status (2026-11-23): implemented** on `claude/community-release` (slice A3 `ede97c4`, deploy reuse path and
+  readbacks `505d93d`, CI `afbd981`, acceptance suite `42118c2`; creation hash also binds the default bucket,
+  review S3). The text above is the earlier status, kept as history. Release readiness is not implied.
+- R88. **No policy delays** (spec §3). `BalancerFactory.setDefaultKeeperPolicy` (policyAdmin), pool
+  `setKeeperPolicy` (creator) and `setPaidUpkeepEnabled(true)` (creator) take effect in the authorized
+  transaction. Pool changes keep the maintenance-funding check (a larger maintenance exposure than the current
+  one must be funded; missing prizes never are). The per-pool spending bucket is kept unchanged and no change
+  refills it; `policyGeneration` advances on every policy/paid change so a disable/re-enable cycle changes
+  `settingsHash`. Only the creator can re-enable a stopped pool; no factory change does. Supersedes the two-day
+  default-policy delay, the two-day pool-policy delay and the delayed re-enable (D42-era timelocks).
+- R89. **Factory product limits** (spec §4.1/§4.3): `productLimits() = (maxPrizes 1000, minMarkupBps 1000,
+  maxMarkupBps 10000)`, set together by `setProductLimits` (policyAdmin, immediate, `ProductLimitsChanged`).
+  `maxPrizes` counts the target's Shape and Draw Pack prizes, never curated NFTs. Limits bind newly submitted
+  designs (creation and `configure`) only. **Rule for a pool beyond a lowered limit:** a design may have up to
+  `max(current target prize count, maxPrizes)` prizes, and may keep its current markup even if it is now out of
+  range; any other markup must be in range. Upkeep, recovery, withdrawals and existing prices never consult the
+  limits. Bounds are storage widths (`maxPrizes` 1..65535, `minMarkupBps` 1..`maxMarkupBps`, `maxMarkupBps`
+  ..65535), not product preferences.
+- R90. **Accepted mint fee binds** (spec §7): `configure(markupBps, target, acceptedMintFee)` reverts
+  `InvalidConfig` if the live Shapes fee is above `acceptedMintFee`, and stores it as `mintFeeCap`; creation
+  already bound `CreationConfig.mintFeeCap`. A lower fee can be accepted with the same design. Upkeep mints at the
+  live fee while it is at most the cap; above it, minting stops and purchases of listed prizes and recovery
+  continue; the reserve prices missing prizes at the cap. The app offers the save whenever the live fee differs
+  from the cap (higher or lower) and passes the fee it shows.
+- R91. **One keeper economic configuration** (slice A3; spec §2, §4-§6, B§1, B§4). Factory `economics()` /
+  `setEconomics` (policyAdmin, immediate, constant work) holds the algorithm, the V1 pricing numbers and the
+  per-operation gas bounds; the 0.311 ETH, 0.102 ETH, 50 gwei and other enforcement literals are removed. Pools follow
+  by default, or the creator sets local economics, pins the complete effective configuration, or resumes following.
+  Supersedes R88's "policy" wording: a policy is now an algorithm inside the economics; `setKeeperPolicy` keeps the
+  paid-upkeep state (it no longer re-enables).
+- R92. **Per-pool spending bucket is a creator setting** (spec §5): `setKeeperBucket(capacity, refill)`, initial
+  0.622 ETH and floor(0.05 ETH / 12) wei/s from factory defaults; accrual rules as in the brief; nothing else resets it.
+- R93. **Settings hash covers the live Shapes mint fee** and binds creation and paid upkeep (spec §6).
+- R94. **Measured recalibration of two V1 numbers** (spec §10): overhead 50k → 60k gas and restocking gas 900k →
+  910k per Shape, so a paid call's reimbursement covers its billed gas and a replacement's surcharge covers the call
+  that lists it at the 5 gwei ceiling. Derived maxima 0.0165 ETH per payment and 0.00475 ETH per Shape (V1: 0.01645,
+  0.0047). **Owner visibility:** these differ from the brief's V1 list; both are factory settings and can be set back.
+
+## Audit repair decisions (owner, 2026-11-23)
+
+Owner decisions D1-D3 after the independent audit of the community candidate `be50aa0`. They supersede R39-R45's
+replaceable policy, R66's replaceable `quoteReward`/`quoteRestock` interface, R88/R91's policy wording and R91's pin
+mode. Earlier text above is kept as history. No numerical outcome signature follows from them.
+
+- R95. **One payment formula, inside the library (D1).** No external keeper policy in the money path. Pay and restock
+  prices come from the pool's effective economics by the V1 formula: reward = (min(measured gas, operation gas bound,
+  maxGas) + overheadGas) x min(tx gas price, basefee + priorityAllowance, gasPriceCeiling) + workFee x (processed +
+  reconciled draws + listed Shape units); restock price per Shape = restockGas x min(basefee + priorityAllowance,
+  gasPriceCeiling) + restockFlat. Unpaid callers use the same formula. Every numeric economics field, the processing
+  graces, the bucket, follow/local, `settingsHash`, the paid-upkeep switch and the maintenance-funding checks stay.
+  **Changing the payment formula requires a new release** (supersedes R39's policy replacement).
+- R96. **No contract pin mode (D2).** Two modes: follow the factory, or local values. "Pin" is an app button that reads
+  the factory's current economics at the reviewed block and saves them with `setLocalEconomics` in one transaction,
+  labelled "Pin current factory values", explaining that it freezes those numbers. `settingsHash` = economics + source
+  + generation + paid state + Shapes mint fee.
+- R97. **Trusted factory admin (D3; recorded 2026-11-23 in DECISIONS "trusted factory admin").** Pools that follow the
+  factory adopt its economics immediately; no safeguard against admin updates.
+- R98. **Default bucket (D3).** 0.622 ETH capacity, `floor(0.05 ether / 12)` wei per second refill (R92 unchanged).
+- R99. **Paid processing of stuck draws only (D3; DECISIONS "paid processing of stuck draws only").** Upkeep processes a
+  stuck head (Ready, TimedOut, or Pending with `block.number > wordDeadlineBlock`) only 50 blocks after its request
+  block, 10 while purchases are paused BUSY or LOW_INVENTORY, at most 2 per call, paid gas plus a work fee per
+  processed draw.
+
+## Outcome bounds after the audit repair (owner, 2026-11-23: "approved")
+
+The owner approved three new numerical outcome bounds in `asset-flow.json`. The owner's SSH signature over the new
+outcomes hash is still required; this record is not that signature.
+
+- R100. **O1 keeper refund gas kept per draw: at most 100,000** (was 80,000). Cause: paid processing of stuck draws
+  (R99) keeps FWA's storage refunds; measured worst 96,590 (`burst`).
+- R101. **O2 restock fees still listed: at most 0.2613 ETH** (was 0.26 ETH). Cause: restock gas 910k (R94), 55 Shape
+  units x 0.00475 ETH = 0.26125 ETH at the 5 gwei cap.
+- R102. **O15 opening requirement: exactly 0.229565 ETH** (was 0.2356 ETH). Cause: one fee schedule (slice A3:
+  3.2M gas, 60k overhead gas, 0.00002 ETH work fee).
+- R103. **E1 edge (fix, no new rule).** The inventory check refuses only while draws are outstanding
+  (`lost != 0 && prizeWeight <= lost`): fill 0 with no outstanding draws and no Shapes listed is admitted, since
+  nothing is at risk. The fill-gate percentage check is unchanged.
+
+## Accepted behaviors after the second independent audit (owner, 2026-11-23: "yes go")
+
+Accepted and documented; no contract behavior change and no outcome bound changes.
+
+- R104. **Batch overshoot (A1).** FWA consults the pool's purchase gate once per `acquireBatch` of up to 5 draws
+  (MAX_BATCH). On a nearly empty board up to 4 draws of one purchase can find no prize; FWA refunds their draw price
+  as pull credit, and the buyer's randomness fee for those draws is not refunded. The `PoolInventory.admission`
+  comment states this per-purchase check; the app's purchase-pauses view states it as a fact.
+- R105. **Restocking charge outside the markup range (A2).** Economics fields have width-only bounds (R89, R95), so a
+  creator's local `restockGas` and `restockFlat` can raise Shape listing prices beyond the markup range; the markup
+  limits do not cap the restocking charge. Where local economics are edited, the app shows the resulting charge per
+  Shape at the gas price ceiling for the entered values (`restockGas x gasPriceCeiling + restockFlat`).

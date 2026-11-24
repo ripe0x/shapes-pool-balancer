@@ -30,7 +30,7 @@ contract ParityFixture is ForkBase {
         // listing at the current markup, which the contract only produces when nothing predates the markup
         // (listings made before `configure`, or before a markup change, keep their original price).
         vm.startPrank(c);
-        b.configure(markup, target);
+        b.configure(markup, target, shapes.mintFee());
         for (uint256 i; i < bases.length; ++i) {
             uint256 id = 10_000 * (n + 1) + i;
             nft.mint(c, id);

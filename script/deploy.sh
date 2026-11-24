@@ -16,7 +16,8 @@ if [[ "${1:-}" == "--local-rehearsal-plan" ]]; then
     unset ASSET_GATE_PASSED
     exec forge script script/Deploy.s.sol "$@"
 fi
-# Fresh protected-revenue candidate: independent packet and owned-node proof, never an archived approval.
+# Historical 2026-11-18 protected-revenue candidate route (scripts/current-local-rehearsal.ts): never an archived
+# approval, and not evidence for the community release (its scenario calls the removed setKeeperPolicy).
 if [[ "${1:-}" == "--current-local-rehearsal-plan" ]]; then
     [[ $# -ge 5 && "${3:-}" == "--approved-plan-hash" ]] || { echo "current rehearsal requires its exact frozen plan and hash" >&2; exit 1; }
     current_plan="$2"

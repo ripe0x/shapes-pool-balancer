@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
-import {KeeperPolicyV1} from "../../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
+import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
 import {MockNFT} from "./Mocks.sol";
 import {ListOne} from "./ListOne.sol";
 
@@ -59,7 +59,7 @@ abstract contract ForkBase is Test {
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin, address(this), address(new KeeperPolicyV1()));
+        factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
@@ -79,7 +79,8 @@ abstract contract ForkBase is Test {
         vm.startPrank(owner);
         nft.approve(predicted, id);
         b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
-            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired), initial)));
+            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired,
+                factory.creationSettingsHash()), initial)));
         b.close();
         b.withdrawCurated(b.getActiveIds()[0], owner);
         if (seed > deposit) b.claimSurplus(seed - deposit, owner);
@@ -126,25 +127,36 @@ abstract contract ForkBase is Test {
 
     /// @dev Configure at MARKUP with prize target `t` (see `plan`, `plan16`).
     function configure(uint256 t) internal {
-        vm.prank(creator);
-        balancer.configure(MARKUP, t);
+        vm.startPrank(creator);
+        balancer.configure(MARKUP, t, shapes.mintFee());
+        vm.stopPrank();
     }
 
-    /// @dev Independent legacy-test arithmetic for the current immutable working-capital caps.
-    function _reconciliationBudget() internal view returns (uint256 cap) {
-        uint256 price = block.basefee + 0.1 gwei;
-        if (price > 50 gwei) price = 50 gwei;
-        cap = 2_250_000 * price + 0.00005 ether;
-        uint256 selected = balancer.policyMaxReward();
-        if (cap > selected) cap = selected;
+    /// @dev Independent arithmetic for the default (V1) economics: work fee 0.00002 ETH, 3.2M reimbursable gas,
+    ///      V1_OVERHEAD, 5 gwei ceiling, 0.05 gwei priority allowance, V1_RESTOCK_GAS + 0.0002 ETH per Shape; per-operation bounds 200k base, 1.8M per processed
+    ///      draw, 150k per reconcile, 700k per Shape unit, 150k per prize. Zero while paid upkeep is off.
+    uint256 internal constant V1_OVERHEAD = 60_000; // recalibrated default (BalancerFactory.OVERHEAD_GAS)
+    uint256 internal constant V1_RESTOCK_GAS = 910_000; // recalibrated default (BalancerFactory.RESTOCK_GAS)
+    function _v1Price() internal view returns (uint256 price) {
+        price = block.basefee + 0.05 gwei;
+        if (price > 5 gwei) price = 5 gwei;
     }
 
-    function _workingBuffer() internal view returns (uint256 cap) {
-        uint256 price = block.basefee + 0.1 gwei;
-        if (price > 50 gwei) price = 50 gwei;
-        cap = 5_300_000 * price + 0.0005 ether;
-        uint256 selected = balancer.policyMaxReward();
-        if (cap > selected) cap = selected;
+    /// @dev One owed draw: process + reconcile one, 200k + 1.8M + 150k gas, and a work fee for each.
+    function _reconciliationBudget() internal view returns (uint256) {
+        if (!balancer.paidUpkeepEnabled()) return 0;
+        return (2_150_000 + V1_OVERHEAD) * _v1Price() + 0.00004 ether;
+    }
+
+    function _workingBufferAt(uint256 price) internal pure returns (uint256) {
+        return (3_200_000 + V1_OVERHEAD) * price + 0.0002 ether;
+    }
+
+    /// @dev One operating call: both candidate calls reach the 3.2M reimbursable limit (five reconciles plus five
+    ///      Shape units, or two processed draws plus five reconciles); the first carries ten work fees.
+    function _workingBuffer() internal view returns (uint256) {
+        if (!balancer.paidUpkeepEnabled()) return 0;
+        return (3_200_000 + V1_OVERHEAD) * _v1Price() + 0.0002 ether;
     }
 
     function upkeep() internal {
@@ -179,9 +191,8 @@ abstract contract ForkBase is Test {
     }
 
     /// @dev `n` single draws, one per block, left without randomness. Returns the first block in which the first has
-    ///      expired; each later block expires exactly one more. Upkeep processes FWA's queue itself (D16) and stops at
-    ///      a head that is neither ready nor expired, so rolling to `firstExpired + i` lets call i reconcile exactly
-    ///      one draw: the most calls, and so the most keeper pay, a batch can cost.
+    ///      expired; each later block expires exactly one more. Upkeep processes an expired draw only after the grace
+    ///      (`KeeperPolicyCalls.stuck`), so callers that need it sooner process them on FWA as any third party would.
     function buyOnePerBlock(address who, uint256 n) internal returns (uint256 firstExpired) {
         uint256 timeout = ITimeout(address(pool)).selectionTimeoutBlocks();
         firstExpired = vm.getBlockNumber() + timeout + 1;

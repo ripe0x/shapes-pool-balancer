@@ -153,7 +153,7 @@ contract PacksTest is ForkBase {
     /// Pack backing remains in the token; the liquid reserve does not duplicate it.
     function test_reserveHoldsWorkingCapitalWithoutDuplicatePackBacking() public view {
         assertEq(balancer.requiredReserve(), _workingBuffer());
-        assertEq(balancer.requiredReserve(), 0.00368 ether);
+        assertEq(balancer.requiredReserve(), 0.001993 ether);
     }
 
     function test_everyPackSizeMintsAtExactValueWithItsShapes() public {

@@ -473,7 +473,7 @@ async function main() {
     const markupProbe = round === 12 || round === 44;
     const p = markupProbe ? journal.pools[1] : journal.pools[Math.floor(rand() * 2)];
     if (markupProbe) {
-      await send({ address: p.balancer, abi: poolBalancerAbi, functionName: 'configure', args: [round === 12 ? 1000 : 1500, TARGET], account: p.creator });
+      await send({ address: p.balancer, abi: poolBalancerAbi, functionName: 'configure', args: [round === 12 ? 1000 : 1500, TARGET, await read<bigint>(p.balancer, poolBalancerAbi, 'mintFeeCap')], account: p.creator });
       journal.markupChanges++; save(); assert.ok(await stocked(p));
     }
     const gasPeriod = period(round); await setLevel(gasPeriod.base);

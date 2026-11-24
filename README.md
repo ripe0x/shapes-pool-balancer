@@ -86,7 +86,8 @@ contracts change):
 npx vitest run shared/planner.test.ts keeper/keeper.test.ts
 ```
 
-Keeper integration (starts its own anvil fork on port 18546, deploys, runs two real FWA pools):
+Keeper integration (historical since R95: its policy section calls removed functions and fails there; starts its own
+anvil fork on port 18546, deploys, runs two real FWA pools):
 
 ```bash
 npm run keeper:e2e

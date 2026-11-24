@@ -143,8 +143,9 @@ contract Handler is Test {
     function reconfigure(uint256 pick) external {
         uint256 t = pick % 2 == 0 ? targetA : targetB;
         uint16 m = uint16(bound(pick, 1000, 3000)); // the allowed markups from the 10% minimum: fees are priced on top
+        uint256 fee = b.SHAPES().mintFee();
         vm.prank(creator);
-        try b.configure(m, t) {} catch {}
+        try b.configure(m, t, fee) {} catch {}
     }
 
     /// Unlist a surplus Shape/pack prize (FWA reverts while draws are unsettled).

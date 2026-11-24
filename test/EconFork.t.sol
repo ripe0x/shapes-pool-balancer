@@ -43,8 +43,9 @@ contract EconForkTest is ForkBase {
         c[2] = (small * 2 + 12) / 24;
         if (c[2] == 0) c[2] = 1;
         c[3] = (small + 12) / 24;
-        vm.prank(creator);
-        balancer.configure(uint16(markup), plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(uint16(markup), plan16(c), shapes.mintFee());
+        vm.stopPrank();
         listCurated(nextNft++, NFT_VALUE);
         vm.prank(creator);
         balancer.open();

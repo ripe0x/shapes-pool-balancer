@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {ITimeout} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {ReceiptGas} from "./utils/ReceiptGas.sol";
@@ -51,7 +49,7 @@ contract ReserveCapitalTest is ForkBase {
         configure(plan([uint256(20),0,0,0,0,0,0,0,0]));
         listCurated(1, 0.2 ether);
         uint256 need = _quoteOpen();
-        assertEq(need, 0.2356 ether, "inventory .22 + four listing bounds .01192 + call buffer .00368");
+        assertEq(need, 0.229565 ether, "inventory .22 + four listing bounds .007572 + call buffer .001993");
         _deposit(need - 1);
         vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.open();
         _deposit(1);
@@ -66,10 +64,10 @@ contract ReserveCapitalTest is ForkBase {
         }
         assertEq(balancer.getActiveShapes()[0],20);
         assertEq(balancer.admissionStatus(),0);
-        assertEq(balancer.requiredReserve(),0.00368 ether);
+        assertEq(balancer.requiredReserve(),0.001993 ether);
         assertEq(address(balancer).balance,need - 0.22 ether - paid);
         assertGt(paid,0.005 ether,"real setup payment, not an unpaid bootstrap");
-        assertLt(paid,0.01192 ether,"actual setup stays within its enforced budget");
+        assertLt(paid,0.007572 ether,"actual setup stays within its enforced budget");
         emit log_named_decimal_uint("exact twenty opening",need,18);
         emit log_named_decimal_uint("actual twenty setup reward",paid,18);
         emit log_named_uint("actual setup billed gas",gas);
@@ -124,7 +122,7 @@ contract ReserveCapitalTest is ForkBase {
         vm.prank(creator); balancer.open();
         fillUp();
         assertEq(balancer.getActiveShapes()[8],1);
-        assertEq(balancer.requiredReserve(),0.00368 ether);
+        assertEq(balancer.requiredReserve(),0.001993 ether);
         emit log_named_decimal_uint("top prize opening",need,18);
     }
 
@@ -146,9 +144,10 @@ contract ReserveCapitalTest is ForkBase {
         buy(buyer,5);
         assertEq(pool.unsettledAcquisitionCount(),9,"one pre-batch gate check admits five after four unsettled");
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),10,"one finalized draw also awaits reconciliation");
-        assertEq(balancer.requiredReserve(),0.01768 ether,"ten actual owed bounds plus one call buffer");
+        assertEq(balancer.requiredReserve(),0.014548 ether,"ten actual owed bounds .0012555 plus one call buffer .001993");
         assertEq(balancer.withdrawableSurplus(),0);
         vm.roll(vm.getBlockNumber() + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        while (pool.unsettledAcquisitionCount() != 0) settle(); // expired draws are processed on FWA by anyone
         while (balancer.reconciledSequence()<pool.lastIssuedSequence()) _paid();
         assertEq(balancer.reconciledSequence(),10);
         assertEq(pool.unsettledAcquisitionCount(),0);
@@ -169,6 +168,7 @@ contract ReserveCapitalTest is ForkBase {
         buy(buyer,5);
         assertLt(address(balancer).balance,balancer.requiredReserve());
         vm.roll(vm.getBlockNumber()+ITimeout(address(pool)).selectionTimeoutBlocks()+1);
+        settle();
         while(balancer.reconciledSequence()<pool.lastIssuedSequence()) _paid();
         assertEq(balancer.reconciledSequence(),5);
         assertEq(pool.ownerProceeds(),0,"expired draws create no operating proceeds");
@@ -195,7 +195,7 @@ contract ReserveCapitalTest is ForkBase {
         assertGt(balancer.requiredReserve(),100 ether);
         assertEq(balancer.withdrawableSurplus(),balancer.creatorCredit(),"missing inventory reserves subsequent operating income");
         uint256 target=balancer.target();
-        vm.prank(creator); balancer.configure(1600,target);
+        vm.startPrank(creator); balancer.configure(1600,target, shapes.mintFee()); vm.stopPrank();
         assertFalse(balancer.creatorWork(),"ordinary markup change does not restart initial setup");
         assertEq(balancer.admissionStatus(),0);
         buy(buyer,1);
@@ -213,20 +213,17 @@ contract ReserveCapitalTest is ForkBase {
         assertEq(balancer.getActiveShapes()[0],20);
         assertEq(address(balancer).balance,0,"unpaid caller fronts its own gas; inventory is the only pool expense");
         assertEq(balancer.requiredReserve(),0,"disabled compensation does not lock hypothetical paid work");
-        (uint256 required,uint256 shortfall)=balancer.policyFunding(balancer.keeperPolicy());
-        assertEq(required,0.00368 ether);
+        (uint256 required,uint256 shortfall)=balancer.maintenanceFunding(balancer.effectiveEconomics());
+        assertEq(required,0.001993 ether);
         assertEq(shortfall,required);
-        address policy=balancer.keeperPolicy();
-        vm.prank(creator); balancer.proposeKeeperPolicy(policy);
-        vm.warp(vm.getBlockTimestamp()+2 days);
-        vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.activateKeeperPolicy();
+        vm.prank(creator); vm.expectRevert(PoolBalancer.ReserveNotFunded.selector); balancer.setPaidUpkeepEnabled(true);
         _deposit(shortfall);
-        balancer.activateKeeperPolicy();
+        vm.prank(creator); balancer.setPaidUpkeepEnabled(true);
         assertTrue(balancer.paidUpkeepEnabled());
-        assertEq(balancer.requiredReserve(),0.00368 ether);
+        assertEq(balancer.requiredReserve(),0.001993 ether);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
         uint256 withdrawable=balancer.withdrawableSurplus();
-        assertEq(withdrawable,0.00368 ether,"emergency disable releases the no-longer-necessary payment buffer");
+        assertEq(withdrawable,0.001993 ether,"emergency disable releases the no-longer-necessary payment buffer");
         vm.prank(creator); balancer.claimSurplus(withdrawable,creator);
         assertEq(address(balancer).balance,0);
     }
@@ -256,27 +253,36 @@ contract ReserveCapitalTest is ForkBase {
     }
 
     function test_feeAndCapSensitiveBoundForActualWork() public {
-        assertEq(KeeperPolicyCalls.paymentBound(0.311 ether,0.5 gwei,1,1,0,0),0.0014 ether);
-        assertEq(KeeperPolicyCalls.paymentBound(0.311 ether,0.5 gwei,0,0,1,1),0.00074 ether);
-        assertEq(KeeperPolicyCalls.paymentBound(0.0001 ether,0.5 gwei,0,0,1,1),0.0001 ether);
-        assertEq(KeeperPolicyCalls.paymentBound(0.311 ether,0.5 gwei,0,5,5,5),0.00368 ether);
+        KeeperPolicyCalls.Economics memory e = factory.economics();
+        uint256 price = 0.55 gwei;
+        assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,1,1,0,0),(2_150_000 + V1_OVERHEAD) * price + 0.00004 ether,
+            "one processed and one reconciled draw: two work fees");
+        assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,0,1,1),(1_050_000 + V1_OVERHEAD) * price + 0.00002 ether);
+        assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,5,5,5),(3_200_000 + V1_OVERHEAD) * price + 0.0002 ether);
+        KeeperPolicyCalls.Economics memory none;
+        assertEq(KeeperPolicyCalls.paymentBound(none,0.5 gwei,0,5,5,5),0,"paid upkeep off: no bound");
     }
 
+    /// The default economics and the fixed work limits, for the TypeScript planner. `hardMaxReward` is the derived
+    /// maximum payment: no separate outer ceiling exists since the community release.
     function test_writeImmutableEnforcementFixture() public {
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         string memory key = "keeperEnforcement";
-        vm.serializeString(key,"hardMaxReward",vm.toString(KeeperPolicyCalls.HARD_MAX_REWARD));
-        vm.serializeString(key,"burst",vm.toString(KeeperPolicyCalls.BURST));
-        vm.serializeString(key,"refillPerSecond",vm.toString(KeeperPolicyCalls.REFILL_PER_SECOND));
-        vm.serializeString(key,"maxGas",vm.toString(KeeperPolicyCalls.MAX_GAS));
-        vm.serializeString(key,"overheadGas",vm.toString(KeeperPolicyCalls.OVERHEAD_GAS));
-        vm.serializeString(key,"baseGas",vm.toString(KeeperPolicyCalls.BASE_GAS));
-        vm.serializeString(key,"processGas",vm.toString(KeeperPolicyCalls.PROCESS_GAS));
-        vm.serializeString(key,"reconcileGas",vm.toString(KeeperPolicyCalls.RECONCILE_GAS));
-        vm.serializeString(key,"shapeGas",vm.toString(KeeperPolicyCalls.SHAPE_GAS));
-        vm.serializeString(key,"prizeGas",vm.toString(KeeperPolicyCalls.PRIZE_GAS));
-        vm.serializeString(key,"priorityAllowance",vm.toString(KeeperPolicyCalls.PRIORITY_ALLOWANCE));
-        vm.serializeString(key,"gasPriceCeiling",vm.toString(KeeperPolicyCalls.GAS_PRICE_CEILING));
-        vm.serializeString(key,"workFee",vm.toString(KeeperPolicyCalls.WORK_FEE));
+        vm.serializeString(key,"hardMaxReward",vm.toString((uint256(e.maxGas) + e.overheadGas) * e.gasPriceCeiling + 10 * uint256(e.workFee)));
+        vm.serializeString(key,"burst",vm.toString(factory.defaultBucketCapacity()));
+        vm.serializeString(key,"refillPerSecond",vm.toString(factory.defaultBucketRefill()));
+        vm.serializeString(key,"maxGas",vm.toString(e.maxGas));
+        vm.serializeString(key,"overheadGas",vm.toString(e.overheadGas));
+        vm.serializeString(key,"baseGas",vm.toString(e.baseGas));
+        vm.serializeString(key,"processGas",vm.toString(e.processGas));
+        vm.serializeString(key,"reconcileGas",vm.toString(e.reconcileGas));
+        vm.serializeString(key,"shapeGas",vm.toString(e.shapeGas));
+        vm.serializeString(key,"prizeGas",vm.toString(e.prizeGas));
+        vm.serializeString(key,"processGraceBlocks",vm.toString(e.processGraceBlocks));
+        vm.serializeString(key,"pausedProcessGraceBlocks",vm.toString(e.pausedProcessGraceBlocks));
+        vm.serializeString(key,"priorityAllowance",vm.toString(e.priorityAllowance));
+        vm.serializeString(key,"gasPriceCeiling",vm.toString(e.gasPriceCeiling));
+        vm.serializeString(key,"workFee",vm.toString(e.workFee));
         vm.serializeString(key,"maxUnits","5");
         vm.serializeString(key,"maxSizes","4");
         vm.serializeString(key,"maxReconciles","5");

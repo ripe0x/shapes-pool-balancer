@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {KeeperPolicyV2, HostilePolicy} from "./Settings.t.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
 
 /// @notice Full three-pool replacement lifecycle against deployed FWA and Shapes; Draw Packs uses the same production
@@ -19,7 +19,7 @@ contract PolicyLifecycleTest is ForkBase {
         counts[9] = 1;
         counts[10] = 1;
         vm.startPrank(owner);
-        b.configure(1500, plan16(counts));
+        b.configure(1500, plan16(counts), shapes.mintFee());
         nft.mint(owner, salt);
         nft.approve(address(b), salt);
         PoolBalancer.CuratedInput[] memory inputs = new PoolBalancer.CuratedInput[](1);
@@ -102,6 +102,9 @@ contract PolicyLifecycleTest is ForkBase {
         assertEq(b.requiredReserve(), 0);
     }
 
+    /// Three pools across factory economics changes, a pin and a local change, with no asset migration. R95/R96
+    /// replace the former V1/V2 algorithm swap and hostile-policy fallback: the economics are numbers, the "pin" is
+    /// the app's save of the factory's current values as local economics, and unpaid maintenance needs no fallback.
     function test_threePoolsV1V2AndPolicyFailureNoAssetMigration() public {
         vm.fee(0.5 gwei); vm.txGasPrice(0.55 gwei);
         address owner2 = makeAddr("policy owner2");
@@ -109,19 +112,21 @@ contract PolicyLifecycleTest is ForkBase {
         vm.deal(owner2, 100 ether); vm.deal(owner3, 100 ether);
         PoolBalancer first = _new(creator, 101);
         PoolBalancer second = _new(owner2, 102);
-        address v1 = first.keeperPolicy();
-        assertEq(second.keeperPolicy(), v1);
+        KeeperPolicyCalls.Economics memory v1 = factory.economics();
         _draw(first); _draw(second);
 
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        factory.proposeDefaultKeeperPolicy(address(v2));
-        vm.expectRevert(); factory.activateDefaultKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        factory.activateDefaultKeeperPolicy();
-        assertEq(first.keeperPolicy(), v1);
-        assertEq(second.keeperPolicy(), v1);
+        // Spec §2: the second pool pins; a factory change then moves the follower at once and leaves the pinned pool.
+        vm.prank(owner2); second.setLocalEconomics(v1);
+        KeeperPolicyCalls.Economics memory v2 = factory.economics();
+        v2.workFee = 0.00003 ether;
+        v2.restockFlat = 0.0003 ether;
+        factory.setEconomics(v2);
+        assertEq(first.effectiveEconomics().workFee, 0.00003 ether, "a follower adopts the factory change");
+        assertEq(second.effectiveEconomics().workFee, 0.00002 ether, "a pinned pool keeps its pinned values");
+        assertEq(second.restockFeeFor(0), KeeperPolicyCalls.restock(v1, 1, block.basefee));
+        assertEq(first.restockFeeFor(0), KeeperPolicyCalls.restock(v2, 1, block.basefee));
         PoolBalancer third = _new(owner3, 103);
-        assertEq(third.keeperPolicy(), address(v2));
+        assertEq(third.effectiveEconomics().workFee, 0.00003 ether);
 
         uint256[] memory oldIds = first.getActiveIds();
         (,,,, uint112 oldPrice) = first.items(oldIds[1]);
@@ -129,28 +134,20 @@ contract PolicyLifecycleTest is ForkBase {
         _select(first);
         buy(buyer, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1, "switch with live purchaser obligation");
-        vm.prank(creator); first.proposeKeeperPolicy(address(v2));
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); first.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        first.activateKeeperPolicy();
-        assertEq(first.keeperPolicy(), address(v2));
-        assertEq(second.keeperPolicy(), v1);
-        assertEq(third.keeperPolicy(), address(v2));
+        vm.prank(creator); first.setLocalEconomics(v1);
+        assertEq(first.effectiveEconomics().workFee, 0.00002 ether);
+        assertEq(second.effectiveEconomics().workFee, 0.00002 ether);
+        assertEq(third.effectiveEconomics().workFee, 0.00003 ether);
         (,,,, uint112 keptPrice) = first.items(oldIds[1]);
         assertEq(keptPrice, oldPrice, "old listing retains its exact historical surcharge");
         vm.prank(keeper); vm.expectRevert(PoolBalancer.StaleSettings.selector); first.performUpkeep(priced, 1, 0);
         vm.roll(vm.getBlockNumber() + 40);
+        first.pool().processAcquisitions(5); // expired draws are processed on FWA by anyone, not by upkeep
         upkeep(); fillUp();
         assertEq(first.pool().unsettledAcquisitionCount(), 0);
         _draw(first); _draw(second); _draw(third);
 
         _select(first);
-        HostilePolicy broken = new HostilePolicy(2);
-        (uint256 required, uint256 shortfall) = first.policyFunding(address(broken));
-        assertEq(required, first.requiredReserve(), "a higher declaration above the immutable current-work cap adds no hypothetical liability");
-        vm.prank(creator); first.depositETH{value: shortfall}();
-        vm.prank(creator); first.proposeKeeperPolicy(address(broken));
-        vm.warp(vm.getBlockTimestamp() + 2 days); first.activateKeeperPolicy();
         uint256 request = buy(buyer, 1)[0];
         fulfill(request, wordForSlot(2));
         uint256 received = stranger.balance;

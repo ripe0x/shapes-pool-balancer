@@ -18,14 +18,14 @@ describe('keeper policy economic model', () => {
     expect(batch.refunded).toBe(4);
     expect(batch.slippageRefunds).toBe(4);
     expect(batch.emptyBoardRefunds).toBe(0);
-    expect(batch.playerSpendWei).toBe('27137220785149510');
-    expect(batch.playerRefundsWei).toBe('108548883140598040');
+    expect(batch.playerSpendWei).toBe('27139610482493962'); // 910k restocking gas since A3
+    expect(batch.playerRefundsWei).toBe('108558441929975848');
     expect(batch.deliveredBacking).toBe(0.01);
     expect(singles.draws).toBe(5);
     expect(singles.fulfilledDraws).toBe(5);
     expect(singles.refunded).toBe(0);
     expect(singles.deliveredBacking).toBe(0.05);
-    expect(singles.playerSpendWei).toBe('135686103925747550');
+    expect(singles.playerSpendWei).toBe('135698052412469810');
     expect(playerVrfFeeAt(80_000_000n)).toBe(187_200_000_000_000n);
     expect(batch.playerVrfCostWei).toBe('936000000000000');
     expect(singles.playerVrfCostWei).toBe(batch.playerVrfCostWei);
@@ -39,7 +39,7 @@ describe('keeper policy economic model', () => {
 
   it('checks an absolute payment and its separate execution expense', () => {
     const w = keeperWorkAt(500_000_000n, 550_000_000n, 0);
-    expect(V1.reward(w)).toBe(542_700_000_000_000n);
+    expect(V1.reward(w)).toBe(548_200_000_000_000n); // (864k + 60k) * 0.55 gwei + two work fees
     expect(transactionCost(w)).toBe(502_700_000_000_000n);
     expect(V2.reward(w)).toBe(535_680_000_000_000n);
     expect(V2.surcharge(0, w.baseFee)).toBe(744_000_000_000_000n);
@@ -78,8 +78,10 @@ describe('keeper policy economic model', () => {
     expect(demandAt(100, 100n, 120n, 1)).toBe(83);
     expect(demandAt(100, 100n, 120n, 2)).toBe(69);
     const sensitive = runScenario({ ...base, days: 10, drawsPerDay: 40, switchDay: 1, elasticity: 2, replaceCurated: true });
-    expect(sensitive.finalDrawPrice).toBeGreaterThan(sensitive.drawPrice);
-    expect(demandAt(40, BigInt(Math.round(sensitive.drawPrice * 1e18)), BigInt(Math.round(sensitive.finalDrawPrice * 1e18)), 2)).toBe(39);
+    // Since A3 the switch to V2 (same economics, its own algorithm) ends with a lower draw price on this board, so
+    // modeled demand rises; the elasticity arithmetic is checked both ways above.
+    expect(sensitive.finalDrawPrice).not.toBe(sensitive.drawPrice);
+    expect(demandAt(40, BigInt(Math.round(sensitive.drawPrice * 1e18)), BigInt(Math.round(sensitive.finalDrawPrice * 1e18)), 2)).toBe(41);
     expect(sensitive.accountingDifferenceWei).toBe('0');
   });
 
@@ -91,9 +93,10 @@ describe('keeper policy economic model', () => {
     expect(r.accountingDifferenceWei).toBe('0');
   });
 
-  it('funds only the higher current working buffer on an otherwise identical high-gas policy switch', () => {
+  it('needs no top-up for an algorithm switch on the same economics, even at high gas', () => {
+    // Since A3 a policy declares no maximum: the switch keeps the pool's economics and its maintenance exposure.
     const r = runScenario({ ...base, drawsPerDay: 0, baseFee: 5_000_000_000n, switchDay: 1 });
-    expect(r.switchTopup).toBeCloseTo(0.01108, 12);
+    expect(r.switchTopup).toBe(0);
     expect(r.finalDrawPrice).toBe(r.drawPrice);
   });
 
@@ -142,10 +145,10 @@ describe('keeper policy economic model', () => {
     expect(r.missingPrizes).toBeGreaterThan(0);
     // Initial 48-listing FWA EV at base/bid 0.5/0.55 gwei; reviewed rate rounds down to 1070 bps.
     expect(r.creatorRevenueBps).toBe(1070);
-    expect(r.creatorCreditAccrued).toBeCloseTo(0.002353979051084406, 15);
+    expect(r.creatorCreditAccrued).toBeCloseTo(0.002354821640162628, 15);
     expect(r.creatorCreditClaimed).toBe(r.creatorCreditAccrued);
     expect(r.restockShortfall).toBeGreaterThan(0);
-    expect(r.ownerProceeds).toBeCloseTo(0.021999804215742121, 15);
+    expect(r.ownerProceeds).toBeCloseTo(0.02200767888002456, 15);
     expect(r.creatorCreditAccrued).toBeLessThan(r.ownerProceeds);
     expect(r.accountingDifferenceWei).toBe('0');
   });
@@ -155,7 +158,7 @@ describe('keeper policy economic model', () => {
       const r = runScenario({ ...base, days: 1, drawsPerDay: 1, forceFirstLargest: true,
         creatorRevenueBps: 10000, unpaidRecovery, failPolicyDay: unpaidRecovery ? 0 : undefined });
       expect(r.creatorRevenueBps).toBe(10000);
-      expect(r.ownerProceeds).toBeCloseTo(0.021999804215742121, 15);
+      expect(r.ownerProceeds).toBeCloseTo(0.02200767888002456, 15);
       expect(r.creatorCreditAccrued).toBe(r.ownerProceeds);
       expect(r.creatorCreditClaimed).toBe(r.creatorCreditAccrued);
       expect(r.creatorCredit).toBe(0);

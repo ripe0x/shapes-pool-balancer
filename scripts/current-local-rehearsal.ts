@@ -1,4 +1,7 @@
-// Current-candidate local rehearsal. Preparation/preflight never fund, unlock, mine or broadcast.
+// HISTORICAL: local rehearsal of the 2026-11-18 protected-revenue candidate, not evidence for the community release.
+// Preparation/preflight never fund, unlock, mine or broadcast.
+// Historical since R95: its scenario's keeper-policy switch (KeeperPolicyV2, setKeeperPolicy) no longer exists, so a
+// full run stops at that step. The community release rehearses with script/Deploy.s.sol and keeper/keeper.ts instead.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
@@ -9,6 +12,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPublicClient, createTestClient, createWalletClient, decodeFunctionData, encodeFunctionData, decodeErrorResult, getContractAddress, http, keccak256, TransactionReceiptNotFoundError, WaitForTransactionReceiptTimeoutError, type Address, type Hash, type Hex } from 'viem';
 import { verifyActions } from './prepare-local-rehearsal';
+import { creationOrder, LIBRARIES } from './verify-deployment';
 import { recoverCreation, canRetryCreation, type CreationAttempt } from '../app/src/creation';
 import { Keeper, MAX_TRANSACTION_GAS } from '../keeper/keeper';
 import { balancerFactoryAbi, erc721Abi, poolBalancerAbi } from '../shared/abi';
@@ -18,11 +22,11 @@ const ETH = 10n ** 18n;
 export const ROLES = Object.fromEntries(['deployer', 'packsAdmin', 'keeperAdmin', 'policyAdmin', 'creatorA', 'creatorB', 'keeper', 'buyer'].map((name, i) => [name, `0x${(0x1e001 + i).toString(16).padStart(40, '0')}`])) as Record<string, Address>;
 export const FUNDING = { deployer: ETH, packsAdmin: ETH / 100n, keeperAdmin: ETH / 100n, policyAdmin: ETH / 100n, creatorA: 17n * ETH / 10n, creatorB: 7n * ETH / 10n, keeper: ETH / 5n, buyer: 5n * ETH };
 export const CAPS = { deposits: 2n * ETH, gas: ETH, buyer: 5n * ETH, edge: ETH, vrf: ETH, draws: 160, rounds: 50, replacementCuratedNfts: 8 };
-export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], curatedRequired: [true, false], curatedPerPool: [2, 0], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', timeJumpSeconds: 172801, maximumTimeJumps: 1, maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), curatedProofRecovery: { round: 0, pool: 0, callerRole: 'buyer', maximumRefreshes: 1, resumedDraws: 1 }, creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
+export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], curatedRequired: [true, false], curatedPerPool: [2, 0], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), curatedProofRecovery: { round: 0, pool: 0, callerRole: 'buyer', maximumRefreshes: 1, resumedDraws: 1 }, creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
 const PREFIX = 'docs/receipts/current-rehearsal/';
 const INPUTS = ['src', 'script', 'keeper', 'shared', 'app', 'scripts', 'test', 'foundry.toml', 'package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.gitmodules', '.gitignore', 'asset-flow.json', 'OWNER-REQUIREMENTS.md', 'README.md', 'docs/SPEC.md', 'docs/OPERATIONS.md', 'docs/KEEPER-POLICIES.md', 'docs/RESERVES.md'];
-const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
-export const ARTIFACTS = [...SYSTEM_NAMES.map(n => `out/${n}.sol/${n}.json`), 'out/DevSetup.s.sol/DemoNFT.json', 'out/Settings.t.sol/KeeperPolicyV2.json'];
+const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'BalancerFactory'];
+export const ARTIFACTS = [...SYSTEM_NAMES.map(n => `out/${n}.sol/${n}.json`), 'out/DevSetup.s.sol/DemoNFT.json'];
 export const json = (value: unknown) => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? String(v) : v, 2);
 export const digest = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const gitAt = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -108,8 +112,10 @@ export function validateCurrentBounds(p: any) {
     assert.deepEqual(Object.keys(p.artifacts), ARTIFACTS);
     assert.deepEqual(p.forgeArguments, forgeArguments(p));
     assert.ok(p.deployment.reduce((n: bigint, a: any) => n + BigInt(a.gasLimit) * BigInt(p.maxFeePerGas), 0n) + BigInt(SCENARIO.closeoutGasReserveWei) <= CAPS.gas, 'deployment reserves fit shared gas cap');
-    assert.equal(p.deployment.length, 8);
-    assert.deepEqual(p.deployment.map((a: any) => a.name), SYSTEM_NAMES);
+    // Reuse mode (the replacement release) creates no Packs or renderer; a library already on the fork is skipped.
+    assert.equal(p.reuseDependencies, true, 'current rehearsal exercises the replacement deployment');
+    const names = p.deployment.map((a: any) => a.name);
+    assert.deepEqual(names, creationOrder(p.reuseDependencies).filter(n => names.includes(n) || !LIBRARIES.includes(n)));
 }
 export function validateCurrentPlan(packet: any, approved: string, executedRoot = ROOT) {
     const p = packet.plan;
@@ -128,6 +134,7 @@ export function validateCurrentPlan(packet: any, approved: string, executedRoot 
     sourceCheck(p, executedRoot);
     return p;
 }
+export function deploymentEnvironment(p: any) { return { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin, REUSE_DEPENDENCIES: String(p.reuseDependencies) }; }
 export function validateCurrentForgeArguments(p: any, args: string[]) { assert.deepEqual(args, forgeArguments(p), 'only exact local deployment arguments'); }
 function ownership(p: any) {
     const n = p.node;
@@ -194,7 +201,7 @@ export async function prepareCurrentPlan() {
     const log = openSync(join(evidenceDirectory, 'anvil.log'), 'a');
     const child = spawn(command[0], command.slice(1), { detached: true, stdio: ['ignore', log, log] });
     child.unref();
-    const p: any = { schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS) };
+    const p: any = { schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS), reuseDependencies: true };
     const local = createPublicClient({ transport: http(p.rpc, { timeout: 1000, retryCount: 0 }), cacheTime: 0 });
     let ready = false;
     for (let n = 0; n < 120; n++) {
@@ -211,7 +218,7 @@ export async function prepareCurrentPlan() {
     p.forgeArguments = forgeArguments(p);
     const scratch = stage(p);
     const args = ['script', 'script/Deploy.s.sol', ...p.forgeArguments.filter((a: string) => a !== '--broadcast')];
-    const output = execFileSync('forge', args, { cwd: scratch, env: { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    const output = execFileSync('forge', args, { cwd: scratch, env: deploymentEnvironment(p), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     writeFileSync(join(evidenceDirectory, 'deployment-simulation.log'), output);
     p.simulationRoot = scratch;
     p.simulationHash = digest(readFileSync(join(scratch, 'broadcast/Deploy.s.sol/31337/dry-run/run-latest.json')));
@@ -294,7 +301,6 @@ export class CurrentRehearsal {
         await this.hold();
         await this.mutation('mine timing block', () => this.test.mine({ blocks: 1 }));
     } }
-    async jump() { assert.equal(this.journal.mutations.filter((s: string) => s === 'one approved policy delay').length, 0); await this.mutation('one approved policy delay', () => this.test.increaseTime({ seconds: SCENARIO.timeJumpSeconds })); await this.mine(); }
     async coordinator(address: Address) { assert.ok(await this.pub.getBalance({ address }) > 0n, 'existing coordinator pays its own exception gas'); this.journal.coordinator = address; this.journal.nonces[address.toLowerCase()] = await this.pub.getTransactionCount({ address, blockTag: 'pending' }); this.save(); await this.mutation('unlock real coordinator only; no funding or protocol storage changes', () => this.test.impersonateAccount({ address })); }
     private permitted(actor: Address, to: Address | undefined, fn: string, args: readonly unknown[], value: bigint) {
         const role = Object.keys(ROLES).find(k => ROLES[k].toLowerCase() === actor.toLowerCase());
@@ -308,8 +314,6 @@ export class CurrentRehearsal {
             assert.equal(value, 0n);
             if (fn === 'performUpkeep')
                 eq(actor, ROLES.keeper);
-            else if (fn === 'activateKeeperPolicy')
-                assert.ok(role === 'keeper' || actor.toLowerCase() === pool.creator.toLowerCase());
             else if (fn === 'refreshCuratedWitness') {
                 eq(actor, ROLES[SCENARIO.curatedProofRecovery.callerRole]);
                 assert.equal(pool, this.journal.pools[SCENARIO.curatedProofRecovery.pool]);
@@ -319,7 +323,7 @@ export class CurrentRehearsal {
             }
             else {
                 eq(actor, pool.creator);
-                assert.ok(['collectProceeds', 'configure', 'listCuratedBatch', 'updateCuratedPrice', 'open', 'close', 'retire', 'withdrawCurated', 'unlistShapes', 'claimSurplus', 'proposeKeeperPolicy', 'cancelKeeperPolicy', 'setPaidUpkeepEnabled', 'setCreatorRevenueBps', 'performUpkeepUnpaid'].includes(fn));
+                assert.ok(['collectProceeds', 'configure', 'listCuratedBatch', 'updateCuratedPrice', 'open', 'close', 'retire', 'withdrawCurated', 'unlistShapes', 'claimSurplus', 'setKeeperPolicy', 'setPaidUpkeepEnabled', 'setCreatorRevenueBps', 'performUpkeepUnpaid'].includes(fn));
             }
             return;
         }
@@ -477,7 +481,8 @@ export class CurrentRehearsal {
         await this.check();
         assert.equal(this.journal.inFlight, null);
         const salt = probe.salt as Hash, predicted = await this.read<Address>(this.factory, balancerFactoryAbi, 'predictBalancer', [actor, salt]);
-        const config = { markupBps: SCENARIO.markupBps, creatorRevenueBps: probe.creatorRevenueBps, target: BigInt(SCENARIO.targets[0]), mintFeeCap, curatedRequired: true };
+        const settingsHash = await this.read<Hash>(this.factory, balancerFactoryAbi, 'creationSettingsHash');
+        const config = { markupBps: SCENARIO.markupBps, creatorRevenueBps: probe.creatorRevenueBps, target: BigInt(SCENARIO.targets[0]), mintFeeCap, curatedRequired: true, settingsHash };
         const data = encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'createBalancer', args: [salt, config, curated] });
         // uint16 encodes 10001, so the real factory/initializer must reject its semantic bound.
         let rejected = false;
@@ -547,7 +552,7 @@ export class CurrentRehearsal {
         this.save();
         const args = ['--current-local-rehearsal-plan', this.plan.planFile, '--approved-plan-hash', this.packet.planHash, ...this.plan.forgeArguments];
         try {
-            const output = execFileSync('bash', [join(scratch, 'script/deploy.sh'), ...args], { cwd: scratch, env: { PATH: process.env.PATH, HOME: process.env.HOME, PACKS_ADMIN: ROLES.packsAdmin, KEEPER_ADMIN: ROLES.keeperAdmin, POLICY_ADMIN: ROLES.policyAdmin }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+            const output = execFileSync('bash', [join(scratch, 'script/deploy.sh'), ...args], { cwd: scratch, env: deploymentEnvironment(this.plan), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
             writeFileSync(join(this.directory, 'canonical-deployment.log'), output);
         }
         catch (e) {
@@ -556,8 +561,8 @@ export class CurrentRehearsal {
             throw e;
         }
         const raw = JSON.parse(readFileSync(join(scratch, 'broadcast/Deploy.s.sol/31337/run-latest.json'), 'utf8'));
-        assert.equal(raw.transactions.length, 8);
-        for (let i = 0; i < 8; i++) {
+        assert.equal(raw.transactions.length, this.plan.deployment.length);
+        for (let i = 0; i < this.plan.deployment.length; i++) {
             const a = raw.transactions[i], expected = this.plan.deployment[i], tx = a.transaction;
             assert.equal(keccak256(tx.input), expected.inputHash);
             eq(a.contractAddress, expected.predictedAddress);
@@ -591,8 +596,8 @@ async function main() {
         assert.equal(args[6], '--');
         validateCurrentForgeArguments(p, args.slice(7));
         if (args[5] === 'deploy')
-            for (const [name, role] of [['PACKS_ADMIN', 'packsAdmin'], ['KEEPER_ADMIN', 'keeperAdmin'], ['POLICY_ADMIN', 'policyAdmin']])
-                eq(process.env[name] ?? '', ROLES[role]);
+            for (const [name, value] of Object.entries(deploymentEnvironment(p)).filter(([name]) => name !== 'PATH' && name !== 'HOME'))
+                eq(process.env[name] ?? '', value!);
         console.log(json(await currentPreflight(p, args[5])));
         return;
     }

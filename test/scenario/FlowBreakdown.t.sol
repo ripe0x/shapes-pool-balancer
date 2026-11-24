@@ -7,7 +7,6 @@ import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
 import {ReceiptGas} from "../utils/ReceiptGas.sol";
 import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
 import {PoolInventory} from "../../src/PoolInventory.sol";
-import {KeeperPolicyV2} from "../Settings.t.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
 import {ListOne} from "../utils/ListOne.sol";
@@ -220,26 +219,28 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory prices = new uint256[](listed.length);
         // FWA listing tuple is collection, depositor, winner, tokenId, weight, price, slot, status.
         for (uint256 i; i < listed.length; ++i) (,,,,, prices[i],,) = pool.listings(listed[i]);
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        // R95: no algorithm to switch; the regime switches to local economics with half the work fee.
+        KeeperPolicyCalls.Economics memory local = factory.economics();
+        local.workFee = 0.00001 ether;
         uint256[] memory pending = _buy(1);
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
-        vm.prank(creator); balancer.proposeKeeperPolicy(address(v2));
-        (uint256 required, uint256 shortfall) = balancer.policyFunding(address(v2));
-        assertEq(required, 0.00508 ether, "one outstanding request and one operating call at 0.5 gwei");
-        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no activation top-up");
-        vm.expectRevert(PoolBalancer.PolicyNotReady.selector); balancer.activateKeeperPolicy();
-        vm.warp(vm.getBlockTimestamp() + 2 days);
-        vm.prank(stranger); balancer.activateKeeperPolicy();
-        assertEq(balancer.keeperPolicy(), address(v2));
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(local);
+        assertEq(required, (3_200_000 + V1_OVERHEAD) * 0.55 gwei + 10 * 0.00001 ether
+            + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 2 * 0.00001 ether,
+            "one outstanding request and one operating call at 0.5 gwei");
+        assertEq(shortfall, 0, "a smaller maintenance exposure needs no top-up");
+        vm.prank(creator); balancer.setLocalEconomics(local);
+        assertEq(balancer.economicsSource(), 1);
         alternativePolicy = true;
-        assertLt(address(balancer).balance - balancer.creatorCredit(), required, "existing underfunding does not block equal-exposure replacement");
+        // The smaller work fee lowers the exposure, so the switch needs no top-up (shortfall 0).
+        assertGe(address(balancer).balance - balancer.creatorCredit(), required, "funded at the unchanged exposure");
         uint256 repriced;
         for (uint256 i; i < listed.length; ++i) {
             (,,,,, uint256 price,,) = pool.listings(listed[i]);
             if (price != prices[i]) ++repriced;
         }
-        assertEq(repriced, 0, "policy replacement cannot alter an existing FWA price");
+        assertEq(repriced, 0, "an economics switch cannot alter an existing FWA price");
         _deliver(pending[0], _word(50));
         _service();
         _account(pending);
@@ -440,14 +441,14 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     function test_breakdown_minimumCapital() public {
         uint256[16] memory c;
         c[0] = 20;
-        Snap memory a = _launchWith(c, 0.2356 ether, 20);
-        assertEq(balancer.requiredReserve(), 0.00368 ether, "minimum default-paid funding actually stocked the board");
+        Snap memory a = _launchWith(c, 0.229565 ether, 20);
+        assertEq(balancer.requiredReserve(), 0.001993 ether, "minimum default-paid funding actually stocked the board");
         for (uint256 i; i < DRAWS; ++i) _single(i);
-        assertEq(deposited, 0.2356 ether, "no operating top-ups hidden in this regime");
+        assertEq(deposited, 0.229565 ether, "no operating top-ups hidden in this regime");
         Fact[] memory x = new Fact[](3);
-        x[0] = Fact("initial_opening_requirement_wei", 0.2356 ether);
+        x[0] = Fact("initial_opening_requirement_wei", 0.229565 ether);
         x[1] = Fact("operating_topups_wei", 0);
-        x[2] = Fact("stocked_working_buffer_wei", 0.00368 ether);
+        x[2] = Fact("stocked_working_buffer_wei", 0.001993 ether);
         _done("minimum_capital", a, x);
     }
 
@@ -522,8 +523,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         if (r < minPriceToBackingBps) minPriceToBackingBps = r;
     }
 
-    /// @dev D16 (launch audit B, S1): only players, the randomness service and keepers act; the harness never calls FWA's
-    ///      processAcquisitions. Keepers act between every two events, as a keeper polling every 12 seconds does. Each
+    /// @dev D16 (launch audit B, S1; since 2026-11-23 upkeep processes only Ready draws past the processing grace): only
+    ///      players, the randomness service and keepers act; the harness never calls FWA's processAcquisitions. Keepers act between every two events, as a keeper polling every 12 seconds does. Each
     ///      step three players overlap: A and B buy, A's word arrives, the keeper reconciles A and restocks its prize
     ///      (staged, since B is in flight), C buys and reserves that staged restock, which costs C FWA's randomness fast
     ///      path; then B's and C's words arrive and keepers run.
@@ -574,6 +575,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                     _keeperPass();
                 }
             }
+            _pastProcessingGrace();
             _service();
             _account(openIds);
             uint256 u = pool.unsettledAcquisitionCount();
@@ -610,6 +612,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 _keeperPass();
             }
             if ((i + 1) % PER_DAY == 0) {
+                _pastProcessingGrace();
                 _service();
                 _account(openIds);
                 uint256 u = pool.unsettledAcquisitionCount();
@@ -623,6 +626,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[1] = Fact("unsettled_draws_at_day_end_max", maxUnsettledAtDayEnd);
         x[2] = Fact("unsettled_draws_at_end", pool.unsettledAcquisitionCount());
         _done(regime, a, x);
+    }
+
+    /// @dev Upkeep processes a stuck Ready draw only once it was requested `processGraceBlocks` ago (owner decision D3,
+    ///      50 blocks), so a day-end measurement taken in the request block saw draws legitimately inside the grace. The
+    ///      day now ends after the grace has run. Timing only: no outcome target changes.
+    function _pastProcessingGrace() internal {
+        vm.roll(vm.getBlockNumber() + balancer.effectiveEconomics().processGraceBlocks);
     }
 
     function _tryBuy() internal returns (uint256[] memory ids) {
@@ -708,7 +718,8 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             }
             if ((i + 1) % PER_DAY != 0) continue;
             vm.roll(vm.getBlockNumber() + timeout + 1);
-            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+            _processOnFwa(); // expired draws: upkeep processes only Ready stuck draws (owner decision 2026-11-23)
+            for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass();
             assembly ("memory-safe") {
                 mstore(late, nLate)
             }
@@ -722,7 +733,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         assertGt(expired, 0, "FWA expired draws through its timeout");
         assertGt(credit, 0, "the player holds refund credit");
         for (uint256 k; k < nLate; ++k) _deliver(late[k], uint256(keccak256(abi.encode(SEED, "late", k))));
-        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _keeperPass();
         vm.prank(buyer, buyer);
         refundsWithdrawn += IPoolMore(address(pool)).withdrawAcquisitionRefund();
         _service();
@@ -769,10 +780,11 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 startBlock = vm.getBlockNumber();
         _deliver(ids[0], _word(90));
         _deliver(ids[1], _word(91));
-        _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _keeperPass();
         _account(ids);
         vm.roll(vm.getBlockNumber() + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
-        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass(); // nobody else processes FWA's queue: keepers do it inside upkeep (D16)
+        _processOnFwa(); // expired draws: upkeep processes only Ready stuck draws (owner decision 2026-11-23)
+        for (uint256 k; k < 3 && pool.unsettledAcquisitionCount() != 0; ++k) _keeperPass();
         _account(ids);
         assertEq(pool.unsettledAcquisitionCount(), 0, "every pending draw settled or timed out");
         x[5] = Fact("blocks_until_closeout_possible", vm.getBlockNumber() - startBlock);
@@ -820,6 +832,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         Snap memory a = _launch();
         creditCheck = true;
         _runInFlight(0, DRAWS);
+        // The last delivered draw was left unreconciled because reconciling it was unprofitable for the rational
+        // keeper, so the Balancer's prize counters (lowered at reconciliation) still counted the won 0.01 ETH prize: the
+        // gate's counter-vs-holding check read a 0.01 ETH gap. The creator runs upkeep at the end, as in the other
+        // creator-response regimes, so the run ends reconciled. Scenario end only.
+        while (_upkeep(creator, false) == RAN) {}
+        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "ends with every draw reconciled");
         // reached: restocks were made and staged while draws were unsettled, and collections were checked
         assertGt(upkeepsWhileUnsettled, 0, "upkeep ran while draws were unsettled");
         assertGt(restocksStaged, 0, "restocks listed while draws were unsettled");
@@ -857,6 +875,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         upkeep(); upkeep(); upkeep();
         uint256 stagedCurated = listCurated(2, NFT_VALUE);
         vm.roll(block.number + IPoolMore(address(pool)).selectionTimeoutBlocks() + 1);
+        settle(); // the expired draw is processed on FWA by anyone
         upkeep();
         vm.prank(creator);
         balancer.withdrawCurated(originalCurated, creator);
@@ -919,7 +938,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 packSlot = slot;
             }
         }
-        assertEq(selectedFee, 0.0141 ether, "three Shape units each list with the 5gwei 0.0047ETH surcharge");
+        assertEq(selectedFee, 0.01425 ether, "three Shape units each list with the 5 gwei 0.00475 ETH surcharge");
         (uint256[] memory ids,,) = this.extBuy(1);
         assertEq(ids.length, 1);
         assertGt(drawFee[ids[0]], 0, "the pending draw has an expected surcharge contribution");
@@ -959,8 +978,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         probe = new GasProbe();
         createBalancer(deposit);
         deposited += deposit;
-        vm.prank(creator);
-        balancer.configure(uint16(MARKUP_BPS), plan16(c));
+        vm.startPrank(creator);
+        balancer.configure(uint16(MARKUP_BPS), plan16(c), shapes.mintFee());
+        vm.stopPrank();
         if (!noNft) _listNft();
         vm.prank(creator);
         balancer.open();
@@ -1347,8 +1367,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         } else {
             uint256[16] memory c;
             (c[0], c[9], c[1], c[2]) = (24, 8, 12, 2); // the launch design without the 0.5 ETH Shape
-            vm.prank(creator);
-            balancer.configure(uint16(MARKUP_BPS), plan16(c));
+            vm.startPrank(creator);
+            balancer.configure(uint16(MARKUP_BPS), plan16(c), shapes.mintFee());
+            vm.stopPrank();
         }
         _keeperPass();
     }
@@ -1362,6 +1383,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         vm.warp(vm.getBlockTimestamp() + 1 days);
         vm.roll(vm.getBlockNumber() + 7200);
         ++daysRun;
+    }
+
+    /// @dev A third party (a player, the FWA app or an operator) processes expired draws on FWA, paying its own gas.
+    function _processOnFwa() internal {
+        vm.prank(address(0xBEEF), address(0xBEEF));
+        pool.processAcquisitions(5);
     }
 
     /// @dev True when keepers ran until nothing was left; false when the next call would not have paid for its gas.
@@ -1393,6 +1420,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256 who0 = who.balance;
         // a keeper transaction starts with every account and slot cold
         bytes32 uh2 = balancer.settingsHash();
+        uint64 next0 = pool.nextSequenceToProcess();
         _coolKeeperTx();
         vm.prank(who, who);
         vm.recordLogs();
@@ -1413,7 +1441,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             assertEq(who.balance - who0, reward, "the caller received the reward");
             ++upkeepsRun;
             if (ready != 0) ++upkeepsWithQueueReady;
-            if (ready > 2) ++upkeepsWithQueueReadyOver2; // the Balancer processes at most 2 per call (MAX_PROCESS)
+            if (ready > 2) ++upkeepsWithQueueReadyOver2; // the Balancer processes at most 2 stuck draws per call
             if (who == keeper) {
                 if (setupWork) keeperPaidSetup += reward;
                 else keeperPaidPlay += reward;
@@ -1429,20 +1457,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
-            uint256 nextBefore = nextLid;
             uint256 units = _scanListings();
             if (units > maxUnits) maxUnits = units;
             if (who == keeper) {
                 uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
-                uint256 service = (rec + units) * 0.00002 ether;
-                uint256 overhead = 50_000;
-                if (alternativePolicy) {
-                    price = feeNow + 0.02 gwei;
-                    if (price > gasNow) price = gasNow;
-                    if (price > 8 gwei) price = 8 gwei;
-                    service = rec * 0.00001 ether + (nextLid - nextBefore) * 0.00004 ether;
-                    overhead = 70_000;
-                }
+                uint256 service = (pool.nextSequenceToProcess() - next0 + rec + units) * 0.00002 ether;
+                uint256 overhead = V1_OVERHEAD;
+                if (alternativePolicy) service /= 2; // the switched local economics' 0.00001 ETH work fee
                 uint256 most = (cost / gasNow + overhead) * price + service;
                 if (reward > most) {
                     paidBeyondGasAndReward += reward - most;
@@ -1473,8 +1494,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     /// @dev A keeper transaction starts with every account and slot cold, including the code a clone or proxy runs:
     ///      the harness's own reads (bookkeeping, the FWA queue count) would otherwise leave it warm.
     function _coolKeeperTx() internal {
-        address selectedPolicy = balancer.keeperPolicy();
-        address[8] memory xs = [address(balancer), address(pool), SHAPES, packs, address(factory), selectedPolicy,
+        address[7] memory xs = [address(balancer), address(pool), SHAPES, packs, address(factory),
             address(KeeperPolicyCalls), address(PoolInventory)];
         for (uint256 i; i < xs.length; ++i) {
             address impl = _implementation(xs[i]);
