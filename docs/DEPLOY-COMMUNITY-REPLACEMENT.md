@@ -46,6 +46,10 @@ getter readbacks at the checked block; no receipts).
   - KeeperPolicyCalls changed: new `0x5c6322442650A1177b4aFbF5f95166A59Ef7e7f7` (old `0x1601A841…B8fb` stays for
     legacy pools).
   - PoolInventory changed: new `0xb89B48F0b574BC84d513fC3C2962a6A2dE7Cc9f7` (old `0xD6e89D45…9fD0` stays).
+  - At `bb0deba` (E1 edge fix, 2026-11-23) PoolInventory changed again: computed CREATE2 address
+    `0x77dEcC3A8005694cB706af17D75f6c59Fd1C61C8` (linked to KeeperPolicyCalls `0x5c63…e7f7`, which reproduces); no code
+    on mainnet at block 26,482,083. `0xb89B…c9f7` and the section 7a rehearsal are for `f549bf9`; rerun step 5's dry
+    run against the commit you deploy.
   Neither new address has code on mainnet at block 26,481,996.
 - Every transaction, CREATE2 libraries included, is sent by the deployer and uses one nonce. Order: KeeperPolicyCalls
   (N), PoolInventory (N+1), PoolBalancer (N+2), BalancerFactory (N+3): 4 transactions, 11,129,506 gas on the fork.

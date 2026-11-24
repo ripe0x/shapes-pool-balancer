@@ -1005,3 +1005,24 @@ returndata-bomb policies, static-reentry policies, policy-owner callbacks, the c
 `CommunityConfigAcceptance` case 07c: "two unavailable, two prizes" now refuses (E1); `shared/planner.test.ts` 16 -> 15.
 Fixture tests (`keeper-policy-quotes.json`, `keeper-policy-money-path.json`) now carry the one formula only.
 `FlowBreakdown` policy_switch regime switches to local economics with half the work fee instead of `KeeperPolicyV2`.
+
+## Owner approval: three outcome bounds; E1 edge (2026-11-23)
+
+Owner's word: "approved". Targets in `asset-flow.json` changed exactly as approved; prose names the old value and cause.
+
+| Outcome | Was | Now | Cause |
+| --- | --- | --- | --- |
+| O1 keeper refund gas kept per draw | at most 80,000 | at most 100,000 | paid stuck-draw processing (R99) keeps FWA storage refunds; worst measured 96,590 (`burst`) |
+| O2 restock fees still listed | at most 0.26 ETH | at most 0.2613 ETH | restock gas 910k (R94): 55 x 0.00475 ETH = 0.26125 ETH |
+| O15 opening requirement | exactly 0.2356 ETH | exactly 0.229565 ETH | one fee schedule (slice A3) |
+
+The previous signature (outcomes `d3b9ba83…d992`) does not cover this payload and is not reused or forged. New outcomes
+hash to sign: `25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297`; the owner's commands are in
+[ASSET-FLOW-GATE.md](ASSET-FLOW-GATE.md).
+
+**E1 edge.** After the `prizeWeight <= lost` repair, a pool with no outstanding draws and no Shapes listed refused at fill
+0 (0 <= 0) although nothing was at risk. Both admission branches in `PoolInventory.admission` now refuse on inventory
+only when `lost != 0 && prizeWeight <= lost`; the fill-gate check `(prizeWeight - lost) * 10_000 < fillGateBps *
+targetWeight` is unchanged, so any gate above zero still refuses an empty Shape board. `shared/planner.ts`
+`pendingDrawsAdmitted` models a fully stocked board (weight above zero) and is unaffected. Regression
+`test_case07f_zeroFillNoOutstandingDrawsNoShapesAdmits`.

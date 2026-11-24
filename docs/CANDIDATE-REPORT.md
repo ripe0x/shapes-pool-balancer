@@ -1,6 +1,29 @@
 # Community release candidate report (2026-11-23)
 
-## A. Audit repair at `f549bf9` (current)
+## B. Approved outcome bounds and E1 edge at `bb0deba` (current)
+
+**Tested commit: `bb0deba`**. Changes since `f549bf9`: `PoolInventory.admission` refuses on inventory only while draws
+are outstanding (`lost != 0 && prizeWeight <= lost`, both branches; fill-gate check unchanged), regression
+`test_case07f_zeroFillNoOutstandingDrawsNoShapesAdmits`; the owner-approved (2026-11-23, "approved") targets O1 at most
+100,000 gas, O2 at most 0.2613 ETH, O15 exactly 0.229565 ETH in `asset-flow.json` (R100-R103). **Nothing deployed or
+broadcast.** The owner's signature over the new outcomes hash is still missing.
+
+| Step | Command | Result |
+| --- | --- | --- |
+| B1 | `forge build --sizes` | pass; PoolBalancer 23,408 (1,168 spare), PoolInventory 12,151, KeeperPolicyCalls 8,435, BalancerFactory 5,290 |
+| B2 | `npm run typecheck` | pass |
+| B3 | `forge test --match-path "test/{CommunityConfigAcceptance,CuratedAdmission,OptionalCurated,SelectableInventory,Settings}.t.sol"` | 6 suites, **68 / 68** (07f included) |
+| B4 | `python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py .` | **INCOMPLETE (exit 2)**: all 15 outcomes OK; only gap the approval. Source hash `1ed70c7b…9418`, outcomes hash to sign `25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297` |
+
+Worst measured: O1 96,590 gas (`burst`), O2 0.26125 ETH, O15 0.229565 ETH, O10 14,694 bps. Owner signing commands:
+[ASSET-FLOW-GATE.md](ASSET-FLOW-GATE.md) "Owner signing commands". `shared/planner.ts` is unaffected (it models a
+stocked board), so no TS tests ran.
+
+Not rerun at `bb0deba` (valid only for `f549bf9`): the full Solidity and TS suites (V2, V3) and the fork rehearsal (V5).
+PoolInventory's bytecode changed, so its CREATE2 address moved to `0x77dEcC3A…61C8` (computed) and PoolBalancer links
+it; the deployment dry run must be redone against the deployed commit.
+
+## A. Audit repair at `f549bf9`
 
 **Tested commit: `f549bf9`** (contracts, tests, app, keeper, scripts). The commits after it change documentation and
 `asset-flow.json` outcome prose only. **Nothing was deployed or broadcast on mainnet.** Sections 0 onward are the

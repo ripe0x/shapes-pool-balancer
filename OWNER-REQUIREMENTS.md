@@ -413,3 +413,18 @@ mode. Earlier text above is kept as history. No numerical outcome signature foll
   stuck head (Ready, TimedOut, or Pending with `block.number > wordDeadlineBlock`) only 50 blocks after its request
   block, 10 while purchases are paused BUSY or LOW_INVENTORY, at most 2 per call, paid gas plus a work fee per
   processed draw.
+
+## Outcome bounds after the audit repair (owner, 2026-11-23: "approved")
+
+The owner approved three new numerical outcome bounds in `asset-flow.json`. The owner's SSH signature over the new
+outcomes hash is still required; this record is not that signature.
+
+- R100. **O1 keeper refund gas kept per draw: at most 100,000** (was 80,000). Cause: paid processing of stuck draws
+  (R99) keeps FWA's storage refunds; measured worst 96,590 (`burst`).
+- R101. **O2 restock fees still listed: at most 0.2613 ETH** (was 0.26 ETH). Cause: restock gas 910k (R94), 55 Shape
+  units x 0.00475 ETH = 0.26125 ETH at the 5 gwei cap.
+- R102. **O15 opening requirement: exactly 0.229565 ETH** (was 0.2356 ETH). Cause: one fee schedule (slice A3:
+  3.2M gas, 60k overhead gas, 0.00002 ETH work fee).
+- R103. **E1 edge (fix, no new rule).** The inventory check refuses only while draws are outstanding
+  (`lost != 0 && prizeWeight <= lost`): fill 0 with no outstanding draws and no Shapes listed is admitted, since
+  nothing is at risk. The fill-gate percentage check is unchanged.

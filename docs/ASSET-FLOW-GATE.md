@@ -133,3 +133,61 @@ unreconciled draw. That was a timing artifact, not a counter defect; the run now
 | restock_in_flight counter vs holding | no mismatch | no mismatch | none (was -0.01 ETH) | fixed by the scenario end above |
 
 All other outcomes hold: O3, O4, O6, O7, O8, O11, O12, O16 at 0; O5 0; O10 14,694 bps (at most 15,000); O14 0.
+
+## Owner-approved bounds (2026-11-23, owner: "approved"; signature pending)
+
+O1 at most 100,000 gas (was 80,000), O2 at most 0.2613 ETH (was 0.26 ETH), O15 exactly 0.229565 ETH (was 0.2356 ETH);
+causes in [DECISIONS.md](DECISIONS.md) "Owner approval: three outcome bounds; E1 edge". The approval block still holds
+the 2026-11-22 signature over `d3b9ba83…d992`, which does not cover these outcomes. New outcomes hash to sign:
+**`25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297`**.
+
+Gate run at code commit `bb0deba` (source hash `1ed70c7b04865db1d483cfac877f2f2f9bf0d183b2a5ab472b5018137a789418`): one
+`python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py .` (reran all 28 regimes on the pinned fork) returned
+**INCOMPLETE (exit 2)**; every outcome OK and the only gap is `approval: hash absent or does not match the approved
+settings`. Worst values: O1 96,590 gas (`burst`), O2 0.26125 ETH (`gas_5_gwei`), O15 0.229565 ETH (`minimum_capital`),
+O10 14,694 bps, O3-O8, O11-O14, O16 at 0. O1's 100,000 bound leaves 3,410 gas (3.5%) over the measured `burst` value;
+it is a named-regime bound, not a cap for other boards or gas paths.
+
+### Owner signing commands
+
+Run these yourself; no agent runs them. They sign the hash with `~/.ssh/asset_flow_owner` (its public key is the
+`owner` entry in `~/.agents/guidance/asset-flow-kit/allowed_signers`), write the approval block the way commit
+`ee84c19` did, verify and commit. Step 4 checks the fresh scorecards of the gate run above without rerunning the fork
+(`asset-flow.json` is not a source or evidence path, so the signature does not change the source hash);
+`script/deploy.sh` reruns the full gate anyway.
+
+**Setup.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer/.claude/worktrees/agent-a33461c2a0cc711d4 && export H=25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297 D=2026-11-23 && git branch --show-current
+```
+Check: `claude/community-release`
+
+**1 → Confirm the hash.** The gate prints the hash of the outcomes in this checkout.
+```bash
+python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py . --no-run | grep 'approval hash:'
+```
+Check: `approval hash: 25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297`
+
+**2 → Sign.** Signs the 64 hex characters (no newline), namespace `asset-flow`.
+```bash
+printf %s "$H" > /tmp/af.txt && rm -f /tmp/af.txt.sig && ssh-keygen -Y sign -f ~/.ssh/asset_flow_owner -n asset-flow /tmp/af.txt
+```
+Check: `Signing file /tmp/af.txt` then `Write signature to /tmp/af.txt.sig`
+
+**3 → Write the approval block.** Replaces only `approval` in `asset-flow.json`, formatting preserved.
+```bash
+python3 -c "import json,os;p='asset-flow.json';c=json.load(open(p));c['approval']={'outcomes_sha256':os.environ['H'],'date':os.environ['D'],'signature':open('/tmp/af.txt.sig').read()};open(p,'w').write(json.dumps(c,indent=2,ensure_ascii=False)+'\n')" && git diff --stat asset-flow.json
+```
+Check: ` asset-flow.json | 6 +++---`
+
+**4 → Verify.** The gate verifies the signature against `allowed_signers`.
+```bash
+python3 ~/.agents/guidance/asset-flow-kit/asset_gate.py . --no-run | grep -o 'ASSET FLOW GATE: [A-Z]*'
+```
+Check: `ASSET FLOW GATE: PASS`
+
+**5 → Commit and push.**
+```bash
+git add asset-flow.json && git commit -q -m "chore(asset-flow): owner signature for outcomes 25faf114 (2026-11-23)" && git push -q && git log -1 --format=%s
+```
+Check: `chore(asset-flow): owner signature for outcomes 25faf114 (2026-11-23)`

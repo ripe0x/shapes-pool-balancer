@@ -71,9 +71,9 @@
   "outcomes": [
     {
       "id": "O1",
-      "text": "Keepers are paid by the in-library V1 formula for verified work (R95): (min(measured gas, operation gas bound, maxGas) + overhead) x min(transaction gas price, basefee + priority allowance, gas price ceiling) + the work fee per processed draw, reconciled draw and listed Shape unit, limited by real operating liquidity and the pool's 0.622 ETH / floor(0.05 ETH per 12 seconds) spending bucket. There is no separate absolute payment ceiling. Caller minimum is atomic. Initial economics: 60k overhead gas and 0.00002 ETH work fee. In the explicitly named reference regimes, the measured compensation above billed gas, after subtracting the stated gas-overhead and service allowances, is at most 80,000 gas per draw. This is the retained-refund metric, not total EVM refunds or a universal immutable refund cap. Independent processing-only measurements are reported with that narrower scope.",
+      "text": "Keepers are paid by the in-library V1 formula for verified work (R95): (min(measured gas, operation gas bound, maxGas) + overhead) x min(transaction gas price, basefee + priority allowance, gas price ceiling) + the work fee per processed draw, reconciled draw and listed Shape unit, limited by real operating liquidity and the pool's 0.622 ETH / floor(0.05 ETH per 12 seconds) spending bucket. There is no separate absolute payment ceiling. Caller minimum is atomic. Initial economics: 60k overhead gas and 0.00002 ETH work fee. In the explicitly named reference regimes, the measured compensation above billed gas, after subtracting the stated gas-overhead and service allowances, is at most 100,000 gas per draw (owner approval 2026-11-23, was 80,000: paid processing of stuck draws after the grace keeps FWA's storage refunds). This is the retained-refund metric, not total EVM refunds or a universal immutable refund cap. Independent processing-only measurements are reported with that narrower scope.",
       "metric": "facts.keeper_refund_gas_kept_per_draw",
-      "max": 80000,
+      "max": 100000,
       "regimes": [
         "quiet",
         "limits_at_max",
@@ -107,9 +107,9 @@
     },
     {
       "id": "O2",
-      "text": "Restocking surcharges are included in Shape/Pack listing prices and realized indirectly through successful purchases, not collected on listing. Creators front actual minting and operating expenses. In the explicitly named V1 reference regimes, expected surcharge contribution still listed is at most 0.26 ETH (55 contained Shape units at the 5 gwei cap imply 0.2585 ETH). This scenario check is neither liquid cash nor capital locked upfront, and is not a limit for larger boards or other economics.",
+      "text": "Restocking surcharges are included in Shape/Pack listing prices and realized indirectly through successful purchases, not collected on listing. Creators front actual minting and operating expenses. In the explicitly named V1 reference regimes, expected surcharge contribution still listed is at most 0.2613 ETH (55 contained Shape units x 0.00475 ETH at the 5 gwei cap with 910k restock gas imply 0.26125 ETH; owner approval 2026-11-23, was 0.26 ETH). This scenario check is neither liquid cash nor capital locked upfront, and is not a limit for larger boards or other economics.",
       "metric": "facts.restock_fees_outstanding_wei",
-      "max": 260000000000000000,
+      "max": 261300000000000000,
       "regimes": [
         "quiet",
         "limits_at_max",
@@ -299,10 +299,10 @@
     },
     {
       "id": "O15",
-      "text": "At basefee0.5gwei, mintfee0.001ETH and V1 enabled, twenty small Shapes actually open and finish paid setup with exactly0.2356ETH initial pool funding, then ordinary operation runs without creator ETH top-ups. Purchaser backing/refunds remain separately protected. This is the reached board/context, not a universal deposit or income guarantee.",
+      "text": "At basefee0.5gwei, mintfee0.001ETH and V1 enabled, twenty small Shapes actually open and finish paid setup with exactly 0.229565 ETH initial pool funding (one fee schedule: 3.2M gas, 60k overhead gas, 0.00002 ETH work fee; owner approval 2026-11-23, was 0.2356 ETH), then ordinary operation runs without creator ETH top-ups. Purchaser backing/refunds remain separately protected. This is the reached board/context, not a universal deposit or income guarantee.",
       "metric": "facts.initial_opening_requirement_wei",
-      "min": 235600000000000000,
-      "max": 235600000000000000,
+      "min": 229565000000000000,
+      "max": 229565000000000000,
       "regimes": [
         "minimum_capital"
       ]
