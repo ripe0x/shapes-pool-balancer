@@ -706,7 +706,14 @@ function PoolView({ balancer, me, tab, setTab, onBack }: { balancer: Address; me
   const { data: d, error, refresh } = useBalancer(balancer);
   const tx = useTx(refresh);
   if (error) return <p className="txline bad">{error}</p>;
-  if (!d) return <p className="txline">Loading…</p>;
+  if (!d) return <div className="pp">
+    <div className="poolhead"><div className="ph-row"><div className="ph-id">
+      <span className="crumb"><button className="link quiet" onClick={onBack}>Community pools</button> /</span>
+      <h1 className="ph-name">Pool {short(balancer)}</h1>
+      <div className="ph-meta"><span className="mono">{balancer}</span></div>
+    </div></div></div>
+    <p className="txline">Loading the pool…</p>
+  </div>;
   const isCreator = d.creator.toLowerCase() === me.toLowerCase();
   const B = { address: balancer, abi: poolBalancerAbi } as const;
   const st = statusLine(d);
@@ -929,8 +936,9 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   // During a creation started on this visit the design page's progress panel reports it; the pending page takes over
   // after a reload, or when a submitted creation is still unresolved once the send ends (not after a revert, which the
   // panel offers to retry).
-  const reverted = !!tx.steps?.some((x) => x.state === 'failed' && x.error === creationStatus('reverted'));
-  if (attempt && !tx.busy && (!tx.steps || (!!attempt.hash && !reverted))) {
+  // A creation sent on this visit stays on the design page, where the progress panel follows it to confirmation; the
+  // pending page is for an attempt found after a reload.
+  if (attempt && !tx.busy && !tx.steps) {
     // Creation pending (7c): the saved attempt's steps, its outcome and where it stands, rechecked every 5 seconds.
     const names = loadDraft()?.nfts ?? [];
     const label = (c: { collection: string; tokenId: string }) => {
@@ -969,7 +977,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched }} />;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched, attempt, outcome }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -1029,7 +1037,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number };
+type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
 type Bucket = { capacity: bigint; refill: bigint };
 
 /**
@@ -1422,7 +1430,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
   </div>;
   const backingWei = ready ? capitalOf(counts) : 0n;
-  const costBlock = mode === 'new' && (
+  // The cost shows for a new design, connected or not; an existing pool's Prices & mix shows its operating rows instead.
+  const costBlock = mode !== 'pool' && (
     <div className="cost">
       <div className="sum"><span>To create the pool</span><span><b>{ev ? eth(deposit, 5) : '–'}</b><span className="u13">ETH</span></span></div>
       {capital && <>
@@ -1435,9 +1444,21 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   );
   // Progress panel (7b): while a creation started here runs, and after it stops on an error, in place of the button and
   // the wallet steps. The editor is locked meanwhile.
-  const live = mode === 'new' ? tx.steps : undefined;
+  const sent = mode === 'new' ? tx.steps : undefined;
+  const lastAt = (sent?.length ?? 0) - 1;
+  const lastStep = sent?.[lastAt];
+  const tracked = create?.attempt;
+  // The create step failed only by its wait timing out (not declined, not reverted) while the submitted attempt is still
+  // tracked: it is still waiting for its block. Its outcome, once known, decides.
+  const waiting = !!lastStep && lastStep.state === 'failed' && !lastStep.declined && lastStep.error !== creationStatus('reverted') && !!tracked?.hash;
+  const settled = waiting && create?.outcome && ['cancelled', 'replaced', 'reverted', 'mismatch'].includes(create.outcome) ? create.outcome : undefined;
+  const live = sent && (waiting
+    ? sent.map((x, k) => (k === lastAt ? (settled ? { ...x, hash: tracked!.hash, error: creationStatus(settled) } : { ...x, state: 'submitted' as const, hash: tracked!.hash, error: undefined }) : x))
+    : sent);
   const failedAt = live ? live.findIndex((x) => x.state === 'failed') : -1;
-  const showPanel = !!live && (!!tx.busy || failedAt >= 0);
+  const allDone = !!live && live.every((x) => x.state === 'done' || x.state === 'skipped');
+  // The panel stays up from the first wallet prompt until the new pool opens, or until it stops on an error.
+  const showPanel = !!live && (!!tx.busy || failedAt >= 0 || allDone || (waiting && !settled));
   const [retryAfter, setRetryAfter] = useState<number>();
   useEffect(() => {
     if (retryAfter === undefined || (create?.fetched ?? 0) <= retryAfter) return;
@@ -1449,7 +1470,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const panel = showPanel && live && (() => {
     const n = live.length;
     const failed = failedAt >= 0 ? live[failedAt] : undefined;
-    const at = failed ? failedAt : Math.max(0, live.findIndex((x) => x.state === 'wallet' || x.state === 'submitted'));
+    const at = failed ? failedAt : allDone ? n - 1 : Math.max(0, live.findIndex((x) => x.state === 'wallet' || x.state === 'submitted'));
     const now = live[at];
     const isCreate = at === n - 1;
     const revert = failed?.error === creationStatus('reverted');
@@ -1466,13 +1487,15 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         default: return failed ? 'Not started' : '';
       }
     };
-    const desc = !failed
+    const desc = allDone ? 'Your pool is created. Opening it now.'
+      : !failed
       ? now?.state === 'submitted' ? "Your transaction is sent. The pool exists once it's in a block and checked." : 'Confirm each step in your wallet. Editing is locked until this finishes or you stop.'
       : failed.declined ? `You declined ${isCreate ? 'creating the pool' : 'the approval'} in your wallet. Your design is saved and no ETH was spent.`
         : revert ? `The transaction failed, so no pool exists and your ${eth(deposit, 5)} ETH stayed in your wallet. Only the gas was spent.`
           : failed.error ?? 'Something went wrong.';
     const approvedAlready = live.slice(0, n - 1).filter((x) => x.state === 'done' || x.state === 'skipped').length;
-    const foot = !failed
+    const foot = allDone ? undefined
+      : !failed
       ? now?.state === 'submitted' ? 'Usually under a minute. You can leave this page; it picks up where it left off.' : "To stop, decline in your wallet. Approvals already made stay, and won't be asked for again."
       : revert ? 'Often fees moved since you reviewed. Trying again refreshes them first.'
         : approvedAlready > 0 ? `Trying again skips the approval${approvedAlready === 1 ? '' : 's'} you already made: ${n - approvedAlready} confirmation${n - approvedAlready === 1 ? '' : 's'} left.` : undefined;
@@ -1483,7 +1506,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       if (revert) { setRetryAfter(create?.fetched ?? 0); create?.reload?.(); } else void run();
     };
     return <div className="progress" role="status" aria-live="polite">
-      <div className="ph"><h2 className="side-h">{failed ? 'Nothing was created' : 'Creating your pool'}</h2>
+      <div className="ph"><h2 className="side-h">{failed ? 'Nothing was created' : allDone ? 'Pool created' : 'Creating your pool'}</h2>
         <span className={`cnt${failed ? ' error' : ''}`}>{failed ? `${revert ? 'Failed' : 'Stopped'} at step ${at + 1}` : `Step ${at + 1} of ${n}`}</span></div>
       <p className="pd">{desc}</p>
       <div className={`pbar${failed ? ' bad' : ''}`}><i style={{ width: `${Math.round(fill * 100)}%` }} /></div>
@@ -1499,7 +1522,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <div className="pacts">
         {failed
           ? <><button className="btn" onClick={tryAgain}>Try again</button><button className="btn sec" onClick={() => { clearAttempt(); tx.reset(); }}>Edit design</button></>
-          : <button className="btn busy" disabled>{now?.state === 'submitted' ? 'Confirming…' : 'Waiting for your wallet…'}</button>}
+          : <button className="btn busy" disabled>{allDone ? 'Opening your pool…' : now?.state === 'submitted' ? 'Confirming…' : 'Waiting for your wallet…'}</button>}
       </div>
       {foot && <p className="note">{foot}</p>}
     </div>;
@@ -1753,7 +1776,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="desktop-only">{payBlock}</div>
         {playBlock && <div className="desktop-only">{playBlock}</div>}
         <div className="desktop-only">{gridBlock}</div>
-        {mode === 'new' ? costBlock : (
+        {mode !== 'pool' ? costBlock : (
         <div className="totals">
           {(
             <>
