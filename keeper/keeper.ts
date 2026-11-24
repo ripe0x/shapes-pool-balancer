@@ -1,7 +1,7 @@
 // Shared permissionless keeper for every Balancer created by one BalancerFactory.
 // Each tick: discover Balancers from events (re-scanning a reorg window), then for each Balancer simulate
 // `performUpkeep` at the gas price it would bid. The simulation returns the contract's reward; the call is
-// sent only when that reward covers the estimated cost under the configured policy. NoUpkeepNeeded means
+// sent only when that reward covers the estimated cost under the operator's limits. NoUpkeepNeeded means
 // "nothing to do"; any other revert is reported as a pool error. One in-flight tx per Balancer, replaced with
 // bumped fees only while still profitable. State persists to a JSON file so restarts resume safely.
 import { createServer } from 'node:http';
@@ -116,7 +116,8 @@ interface Offer { policy?: Address; minimumReward?: string; minimumGas?: string;
 interface Pending extends Offer { hashes: Hash[]; offers?: Record<string, Offer>; nonce: number; settingsHash?: Hash; gas: string; estimate: string; maxFeePerGas: string; maxPriorityFeePerGas: string; sentBlock: string; replacements: number }
 interface ReceiptRecord { balancer: Address; nonce: number; hash: Hash; block: string; blockHash: Hash; status: 'success' | 'reverted'; cost: string; reward: string; pending: Pending }
 interface AccountingRetry { balancer: Address; pending: Pending }
-interface PolicyContext { policy: Address; paid: boolean; settingsHash: Hash }
+/** `policy` exists only on legacy (community-v1) pools; current pools pay by the in-library formula (R95). */
+interface PolicyContext { policy?: Address; paid: boolean; settingsHash: Hash }
 interface State {
   lastScanned: string;
   /** Last scanned block per factory (lowercase). A factory without an entry is scanned from its own fromBlock, so
@@ -150,7 +151,7 @@ export class Keeper {
   audit: AuditEntry[] = [];
   lastTick = 0;
   lastBlock = 0n;
-  policies: Record<string, { address: Address; paid: boolean; settingsHash: Hash; economics?: Record<string, string> }> = {};
+  policies: Record<string, { address?: Address; paid: boolean; settingsHash: Hash; economics?: Record<string, string> }> = {};
   private traceAvailable = true;
   private abis = new Map<string, Abi>();
   private blockHashes = new Map<string, Hash>();
@@ -311,9 +312,10 @@ export class Keeper {
   private async readContext(b: Address, at: { blockNumber: bigint } | { blockTag: 'latest' }): Promise<PolicyContext & { economics?: Record<string, string> }> {
     const abi = this.abi(b);
     const read = <T,>(functionName: string) => this.pub.readContract({ address: b, abi, functionName, ...at } as never) as Promise<T>;
-    const current = abi.some((item) => item.type === 'function' && item.name === 'effectiveEconomics');
+    const has = (name: string) => abi.some((item) => item.type === 'function' && item.name === name);
+    const current = has('effectiveEconomics');
     const [policy, paid, settingsHash, economics] = await Promise.all([
-      read<Address>('keeperPolicy'), read<boolean>('paidUpkeepEnabled'), read<Hash>('settingsHash'),
+      has('keeperPolicy') ? read<Address>('keeperPolicy') : undefined, read<boolean>('paidUpkeepEnabled'), read<Hash>('settingsHash'),
       current ? read<Record<string, unknown>>('effectiveEconomics') : undefined,
     ]);
     return { policy, paid, settingsHash, economics: economics && Object.fromEntries(Object.entries(economics).map(([k, v]) => [k, String(v)])) };

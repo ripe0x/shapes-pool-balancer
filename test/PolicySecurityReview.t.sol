@@ -1,41 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-// A cached declaration is an additional ceiling; trivial work is first limited by immutable gas and service bounds.
+// Trivial work is paid only for its own gas and service bounds (R95: the formula is in the library, no policy quotes).
 
 import {Vm} from "forge-std/Vm.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
-
-/// @dev An untrusted, deliberately mutable policy, accepted by the core interface by design.
-contract MutableReviewPolicy is IKeeperPolicy {
-    bool public attack;
-    PoolBalancer public ownedPool;
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 404; }
-    function arm() external { attack = true; }
-    function becomeCreator(PoolBalancer b) external { ownedPool = b; b.acceptCreator(); }
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.0007 ether; }
-    function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {
-        if (address(ownedPool) != address(0)) {
-            // This policy also has creator authority, so authority checks alone do not close the callback path.
-            (bool withdrew,) = address(ownedPool).staticcall(abi.encodeCall(PoolBalancer.claimSurplus, (1 ether, address(this))));
-            (bool changed,) = address(ownedPool).staticcall(abi.encodeCall(PoolBalancer.transferCreator, (address(0xbad))));
-            (bool disabled,) = address(ownedPool).staticcall(abi.encodeCall(PoolBalancer.setPaidUpkeepEnabled, (false)));
-            require(!withdrew && !changed && !disabled, "static callback changed state");
-        }
-        return attack ? type(uint256).max : 0.0001 ether;
-    }
-}
-
-/// @dev A valid stateless alternative with intentionally distinct listing economics.
-contract AlternativeSurchargePolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 405; }
-    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.0001 ether; }
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.004 ether; }
-}
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 
 contract ReviewReceiver {
     uint256 public callbacks;
@@ -70,9 +41,6 @@ contract PolicySecurityReviewTest is ForkBase {
         assertEq(balancer.listedShapePrizes(), 20);
     }
 
-    function _adopt(MutableReviewPolicy policy) internal {
-        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
-    }
     function _expire() internal {
         buy(buyer, 1);
         vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
@@ -80,13 +48,10 @@ contract PolicySecurityReviewTest is ForkBase {
         assertEq(pool.lastIssuedSequence(), 1);
     }
 
-    /// A policy that turns hostile after selection quotes the maximum; the effective economics still bound the payment
-    /// to the verified work, and the reserve never consults the policy. (Policies declare no maximum since interface v2.)
+    /// Trivial work is paid for its own gas and work fees, far below the derived maximum, and paying it leaves the
+    /// reserve formula alone. R95 removed the hostile policy this test once armed; the payment bound is the formula.
     function test_mutatingPolicyCannotRaiseLiability() public {
-        MutableReviewPolicy policy = new MutableReviewPolicy();
-        _adopt(policy);
         uint256 maximum = balancer.policyMaxReward();
-        policy.arm();
         uint256 reserve = balancer.requiredReserve();
         (uint256 playerFee,,) = pool.quoteAcquisitionPrice(1);
         uint256 weightShape = uint256(1e36) / 0.0132005 ether;
@@ -109,7 +74,7 @@ contract PolicySecurityReviewTest is ForkBase {
         assertLt(paid, maximum);
         assertEq(keeper.balance - before,paid);
         assertEq(balancer.policyMaxReward(), maximum);
-        assertEq(balancer.requiredReserve(), reserve, "policy mutation cannot change reserve formula");
+        assertEq(balancer.requiredReserve(), reserve, "paying trivial work cannot change the reserve formula");
         assertEq(balancer.reconciledSequence(), 1);
         assertEq(IReviewRefunds(address(pool)).acquisitionRefundCredit(buyer), playerFee, "entire real player refund stays theirs");
         assertEq(address(pool).balance - fwaHeld, playerFee, "keeper payout took none of the FWA refund backing");
@@ -117,49 +82,34 @@ contract PolicySecurityReviewTest is ForkBase {
         vm.prank(keeper); vm.expectRevert(PoolBalancer.NoUpkeepNeeded.selector); balancer.performUpkeep(hash, 0, 0);
     }
 
-    function test_policyThatAlsoOwnsPoolCannotUseStaticCallbackAuthority() public {
-        MutableReviewPolicy policy = new MutableReviewPolicy();
-        _adopt(policy);
-        vm.prank(creator); balancer.transferCreator(address(policy));
-        policy.becomeCreator(balancer);
-        assertEq(balancer.creator(), address(policy));
-        _expire();
-        bytes32 hash = balancer.settingsHash();
-        uint256 held = address(balancer).balance;
-        vm.prank(keeper); assertEq(balancer.performUpkeep(hash, 0.0001 ether, 0), 0.0001 ether);
-        assertEq(balancer.creator(), address(policy));
-        assertEq(balancer.pendingCreator(), address(0));
-        assertTrue(balancer.paidUpkeepEnabled());
-        assertEq(address(policy).balance, 0);
-        assertEq(held - address(balancer).balance, 0.0001 ether);
-        assertEq(balancer.reconciledSequence(), 1);
-    }
-
     function test_minimumFailureRollsBackDrawPaymentAndReceiverCallback() public {
-        MutableReviewPolicy policy = new MutableReviewPolicy();
-        _adopt(policy);
         _expire();
         ReviewReceiver receiver = new ReviewReceiver();
         uint256 held = address(balancer).balance;
         uint256 allowance = balancer.keeperAllowance();
         uint256 pending = pool.nextSequenceToProcess();
         vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
-        receiver.run(balancer, 0.0001 ether + 1);
+        receiver.run(balancer, 1 ether);
         assertEq(receiver.callbacks(), 0);
         assertEq(address(receiver).balance, 0);
         assertEq(address(balancer).balance, held);
         assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.reconciledSequence(), 0);
         assertEq(pool.nextSequenceToProcess(), pending, "external FWA processing rolls back too");
-        assertEq(receiver.run(balancer, 0.0001 ether), 0.0001 ether);
+        uint256 reward = receiver.run(balancer, 0);
+        assertGt(reward, 0.00004 ether, "gas plus the process and reconcile work fees");
         assertEq(receiver.callbacks(), 1);
-        assertEq(address(receiver).balance, 0.0001 ether);
+        assertEq(address(receiver).balance, reward);
+        assertEq(held - address(balancer).balance, reward);
         assertEq(balancer.reconciledSequence(), 1);
     }
+    /// R95: the selected schedule is now local economics with a larger flat charge, not an alternative policy.
     function test_unpaidMaintenanceRespectsHealthySelectedSurcharge() public {
-        AlternativeSurchargePolicy policy = new AlternativeSurchargePolicy();
-        vm.prank(creator); balancer.setKeeperPolicy(address(policy));
-        assertEq(balancer.restockFeeFor(0), 0.004 ether, "healthy selected policy quotes its price (within the 0.00475 bound)");
+        KeeperPolicyCalls.Economics memory e = factory.economics();
+        e.restockFlat = 0.0035 ether;
+        vm.prank(creator); balancer.setLocalEconomics(e);
+        uint256 selected = 910_000 * 0.55 gwei + 0.0035 ether;
+        assertEq(balancer.restockFeeFor(0), selected, "the selected local schedule prices the restock");
         uint256[] memory one = new uint256[](1);
         one[0] = balancer.getActiveIds()[1];
         vm.prank(creator); balancer.unlistShapes(one);
@@ -172,19 +122,22 @@ contract PolicySecurityReviewTest is ForkBase {
         (,,, uint256 base, uint256 price) = balancer.items(listed);
         (,,,,, uint256 fwaPrice,,) = pool.listings(listed);
         assertEq(fwaPrice, price);
-        assertEq(price - base, 0.004 ether, "unpaid caller cannot replace a healthy selected pricing schedule");
+        assertEq(price - base, selected, "unpaid caller cannot replace the selected pricing schedule");
     }
 
     function test_priceIndexedMinimumUsesMinedPriceAndIsAtomic() public {
-        MutableReviewPolicy policy = new MutableReviewPolicy();
-        _adopt(policy);
         _expire();
         bytes32 expected = balancer.settingsHash();
         uint256 held = address(balancer).balance;
         uint256 allowance = balancer.keeperAllowance();
-        // 200k gas at 0.55 gwei is 0.00011 ETH, above this policy's fixed 0.0001 ETH offer.
+        // The reward is G * price + two work fees (R95 formula). A minimum of G + 136k gas fails at 0.55 gwei (the fees
+        // cover only 72,727 gas there) and passes at 0.2 gwei (they cover 200,000). G comes from a reverted dry run.
+        uint256 snap = vm.snapshotState();
+        vm.prank(keeper); uint256 dry = balancer.performUpkeep(expected, 0, 0);
+        assertTrue(vm.revertToState(snap));
+        uint256 minimumGas = (dry - 0.00004 ether) / 0.55 gwei + 136_000;
         vm.prank(keeper); vm.expectRevert(PoolBalancer.MinimumPaymentNotMet.selector);
-        balancer.performUpkeep(expected, 0, 200_000);
+        balancer.performUpkeep(expected, 0, minimumGas);
         assertEq(address(balancer).balance, held);
         assertEq(balancer.keeperAllowance(), allowance);
         assertEq(balancer.reconciledSequence(), 0);
@@ -195,10 +148,9 @@ contract PolicySecurityReviewTest is ForkBase {
         context.record();
         assertEq(context.base(), 0.15 gwei);
         assertEq(context.price(), 0.2 gwei);
-        // At 0.2 gwei the policy's offer, capped by the economics envelope, meets the 200k-gas minimum.
-        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 0, 200_000);
-        assertGe(reward, 200_000 * 0.2 gwei, "the price-indexed minimum is met at the mined price");
-        assertLe(reward, 0.0001 ether);
+        vm.prank(keeper); uint256 reward = balancer.performUpkeep(expected, 0, minimumGas);
+        assertGe(reward, minimumGas * 0.2 gwei, "the price-indexed minimum is met at the mined price");
+        assertLt(reward, dry, "the same work pays less at the lower mined price");
         assertEq(balancer.reconciledSequence(), 1);
     }
 

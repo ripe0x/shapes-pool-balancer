@@ -12,19 +12,19 @@ const plan = (names: string[]) => names.map(action);
 
 describe('deployment manifest: created contracts versus reused dependencies', () => {
   it('reuse mode creates no Packs or renderer, and a library already on chain may be absent', () => {
-    const reused = plan(['PoolInventory', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory']);
+    const reused = plan(['PoolInventory', 'PoolBalancer', 'BalancerFactory']);
     expect(isReuse(reused)).toBe(true);
     expect(matchPlan(reused, reused)).toEqual([]);
-    expect(creationOrder(true)).toEqual(['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory']);
+    expect(creationOrder(true)).toEqual(['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'PoolBalancer', 'BalancerFactory']);
   });
-  it('full mode still requires the eight-contract order', () => {
+  it('full mode requires the seven-contract order (no keeper policy contract since R95)', () => {
     const full = plan(creationOrder(false));
     expect(isReuse(full)).toBe(false);
     expect(matchPlan(full, full)).toEqual([]);
   });
   it('rejects a renderer without Packs, a missing system contract, or a reordered plan', () => {
-    for (const names of [['ShapePackRenderer', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'], ['PoolBalancer', 'BalancerFactory'],
-      ['PoolBalancer', 'BalancerFactory', 'KeeperPolicyV1']]) {
+    for (const names of [['ShapePackRenderer', 'PoolBalancer', 'BalancerFactory'], ['BalancerFactory'],
+      ['BalancerFactory', 'PoolBalancer'], ['PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory']]) {
       const p = plan(names);
       expect(matchPlan(p, p)[0]).toMatch(/not the deployment order/);
     }

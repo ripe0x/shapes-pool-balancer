@@ -5,7 +5,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 
 interface IBatchSlippagePool {
     function selectionSlippageBps() external view returns (uint256);
@@ -60,7 +60,7 @@ contract BatchSlippageTest is ForkBase {
         assertEq(IBatchSlippagePool(address(pool)).selectionSlippageBps(), 1_000);
         // Surcharge from the factory's default economics, so a recalibration (restockGas 900k -> 910k) moves it too:
         // restockGas * min(basefee + priorityAllowance, ceiling) + restockFlat = 910k * 0.13 gwei + 0.0002 ETH.
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         uint256 price_ = BASE + e.priorityAllowance;
         if (price_ > e.gasPriceCeiling) price_ = e.gasPriceCeiling;
         uint256 surcharge = uint256(e.restockGas) * price_ + e.restockFlat;

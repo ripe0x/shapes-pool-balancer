@@ -22,8 +22,8 @@ export const LEGACY_FACTORIES: readonly LegacyFactory[] = legacy.legacyFactories
 
 /** community-v1's fixed enforcement schedule (40ad9dd test/fixtures/keeper-enforcement.json) and V1 restocking, for
  *  reserve previews of its pools. Its contracts also cap each bound by the pool's stored `policyMaxReward`. */
-export const legacyEconomics = (policy: Address, policyMaxReward: bigint): Economics => ({
-  policy, workFee: 50_000_000_000_000n, maxGas: 6_000_000, overheadGas: 100_000, gasPriceCeiling: 50_000_000_000n,
+export const legacyEconomics = (policyMaxReward: bigint): Economics => ({
+  workFee: 50_000_000_000_000n, maxGas: 6_000_000, overheadGas: 100_000, gasPriceCeiling: 50_000_000_000n,
   priorityAllowance: 100_000_000n, restockGas: 900_000, restockFlat: 200_000_000_000_000n, baseGas: 200_000,
   processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000, processGraceBlocks: 0, pausedProcessGraceBlocks: 0,
   paymentCap: policyMaxReward,

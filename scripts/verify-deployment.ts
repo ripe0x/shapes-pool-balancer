@@ -16,14 +16,15 @@ import { balancerFactoryAbi } from '../shared/abi';
 
 const CREATE2_DEPLOYER = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
 export const LIBRARIES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory'];
-/** Contracts Deploy.s.sol creates, in order. Reuse mode creates no Packs or renderer; any library may already be on chain. */
-export const creationOrder = (reuse: boolean) => [...LIBRARIES, ...(reuse ? [] : ['ShapePackRenderer', 'ShapePacks']), 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
+/** Contracts Deploy.s.sol creates, in order. Reuse mode creates no Packs or renderer; any library may already be on chain.
+ *  No keeper policy contract: the payment formula is in KeeperPolicyCalls (owner decision R95). */
+export const creationOrder = (reuse: boolean) => [...LIBRARIES, ...(reuse ? [] : ['ShapePackRenderer', 'ShapePacks']), 'PoolBalancer', 'BalancerFactory'];
 /** Reuse mode is a dry run that creates no Packs instance. */
 export const isReuse = (dry: { contractName: string }[]) => !dry.some(t => t.contractName === 'ShapePacks');
 const abi = parseAbi([
   'function implementation() view returns (address)', 'function keeperAdmin() view returns (address)', 'function policyAdmin() view returns (address)',
-  'function defaultKeeperPolicy() view returns (address)', 'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
-  'function pendingPolicyAdmin() view returns (address)', 'function creator() view returns (address)', 'function interfaceVersion() view returns (uint256)',
+  'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
+  'function pendingPolicyAdmin() view returns (address)', 'function creator() view returns (address)',
   'function defaultBucketCapacity() view returns (uint128)', 'function defaultBucketRefill() view returns (uint96)', 'function mintFee() view returns (uint256)',
   'function creationSettingsHash() view returns (bytes32)',
   'function FWA_FACTORY() view returns (address)', 'function FWA_IMPLEMENTATION() view returns (address)', 'function SHAPES() view returns (address)',
@@ -33,23 +34,23 @@ const abi = parseAbi([
 ]);
 
 /** Reviewed initial factory settings (docs/CONFIG-INVENTORY.md section 0), stated independently of the factory constructor and
- *  of Deploy.s.sol `initialEconomics`. Economics fields in struct order after `policy`. */
+ *  of Deploy.s.sol `initialEconomics`. Economics fields in struct order. */
 export const INITIAL_SETTINGS = {
   economics: {
     workFee: parseEther('0.00002'), maxGas: 3_200_000, overheadGas: 60_000, gasPriceCeiling: parseGwei('5'), priorityAllowance: parseGwei('0.05'),
     restockGas: 910_000, restockFlat: parseEther('0.0002'), baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000,
     processGraceBlocks: 50, pausedProcessGraceBlocks: 10,
   },
-  bucketCapacity: parseEther('0.622'), bucketRefill: parseEther('0.05') / 12n, productLimits: [1000, 1000, 10000] as const, policyInterfaceVersion: 3n,
+  bucketCapacity: parseEther('0.622'), bucketRefill: parseEther('0.05') / 12n, productLimits: [1000, 1000, 10000] as const,
 };
 /** `BalancerFactory.creationSettingsHash`: a new pool's `KeeperPolicyCalls.settingsHash` (follows the factory, source 0,
  *  generation 0, paid upkeep on, at `mintFee`) bound to the default bucket it copies. */
-export function creationSettingsHash(economics: { policy: Address } & typeof INITIAL_SETTINGS.economics, mintFee: bigint,
+export function creationSettingsHash(economics: typeof INITIAL_SETTINGS.economics, mintFee: bigint,
   bucketCapacity: bigint, bucketRefill: bigint): Hex {
   const e = economics;
   const pool = keccak256(encodeAbiParameters(
-    parseAbiParameters('(address,uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16), uint8, uint64, bool, uint256'),
-    [[e.policy, e.workFee, e.maxGas, e.overheadGas, e.gasPriceCeiling, e.priorityAllowance, e.restockGas, e.restockFlat, e.baseGas, e.processGas, e.reconcileGas, e.shapeGas, e.prizeGas, e.processGraceBlocks, e.pausedProcessGraceBlocks],
+    parseAbiParameters('(uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16), uint8, uint64, bool, uint256'),
+    [[e.workFee, e.maxGas, e.overheadGas, e.gasPriceCeiling, e.priorityAllowance, e.restockGas, e.restockFlat, e.baseGas, e.processGas, e.reconcileGas, e.shapeGas, e.prizeGas, e.processGraceBlocks, e.pausedProcessGraceBlocks],
       0, 0n, true, mintFee]));
   return keccak256(encodeAbiParameters(parseAbiParameters('bytes32, uint128, uint96'), [pool, bucketCapacity, bucketRefill]));
 }
@@ -156,14 +157,13 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   await eq('factory', f, 'implementation', impl);
   await eq('factory', f, 'keeperAdmin', roles.keeperAdmin);
   await eq('factory', f, 'policyAdmin', roles.policyAdmin);
-  await eq('factory', f, 'defaultKeeperPolicy', at.KeeperPolicyV1);
   await eq('factory', f, 'keepersRestricted', false);
   for (const fn of ['pendingKeeperAdmin', 'pendingPolicyAdmin']) await eq('factory', f, fn, zeroAddress);
-  await eq('keeperPolicy', at.KeeperPolicyV1, 'interfaceVersion', INITIAL_SETTINGS.policyInterfaceVersion);
-  const want = { policy: at.KeeperPolicyV1, ...INITIAL_SETTINGS.economics };
+  const want = INITIAL_SETTINGS.economics;
   const economics = await pub.readContract({ address: f, abi: balancerFactoryAbi, functionName: 'economics' });
   for (const [k, v] of Object.entries(want)) if (String(economics[k as keyof typeof economics]).toLowerCase() !== String(v).toLowerCase())
     bad.push(`factory.economics().${k} = ${economics[k as keyof typeof economics]}, expected ${v}`);
+  if (Object.keys(economics).length !== Object.keys(want).length) bad.push(`factory.economics() has fields ${Object.keys(economics)}, expected ${Object.keys(want)}`);
   await eq('factory', f, 'defaultBucketCapacity', INITIAL_SETTINGS.bucketCapacity);
   await eq('factory', f, 'defaultBucketRefill', INITIAL_SETTINGS.bucketRefill);
   const limits = await pub.readContract({ address: f, abi: balancerFactoryAbi, functionName: 'productLimits' });
@@ -189,7 +189,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     record: {
       verified: true, source: 'canonical receipts and contract reads', chainId: await pub.getChainId(), checkedAtBlock: head.toString(),
       checkedAtBlockHash: (await pub.getBlock({ blockNumber: head })).hash,
-      factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer, keeperPolicy: at.KeeperPolicyV1,
+      factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer,
       initialSettings: { economics: want, defaultBucketCapacity: INITIAL_SETTINGS.bucketCapacity, defaultBucketRefill: INITIAL_SETTINGS.bucketRefill,
         productLimits: INITIAL_SETTINGS.productLimits, creationSettingsHash: creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill), shapesMintFeeWei: mintFee },
       roles, transactions: deployed, preexistingLibraries, reusedDependencies: reused?.dependencies ?? null,

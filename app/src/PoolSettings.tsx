@@ -74,7 +74,7 @@ export function PurchasePauses({ d, tx }: { d: { balancer: Address; target: bigi
       <div className="field"><input id="fill-gate" type="number" min="0" max="100" step="0.01" value={gate} onChange={(e) => setGate(e.target.value)} /><span>%</span></div>
       <button className="btn" disabled={!!tx.busy || !gateOk || gateBps === d.fillGateBps} onClick={() => set('Change fill gate', 'setFillGateBps', gateBps)}>Apply</button>
     </div>
-    <p className="note">A prize's weight is 1 ÷ its backing. Each unreconciled draw counts as the loss of the heaviest prize, a 0.01 ETH Shape. Purchases pause while the remaining weight is below this share of the target's weight. At 0%, purchases pause only when the unreconciled draws' weight exceeds the remaining weight. Default {FILL_GATE_DEFAULT_BPS / 100}%.</p>
+    <p className="note">A prize's weight is 1 ÷ its backing. Each unreconciled draw counts as the loss of the heaviest prize, a 0.01 ETH Shape. Purchases pause while the remaining weight is below this share of the target's weight. At 0%, purchases pause once the unreconciled draws' weight equals or exceeds the remaining weight. Default {FILL_GATE_DEFAULT_BPS / 100}%.</p>
     {d.target !== 0n && gateOk && <p className="note">With the saved target fully stocked, purchases pause at {admitted(gateBps) + 1} unreconciled draw{admitted(gateBps) === 0 ? '' : 's'}{gateBps !== d.fillGateBps ? ` (now ${admitted(d.fillGateBps) + 1})` : ''}.</p>}
     {!gateOk && <p className="note error">Enter 0% to 100%.</p>}
     <div className="kv" style={{ marginTop: 20 }}><span className="k">Unsettled draws that pause purchases</span><span>{d.backlogThreshold}</span></div>
@@ -158,17 +158,15 @@ const gweix = (x: bigint) => `${formatGwei(x)} gwei`;
 const num = (n: number) => n.toLocaleString('en-US');
 const DAY = 86_400n;
 const U32 = 2n ** 32n - 1n, U64 = 2n ** 64n - 1n, U96 = 2n ** 96n - 1n, U128 = 2n ** 128n - 1n;
-const SOURCE = ['Following the factory', "This pool's own values", 'Pinned'];
+const SOURCE = ['Following the factory', "This pool's own values"];
 const SOURCE_NOTE = [
   'Factory changes apply to this pool immediately.',
   'Factory changes do not apply to this pool.',
-  'Every economic value stays as pinned until you follow the factory again. Factory changes do not apply to this pool.',
 ];
 
-type Unit = 'address' | 'eth' | 'gwei' | 'gas' | 'blocks';
+type Unit = 'eth' | 'gwei' | 'gas' | 'blocks';
 const FIELDS: readonly [keyof Economics & string, string, Unit][] = [
-  ['policy', 'Pricing policy', 'address'],
-  ['workFee', 'Work fee per reconciled draw and listed Shape', 'eth'],
+  ['workFee', 'Work fee per processed or reconciled draw and listed Shape', 'eth'],
   ['gasPriceCeiling', 'Gas price ceiling', 'gwei'],
   ['priorityAllowance', 'Priority allowance', 'gwei'],
   ['maxGas', 'Reimbursable gas per call', 'gas'],
@@ -188,12 +186,11 @@ const showField = (e: Economics, key: keyof Economics, unit: Unit) => {
   return unit === 'eth' ? formatEther(v as bigint) : unit === 'gwei' ? formatGwei(v as bigint) : String(v);
 };
 const display = (e: Economics, key: keyof Economics, unit: Unit) =>
-  unit === 'address' ? short(String(e[key])) : unit === 'gas' ? `${num(Number(e[key]))} gas` : unit === 'blocks' ? `${num(Number(e[key]))} blocks` : unit === 'eth' ? ethx(e[key] as bigint) : gweix(e[key] as bigint);
+  unit === 'gas' ? `${num(Number(e[key]))} gas` : unit === 'blocks' ? `${num(Number(e[key]))} blocks` : unit === 'eth' ? ethx(e[key] as bigint) : gweix(e[key] as bigint);
 /** A field typed in its unit, within its on-chain width; undefined when invalid. */
-function parseField(text: string, unit: Unit): string | bigint | number | undefined {
+function parseField(text: string, unit: Unit): bigint | number | undefined {
   const s = text.trim();
   try {
-    if (unit === 'address') return /^0x[0-9a-fA-F]{40}$/.test(s) ? s : undefined;
     if (unit === 'gas') return /^\d+$/.test(s) && BigInt(s) <= U32 ? Number(s) : undefined;
     if (unit === 'blocks') return /^\d+$/.test(s) && BigInt(s) <= 65_535n ? Number(s) : undefined;
     if (!/^\d*\.?\d+$/.test(s)) return undefined;
@@ -203,20 +200,21 @@ function parseField(text: string, unit: Unit): string | bigint | number | undefi
 }
 const parseEth = (text: string) => /^\d*\.?\d+$/.test(text.trim()) ? parseEther(text.trim()) : undefined;
 
-function EconomicsRows({ e, version }: { e: Economics; version?: bigint }) {
+function EconomicsRows({ e }: { e: Economics }) {
   return <>
     {FIELDS.map(([key, label, unit]) => <div className="kv" key={key}>
       <span className="k">{label}</span>
-      <span title={unit === 'address' ? String(e[key]) : undefined}>{display(e, key, unit)}{key === 'policy' && version !== undefined ? ` · V${version}` : ''}</span>
+      <span>{display(e, key, unit)}</span>
     </div>)}
     <div className="kv"><span className="k">Maximum payment per call</span><span>{ethx(maxPaymentOf(e))}</span></div>
     <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{ethx(maxSurchargeOf(e))}</span></div>
   </>;
 }
 
-type KeeperView = { balancer: Address; keeper: Keeper; paidUpkeepEnabled: boolean; version?: bigint; policyUnavailable: boolean; restockFee?: bigint };
+type KeeperView = { balancer: Address; keeper: Keeper; paidUpkeepEnabled: boolean; policyUnavailable: boolean; restockFee?: bigint };
 
-/** Keeper economics (follow, local, pinned), paid upkeep and the spending bucket of a current-factory pool. */
+/** Keeper economics (follow or local; "pin" saves the factory's values as local), paid upkeep and the spending bucket
+ *  of a current-factory pool. */
 export function KeeperEconomics({ d, tx }: { d: KeeperView; tx: Tx }) {
   const k = d.keeper;
   const [editing, setEditing] = useState(false);
@@ -224,14 +222,16 @@ export function KeeperEconomics({ d, tx }: { d: KeeperView; tx: Tx }) {
     tx.send(label, [() => tx.write({ address: d.balancer, abi: poolBalancerAbi, functionName, args, ...(value ? { value } : {}) })]);
   const deposit = (amount: bigint) => amount > 0n &&
     <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Deposit ETH', 'depositETH', [], amount)}>Deposit {formatEther(amount)} ETH</button>;
+  // Pinning and following both adopt `k.factoryEconomics` as read at this view's block, so they need the same funding.
   const followNeed = toDeposit(d.paidUpkeepEnabled, k.current, k.follow);
+  const pinned = k.source === 1 && sameEconomics(k.economics, k.factoryEconomics);
   return <>
     <div className="section">
       <h2 className="h3">Keeper economics</h2>
       <div className="kv"><span className="k">Source</span><span>{SOURCE[k.source] ?? `Unknown (${k.source})`}</span></div>
       <p className="note">{SOURCE_NOTE[k.source]}</p>
-      {d.policyUnavailable && <p className="note error" role="alert">Policy quotes unavailable.</p>}
-      <EconomicsRows e={k.economics} version={d.version} />
+      {d.policyUnavailable && <p className="note error" role="alert">Keeper quotes unavailable.</p>}
+      <EconomicsRows e={k.economics} />
       <div className="kv"><span className="k">0.01 ETH Shape restocking charge now</span><span>{d.restockFee === undefined ? 'Unavailable' : ethx(d.restockFee)}</span></div>
       <div className="kv"><span className="k">Maintenance budget</span><span>{ethx(k.current.required)}</span></div>
       {d.paidUpkeepEnabled && k.current.shortfall > 0n && <div style={{ marginTop: 12 }}>
@@ -240,15 +240,15 @@ export function KeeperEconomics({ d, tx }: { d: KeeperView; tx: Tx }) {
       </div>}
       <div className="row" style={{ gap: 16, marginTop: 16 }}>
         {k.source !== 0 && <button className="btn" disabled={!!tx.busy || followNeed > 0n} onClick={() => write('Follow factory economics', 'followFactoryEconomics')}>Follow factory</button>}
-        {k.source !== 2 && <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Pin keeper economics', 'pinEconomics')}>Pin current values</button>}
+        {!pinned && <button className="btn sec" disabled={!!tx.busy || followNeed > 0n} onClick={() => write('Pin current factory values', 'setLocalEconomics', [k.factoryEconomics])}>Pin current factory values</button>}
         <button className="btn sec" onClick={() => setEditing(!editing)}>{editing ? 'Cancel editing' : 'Edit local values'}</button>
       </div>
-      <p className="note" style={{ marginTop: 12 }}>Following applies factory changes immediately. Pinning keeps every current value, including the pricing policy. Editing makes the values this pool's own. Paid upkeep and the spending bucket stay as they are.</p>
-      {k.source !== 0 && <details style={{ marginTop: 16 }}>
+      <p className="note" style={{ marginTop: 12 }}>Following applies factory changes immediately. Pinning saves the factory values shown here as this pool's own and freezes those numbers until you follow the factory again. Editing makes the values this pool's own. Paid upkeep and the spending bucket stay as they are.</p>
+      {(k.source !== 0 || !pinned) && <details style={{ marginTop: 16 }}>
         <summary className="disclose quiet">Factory values now</summary>
         <EconomicsRows e={k.factoryEconomics} />
         <div className="kv"><span className="k">Maintenance budget when following</span><span>{ethx(k.follow.required)}</span></div>
-        {followNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Following needs {formatEther(followNeed)} more operating ETH first.</p>{deposit(followNeed)}</div>}
+        {followNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Following or pinning needs {formatEther(followNeed)} more operating ETH first.</p>{deposit(followNeed)}</div>}
       </details>}
       {editing && <LocalEconomicsForm key={FIELDS.map(([key]) => String(k.economics[key])).join()} d={d} tx={tx} write={write} deposit={deposit} />}
     </div>
@@ -276,18 +276,14 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
   const next = funding?.key === candidateKey ? funding : undefined;
   const need = next?.next ? toDeposit(d.paidUpkeepEnabled, k.current, next.next) : 0n;
   const unchanged = !!candidate && k.source === 1 && sameEconomics(candidate, k.economics);
-  const policyOnly = !!candidate && !sameEconomics(candidate, k.economics) && sameEconomics({ ...k.economics, policy: candidate.policy }, candidate);
-  const save = () => candidate && (policyOnly
-    ? write('Change pricing policy', 'setKeeperPolicy', [candidate.policy])
-    : write('Set local keeper economics', 'setLocalEconomics', [candidate]));
+  const save = () => candidate && write('Set local keeper economics', 'setLocalEconomics', [candidate]);
   return <div style={{ marginTop: 20 }}>
-    <datalist id="known-policies">{[...new Set([k.economics.policy, k.factoryEconomics.policy])].map((p) => <option key={p} value={p} />)}</datalist>
     {FIELDS.map(([key, label, unit]) => <div key={key} style={{ marginTop: 12 }}>
       <label htmlFor={`econ-${key}`} className="form-label">{label}</label>
       <div className="field">
-        <input id={`econ-${key}`} className={unit === 'address' ? 'mono' : undefined} list={unit === 'address' ? 'known-policies' : undefined} inputMode={unit === 'address' ? undefined : 'decimal'}
+        <input id={`econ-${key}`} inputMode="decimal"
           spellCheck={false} autoComplete="off" value={text[key]} onChange={(ev) => setText({ ...text, [key]: ev.target.value })} />
-        {unit !== 'address' && <span className="u">{unit === 'eth' ? 'ETH' : unit === 'gwei' ? 'GWEI' : unit === 'blocks' ? 'BLOCKS' : 'GAS'}</span>}
+        <span className="u">{unit === 'eth' ? 'ETH' : unit === 'gwei' ? 'GWEI' : unit === 'blocks' ? 'BLOCKS' : 'GAS'}</span>
       </div>
     </div>)}
     {invalid.length > 0 && <p className="note error" style={{ marginTop: 12 }}>Check: {invalid.join(', ')}.</p>}
@@ -297,7 +293,7 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
       <div className="kv"><span className="k">Maintenance budget</span><span>{next?.next ? ethx(next.next.required) : next?.error ? 'Unavailable' : 'Checking…'}</span></div>
       {need > 0n && <div style={{ marginTop: 12 }}><p className="note error">These values need {formatEther(need)} more operating ETH first.</p>{deposit(need)}</div>}
     </div>}
-    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !candidate || unchanged || !next?.next || need > 0n} onClick={save}>{policyOnly ? 'Use this pricing policy' : 'Save local values'}</button>
+    <button className="btn" style={{ marginTop: 16 }} disabled={!!tx.busy || !candidate || unchanged || !next?.next || need > 0n} onClick={save}>Save local values</button>
     <p className="note" style={{ marginTop: 12 }}>Saved values apply immediately and factory changes stop applying to this pool. Existing listings keep their prices. A larger maintenance budget needs operating ETH first; missing prizes do not.</p>
   </div>;
 }
@@ -316,7 +312,7 @@ function PaidUpkeep({ d, tx, write, deposit }: { d: KeeperView; tx: Tx } & Write
       <button className="btn sec" disabled={!!tx.busy} onClick={() => write('Run unpaid maintenance', 'performUpkeepUnpaid')}>Run unpaid maintenance</button>
     </div>
     {enableNeed > 0n && <div style={{ marginTop: 12 }}><p className="note error">Enabling needs {formatEther(enableNeed)} more operating ETH first.</p>{deposit(enableNeed)}</div>}
-    <p className="note" style={{ marginTop: 12 }}>Disabling takes effect immediately. A disable stays through factory updates, policy changes and pinning. Only the creator can enable it again.</p>
+    <p className="note" style={{ marginTop: 12 }}>Disabling takes effect immediately. A disable stays through factory updates, economics changes and pinning. Only the creator can enable it again.</p>
   </div>;
 }
 

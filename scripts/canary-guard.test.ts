@@ -155,7 +155,7 @@ describe.skipIf(!RPC)('on a local mainnet fork', () => {
     expect(ok.bad).toEqual([]);
     const r = ok.record!;
     factory = r.balancerFactory;
-    expect(Object.keys(r.transactions)).toEqual(['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory']);
+    expect(Object.keys(r.transactions)).toEqual(['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'BalancerFactory']);
     const factoryReceipt = await pub.getTransactionReceipt({ hash: r.transactions.BalancerFactory.hash });
     expect(r.factoryDeploymentBlock).toBe(factoryReceipt.blockNumber.toString());
     const simulated = JSON.parse(readFileSync('deployments/31337.json', 'utf8'));

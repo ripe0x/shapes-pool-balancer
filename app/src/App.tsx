@@ -108,15 +108,21 @@ function useBalancer(b?: Address) {
     const keepersRestricted = await pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'keepersRestricted' }) as boolean;
     // A legacy factory's pool (shared/legacy.ts) is managed with its own ABI, limits and fixed admission settings.
     const generation = await poolGeneration(pub, b, factoryAddr, blockNumber);
-    const [keeperPolicy, paidUpkeepEnabled, policyMaxReward, recommendedPolicy] = await Promise.all([
-      r<Address>('keeperPolicy'), r<boolean>('paidUpkeepEnabled'), r<bigint>('policyMaxReward'),
-      pub.readContract({ address: factoryAddr, abi: balancerFactoryAbi, functionName: 'defaultKeeperPolicy', blockNumber }),
+    // Only legacy (community-v1) pools have a keeper policy contract; current pools pay by the in-library formula.
+    const legacy = generation.legacy;
+    const [paidUpkeepEnabled, policyMaxReward, legacyPolicy] = await Promise.all([
+      r<boolean>('paidUpkeepEnabled'), r<bigint>('policyMaxReward'),
+      legacy ? Promise.all([
+        pub.readContract({ address: b, abi: legacy.poolBalancerAbi, functionName: 'keeperPolicy', blockNumber }),
+        pub.readContract({ address: factoryAddr, abi: legacy.balancerFactoryAbi, functionName: 'defaultKeeperPolicy', blockNumber }),
+      ]) as Promise<[Address, Address]> : undefined,
     ]);
+    const [keeperPolicy, recommendedPolicy] = legacyPolicy ?? [undefined, undefined];
     // A legacy pool has no economics getter: its reserve previews use its fixed schedule under its stored maximum.
-    const keeper = generation.legacy ? undefined : await readKeeper(pub, b, factoryAddr, block);
-    const economics = keeper?.economics ?? legacyEconomics(keeperPolicy, policyMaxReward);
+    const keeper = legacy ? undefined : await readKeeper(pub, b, factoryAddr, block);
+    const economics = keeper?.economics ?? legacyEconomics(policyMaxReward);
     const policyCosts = await policyEconomics(pub, economics, b, block).catch(() => ({
-      version: undefined, baseFee: block.baseFeePerGas ?? 0n, gasPrice: undefined, keeperQuotes: undefined,
+      baseFee: block.baseFeePerGas ?? 0n, gasPrice: undefined, keeperQuotes: undefined,
       economics, chainTimestamp: block.timestamp, restockFee: undefined, restockFees: undefined,
       restockQuoteVerified: false, policyUnavailable: true,
     }));
@@ -866,7 +872,7 @@ type Bucket = { capacity: bigint; refill: bigint };
  */
 type DesignProps = { d: D; tx: Tx; mode: Mode; me?: Address; create?: Create };
 function Design(props: DesignProps) {
-  if (props.mode === 'pool' && (props.d.policyUnavailable || props.d.mintFeeUnavailable)) return <main className="page"><p className="lead">Current economic quotes are unavailable.</p><p>Use Overview to collect or claim earnings and Settings to recover the policy.</p></main>;
+  if (props.mode === 'pool' && (props.d.policyUnavailable || props.d.mintFeeUnavailable)) return <main className="page"><p className="lead">Current economic quotes are unavailable.</p><p>Use Overview to collect or claim earnings, and Settings for keeper economics.</p></main>;
   return <DesignEditor {...props} />;
 }
 function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
@@ -1182,7 +1188,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const creationEconomics = mode !== 'pool' && <div className="kv-group" style={{ marginBottom: 16 }}>
     <span className="label">Keeper economics: follow factory (default)</span>
     {e ? <>
-      <div className="kv"><span className="k">Work fee per reconciled draw and listed Shape</span><span>{formatEther(e.workFee)} ETH</span></div>
+      <div className="kv"><span className="k">Work fee per processed or reconciled draw and listed Shape</span><span>{formatEther(e.workFee)} ETH</span></div>
       <div className="kv"><span className="k">Gas price ceiling</span><span>{formatGwei(e.gasPriceCeiling)} gwei</span></div>
       <div className="kv"><span className="k">Maximum payment per call</span><span>{formatEther(maxPaymentOf(e))} ETH</span></div>
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{formatEther(maxSurchargeOf(e))} ETH</span></div>
@@ -1191,7 +1197,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="kv"><span className="k">Spending bucket refill</span><span title={`${create.bucket.refill} wei per second`}>{formatEther(create.bucket.refill * 86_400n)} ETH per day</span></div>
       </>}
     </> : <p className="note">Loading.</p>}
-    <p className="note">Factory economics changes apply to the pool immediately. The pool keeps this spending bucket. After creation you can pin these values or set your own, and change the bucket, in Settings.</p>
+    <p className="note">Factory economics changes apply to the pool immediately. The pool keeps this spending bucket. After creation you can pin the current factory values or set your own, and change the bucket, in Settings.</p>
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
   const save = mode === 'preview' ? (
@@ -1828,7 +1834,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
                 </div>
               )}
             </>
-          ) : <p className="note" style={{ marginTop: 8 }}>{d.policyUnavailable ? 'Estimate unavailable while policy quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Earnings appear once an NFT is listed and a mix is saved.'}</p>}
+          ) : <p className="note" style={{ marginTop: 8 }}>{d.policyUnavailable ? 'Estimate unavailable while keeper quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Earnings appear once an NFT is listed and a mix is saved.'}</p>}
         </div>
       </section>
     </main>
@@ -1950,7 +1956,7 @@ function Settings({ d, tx }: { d: D; tx: Tx }) {
           </div>
         )}
         <PurchasePauses d={d} tx={tx} />
-        {d.legacy ? <LegacyKeeperPay d={{ ...d, legacy: d.legacy }} tx={tx} /> : d.keeper && <KeeperEconomics d={{ ...d, keeper: d.keeper }} tx={tx} />}
+        {d.legacy ? <LegacyKeeperPay d={{ ...d, legacy: d.legacy, keeperPolicy: d.keeperPolicy!, recommendedPolicy: d.recommendedPolicy! }} tx={tx} /> : d.keeper && <KeeperEconomics d={{ ...d, keeper: d.keeper }} tx={tx} />}
         <div className="section">
           <h2 className="h3" style={{ fontSize: 22, marginBottom: 12 }}>Keepers</h2>
           <div className="kv">

@@ -1,14 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { quoteV1, restockFeeAt, type KeeperWork } from './planner';
-import { V2 } from '../sim/fund';
 
-describe('policy arithmetic parity with deployed-on-fork policy calls', () => {
-  it('matches both materially different schedules at normal, cap and spike gas, including packs', () => {
+describe('payment arithmetic parity with the in-library formula on the fork', () => {
+  it('matches KeeperPolicyCalls.reward and restock at normal, cap and spike gas, including packs', () => {
     const fixture = JSON.parse(readFileSync('test/fixtures/keeper-policy-quotes.json', 'utf8'));
     const rows = Object.values(fixture).map((r) => typeof r === 'string' ? JSON.parse(r) : r) as Record<string, string | number>[];
-    expect(rows.length).toBeGreaterThanOrEqual(8);
-    const versions = new Set<number>();
+    // One formula since R95: the former second (V2) policy's rows are gone.
+    expect(rows.length).toBe(5);
     let pack = false;
     for (const row of rows) {
       const b = (key: string) => BigInt(row[key]);
@@ -17,16 +16,13 @@ describe('policy arithmetic parity with deployed-on-fork policy calls', () => {
         reconciledDraws: b('reconciledDraws'), listedShapeUnits: b('listedShapeUnits'),
         listedPrizes: b('listedPrizes'), processedDraws: b('processedDraws'),
       };
-      const version = Number(row.version);
+      expect(Number(row.version)).toBe(1);
       const d = Number(row.denomination);
       const units = b('shapeUnits');
-      const reward = version === 1 ? quoteV1(work) : V2.reward(work);
-      const surcharge = version === 1 ? units * restockFeeAt(work.baseFee) : V2.surcharge(d, work.baseFee);
-      expect(reward, `version ${version}, ${work.baseFee} wei basefee`).toBe(b('reward'));
-      expect(surcharge, `version ${version}, size ${d}`).toBe(b('surcharge'));
-      versions.add(version); pack ||= d >= 9;
+      expect(quoteV1(work), `${work.baseFee} wei basefee`).toBe(b('reward'));
+      expect(units * restockFeeAt(work.baseFee), `size ${d}`).toBe(b('surcharge'));
+      pack ||= d >= 9;
     }
-    expect(versions).toEqual(new Set([1, 2]));
     expect(pack).toBe(true);
   });
 });

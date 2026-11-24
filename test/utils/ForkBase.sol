@@ -3,10 +3,9 @@ pragma solidity 0.8.28;
 
 import {Test, Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
-import {KeeperPolicyV1} from "../../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../../src/BalancerFactory.sol";
 import {IFWAPool, IShapes} from "../../src/interfaces/External.sol";
-import {IKeeperPolicy} from "../../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
 import {MockNFT} from "./Mocks.sol";
 import {ListOne} from "./ListOne.sol";
 
@@ -60,7 +59,7 @@ abstract contract ForkBase is Test {
         address renderer = deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin, address(this), address(new KeeperPolicyV1()));
+        factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
@@ -86,12 +85,6 @@ abstract contract ForkBase is Test {
         b.withdrawCurated(b.getActiveIds()[0], owner);
         if (seed > deposit) b.claimSurplus(seed - deposit, owner);
         vm.stopPrank();
-    }
-
-    /// @dev The factory's current economics with another algorithm.
-    function _econWith(address policy) internal view returns (IKeeperPolicy.Economics memory e) {
-        e = factory.economics();
-        e.policy = policy;
     }
 
     function createBalancer(uint256 deposit) internal returns (PoolBalancer b) {

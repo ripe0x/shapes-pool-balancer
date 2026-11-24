@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {ITimeout} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {ReceiptGas} from "./utils/ReceiptGas.sol";
@@ -255,20 +253,20 @@ contract ReserveCapitalTest is ForkBase {
     }
 
     function test_feeAndCapSensitiveBoundForActualWork() public {
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         uint256 price = 0.55 gwei;
         assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,1,1,0,0),(2_150_000 + V1_OVERHEAD) * price + 0.00004 ether,
             "one processed and one reconciled draw: two work fees");
         assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,0,1,1),(1_050_000 + V1_OVERHEAD) * price + 0.00002 ether);
         assertEq(KeeperPolicyCalls.paymentBound(e,0.5 gwei,0,5,5,5),(3_200_000 + V1_OVERHEAD) * price + 0.0002 ether);
-        IKeeperPolicy.Economics memory none;
+        KeeperPolicyCalls.Economics memory none;
         assertEq(KeeperPolicyCalls.paymentBound(none,0.5 gwei,0,5,5,5),0,"paid upkeep off: no bound");
     }
 
     /// The default economics and the fixed work limits, for the TypeScript planner. `hardMaxReward` is the derived
     /// maximum payment: no separate outer ceiling exists since the community release.
     function test_writeImmutableEnforcementFixture() public {
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         string memory key = "keeperEnforcement";
         vm.serializeString(key,"hardMaxReward",vm.toString((uint256(e.maxGas) + e.overheadGas) * e.gasPriceCeiling + 10 * uint256(e.workFee)));
         vm.serializeString(key,"burst",vm.toString(factory.defaultBucketCapacity()));

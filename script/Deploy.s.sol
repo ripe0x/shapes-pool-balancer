@@ -3,10 +3,8 @@ pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IFWAPoolFactory, IShapePacks as IPacksView} from "../src/interfaces/External.sol";
 
 /// @dev Getters of the reused Draw Packs instance and renderer that src/interfaces does not declare.
@@ -26,8 +24,9 @@ interface IReusedRenderer {
 ///         - reuse (required on chain 1): the community replacement release. Shapes, the Draw Packs instance, its
 ///           renderer, the FWA community factory and the reviewed FWA implementation already exist on mainnet and are
 ///           verified by code hash and getter readbacks before anything is broadcast. Only the linked libraries (Forge
-///           skips one whose CREATE2 address already holds its exact init code), the PoolBalancer implementation,
-///           KeeperPolicyV1 and BalancerFactory are created.
+///           skips one whose CREATE2 address already holds its exact init code), the PoolBalancer implementation
+///           and BalancerFactory are created. There is no keeper policy contract: the payment formula is in the
+///           KeeperPolicyCalls library (owner decision R95).
 ///         - full (local forks and historical tests): also creates this system's own Draw Packs instance
 ///           (lib/shape-packs, ripe0x/shape-packs `draw-packs` at 3a463f7) and its renderer. PACKS_ADMIN (env) is its
 ///           presentation admin: renderer and description only.
@@ -78,7 +77,6 @@ contract Deploy is Script {
 
         address renderer = RENDERER;
         packs = PACKS;
-        KeeperPolicyV1 policy;
         vm.startBroadcast();
         if (!reuse) {
             renderer = vm.deployCode("out/ShapePackRenderer.sol/ShapePackRenderer.json", abi.encode(SHAPES));
@@ -87,10 +85,10 @@ contract Deploy is Script {
                 abi.encode(SHAPES, renderer, packsAdmin, PACKS_NAME, PACKS_SYMBOL, PACK_MIN_UNITS)
             );
         }
-        (impl, policy, factory) = _deploySystem(packs, keeperAdmin, policyAdmin);
+        (impl, factory) = _deploySystem(packs, keeperAdmin, policyAdmin);
         vm.stopBroadcast();
 
-        _postflight(factory, impl, policy, packs, keeperAdmin, policyAdmin);
+        _postflight(factory, impl, packs, keeperAdmin, policyAdmin);
         if (reuse) _checkReusedDependencies(); // still intact after the broadcast
 
         string memory o = "deployment";
@@ -100,7 +98,6 @@ contract Deploy is Script {
         vm.serializeAddress(o, "poolBalancerImplementation", address(impl));
         vm.serializeAddress(o, "packs", packs);
         vm.serializeAddress(o, "renderer", renderer);
-        vm.serializeAddress(o, "keeperPolicy", address(policy));
         vm.serializeAddress(o, "keeperAdmin", keeperAdmin);
         vm.serializeAddress(o, "policyAdmin", policyAdmin);
         string memory json = vm.serializeAddress(o, "balancerFactory", address(factory));
@@ -114,18 +111,16 @@ contract Deploy is Script {
     /// @dev The only place that names the created contracts' constructor arguments. Merge constructor changes here.
     function _deploySystem(address packs, address keeperAdmin, address policyAdmin)
         internal
-        returns (PoolBalancer impl, KeeperPolicyV1 policy, BalancerFactory factory)
+        returns (PoolBalancer impl, BalancerFactory factory)
     {
         impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
-        policy = new KeeperPolicyV1();
-        factory = new BalancerFactory(address(impl), keeperAdmin, policyAdmin, address(policy));
+        factory = new BalancerFactory(address(impl), keeperAdmin, policyAdmin);
     }
 
     /// @dev Readbacks of the created contracts. Merge constructor or initial-setting changes here.
     function _postflight(
         BalancerFactory factory,
         PoolBalancer impl,
-        KeeperPolicyV1 policy,
         address packs,
         address keeperAdmin,
         address policyAdmin
@@ -133,9 +128,8 @@ contract Deploy is Script {
         require(factory.implementation() == address(impl), "factory wiring");
         require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
         require(factory.pendingKeeperAdmin() == address(0) && factory.pendingPolicyAdmin() == address(0), "no pending admin");
-        require(factory.policyAdmin() == policyAdmin && factory.defaultKeeperPolicy() == address(policy), "policy wiring");
-        require(policy.interfaceVersion() == 3, "policy interface");
-        IKeeperPolicy.Economics memory e = initialEconomics(address(policy));
+        require(factory.policyAdmin() == policyAdmin, "factory admin");
+        KeeperPolicyCalls.Economics memory e = initialEconomics();
         require(keccak256(abi.encode(factory.economics())) == keccak256(abi.encode(e)), "initial economics");
         require(factory.defaultBucketCapacity() == 0.622 ether, "bucket capacity");
         require(factory.defaultBucketRefill() == uint256(0.05 ether) / 12, "bucket refill");
@@ -157,11 +151,11 @@ contract Deploy is Script {
 
     /// @notice The reviewed initial factory economics (docs/CONFIG-INVENTORY.md section 0), stated independently of the
     ///         factory constructor so the postflight catches a constructor that drifts from the deployment plan.
-    ///         Field order: policy, workFee, maxGas, overheadGas, gasPriceCeiling, priorityAllowance, restockGas,
+    ///         Field order: workFee, maxGas, overheadGas, gasPriceCeiling, priorityAllowance, restockGas,
     ///         restockFlat, baseGas, processGas, reconcileGas, shapeGas, prizeGas, processGraceBlocks,
     ///         pausedProcessGraceBlocks.
-    function initialEconomics(address policy) public pure returns (IKeeperPolicy.Economics memory) {
-        return IKeeperPolicy.Economics(policy, 0.00002 ether, 3_200_000, 60_000, 5 gwei, 0.05 gwei, 910_000, 0.0002 ether,
+    function initialEconomics() public pure returns (KeeperPolicyCalls.Economics memory) {
+        return KeeperPolicyCalls.Economics(0.00002 ether, 3_200_000, 60_000, 5 gwei, 0.05 gwei, 910_000, 0.0002 ether,
             200_000, 1_800_000, 150_000, 700_000, 150_000, 50, 10);
     }
 

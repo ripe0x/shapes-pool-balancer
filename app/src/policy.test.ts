@@ -48,14 +48,19 @@ it.skipIf(!rpc || !balancer)('reads bounded creator previews without policy sett
 });
 
 // Failure injection is permitted for off-chain services; no successful answer is fabricated.
-it('reports failed policy economics as unavailable instead of substituting V1', async () => {
+it('reports failed pool quotes as unavailable instead of substituting a local estimate', async () => {
   const pub = createPublicClient({ transport: custom({ request: async () => { throw new Error('RPC unavailable'); } }, { retryCount: 0 }), cacheTime: 0 });
   const snapshot = { number: 1n, baseFeePerGas: 500_000_000n, timestamp: 1_000n };
-  const economics = { policy: '0x0000000000000000000000000000000000000001' as Address, workFee: 20_000_000_000_000n, maxGas: 3_200_000,
+  const economics = { workFee: 20_000_000_000_000n, maxGas: 3_200_000,
     overheadGas: 60_000, gasPriceCeiling: 5_000_000_000n, priorityAllowance: 50_000_000n, restockGas: 910_000, restockFlat: 200_000_000_000_000n,
     baseGas: 200_000, processGas: 1_800_000, reconcileGas: 150_000, shapeGas: 700_000, prizeGas: 150_000,
     processGraceBlocks: 50, pausedProcessGraceBlocks: 10 };
-  await expect(policyEconomics(pub, economics, undefined, snapshot)).rejects.toThrow('RPC unavailable');
+  await expect(policyEconomics(pub, economics, '0x0000000000000000000000000000000000000001', snapshot)).rejects.toThrow('RPC unavailable');
+  // A pool not created yet previews the in-library formula: 910k x 0.55 gwei + 0.0002 ETH per Shape.
+  const preview = await policyEconomics(pub, economics, undefined, snapshot);
+  expect(preview.restockFees[0]).toBe(700_500_000_000_000n);
+  expect(preview.restockFees[9]).toBe(2n * 700_500_000_000_000n); // 0.02 ETH pack: two Shapes
+  expect(preview.restockQuoteVerified).toBe(false);
 });
 
 // Opt-in read-only mainnet check: MAINNET_RPC=https://mainnet.gateway.tenderly.co. The deployed KeeperPolicyV1 answers

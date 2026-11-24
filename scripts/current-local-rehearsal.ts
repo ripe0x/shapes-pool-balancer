@@ -1,4 +1,6 @@
 // Current-candidate local rehearsal. Preparation/preflight never fund, unlock, mine or broadcast.
+// Historical since R95: its scenario's keeper-policy switch (KeeperPolicyV2, setKeeperPolicy) no longer exists, so a
+// full run stops at that step. The community release rehearses with script/Deploy.s.sol and keeper/keeper.ts instead.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
@@ -22,8 +24,8 @@ export const CAPS = { deposits: 2n * ETH, gas: ETH, buyer: 5n * ETH, edge: ETH, 
 export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], curatedRequired: [true, false], curatedPerPool: [2, 0], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), curatedProofRecovery: { round: 0, pool: 0, callerRole: 'buyer', maximumRefreshes: 1, resumedDraws: 1 }, creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
 const PREFIX = 'docs/receipts/current-rehearsal/';
 const INPUTS = ['src', 'script', 'keeper', 'shared', 'app', 'scripts', 'test', 'foundry.toml', 'package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.gitmodules', '.gitignore', 'asset-flow.json', 'OWNER-REQUIREMENTS.md', 'README.md', 'docs/SPEC.md', 'docs/OPERATIONS.md', 'docs/KEEPER-POLICIES.md', 'docs/RESERVES.md'];
-const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
-export const ARTIFACTS = [...SYSTEM_NAMES.map(n => `out/${n}.sol/${n}.json`), 'out/DevSetup.s.sol/DemoNFT.json', 'out/Settings.t.sol/KeeperPolicyV2.json'];
+const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'BalancerFactory'];
+export const ARTIFACTS = [...SYSTEM_NAMES.map(n => `out/${n}.sol/${n}.json`), 'out/DevSetup.s.sol/DemoNFT.json'];
 export const json = (value: unknown) => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? String(v) : v, 2);
 export const digest = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const gitAt = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();

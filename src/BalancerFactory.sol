@@ -4,12 +4,11 @@ pragma solidity 0.8.28;
 import {LibClone} from "solady/utils/LibClone.sol";
 import {PoolBalancer} from "./PoolBalancer.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
-import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 
 /// @title BalancerFactory
 /// @notice Deploys immutable pool clones. Keeper eligibility and keeper economics have separate authorities.
 ///         The policy admin's economics and product-limit changes take effect immediately, in constant work: every pool
-///         that follows the factory reads `economics()` at its next operation (pools that pinned or set their own keep
+///         that follows the factory reads `economics()` at its next operation (pools with local economics keep
 ///         theirs), and product limits apply to designs submitted after the change.
 contract BalancerFactory {
     address public immutable implementation;
@@ -23,8 +22,8 @@ contract BalancerFactory {
     mapping(address keeper => bool) public approvedKeeper;
     address public policyAdmin;
     address public pendingPolicyAdmin;
-    /// @dev The one factory keeper economic configuration (see `IKeeperPolicy.Economics`).
-    IKeeperPolicy.Economics internal _economics;
+    /// @dev The one factory keeper economic configuration (see `KeeperPolicyCalls.Economics`).
+    KeeperPolicyCalls.Economics internal _economics;
     /// @dev Spending bucket a new pool starts with. Its creator controls it afterwards; later changes here never touch it.
     uint128 public defaultBucketCapacity;
     uint96 public defaultBucketRefill;
@@ -44,7 +43,7 @@ contract BalancerFactory {
     event KeeperAdminTransferred(address indexed oldKeeperAdmin, address indexed newKeeperAdmin);
     event KeepersRestricted(bool restricted);
     event KeeperApproved(address indexed keeper, bool approved);
-    event EconomicsChanged(IKeeperPolicy.Economics economics);
+    event EconomicsChanged(KeeperPolicyCalls.Economics economics);
     event DefaultBucketChanged(uint256 capacity, uint256 refillPerSecond);
     event PolicyAdminTransferStarted(address indexed admin, address indexed pendingAdmin);
     event PolicyAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
@@ -59,30 +58,31 @@ contract BalancerFactory {
         _;
     }
 
-    /// @dev Initial economics are the V1 schedule with `policy_` as the algorithm and two measured
+    /// @dev Initial economics are the V1 schedule with two measured
     ///      recalibrations: work fee 0.00002 ETH, 3.2M reimbursable gas, OVERHEAD_GAS (V1: 50k), 5 gwei ceiling,
     ///      0.05 gwei priority allowance, RESTOCK_GAS (V1: 900k) plus 0.0002 ETH restocking per Shape, and the
     ///      per-operation gas bounds, and a processing grace of 50 blocks (about 10 minutes), 10 while purchases are
     ///      paused. Derived maxima: 0.0165 ETH per payment (V1: 0.01645), 0.00475 ETH restocking per
     ///      Shape (V1: 0.0047). Bucket: 0.622 ETH, refilling floor(0.05 ETH / 12) per
     ///      second.
-    constructor(address implementation_, address keeperAdmin_, address policyAdmin_, address policy_) {
+    constructor(address implementation_, address keeperAdmin_, address policyAdmin_) {
         if (keeperAdmin_ == address(0) || policyAdmin_ == address(0)) revert Unauthorized();
         implementation = implementation_;
         keeperAdmin = keeperAdmin_;
         policyAdmin = policyAdmin_;
         emit KeeperAdminTransferred(address(0), keeperAdmin_);
         emit PolicyAdminTransferred(address(0), policyAdmin_);
-        _setEconomics(IKeeperPolicy.Economics(policy_, 0.00002 ether, 3_200_000, OVERHEAD_GAS, 5 gwei, 0.05 gwei,
+        _setEconomics(KeeperPolicyCalls.Economics(0.00002 ether, 3_200_000, OVERHEAD_GAS, 5 gwei, 0.05 gwei,
             RESTOCK_GAS, 0.0002 ether, 200_000, 1_800_000, 150_000, 700_000, 150_000, 50, 10));
         _setDefaultBucket(0.622 ether, uint96(uint256(0.05 ether) / 12));
         _setProductLimits(1_000, 1_000, 10_000);
     }
 
-    /// @dev Initial gas outside a paid call's measured span: intrinsic gas, the policy quote, bucket update, ETH transfer
-    ///      and event. Recalibrated from V1's 50k: isolated receipts at 5 gwei measured up to 56,724 billed-minus-measured
-    ///      gas (closed, reconcile five) and 54,651 (reconcile one processed draw); 60k keeps a 5.8% margin
-    ///      (test/KeeperPay.t.sol test_overheadCoversBilledGasPerOperationClass, docs/GAS.md).
+    /// @dev Initial gas outside a paid call's measured span: intrinsic gas, the reward calculation, bucket update, ETH
+    ///      transfer and event. Recalibrated from V1's 50k while the reward still called an external policy: isolated
+    ///      receipts at 5 gwei measured up to 56,724 billed-minus-measured gas (closed, reconcile five) and 54,651
+    ///      (reconcile one processed draw); 60k kept a 5.8% margin. The in-library formula (R95) removed that call, so
+    ///      the margin is larger (test/KeeperPay.t.sol test_overheadCoversBilledGasPerOperationClass, docs/GAS.md).
     uint32 internal constant OVERHEAD_GAS = 60_000;
     /// @dev Initial restocking gas per Shape, recalibrated from V1's 900k with the overhead: at the 5 gwei ceiling the
     ///      surcharge on a replacement must cover the keeper pay for the call that lists it. The measured single-Shape
@@ -91,18 +91,17 @@ contract BalancerFactory {
     uint32 internal constant RESTOCK_GAS = 910_000;
 
     /// @notice The economics every following pool uses now.
-    function economics() external view returns (IKeeperPolicy.Economics memory) { return _economics; }
-    function defaultKeeperPolicy() external view returns (address) { return _economics.policy; }
+    function economics() external view returns (KeeperPolicyCalls.Economics memory) { return _economics; }
 
     /// @notice Replace the whole economic configuration. Immediate, constant work: followers adopt it at their next
-    ///         operation and no follower balance is inspected. Pinned and local pools are unaffected.
-    /// @dev Only the algorithm is validated; every number is valid at its field width (see `IKeeperPolicy.Economics`).
-    function setEconomics(IKeeperPolicy.Economics calldata e) external {
+    ///         operation and no follower balance is inspected. Pools with local economics are unaffected.
+    /// @dev Every number is valid at its field width (see `KeeperPolicyCalls.Economics`); only the grace order is checked.
+    function setEconomics(KeeperPolicyCalls.Economics calldata e) external {
         if (msg.sender != policyAdmin) revert Unauthorized();
         _setEconomics(e);
     }
 
-    function _setEconomics(IKeeperPolicy.Economics memory e) internal {
+    function _setEconomics(KeeperPolicyCalls.Economics memory e) internal {
         KeeperPolicyCalls.validate(e);
         _economics = e;
         emit EconomicsChanged(e);

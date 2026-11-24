@@ -21,7 +21,7 @@ contract BillingWitness {
 contract KeeperPayTest is ForkBase {
     bytes32 constant KEEPER_PAID = keccak256("KeeperPaid(address,uint256,uint256)");
     address constant BAYC = 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D;
-    uint256 constant WORK_FEE = 0.00002 ether; // KeeperPolicyV1 fee per completed draw or listed Shape unit
+    uint256 constant WORK_FEE = 0.00002 ether; // V1 formula fee per completed draw or listed Shape unit
     uint256 constant VRF_GAS = 2_340_000; // FWA's randomness charge per draw
 
     GasProbe probe;

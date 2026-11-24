@@ -2,26 +2,59 @@
 pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 import {IFWAPool} from "./interfaces/External.sol";
 
 /// @dev Keeper money path over one effective `Economics`, resolved once per operation by PoolBalancer and passed to
-///      every quote, payment bound, reserve and restocking price here. Policy calls use a fixed returndata buffer and gas
-///      stipend, which bound even a reverting, gas-burning or returndata-bomb policy.
+///      every payment, payment bound, reserve and restocking price here. There is no external pricing policy: the V1
+///      formula below is the payment algorithm (owner decision R95), and changing it needs a new release.
 library KeeperPolicyCalls {
-    /// @dev Gas forwarded to a policy quote. A technical bound on an untrusted call, not an economic setting.
-    uint256 internal constant GAS_LIMIT = 100_000;
     /// @dev Paid service units one call can complete: MAX_RECONCILE (5) draws plus MAX_OPS (5) Shape units. A call that
     ///      processes (at most two) draws lists nothing, so it stays below this.
     uint256 internal constant MAX_SERVICE_UNITS = 10;
     uint256 internal constant BY_VALUE = 0x87f65ed43cb21a90;
-    /// @dev `State.source`: follow the factory's current economics, or use the pool's own copy (set or pinned).
+    /// @dev `State.source`: follow the factory's current economics, or use the pool's own copy. "Pinning" is an app
+    ///      action that saves the factory's current values as local economics.
     uint8 internal constant FOLLOW = 0;
     uint8 internal constant LOCAL = 1;
-    uint8 internal constant PINNED = 2;
-    error InvalidPolicy();
-    error PolicyUnavailable();
     error InvalidGrace();
+
+    struct Work {
+        uint256 measuredGas;
+        uint256 gasPrice;
+        uint256 baseFee;
+        uint256 reconciledDraws;
+        uint256 listedShapeUnits;
+        uint256 listedPrizes;
+        uint256 processedDraws;
+    }
+
+    /// @notice One keeper economic configuration: the factory default, or a pool's local copy.
+    /// @dev Field widths are the only numeric bounds: they keep every payment, reserve and listing-price product far
+    ///      below uint256 and every restocking surcharge below 2^98, inside a listing's uint104 price record.
+    ///      Derived, never stored: the maximum keeper payment `(maxGas + overheadGas) * gasPriceCeiling + 10 * workFee`
+    ///      (10 = five reconciles plus five Shape units per call; a call that processes draws lists nothing, so its at
+    ///      most two processed draws plus five reconciles stay within 10) and the maximum restocking surcharge per Shape
+    ///      `restockGas * gasPriceCeiling + restockFlat`.
+    struct Economics {
+        uint64 workFee; // per processed draw, per reconciled draw sequence and per listed Shape unit
+        uint32 maxGas; // reimbursable measured gas per call
+        uint32 overheadGas; // transaction gas outside the measured span: intrinsic, payment, transfer
+        uint64 gasPriceCeiling;
+        uint64 priorityAllowance; // reimbursed price = min(basefee + allowance, ceiling, transaction gas price)
+        uint32 restockGas; // restocking surcharge gas per Shape
+        uint64 restockFlat; // restocking surcharge flat amount per Shape
+        // Gas bounds per verified operation: measured gas is paid only up to their sum (and maxGas).
+        uint32 baseGas;
+        uint32 processGas;
+        uint32 reconcileGas;
+        uint32 shapeGas;
+        uint32 prizeGas;
+        // Upkeep processes FWA's queue only for stuck draws (Ready, or expired without randomness) requested at least
+        // this many blocks ago (FWA stores no fulfillment time; randomness arrives about three blocks after the
+        // request), and the shorter value while purchases are paused BUSY or LOW_INVENTORY. paused <= normal.
+        uint16 processGraceBlocks;
+        uint16 pausedProcessGraceBlocks;
+    }
 
     struct State {
         uint8 source;
@@ -32,7 +65,7 @@ library KeeperPolicyCalls {
         uint96 refill; // wei per second
         uint128 allowance;
         uint128 capacity;
-        IKeeperPolicy.Economics local; // used unless `source == FOLLOW`
+        Economics local; // used while `source == LOCAL`
     }
     struct Reserve {
         bool enabled;
@@ -42,7 +75,7 @@ library KeeperPolicyCalls {
         uint256 mintFee;
         uint256 baseFee;
     }
-    event EconomicsSelected(uint8 indexed source, IKeeperPolicy.Economics economics);
+    event EconomicsSelected(uint8 indexed source, Economics economics);
     event PaidUpkeepChanged(bool enabled);
     event KeeperBucketChanged(uint256 capacity, uint256 refillPerSecond);
     event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed);
@@ -62,28 +95,28 @@ library KeeperPolicyCalls {
     /// @dev Creator change of source or local economics. Only a larger maintenance exposure than the current one must be
     ///      funded from operating capital; missing prize capital never enters this check, and while paid upkeep is off
     ///      there is no exposure. Paid-upkeep state and the bucket are untouched.
-    function select(State storage s, uint8 source, IKeeperPolicy.Economics memory next,
-        IKeeperPolicy.Economics memory current, uint256 fund, Reserve memory r) public
+    function select(State storage s, uint8 source, Economics memory next,
+        Economics memory current, uint256 fund, Reserve memory r) public
     {
         if (source == LOCAL) validate(next);
         if (s.enabled) _requireFunded(next, current, fund, r);
         s.source = source;
-        if (source != FOLLOW) s.local = next;
+        if (source == LOCAL) s.local = next;
         ++s.generation;
         emit EconomicsSelected(source, next);
     }
     /// @dev Immediate emergency stop or re-enable. Re-enabling compares the effective maintenance budget against zero
     ///      paid exposure. The spending allowance is untouched either way, so no change refills it.
-    function setEnabled(State storage s, bool value, IKeeperPolicy.Economics memory e, uint256 fund, Reserve memory r)
+    function setEnabled(State storage s, bool value, Economics memory e, uint256 fund, Reserve memory r)
         public
     {
-        IKeeperPolicy.Economics memory none;
+        Economics memory none;
         if (value && !s.enabled) _requireFunded(e, none, fund, r);
         s.enabled = value;
         ++s.generation;
         emit PaidUpkeepChanged(value);
     }
-    function _requireFunded(IKeeperPolicy.Economics memory next, IKeeperPolicy.Economics memory current, uint256 fund,
+    function _requireFunded(Economics memory next, Economics memory current, uint256 fund,
         Reserve memory r) private pure
     {
         uint256 candidate = maintenanceBudget(next, r);
@@ -106,7 +139,7 @@ library KeeperPolicyCalls {
         uint256 c = s.capacity;
         if (a > c) a = c;
     }
-    function pay(State storage s, IKeeperPolicy.Economics memory e, IKeeperPolicy.Work memory w, uint256 fund)
+    function pay(State storage s, Economics memory e, Work memory w, uint256 fund)
         public returns (uint256 amount)
     {
         amount = reward(e, w);
@@ -120,9 +153,9 @@ library KeeperPolicyCalls {
         }
     }
 
-    /// @dev Actual issued work plus one bounded operating call, independent of inventory restoration and policy quotes.
+    /// @dev Actual issued work plus one bounded operating call, independent of inventory restoration.
     ///      Zero economics (paid upkeep off) budget nothing.
-    function maintenanceBudget(IKeeperPolicy.Economics memory e, Reserve memory r) public pure returns (uint256 need) {
+    function maintenanceBudget(Economics memory e, Reserve memory r) public pure returns (uint256 need) {
         need = r.owed * paymentBound(e, r.baseFee, 1, 1, 0, 0);
         if (!r.enabled) return need;
         uint256 operating = paymentBound(e, r.baseFee, 0, 5, 5, 5);
@@ -130,8 +163,8 @@ library KeeperPolicyCalls {
         need += operating > processing ? operating : processing;
     }
 
-    /// @dev Full withdrawal/opening target. Missing prize capital never enters policy-change funding.
-    function reserve(IKeeperPolicy.Economics memory e, Reserve memory r) public pure returns (uint256 need) {
+    /// @dev Full withdrawal/opening target. Missing prize capital never enters economics-change funding.
+    function reserve(Economics memory e, Reserve memory r) public pure returns (uint256 need) {
         need = maintenanceBudget(e, r);
         if (!r.enabled) return need;
         uint256 units;
@@ -176,25 +209,25 @@ library KeeperPolicyCalls {
     }
 
     /// @dev Gas paid for the verified work: the sum of the operation bounds, never above `maxGas`.
-    function workGas(IKeeperPolicy.Economics memory e, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
+    function workGas(Economics memory e, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
         internal pure returns (uint256 gas)
     {
         gas = e.baseGas + processed * e.processGas + draws * e.reconcileGas + units * e.shapeGas + prizes * e.prizeGas;
         if (gas > e.maxGas) gas = e.maxGas;
     }
 
-    function referencePrice(IKeeperPolicy.Economics memory e, uint256 baseFee) internal pure returns (uint256 price) {
+    function referencePrice(Economics memory e, uint256 baseFee) internal pure returns (uint256 price) {
         price = baseFee + e.priorityAllowance;
         if (price > e.gasPriceCeiling) price = e.gasPriceCeiling;
     }
 
-    function paymentBound(IKeeperPolicy.Economics memory e, uint256 baseFee, uint256 processed, uint256 draws,
+    function paymentBound(Economics memory e, uint256 baseFee, uint256 processed, uint256 draws,
         uint256 units, uint256 prizes) public pure returns (uint256)
     {
         return _bound(e, workGas(e, processed, draws, units, prizes), referencePrice(e, baseFee), processed + draws + units);
     }
 
-    function listingPaymentBound(IKeeperPolicy.Economics memory e, uint256 draws, uint256 units, uint256 prizes)
+    function listingPaymentBound(Economics memory e, uint256 draws, uint256 units, uint256 prizes)
         public view returns (uint256)
     {
         uint256 price = referencePrice(e, block.basefee);
@@ -202,53 +235,42 @@ library KeeperPolicyCalls {
         return _bound(e, workGas(e, 0, draws, units, prizes), price, draws + units);
     }
 
-    function _bound(IKeeperPolicy.Economics memory e, uint256 measured, uint256 price, uint256 serviceUnits)
+    function _bound(Economics memory e, uint256 measured, uint256 price, uint256 serviceUnits)
         internal pure returns (uint256)
     {
         return (measured + e.overheadGas) * price + serviceUnits * e.workFee;
     }
 
     /// @dev Derived bound, never a per-call charge: the most one call can be paid under `e`.
-    function maxPayment(IKeeperPolicy.Economics memory e) internal pure returns (uint256) {
+    function maxPayment(Economics memory e) internal pure returns (uint256) {
         return (uint256(e.maxGas) + e.overheadGas) * e.gasPriceCeiling + MAX_SERVICE_UNITS * e.workFee;
     }
-    /// @dev Derived bound on a policy's restocking quote per Shape, and the fallback schedule's value at the ceiling.
-    function maxSurcharge(IKeeperPolicy.Economics memory e) internal pure returns (uint256) {
+    /// @dev Derived bound: the restocking surcharge per Shape at the gas price ceiling.
+    function maxSurcharge(Economics memory e) internal pure returns (uint256) {
         return uint256(e.restockGas) * e.gasPriceCeiling + e.restockFlat;
     }
 
     /// @dev Keeper-payment identity: economics, their source, paid state and generation, and the live Shapes mint fee.
-    function settingsHash(IKeeperPolicy.Economics memory e, uint8 source, uint64 generation, bool enabled,
+    function settingsHash(Economics memory e, uint8 source, uint64 generation, bool enabled,
         uint256 mintFee) internal pure returns (bytes32)
     {
         return keccak256(abi.encode(e, source, generation, enabled, mintFee));
     }
 
-    function word(address policy, bytes memory input) internal view returns (bool ok, uint256 value) {
-        assembly ("memory-safe") {
-            let out := mload(0x40)
-            ok := staticcall(GAS_LIMIT, policy, add(input, 32), mload(input), out, 32)
-            ok := and(ok, eq(returndatasize(), 32))
-            value := mload(out)
-        }
-    }
-    /// @dev Checks the algorithm (interface 3: quotes take the Economics with the two grace fields) and that the paused
-    ///      grace is not longer than the normal one (`stuck` applies the shorter grace first). Every other number in `e`
-    ///      is valid at its field width.
-    function validate(IKeeperPolicy.Economics memory e) public view {
-        (bool ok, uint256 v) = word(e.policy, abi.encodeCall(IKeeperPolicy.interfaceVersion, ()));
-        if (!ok || v != 3 || e.policy.code.length == 0) revert InvalidPolicy();
+    /// @dev Every number in `e` is valid at its field width; only the paused grace must not exceed the normal one
+    ///      (`stuck` applies the shorter grace first).
+    function validate(Economics memory e) public pure {
         if (e.pausedProcessGraceBlocks > e.processGraceBlocks) revert InvalidGrace();
     }
-    function reward(IKeeperPolicy.Economics memory e, IKeeperPolicy.Work memory w) public view returns (uint256) {
-        (bool ok, uint256 quote) = word(e.policy, abi.encodeCall(IKeeperPolicy.quoteReward, (w, e)));
-        if (!ok) revert PolicyUnavailable();
+    /// @dev Pay for verified work: (min(measured gas, operation gas bound, maxGas) + overheadGas)
+    ///      * min(transaction gas price, basefee + priorityAllowance, gasPriceCeiling)
+    ///      + workFee * (processed + reconciled draws + listed Shape units).
+    function reward(Economics memory e, Work memory w) public pure returns (uint256) {
         uint256 price = referencePrice(e, w.baseFee);
         if (price > w.gasPrice) price = w.gasPrice;
         uint256 measured = workGas(e, w.processedDraws, w.reconciledDraws, w.listedShapeUnits, w.listedPrizes);
         if (measured > w.measuredGas) measured = w.measuredGas;
-        uint256 envelope = _bound(e, measured, price, w.processedDraws + w.reconciledDraws + w.listedShapeUnits);
-        return quote < envelope ? quote : envelope;
+        return _bound(e, measured, price, w.processedDraws + w.reconciledDraws + w.listedShapeUnits);
     }
 
     /// @dev Draws at the head of FWA's queue that FWA's processor will settle or expire, at most two, each requested at
@@ -295,14 +317,9 @@ library KeeperPolicyCalls {
         }
     }
 
-    function restock(IKeeperPolicy.Economics memory e, uint8 d, uint256 units, bool paid, uint256 baseFee)
-        public view returns (uint256)
-    {
-        (bool ok, uint256 quote) = word(e.policy, abi.encodeCall(IKeeperPolicy.quoteRestock, (d, units, baseFee, e)));
-        // Unpaid callers cannot select cheaper pricing while the selected policy is healthy.
-        if (ok && quote <= units * maxSurcharge(e)) return quote;
-        if (paid) revert PolicyUnavailable();
-        // Explicit fallback: the selected economics' own restocking schedule.
+    /// @dev Restocking surcharge for one prize of `units` Shapes: units * (restockGas * min(basefee + priorityAllowance,
+    ///      gasPriceCeiling) + restockFlat). Paid and unpaid callers price alike. Existing listings never change.
+    function restock(Economics memory e, uint256 units, uint256 baseFee) internal pure returns (uint256) {
         return units * (uint256(e.restockGas) * referencePrice(e, baseFee) + e.restockFlat);
     }
 }

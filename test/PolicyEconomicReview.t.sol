@@ -4,34 +4,8 @@ pragma solidity 0.8.28;
 import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
-
-contract ReviewEconomicPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 77; }
-    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
-        return units * 0.000695 ether;
-    }
-}
-
-contract ReviewSmallPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 76; }
-    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return 0.00003 ether; }
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) { return units * 0.000695 ether; }
-}
-
-contract ReviewMaximumPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 78; }
-    function quoteReward(Work calldata, Economics calldata) external pure returns (uint256) { return type(uint256).max; }
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external pure returns (uint256) {
-        return units * 0.000695 ether;
-    }
-}
 
 interface ReviewRefund {
     function acquisitionRefundCredit(address account) external view returns (uint256);
@@ -73,13 +47,15 @@ contract PolicyEconomicReviewTest is ForkBase {
     /// no proposals, a stranger's only routes are the creator-only setters.
     function test_emergencyDisableHasNoPublicReenablePath() public {
         _open();
-        KeeperPolicyV1 replacement = new KeeperPolicyV1();
+        KeeperPolicyCalls.Economics memory replacement = factory.economics();
         vm.prank(creator);
         balancer.setPaidUpkeepEnabled(false);
         assertFalse(balancer.paidUpkeepEnabled(), "creator's emergency stop took effect");
         vm.startPrank(stranger);
         vm.expectRevert(PoolBalancer.Unauthorized.selector);
-        balancer.setKeeperPolicy(address(replacement));
+        balancer.setLocalEconomics(replacement);
+        vm.expectRevert(PoolBalancer.Unauthorized.selector);
+        balancer.followFactoryEconomics();
         vm.expectRevert(PoolBalancer.Unauthorized.selector);
         balancer.setPaidUpkeepEnabled(true);
         vm.stopPrank();
@@ -117,7 +93,7 @@ contract PolicyEconomicReviewTest is ForkBase {
         }
         assertEq(n, 20);
         // Cheaper local economics: a 0.3 gwei ceiling and a 0.0000025 ETH work fee.
-        IKeeperPolicy.Economics memory inexpensive = _econWith(address(new ReviewSmallPolicy()));
+        KeeperPolicyCalls.Economics memory inexpensive = factory.economics();
         inexpensive.gasPriceCeiling = 0.3 gwei;
         inexpensive.workFee = 0.0000025 ether;
         vm.prank(creator); balancer.setLocalEconomics(inexpensive);
@@ -127,7 +103,8 @@ contract PolicyEconomicReviewTest is ForkBase {
         vm.prank(creator);
         balancer.claimSurplus(claim, creator);
         assertEq(address(balancer).balance, small, "withdrawal retains precisely the selected working buffer");
-        IKeeperPolicy.Economics memory replacement = _econWith(address(new ReviewEconomicPolicy()));
+        // R95: the former replacement policy's quotes never entered the reserve; the factory's numbers stand in for it.
+        KeeperPolicyCalls.Economics memory replacement = factory.economics();
         (uint256 required, uint256 topUp) = balancer.maintenanceFunding(replacement);
         assertEq(required, 0.001993 ether, "new bounded current-work buffer independently recomputed");
         assertEq(topUp, required - small, "the change requires the actual working-capital difference");
@@ -169,10 +146,11 @@ contract PolicyEconomicReviewTest is ForkBase {
         uint256 price = pool.acquisitionFee();
         buy(buyer, 2);
         assertEq(pool.lastIssuedSequence(), 2);
-        ReviewMaximumPolicy replacement = new ReviewMaximumPolicy();
-        (,uint256 topUp) = balancer.maintenanceFunding(_econWith(address(replacement)));
-        assertEq(topUp, 0, "an oversized quote adds no hypothetical lifetime liability");
-        vm.prank(creator); balancer.setKeeperPolicy(address(replacement));
+        // R95: no oversized policy quote exists any more; pinning the same numbers adds no liability.
+        KeeperPolicyCalls.Economics memory replacement = factory.economics();
+        (,uint256 topUp) = balancer.maintenanceFunding(replacement);
+        assertEq(topUp, 0, "the same numbers add no hypothetical lifetime liability");
+        vm.prank(creator); balancer.setLocalEconomics(replacement);
         vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
         assertEq(pool.unsettledAcquisitionCount(), 2, "two real unpaid draws await processing");
         uint256 fund = address(balancer).balance;

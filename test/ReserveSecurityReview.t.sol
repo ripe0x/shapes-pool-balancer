@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ForkBase, ITimeout} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {IERC721Min} from "../src/interfaces/External.sol";
 import {FreezableNFT} from "./utils/Mocks.sol";
 import {ReceiptGas} from "./utils/ReceiptGas.sol";
@@ -15,40 +15,6 @@ interface IReviewRefund {
     function deliveryEscrowTotal() external view returns (uint256);
 }
 
-/// An untrusted, creator-selected policy, not a replacement for an integrated protocol.
-contract ReviewHostilePolicy is IKeeperPolicy {
-    uint256 public mode;
-    address public target;
-    function setMode(uint256 m) external { mode = m; }
-    function setTarget(address b) external { target = b; }
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 1; }
-    function quoteReward(Work calldata w, Economics calldata) external view returns (uint256) {
-        require(w.baseFee == block.basefee && w.gasPrice == tx.gasprice, "work fee context");
-        _attack();
-        return type(uint256).max;
-    }
-    function quoteRestock(uint8, uint256, uint256 baseFee, Economics calldata) external view returns (uint256) {
-        require(baseFee == block.basefee, "listing fee context");
-        _attack();
-        return 0;
-    }
-    function _attack() internal view {
-        uint256 m = mode;
-        if (m == 1) revert("policy failure");
-        if (m == 2) { assembly ("memory-safe") { return(0, 31) } }
-        if (m == 3) { while (true) {} }
-        if (m == 5) { assembly ("memory-safe") { return(0, 65536) } }
-        if (m == 4) {
-            (bool ok,) = target.staticcall(abi.encodeCall(PoolBalancer.performUpkeepUnpaid, ()));
-            require(!ok, "reentered upkeep");
-            (ok,) = target.staticcall(abi.encodeCall(PoolBalancer.close, ()));
-            require(!ok, "reentered close");
-            (ok,) = target.staticcall(abi.encodeCall(PoolBalancer.claimSurplus, (1, target)));
-            require(!ok, "reentered claim");
-        }
-    }
-}
 
 contract ReviewFeeWitness {
     uint256 public basefee;
@@ -122,11 +88,11 @@ contract ReserveSecurityReviewTest is ForkBase {
         fillUp();
         assertFalse(balancer.creatorWork());
     }
-    function _hostile() internal returns (ReviewHostilePolicy h) {
-        h = new ReviewHostilePolicy();
-        h.setTarget(address(balancer));
+    /// @dev R95: no policy to swap; the creator saves the effective values as local economics (the app's pin).
+    function _pin() internal {
+        KeeperPolicyCalls.Economics memory e = balancer.effectiveEconomics();
         vm.prank(creator);
-        balancer.setKeeperPolicy(address(h));
+        balancer.setLocalEconomics(e);
     }
     function _claimAvailable() internal {
         uint256 n = balancer.withdrawableSurplus();
@@ -256,50 +222,8 @@ contract ReserveSecurityReviewTest is ForkBase {
         emit ReviewAmount("liquid operating fund after full-board withdrawal", beforeFund);
     }
 
-    function test_malformedBurningAndReenteringPolicyPreserveUnpaidRecovery() public {
-        _setup(1, 0);
-        ReviewHostilePolicy h = _hostile();
-        uint256[9] memory c;
-        c[0] = 2;
-        configure(plan(c));
-        uint256 bal = address(balancer).balance;
-        uint256 allowance = balancer.availableKeeperAllowance();
-        for (uint256 mode = 1; mode <= 3; ++mode) {
-            h.setMode(mode);
-            bytes32 expected = balancer.settingsHash();
-            vm.prank(keeper);
-            vm.expectRevert();
-            balancer.performUpkeep{gas: 5_000_000}(expected, 0, 0);
-            assertEq(address(balancer).balance, bal, "bad policy rolls back minted backing and pay");
-            assertEq(balancer.listedShapePrizes(), 1);
-            assertEq(balancer.availableKeeperAllowance(), allowance);
-        }
-        h.setMode(5);
-        bytes32 bombExpected = balancer.settingsHash();
-        vm.prank(keeper);
-        vm.expectRevert();
-        balancer.performUpkeep{gas: 5_000_000}(bombExpected, 0, 0);
-        assertEq(address(balancer).balance, bal);
-        assertEq(balancer.listedShapePrizes(), 1);
-        h.setMode(3);
-        balancer.performUpkeepUnpaid{gas: 5_000_000}();
-        assertEq(balancer.listedShapePrizes(), 2, "gas-burning policy cannot block public unpaid mint/list");
-        assertEq(balancer.availableKeeperAllowance(), allowance);
-        assertEq(bal - address(balancer).balance, 0.011 ether, "unpaid path spends exact backing plus live mint fee");
-        uint256[] memory ids = balancer.getActiveIds();
-        (,,,,uint112 price) = balancer.items(ids[2]);
-        assertEq(price, 0.0125 ether + 0.0007005 ether, "explicit fallback surcharge of the selected economics used");
-        h.setMode(4);
-        c[0] = 3;
-        configure(plan(c));
-        upkeep();
-        assertEq(balancer.listedShapePrizes(), 3, "static policy callbacks cannot mutate guarded state");
-        assertTrue(balancer.enabled());
-    }
-
     function test_atomicKeeperFloorRollsBackRealMintListingBalancesAndAllowance() public {
         _setup(1, 0);
-        _hostile();
         uint256[9] memory c;
         c[0] = 2;
         configure(plan(c));
@@ -320,7 +244,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         assertGt(reward, 0);
         assertLe(reward, 1_150_000 * 0.6 gwei + 0.00005 ether, "one-shape immutable work envelope");
         assertEq(bal - address(balancer).balance, 0.011 ether + reward);
-        emit ReviewAmount("one shape max policy actual payout", reward);
+        emit ReviewAmount("one shape actual payout", reward);
         emit ReviewAmount("one shape billed gas", receipt);
     }
 
@@ -328,7 +252,6 @@ contract ReserveSecurityReviewTest is ForkBase {
     /// elapsed time does. Replaces the former matured-proposal/emergency-cancel case (proposals no longer exist).
     function test_noAllowanceResetByCloseConfigurePolicyOrPaidToggle() public {
         _setup(1, 0);
-        ReviewHostilePolicy h = _hostile();
         uint256[9] memory c;
         c[0] = 2;
         configure(plan(c));
@@ -346,8 +269,7 @@ contract ReserveSecurityReviewTest is ForkBase {
         upkeep();
         uint256 beforeSwitch = balancer.availableKeeperAllowance();
         assertLt(beforeSwitch, balancer.keeperBucketCapacity());
-        vm.prank(creator);
-        balancer.setKeeperPolicy(address(h));
+        _pin();
         assertEq(balancer.availableKeeperAllowance(), beforeSwitch, "a switch cannot refill recently spent allowance");
         c[0] = 4;
         configure(plan(c));
@@ -367,7 +289,6 @@ contract ReserveSecurityReviewTest is ForkBase {
 
     function test_keeperPayoutCallbackCannotCloseClaimOrRunUnpaidEvenAsCreator() public {
         _setup(1, 0);
-        _hostile();
         ReviewCreatorKeeper receiver = new ReviewCreatorKeeper(balancer);
         vm.prank(creator);
         balancer.transferCreator(address(receiver));
@@ -400,9 +321,8 @@ contract ReserveSecurityReviewTest is ForkBase {
         balancer.collectProceeds();
         uint256 credit = balancer.creatorCredit();
         assertEq(address(balancer).balance, credit);
-        ReviewHostilePolicy h = new ReviewHostilePolicy();
-        // While stopped, a policy change has no paid exposure; re-enabling is the funded transition.
-        vm.prank(creator); balancer.setKeeperPolicy(address(h));
+        // While stopped, an economics change has no paid exposure; re-enabling is the funded transition.
+        _pin();
         assertFalse(balancer.paidUpkeepEnabled());
         (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(balancer.effectiveEconomics());
         assertGt(required, 0);
@@ -425,7 +345,6 @@ contract ReserveSecurityReviewTest is ForkBase {
     function test_expiredDrawCheapWorkCapProtectsRefundPrincipalAndPaysAtLowGas() public {
         _context(0.01 gwei, 0.02 gwei);
         _setup(20, 0);
-        _hostile();
         uint256 request = buy(buyer, 1)[0];
         (, ,uint256 principal,,,) = pool.acquisitions(request);
         vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace
@@ -435,12 +354,12 @@ contract ReserveSecurityReviewTest is ForkBase {
         uint256 reward = balancer.performUpkeep(expected, 1, 0);
         uint256 billed = ReceiptGas.lastBilled();
         assertLe(reward, (2_150_000 + V1_OVERHEAD) * 0.02 gwei + 0.00004 ether, "cheap expiry cap uses one actual process and reconcile");
-        assertLt(reward, 0.0001 ether, "max-declared policy cannot draw theoretical heavy-call maximum");
+        assertLt(reward, 0.0001 ether, "actual work cannot draw the theoretical heavy-call maximum");
         assertGt(reward, 0.00002 ether, "nonzero low-gas attack surface reached: gas paid beyond the work fee");
         assertEq(before - address(balancer).balance, reward);
         assertEq(IReviewRefund(address(pool)).acquisitionRefundCredit(buyer), principal);
         assertEq(pool.ownerProceeds(), 0, "expired draw generated no owner income");
-        emit ReviewAmount("low-gas expiry maximum policy payout", reward);
+        emit ReviewAmount("low-gas expiry payout", reward);
         emit ReviewAmount("low-gas expiry keeper billed gas", billed);
     }
 

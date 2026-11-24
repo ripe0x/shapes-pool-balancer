@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { afterEach, describe, it, vi } from 'vitest';
 import { TransactionReceiptNotFoundError, WaitForTransactionReceiptTimeoutError, type Hash } from 'viem';
 import { ARTIFACTS, CAPS, CurrentRehearsal, FUNDING, MAINNET, ROLES, ROOT, SCENARIO, assertStagedDependencies, copyStagedDependencies, dependencyState, digest, forgeArguments, json, manifest, runtimeState, sourceCheck, validateCurrentBounds, validateCurrentForgeArguments, validateCurrentPlan } from './current-local-rehearsal';
-const names = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'PoolBalancer', 'KeeperPolicyV1', 'BalancerFactory'];
+const names = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'PoolBalancer', 'BalancerFactory'];
 const bounds = () => ({ schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, chainId: 31337, rpc: 'http://127.0.0.1:18786', upstream: MAINNET, revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: '16777216', evidenceDirectory: join(ROOT, 'docs/receipts/current-rehearsal/test-input-only'), planFile: join(ROOT, 'docs/receipts/current-rehearsal/test-input-only/bounded-plan.json'), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), deployment: names.map(name => ({ name, gasLimit: '1000000' })), reuseDependencies: true });
 describe('bounded rehearsal receipt polling', () => {
     const hash = `0x${'12'.repeat(32)}` as Hash;

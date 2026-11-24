@@ -93,9 +93,12 @@ describe('planner', () => {
     // 17 x 0.01 Shapes is the smallest all-0.01 board that never pauses before FWA's limit
     expect(pendingDrawsAdmitted(counts([[0, 16]]))).toBe(4);
     expect(pendingDrawsAdmitted(counts([[0, 17]]))).toBe(5);
-    // Creator fill gate: 16 x 0.01 admits floor(16 x (1 - gate)); 0 keeps only the weight-covers-loss check.
+    // Creator fill gate: 16 x 0.01 admits floor(16 x (1 - gate)); 0 keeps only the unavailable-inventory check, which
+    // since audit E1 refuses once the unreconciled draws could take every prize: 15, not 16 (16 would admit a 17th draw
+    // against 16 prizes).
     expect(pendingDrawsAdmitted(counts([[0, 16]]), 5_000, 100)).toBe(8);
-    expect(pendingDrawsAdmitted(counts([[0, 16]]), 0, 100)).toBe(16);
+    expect(pendingDrawsAdmitted(counts([[0, 16]]), 0, 100)).toBe(15);
+    expect(pendingDrawsAdmitted(counts([[0, 5]]), 0, 100)).toBe(4); // test_case07e: five prizes, five outstanding refuse
     expect(pendingDrawsAdmitted(counts([[0, 16]]), 10_000, 100)).toBe(0);
     expect(pendingDrawsAdmitted(counts([[0, 16]]), 7_000, 3)).toBe(3);
   });
@@ -260,7 +263,7 @@ describe('planner', () => {
 });
 
 describe('V1 quote arithmetic from exported Solidity parameters', () => {
-  it('matches the independent absolute policy quote exercised by Solidity', () => {
+  it('matches the independent absolute payment exercised by Solidity', () => {
     const work = { measuredGas: 800_000n, gasPrice: 550_000_000n, baseFee: 500_000_000n,
       reconciledDraws: 1n, listedShapeUnits: 1n, listedPrizes: 1n, processedDraws: 0n };
     expect(quoteV1(work)).toBe(513_000_000_000_000n); // (800k + 60k) * 0.55 gwei + 2 * 0.00002

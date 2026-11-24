@@ -2,10 +2,10 @@
 pragma solidity 0.8.28;
 
 import {Vm} from "forge-std/Test.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 import {GasProbe} from "./utils/FlowBreakdown.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {KeeperPolicyV2} from "./Settings.t.sol";
 
 interface IRefundCredit {
     function acquisitionRefundCredit(address account) external view returns (uint256);
@@ -114,7 +114,7 @@ contract PolicyModelParity is ForkBase {
         vm.serializeString(key, "listedBacking", vm.toString(backing));
         vm.serializeString(key, "drawPrice", vm.toString(pool.acquisitionFee()));
         vm.serializeString(key, "mintFee", vm.toString(shapes.mintFee()));
-        string memory out = vm.serializeUint(key, "version", balancer.keeperPolicy() == factory.defaultKeeperPolicy() ? 1 : 2);
+        string memory out = vm.serializeUint(key, "version", 1); // one payment formula since R95
         root = vm.serializeString("steps", vm.toString(index - 1), out);
         vm.recordLogs();
     }
@@ -164,8 +164,9 @@ contract PolicyModelParity is ForkBase {
         upkeep(); _snapshot("reconcile expired draws");
         assertEq(pool.unsettledAcquisitionCount(), 0);
         assertEq(IRefundCredit(address(pool)).acquisitionRefundCredit(buyer), 2 * price);
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2)); _snapshot("set V2");
+        // R95/R96: no replaceable policy; the app's "Pin current factory values" saves them as local economics.
+        KeeperPolicyCalls.Economics memory current = factory.economics();
+        vm.prank(creator); balancer.setLocalEconomics(current); _snapshot("pin current factory values");
         _drawShape();
         vm.prank(creator); balancer.close(); _snapshot("close");
         uint256[] memory active = balancer.getActiveIds();

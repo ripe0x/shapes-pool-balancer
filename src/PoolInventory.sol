@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {PoolBalancer} from "./PoolBalancer.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
-import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 import {IFWAPool, IShapes, IShapePacks, IERC721Min} from "./interfaces/External.sol";
 
 /// @dev Compiler-linked immutable inventory implementation, not a creator-selected policy. Delegatecall preserves
@@ -31,7 +30,7 @@ library PoolInventory {
         uint256 plan;
         uint256 markup;
         uint256 keep;
-        IKeeperPolicy.Economics econ;
+        KeeperPolicyCalls.Economics econ;
         uint256 draws;
         uint256 fee;
         address shapes;
@@ -101,7 +100,8 @@ library PoolInventory {
     /// @dev Curated NFTs are optional unless `curatedRequired`. The Shapes mint fee is not checked here: it limits
     ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
     /// @dev `fillGateBps` (creator, 0..10000) is the inverse-backing-weight threshold; zero drops the target-fill
-    ///      requirement but keeps the `prizeWeight < lost` conservative unavailable-inventory check. `backlogThreshold`
+    ///      requirement but keeps the conservative unavailable-inventory check: purchases stop once every listed prize could
+    ///      already be taken by an unreconciled draw (`prizeWeight <= lost`), so no draw is admitted against no prize. `backlogThreshold`
     ///      (creator, >=1) is the unsettled-draw count that pauses purchases; it is distinct from FWA's per-transaction
     ///      batch cap (MAX_BATCH), so a threshold T allows up to T+MAX_BATCH-1 outstanding when other checks permit.
     function admission(State storage s, IFWAPool pool, bool curatedRequired,
@@ -119,7 +119,7 @@ library PoolInventory {
         uint256 stageUpper = s.shapeStageUpper;
         if (stageUpper == 0) {
             uint256 lost = unavailable * (1e36 / 0.01 ether);
-            return prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
+            return prizeWeight <= lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight ? 6 : 0;
         }
         uint256 shapeBound = unavailable + stageUpper;
         uint256 tracked = s.activeIds.length;
@@ -131,7 +131,7 @@ library PoolInventory {
         if (afterActivation > unavailable) unavailable = afterActivation;
         if (shapeBound < unavailable) unavailable = shapeBound;
         uint256 lost = unavailable * (1e36 / 0.01 ether);
-        if (prizeWeight < lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
+        if (prizeWeight <= lost || (prizeWeight - lost) * 10_000 < fillGateBps * targetWeight) return 6;
         return 0;
     }
 
@@ -283,7 +283,7 @@ library PoolInventory {
             if (need > (MAX_OPS - used) / w) need = (MAX_OPS - used) / w;
             uint256 each = _cost(d, fee);
             uint256 bal = address(this).balance;
-            // Only the candidate work's enforced bound is held, not the policy's unrelated full-call maximum.
+            // Only the candidate work's payment bound is held, not the full-call maximum.
             while (need != 0) {
                 uint256 reward = f.paid
                     ? KeeperPolicyCalls.listingPaymentBound(f.econ, f.draws, used + need * w, n + need)
@@ -292,7 +292,7 @@ library PoolInventory {
                 --need;
             }
             if (need == 0) break; // stop at the first size not fully restocked, so restocking stays in value order
-            uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(f.econ, uint8(d), w, f.paid, block.basefee);
+            uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(f.econ, w, block.basefee);
             if (d < SHAPE_DENOMS) {
                 uint256 first = SHAPES.mintBatch{value: need * each}(_amount(d), need);
                 emit ShapesMinted(uint8(d), first, need, need * each);

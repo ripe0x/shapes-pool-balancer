@@ -3,24 +3,15 @@ pragma solidity 0.8.28;
 
 import {ForkBase, ITimeout} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {ERC721} from "solady/tokens/ERC721.sol";
 
-/// @dev An accepted creator-selected counterparty, deliberately requesting every allowed wei and no surcharge.
-contract ReserveReviewMaxPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 3;}
-    function version() external pure returns(uint256){return 1;}
-    function quoteReward(Work calldata, Economics calldata) external pure returns(uint256){return type(uint256).max;}
-    function quoteRestock(uint8, uint256, uint256, Economics calldata) external pure returns(uint256){return 0;}
-}
-
-contract ReserveReviewLowPolicy is IKeeperPolicy {
-    function interfaceVersion() external pure returns(uint256){return 3;}
-    function version() external pure returns(uint256){return 1;}
-    function quoteReward(Work calldata, Economics calldata) external pure returns(uint256){return 0.00005 ether;}
-    function quoteRestock(uint8, uint256, uint256, Economics calldata) external pure returns(uint256){return 0;}
+/// @dev R95 replaced the max-requesting, zero-surcharge test policies this suite used with local economics that charge
+///      no restocking surcharge; the reward is the in-library formula, which is what the policy's maximum was capped to.
+function _noSurcharge(KeeperPolicyCalls.Economics memory e) pure returns (KeeperPolicyCalls.Economics memory) {
+    e.restockGas = 0;
+    e.restockFlat = 0;
+    return e;
 }
 
 /// @dev Creator-created collection, which FWA accepts without an allowlist.
@@ -57,8 +48,8 @@ contract ReserveEconomicReviewTest is ForkBase {
         createBalancer(1 ether);
         configure(plan([uint256(20),0,0,0,0,0,0,0,0]));
         listCurated(1,0.2 ether);
-        address hostile=address(new ReserveReviewMaxPolicy());
-        vm.prank(creator);balancer.setKeeperPolicy(hostile);
+        KeeperPolicyCalls.Economics memory local=_noSurcharge(factory.economics());
+        vm.prank(creator);balancer.setLocalEconomics(local);
         vm.prank(creator);balancer.open();
         fillUp();
         assertEq(balancer.getActiveShapes()[0],20);
@@ -168,7 +159,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         vm.prank(creator);balancer=_createFixture(creator, bytes32(uint256(2)), 1 ether);
         pool=balancer.pool();configure(plan([uint256(20),0,0,0,0,0,0,0,0]));listCurated(3,0.2 ether);
         // Minimal local economics: no gas reimbursement and a 0.000005 ETH work fee, so one call can cost at most 0.00005.
-        IKeeperPolicy.Economics memory low=_econWith(address(new ReserveReviewLowPolicy()));
+        KeeperPolicyCalls.Economics memory low=_noSurcharge(factory.economics());
         low.gasPriceCeiling=0;low.workFee=0.000005 ether;
         vm.prank(creator);balancer.setLocalEconomics(low);
         vm.prank(creator);balancer.open();fillUp();
@@ -178,7 +169,7 @@ contract ReserveEconomicReviewTest is ForkBase {
         uint256 oldShape;uint112 oldBase;uint112 oldPrice;
         for(uint256 i;i<listings.length;++i){(uint8 kind,,,uint112 bs,uint112 pr)=balancer.items(listings[i]);if(kind==2){oldShape=listings[i];oldBase=bs;oldPrice=pr;break;}}
         assertEq(oldPrice,0.0125 ether);
-        IKeeperPolicy.Economics memory higher=_econWith(address(new ReserveReviewMaxPolicy()));
+        KeeperPolicyCalls.Economics memory higher=_noSurcharge(factory.economics());
         uint256[] memory request=buy(buyer,1);
         assertEq(pool.lastIssuedSequence()-balancer.reconciledSequence(),1);
         (uint256 required,uint256 shortfall)=balancer.maintenanceFunding(higher);

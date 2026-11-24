@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PoolPage} from "./PoolPage.sol";
-import {IKeeperPolicy} from "./interfaces/IKeeperPolicy.sol";
 import {PoolInventory} from "./PoolInventory.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReverseRegistrar} from "./interfaces/External.sol";
@@ -13,7 +12,7 @@ import {IFWAPoolFactory, IFWAPool, IShapes, IShapePacks, IERC721Min, IENS, IReve
 ///      eligibility and the product limits checked on each newly submitted design.
 interface IBalancerFactory {
     function canKeep(address keeper) external view returns (bool);
-    function economics() external view returns (IKeeperPolicy.Economics memory);
+    function economics() external view returns (KeeperPolicyCalls.Economics memory);
     function defaultBucketCapacity() external view returns (uint128);
     function defaultBucketRefill() external view returns (uint96);
     function productLimits() external view returns (uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps);
@@ -167,7 +166,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedRequirementChanged(bool required);
     event FillGateChanged(uint16 bps);
     event BacklogThresholdChanged(uint16 threshold);
-    event EconomicsSelected(uint8 indexed source, IKeeperPolicy.Economics economics);
+    event EconomicsSelected(uint8 indexed source, KeeperPolicyCalls.Economics economics);
     event PaidUpkeepChanged(bool enabled);
     event KeeperBucketChanged(uint256 capacity, uint256 refillPerSecond);
     event PurchasesOpened();
@@ -198,7 +197,6 @@ contract PoolBalancer is ReentrancyGuard {
     error Unauthorized();
     error KeeperNotApproved();
     error StaleSettings();
-    error PolicyUnavailable();
     error PaymentUnavailable();
     error MinimumPaymentNotMet();
     error InsufficientGas(); // reverted by KeeperPolicyCalls.process when processing was starved of gas
@@ -377,11 +375,10 @@ contract PoolBalancer is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The economics this pool uses now: the factory's current ones while following (source 0), else its own
-    ///         copy (1 local, 2 pinned). Every operation resolves this once and uses it for quote, payment, payment
-    ///         bounds, reserves and restocking prices.
-    function effectiveEconomics() external view returns (IKeeperPolicy.Economics memory) { return _econ(); }
+    ///         copy (source 1, local). Every operation resolves this once and uses it for payment, payment bounds,
+    ///         reserves and restocking prices.
+    function effectiveEconomics() external view returns (KeeperPolicyCalls.Economics memory) { return _econ(); }
     function economicsSource() external view returns (uint8) { return _keeper.source; }
-    function keeperPolicy() external view returns (address) { return _econ().policy; }
     function policyGeneration() external view returns (uint64) { return _keeper.generation; }
     function paidUpkeepEnabled() external view returns (bool) { return _keeper.enabled; }
     /// @notice Derived bound, not a per-call charge: the most one paid call can receive under the effective economics.
@@ -395,25 +392,15 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Stop following and use `e` now. Only a larger maintenance exposure than the current one must be funded
     ///         (`maintenanceFunding`); missing prizes never are. Paid-upkeep state and the spending allowance are kept.
-    function setLocalEconomics(IKeeperPolicy.Economics calldata e) external onlyCreator nonReentrant {
+    ///         Saving the factory's current `economics()` here freezes those numbers (the app's "Pin" button).
+    function setLocalEconomics(KeeperPolicyCalls.Economics calldata e) external onlyCreator nonReentrant {
         _select(KeeperPolicyCalls.LOCAL, e);
-    }
-    /// @notice Freeze the complete effective economics (algorithm, payment schedule and bounds, restocking and
-    ///         fallback) in this pool; factory updates stop applying until `followFactoryEconomics`.
-    function pinEconomics() external onlyCreator nonReentrant {
-        _select(KeeperPolicyCalls.PINNED, _econ());
     }
     /// @notice Follow the factory's current economics now, including any change made while this pool did not.
     function followFactoryEconomics() external onlyCreator nonReentrant {
         _select(KeeperPolicyCalls.FOLLOW, factory.economics());
     }
-    /// @notice Use another pricing algorithm with the effective numbers, as local economics. Paid upkeep stays as it is.
-    function setKeeperPolicy(address policy) external onlyCreator nonReentrant {
-        IKeeperPolicy.Economics memory e = _econ();
-        e.policy = policy;
-        _select(KeeperPolicyCalls.LOCAL, e);
-    }
-    function _select(uint8 source, IKeeperPolicy.Economics memory next) internal {
+    function _select(uint8 source, KeeperPolicyCalls.Economics memory next) internal {
         KeeperPolicyCalls.select(_keeper, source, next, _econ(), _fund(), _maintenanceInput());
     }
     /// @notice Emergency stop, or re-enable now under the maintenance-funding check. Only the creator changes it;
@@ -428,17 +415,17 @@ contract PoolBalancer is ReentrancyGuard {
     }
     /// @notice Maintenance budget of `e` at the current state, and the operating cash it lacks. With the effective
     ///         economics this is a follower's shortfall after a factory update.
-    function maintenanceFunding(IKeeperPolicy.Economics calldata e) external view returns (uint256 required, uint256 shortfall) {
+    function maintenanceFunding(KeeperPolicyCalls.Economics calldata e) external view returns (uint256 required, uint256 shortfall) {
         required = KeeperPolicyCalls.maintenanceBudget(e, _maintenanceInput());
         uint256 fund = _fund();
         if (required > fund) shortfall = required - fund;
     }
 
-    function _econ() internal view returns (IKeeperPolicy.Economics memory) {
+    function _econ() internal view returns (KeeperPolicyCalls.Economics memory) {
         return _keeper.source == KeeperPolicyCalls.FOLLOW ? factory.economics() : _keeper.local;
     }
     /// @dev Zero economics while paid upkeep is off: no paid exposure to reserve for.
-    function _paidEcon() internal view returns (IKeeperPolicy.Economics memory e) {
+    function _paidEcon() internal view returns (KeeperPolicyCalls.Economics memory e) {
         if (_keeper.enabled) e = _econ();
     }
     function _fund() internal view returns (uint256) { return address(this).balance - creatorCredit; }
@@ -649,8 +636,8 @@ contract PoolBalancer is ReentrancyGuard {
         return _performUpkeep(expected, minimumFixed + minimumGas * tx.gasprice, true);
     }
 
-    /// @notice Anyone can maintain without compensation, even with a restricted keeper list. New listings use the
-    ///         effective policy's bounded quote, or the effective economics' own restocking schedule if that quote fails.
+    /// @notice Anyone can maintain without compensation, even with a restricted keeper list. New listings are priced
+    ///         exactly as in paid upkeep.
     function performUpkeepUnpaid() external nonReentrant returns (uint256) {
         return _performUpkeep(bytes32(0), 0, false);
     }
@@ -658,7 +645,7 @@ contract PoolBalancer is ReentrancyGuard {
     function _performUpkeep(bytes32 expected, uint256 minimumReward, bool paid) internal returns (uint256 reward) {
         uint256 gasStart = gasleft();
         // One resolution for the whole call: the hash check, restocking prices, listing bounds and the payment.
-        IKeeperPolicy.Economics memory e = _econ();
+        KeeperPolicyCalls.Economics memory e = _econ();
         if (paid) {
             if (msg.sender != creator && !factory.canKeep(msg.sender)) revert KeeperNotApproved();
             if (_settingsHash(e) != expected) revert StaleSettings();
@@ -750,7 +737,7 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
     ///      left after this call's keeper reward, and list them at `PoolInventory._prizeBase` plus the restocking fees in one FWA
     ///      batch. FWA stages the batch while draws are unsettled. Returns Shape units used.
-    function _fillDeficit(IFWAPool p, IKeeperPolicy.Economics memory e, uint256 fee, bool paid, uint256 draws)
+    function _fillDeficit(IFWAPool p, KeeperPolicyCalls.Economics memory e, uint256 fee, bool paid, uint256 draws)
         internal returns (uint256 used, uint256 listed)
     {
         uint256 added;
@@ -760,11 +747,11 @@ contract PoolBalancer is ReentrancyGuard {
         prizeWeight += added;
     }
 
-    function _payKeeper(IKeeperPolicy.Economics memory e, uint256 gasStart, uint256 draws, uint256 units,
+    function _payKeeper(KeeperPolicyCalls.Economics memory e, uint256 gasStart, uint256 draws, uint256 units,
         uint256 listed, uint256 processed) internal returns (uint256 reward)
     {
         uint256 measured = gasStart - gasleft();
-        IKeeperPolicy.Work memory w = IKeeperPolicy.Work(measured, tx.gasprice, block.basefee, draws, units, listed, processed);
+        KeeperPolicyCalls.Work memory w = KeeperPolicyCalls.Work(measured, tx.gasprice, block.basefee, draws, units, listed, processed);
         return KeeperPolicyCalls.pay(_keeper, e, w, _fund());
     }
 
@@ -783,7 +770,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     /// @notice Working capital for missing assets and their bounded listing work, actual unreconciled draws and
-    ///         one maintenance call. It limits withdrawals, not legitimate maintenance spending. No policy is called.
+    ///         one maintenance call. It limits withdrawals, not legitimate maintenance spending.
     function requiredReserve() public view returns (uint256) { return KeeperPolicyCalls.reserve(_paidEcon(), _reserveInput()); }
 
     function _maintenanceInput() internal view returns (KeeperPolicyCalls.Reserve memory r) {
@@ -853,15 +840,15 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice The keeper-payment identity paid upkeep must match: effective economics, their source, paid state and
     ///         generation (so a disable/re-enable cycle changes it) and the live Shapes mint fee. A following pool's hash
-    ///         moves with every factory economics change; a pinned or local pool's does not.
+    ///         moves with every factory economics change; a local pool's does not.
     function settingsHash() external view returns (bytes32) { return _settingsHash(_econ()); }
-    function _settingsHash(IKeeperPolicy.Economics memory e) internal view returns (bytes32) {
+    function _settingsHash(KeeperPolicyCalls.Economics memory e) internal view returns (bytes32) {
         return KeeperPolicyCalls.settingsHash(e, _keeper.source, _keeper.generation, _keeper.enabled, SHAPES.mintFee());
     }
 
     function restockFee() external view returns (uint256) { return _restockFee(0); }
-    /// @notice Bounded effective-policy estimate in this pool's caller context, not a promise of payable work.
-    function quoteKeeperReward(IKeeperPolicy.Work calldata work) external view returns (uint256) {
+    /// @notice What `work` would be paid under the effective economics, not a promise of payable work.
+    function quoteKeeperReward(KeeperPolicyCalls.Work calldata work) external view returns (uint256) {
         return _keeper.enabled ? KeeperPolicyCalls.reward(_econ(), work) : 0;
     }
     function restockFeeFor(uint8 denomination) external view returns (uint256) {
@@ -870,6 +857,6 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _restockFee(uint8 d) internal view returns (uint256) {
-        return KeeperPolicyCalls.restock(_econ(), d, PoolInventory._shapesIn(d), true, block.basefee);
+        return KeeperPolicyCalls.restock(_econ(), PoolInventory._shapesIn(d), block.basefee);
     }
 }

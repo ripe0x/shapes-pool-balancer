@@ -6,8 +6,7 @@ import {ForkBase} from "./utils/ForkBase.sol";
 import {FreezableNFT} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {BalancerFactory} from "../src/BalancerFactory.sol";
-import {KeeperPolicyV1} from "../src/KeeperPolicyV1.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {IFWAPool} from "../src/interfaces/External.sol";
 
 /// @notice Community configuration acceptance suite (spec A§9 cases 1-15, Part B §6 case 16).
@@ -31,36 +30,6 @@ interface IVRFCoordinatorFund {
 
 interface IFWARefundWindow {
     function DELIVERY_WINDOW() external view returns (uint256);
-}
-
-/// @dev Test-only alternative pricing algorithm (the policy interface lets a creator choose one). Mode 0 answers fixed
-///      quotes, mode 1 reverts, mode 2 answers above every bound.
-contract AcceptancePolicy is IKeeperPolicy {
-    uint8 public mode;
-    uint256 public rewardQuote;
-    uint256 public restockPerShape;
-
-    constructor(uint256 rewardQuote_, uint256 restockPerShape_) {
-        rewardQuote = rewardQuote_;
-        restockPerShape = restockPerShape_;
-    }
-
-    function setMode(uint8 m) external { mode = m; }
-    function setRestockPerShape(uint256 v) external { restockPerShape = v; }
-    function interfaceVersion() external pure returns (uint256) { return 3; }
-    function version() external pure returns (uint256) { return 77; }
-
-    function quoteReward(Work calldata, Economics calldata) external view returns (uint256) {
-        if (mode == 1) revert("broken");
-        if (mode == 2) return type(uint256).max;
-        return rewardQuote;
-    }
-
-    function quoteRestock(uint8, uint256 units, uint256, Economics calldata) external view returns (uint256) {
-        if (mode == 1) revert("broken");
-        if (mode == 2) return type(uint256).max;
-        return units * restockPerShape;
-    }
 }
 
 abstract contract AcceptanceBase is ForkBase {
@@ -90,7 +59,16 @@ abstract contract AcceptanceBase is ForkBase {
         uint256 lastPrice;
     }
 
-    function _h(IKeeperPolicy.Economics memory e) internal pure returns (bytes32) { return keccak256(abi.encode(e)); }
+    function _h(KeeperPolicyCalls.Economics memory e) internal pure returns (bytes32) { return keccak256(abi.encode(e)); }
+
+    /// @dev The app's "Pin current factory values" (R96): read the factory's current economics and save them as the
+    ///      pool's local economics in one transaction. There is no contract pin mode.
+    function _pin(PoolBalancer b, address who) internal returns (KeeperPolicyCalls.Economics memory e) {
+        e = factory.economics();
+        vm.prank(who);
+        b.setLocalEconomics(e);
+        assertEq(b.economicsSource(), 1, "a pin is local economics");
+    }
 
     function _use(PoolBalancer b) internal {
         balancer = b;
@@ -213,25 +191,25 @@ abstract contract AcceptanceBase is ForkBase {
     // ---- independent arithmetic of the owner's V1 schedule over one effective configuration ----
 
     /// Reference gas price: basefee plus the priority allowance, capped at the ceiling.
-    function _ref(IKeeperPolicy.Economics memory e) internal view returns (uint256 p) {
+    function _ref(KeeperPolicyCalls.Economics memory e) internal view returns (uint256 p) {
         p = block.basefee + e.priorityAllowance;
         if (p > e.gasPriceCeiling) p = e.gasPriceCeiling;
     }
 
     /// Restocking surcharge on one prize holding `units` Shapes, at the current basefee.
-    function _surcharge(IKeeperPolicy.Economics memory e, uint256 units) internal view returns (uint256) {
+    function _surcharge(KeeperPolicyCalls.Economics memory e, uint256 units) internal view returns (uint256) {
         return units * (uint256(e.restockGas) * _ref(e) + e.restockFlat);
     }
 
     function _work(uint256 measured, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
-        internal view returns (IKeeperPolicy.Work memory)
+        internal view returns (KeeperPolicyCalls.Work memory)
     {
-        return IKeeperPolicy.Work(measured, tx.gasprice, block.basefee, draws, units, prizes, processed);
+        return KeeperPolicyCalls.Work(measured, tx.gasprice, block.basefee, draws, units, prizes, processed);
     }
 
     /// Payment for verified work: gas = min(measured, sum of the operation bounds, maxGas), at
     /// min(reference price, transaction gas price), plus overhead, plus the work fee per reconciled draw and listed Shape.
-    function _pay(IKeeperPolicy.Economics memory e, IKeeperPolicy.Work memory w) internal pure returns (uint256) {
+    function _pay(KeeperPolicyCalls.Economics memory e, KeeperPolicyCalls.Work memory w) internal pure returns (uint256) {
         uint256 bound = uint256(e.baseGas) + w.processedDraws * e.processGas + w.reconciledDraws * e.reconcileGas
             + w.listedShapeUnits * e.shapeGas + w.listedPrizes * e.prizeGas;
         if (bound > e.maxGas) bound = e.maxGas;
@@ -243,7 +221,7 @@ abstract contract AcceptanceBase is ForkBase {
     }
 
     /// Payment bound for one call at the reference price (reserve and maintenance budgets).
-    function _bound(IKeeperPolicy.Economics memory e, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
+    function _bound(KeeperPolicyCalls.Economics memory e, uint256 processed, uint256 draws, uint256 units, uint256 prizes)
         internal view returns (uint256)
     {
         uint256 gas = uint256(e.baseGas) + processed * e.processGas + draws * e.reconcileGas + units * e.shapeGas
@@ -254,18 +232,18 @@ abstract contract AcceptanceBase is ForkBase {
 
     /// One bounded operating call while open with nothing owed: the larger of five reconciles plus five Shape units,
     /// or two processed draws plus five reconciles.
-    function _maintenance(IKeeperPolicy.Economics memory e) internal view returns (uint256) {
+    function _maintenance(KeeperPolicyCalls.Economics memory e) internal view returns (uint256) {
         uint256 a = _bound(e, 0, 5, 5, 5);
         uint256 b = _bound(e, 2, 5, 0, 0);
         return a > b ? a : b;
     }
 
-    function _maxPayment(IKeeperPolicy.Economics memory e) internal pure returns (uint256) {
+    function _maxPayment(KeeperPolicyCalls.Economics memory e) internal pure returns (uint256) {
         return (uint256(e.maxGas) + e.overheadGas) * e.gasPriceCeiling + 10 * uint256(e.workFee);
     }
 
     /// Price of a new single-Shape prize of `amount` backing.
-    function _listPrice(IKeeperPolicy.Economics memory e, uint256 amount, uint256 fee, uint256 markup)
+    function _listPrice(KeeperPolicyCalls.Economics memory e, uint256 amount, uint256 fee, uint256 markup)
         internal view returns (uint256)
     {
         return amount + fee + amount * markup / 10_000 + _surcharge(e, 1);
@@ -311,7 +289,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     //////////////////////////////////////////////////////////////*/
 
     function test_case00_initialValues() public {
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         assertEq(e.workFee, 0.00002 ether, "work fee");
         assertEq(e.maxGas, 3_200_000, "reimbursable gas limit");
         assertEq(e.gasPriceCeiling, 5 gwei, "gas price ceiling");
@@ -346,13 +324,9 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         PoolBalancer a = _create(creator, 11, 2, 1 ether, false, 0);
         PoolBalancer b = _create(creator2, 12, 2, 1 ether, false, 0);
         PoolBalancer c = _create(creator3, 13, 2, 1 ether, false, 0);
-        IKeeperPolicy.Economics memory e0 = factory.economics();
-        vm.prank(creator3);
-        c.pinEconomics();
-        assertEq(c.economicsSource(), 2);
+        KeeperPolicyCalls.Economics memory e0 = _pin(c, creator3);
 
-        IKeeperPolicy.Economics memory e1 = factory.economics();
-        e1.policy = address(new KeeperPolicyV1());
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.0001 ether;
         e1.maxGas = 4_000_000;
         e1.overheadGas = 70_000;
@@ -366,12 +340,10 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         // Followers: the new configuration, in the same block, without any per-pool transaction.
         assertEq(_h(a.effectiveEconomics()), _h(e1), "follower A adopted");
         assertEq(_h(b.effectiveEconomics()), _h(e1), "follower B adopted");
-        assertEq(a.keeperPolicy(), e1.policy);
         assertEq(a.restockFee(), _surcharge(e1, 1));
         assertEq(a.policyMaxReward(), _maxPayment(e1));
-        // Pinned: the complete earlier values: algorithm, payment envelope, restocking and fallback schedule.
+        // Pinned: the complete earlier values: payment schedule and restocking schedule.
         assertEq(_h(c.effectiveEconomics()), _h(e0), "pinned pool kept every value");
-        assertEq(c.keeperPolicy(), e0.policy);
         assertEq(c.restockFee(), _surcharge(e0, 1));
         assertEq(c.policyMaxReward(), _maxPayment(e0));
         assertEq(c.maxRestockSurchargePerShape(), uint256(e0.restockGas) * e0.gasPriceCeiling + e0.restockFlat);
@@ -391,7 +363,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(_surchargeOf(c, rc.lastLid), _surcharge(e0, 1));
 
         // Constant work: a factory update costs the same with 3 pools as with 8.
-        IKeeperPolicy.Economics memory e2 = factory.economics();
+        KeeperPolicyCalls.Economics memory e2 = factory.economics();
         e2.workFee = 0.00009 ether;
         uint256 snap = vm.snapshotState();
         factory.economics();
@@ -404,34 +376,30 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     }
 
     /// @dev Measured in its own call frame so the test's memory growth does not enter the comparison.
-    function measureSetEconomics(IKeeperPolicy.Economics calldata e) external returns (uint256 used) {
+    function measureSetEconomics(KeeperPolicyCalls.Economics calldata e) external returns (uint256 used) {
         require(msg.sender == address(this));
         uint256 g = gasleft();
         factory.setEconomics(e);
         used = g - gasleft();
     }
 
-    /// A pinned pool's fallback is its own pinned schedule, not the factory's later one.
+    /// A pinned pool's restocking, paid or unpaid, uses its own pinned schedule, not the factory's later one. R95/R96
+    /// replace the former "failed pinned algorithm falls back to the pinned schedule": there is no algorithm to fail.
     function test_case01b_pinnedFallbackUsesPinnedSchedule() public {
-        AcceptancePolicy alt = new AcceptancePolicy(1e12, 1e12);
-        IKeeperPolicy.Economics memory ep = factory.economics();
-        ep.policy = address(alt);
+        KeeperPolicyCalls.Economics memory ep = factory.economics();
         ep.restockGas = 1_000_000;
         ep.restockFlat = 0.0004 ether;
         factory.setEconomics(ep);
         PoolBalancer d = _create(creator, 14, 2, 1 ether, false, 0);
-        vm.prank(creator);
-        d.pinEconomics();
-        IKeeperPolicy.Economics memory e1 = factory.economics();
-        e1.policy = address(new KeeperPolicyV1());
+        _pin(d, creator);
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.restockGas = 500_000;
         e1.restockFlat = 0.0001 ether;
         factory.setEconomics(e1);
-        alt.setMode(1); // the pinned algorithm now fails
         Run memory r = _run(d, false);
-        assertTrue(r.ok, "unpaid restocking still works with a failed pinned algorithm");
+        assertTrue(r.ok, "unpaid restocking");
         assertEq(r.listed, 2);
-        assertEq(_surchargeOf(d, r.lastLid), _surcharge(ep, 1), "fallback from the pinned schedule");
+        assertEq(_surchargeOf(d, r.lastLid), _surcharge(ep, 1), "unpaid restocking at the pinned schedule");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -440,17 +408,14 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
     function test_case02_resumeFollowingAdoptsLatestFactoryConfiguration() public {
         PoolBalancer c = _create(creator, 21, 2, 1 ether, false, 0);
-        IKeeperPolicy.Economics memory e0 = factory.economics();
-        vm.prank(creator);
-        c.pinEconomics();
+        KeeperPolicyCalls.Economics memory e0 = _pin(c, creator);
 
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.00003 ether;
         factory.setEconomics(e1);
-        IKeeperPolicy.Economics memory e2 = factory.economics();
+        KeeperPolicyCalls.Economics memory e2 = factory.economics();
         e2.workFee = 0.00004 ether;
         e2.restockFlat = 0.0003 ether;
-        e2.policy = address(new KeeperPolicyV1());
         factory.setEconomics(e2);
         assertEq(_h(c.effectiveEconomics()), _h(e0), "still pinned through two factory updates");
 
@@ -465,18 +430,18 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(_surchargeOf(c, r.lastLid), _surcharge(e2, 1));
 
         // Following again: the next factory update applies at once.
-        IKeeperPolicy.Economics memory e3 = factory.economics();
+        KeeperPolicyCalls.Economics memory e3 = factory.economics();
         e3.workFee = 0.00005 ether;
         factory.setEconomics(e3);
         assertEq(_h(c.effectiveEconomics()), _h(e3));
 
         // Same for local economics: kept through factory updates, then resume picks up the latest.
-        IKeeperPolicy.Economics memory el = factory.economics();
+        KeeperPolicyCalls.Economics memory el = factory.economics();
         el.workFee = 0.00001 ether;
         vm.prank(creator);
         c.setLocalEconomics(el);
         assertEq(c.economicsSource(), 1);
-        IKeeperPolicy.Economics memory e4 = factory.economics();
+        KeeperPolicyCalls.Economics memory e4 = factory.economics();
         e4.workFee = 0.00006 ether;
         factory.setEconomics(e4);
         assertEq(_h(c.effectiveEconomics()), _h(el), "local economics kept through a factory update");
@@ -492,21 +457,18 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     function test_case03_feeChangeSamePolicyAddress_hashPreviewsAndPaymentsUpdate() public {
         PoolBalancer f = _create(creator, 31, 2, 1 ether, false, 0);
         PoolBalancer pn = _create(creator2, 32, 2, 1 ether, false, 0);
-        vm.prank(creator2);
-        pn.pinEconomics();
-        IKeeperPolicy.Economics memory e0 = factory.economics();
+        KeeperPolicyCalls.Economics memory e0 = _pin(pn, creator2);
         bytes32 hf = f.settingsHash();
         bytes32 hp = pn.settingsHash();
         bytes32 hc = factory.creationSettingsHash();
-        IKeeperPolicy.Work memory w = _work(900_000, 0, 1, 2, 2);
+        KeeperPolicyCalls.Work memory w = _work(900_000, 0, 1, 2, 2);
         uint256 q0 = f.quoteKeeperReward(w);
         assertEq(q0, _pay(e0, w));
 
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.0001 ether;
         e1.restockFlat = 0.0004 ether;
         factory.setEconomics(e1);
-        assertEq(f.keeperPolicy(), e0.policy, "same policy address");
 
         assertTrue(f.settingsHash() != hf, "follower hash moved with the fee");
         assertTrue(factory.creationSettingsHash() != hc, "creation hash moved with the fee");
@@ -535,7 +497,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         hp = pn.settingsHash();
         factory.setDefaultBucket(1 ether, 1 gwei);
         factory.setProductLimits(500, 1_000, 9_000);
-        IKeeperPolicy.Economics memory e2 = factory.economics();
+        KeeperPolicyCalls.Economics memory e2 = factory.economics();
         e2.workFee = 0.0002 ether;
         factory.setEconomics(e2);
         assertEq(pn.settingsHash(), hp, "pinned hash unchanged by unrelated factory updates");
@@ -552,11 +514,10 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         vm.prank(creator);
         b.setPaidUpkeepEnabled(false);
 
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.00003 ether;
         factory.setEconomics(e1);
-        IKeeperPolicy.Economics memory e2 = factory.economics();
-        e2.policy = address(new KeeperPolicyV1());
+        KeeperPolicyCalls.Economics memory e2 = factory.economics();
         e2.workFee = 0.00004 ether;
         factory.setEconomics(e2);
         assertFalse(b.paidUpkeepEnabled(), "disable survives factory updates");
@@ -576,22 +537,9 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(r.listed, 1);
         assertEq(r.paid, _pay(e2, _work(r.measured, 0, 1, 1, 1)));
 
-        // Local policy change: immediate, keeps the effective numbers and the paid state.
-        AcceptancePolicy alt = new AcceptancePolicy(12_345, 777);
-        vm.prank(creator);
-        b.setKeeperPolicy(address(alt));
-        assertEq(b.keeperPolicy(), address(alt));
-        assertEq(b.economicsSource(), 1);
-        assertTrue(b.paidUpkeepEnabled());
-        assertEq(b.effectiveEconomics().workFee, e2.workFee);
-        _draw(b);
-        r = _run(b, true);
-        assertTrue(r.ok);
-        assertEq(r.paid, 12_345, "the new algorithm's quote is paid immediately");
-        assertEq(_surchargeOf(b, r.lastLid), 777, "the new algorithm prices restocking immediately");
-
+        // R95: the former local algorithm switch is gone; a local economics change is the creator's only switch.
         // Local economics: immediate.
-        IKeeperPolicy.Economics memory e3 = factory.economics();
+        KeeperPolicyCalls.Economics memory e3 = factory.economics();
         e3.workFee = 0.00005 ether;
         e3.restockFlat = 0.0007 ether;
         vm.prank(creator);
@@ -630,7 +578,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
     function test_case05_unauthorizedSettingsChangesFail() public {
         PoolBalancer b = _create(creator, 51, 2, 1 ether, false, 0);
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         e.workFee = 1 ether;
         bytes32 fh = _h(factory.economics());
 
@@ -656,11 +604,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
             b.setLocalEconomics(e);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
-            b.pinEconomics();
-            vm.expectRevert(PoolBalancer.Unauthorized.selector);
             b.followFactoryEconomics();
-            vm.expectRevert(PoolBalancer.Unauthorized.selector);
-            b.setKeeperPolicy(address(1));
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
             b.setPaidUpkeepEnabled(false);
             vm.expectRevert(PoolBalancer.Unauthorized.selector);
@@ -723,7 +667,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         uint256 credit = got * 5_000 / 10_000;
         assertEq(f.creatorCredit(), credit, "credit is exactly half the collected proceeds");
 
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.05 ether;
         factory.setEconomics(e1); // no per-follower cash check
         assertEq(_h(f.effectiveEconomics()), _h(e1), "follower uses the new economics, not the old ones");
@@ -896,7 +840,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         _assertPricesKept(b, ids, prices);
 
         // Restocking at the kept markup is not repriced by the range change.
-        IKeeperPolicy.Economics memory e = b.effectiveEconomics();
+        KeeperPolicyCalls.Economics memory e = b.effectiveEconomics();
         _draw(b);
         Run memory r = _run(b, true);
         assertTrue(r.ok);
@@ -953,11 +897,47 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         b.setFillGateBps(0);
         assertEq(b.admissionStatus(), 0, "zero removes the target requirement");
 
+        // Audit E1: two unavailable draws can take both prizes, so a third would be admitted against no prize. Before
+        // the fix this admitted ("still covered") and only three unavailable refused.
         _draw(b);
-        assertEq(b.admissionStatus(), 0, "two unavailable, two prizes: still covered");
-        _draw(b);
-        assertEq(b.admissionStatus(), 6, "three unavailable exceed the prizes: refused even at zero");
+        assertEq(b.admissionStatus(), 6, "two unavailable, two prizes: no unreserved prize left, refused even at zero");
         _buyReverts();
+    }
+
+    /// Audit E1 regression (permanent, real FWA path, no forged words): fill gate 0, five equal 0.01 ETH prizes and five
+    /// outstanding draws. Every listed prize may already be taken, so admission refuses (6) and a sixth real
+    /// `acquireBatch` reverts. The backlog threshold is raised to 6 so BUSY (4) cannot mask the inventory check, and the
+    /// FWA VRF subscription is funded through its public native call so randomness coverage cannot either.
+    function test_case07e_zeroFillRefusesADrawAgainstNoUnreservedPrize() public {
+        _fundFwaVrfSubscription(50 ether);
+        PoolBalancer b = _create(creator, 75, 5, 1 ether, false, 0);
+        _use(b);
+        _fillAll(b);
+        vm.startPrank(creator);
+        b.setFillGateBps(0);
+        b.setBacklogThreshold(6);
+        vm.stopPrank();
+        assertEq(b.getActiveShapes()[0], 5, "five 0.01 ETH prizes listed");
+        assertEq(b.prizeWeight(), 5 * (1e36 / 0.01 ether));
+        for (uint256 i; i < 5; ++i) {
+            assertEq(b.admissionStatus(), 0, "fewer outstanding draws than prizes admits");
+            buy(buyer, 1);
+        }
+        assertEq(pool.unsettledAcquisitionCount(), 5, "five outstanding draws");
+        assertEq(pool.lastIssuedSequence() - b.reconciledSequence(), 5);
+        assertEq(b.admissionStatus(), 6, "five outstanding draws can take all five prizes");
+        assertFalse(b.canPurchase(buyer));
+        _buyReverts();
+        assertEq(pool.lastIssuedSequence(), 5, "no sixth draw issued");
+        // Expiry (no randomness supplied), reconciliation and upkeep reopen sales.
+        vm.roll(vm.getBlockNumber() + 40);
+        pool.processAcquisitions(5);
+        assertEq(pool.unsettledAcquisitionCount(), 0, "FWA expired the five draws");
+        _fillAll(b);
+        assertEq(b.reconciledSequence(), 5);
+        assertEq(b.admissionStatus(), 0);
+        buy(buyer, 1);
+        assertEq(pool.lastIssuedSequence(), 6);
     }
 
     function test_case07d_backlogThreshold_allowsTPlusFourOutstanding() public {
@@ -1027,7 +1007,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
     function test_case08a_paymentAndRestockAboveFormerCeilings_thenLower() public {
         PoolBalancer b = _create(creator, 81, 5, 3 ether, false, 0);
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         e.workFee = 0.07 ether;
         e.restockFlat = 0.15 ether;
         factory.setEconomics(e);
@@ -1044,7 +1024,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(_surchargeOf(b, r.lastLid), _surcharge(e, 1));
         assertGt(_surchargeOf(b, r.lastLid), 0.102 ether);
 
-        IKeeperPolicy.Economics memory lo = factory.economics();
+        KeeperPolicyCalls.Economics memory lo = factory.economics();
         lo.workFee = 0.000001 ether;
         lo.restockFlat = 0.00001 ether;
         factory.setEconomics(lo);
@@ -1058,7 +1038,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     function test_case08b_gasPriceAboveFormer50Gwei_largerEnvelope_thenLower() public {
         vm.fee(60 gwei);
         vm.txGasPrice(70 gwei);
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         e.gasPriceCeiling = 100 gwei;
         e.priorityAllowance = 2 gwei;
         e.maxGas = 8_000_000; // former envelope: 6M
@@ -1076,7 +1056,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
         vm.fee(0.5 gwei);
         vm.txGasPrice(1 gwei);
-        IKeeperPolicy.Economics memory lo = factory.economics();
+        KeeperPolicyCalls.Economics memory lo = factory.economics();
         lo.gasPriceCeiling = 0.3 gwei;
         lo.maxGas = 2_000_000;
         lo.overheadGas = 30_000;
@@ -1094,7 +1074,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     //////////////////////////////////////////////////////////////*/
 
     function test_case09_oneEffectiveConfiguration_quotePaymentReserveRestockFallbackAgree() public {
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         e.workFee = 0.00005 ether;
         e.restockGas = 950_000;
         e.restockFlat = 0.0003 ether;
@@ -1105,7 +1085,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
         assertEq(b.restockFeeFor(0), _surcharge(e, 1), "single-Shape restocking preview");
         assertEq(b.restockFeeFor(9), _surcharge(e, 2), "0.02 ETH pack (two Shapes) preview");
-        IKeeperPolicy.Work memory w = _work(900_000, 0, 1, 2, 2);
+        KeeperPolicyCalls.Work memory w = _work(900_000, 0, 1, 2, 2);
         assertEq(b.quoteKeeperReward(w), _pay(e, w));
 
         Run memory r = _run(b, true);
@@ -1127,39 +1107,12 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(b.requiredReserve() - r0, 0.01 ether + b.mintFeeCap() + _bound(e, 0, 0, 1, 1));
         _fillAll(b);
 
-        // Fallback: a failing algorithm with the same numbers. Paid work refuses; unpaid restocking uses the selected
-        // economics' own schedule, which equals the healthy V1 price above.
-        AcceptancePolicy alt = new AcceptancePolicy(1, 1);
-        vm.prank(creator);
-        b.setKeeperPolicy(address(alt));
-        alt.setMode(1);
+        // Unpaid restocking prices exactly like paid restocking (R95: one formula, no fallback schedule).
         _draw(b);
-        r = _run(b, true);
-        assertFalse(r.ok);
-        assertEq(r.err, PoolBalancer.PolicyUnavailable.selector);
         r = _run(b, false);
         assertTrue(r.ok);
         assertEq(r.listed, 1);
-        assertEq(_surchargeOf(b, r.lastLid), _surcharge(e, 1), "fallback = the selected schedule");
-
-        // A malformed (oversized) answer is treated the same way.
-        alt.setMode(2);
-        _draw(b);
-        r = _run(b, true);
-        assertFalse(r.ok);
-        r = _run(b, false);
-        assertTrue(r.ok);
-        assertEq(_surchargeOf(b, r.lastLid), _surcharge(e, 1));
-
-        // A healthy policy pricing above the fallback: unpaid callers pay its price, not the cheaper fallback.
-        uint256 maxPerShape = uint256(e.restockGas) * e.gasPriceCeiling + e.restockFlat;
-        alt.setMode(0);
-        alt.setRestockPerShape(maxPerShape);
-        assertGt(maxPerShape, _surcharge(e, 1));
-        _draw(b);
-        r = _run(b, false);
-        assertTrue(r.ok);
-        assertEq(_surchargeOf(b, r.lastLid), maxPerShape, "unpaid upkeep used the healthy selected policy");
+        assertEq(_surchargeOf(b, r.lastLid), _surcharge(e, 1), "unpaid = paid = the selected schedule");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -1177,7 +1130,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         uint256 fee = shapes.mintFee();
 
         bytes32 reviewed = factory.creationSettingsHash();
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.00003 ether;
         factory.setEconomics(e1);
         uint256 c0 = creator.balance;
@@ -1228,7 +1181,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         fulfill(ids[0], 0); // randomness delivered; FWA processing left to upkeep
 
         bytes32 stale = b.settingsHash();
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.00003 ether;
         factory.setEconomics(e1);
 
@@ -1250,8 +1203,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
         // A local change makes the old hash stale too.
         bytes32 h = b.settingsHash();
-        vm.prank(creator);
-        b.pinEconomics();
+        _pin(b, creator);
         vm.prank(keeper, keeper);
         vm.expectRevert(PoolBalancer.StaleSettings.selector);
         b.performUpkeep(h, 0, 0);
@@ -1345,13 +1297,15 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         y -= r.paid;
         assertEq(b.availableKeeperAllowance(), y);
 
-        vm.startPrank(creator);
-        b.pinEconomics();
+        _pin(b, creator);
         assertEq(b.availableKeeperAllowance(), y, "pin");
+        vm.startPrank(creator);
         b.followFactoryEconomics();
         assertEq(b.availableKeeperAllowance(), y, "follow");
-        b.setKeeperPolicy(address(new KeeperPolicyV1()));
-        assertEq(b.availableKeeperAllowance(), y, "policy switch");
+        KeeperPolicyCalls.Economics memory cheaper = factory.economics();
+        cheaper.restockFlat = 0.0001 ether;
+        b.setLocalEconomics(cheaper);
+        assertEq(b.availableKeeperAllowance(), y, "economics switch");
         b.setLocalEconomics(factory.economics());
         assertEq(b.availableKeeperAllowance(), y, "local economics");
         b.setPaidUpkeepEnabled(false);
@@ -1367,7 +1321,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         vm.prank(heir);
         b.acceptCreator();
         assertEq(b.availableKeeperAllowance(), y, "creator transfer");
-        IKeeperPolicy.Economics memory e1 = factory.economics();
+        KeeperPolicyCalls.Economics memory e1 = factory.economics();
         e1.workFee = 0.0001 ether;
         factory.setEconomics(e1);
         factory.setDefaultBucket(5 ether, 1 ether);
@@ -1393,7 +1347,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         assertEq(shapes.mintFee(), 0.001 ether);
         assertEq(b.mintFeeCap(), 0.001 ether);
         (uint256[] memory ids, uint256[] memory prices) = _prices(b);
-        IKeeperPolicy.Economics memory e = b.effectiveEconomics();
+        KeeperPolicyCalls.Economics memory e = b.effectiveEconomics();
 
         // A draw pending across the decrease.
         uint256[] memory req = buy(buyer, 1);
@@ -1461,7 +1415,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
 
         vm.prank(creator);
         b.setPaidUpkeepEnabled(false);
-        IKeeperPolicy.Economics memory e = b.effectiveEconomics();
+        KeeperPolicyCalls.Economics memory e = b.effectiveEconomics();
         uint256 s0 = stranger.balance;
         uint256 bal0 = address(b).balance;
         uint256 proceeds = pool.ownerProceeds();
@@ -1510,7 +1464,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Gas price ceiling 0 makes every payment exactly (draws + Shape units) * work fee.
-    function _feeOnlyEconomics() internal returns (IKeeperPolicy.Economics memory e) {
+    function _feeOnlyEconomics() internal returns (KeeperPolicyCalls.Economics memory e) {
         e = factory.economics();
         e.gasPriceCeiling = 0;
         e.workFee = 0.001 ether;
@@ -1518,7 +1472,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     }
 
     function test_case14a_listingBoundedByUnitsAndSizes() public {
-        IKeeperPolicy.Economics memory e = _feeOnlyEconomics();
+        KeeperPolicyCalls.Economics memory e = _feeOnlyEconomics();
         uint256 sixSizes = 1 | (1 << 16) | (1 << 32) | (1 << 48) | (1 << 64) | (1 << 80);
         PoolBalancer b = _create(creator, 141, sixSizes, 8 ether, false, 0);
         Run memory r = _run(b, true);
@@ -1547,7 +1501,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     }
 
     function test_case14b_reconcileBounded_noDuplicateRewards() public {
-        IKeeperPolicy.Economics memory e = _feeOnlyEconomics();
+        KeeperPolicyCalls.Economics memory e = _feeOnlyEconomics();
         PoolBalancer b = _create(creator, 143, 20, 1 ether, false, 0);
         _use(b);
         _fillAll(b);
@@ -1574,7 +1528,7 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
     /// only stuck draws, Ready draws at the head of FWA's queue requested at least the grace ago, at most two per call,
     /// each paid one work fee besides its reconcile. Expired draws are left to FWA's permissionless processing.
     function test_case14c_stuckDrawsProcessedAfterGrace_boundedAndPaidOnce() public {
-        IKeeperPolicy.Economics memory e = _feeOnlyEconomics();
+        KeeperPolicyCalls.Economics memory e = _feeOnlyEconomics();
         PoolBalancer b = _create(creator, 144, 20, 1 ether, false, 0);
         _use(b);
         _fillAll(b);
@@ -1651,12 +1605,12 @@ contract CommunityConfigAcceptanceTest is AcceptanceBase {
         for (uint256 i; i < 2; ++i) {
             _drawShape(b);
             if (i == 1) {
-                IKeeperPolicy.Economics memory e1 = factory.economics();
+                KeeperPolicyCalls.Economics memory e1 = factory.economics();
                 e1.workFee = 0.0001 ether;
                 e1.restockFlat = 0.0005 ether;
                 factory.setEconomics(e1); // economic update between purchases
             }
-            IKeeperPolicy.Economics memory e = b.effectiveEconomics();
+            KeeperPolicyCalls.Economics memory e = b.effectiveEconomics();
             Run memory r = _run(b, true);
             assertTrue(r.ok);
             assertEq(r.reconciled, 1);
@@ -1806,7 +1760,7 @@ contract CommunityLegacyFactoryAcceptanceTest is ForkBase {
 
         // The replacement factory, reusing the community Draw Packs, becomes the creation target.
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, COMMUNITY_PACKS, ENS);
-        factory = new BalancerFactory(address(impl), keeperAdmin, address(this), address(new KeeperPolicyV1()));
+        factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
         bytes32 h = factory.creationSettingsHash();
         vm.prank(creator);
         address fresh = factory.createBalancer{value: 1 ether}(bytes32(uint256(16)),
@@ -1814,7 +1768,7 @@ contract CommunityLegacyFactoryAcceptanceTest is ForkBase {
         assertTrue(factory.isBalancer(fresh));
         assertFalse(factory.isBalancer(address(o)));
         assertFalse(old.isBalancer(fresh));
-        IKeeperPolicy.Economics memory e = factory.economics();
+        KeeperPolicyCalls.Economics memory e = factory.economics();
         e.workFee = 0.001 ether;
         factory.setEconomics(e);
         assertEq(o.keeperPolicy(), old.defaultKeeperPolicy(), "the legacy pool keeps its own policy");

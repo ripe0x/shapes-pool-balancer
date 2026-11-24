@@ -7,7 +7,6 @@ import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
 import {ReceiptGas} from "../utils/ReceiptGas.sol";
 import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
 import {PoolInventory} from "../../src/PoolInventory.sol";
-import {KeeperPolicyV2} from "../Settings.t.sol";
 import {PoolBalancer} from "../../src/PoolBalancer.sol";
 import {IERC721Min} from "../../src/interfaces/External.sol";
 import {ListOne} from "../utils/ListOne.sol";
@@ -220,25 +219,28 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         uint256[] memory prices = new uint256[](listed.length);
         // FWA listing tuple is collection, depositor, winner, tokenId, weight, price, slot, status.
         for (uint256 i; i < listed.length; ++i) (,,,,, prices[i],,) = pool.listings(listed[i]);
-        KeeperPolicyV2 v2 = new KeeperPolicyV2();
+        // R95: no algorithm to switch; the regime switches to local economics with half the work fee.
+        KeeperPolicyCalls.Economics memory local = factory.economics();
+        local.workFee = 0.00001 ether;
         uint256[] memory pending = _buy(1);
         assertEq(pending.length, 1);
         assertEq(pool.unsettledAcquisitionCount(), 1);
-        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(_econWith(address(v2)));
-        assertEq(required, _workingBufferAt(0.55 gwei) + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 0.00004 ether,
+        (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(local);
+        assertEq(required, (3_200_000 + V1_OVERHEAD) * 0.55 gwei + 10 * 0.00001 ether
+            + (2_150_000 + V1_OVERHEAD) * 0.55 gwei + 2 * 0.00001 ether,
             "one outstanding request and one operating call at 0.5 gwei");
-        assertEq(shortfall, 0, "unchanged effective maintenance exposure needs no top-up");
-        vm.prank(creator); balancer.setKeeperPolicy(address(v2));
-        assertEq(balancer.keeperPolicy(), address(v2));
+        assertEq(shortfall, 0, "a smaller maintenance exposure needs no top-up");
+        vm.prank(creator); balancer.setLocalEconomics(local);
+        assertEq(balancer.economicsSource(), 1);
         alternativePolicy = true;
-        // The single schedule leaves this board funded at its current exposure; the replacement adds none (shortfall 0).
+        // The smaller work fee lowers the exposure, so the switch needs no top-up (shortfall 0).
         assertGe(address(balancer).balance - balancer.creatorCredit(), required, "funded at the unchanged exposure");
         uint256 repriced;
         for (uint256 i; i < listed.length; ++i) {
             (,,,,, uint256 price,,) = pool.listings(listed[i]);
             if (price != prices[i]) ++repriced;
         }
-        assertEq(repriced, 0, "policy replacement cannot alter an existing FWA price");
+        assertEq(repriced, 0, "an economics switch cannot alter an existing FWA price");
         _deliver(pending[0], _word(50));
         _service();
         _account(pending);
@@ -573,6 +575,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                     _keeperPass();
                 }
             }
+            _pastProcessingGrace();
             _service();
             _account(openIds);
             uint256 u = pool.unsettledAcquisitionCount();
@@ -609,6 +612,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
                 _keeperPass();
             }
             if ((i + 1) % PER_DAY == 0) {
+                _pastProcessingGrace();
                 _service();
                 _account(openIds);
                 uint256 u = pool.unsettledAcquisitionCount();
@@ -622,6 +626,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         x[1] = Fact("unsettled_draws_at_day_end_max", maxUnsettledAtDayEnd);
         x[2] = Fact("unsettled_draws_at_end", pool.unsettledAcquisitionCount());
         _done(regime, a, x);
+    }
+
+    /// @dev Upkeep processes a stuck Ready draw only once it was requested `processGraceBlocks` ago (owner decision D3,
+    ///      50 blocks), so a day-end measurement taken in the request block saw draws legitimately inside the grace. The
+    ///      day now ends after the grace has run. Timing only: no outcome target changes.
+    function _pastProcessingGrace() internal {
+        vm.roll(vm.getBlockNumber() + balancer.effectiveEconomics().processGraceBlocks);
     }
 
     function _tryBuy() internal returns (uint256[] memory ids) {
@@ -821,6 +832,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         Snap memory a = _launch();
         creditCheck = true;
         _runInFlight(0, DRAWS);
+        // The last delivered draw was left unreconciled because reconciling it was unprofitable for the rational
+        // keeper, so the Balancer's prize counters (lowered at reconciliation) still counted the won 0.01 ETH prize: the
+        // gate's counter-vs-holding check read a 0.01 ETH gap. The creator runs upkeep at the end, as in the other
+        // creator-response regimes, so the run ends reconciled. Scenario end only.
+        while (_upkeep(creator, false) == RAN) {}
+        assertEq(balancer.reconciledSequence(), pool.lastIssuedSequence(), "ends with every draw reconciled");
         // reached: restocks were made and staged while draws were unsettled, and collections were checked
         assertGt(upkeepsWhileUnsettled, 0, "upkeep ran while draws were unsettled");
         assertGt(restocksStaged, 0, "restocks listed while draws were unsettled");
@@ -1440,20 +1457,13 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
             uint256 rec = balancer.reconciledSequence() - seq0;
             if (rec > maxReconciled) maxReconciled = rec;
             uint256 minted0 = backingMinted;
-            uint256 nextBefore = nextLid;
             uint256 units = _scanListings();
             if (units > maxUnits) maxUnits = units;
             if (who == keeper) {
                 uint256 price = gasNow < 5 gwei ? gasNow : 5 gwei;
                 uint256 service = (pool.nextSequenceToProcess() - next0 + rec + units) * 0.00002 ether;
                 uint256 overhead = V1_OVERHEAD;
-                if (alternativePolicy) {
-                    price = feeNow + 0.02 gwei;
-                    if (price > gasNow) price = gasNow;
-                    if (price > 8 gwei) price = 8 gwei;
-                    service = rec * 0.00001 ether + (nextLid - nextBefore) * 0.00004 ether;
-                    overhead = 70_000;
-                }
+                if (alternativePolicy) service /= 2; // the switched local economics' 0.00001 ETH work fee
                 uint256 most = (cost / gasNow + overhead) * price + service;
                 if (reward > most) {
                     paidBeyondGasAndReward += reward - most;
@@ -1484,8 +1494,7 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     /// @dev A keeper transaction starts with every account and slot cold, including the code a clone or proxy runs:
     ///      the harness's own reads (bookkeeping, the FWA queue count) would otherwise leave it warm.
     function _coolKeeperTx() internal {
-        address selectedPolicy = balancer.keeperPolicy();
-        address[8] memory xs = [address(balancer), address(pool), SHAPES, packs, address(factory), selectedPolicy,
+        address[7] memory xs = [address(balancer), address(pool), SHAPES, packs, address(factory),
             address(KeeperPolicyCalls), address(PoolInventory)];
         for (uint256 i; i < xs.length; ++i) {
             address impl = _implementation(xs[i]);

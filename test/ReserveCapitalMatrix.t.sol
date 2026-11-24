@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {ForkBase} from "./utils/ForkBase.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
-import {IKeeperPolicy} from "../src/interfaces/IKeeperPolicy.sol";
 import {IShapes} from "../src/interfaces/External.sol";
 
 /// @dev The non-view call asserts fee context inside execution and reads the real Shapes mint fee.
@@ -15,7 +14,7 @@ contract ReserveCapitalQuoteProbe {
 
     constructor(address shapes_) { shapes = IShapes(shapes_); }
 
-    function quote(KeeperPolicyCalls.Reserve memory r, IKeeperPolicy.Economics memory e, uint256 expectedBase, uint256 expectedBid)
+    function quote(KeeperPolicyCalls.Reserve memory r, KeeperPolicyCalls.Economics memory e, uint256 expectedBase, uint256 expectedBid)
         external returns (uint256 need, uint256 mintFee)
     {
         require(block.basefee == expectedBase && tx.gasprice == expectedBid, "executed fee context");
@@ -34,8 +33,8 @@ contract ReserveCapitalMatrixTest is ForkBase {
     uint256 internal index;
     ReserveCapitalQuoteProbe internal probe;
     uint256 internal maximum;
-    IKeeperPolicy.Economics internal econ;
-    IKeeperPolicy.Economics internal none;
+    KeeperPolicyCalls.Economics internal econ;
+    KeeperPolicyCalls.Economics internal none;
 
     function setUp() public {
         setUpFork();

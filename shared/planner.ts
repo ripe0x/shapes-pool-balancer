@@ -16,9 +16,9 @@ export const V1_POLICY = Object.fromEntries(Object.entries(policyV1).map(([k, v]
   Record<keyof typeof policyV1, bigint>;
 export const MAX_KEEPER_REWARD = V1_POLICY.maxReward;
 
-/** IKeeperPolicy.Economics as viem decodes it: the factory's `economics()` or a pool's `effectiveEconomics()`. */
+/** KeeperPolicyCalls.Economics as viem decodes it: the factory's `economics()` or a pool's `effectiveEconomics()`. */
 export interface Economics {
-  policy: `0x${string}`; workFee: bigint; maxGas: number; overheadGas: number; gasPriceCeiling: bigint; priorityAllowance: bigint;
+  workFee: bigint; maxGas: number; overheadGas: number; gasPriceCeiling: bigint; priorityAllowance: bigint;
   restockGas: number; restockFlat: bigint; baseGas: number; processGas: number; reconcileGas: number; shapeGas: number; prizeGas: number;
   /** Upkeep processes only Ready draws requested at least this many blocks ago; the shorter value while purchases are paused. */
   processGraceBlocks: number; pausedProcessGraceBlocks: number;
@@ -33,24 +33,24 @@ export const KEEPER_LIMITS = Object.fromEntries(Object.entries(enforcement).map(
   Record<keyof typeof enforcement, bigint>;
 
 /** The factory's initial economics (Solidity fixtures), for V1 simulations and tests. The app and keeper read the live
- *  `economics()` / `effectiveEconomics()` instead. The policy address is deployment-specific and unknown here. */
+ *  `economics()` / `effectiveEconomics()` instead. */
 export const V1_ECONOMICS: Economics = {
-  policy: '0x0000000000000000000000000000000000000000', workFee: KEEPER_LIMITS.workFee, maxGas: Number(KEEPER_LIMITS.maxGas),
+  workFee: KEEPER_LIMITS.workFee, maxGas: Number(KEEPER_LIMITS.maxGas),
   overheadGas: Number(KEEPER_LIMITS.overheadGas), gasPriceCeiling: KEEPER_LIMITS.gasPriceCeiling,
   priorityAllowance: KEEPER_LIMITS.priorityAllowance, restockGas: Number(V1_POLICY.restockGas), restockFlat: V1_POLICY.restockFlat,
   baseGas: Number(KEEPER_LIMITS.baseGas), processGas: Number(KEEPER_LIMITS.processGas), reconcileGas: Number(KEEPER_LIMITS.reconcileGas),
   shapeGas: Number(KEEPER_LIMITS.shapeGas), prizeGas: Number(KEEPER_LIMITS.prizeGas),
   processGraceBlocks: Number(KEEPER_LIMITS.processGraceBlocks), pausedProcessGraceBlocks: Number(KEEPER_LIMITS.pausedProcessGraceBlocks),
 };
-/** Derived bounds (KeeperPolicyCalls.maxPayment / maxSurcharge): the most one call can be paid, and the most a
- *  restocking quote can charge per Shape. Bounds, not per-call charges. */
+/** Derived bounds (KeeperPolicyCalls.maxPayment / maxSurcharge): the most one call can be paid, and the restocking
+ *  surcharge per Shape at the gas price ceiling. Bounds, not per-call charges. */
 export const maxPaymentOf = (e: Economics) => (BigInt(e.maxGas) + BigInt(e.overheadGas)) * e.gasPriceCeiling + 10n * e.workFee;
 export const maxSurchargeOf = (e: Economics) => BigInt(e.restockGas) * e.gasPriceCeiling + e.restockFlat;
 
 const lesser = (a: bigint, b: bigint) => a < b ? a : b;
 /** Reimbursed reference price: min(basefee + priority allowance, ceiling). */
 export const rewardPrice = (baseFee: bigint, e: Economics = V1_ECONOMICS) => lesser(baseFee + e.priorityAllowance, e.gasPriceCeiling);
-/** Restocking surcharge per Shape under `e`'s schedule (KeeperPolicyV1 and the pool's fallback). */
+/** Restocking surcharge per Shape under `e` (KeeperPolicyCalls.restock). */
 export const restockFeeAt = (baseFee: bigint, e: Economics = V1_ECONOMICS) => BigInt(e.restockGas) * rewardPrice(baseFee, e) + e.restockFlat;
 
 export interface KeeperWork {
@@ -62,12 +62,8 @@ export interface KeeperWork {
   listedPrizes: bigint;
   processedDraws: bigint;
 }
-/** Exact KeeperPolicyV1 arithmetic under `e`, for previews and simulations; other policies are consumed as quotes. */
-export function quoteV1(work: KeeperWork, e: Economics = V1_ECONOMICS): bigint {
-  const price = lesser(rewardPrice(work.baseFee, e), work.gasPrice);
-  const measured = lesser(work.measuredGas, BigInt(e.maxGas));
-  return (measured + BigInt(e.overheadGas)) * price + (work.processedDraws + work.reconciledDraws + work.listedShapeUnits) * e.workFee;
-}
+/** The pool's payment for `work` under `e` (KeeperPolicyCalls.reward, the one in-library formula since R95). */
+export const quoteV1 = (work: KeeperWork, e: Economics = V1_ECONOMICS): bigint => paymentBound(work, e);
 
 type WorkCounts = Pick<KeeperWork, 'processedDraws' | 'reconciledDraws' | 'listedShapeUnits' | 'listedPrizes'>;
 /** KeeperPolicyCalls.workGas: the sum of the operation bounds, never above maxGas. */
@@ -75,7 +71,7 @@ export function workGas(w: WorkCounts, e: Economics): bigint {
   return lesser(BigInt(e.maxGas), BigInt(e.baseGas) + BigInt(e.processGas) * w.processedDraws + BigInt(e.reconcileGas) * w.reconciledDraws
     + BigInt(e.shapeGas) * w.listedShapeUnits + BigInt(e.prizeGas) * w.listedPrizes);
 }
-/** KeeperPolicyCalls.paymentBound at `baseFee`: the current-gas budget for validated work, whatever a policy quotes.
+/** KeeperPolicyCalls.paymentBound at `baseFee`: the current-gas budget for validated work.
  *  Without economics (paid upkeep off) nothing is budgeted. */
 export function workBudget(w: WorkCounts, baseFee: bigint, e: Economics | undefined): bigint {
   if (!e) return 0n;
@@ -84,7 +80,8 @@ export function workBudget(w: WorkCounts, baseFee: bigint, e: Economics | undefi
 const capped = (e: Economics, bound: bigint) => e.paymentCap !== undefined ? lesser(e.paymentCap, bound) : bound;
 /** Work-fee units: processed draws count except on legacy pools (`paymentCap` set), which paid no fee for them. */
 const feeUnits = (w: WorkCounts, e: Economics) => (e.paymentCap === undefined ? w.processedDraws : 0n) + w.reconciledDraws + w.listedShapeUnits;
-/** KeeperPolicyCalls.reward's envelope for actual measured work and the included bid; the policy quote is capped by it. */
+/** KeeperPolicyCalls.reward for actual measured work and the included bid: (min(measured, operation bound, maxGas) +
+ *  overhead) x min(bid, basefee + allowance, ceiling) + work fees. */
 export function paymentBound(w: KeeperWork, e: Economics | undefined): bigint {
   if (!e) return 0n;
   const price = lesser(w.gasPrice, rewardPrice(w.baseFee, e));
@@ -273,12 +270,13 @@ export function shapeTotals(counts: Counts, inputs: PoolInputs) {
 
 /** Unreconciled draws a fully stocked board still admits a purchase with (PoolInventory.admission counts each
  *  unreconciled draw as the loss of a 0.01 ETH prize's weight, 1e36 / backing, and admits while `fillGateBps` of the
- *  target's weight remains; at 0 it still requires the remaining weight to cover the loss), capped at `cap`
- *  (default FWA's MAX_BATCH). */
+ *  target's weight remains; at 0 it still requires some weight left after the loss, so no draw is admitted once the
+ *  unreconciled draws could take every listed prize), capped at `cap` (default FWA's MAX_BATCH). */
 export function pendingDrawsAdmitted(counts: Counts, fillGateBps = 7_000, cap = MAX_BATCH): number {
   const w = counts.reduce((s, n, d) => s + BigInt(n) * (NUM / DENOMS[d]), 0n);
-  const k = Number(((BPS - BigInt(fillGateBps)) * w) / (BPS * (NUM / DENOMS[0])));
-  return Math.min(k, cap);
+  const u = NUM / DENOMS[0];
+  const k = fillGateBps === 0 ? (w - 1n) / u : ((BPS - BigInt(fillGateBps)) * w) / (BPS * u);
+  return Math.min(Math.max(Number(k), 0), cap);
 }
 
 export const capitalOf = (counts: Counts) => counts.reduce((s, n, d) => s + BigInt(n) * DENOMS[d], 0n);
@@ -405,7 +403,7 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     if (!inputs.v1Preview) return undefined;
     const work = keeperWorkAt(inputs.baseFee, price, d);
     const e = selectedEconomics(inputs);
-    return lesser(quoteV1(work, e), paymentBound(work, e));
+    return paymentBound(work, e);
   };
   let backingWeighted = 0n, mintWeighted = 0n, surchargeWeighted = 0n, keeperWeighted = 0n;
   for (let i = 0; i < inputs.curatedBases.length; i++) {
