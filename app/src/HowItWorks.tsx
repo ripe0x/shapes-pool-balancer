@@ -5,9 +5,9 @@ import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } fr
 import { StatusBar, useVault } from './MainPool';
 import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
 
-// One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
+// One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.0005 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
-  curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.001'), restockFee: restockFeeAt(10n ** 9n),
+  curatedBases: [parseEther('0.2')], markupBps: 1500, edgeBps: 500, mintFee: parseEther('0.0005'), restockFee: restockFeeAt(10n ** 9n),
   have: Array(16).fill(0), baseFee: 10n ** 9n, gasPrice: 1_050_000_000n, v1Preview: true,
 };
 const SMALL = 20;
@@ -142,7 +142,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'is retained for pool operations', share: retainedShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your earnings are what the markup brings in above 10%: {econ.creatorRevenueBps / 100}% of sales, about {econ.creatorEarningsPerDraw.toFixed(4)} ETH per draw in this example. The pool sets this rate from your markup and prize mix when it is created, and again each time you save a new markup or mix.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee ({eth(EXAMPLE.mintFee, 4)} ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your earnings are what the markup brings in above 10%: {econ.creatorRevenueBps / 100}% of sales, about {econ.creatorEarningsPerDraw.toFixed(4)} ETH per draw in this example. The pool sets this rate from your markup and prize mix when it is created, and again each time you save a new markup or mix.</p>
       </section>
 
       <section className="hiw-sec">
