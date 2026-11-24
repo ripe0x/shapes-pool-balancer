@@ -38,14 +38,11 @@ export async function policyEconomics(pub: PublicClient, economics: Economics, b
   const restockFees = balancer
     ? await readsAt(pub, DENOMS.map((_, d) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'restockFeeFor', args: [d] })), callContext) as bigint[]
     : DENOMS.map((_, d) => BigInt(SHAPES_IN[d]) * restockFeeAt(baseFee, economics));
-  // A failed pool quote leaves keeper costs unknown.
-  const keeperQuotes = await (async () => {
-    const out = balancer
-      ? await readsAt(pub, ds.map((d) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] })), callContext) as bigint[]
-      : ds.map((d) => paymentBound(work(d), economics));
-    const [reconcile, ...replace] = out;
-    return { reconcile, replace };
-  })().catch(() => undefined);
+  // A failed pool quote rejects like a failed restock read: callers show keeper costs as unavailable.
+  const [reconcile, ...replace] = balancer
+    ? await readsAt(pub, ds.map((d) => ({ address: balancer, abi: poolQuoteAbi, functionName: 'quoteKeeperReward', args: [work(d)] })), callContext) as bigint[]
+    : ds.map((d) => paymentBound(work(d), economics));
+  const keeperQuotes = { reconcile, replace };
   return { economics, policyMaxReward: maxPaymentOf(economics), baseFee, gasPrice, chainTimestamp: block.timestamp, restockFee: restockFees[0], restockFees, keeperQuotes, restockQuoteVerified: balancer !== undefined, policyUnavailable: false };
 }
 

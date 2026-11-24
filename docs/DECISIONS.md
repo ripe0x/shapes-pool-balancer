@@ -1026,3 +1026,26 @@ only when `lost != 0 && prizeWeight <= lost`; the fill-gate check `(prizeWeight 
 targetWeight` is unchanged, so any gate above zero still refuses an empty Shape board. `shared/planner.ts`
 `pendingDrawsAdmitted` models a fully stocked board (weight above zero) and is unaffected. Regression
 `test_case07f_zeroFillNoOutstandingDrawsNoShapesAdmits`.
+
+## Owner acceptance: batch overshoot and restocking charge (2026-11-23)
+
+Owner's word: "yes go". Two findings of the second independent audit are accepted as designed (OWNER-REQUIREMENTS
+R104, R105). No contract behavior, outcome bound or signature changes.
+
+1. **Batch overshoot (A1, R104).** FWA calls the purchase gate once per `acquireBatch` of up to 5 draws. On a nearly
+   empty board up to 4 draws of that purchase can find no prize; FWA refunds their draw price as pull credit, not the
+   buyer's randomness fee. The `PoolInventory.admission` comment claimed no draw is admitted against no unreserved
+   prize; it now states the per-purchase check. The app's purchase-pauses view says: "A purchase of several draws is
+   checked once. On a nearly empty board, some of its draws may be refunded without the randomness fee."
+2. **Restocking charge (A2, R105).** Local `restockGas` and `restockFlat` have width-only bounds, so they can raise
+   Shape listing prices beyond the markup range; the markup limits do not cap them. The local-economics form shows the
+   charge per Shape at the gas price ceiling for the entered values (`restockGas x gasPriceCeiling + restockFlat`, the
+   existing "Maximum restocking charge per Shape" row) with a facts-only note that it is added per Shape on top of the
+   markup and is not capped by the markup limits.
+
+Repairs of the same audit (no behavior change in contracts): `test/KeeperEconomics.t.sol` copied the economics struct
+by memory alias, so "local economics ignore the factory" compared a value with itself; it now takes a fresh copy and
+asserts the factory and local values differ first. `app/src/policy.ts` turned a failed keeper-quote batch into
+`keeperQuotes: undefined` with `policyUnavailable: false`; the failure now rejects, so the app takes its existing
+unavailable path. `keeper/e2e.ts`, `scripts/current-local-rehearsal.ts` and `docs/CURRENT-LOCAL-REHEARSAL.md` are
+marked historical (they call removed policy functions); `script/deploy.sh` no longer calls that route current.

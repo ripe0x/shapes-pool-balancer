@@ -185,13 +185,17 @@ contract KeeperEconomicsTest is ForkBase {
         assertTrue(_eq(c.effectiveEconomics(), next), "resuming adopts the latest factory economics");
 
         // Local economics: creator values, immediate, unaffected by the factory.
-        KeeperPolicyCalls.Economics memory mine = original;
+        // A fresh copy: `mine = original` aliases one memory struct, so the factory change would carry the local values.
+        KeeperPolicyCalls.Economics memory mine = factory.economics();
         mine.workFee = 0.00001 ether;
         vm.prank(stranger); vm.expectRevert(PoolBalancer.Unauthorized.selector); b.setLocalEconomics(mine);
         vm.prank(owner2); b.setLocalEconomics(mine);
         assertEq(b.economicsSource(), 1);
         factory.setEconomics(original);
+        assertEq(factory.economics().workFee, 0.00002 ether, "factory back on the V1 work fee");
+        assertFalse(_eq(factory.economics(), mine), "factory and local values differ");
         assertTrue(_eq(b.effectiveEconomics(), mine), "local economics ignore the factory");
+        assertEq(b.effectiveEconomics().workFee, 0.00001 ether, "local work fee kept");
     }
 
     /// Pin, local, follow, an economics switch and re-enable keep the creator's emergency stop and the bucket; a creator

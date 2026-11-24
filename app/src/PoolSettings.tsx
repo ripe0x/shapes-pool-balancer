@@ -47,6 +47,8 @@ export function LimitsNote({ limits, currentPrizes }: { limits: ProductLimits; c
   </div>;
 }
 
+const BATCH_NOTE = <p className="note">A purchase of several draws is checked once. On a nearly empty board, some of its draws may be refunded without the randomness fee.</p>;
+
 /** Creator purchase pauses: the fill gate and the unsettled-draw backlog. Legacy pools have both fixed. */
 export function PurchasePauses({ d, tx }: { d: { balancer: Address; target: bigint; fillGateBps: number; backlogThreshold: number; legacy?: LegacyFactory }; tx: Tx }) {
   const [gate, setGate] = useState(String(d.fillGateBps / 100));
@@ -65,6 +67,7 @@ export function PurchasePauses({ d, tx }: { d: { balancer: Address; target: bigi
     <div className="kv"><span className="k">Fill gate</span><span>70% of the target's weight</span></div>
     <div className="kv"><span className="k">Unsettled draws that pause purchases</span><span>{MAX_BATCH}</span></div>
     <p className="note">Fixed on legacy pools.</p>
+    {BATCH_NOTE}
   </div>;
   return <div className="section">
     <h2 className="h3">Purchase pauses</h2>
@@ -85,6 +88,7 @@ export function PurchasePauses({ d, tx }: { d: { balancer: Address; target: bigi
     </div>
     <p className="note">FWA checks this before a purchase of up to {MAX_BATCH} draws, so up to {backlogOk ? maxUnsettled(backlogN) : `threshold + ${MAX_BATCH - 1}`} draws can be unsettled. Closing purchases stops new draws. Default {BACKLOG_DEFAULT}.</p>
     {!backlogOk && <p className="note error">Enter a whole number from 1 to 65,535.</p>}
+    {BATCH_NOTE}
   </div>;
 }
 
@@ -290,6 +294,7 @@ function LocalEconomicsForm({ d, tx, write, deposit }: { d: KeeperView; tx: Tx }
     {candidate && <div style={{ marginTop: 16 }}>
       <div className="kv"><span className="k">Maximum payment per call</span><span>{ethx(maxPaymentOf(candidate))}</span></div>
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{ethx(maxSurchargeOf(candidate))}</span></div>
+      <p className="note">At the {formatGwei(candidate.gasPriceCeiling)} gwei gas price ceiling. Added per Shape to listed prize prices, on top of the markup. The markup limits do not cap it.</p>
       <div className="kv"><span className="k">Maintenance budget</span><span>{next?.next ? ethx(next.next.required) : next?.error ? 'Unavailable' : 'Checking…'}</span></div>
       {need > 0n && <div style={{ marginTop: 12 }}><p className="note error">These values need {formatEther(need)} more operating ETH first.</p>{deposit(need)}</div>}
     </div>}

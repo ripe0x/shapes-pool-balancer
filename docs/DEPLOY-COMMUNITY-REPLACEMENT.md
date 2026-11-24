@@ -50,6 +50,11 @@ getter readbacks at the checked block; no receipts).
     `0x77dEcC3A8005694cB706af17D75f6c59Fd1C61C8` (linked to KeeperPolicyCalls `0x5c63…e7f7`, which reproduces); no code
     on mainnet at block 26,482,083. `0xb89B…c9f7` and the section 7a rehearsal are for `f549bf9`; rerun step 5's dry
     run against the commit you deploy.
+  - **Final pass (2026-11-23): recompute.** The final pass edited comments in `src/PoolInventory.sol`. Solidity embeds
+    a source metadata hash in bytecode, so PoolInventory's init code, and with it `0x77dE…61C8`, no longer apply to
+    the final commit (and anything linked to it changes with it). Step 5's dry run, run from the final merged commit on
+    `main`, recomputes every predicted CREATE2 library address and is their source of truth. No rehearsal was run for
+    the final commit.
   Neither new address has code on mainnet at block 26,481,996.
 - Every transaction, CREATE2 libraries included, is sent by the deployer and uses one nonce. Order: KeeperPolicyCalls
   (N), PoolInventory (N+1), PoolBalancer (N+2), BalancerFactory (N+3): 4 transactions, 11,129,506 gas on the fork.

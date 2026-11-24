@@ -1,4 +1,5 @@
-// Current-candidate local rehearsal. Preparation/preflight never fund, unlock, mine or broadcast.
+// HISTORICAL: local rehearsal of the 2026-11-18 protected-revenue candidate, not evidence for the community release.
+// Preparation/preflight never fund, unlock, mine or broadcast.
 // Historical since R95: its scenario's keeper-policy switch (KeeperPolicyV2, setKeeperPolicy) no longer exists, so a
 // full run stops at that step. The community release rehearses with script/Deploy.s.sol and keeper/keeper.ts instead.
 import assert from 'node:assert/strict';

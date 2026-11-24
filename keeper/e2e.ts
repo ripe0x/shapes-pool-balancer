@@ -1,3 +1,6 @@
+// HISTORICAL since R95 (2026-11-23): its policy section calls keeperPolicy, pinEconomics and setKeeperPolicy and
+// deploys KeeperPolicyV2, all removed from the community release, so a run fails there. Not evidence for the
+// community release, which rehearses with script/Deploy.s.sol and keeper/rehearsal.ts (DEPLOY-COMMUNITY-REPLACEMENT).
 // Keeper integration test on a local mainnet fork with the real FWA pool and Shapes.
 // Starts its own anvil (port E2E_PORT, default 18546), deploys via script/Deploy.s.sol, creates two
 // Balancers via script/DevSetup.s.sol, then exercises the keeper. Run: npm run keeper:e2e

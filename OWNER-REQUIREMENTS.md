@@ -428,3 +428,16 @@ outcomes hash is still required; this record is not that signature.
 - R103. **E1 edge (fix, no new rule).** The inventory check refuses only while draws are outstanding
   (`lost != 0 && prizeWeight <= lost`): fill 0 with no outstanding draws and no Shapes listed is admitted, since
   nothing is at risk. The fill-gate percentage check is unchanged.
+
+## Accepted behaviors after the second independent audit (owner, 2026-11-23: "yes go")
+
+Accepted and documented; no contract behavior change and no outcome bound changes.
+
+- R104. **Batch overshoot (A1).** FWA consults the pool's purchase gate once per `acquireBatch` of up to 5 draws
+  (MAX_BATCH). On a nearly empty board up to 4 draws of one purchase can find no prize; FWA refunds their draw price
+  as pull credit, and the buyer's randomness fee for those draws is not refunded. The `PoolInventory.admission`
+  comment states this per-purchase check; the app's purchase-pauses view states it as a fact.
+- R105. **Restocking charge outside the markup range (A2).** Economics fields have width-only bounds (R89, R95), so a
+  creator's local `restockGas` and `restockFlat` can raise Shape listing prices beyond the markup range; the markup
+  limits do not cap the restocking charge. Where local economics are edited, the app shows the resulting charge per
+  Shape at the gas price ceiling for the entered values (`restockGas x gasPriceCeiling + restockFlat`).

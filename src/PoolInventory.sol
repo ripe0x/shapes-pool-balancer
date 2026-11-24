@@ -101,8 +101,10 @@ library PoolInventory {
     ///      minting in upkeep, while already listed prizes stay purchasable under the weight gate below.
     /// @dev `fillGateBps` (creator, 0..10000) is the inverse-backing-weight threshold; zero drops the target-fill
     ///      requirement but keeps the conservative unavailable-inventory check: purchases stop once every listed prize could
-    ///      already be taken by an unreconciled draw (`lost != 0 && prizeWeight <= lost`), so no draw is admitted against no
-    ///      unreserved prize; with no unreconciled draw nothing is at risk and only the fill gate applies. `backlogThreshold`
+    ///      already be taken by an unreconciled draw (`lost != 0 && prizeWeight <= lost`); with no unreconciled draw nothing
+    ///      is at risk and only the fill gate applies. FWA consults this once per purchase of up to MAX_BATCH draws, so on
+    ///      a nearly empty board up to MAX_BATCH-1 draws of one purchase can find no prize; FWA refunds their draw price as
+    ///      pull credit but not the buyer's randomness fee (owner decision R104). `backlogThreshold`
     ///      (creator, >=1) is the unsettled-draw count that pauses purchases; it is distinct from FWA's per-transaction
     ///      batch cap (MAX_BATCH), so a threshold T allows up to T+MAX_BATCH-1 outstanding when other checks permit.
     function admission(State storage s, IFWAPool pool, bool curatedRequired,
