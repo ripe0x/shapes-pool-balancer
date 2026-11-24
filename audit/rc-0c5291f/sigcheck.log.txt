@@ -1,0 +1,6 @@
+computed 25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297
+recorded 25faf114da05a630e4a74d34fc336730411ceff7a48fb40b065886add9aad297
+match True
+signed hash exit 0 Good "asset-flow" signature for owner with ED25519 key SHA256:K1f1jJ0jdSu4JkwrWvHzWmjjejzxZUmDxhZJwGi3+K0
+negative control, previous hash d3b9ba83... exit 255 Could not verify signature.
+Signature verification failed: incorrect signature
