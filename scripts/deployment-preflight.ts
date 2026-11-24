@@ -120,6 +120,8 @@ export async function preflight(pub: PublicClient, blockNumber: bigint | undefin
     const abiCheck: Record<string, string[]> = {};
     if (abis) for (const [label, address, items] of [['balancerFactory', factory, abis.balancerFactory], ['poolBalancer', f.poolBalancerImplementation, abis.poolBalancer],
       ['keeperPolicyV1', f.keeperPolicy, abis.keeperPolicyV1]] as const) {
+      // community-v2 and later have no keeper policy contract (R95).
+      if (label === 'keeperPolicyV1' && !address && !items) continue;
       abiCheck[label] = missingSelectors(items, (await pub.getCode({ address: getAddress(address), blockNumber: at })) ?? '0x');
       if (abiCheck[label].length) bad.push(`${f.label} ${label} ABI: selectors ${abiCheck[label].join(',')} absent from ${address}`);
     } else if (scan.pools.length) bad.push(`${f.label}: ${scan.pools.length} pool(s) found but no ABI is packaged in the legacy config`);

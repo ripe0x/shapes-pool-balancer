@@ -11,6 +11,82 @@ library moves them.
 A generated `deployments/1.json` or a successful simulation is not a deployment. Only step 7's
 `DEPLOYMENT VERIFIED` against mined receipts establishes one.
 
+## 0. owner() redeploy (2026-11-24, unsigned)
+
+The only contract change since the deployed `858eb21` is `PoolBalancer.owner()` (returns `creator`) and its
+`OwnershipTransferred` event. Libraries are unchanged, so the dry run must send exactly **PoolBalancer then
+BalancerFactory** (about 6.6M gas; 5.18M and 1.39M last time) and link KeeperPolicyCalls `0x5c63…e7f7`, PoolInventory
+`0x155E…3648` and PoolPage `0x67C8…fBcf` as preexisting. The factory constructor still starts at a 5 gwei ceiling;
+step 8 sets 1.5 gwei, as on `0x526F…2929`. The current factory `0x526F…2929` becomes the `community-v2` entry in
+`deployments/1.legacy.json` (its exact deployed ABIs; managed as a current pool, not with community-v1 rules). Records
+use the `1.owner.*` prefix so the `1.replacement.*` records of `0x526F…2929` stay unchanged.
+
+**Setup.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && export RPC=https://mainnet.gateway.tenderly.co DEPLOYER=0xCB43078C32423F5348Cab5885911C3B5faE217F9 PACKS_ADMIN=0xCB43078C32423F5348Cab5885911C3B5faE217F9 KEEPER_ADMIN=0xCB43078C32423F5348Cab5885911C3B5faE217F9 POLICY_ADMIN=0xCB43078C32423F5348Cab5885911C3B5faE217F9 REUSE_DEPENDENCIES=true
+```
+
+**1 → Main is current.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && git fetch origin && git status -sb | head -1 && git rev-parse --short HEAD
+```
+Check: `## main...origin/main` with no ahead/behind, at the merged owner() commit.
+
+**2 → Build.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && forge build --sizes 2>&1 | grep -E "^\| (PoolBalancer|BalancerFactory) "
+```
+Check: PoolBalancer runtime 23,535 bytes, BalancerFactory 5,290.
+
+**3 → Preflight (read-only).**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && node --import tsx scripts/deployment-preflight.ts --rpc-url $RPC --out deployments/1.preflight.json && jq '{ok, problems, v2: .legacyFactories[0] | {label, poolCount}}' deployments/1.preflight.json
+```
+Check: `"ok": true`, `"problems": []`, `community-v2` with its pool count (1 at block 26,488,000).
+
+**4 → Nonce and balance.**
+```bash
+cast nonce $DEPLOYER --rpc-url $RPC && cast balance $DEPLOYER --rpc-url $RPC --ether && cast base-fee --rpc-url $RPC
+```
+Check: note the nonce N; the balance covers about 6.6M gas at the base fee plus 0.05 gwei, with margin. Send nothing
+else from this account until step 7.
+
+**5 → Reviewed dry run (no broadcast).**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow && cp broadcast/Deploy.s.sol/1/dry-run/run-latest.json deployments/1.owner.reviewed-dry-run.json && shasum -a 256 deployments/1.owner.reviewed-dry-run.json
+```
+Check: `ASSET FLOW GATE: PASS`; the transaction list is exactly `PoolBalancer` (nonce N) and `BalancerFactory`
+(N+1), with no library; note the SHA-256 as `DRY_SHA`.
+
+**6 → Broadcast and publish source.** The only deployment step that signs; `--verify` submits both to Etherscan.
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow --broadcast --verify && cp broadcast/Deploy.s.sol/1/run-latest.json deployments/1.owner.broadcast.json
+```
+Check: `ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.`, the same two addresses as step 5, and `Pass - Verified` for each.
+
+**7 → Verify from canonical receipts.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && node --import tsx scripts/verify-deployment.ts --rpc-url $RPC --reviewed-dry-run deployments/1.owner.reviewed-dry-run.json --reviewed-dry-run-sha256 $DRY_SHA --broadcast deployments/1.owner.broadcast.json --out deployments/1.owner.verified.json && jq -r '.balancerFactory, .poolBalancerImplementation, .factoryDeploymentBlock' deployments/1.owner.verified.json
+```
+Check: `DEPLOYMENT VERIFIED`, then the new factory, implementation and factory block.
+
+**8 → Gas price ceiling 1.5 gwei.** Signs one transaction on the new factory.
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && F=$(jq -r .balancerFactory deployments/1.owner.verified.json) && cast send $F "setEconomics((uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16))" "(20000000000000,3200000,60000,1500000000,50000000,910000,200000000000000,200000,1800000,150000,700000,150000,50,10)" --account ripe0x --rpc-url $RPC
+```
+Check: `status 1 (success)`.
+
+**9 → Readbacks.**
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && F=$(jq -r .balancerFactory deployments/1.owner.verified.json) && I=$(jq -r .poolBalancerImplementation deployments/1.owner.verified.json) && cast call $F "implementation()(address)" --rpc-url $RPC && cast call $F "economics()((uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16))" --rpc-url $RPC && cast call $I "owner()(address)" --rpc-url $RPC
+```
+Check: `$I`; the economics tuple with `1500000000` fourth; `0x0000000000000000000000000000000000000001` (the
+locked implementation's creator).
+
+**10 → Cutover.** Point the dashboard (Netlify `VITE_FACTORY`, `VITE_FROM_BLOCK`) and the keeper (`keeper/fly.toml`
+`FACTORY`, `FROM_BLOCK`, `LEGACY_FACTORIES = "community-v2"`) at step 7's factory and block, then redeploy both.
+The keeper keeps servicing `community-v2` pools; the dashboard discovers and manages them from the old factory.
+
 ## 1. What is created and what is reused
 
 | Contract | Mode | How it is established |
