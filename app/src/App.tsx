@@ -1462,7 +1462,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         steps.push(upkeepStep(pub, tx, me, balancer));
       }
       if (!(await values.confirm(toList))) return;
-      const ok = await tx.send(mode === 'new' ? 'Create pool' : 'Save', steps, mode === 'new' ? 15_000 : undefined);
+      // Steps wait for their own confirmation without a short limit (an approval can take a few blocks); the creation step
+      // has its own bounded wait in waitForCreation, after which the 5-second check follows it.
+      const ok = await tx.send(mode === 'new' ? 'Create pool' : 'Save', steps);
       if (mode !== 'new' && ok) { clearDraft(); setNfts([]); }
     } finally {
       creationStarting.current = false;
@@ -1558,7 +1560,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       ? now?.state === 'submitted' ? "Your transaction is sent. The pool exists once it's in a block and checked." : 'Confirm each step in your wallet. Editing is locked until this finishes or you stop.'
       : failed.declined ? `You declined ${isCreate ? 'creating the pool' : 'the approval'} in your wallet. Your design is saved and no ETH was spent.`
         : revert ? `The transaction failed, so no pool exists and your ${eth(deposit, 5)} ETH stayed in your wallet. Only the gas was spent.`
-          : failed.error ?? 'Something went wrong.';
+          : failed.error && /timed out while waiting/i.test(failed.error)
+            ? "Your transaction hasn't confirmed yet. It may still go through: check it in your wallet, then try again. Approvals that went through are skipped."
+            : failed.error ?? 'Something went wrong.';
     const approvedAlready = live.slice(0, n - 1).filter((x) => x.state === 'done' || x.state === 'skipped').length;
     const foot = allDone ? undefined
       : !failed
