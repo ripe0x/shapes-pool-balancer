@@ -35,19 +35,6 @@ export const LegacyTag = ({ legacy }: { legacy?: LegacyFactory }) => legacy
   ? <span className="label legacy-tag" title={`Created by the ${legacy.label} factory ${legacy.factory}`}>Legacy · {legacy.label}</span>
   : null;
 
-/** Total inventory limits next to the per-transaction batch limits, as the factory and FWA enforce them. */
-export function LimitsNote({ limits, currentPrizes }: { limits: ProductLimits; currentPrizes: number }) {
-  const above = !limits.fixed && currentPrizes > limits.maxPrizes;
-  return <div className="kv-group">
-    <span className="label">Limits</span>
-    <div className="kv"><span className="k">Shape and Pack prizes in a design</span><span>{above ? `${currentPrizes} (current; factory limit ${limits.maxPrizes})` : `Up to ${limits.maxPrizes.toLocaleString()}`}</span></div>
-    <div className="kv"><span className="k">Shape markup</span><span>{limits.minMarkupBps / 100}% to {limits.maxMarkupBps / 100}%</span></div>
-    <div className="kv"><span className="k">Curated NFTs</span><span>No total limit · 20 per listing transaction</span></div>
-    <div className="kv"><span className="k">Draws per FWA purchase</span><span>Up to {MAX_BATCH}</span></div>
-  </div>;
-}
-
-const BATCH_NOTE = <p className="note">A purchase of several draws is checked once. On a nearly empty board, some of its draws may be refunded without the randomness fee.</p>;
 
 /** A Settings row: label, description and meta on the left; the current value and one control on the right; an
  *  optional full-width part (an inline form) below. */

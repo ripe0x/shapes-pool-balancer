@@ -588,5 +588,11 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 /* Design page: the results sidebar stays in view while the main section scrolls. It is often taller than the screen,
    so it scrolls on its own instead of scrolling away with the page. */
 @media (min-width: 901px) {
-  .design > section.sticky { max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 24px; }
+  /* 152px: the sidebar starts 128px down at the top of the page, plus a 24px margin, so its pinned button is never below the fold. */
+  .design > section.sticky { max-height: calc(100vh - 152px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 24px; }
+}
+
+@media (min-width: 901px) {
+  /* The create or save button stays at the bottom of the scrolling sidebar. */
+  .design > section.sticky .pin { position: sticky; bottom: -24px; background: var(--bg); padding: 16px 0 24px; border-top: 1px solid var(--line); z-index: 2; }
 }

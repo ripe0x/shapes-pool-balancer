@@ -20,7 +20,7 @@ import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from '.
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
-import { AutomaticPauses, LegacyKeeperPay, LegacyTag, LimitsNote, Maintenance, SRow, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
+import { AutomaticPauses, LegacyKeeperPay, LegacyTag, Maintenance, SRow, poolGeneration, readKeeper, readProductLimits } from './PoolSettings';
 import { FILL_GATE_DEFAULT_BPS, INITIAL_LIMITS, markupAllowed, markupSliderRange, prizeLimit, refillPerDay } from './limits';
 import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/legacy';
 
@@ -1000,7 +1000,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [restricted, setRestricted] = useState<string>();
   const [refused, setRefused] = useState<string>();
   const [staleReview, setStaleReview] = useState<Hex>();
-  const [open, setOpen] = useState({ bonus: false, numbers: false });
+  const [open, setOpen] = useState({ bonus: false, numbers: false, rates: false });
   const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -1052,7 +1052,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const setNft = (i: number, x: Partial<DraftNft>) => { setNfts(nfts.map((n, j) => (j === i ? { ...n, ...x } : n))); };
   const reset = () => {
     setPicking(undefined);
-    setOpen({ bonus: false, numbers: false });
+    setOpen({ bonus: false, numbers: false, rates: false });
     if (has) {
       setMarkup(d.markupBps / 100); setStyle(savedStyle()); setCounts(savedCounts);
       return;
@@ -1290,10 +1290,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
   // A new pool follows the factory's keeper economics; these are the values the creation binds.
   const e = d.economics as Economics | undefined;
-  const creationEconomics = mode !== 'pool' && <div className="kv-group" style={{ marginBottom: 16 }}>
-    <span className="label">Keeper pay rates: follow factory (default)</span>
-    {e ? <>
-      <div className="kv"><span className="k">Work fee per processed or reconciled draw and listed Shape</span><span>{formatEther(e.workFee)} ETH</span></div>
+  const creationEconomics = mode !== 'pool' && <div className="kv-group">
+    <div className="kv"><span className="k">Keeper fee</span><span>{e ? `${formatEther(e.workFee)} ETH a draw` : 'Loading'}</span></div>
+    <button className="disclose" style={{ marginTop: 10 }} aria-expanded={open.rates} onClick={() => toggle('rates')}>Keeper pay rates {open.rates ? '▴' : '▾'}</button>
+    {open.rates && (e ? <>
+      <p className="note" style={{ marginTop: 8 }}>Follows the factory by default. The keeper fee is paid per processed or reconciled draw and per listed Shape, plus gas.</p>
       <div className="kv"><span className="k">Gas price ceiling</span><span>{formatGwei(e.gasPriceCeiling)} gwei</span></div>
       <div className="kv"><span className="k">Maximum payment per call</span><span>{formatEther(maxPaymentOf(e))} ETH</span></div>
       <div className="kv"><span className="k">Maximum restocking charge per Shape</span><span>{formatEther(maxSurchargeOf(e))} ETH</span></div>
@@ -1301,18 +1302,16 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="kv"><span className="k">Spending limit</span><span>{formatEther(create.bucket.capacity)} ETH</span></div>
         <div className="kv"><span className="k">Spending limit refill</span><span title={`${create.bucket.refill} wei per second`}>{formatEther(refillPerDay(create.bucket.refill))} ETH per day</span></div>
       </>}
-    </> : <p className="note">Loading.</p>}
-    <p className="note">Factory rate changes apply to the pool immediately. The pool keeps this spending limit. After creation you can keep the factory's current rates or set your own, and change the spending limit, in Settings.</p>
+      <p className="note">Factory rate changes apply to the pool immediately. The pool keeps this spending limit. After creation you can keep the factory's current rates or set your own, and change the spending limit, in Settings.</p>
+    </> : <p className="note">Loading.</p>)}
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
   const save = mode === 'preview' ? (
     <div className="pin">
-      {creationEconomics}
       <ConnectButton.Custom>{({ openConnectModal }) => <button className="btn lg" onClick={() => { markConnectIntent(); openConnectModal(); }}>Connect wallet to create this pool</button>}</ConnectButton.Custom>
     </div>
   ) : (
     <div className="pin">
-      {creationEconomics}
       {staleShown && <div style={{ marginBottom: 12 }} role="alert">
         <p className="note error">The factory's keeper pay rates, default spending limit or the Shapes mint fee changed since this review.</p>
         <button className="btn sec" onClick={() => create?.reload?.()}>Refresh to review the current values</button>
@@ -1487,7 +1486,6 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <p className="note" style={{ marginTop: 6 }}>Each new Shape's price also includes a restocking charge that follows gas when it is listed. <a className="link" href="#how-restock">How the restocking charge works</a></p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
-            <div className="rule"><LimitsNote limits={limits} currentPrizes={shapeCount(savedCounts)} /></div>
           </div>
         </div>
 
@@ -1511,19 +1509,15 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 : <div><span>Above the operating requirement</span>{figureEth(ev && have - needed, 6)}</div>}
             </>
           )}
-          <div><span>Expected pool creator earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
-          <div><span>Expected revenue retained by the pool</span><span>{econ ? `${perDraw(econ.retainedRevenuePerDraw)} ETH` : 'Unavailable'}</span></div>
-          <div><span>Expected replacement backing</span><span>{econ ? `${perDraw(econ.replacementCostsPerDraw)} ETH` : 'Unavailable'}</span></div>
-          <div><span>Expected mint costs</span><span>{econ ? `${perDraw(econ.mintFeesPerDraw)} ETH` : 'Unavailable'}</span></div>
-          <div><span>Estimated keeper costs</span><span>{econ?.keeperPayPerDraw === undefined ? 'Unavailable' : `${perDraw(econ.keeperPayPerDraw)} ETH`}</span></div>
-          <div><span>Replenishment margin or shortfall</span><span>{econ?.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
+          <div><span>Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
         </div>
         {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
         {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
-          : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales do not cover replenishment.</p>}
+          : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
         <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
         {!d.paidUpkeepEnabled && <p className="note">Keeper pay is off. Setup and restocking need someone to run maintenance unpaid; the caller pays transaction gas.</p>}
+        {creationEconomics}
         {save}
         {view && ev && econ && (
           <div>
@@ -1552,6 +1546,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                   <div className="kv"><span className="k">Prize backing</span><span>{eth(ev.capital)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Required operating capital'}</span><span>{eth(needed)} ETH</span></div>
                   <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
+                  <div className="kv"><span className="k">Sales kept by the pool per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
+                  <div className="kv"><span className="k">Restocking backing per draw</span><span>{perDraw(-econ.replacementCostsPerDraw)} ETH</span></div>
+                  <div className="kv"><span className="k">Left after restocking, per draw</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
                   <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
                   <div className="kv"><span className="k">Mint and restocking fees per draw</span><span>{(econ.mintFeesPerDraw + econ.restockFeesPerDraw).toFixed(5)} ETH</span></div>
                   <div className="kv"><span className="k">Restocking charge per Shape at current gas</span><span>{eth(d.restockFee!, 5)} ETH</span></div>
