@@ -586,21 +586,10 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 @media (max-width: 640px) { .modal { padding: 20px; } .modal .mrow { grid-template-columns: 40px minmax(0, 1fr); } .modal .mrow .amt { grid-column: 2; text-align: left; } }
 
 /* Design page details: notes, keeper pay rates and All numbers, below the editor. */
-.design .details { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
 .pin-bar { display: flex; gap: 12px; align-items: center; }
 .pin-bar > .btn { flex: 1; min-width: 0; }
 .pin-price { display: none; }
-.more-hint { font-size: 13px; color: var(--ink-2); margin-top: 8px; align-self: flex-start; }
 
-@media (min-width: 901px) {
-  /* The sidebar fills the space from its top to 24px above the screen's bottom (--side-top is set as the page scrolls):
-     its list scrolls when it is taller, with a fade and a hint, and the button below it never scrolls. */
-  .design > section.side { display: flex; flex-direction: column; gap: 0; max-height: calc(100vh - var(--side-top, 128px) - 24px); }
-  .side-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--ink-4) transparent; }
-  .side-list.more { mask-image: linear-gradient(to bottom, #000 calc(100% - 72px), transparent); }
-  .side-inner { display: flex; flex-direction: column; gap: 32px; }
-  .design > section.side .pin { flex: none; position: static; border-top: 1px solid var(--line); padding: 16px 0 0; margin-top: 8px; }
-}
 @media (max-width: 900px) {
   /* Phones and narrow windows: a bar fixed to the screen's bottom with the draw price and the button. */
   .design { padding-bottom: 132px; }
@@ -608,19 +597,70 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
   .pin-price { display: block; flex: none; font-size: 13px; color: var(--ink-2); line-height: 1.2; }
   .pin-price b { display: block; font-size: 20px; color: var(--ink); letter-spacing: -.02em; }
   .design > section.side .pin .btn.lg { height: auto; min-height: 52px; padding: 8px 14px; white-space: normal; line-height: 1.2; }
-  .design .steps-note, .more-hint { display: none; }
+  .design .steps-note { display: none; }
 }
 
+
+/* Design page (turn 7a): numbered sections, NFT rows and a sidebar that fits without scrolling. */
+.design .crumb { display: block; font-size: 13px; color: var(--ink-foot); }
+.design .page-t { font-weight: 700; font-size: 32px; letter-spacing: -.03em; line-height: 1.1; margin: 10px 0 0; }
+.design .lead { font-size: 15px; }
+.sec { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 32px; }
+.sec-head { display: flex; gap: 16px; align-items: baseline; }
+.sec-n { font: 500 13px var(--font-mono); color: var(--ink-3); width: 24px; flex: none; }
+.sec-t { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
+.sec-x { font-weight: 400; font-size: 15px; color: var(--ink-foot); letter-spacing: 0; }
+.sec-d { font-size: 15px; line-height: 1.5; color: var(--ink-2); margin: 6px 0 0; max-width: 640px; }
+.sec-body { margin: 20px 0 0 40px; display: flex; flex-direction: column; gap: 24px; }
+.sec-body.nfts-list { gap: 0; }
+.sec-body > .note { margin: 0; }
+.nrow { display: grid; grid-template-columns: 64px minmax(0, 1fr) 200px 64px; gap: 20px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); }
+.nrow .thumb { width: 64px; height: 64px; }
+.nrow .t { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.nrow .s { font-size: 13px; line-height: 1.5; color: var(--ink-foot); margin-top: 4px; }
+.nrow .s.error { color: var(--error); }
+.nrow .field { height: 44px; }
+.nrow .field.bad { border-color: var(--error); }
+.nrow .rm { justify-self: end; font-size: 15px; padding: 0; align-self: center; }
+.addrow { padding: 16px 0; border-top: 1px solid var(--line); }
+.rulerow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); }
+.rulerow .t { font-size: 15px; font-weight: 600; }
+.rulerow .s { font-size: 13px; line-height: 1.5; color: var(--ink-foot); margin-top: 4px; }
+.rulerow .seg { margin: 0; }
+.rulerow .seg button { font-size: 15px; white-space: nowrap; }
+.tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.design > section.side { gap: 24px; }
+.side-h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
+.design .pay { margin-top: 12px; display: flex; align-items: baseline; }
+.design .fig56 { font-weight: 700; font-size: 56px; letter-spacing: -.04em; line-height: 1; }
+.design .fig56.ghost { color: var(--line-control); }
+.design .u13 { font: 500 13px var(--font-mono); color: var(--ink-foot); margin-left: 10px; }
+.design .players .kv { min-height: 44px; }
+.design .players .kv .k { color: var(--ink-2); }
+.grid-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.seg.sm { margin: 0; }
+.seg.sm button { height: 30px; font-size: 13px; padding: 0 10px; }
+.disclose.key { font-size: 13px; font-weight: 400; color: var(--ink-foot); }
+.g20 .grid100 { grid-template-columns: repeat(20, 12px); gap: 3px; margin: 12px 0 0; }
+.g20 .grid100 > span, .g20 .grid100 .cell { width: 12px; height: 12px; aspect-ratio: auto; }
+.cost .sum { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--ink); font-size: 15px; font-weight: 600; }
+.cost .sum b { font-size: 20px; }
+.cost .sub { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: var(--ink-foot); }
+.cost .row2 { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); margin-top: 6px; font-size: 15px; }
+.cost .row2 .k { color: var(--ink-2); }
+.wsteps .lbl { display: block; font: 500 13px var(--font-mono); color: var(--ink-3); text-transform: uppercase; }
+.wsteps ol { list-style: none; margin: 8px 0 0; padding: 0; }
+.wsteps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); padding: 10px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.wsteps li .n { color: var(--ink-3); }
+.wsteps .note { margin-top: 8px; }
 @media (min-width: 901px) {
-  /* Tighter sidebar: draw price, grid, totals and For players fit common laptop heights without scrolling. */
-  .design > section.side .side-inner { gap: 18px; }
-  .design > section.side .figure { font-size: 48px; }
-  .design > section.side .pay { margin-top: 2px; }
-  .design > section.side .note { margin-top: 4px; }
-  .design > section.side .grid100 { margin: 10px 0; }
-  .design > section.side .seg button { height: 32px; }
-  .design > section.side .totals > div { min-height: 44px; padding: 6px 0; }
-  .design > section.side .kv { min-height: 36px; }
-  .design > section.side .players .ctl { margin-bottom: 4px; font-size: 15px; }
-  .design > section.side .pin { padding-top: 12px; margin-top: 4px; }
+  .design > section.side .pin { position: static; border-top: 0; padding: 0; margin: 0; }
+}
+@media (max-width: 900px) {
+  .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sec-body { margin-left: 0; }
+  .nrow { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 14px; }
+  .nrow .thumb { width: 48px; height: 48px; }
+  .nrow .field, .nrow .rm { grid-column: 2; justify-self: start; }
+  .rulerow { grid-template-columns: 1fr; }
 }

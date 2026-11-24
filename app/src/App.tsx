@@ -1032,30 +1032,9 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [refused, setRefused] = useState<string>();
   const [staleReview, setStaleReview] = useState<Hex>();
   const [open, setOpen] = useState({ bonus: false, numbers: false, rates: false });
-  const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
+  const [gridView, setGridView] = useState<'inventory' | 'draws'>('draws');
   const [how, setHow] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  // Desktop sidebar: as tall as the space from its top to 24px above the screen's bottom, at every scroll position, so its
-  // pinned button never falls below the fold and no gap opens under it. `more` marks a list that scrolls further.
-  // Callback refs: the sidebar mounts after the page's loading state, so the effect runs when it appears.
-  const [side, sideRef] = useState<HTMLElement | null>(null);
-  const [list, listRef] = useState<HTMLDivElement | null>(null);
-  const [more, setMore] = useState(false);
-  useEffect(() => {
-    if (!side || !list) return;
-    const fit = () => {
-      side.style.setProperty('--side-top', `${Math.max(24, side.getBoundingClientRect().top)}px`);
-      setMore(list.scrollHeight - list.scrollTop - list.clientHeight > 4);
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(list);
-    if (list.firstElementChild) ro.observe(list.firstElementChild);
-    addEventListener('scroll', fit, { passive: true });
-    addEventListener('resize', fit);
-    list.addEventListener('scroll', fit, { passive: true });
-    return () => { ro.disconnect(); removeEventListener('scroll', fit); removeEventListener('resize', fit); list.removeEventListener('scroll', fit); };
-  }, [side, list]);
   const salt = useMemo(() => draft?.salt ?? `0x${[...crypto.getRandomValues(new Uint8Array(32))].map((x) => x.toString(16).padStart(2, '0')).join('')}` as Hash, []);
   const creationStarting = useRef(false);
   const toggle = (k: keyof typeof open) => setOpen({ ...open, [k]: !open[k] });
@@ -1201,36 +1180,43 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const avgText = (v: NonNullable<typeof view>) => `${(v.avgReturn * 100).toFixed(0)}% of the price`;
   const playBlock = view ? (
     <div className="players">
-      <h3 className="ctl">For players</h3>
       {bases.length > 0 && <div className="kv"><span className="k">Win a curated NFT</span><span>{oneIn(view.curated)}{savedView && now(oneIn(savedView.curated), oneIn(view.curated))}</span></div>}
       <div className="kv"><span className="k">Win more than the draw price</span><span>{oneIn(view.winMore)}{savedView && now(oneIn(savedView.winMore), oneIn(view.winMore))}</span></div>
-      <div className="kv"><span className="k">Top prize</span><span>{topText(view)}{savedView && now(topText(savedView), topText(view))}</span></div>
       <div className="kv"><span className="k">Average prize</span><span>{avgText(view)}{savedView && now(avgText(savedView), avgText(view))}</span></div>
     </div>
   ) : null;
+  const pauseNote = ev && pausesAt < backlog && <p className="note">{pausesAt === 1
+    ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
+    : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>;
   const payBlock = (
     <div>
-      <span className="soft" style={{ fontSize: 15 }}>Draw price</span>
+      <h2 className="side-h">Draw price</h2>
       <div className="pay">{ev
-        ? <><span className="figure">{eth(ev.drawPrice, 5)}</span><span className="unit">ETH / draw</span></>
-        : <span className="figure ghost">—</span>}</div>
-      {ev && projected && <p className="note">Projected: {shapeCount(listedCounts) === 0 ? 'prizes not listed yet' : 'some prizes not listed yet'}.</p>}
+        ? <><span className="fig56">{eth(ev.drawPrice, 5)}</span><span className="u13">ETH</span></>
+        : <span className="fig56 ghost">—</span>}</div>
+      {ev && mode !== 'pool' && <p className="note">Projected. Prizes aren't listed until the pool is created.</p>}
+      {ev && mode === 'pool' && projected && <p className="note">Projected: {shapeCount(listedCounts) === 0 ? 'prizes not listed yet' : 'some prizes not listed yet'}.</p>}
       {ev && savedEv && editing && savedEv.drawPrice !== ev.drawPrice && <p className="note">{stocking ? 'Saved design, projected:' : 'Now'} {eth(savedEv.drawPrice, 5)} ETH{markupBps !== d.markupBps ? '. Listed prizes keep their price until they are won and restocked.' : '.'}</p>}
-      {ev && pausesAt < backlog && <p className="note">{pausesAt === 1
-        ? 'With this mix, a new purchase waits while an earlier draw is unreconciled. More small Shapes let more draws run at once.'
-        : `With this mix, new purchases pause once ${pausesAt} earlier draws are unreconciled. A batch can put more draws in flight. More small Shapes raise the threshold.`}</p>}
+      {mode === 'pool' && pauseNote}
     </div>
   );
+  // The inventory view shows at most the 100 squares the 100-draw view uses, so both are the same height.
+  const shownItems = items.slice(0, 100);
   const gridBlock = (
     <div>
-      <div className="seg" role="group" aria-label="View">
-        <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
-        <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+      <div className="grid-head">
+        <div className="seg sm" role="group" aria-label="View">
+          <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+          <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
+        </div>
+        {view && <button className="disclose key" aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>Key {showKey ? '▴' : '▾'}</button>}
       </div>
-      {!view ? null
-        : gridView === 'inventory' ? <InventoryGrid items={items} />
-          : <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>}
-      {view && <button className="disclose" style={{ fontSize: 14 }} aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>{showKey ? 'Hide key ▴' : 'Show key ▾'}</button>}
+      <div className="g20">
+        {!view ? null
+          : gridView === 'inventory' ? <InventoryGrid items={shownItems} />
+            : <div className="grid100" aria-hidden="true">{cells.map((g, k) => <span key={k} style={sw(g)} />)}</div>}
+      </div>
+      {view && gridView === 'inventory' && items.length > shownItems.length && <p className="note">+ {(items.length - shownItems.length).toLocaleString()} more</p>}
       {view && showKey && (gridView === 'inventory' ? (
         <div className="legend">
           {ordered.map(({ g }) => (g.nft
@@ -1252,6 +1238,27 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : <span><span className="figure-s">{eth(v, dp)}</span><span className="unit">ETH</span></span>);
   // What saving does, in order. The predicted address receives approvals before atomic creation.
   const toList = pending.filter(({ n }) => n.collection && ethOr(n.value, 0n) > 0n).map(({ n }) => n);
+  // NFTs a new pool still needs approval for, checked against the predicted pool so the wallet steps list (and its
+  // count) leaves out approvals already made. Unknown counts as needed.
+  const [approved, setApproved] = useState<Record<string, boolean>>({});
+  const approvalKey = mode === 'new' ? toList.map((n) => nftKey(n.collection!, n.tokenId!)).join() : '';
+  useEffect(() => {
+    if (!pub || !me || !approvalKey) return;
+    let live = true;
+    (async () => {
+      const predicted = (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address;
+      const entries = await Promise.all(toList.map(async (n) => {
+        const [one, all] = await Promise.all([
+          pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'getApproved', args: [BigInt(n.tokenId!)] }).catch(() => ZERO_ADDR),
+          pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, predicted] }).catch(() => false),
+        ]);
+        return [nftKey(n.collection!, n.tokenId!), !!all || (one as string).toLowerCase() === predicted.toLowerCase()] as const;
+      }));
+      if (live) setApproved(Object.fromEntries(entries));
+    })().catch(() => undefined);
+    return () => { live = false; };
+  }, [pub, me, salt, approvalKey, tx.busy]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
+  const toApprove = toList.filter((n) => !approved[nftKey(n.collection!, n.tokenId!)]);
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
@@ -1364,6 +1371,26 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     </> : <p className="note">Loading.</p>)}
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
+  const walletSteps = mode === 'new' && <div className="wsteps">
+    <span className="lbl">{toApprove.length + 1} wallet confirmation{toApprove.length ? 's' : ''}</span>
+    <ol>
+      {toApprove.map((n, k) => <li key={nftKey(n.collection!, n.tokenId!)}><span className="n">{k + 1}</span><span>Approve {nftLabel(n)}</span></li>)}
+      <li><span className="n">{toApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
+    </ol>
+    {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
+  </div>;
+  const backingWei = ready ? capitalOf(counts) : 0n;
+  const costBlock = mode === 'new' && (
+    <div className="cost">
+      <div className="sum"><span>To create the pool</span><span><b>{ev ? eth(deposit, 5) : '–'}</b><span className="u13">ETH</span></span></div>
+      {capital && <>
+        <div className="sub"><span>Shape backing</span><span>{eth(backingWei, 5)}</span></div>
+        <div className="sub"><span>Shapes mint fees</span><span>{eth(capital.inventoryCost - backingWei, 5)}</span></div>
+        <div className="sub"><span>Listing and maintenance budget</span><span>{eth(deposit - capital.inventoryCost, 5)}</span></div>
+      </>}
+      <div className="row2"><span className="k">Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+    </div>
+  );
   // Phones: the pinned bar also shows the draw price, since the sidebar is not beside the editor there.
   const pinPrice = <span className="pin-price">{ev ? <><b>{eth(ev.drawPrice, 5)}</b> ETH a draw</> : '–'}</span>;
   const save = mode === 'preview' ? (
@@ -1382,16 +1409,16 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       {restricted === restrictKey && toList.length > 0 && (
         <p className="note error" style={{ marginBottom: 12 }}>A collection here refuses transfers to contracts. A buyer using a contract that never claims its refund can lock that NFT in FWA escrow permanently. In a pool with few listings, that can cost the buyer much less than the NFT is worth.</p>
       )}
+      {blocked && <p className="note" style={{ marginBottom: 12 }}>{blocked}</p>}
+      {refused && <p className="note error" style={{ marginBottom: 12 }}>{refused}</p>}
       <div className="pin-bar">
         {pinPrice}
         <button className="btn lg" disabled={!!tx.busy || !!blocked || !ready || !ev?.feasible || staleShown} onClick={run}>
-          {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool with ${eth(deposit, 2)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
+          {tx.busy ? `${tx.busy}…` : restricted === restrictKey && toList.length ? 'Continue anyway' : mode === 'new' ? `Create pool · ${eth(deposit, 5)} ETH` : feeOnly ? `Accept the ${eth(d.mintFee, 6)} ETH mint fee` : 'Save changes'}
         </button>
       </div>
-      {!blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
+      {mode !== 'new' && !blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
-      {blocked && <p className="note" style={{ marginTop: 10 }}>{blocked}</p>}
-      {refused && <p className="note error" style={{ marginTop: 10 }}>{refused}</p>}
       {fresh && tx.msg && !tx.msg.ok && <p className="note error" style={{ marginTop: 10 }}>{tx.msg.text}</p>}
     </div>
   );
@@ -1423,13 +1450,18 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   );
   const unchosenRows = pending.filter(({ n }) => !n.collection).map(({ i }) => i);
   const slots = listed.length + pending.length === 0 ? [nfts.length] : unchosenRows;
+  // Numbered sections: 01 Curated NFTs, 02 Shapes, 03 Before you create (a pool's Prices & mix has no NFT section).
+  const secNo = (k: number) => String(has ? k - 1 : k).padStart(2, '0');
+  const secHead = (k: number, title: string, desc: string, extra?: string) => (
+    <div className="sec-head">
+      <span className="sec-n">{secNo(k)}</span>
+      <div><h2 className="sec-t">{title}{extra && <span className="sec-x"> {extra}</span>}</h2><p className="sec-d">{desc}</p></div>
+    </div>
+  );
   const nftGroup = (
-    <div className="group">
-      <div className="group-head">
-        <span className="mk mk-nft" aria-hidden="true" />
-        <div><h2>Curated NFTs</h2><p className="desc">Optional rare prizes from your wallet. The value is your asking price: across the draws until it is won, players pay about that. A higher value makes it rarer.</p></div>
-      </div>
-      <div className="group-body nfts-list">
+    <div className="sec">
+      {secHead(1, 'Curated NFTs', "Rare prizes from your wallet. The value is your asking price: across the draws until it's won, players pay about that. A higher value makes it rarer.", 'Optional')}
+      <div className="sec-body nfts-list">
         {listed.map((l) => (
           <div className="nft-row" key={l.id.toString()}>
             <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
@@ -1440,36 +1472,36 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         {pending.map(({ n, i }) => {
           if (unchosenRows.includes(i)) return placeholder(i);
           const name = nftLabel(n);
-          const sub = [oddsLine(`d${i}`), n.floor && `collection floor ${floorValue(n.floor)} ETH`].filter(Boolean).join(' · ');
+          const sub = [oddsLine(`d${i}`), n.floor && `floor ${floorValue(n.floor)} ETH`].filter(Boolean).join(' · ');
           return (
-            <div className="nft-row" key={i}>
-              {n.collection && <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} />}
+            <div className="nrow" key={i}>
+              {n.collection ? <Thumb key={nftKey(n.collection, n.tokenId!)} n={{ collection: n.collection, tokenId: BigInt(n.tokenId!), image: n.image }} /> : <span />}
               <div className="id">
                 <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{name}</a> : name}</div>
                 {sub && <div className="s">{sub}</div>}
+                {belowFloor(n) && <div className="s error">Below the {floorValue(n.floor)} ETH floor. A buyer could win it for much less than it's worth.</div>}
+                {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
               </div>
-              <div className="val">
-                <label className="vl" htmlFor={`nft-value-${i}`}>Value</label>
-                <div className="field"><input id={`nft-value-${i}`} className="big" aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
-                {belowFloor(n) && <p className="note error" style={{ marginTop: 6 }}>Below the {floorValue(n.floor)} ETH collection floor</p>}
-                {holding.notHeld(n) && <p className="note error" style={{ marginTop: 6 }}>{NOT_HELD}</p>}
-              </div>
+              <div className={`field${belowFloor(n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
           );
         })}
         {slots.filter((i) => i === nfts.length).map(placeholder)}
         {!slots.length && (
-          <div>
+          <div className="addrow">
             <button className="link" onClick={() => setPicking(picking === nfts.length ? undefined : nfts.length)}>{picking === nfts.length ? 'Cancel' : '+ Add another curated NFT'}</button>
             {chooser(nfts.length)}
           </div>
         )}
         {fresh && rows.length > 0 && (
-          <label className="check" style={{ marginTop: 14 }}>
-            <input type="checkbox" checked={curatedRequired} onChange={(e) => setCuratedRequired(e.target.checked)} />
-            <span>Pause purchases while no curated NFT is available</span>
-          </label>
+          <div className="rulerow">
+            <div><div className="t">When no curated NFT is available</div><div className="s">For example after a player wins your last one. You can change this later in Settings.</div></div>
+            <div className="seg" role="group" aria-label="When no curated NFT is available">
+              <button aria-pressed={curatedRequired} onClick={() => setCuratedRequired(true)}>Pause purchases</button>
+              <button aria-pressed={!curatedRequired} onClick={() => setCuratedRequired(false)}>Keep selling Shapes</button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -1481,7 +1513,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       <section>
         {mode === 'pool'
           ? <h2 className="title t2">Prices & mix</h2>
-          : <h1 className="title">Design your pool</h1>}
+          : <><span className="crumb">Community pools /</span><h1 className="page-t">Design your pool</h1></>}
         <p className="lead">{has
           ? `What players pay and which Shapes the pool keeps. Your ${rows.length === 1 ? 'NFT stays' : `${rows.length} NFTs stay`} as listed; change ${rows.length === 1 ? 'it' : 'them'} on the NFTs tab.`
           : 'Players pay a draw price and win one prize at random. Your pool holds two kinds of prizes: curated NFTs from your wallet, and Shapes you fund with ETH.'}</p>
@@ -1502,15 +1534,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
 
         {!has && nftGroup}
 
-        <div className="group">
-          <div className="group-head">
-            <span className="mk mk-shapes" aria-hidden="true"><span style={{ background: '#333' }} /><span style={{ background: '#7a7a7a' }} /><span style={{ background: '#fff' }} /></span>
-            <div><h2>Shapes</h2><p className="desc">ETH-backed prizes that make up most draws. Upkeep replenishes won Shapes when operating ETH is available.</p></div>
-          </div>
-          <div className="group-body">
+        <div className="sec">
+          {secHead(2, 'Shapes', 'ETH-backed prizes that make up most draws. When one is won, maintenance replaces it from operating ETH.')}
+          <div className="sec-body">
             <div>
-              <h3 className="ctl" id="style-label">Shape style</h3>
-              <div className="tiles" role="group" aria-labelledby="style-label">
+              <div className="tiles four" role="group" aria-label="Shape style">
                 {GAME_STYLES.map((g) => (
                   <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
                     <span className="t">{g.label}</span><span className="s">{g.hint}</span>
@@ -1542,28 +1570,28 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               )}
             </div>
             <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="small">Shape pool size</label><span className="big-v">{total} <small>prize{total === 1 ? '' : 's'}</small></span></div>
+              <div className="ctl-row"><label className="ctl" htmlFor="small">Number of Shapes</label><span className="big-v">{total}</span></div>
               <input id="small" type="range" min={style ? 1 : 0} max={maxSmall} step={1} value={counts[0]} aria-valuetext={`${total} prizes`}
                 onChange={(e) => setSmall(Number(e.target.value))} />
-              <p className="note">More prizes make curated NFTs rarer and the draw cheaper.</p>
+              <p className="note">More Shapes make curated NFTs rarer and the draw cheaper.</p>
             </div>
             <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="markup">Shape markup</label><span className="big-v">{markup}%</span></div>
               <input id="markup" type="range" min={markupRange.min} max={markupRange.max} step={0.25} value={markup} onChange={(e) => setMarkup(Number(e.target.value))} />
-              <p className="note">Added to each new Shape listing price.</p>
-              <p className="note" style={{ marginTop: 6 }}>Each new Shape's price also includes a restocking charge that follows gas when it is listed. <a className="link" href="#how-restock">How the restocking charge works</a></p>
+              <p className="note">Added to each Shape's listing price; your earnings come from it. Each price also includes a restocking charge that follows gas. <a className="link" href="#how-restock">How it works</a></p>
               {has && <p className="note" style={{ marginTop: 6 }}>A markup change applies to Shapes listed after it. Listed prizes keep their price.</p>}
             </div>
           </div>
         </div>
 
-        <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{gridBlock}{playBlock}</div>
+        <div className="mobile-only" style={{ marginTop: 40 }}>{payBlock}{playBlock}{gridBlock}</div>
 
-        <div className="details">
-          <h2 className="ctl" style={{ fontSize: 22 }}>{fresh ? 'Before you create' : 'Before you save'}</h2>
+        <div className="sec">
+          {secHead(3, fresh ? 'Before you create' : 'Before you save', 'Costs are quoted at current gas and mint fees. If either rises, the pool needs more ETH, and Shapes may be listed in stages.')}
+          <div className="sec-body">
           {d.listings.some(isStaged) && <p className="note" role="status">Current odds exclude staged prizes. Edited mix projections assume future activation.</p>}
           {!d.restockQuoteVerified && <p className="note" role="status">Restocking charges and player prices are unverified estimates.</p>}
-          <p className="note">Capital is quoted at current gas. Higher gas or mint fees can require more ETH. Missing prizes may be replenished in stages.</p>
+          {mode !== 'pool' && pauseNote}
           {!d.paidUpkeepEnabled && <p className="note">Keeper pay is off. Setup and restocking need someone to run maintenance unpaid; the caller pays transaction gas.</p>}
           {creationEconomics}
           {view && ev && econ && (
@@ -1604,19 +1632,18 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               )}
             </div>
           )}
+          </div>
         </div>
 
       </section>
 
-      <section className="sticky results side" ref={sideRef}>
-        <div className={`side-list${more ? ' more' : ''}`} ref={listRef}>
-        <div className="side-inner">
+      <section className="sticky results side">
         <div className="desktop-only">{payBlock}</div>
+        {playBlock && <div className="desktop-only">{playBlock}</div>}
         <div className="desktop-only">{gridBlock}</div>
+        {mode === 'new' ? costBlock : (
         <div className="totals">
-          {fresh ? (
-            <div><span>To create the pool</span>{figureEth(ev && deposit, 6)}</div>
-          ) : (
+          {(
             <>
               <div><span>Required operating capital{savedEv && now(`${eth(ethNeeded(savedCounts, { ...base, mintFee: savedReserveFee, enabled: fundForOpen }))} ETH`, `${eth(needed)} ETH`)}</span>{figureEth(ev && needed, 6)}</div>
               <div><span>Available in the pool</span>{figureEth(have)}</div>
@@ -1627,13 +1654,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           )}
           <div><span>Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
         </div>
+        )}
         {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
-        {playBlock && <div className="desktop-only">{playBlock}</div>}
-        </div>
-        </div>
-        {more && <button className="disclose more-hint" onClick={() => list?.scrollBy({ top: list.clientHeight * 0.7, behavior: 'smooth' })}>More below ▾</button>}
         {save}
+        {walletSteps}
       </section>
     </main>
   );
