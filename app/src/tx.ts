@@ -29,6 +29,21 @@ export async function prepareWrite<P extends Params>(
   return { ...priced, account, chainId: client.chain?.id, gas };
 }
 
+/** A plain ETH transfer prepared like `prepareWrite`: simulated with `eth_call` at current fees (so a refusing
+ *  receiver surfaces before the wallet opens), with 30% gas-limit headroom, bound to the account and chain. */
+export async function prepareTransfer(client: Pick<PublicClient, 'call' | 'estimateGas' | 'estimateFeesPerGas' | 'chain'>,
+  account: Address | undefined, to: Address, value: bigint) {
+  if (!account) throw new Error('Connect a wallet first.');
+  const fees = await client.estimateFeesPerGas();
+  const call = { account, to, value, maxFeePerGas: fees.maxFeePerGas!, maxPriorityFeePerGas: fees.maxPriorityFeePerGas! };
+  await client.call(call);
+  const gas = ((await client.estimateGas(call)) * GAS_MARGIN_NUM) / GAS_MARGIN_DEN;
+  const prepared = { ...call, gas, chainId: client.chain?.id };
+  if (prepared.chainId === undefined) throw new Error('The reviewed network is unavailable.');
+  const intent: TransactionIntent = { chainId: prepared.chainId, from: account, to, input: '0x', value };
+  return { prepared, intent };
+}
+
 export interface TransactionIntent { chainId: number; from: Address; to: Address; input: Hex; value: bigint }
 
 /** Capture the simulated intent before the wallet can change its selected account or transaction fields. */

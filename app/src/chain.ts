@@ -9,6 +9,9 @@ import { mainnet } from 'viem/chains';
 const chainId = Number(import.meta.env.VITE_CHAIN_ID ?? 1);
 const rpcUrl = (import.meta.env.VITE_RPC_URL as string | undefined) ?? 'https://mainnet.gateway.tenderly.co';
 
+/** The site name. A placeholder until the owner confirms it. */
+export const APP_NAME = 'Shapes on FWA';
+
 export const localFork = defineChain({
   ...mainnet,
   id: 31337,
@@ -25,7 +28,7 @@ export const FWA_POOL_URL = (pool: string) => `https://pools.fwa.fun/pools/${poo
 const wcProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined;
 const wallets = connectorsForWallets(
   [{ groupName: 'Wallets', wallets: [metaMaskWallet, rabbyWallet, injectedWallet, ...(wcProjectId ? [walletConnectWallet] : [])] }],
-  { appName: 'Shapes Pool Balancer', projectId: wcProjectId ?? 'unset' },
+  { appName: APP_NAME, projectId: wcProjectId ?? 'unset' },
 );
 
 // Read-only backup through the injected wallet (MetaMask, Rabby), used only while it is on this dashboard's chain:

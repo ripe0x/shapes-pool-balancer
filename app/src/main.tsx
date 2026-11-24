@@ -4,10 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
-import { config } from './chain';
+import { APP_NAME, config } from './chain';
 import { App } from './App';
 import './styles.css';
 
+document.title = APP_NAME;
 const qc = new QueryClient();
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
