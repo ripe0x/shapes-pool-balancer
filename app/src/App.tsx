@@ -44,7 +44,8 @@ const LEDGER = [
 ] as const;
 
 type Claim = { to: Address; amount: bigint; block: bigint; hash: Hash; index: number };
-type Ledger = ReturnType<typeof poolEthLedger> & { throughBlock: bigint; nftsWon: number; nftValues: bigint; claims: Claim[] };
+type Win = { listingId: bigint; kind: number; denom: number; block: bigint; index: number };
+type Ledger = ReturnType<typeof poolEthLedger> & { throughBlock: bigint; nftsWon: number; nftValues: bigint; claims: Claim[]; wins: Win[] };
 const L_DELIVERY_PENDING = 6;
 const L_DELIVERY_REFUNDED = 7;
 const nameAbi = parseAbi(['function name() view returns (string)']);
@@ -266,6 +267,11 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
         const args = l.args as { to: Address; amount: bigint };
         return { to: args.to, amount: args.amount, block: l.blockNumber!, hash: l.transactionHash!, index: l.logIndex! };
       }).reverse(),
+      // The last four prizes delivered to players, newest first.
+      wins: events.filter((l) => l.eventName === 'ItemDrawn' && (l.args as { delivered?: boolean }).delivered).slice(-4).reverse().map((l) => {
+        const args = l.args as { listingId: bigint; kind: number; denom: number };
+        return { listingId: args.listingId, kind: args.kind, denom: args.denom, block: l.blockNumber!, index: l.logIndex! };
+      }),
     };
   return { pending, ledger };
 }
@@ -1838,7 +1844,19 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
             <p className="foot">Through block {L.throughBlock.toLocaleString()}. Leaves out deposits and withdrawals (under ETH in the pool), wallet gas and the value of curated NFTs won. Early on, a few large wins can outweigh many sales.{L.nftsWon > 0 && ` Players won ${word(L.nftsWon)} curated ${L.nftsWon === 1 ? 'NFT' : 'NFTs'} with listed values totalling ${eth(L.nftValues, 5)} ETH.`}</p>
           </>}
         </div>
-        {/* TODO(open item 1): Recent draws, the last four delivered ItemDrawn events, once the design owner decides to build it. */}
+        {L && L.wins.length > 0 && <div className="blk">
+          <h2 className="h">Recent draws</h2>
+          <p className="desc">The last few prizes won. The pool restocks each win at its next maintenance.</p>
+          <div className="kvs hist">
+            {L.wins.map((w) => {
+              const nft = w.kind === 1 ? d.listings.find((l) => l.id === w.listingId) : undefined;
+              return <div className="kv" key={`${w.block}-${w.index}`}>
+                <span>{w.kind === 2 ? prizeLabel(w.denom) : nft ? nftName(nft) : 'Curated NFT'}</span>
+                <span style={{ color: 'var(--ink-foot)' }}>Block {w.block.toLocaleString()}</span>
+              </div>;
+            })}
+          </div>
+        </div>}
       </section>
 
       <section className="sticky">
