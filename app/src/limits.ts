@@ -37,3 +37,15 @@ export const validFillGate = (bps: number) => Number.isInteger(bps) && bps >= 0 
 export const validBacklog = (t: number) => Number.isInteger(t) && t >= 1 && t <= 0xffff;
 /** FWA checks admission before a purchase of up to MAX_BATCH draws, so a threshold T leaves at most T + 4 unsettled. */
 export const maxUnsettled = (backlogThreshold: number) => backlogThreshold + MAX_BATCH - 1;
+
+const DAY = 86_400n;
+/** The roundest wei-per-day amount that a per-second refill stores back to exactly: every value in
+ *  [refill * DAY, refill * DAY + DAY - 1] floors to `refill`, so pick the one with the fewest significant digits. */
+export function refillPerDay(refillPerSecond: bigint): bigint {
+  const lo = refillPerSecond * DAY, hi = lo + DAY - 1n;
+  for (let step = 10n ** 36n; step > 1n; step /= 10n) {
+    const c = ((lo + step - 1n) / step) * step;
+    if (c <= hi) return c;
+  }
+  return lo;
+}

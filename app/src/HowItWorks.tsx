@@ -2,8 +2,8 @@ import { useEffect, type CSSProperties } from 'react';
 import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, V1_ECONOMICS, capitalOf, economics, evaluate, maxSurchargeOf, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
-import { useVault } from './MainPool';
-import { MANAGER_FACTORY, VAULT } from './main-pool';
+import { StatusBar, useVault } from './MainPool';
+import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.001 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -57,6 +57,19 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
   );
 }
 
+/** Tabs between the two How it works pages; community pools and the main pool are separate products. */
+function HiwTabs({ main }: { main: boolean }) {
+  if (!VAULT) return null;
+  return (
+    <nav className="tabs sub" aria-label="How it works">
+      <button aria-current={main ? undefined : 'page'} onClick={() => { location.hash = 'how'; }}>Community pools</button>
+      <button aria-current={main ? 'page' : undefined} onClick={() => { location.hash = 'how-main'; }}>
+        Main pool{!MAIN_POOL_OPEN && <span className="tab-tag">Coming soon</span>}
+      </button>
+    </nav>
+  );
+}
+
 export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   useEffect(() => { document.getElementById(location.hash.slice(1))?.scrollIntoView(); }, []);
   const counts = presetCounts('balanced', EXAMPLE, SMALL);
@@ -73,8 +86,10 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
   const initialCosts = capital.inventoryCost - inPrizes + capital.listingBudget;
   const reserve = capital.workingBuffer;
   return (
+    <>
+    <HiwTabs main={false} />
     <main className="page hiw">
-      {VAULT && <p className="note hiw-switch">Community pools · <a className="link" href="#how-main">Main pool</a></p>}
+      {VAULT && <p className="note hiw-switch">Pools a creator designs and runs with their own prizes.</p>}
       <h1 className="title">How it works</h1>
       <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers replenish prizes from available operating capital.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
@@ -127,7 +142,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
           { label: 'is retained for pool operations', share: retainedShare, style: { background: '#b5b5b5' } },
           { label: "is FWA's fee", share: edgeShare, style: { background: '#333' } },
         ]} />
-        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your earnings are what the markup brings in above 10%: {econ.creatorRevenueBps / 100}% of sales, about {econ.creatorEarningsPerDraw.toFixed(4)} ETH per draw in this example. That rate is stored when the pool is created and changes only when you change it in Settings.</p>
+        <p className="hiw-p" style={{ marginTop: 14 }}>Running costs are priced on top of your markup. Each Shape prize's price includes its Shapes mint fee (0.001 ETH a Shape in this example) and a restocking fee set from the gas price when the prize is listed ({eth(EXAMPLE.restockFee, 5)} ETH a Shape at 1 gwei). It is your income toward keeper pay: keepers are paid from the pool's ETH for each call that restocks or records draws, and FWA's draw price spreads the fee over all buyers. Your earnings are what the markup brings in above 10%: {econ.creatorRevenueBps / 100}% of sales, about {econ.creatorEarningsPerDraw.toFixed(4)} ETH per draw in this example. The pool sets this rate from your markup and prize mix when it is created, and again each time you save a new markup or mix.</p>
       </section>
 
       <section className="hiw-sec">
@@ -167,6 +182,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
         </div>
       </section>
     </main>
+    </>
   );
 }
 
@@ -181,7 +197,7 @@ const FAQ: [string, string][] = [
   ['Why does my design pause after a few unsettled draws?', 'A draw stays unsettled until its random number arrives and upkeep records which prize it won. Until then the pool cannot tell which prize is gone, so it assumes each unsettled draw took a 0.01 ETH Shape, the Shape most likely to be won. It accepts a new purchase only if the prizes left would still be at least 70% of your design, so a new player gets close to the odds shown. A mix with many small Shapes absorbs several unsettled draws; a mix with few small Shapes pauses sooner. A new purchase is also refused when at least five draws are unsettled; a batch can already be in flight. Settlement can release that busy condition, but an inventory or ETH shortage may still need pool creator action.'],
   ['Can sales replenish every shortage?', 'Only while purchases remain available and players keep buying. If inventory is too low to admit purchases and no sales are waiting to be collected, add ETH, reduce the target mix, or close and recover the remaining assets. No refill time is guaranteed.'],
   ['What does the player pay on top of the draw price?', "FWA's randomness (VRF) fee and the transaction's gas. Both are set by the network at draw time."],
-  ['When does a new earnings rate apply?', 'Changing the rate collects currently available owner proceeds using the old percentage, then stores the new percentage. Later collections use the new percentage, including earlier purchases that settle afterward. Existing credit stays unchanged. A 100% rate leaves no new proceeds for operations.'],
+  ['What sets the earnings rate?', 'Your markup and prize mix. Saving a new markup or mix sets the rate again in a second transaction. If that transaction is skipped, the pool page shows the rate as out of date with a button to update it. Collections before the update use the old rate; later ones, including draws already bought, use the new one. Claimable earnings already accrued stay unchanged.'],
   ['Can I change the design later?', "Yes. Prices & mix shows the current pool next to your changes before you save. A new markup applies to Shape prizes listed after the change; prizes already listed keep their price."],
 ];
 
@@ -190,8 +206,11 @@ export function HowItWorksMain() {
   const { data: v } = useVault();
   const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'an amount set from FWA\'s live fees';
   return (
+    <>
+    <HiwTabs main />
+    {!MAIN_POOL_OPEN && <StatusBar head="Not open yet." body={`The shared vault${MANAGER_FACTORY ? ' and personal managers are' : ' is'} coming soon.`} />}
     <main className="page hiw">
-      <p className="note hiw-switch"><a className="link" href="#how">Community pools</a> · Main pool</p>
+      <p className="note hiw-switch">Earning on FWA's main pool through the shared vault{MANAGER_FACTORY ? ' or a personal manager' : ''}.</p>
       <h1 className="title">How the main pool works</h1>
       <p className="lead">The shared vault{MANAGER_FACTORY ? ' and personal managers' : ''} put ETH to work on FWA's main pool. Each builds Shape packs and lists them with ETH backing.</p>
 
@@ -234,5 +253,6 @@ export function HowItWorksMain() {
         <p className="hiw-p">Results quoted for the main pool are model results, not forecasts. Small amounts have a wide loss tail: with few packs the outcome is mostly the luck of which listings are drawn and whether buyers keep or bid. FWA's owner can change fees and settings, and its conditions can pause new investment; withdrawals and redemptions continue.</p>
       </section>
     </main>
+    </>
   );
 }
