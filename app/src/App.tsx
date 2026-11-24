@@ -2442,7 +2442,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
         <button className={`btn${tx.busy ? ' busy' : ''}`} disabled={!!tx.busy} onClick={upkeep}>{mine && tx.busy ? (mine.state === 'submitted' ? 'Listing…' : 'Waiting for your wallet…') : lm.mode === 'paused' ? 'List them yourself' : 'List the next batch'}</button>
         <p className="note">{lm.mode === 'paused' ? "Lists the next batch now from your wallet. You pay that run's gas at today's price; the pool doesn't." : 'Lists the next batch from your wallet; you pay the gas.'}</p>
       </>}
-      <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy pool link'}</button>
+      <button className="btn sec" onClick={copy}>{copied ? 'Copied' : 'Copy the FWA link for players'}</button>
       {!opened && <div className="setup-links">
         <button className="link quiet" onClick={() => setTab('settings')}><span>Give it an ENS name</span><span>Settings →</span></button>
         <button className="link quiet" onClick={() => setTab('nfts')}><span>Add more curated NFTs</span><span>NFTs →</span></button>
