@@ -750,3 +750,14 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .setup .cnt.error { color: var(--error); }
 .setup > div > .pbar { margin-top: 20px; }
 .setup .sb.live { color: var(--ink); margin-bottom: 4px; }
+
+/* Active progress: diagonal stripes drift across the unfilled part of the track while work is happening. */
+.pbar.active { background: repeating-linear-gradient(-45deg, var(--line) 0 6px, #3a3a3a 6px 12px); background-size: 34px 100%; animation: pbar-stripes 1s linear infinite; }
+@keyframes pbar-stripes { from { background-position: 0 0; } to { background-position: 34px 0; } }
+@media (prefers-reduced-motion: reduce) { .pbar.active { animation: none; } }
+
+@media (max-width: 640px) {
+  /* Checklist rows: the right-hand status goes under the label on narrow screens. */
+  .ps.pend { grid-template-columns: 28px minmax(0, 1fr); }
+  .ps.pend .pst { grid-column: 2; margin-top: 2px; }
+}
