@@ -1,0 +1,10 @@
+{
+  "phase": "prepare",
+  "rpc": "http://127.0.0.1:18790",
+  "chainId": 31337,
+  "pid": 23449,
+  "block": "26493164",
+  "hash": "0x082ec5b5759919022eb452cd402478aea63ddce9239fcb4e175cba62b95d3a77",
+  "transactionsSent": 0,
+  "productionApproval": false
+}

@@ -179,3 +179,29 @@ fabricate VRF cannot establish new no-mock evidence. No mainnet deployment or im
 Things that don't make sense: the old factory cannot acquire a creation pause through an implementation switch.
 The successful historical proof closes the refunded-recovery code-path gap, but does not close signed UI or
 new-live-oracle availability evidence.
+
+
+### Completed corrected local batch
+
+Owner-approved plan `63f25eebe0c29822fbda34a90898c80ca3419810a4145b2aa2e6f27f6871f37b`,
+source revision `da603f70156693ea32a0b0dbe484c50880c6bc36`, completed on the owned local fork
+`http://127.0.0.1:18790`, chain 31337. The exact production deployment wrapper broadcast four deployment
+transactions, followed by 14 bounded scenario transactions. All 18 receipts succeeded. Gas cost totaled
+0.007270741620849468 test ETH, below the 1 test ETH ceiling. There were zero draws and oracle permissions.
+
+The factory at `0xbe49677a403f77136e81498e5681f8dc22aa1181` remains publicly paused. Its admin-created
+Balancer `0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9` returned both demo NFTs, recovered 0.1 real fork WETH,
+and returned 0.1 test ETH. Independent postflight RPC readbacks found zero Balancer native/WETH balances,
+empty active inventory and both NFT owners equal to the synthetic creator. Full receipts, bytecode checks,
+canonical deployment output and postflight are in `docs/receipts/current-rehearsal/20261125154241434-da603f7/`.
+Command: `CANDIDATE_RUN=1 node --import tsx scripts/current-local-rehearsal.ts --plan <that directory>/bounded-plan.json --approved-plan-hash 63f25eebe0c29822fbda34a90898c80ca3419810a4145b2aa2e6f27f6871f37b --execute`.
+Exit status 0. Existing stale-artifact warnings were retained; caches were not deleted and exact approved
+creation/runtime hashes were checked against actual deployment receipts. This is local transaction evidence,
+not signed creator UI acceptance or a mainnet canary. Existing historical and interrupted local nodes remain preserved.
+
+A separate concrete creator-UI local plan is prepared in `docs/receipts/creator-ui-20261125/bounded-plan.json`.
+It has not been executed or approved. It adds no wallet funding and caps writes at 12 local transactions,
+0.1 ETH gas, 0.1 ETH deposit, and 0.1 existing WETH. It does not inherit the prior packet's authority.
+
+Things that don't make sense: the previous broad economic gate uses fabricated randomness and cannot count as fresh
+no-mock evidence. UI and economic release evidence remain outstanding; no mainnet deployment/switch is approved.

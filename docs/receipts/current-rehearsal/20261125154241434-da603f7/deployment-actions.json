@@ -1,0 +1,92 @@
+{
+  "revision": "da603f70156693ea32a0b0dbe484c50880c6bc36",
+  "rpc": "http://127.0.0.1:18790",
+  "forkBlock": "26493164",
+  "forkHash": "0x082ec5b5759919022eb452cd402478aea63ddce9239fcb4e175cba62b95d3a77",
+  "actors": {
+    "deployer": "0x000000000000000000000000000000000001e001",
+    "packsAdmin": "0x000000000000000000000000000000000001e002",
+    "keeperAdmin": "0x000000000000000000000000000000000001e003",
+    "policyAdmin": "0x000000000000000000000000000000000001e004",
+    "creatorA": "0x000000000000000000000000000000000001e005",
+    "creatorB": "0x000000000000000000000000000000000001e006",
+    "keeper": "0x000000000000000000000000000000000001e007",
+    "buyer": "0x000000000000000000000000000000000001e008"
+  },
+  "actions": [
+    {
+      "index": 0,
+      "nonce": "0",
+      "type": "CREATE2",
+      "name": "PoolPage",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "predictedAddress": "0x8ca9e6cfe4a4f4f10cef1d2eff6954e476bd890c",
+      "constructorArguments": [],
+      "gasLimit": "614344",
+      "valueWei": "0",
+      "inputHash": "0x57a476c3e52405b243cec5f69852ebfaef4069251d17fc01f0a07616e359ec24",
+      "runtimeCodeHash": "0xf76069cc3e2536b6177c2d645566df831dd9145b5c00df5a0e7b18f91eb1e6f8",
+      "runtimeBytes": 1693
+    },
+    {
+      "index": 1,
+      "nonce": "1",
+      "type": "CREATE2",
+      "name": "PoolInventory",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "predictedAddress": "0x3bcb1dfd3d37e40dae06f3894a61112d347b8f0c",
+      "constructorArguments": [],
+      "gasLimit": "4061820",
+      "valueWei": "0",
+      "inputHash": "0x801e7404522ffcdcceacdd674384534fa81a21861b27da004f22062eea1f5dbf",
+      "runtimeCodeHash": "0x79d056d3c8f35c150a49e29c8edc2a5ede150b339df2a4f86a1354f8e369e97b",
+      "runtimeBytes": 13331
+    },
+    {
+      "index": 2,
+      "nonce": "2",
+      "type": "CREATE",
+      "name": "PoolBalancer",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0x940815ee17aa44e861befe77e6812eb0f2da9710",
+      "constructorArguments": [
+        "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+        "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+        "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+        "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+        "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+      ],
+      "gasLimit": "7025811",
+      "valueWei": "0",
+      "inputHash": "0x206265b361ffc57612884208feddaeebc9b0d513a633d79a515a7b550c229441",
+      "runtimeCodeHash": "0xc44a99ff80da91463009379966bf6e3c4cf2f40d9a35ccacf3a3bacee66e10bc",
+      "runtimeBytes": 24453
+    },
+    {
+      "index": 3,
+      "nonce": "3",
+      "type": "CREATE",
+      "name": "BalancerFactory",
+      "from": "0x000000000000000000000000000000000001e001",
+      "to": null,
+      "predictedAddress": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "constructorArguments": [
+        "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+        "0x000000000000000000000000000000000001E003",
+        "0x000000000000000000000000000000000001e004"
+      ],
+      "gasLimit": "1928469",
+      "valueWei": "0",
+      "inputHash": "0x263dee6b7147340d497ca55306757ca6c8e0f17666a6975e5ed9dc279639d68b",
+      "runtimeCodeHash": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780",
+      "runtimeBytes": 5594
+    }
+  ],
+  "deploymentGasReserveWei": "272608880000000000",
+  "broadcast": false,
+  "mutationCount": 0
+}
