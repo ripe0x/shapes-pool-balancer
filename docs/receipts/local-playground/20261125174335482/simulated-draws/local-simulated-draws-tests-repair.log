@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/local-simulated-draws.test.ts (5 tests) 15ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  14:03:18
+   Duration  426ms (transform 64ms, setup 0ms, collect 224ms, tests 15ms, environment 0ms, prepare 29ms)
+

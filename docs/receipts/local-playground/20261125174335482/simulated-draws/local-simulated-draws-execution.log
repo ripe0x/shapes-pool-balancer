@@ -1,0 +1,883 @@
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "50373023701227359546317998820632849781137123962728842513632422405943157320716",
+    [
+      "82781147122357099447182352902521651733941781712748795999684292756476340786403"
+    ]
+  ],
+  "value": "0",
+  "nonce": 20,
+  "gas": "5000000",
+  "gasPrice": "1000494579"
+}
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "92835595245964718362883074412475916379449837268290610929375087105974489306409",
+    [
+      "18435868191592384498632760610763194371933822716275058408184695436382855589947"
+    ]
+  ],
+  "value": "0",
+  "nonce": 21,
+  "gas": "5000000",
+  "gasPrice": "1000433166"
+}
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "96066854501919861618900502323546554630943952653245687074381978714251118252863",
+    [
+      "48359731121651550388500815101885543828794843205838274131127219179284872194227"
+    ]
+  ],
+  "value": "0",
+  "nonce": 22,
+  "gas": "5000000",
+  "gasPrice": "1000379184"
+}
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "76362937247327901462858977350298487217076094261283108906089795289597385294272",
+    [
+      "73816141388224088159727356473271098403753344929434455503199716041997596986949"
+    ]
+  ],
+  "value": "0",
+  "nonce": 23,
+  "gas": "5000000",
+  "gasPrice": "1000331929"
+}
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "71375633823293916629706198055224863875614186311843472136746020423836768970382",
+    [
+      "93656742515196308302601368527366096902475194541169970002092927098392049209664"
+    ]
+  ],
+  "value": "0",
+  "nonce": 24,
+  "gas": "5000000",
+  "gasPrice": "1000290563"
+}
+{
+  "from": "0x000000000000000000000000000000000001E008",
+  "to": "0x802d4E8D7315a4B7ceA1ba97e8BbE271fAa3F581",
+  "name": "acquireBatch",
+  "args": [
+    "0x000000000000000000000000000000000001E008",
+    "1",
+    "21869445185701518",
+    "0",
+    "10000",
+    "4",
+    "1795628495"
+  ],
+  "value": "24210040371721518",
+  "nonce": 4,
+  "gas": "1500000",
+  "gasPrice": "1000254353"
+}
+{
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "to": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "name": "rawFulfillRandomWords",
+  "args": [
+    "64652216378802689662094842887394994058021396101785875666858399956661843998697",
+    [
+      "5995784802712195362883846772221776105213360759936466235625574930717565528557"
+    ]
+  ],
+  "value": "0",
+  "nonce": 25,
+  "gas": "5000000",
+  "gasPrice": "1000222653"
+}
+{
+  "from": "0x000000000000000000000000000000000001E008",
+  "to": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+  "name": "performUpkeepUnpaid",
+  "args": [],
+  "value": "0",
+  "nonce": 5,
+  "gas": "8000000",
+  "gasPrice": "1000195346"
+}
+ContractFunctionExecutionError: The contract function "performUpkeepUnpaid" reverted.
+
+Error: NoUpkeepNeeded()
+ 
+Contract Call:
+  address:   0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4
+  function:  performUpkeepUnpaid()
+  sender:    0x000000000000000000000000000000000001E008
+
+Docs: https://viem.sh/docs/contract/simulateContract
+Details: execution reverted: custom error 0xfdee5cb5
+Version: viem@2.57.17
+    at getContractError (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getContractError.ts:84:10)
+    at simulateContract (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/simulateContract.ts:316:11)
+    ... 2 lines matching cause stack trace ...
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:203:3) {
+  cause: ContractFunctionRevertedError: The contract function "performUpkeepUnpaid" reverted.
+  
+  Error: NoUpkeepNeeded()
+  
+  
+  Details: execution reverted: custom error 0xfdee5cb5
+  Version: viem@2.57.17
+      at <anonymous> (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getContractError.ts:70:14)
+      at getContractError (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getContractError.ts:82:5)
+      at simulateContract (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/actions/public/simulateContract.ts:316:11)
+      at async send (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:139:24)
+      at async run (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:186:9)
+      at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:203:3) {
+    details: 'execution reverted: custom error 0xfdee5cb5',
+    docsPath: undefined,
+    metaMessages: [ 'Error: NoUpkeepNeeded()', '' ],
+    shortMessage: 'The contract function "performUpkeepUnpaid" reverted.',
+    version: '2.57.17',
+    data: { abiItem: [Object], args: undefined, errorName: 'NoUpkeepNeeded' },
+    raw: '0xfdee5cb5',
+    reason: undefined,
+    signature: undefined,
+    [cause]: CallExecutionError: Execution reverted with reason: custom error 0xfdee5cb5.
+    
+    Raw Call Arguments:
+      from:      0x000000000000000000000000000000000001E008
+      to:        0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4
+      value:     0 ETH
+      data:      0xf00d6cc3
+      gas:       8000000
+      gasPrice:  1.000171382 gwei
+      nonce:     6
+    
+    Details: execution reverted: custom error 0xfdee5cb5
+    Version: viem@2.57.17
+        at getCallError (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/utils/errors/getCallError.ts:42:10)
+        at call (/Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/viem/_esm/actions/public/call.js:175:15)
+        ... 3 lines matching cause stack trace ...
+        at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:203:3) {
+      cause: [ExecutionRevertedError],
+      details: 'execution reverted: custom error 0xfdee5cb5',
+      docsPath: undefined,
+      metaMessages: [Array],
+      shortMessage: 'Execution reverted with reason: custom error 0xfdee5cb5.',
+      version: '2.57.17'
+    }
+  },
+  details: 'execution reverted: custom error 0xfdee5cb5',
+  docsPath: '/docs/contract/simulateContract',
+  metaMessages: [
+    'Error: NoUpkeepNeeded()',
+    ' ',
+    'Contract Call:',
+    '  address:   0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4\n' +
+      '  function:  performUpkeepUnpaid()\n' +
+      '  sender:    0x000000000000000000000000000000000001E008'
+  ],
+  shortMessage: 'The contract function "performUpkeepUnpaid" reverted.',
+  version: '2.57.17',
+  abi: [
+    {
+      type: 'constructor',
+      inputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    { type: 'receive', stateMutability: 'payable' },
+    {
+      type: 'function',
+      name: 'ENS',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'FWA_FACTORY',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'FWA_IMPLEMENTATION',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'MAX_BATCH',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'PACKS',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'SHAPES',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'acceptCreator',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'admissionStatus',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'approvePoolPage',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'availableKeeperAllowance',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'backlogThreshold',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'canPurchase',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'claimSurplus',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'close',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'collectProceeds',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'configure',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'creator',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'creatorCredit',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'creatorRevenueBps',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'creatorWork',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'curatedRequired',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'denominationAmount',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'pure'
+    },
+    {
+      type: 'function',
+      name: 'depositETH',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'payable'
+    },
+    {
+      type: 'function',
+      name: 'economicsSource',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'effectiveEconomics',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'enabled',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'factory',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'fillGateBps',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'followFactoryEconomics',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'getActiveIds',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'getActiveShapes',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'initialize',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'payable'
+    },
+    {
+      type: 'function',
+      name: 'inventoryBatchVersion',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'pure'
+    },
+    {
+      type: 'function',
+      name: 'isValidSignature',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'items',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'keeperAllowance',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'keeperAllowanceTime',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'keeperBucketCapacity',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'keeperBucketRefill',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'listCuratedBatch',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'listedShapePrizes',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'maintenanceFunding',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'markupBps',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'maxRestockSurchargePerShape',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'mintFeeCap',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'onERC721Received',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'pure'
+    },
+    {
+      type: 'function',
+      name: 'open',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'owner',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'pageEpoch',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'paidUpkeepEnabled',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'pendingCreator',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'performUpkeep',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'performUpkeepUnpaid',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'policyGeneration',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'policyMaxReward',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'pool',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'prizeWeight',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'quoteKeeperReward',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'reconciledSequence',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'recoverERC20',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'recoverRefunded',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'recoverRefundedBatch',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'recoverUntrackedNFT',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'refreshCuratedWitness',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'requiredReserve',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'restockFee',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'restockFeeFor',
+      inputs: [Array],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'retire',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'revokePoolPages',
+      inputs: [],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setBacklogThreshold',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setCreatorRevenueBps',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setCuratedRequired',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setENSName',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setFillGateBps',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setKeeperBucket',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setLocalEconomics',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'setPaidUpkeepEnabled',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'settingsHash',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'target',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'targetWeight',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'function',
+      name: 'transferCreator',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'unlistShapes',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'updateCuratedPrice',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'updateCuratedPricesBatch',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'withdrawCurated',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'withdrawCuratedBatch',
+      inputs: [Array],
+      outputs: [],
+      stateMutability: 'nonpayable'
+    },
+    {
+      type: 'function',
+      name: 'withdrawableSurplus',
+      inputs: [],
+      outputs: [Array],
+      stateMutability: 'view'
+    },
+    {
+      type: 'event',
+      name: 'BacklogThresholdChanged',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'Configured',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CreatorRevenueChanged',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CreatorTransferStarted',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CreatorTransferred',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CuratedListed',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CuratedRepriced',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CuratedRequirementChanged',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CuratedWithdrawn',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'CuratedWitnessRefreshed',
+      inputs: [Array],
+      anonymous: false
+    },
+    {
+      type: 'event',
+      name: 'Deposited',
+      inputs: [Array],
+      anonymous: false
+    },
+    ... 44 more items
+  ],
+  args: [],
+  contractAddress: '0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4',
+  formattedArgs: undefined,
+  functionName: 'performUpkeepUnpaid',
+  sender: '0x000000000000000000000000000000000001E008'
+}
