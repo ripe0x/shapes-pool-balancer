@@ -1,3 +1,5 @@
+> New accounting candidate (2026-11-25): [cost-first creator proceeds](COST-FIRST-PROCEEDS.md) and owner requirements R114–R117 supersede fixed-percentage creator credit for new implementations. Historical readiness and economic results below do not establish readiness for this change. Existing immutable pools retain their original behavior.
+
 **Current release status (2026-11-19): see [RELEASE-RECORD.md](RELEASE-RECORD.md).** Everything below is history for its named revision.
 
 # Current implementation status: focused audit follow-up, 2026-11-18

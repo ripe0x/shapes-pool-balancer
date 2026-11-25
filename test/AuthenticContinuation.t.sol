@@ -72,8 +72,7 @@ contract AuthenticContinuationTest is AuthenticEconomicFlowsTest {
         assertEq(accepted, 3);
         assertEq(pool.lastIssuedSequence(), 3, "three distinct commitments consumed exactly once");
         balancer.collectProceeds();
-        uint256 credit = balancer.creatorCredit();
-        assertGt(credit, 0);
+        uint256 credit = _assertCostFirstProfit();
         balancer.collectProceeds();
         assertEq(balancer.creatorCredit(), credit);
     }

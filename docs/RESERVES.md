@@ -1,3 +1,5 @@
+> Accounting version: this document describes historical fixed-share clones. New `profitAccountingVersion() == 1` clones use [cost-first creator proceeds](COST-FIRST-PROCEEDS.md); their full balance funds maintenance, and open withdrawals require earned proceeds plus the reserve. Historical evidence below does not validate the new model.
+
 # Working-capital reserves
 
 Current specification, 2026-11-18. Supersedes inventory-dependent credit attribution and full-restoration policy

@@ -1,3 +1,4 @@
+// Historical fixed-share economic campaign; not a model of profitAccountingVersion() == 1.
 // Deterministic policy economics model. Run npm run sim; no RPCs, broadcasts, or secret material.
 // Numeric outputs are scenario estimates until a matching fork run agrees step by step.
 import { writeFileSync } from 'node:fs';

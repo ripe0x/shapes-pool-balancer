@@ -91,7 +91,23 @@ contract AuthenticSequenceTest is ForkBase {
         assertEq(accepted,4); assertEq(pool.lastIssuedSequence(),4);
         assertEq(balancer.reconciledSequence(),4); assertEq(pool.unsettledAcquisitionCount(),0);
         assertEq(balancer.listedShapePrizes(),47);
-        uint256 credit=balancer.creatorCredit(); assertGt(credit,0);
+        uint256[] memory held=balancer.getActiveIds();
+        uint256 backing;
+        for(uint256 i;i<held.length;++i){
+            (uint8 kind,uint8 denom,,,)=balancer.items(held[i]);
+            if(kind!=2)continue;
+            (address collection,,,uint256 tokenId,,,,)=pool.listings(held[i]);
+            assertEq(IERC721Min(collection).ownerOf(tokenId),address(pool));
+            // Independent declared launch board: denomination0=.01,1=.05,2=.1,3=.5,9=.02 ETH.
+            if(denom==0)backing+=0.01 ether;else if(denom==1)backing+=0.05 ether;
+            else if(denom==2)backing+=0.1 ether;else if(denom==3)backing+=0.5 ether;
+            else if(denom==9)backing+=0.02 ether;else revert("unexpected launch denomination");
+        }
+        assertEq(backing,1.7 ether);
+        uint256 assets=address(balancer).balance+backing;
+        uint256 capital=balancer.operatingCapital();
+        uint256 credit=assets>capital?assets-capital:0;
+        assertEq(balancer.creatorCredit(),credit,"actual surviving assets repay costs before earnings");
         balancer.collectProceeds(); assertEq(balancer.creatorCredit(),credit,"keeper already collected each actual sale once");
         vm.prank(creator); balancer.close();
         uint256[] memory ids=balancer.getActiveIds();

@@ -5,7 +5,7 @@ Creator-operated [FWA](https://pools.fwa.fun) community pools that use ETH-backe
 
 A creator deploys a `PoolBalancer`, which creates and permanently owns an FWA standard pool. The creator lists curated
 NFTs and sets a target mix of ETH-backed prizes (Shapes and Draw Packs); players buy on FWA's own site with ETH; a
-permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. A stored percentage of actual collected owner proceeds becomes protected creator credit. Credit remains
+permissionless keeper restocks prizes after draws from the Balancer's ETH and settled proceeds. New implementations use cost-first creator proceeds: deposits are capital, and actual game costs and reserve needs come before withdrawals. See [cost-first accounting](docs/COST-FIRST-PROCEEDS.md). Historical fixed-share clones retain their original accounting. Legacy credit remains
 claimable during depletion; operating capital above the full reserve is separately withdrawable.
 
 **Not deployed to mainnet.** See [docs/READINESS.md](docs/READINESS.md).
@@ -20,7 +20,7 @@ claimable during depletion; operating capital above the full reserve is separate
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Status codes, keeper operation, recovery procedures |
 | [docs/READINESS.md](docs/READINESS.md) | Mainnet deployment readiness report |
 
-See [protected-revenue implementation evidence](docs/PROTECTED-REVENUE-RESULTS.md), [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
+Historical fixed-share evidence: [protected-revenue implementation evidence](docs/PROTECTED-REVENUE-RESULTS.md), [current reserve design](docs/RESERVES.md) and [before/after evidence](docs/reserve-redesign-results.md) for capital requirements, partial depletion, keeper economics and launch blockers. The [policy architecture](docs/KEEPER-POLICIES.md) remains replaceable through delayed creator adoption.
 
 The [focused audit follow-up](docs/AUDIT-FOLLOWUP-RESULTS.md) covers current curated-presence proofs, generic transaction confirmation and pool-lifetime dashboard reporting. Curated proof loss can pause purchases until a permissionless refresh; concurrent draws and asset rights remain unchanged.
 

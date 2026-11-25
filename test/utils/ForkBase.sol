@@ -80,7 +80,7 @@ abstract contract ForkBase is Test {
         vm.startPrank(owner);
         nft.approve(predicted, id);
         b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
-            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired,
+            PoolBalancer.CreationConfig(MARKUP, 0, 1, shapes.mintFee(), curatedRequired,
                 factory.creationSettingsHash()), initial)));
         b.close();
         b.withdrawCurated(b.getActiveIds()[0], owner);

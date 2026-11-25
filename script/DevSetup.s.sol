@@ -47,9 +47,13 @@ contract DevSetup is Script {
             nfts[i - 1] = PoolBalancer.CuratedInput(address(nft), i, i * 0.25 ether);
         }
         PoolBalancer implementation = PoolBalancer(payable(factory.implementation()));
-        // Demo review values: 15% Shape markup and a fixed 4% allocation of collected owner proceeds.
+        // Demo review values: 15% Shape markup; earnings follow the implementation accounting.
+        uint16 revenueBps = 400;
+        try implementation.profitAccountingVersion() returns (uint256 version) {
+            if (version != 0) revenueBps = 0;
+        } catch {}
         PoolBalancer.CreationConfig memory config = PoolBalancer.CreationConfig(
-            1500, 400, 5 | (3 << 16) | (2 << 32), implementation.SHAPES().mintFee(), false,
+            1500, revenueBps, 5 | (3 << 16) | (2 << 32), implementation.SHAPES().mintFee(), false,
             factory.creationSettingsHash());
         PoolBalancer b = PoolBalancer(payable(factory.createBalancer{value: 3 ether}(salt, config, nfts)));
         vm.stopBroadcast();

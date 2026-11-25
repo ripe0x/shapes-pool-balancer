@@ -27,6 +27,9 @@ library PoolInventory {
         uint256 shapeStageUpper;
         uint256 curatedWitness;
         uint256 curatedWitnessSlot;
+        uint256 accountedCash;
+        uint256 capital;
+        uint256 backing;
     }
     struct Fill {
         uint256 plan;
@@ -41,6 +44,8 @@ library PoolInventory {
         bool paid;
     }
     uint256 constant MAX_OPS = 5;
+    uint64 constant MAX_RECONCILE = 5;
+    uint8 constant A_FULFILLED = 2;
     uint256 constant DENOMS = 16;
     uint256 constant SHAPE_DENOMS = 9;
     uint256 constant MAX_RESTOCK_SIZES = 4;
@@ -72,6 +77,99 @@ library PoolInventory {
     error InvalidConfig();
     error InvalidPlan();
     error ProtectedAsset();
+
+    /// @dev Unattributed ETH is contributed capital, including forced transfers. Redemption and collection
+    /// update accountedCash in their own transaction so they cannot be mistaken for new deposits.
+    function syncCapital(State storage s) public {
+        uint256 cash = address(this).balance;
+        if (cash > s.accountedCash) s.capital += cash - s.accountedCash;
+        s.accountedCash = cash;
+    }
+
+    function earned(State storage s) public view returns (uint256) {
+        uint256 cash = address(this).balance;
+        if (cash > s.accountedCash) cash = s.accountedCash;
+        uint256 assets = cash + s.backing;
+        return assets > s.capital ? assets - s.capital : 0;
+    }
+
+    function capital(State storage s) public view returns (uint256) {
+        uint256 cash = address(this).balance;
+        return s.capital + (cash > s.accountedCash ? cash - s.accountedCash : 0);
+    }
+
+    event ProceedsCollected(uint256 amount);
+    function collect(State storage s, IFWAPool pool) public returns (uint256 amount) {
+        syncCapital(s);
+        if (pool.ownerProceeds() == 0) return 0;
+        uint256 before = address(this).balance;
+        pool.withdrawOwnerProceeds();
+        amount = address(this).balance - before;
+        recordCash(s);
+        emit ProceedsCollected(amount);
+    }
+
+    function settledEarnings(State storage s, IFWAPool pool, uint64 reconciled) public view returns (uint256) {
+        if (pool.lastIssuedSequence() != reconciled) return 0;
+        return earned(s);
+    }
+
+    function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
+        public view returns (uint256)
+    {
+        if (pool.unsettledAcquisitionCount() != 0 || pool.lastIssuedSequence() != reconciled) return 0;
+        uint256 cash = address(this).balance;
+        uint256 spare = cash > reserve ? cash - reserve : 0;
+        if (!enabled) return spare;
+        uint256 profit = earned(s);
+        return profit < spare ? profit : spare;
+    }
+
+    function recordCash(State storage s) public { s.accountedCash = address(this).balance; }
+    function spend(State storage s, uint256 amount) public { s.accountedCash -= amount; }
+
+    error InsufficientSurplus();
+    event SurplusClaimed(address indexed to, uint256 amount);
+    function claim(State storage s, uint256 amount, address to, uint256 maximum) public {
+        if (to == address(0)) revert InvalidRecipient();
+        if (amount > maximum) revert InsufficientSurplus();
+        syncCapital(s);
+        uint256 profit = earned(s);
+        if (amount > profit) s.capital -= amount - profit;
+        s.accountedCash -= amount;
+        SafeTransferLib.safeTransferETH(to, amount);
+        emit SurplusClaimed(to, amount);
+    }
+
+    function reconcile(State storage s, IFWAPool pool, uint64 sequence)
+        public returns (uint64 end, uint256 removedWeight)
+    {
+        end = pool.nextSequenceToProcess() - 1;
+        if (end > sequence + MAX_RECONCILE) end = sequence + MAX_RECONCILE;
+        while (sequence < end) {
+            (,,, uint256 lid, uint8 status,) = pool.acquisitions(pool.requestIdAtSequence(++sequence));
+            if (lid != 0) removedWeight += onDrawn(s, lid, status == A_FULFILLED);
+        }
+    }
+
+    event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
+
+    function onDrawn(State storage s, uint256 lid, bool delivered) public returns (uint256 weight) {
+        Item storage it = s.items[lid];
+        if (it.state != ACTIVE) return 0;
+        uint8 kind = it.kind;
+        uint8 d = it.denom;
+        removeActive(s, lid);
+        if (kind == SHAPE) {
+            --s.activeShapes[d];
+            weight = _weight(d);
+            // Failed delivery is not liquid backing. Its later recovery reverses this loss.
+            s.backing -= _amount(d);
+        }
+        if (delivered) delete s.items[lid];
+        else it.state = 2;
+        emit ItemDrawn(lid, kind, d, delivered);
+    }
 
     /// @dev Checks a newly submitted design against the factory's current limits. Lowering a limit never strands a
     ///      pool already beyond it: a design may keep or reduce the current prize count (`max(current, maxPrizes)`) and
@@ -269,6 +367,7 @@ library PoolInventory {
     function recoverRefunded(State storage s, IFWAPool pool, address shapes, address packs, uint256 lid, address to)
         public returns (uint256 eth)
     {
+        syncCapital(s);
         Item storage it = s.items[lid];
         if (it.state != 2 || to == address(0)) revert InvalidItem();
         (address collection,,, uint256 tokenId,,,, uint8 status) = pool.listings(lid);
@@ -283,11 +382,13 @@ library PoolInventory {
             IShapePacks(d < 9 ? shapes : packs).redeem(tokenId);
             eth = address(this).balance - before;
         }
+        if (kind != 1) recordCash(s);
         emit RefundedRecovered(lid, to, eth);
     }
     function unlistShapes(State storage s, IFWAPool pool, address shapes, address packs, uint256[] calldata ids)
         public returns (uint256 removedWeight)
     {
+        syncCapital(s);
         uint256 n = ids.length;
         uint256[] memory tokens = new uint256[](n);
         uint8[] memory sizes = new uint8[](n);
@@ -297,6 +398,7 @@ library PoolInventory {
             removeActive(s, ids[i]);
             (,,, tokens[i],,,,) = pool.listings(ids[i]);
             sizes[i] = it.denom;
+            s.backing -= _amount(it.denom);
             --s.activeShapes[it.denom];
             removedWeight += _weight(it.denom);
             delete s.items[ids[i]];
@@ -304,6 +406,7 @@ library PoolInventory {
         pool.withdrawListingsTo(ids, address(this));
         uint256 before = address(this).balance;
         for (uint256 i; i < n; ++i) IShapePacks(sizes[i] < 9 ? shapes : packs).redeem(tokens[i]);
+        recordCash(s);
         emit ShapesUnlisted(n, address(this).balance - before);
     }
 
@@ -312,6 +415,7 @@ library PoolInventory {
     }
 
     function fill(State storage st, Fill memory f) public returns (uint256 used, uint256 listed, uint256 added) {
+        syncCapital(st);
         IFWAPool p = IFWAPool(f.pool);
         IShapes SHAPES = IShapes(f.shapes);
         IShapePacks PACKS = IShapePacks(f.packs);
@@ -374,9 +478,11 @@ library PoolInventory {
             st.items[lids[i]] = PoolInventory.Item(SHAPE, d, ACTIVE, uint104(base), uint104(batch[i].price));
             addActive(st, lids[i]);
             ++st.activeShapes[d];
+            st.backing += _amount(d);
             added += _weight(d);
             emit ShapeListed(lids[i], d, batch[i].tokenId, batch[i].price);
         }
+        recordCash(st);
         listed = n;
         // Every new Shape/pack prize may be staged; activation/removal can only reduce this upper bound.
         uint256 stageUpper = st.shapeStageUpper + n;

@@ -473,3 +473,10 @@ Accepted and documented; no contract behavior change and no outcome bound change
 ## Focused inventory-update release gate (owner, 2026-11-25)
 
 - R113. "narrow the release gate to the focused checks for this update and do the remaining review and regressions. keep the full economic campaign separate and commit along the way." The inventory/batch/recovery/pause release uses asset-flow-focused.json; asset-flow.json retains the unchanged full economic campaign and its approved outcomes. Focused acceptance does not establish the monthly economic claims. Existing owner-signature, exact-source review, deployment authority and live-canary controls remain.
+
+## Cost-first creator proceeds (owner, 2026-11-25)
+
+- R114. "implement cost-first profit withdrawals. cover restocking, mint fees and keeper costs before creator earnings, and don't count deposits as profit. update the UI and tests and commit it. no mainnet deployment." This supersedes R62–R65 for the new implementation; existing immutable clones retain their accounting.
+- R115. Owner approved the game-first creator-proceeds model: a **1 ETH deposit creates 0 earnings**. If **0.02 ETH** of settled receipts leaves **0.015 ETH** after actual game costs, at most **0.015 ETH** can be withdrawn once reserves and contributed native ETH capital are covered. Mint fees, keeper payments, automatic prize backing delivered to players and prior operating losses reduce proceeds before withdrawal. Closing permits separate capital recovery.
+- R116. Curated NFT listing prices create **0 ETH debt** to the creator. A curated NFT listed at **1 ETH** does not establish a **1 ETH** acquisition cost or claim; personal NFT investment profit is outside the contract. Repricing, listing and returning a curated NFT do not create earned ETH.
+- R117. There is **no manually configured earnings percentage** in new clones. Markup and prize mix determine pricing and a projection of cash margin; only actual settled economics determine earned proceeds. Historical clones remain identified per clone. Local source implementation, focused verification and commits are authorized; no mainnet deployment or switch is authorized.
