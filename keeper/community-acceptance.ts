@@ -14,7 +14,7 @@ import {
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../shared/abi';
 
 const RPC = 'http://127.0.0.1:8545';
-const FACTORY = '0x526FbD402624B50861f54c081B592cdCeE322929';
+const FACTORY = '0x6F018fF718Ab5A4287F937e4e4729Aa65610f53b';
 const SHAPES = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const VRF = '0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d';
 const GWEI = 1_000_000_000n;
