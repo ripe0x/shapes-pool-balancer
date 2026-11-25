@@ -138,7 +138,7 @@ contract Deploy is Script {
         require(
             factory.creationSettingsHash()
                 == keccak256(abi.encode(KeeperPolicyCalls.settingsHash(e, KeeperPolicyCalls.FOLLOW, 0, true,
-                    impl.SHAPES().mintFee()), uint256(0.622 ether), uint256(0.05 ether) / 12)),
+                    impl.SHAPES().mintFee()), uint256(0.622 ether), uint256(0.05 ether) / 12, address(impl))),
             "creation settings hash"
         );
         require(impl.creator() == address(1), "implementation not locked");
