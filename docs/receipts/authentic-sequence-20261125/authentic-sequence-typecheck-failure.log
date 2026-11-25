@@ -1,0 +1,5 @@
+
+> typecheck
+> tsc --noEmit -p tsconfig.json
+
+scripts/collect-authentic-vrf.ts(103,27): error TS2538: Type 'null' cannot be used as an index type.

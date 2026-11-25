@@ -249,3 +249,29 @@ Remaining: distinct historical request/proof corpus and compatible scheduling fo
 production wallet gas profit, keeper-only liveness or complete protocol/mint/oracle-fee conservation.
 
 Things that don't make sense: forced winners and reused proofs cannot be relabelled as authentic full-regime evidence.
+
+
+### Genuine proof corpus and continuous multi-batch execution (2026-11-25)
+
+Added bounded read-only Tenderly corpus collection with checkpoint reuse. A backward scan observed836service requests
+across453purchase batches; only FOUR actual request/proof pairs were captured and validated, explicitly distinguished
+from event availability. The main three-entry anchor prefix remains unchanged; previousEntries holds its immediately
+preceding single request. No approved outcome/gate configuration was changed.
+
+Added actual public-coordinator proof submission: three genuine proofs succeed from an ordinary caller without oracle
+impersonation, outputs equal canonical historical words, tampered gamma is rejected, consumed proof replay is rejected,
+and real keeper-role reconciliation/restocking succeeds. Added a separate continuous pool: one request/proof at
+26442101/26442106, then three at26442752/26442757, with reconciliation/restocking between cohorts, sequence4 and full
+creator closeout. All three affected cases pass, with the failed sequence case rerun only after repairs. Typecheck passes.
+
+The sequence fixture forks BEFORE the actual later request transaction; selecting the block's post-state imported
+canonical pending-request state through uncached storage and produced DuplicateRequestId. Canonical transaction-prefix
+replay also requires Prague EXECUTION for EIP-7702; compiler settings stay Cancun. Both failures and the successful
+repair trace are preserved in docs/receipts/authentic-sequence-20261125/. Independent review checked these repairs.
+
+This establishes genuine sequential proof execution locally, not the complete180-draw/28-regime campaign. Next action:
+materialize a larger contiguous prefix from the observed836requests, then port scheduling/accounting while preserving
+approved workloads/outcomes. No public-chain broadcast, fresh oracle-service availability or production-wallet profit
+is claimed. The four-pair capture and bounded passing evidence are in the receipt README and fixture.
+
+Things that don't make sense: four verified proofs must not be described as836verified proofs or full-regime completion.

@@ -1,0 +1,13 @@
+{
+  "test/AuthenticContinuation.t.sol": "72002f75ac18a2a0981aab05940b7a5d8478ce1c301986bb95cf64df004f7fb9",
+  "test/AuthenticSequence.t.sol": "c845df9ff8511914de76ba8df792e2ba76ffe3554cfaa04befabe99b146c0c96",
+  "scripts/collect-authentic-vrf.ts": "e922760287a20101055991249c38998b89ef955e9668cd67a925c3d042db449e",
+  "test/fixtures/authentic-vrf-proofs.json": "363ff135b43059cfbb9705926497ad1c3249464ec7b91771212092023d80a7da",
+  "docs/receipts/authentic-sequence-20261125/README.md": "86eb2bbc2492d6312c9b7938aa8c3bdb946fa95a9a6c7e7639db65a805b39ccf",
+  "docs/receipts/authentic-sequence-20261125/authentic-public-proofs.log": "19eeccefd2e63140f6fa56cd2c8efe3afdfc4b9681c7249e979332ca701c5d78",
+  "docs/receipts/authentic-sequence-20261125/authentic-sequence-eip7702-failure.log": "cba1a06c13707f7e6bbe851d14cbe0868f3ba2a765059f2a3457dd37a77b0670",
+  "docs/receipts/authentic-sequence-20261125/authentic-sequence-final.log": "5e326a5504b2269286a10ec2dfbb9833b82d3902645a187666b88cb091720a58",
+  "docs/receipts/authentic-sequence-20261125/authentic-sequence-initial-failure.log": "1eabe50a243797fda218afa96c7dbaeac95b79da6423511dd8536aa9574cbd8d",
+  "docs/receipts/authentic-sequence-20261125/authentic-sequence-typecheck-failure.log": "e510bb6b521748f15e4e347166e5c390cdb417fd5be2208d4c411bfd5810b47f",
+  "docs/receipts/authentic-sequence-20261125/authentic-sequence-typecheck-final.log": "09c7269c33779698d260100c549c83ea1dc274a192c6e6fbc12c3f4542abdc7c"
+}
