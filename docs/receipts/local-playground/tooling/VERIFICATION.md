@@ -41,3 +41,9 @@ Owner explicitly approved the prepared local batch and app start. Executed exact
 Current receipt readbacks: `../20261125174335482/postflight.json`. No production release gate or full economic campaign was rerun for this local setup.
 
 Things that do not make sense: live Chainlink delivery cannot service fresh requests on this private fork. Timeout/refund checks are explicitly separate from successful winner delivery.
+
+## Owner-requested public creation enablement
+
+Owner explicitly requested unpausing this local factory so ripe0x.eth can create pools. Verified original node/PID/fork, factory code hash, policy admin and clean signer. Simulated and sent `setCreationPaused(false)` from local policy admin e004, zero native value. Transaction `0x61be43ecd907c50dd4672b9cd803fbf4fe565ef1d47b043f5adcb18741de4f31` succeeded at block 26485868; gas 29,919, cost 4,415,146,381,215 wei. First invocation failed before send because the ad hoc Viem wallet lacked chain metadata; verified nonce remained 0, then supplied the foundry chain and retried. The app's real readFactoryCreation path now returns supported=true, paused=false, allowed=true for ripe0x.eth (0xCB43078C32423F5348Cab5885911C3B5faE217F9). No pool creation or mainnet transaction performed. Receipt: `../20261125174335482/creation-unpaused.json`. Earlier paused postflight remains historical evidence.
+
+Things that do not make sense: none newly found.

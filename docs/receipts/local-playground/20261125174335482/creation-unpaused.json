@@ -1,0 +1,24 @@
+{
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "signer": "0x000000000000000000000000000000000001e004",
+  "creator": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "ownerAuthorization": "Unpause pool creation on the local fork so ripe0x.eth can create pools.",
+  "priorAttempt": "Viem rejected missing chain metadata before send; verified nonce still 0, supplied foundry chain and retried.",
+  "before": {
+    "supported": true,
+    "paused": true,
+    "allowed": false
+  },
+  "after": {
+    "supported": true,
+    "paused": false,
+    "allowed": true
+  },
+  "hash": "0x61be43ecd907c50dd4672b9cd803fbf4fe565ef1d47b043f5adcb18741de4f31",
+  "block": "26485868",
+  "gasUsed": "29919",
+  "gasWei": "4415146381215",
+  "valueWei": "0"
+}

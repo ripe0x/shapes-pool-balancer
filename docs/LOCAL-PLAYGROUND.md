@@ -14,8 +14,7 @@ Setup completed on November 25, 2026. Open http://127.0.0.1:5280/ and click **Lo
 - Factory: `0xbe49677a403f77136e81498e5681f8dc22aa1181`.
 - Demo NFT collection: `0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955`, tokens 1 and 2 belong to the creator.
 
-These addresses are confirmed by bootstrap receipts and onchain readbacks. Public creation
-stays paused. The connected policy-admin creator can create its own canary pools while paused.
+These addresses are confirmed by bootstrap receipts and onchain readbacks. At the owner's subsequent request, public creation is now unpaused on this local factory. Connect `ripe0x.eth` through your wallet on chain 31337 to create pools as that wallet. Its address is `0xCB43078C32423F5348Cab5885911C3B5faE217F9`; 1,000 test ETH was added on the fork. The two demo NFTs remain in the synthetic creator account unless transferred.
 
 1. Create a pool using the design page. Curated NFTs are optional. For the local demo tokens, click **Choose from your wallet**, then **Enter a contract and token ID instead**. Enter the demo collection above and token ID `1` or `2`; the app checks ownership on the fork. Wallet discovery can take time, so manual entry is the direct local path.
 2. Confirm each local approval/creation step. Once created, use **List Shapes** / maintenance until the initial mix
