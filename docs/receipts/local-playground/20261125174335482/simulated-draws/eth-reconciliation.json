@@ -1,0 +1,50 @@
+{
+  "block": "26485974",
+  "inputs": {
+    "initialDeposit": "420734000000000000",
+    "drawPayments": "470438084109075683",
+    "extraCapital": "0",
+    "total": "891172084109075683"
+  },
+  "drawSplit": {
+    "poolOwnerProceeds": "403463245370929230",
+    "creatorCredit": "46236887919508480",
+    "retainedOperatingRevenue": "357226357451420750",
+    "fwaProtocolFees": "20173162268546453",
+    "vrfServiceFees": "46801676469600000"
+  },
+  "destinations": {
+    "buyerPrizeBacking": "370000000000000000",
+    "listedPrizeBacking": "360000000000000000",
+    "creatorCredit": "46236887919508480",
+    "operatingCash": "28325548474045312",
+    "shapesMintFees": "18000000000000000",
+    "keeperPayments": "1634808977375438",
+    "fwaProtocolFees": "20173162268546453",
+    "vrfServiceFees": "46801676469600000",
+    "withdrawals": "0"
+  },
+  "setupMintFees": "8000000000000000",
+  "replacementMintFees": "10000000000000000",
+  "mintedBacking": "730000000000000000",
+  "initialBacking": "410000000000000000",
+  "finalCash": "74562436393553792",
+  "operatingProfitExcludingSetup": "21828436393553792",
+  "netPoolResultIncludingSetup": "13828436393553792",
+  "requiredOperating": "50938500406410000",
+  "workingCapitalShortfall": "22612951932364688",
+  "prizeCounts": {
+    "50000000000000000": 4,
+    "10000000000000000": 15,
+    "20000000000000000": 1
+  },
+  "conservationDifference": "0",
+  "walletGasSeparate": "23315821354911064",
+  "limitations": "NFT backing remains redeemable inside prize contracts; oracle callbacks simulated and coordinator subscription not billed. Gas is outside pool-capital conservation; no fairness or complete economic-campaign claim.",
+  "gasBreakdown": {
+    "twentyDrawsAndMaintenanceWei": "22830673535173452",
+    "oldExpiredCallbackCleanupWei": "450047805257704",
+    "revertedExpiredTransactionWei": "35100014479908",
+    "allRunWalletGasWei": "23315821354911064"
+  }
+}

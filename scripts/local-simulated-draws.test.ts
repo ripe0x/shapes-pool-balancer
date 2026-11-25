@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { encodeFunctionData } from 'viem';
 import { poolBalancerAbi } from '../shared/abi';
-import { SCOPE, TOPUP_WEI, fullyRestocked, keeperBudget, requestDeadline, testWord, validateCalldata, validateScope, validateWrite } from './local-simulated-draws';
+import { SCOPE, TOPUP_WEI, additionalDrawTarget, fullyRestocked, keeperBudget, keeperGateAcknowledged, requestDeadline, testWord, validateCalldata, validateScope, validateWrite } from './local-simulated-draws';
 
 it('restricts the owner exception to this pool, node endpoint, chain and twenty draws', () => {
   expect(() => validateScope(SCOPE.rpc, 31337, SCOPE.pool, 20)).not.toThrow();
@@ -70,4 +70,30 @@ it('reserves keeper pending/accounting gas once per nonce at its largest liabili
 it('keeps an idle fork purchase deadline ahead of both wall and chain timestamps', () => {
   expect(requestDeadline(1000n, 2000n)).toBe(2600n);
   expect(requestDeadline(2000n, 1000n)).toBe(2600n);
+});
+
+it('fixes an additional batch target so an interrupted resume does not request X more wins again', () => {
+  expect(additionalDrawTarget(20, [], 3)).toEqual({ count: 3, startWins: 20, targetWins: 23, resume: false });
+  const pending = { count: 3, startWins: 20, targetWins: 23, drawsComplete: false };
+  expect(additionalDrawTarget(21, [pending], 3)).toEqual({ ...pending, resume: true });
+  expect(additionalDrawTarget(23, [pending], 3).targetWins).toBe(23);
+  expect(() => additionalDrawTarget(21, [pending], 2)).toThrow();
+  expect(() => additionalDrawTarget(24, [pending], 3)).toThrow();
+  expect(additionalDrawTarget(23, [{ ...pending, drawsComplete: true }], 2).targetWins).toBe(25);
+});
+
+it('rejects additional counts outside the current 1..10 scope and cannot extend an unfinished original batch', () => {
+  for (const count of [0, -1, 1.5, 11, NaN, Infinity]) expect(() => additionalDrawTarget(20, [], count)).toThrow();
+  expect(() => additionalDrawTarget(19, [], 1)).toThrow();
+  expect(() => additionalDrawTarget(20, [{ count: 3, startWins: 20, targetWins: 24 }], 3)).toThrow();
+  expect(SCOPE.count).toBe(20); expect(SCOPE.maxTransactions).toBe(100);
+});
+
+it('acknowledges a draw gate only after a newer keeper tick has drained pending and accounting work', () => {
+  const drained = { pending: {}, accounting: {} };
+  expect(keeperGateAcknowledged(100n, 99n, drained)).toBe(false);
+  expect(keeperGateAcknowledged(100n, 100n, drained)).toBe(false);
+  expect(keeperGateAcknowledged(100n, 101n, drained)).toBe(true);
+  expect(keeperGateAcknowledged(100n, 101n, { pending: { pool: {} }, accounting: {} })).toBe(false);
+  expect(keeperGateAcknowledged(100n, 101n, { pending: {}, accounting: { nonce: {} } })).toBe(false);
 });

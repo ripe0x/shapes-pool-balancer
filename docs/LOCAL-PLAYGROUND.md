@@ -119,3 +119,16 @@ node --import tsx scripts/local-simulated-draws.ts --keeper
 ```
 
 Do not rerun the completed one-shot draw batch. The final state remains open with 13 of 14 prizes listed; the last 0.05 ETH win left a 0.022612951932364688 ETH operating shortfall. The keeper will replace it when operating cash becomes sufficient through a creator contribution or subsequent sales. Earned credit is protected separately and is not silently used to cover that shortfall. See `docs/receipts/local-playground/20261125174335482/simulated-draws/README.md` for actual receipts, errors, limits and the distinction between partial restocking and a paused pool.
+
+## Additional simulated winning draws
+
+For this same local pool, set X to a number from1through10. This command uses the already-running paid keeper and does not start another keeper or add operating capital:
+
+```sh
+cd /Users/dd/CascadeProjects/fwa-pool-balancer
+X=5
+node --import tsx scripts/local-simulated-draws.ts \
+  --execute --allow-simulated-randomness --resume --additional "$X"
+```
+
+Read-only preview: `node --import tsx scripts/local-simulated-draws.ts --additional "$X"`. The existing shared purchase/gas/transaction budgets are not reset. A later invocation can have room for fewer than ten draws; the helper refuses a batch that cannot fit its minimum transaction requirement and still checks actual costs before every send. It records a fixed target for an interrupted batch. Running the command again after that batch completes requests another X draws. It prints completed wins and full-restock status separately; a successful draw count does not imply the original target is fully replenished.
