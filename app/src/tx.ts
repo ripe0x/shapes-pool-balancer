@@ -14,6 +14,16 @@ export const GAS_MARGIN_DEN = 10n;
  *  The call is simulated and sent at current EIP-1559 fees: without fee fields a node simulates at gas price 0, where
  *  upkeep's reward bound and FWA's VRF fee are both lower than at inclusion.
  *  The result names the simulated account and chain, so the wallet refuses to send it if either changed meanwhile. */
+/** Minimum priority fee (tip). Public RPCs can suggest a near-zero tip that leaves a transaction pending for many blocks;
+ *  0.05 gwei is about 0.0000025 ETH on a 50k-gas approval and gets it into the next blocks. */
+export const MIN_PRIORITY_FEE = 50_000_000n;
+/** Raise a too-low tip to the minimum, raising the fee cap by the same amount so it still covers basefee. */
+export const withTip = (fees: { maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint }) => {
+  const tip = fees.maxPriorityFeePerGas ?? 0n;
+  const add = tip < MIN_PRIORITY_FEE ? MIN_PRIORITY_FEE - tip : 0n;
+  return { maxFeePerGas: (fees.maxFeePerGas ?? 0n) + add, maxPriorityFeePerGas: tip + add };
+};
+
 export async function prepareWrite<P extends Params>(
   client: Client,
   account: Address | undefined,
@@ -21,7 +31,7 @@ export async function prepareWrite<P extends Params>(
 ): Promise<P & { gas: bigint; maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; account: Address | undefined; chainId: number | undefined }> {
   const fees = params.maxFeePerGas !== undefined && params.maxPriorityFeePerGas !== undefined
     ? { maxFeePerGas: params.maxFeePerGas, maxPriorityFeePerGas: params.maxPriorityFeePerGas }
-    : await client.estimateFeesPerGas();
+    : withTip(await client.estimateFeesPerGas());
   const priced = { ...params, maxFeePerGas: fees.maxFeePerGas!, maxPriorityFeePerGas: fees.maxPriorityFeePerGas! };
   const call = { ...priced, account } as never;
   await client.simulateContract(call);
@@ -34,8 +44,8 @@ export async function prepareWrite<P extends Params>(
 export async function prepareTransfer(client: Pick<PublicClient, 'call' | 'estimateGas' | 'estimateFeesPerGas' | 'chain'>,
   account: Address | undefined, to: Address, value: bigint) {
   if (!account) throw new Error('Connect a wallet first.');
-  const fees = await client.estimateFeesPerGas();
-  const call = { account, to, value, maxFeePerGas: fees.maxFeePerGas!, maxPriorityFeePerGas: fees.maxPriorityFeePerGas! };
+  const fees = withTip(await client.estimateFeesPerGas());
+  const call = { account, to, value, maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas };
   await client.call(call);
   const gas = ((await client.estimateGas(call)) * GAS_MARGIN_NUM) / GAS_MARGIN_DEN;
   const prepared = { ...call, gas, chainId: client.chain?.id };
@@ -113,11 +123,13 @@ export type TransactionStep = (() => Promise<Hash | undefined>) | [string, () =>
 
 /** A confirmation failure stops dependent wallet actions and caller success effects. */
 export async function runTransactionSteps(label: string, steps: TransactionStep[],
-  onStep: (name: string, index: number) => void, confirm: (hash: Hash) => Promise<void>) {
+  onStep: (name: string, index: number) => void, confirm: (hash: Hash) => Promise<void>,
+  onDone?: (index: number, hash: Hash | undefined) => void) {
   for (const [index, step] of steps.entries()) {
     const [name, run] = Array.isArray(step) ? step : [label, step];
     onStep(name, index);
     const hash = await run();
     if (hash) await confirm(hash);
+    onDone?.(index, hash);
   }
 }

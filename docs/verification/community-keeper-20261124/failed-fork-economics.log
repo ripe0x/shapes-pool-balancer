@@ -1,0 +1,15 @@
+
+> keeper:acceptance
+> tsx keeper/community-acceptance.ts
+
+{"stage":"fork","rpc":"http://127.0.0.1:8545","chain":31337,"startingBlock":"26485776","originalBaseFeeWei":"7","actors":{"creator":"0x815aDD3e65E578BB1C3bCe4e2b734b9C3A5cC3DC","buyer":"0xEb149174b88d2CCe79d2cEF43ff49eb13b530D37","keeper":"0x1431F399168A47731CC2f004578f69860045dD3b"},"evidenceDirectory":"/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/community-keeper-acceptance-2ZOF8w"}
+{"stage":"transaction","functionName":"createBalancer","hash":"0xe9d1c490c55ec48a8b58df3097060f1d7c5bdf064b43262ecb6f514d5b3d2320","block":"26485778","baseFeeWei":"300000000","gasPriceWei":"350000000","gasUsed":"1078849","costWei":"377597150000000","valueWei":"300000000000000000"}
+{"stage":"created-unstocked","block":"26485778","poolOperatingWei":"300000000000000000","creatorCreditWei":"0","reserveWei":"130549000000000000","operatingSurplusWei":"169451000000000000","fwaBalanceWei":"0","fwaOwnerProceedsWei":"0","purchaserEscrowWei":"0","purchaserRefundWei":"0","protocolFeeWei":"0","keeperBalanceWei":"10000000000000000"}
+{"stage":"high-gas-wait","block":"26485779","poolOperatingWei":"300000000000000000","creatorCreditWei":"0","reserveWei":"139941000000000000","operatingSurplusWei":"160059000000000000","fwaBalanceWei":"0","fwaOwnerProceedsWei":"0","purchaserEscrowWei":"0","purchaserRefundWei":"0","protocolFeeWei":"0","keeperBalanceWei":"10000000000000000"}
+Expected values to be strictly equal:
++ actual - expected
+
++ 5000000000n
+- 1500000000n
+
+Evidence: /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/community-keeper-acceptance-2ZOF8w

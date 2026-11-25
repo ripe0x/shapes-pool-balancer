@@ -1,0 +1,37 @@
+
+> test:ts
+> vitest run app/src shared/listing.test.ts shared/design.test.ts shared/planner.test.ts shared/reserve-capital.test.ts
+
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/shapes-pool-app-completion
+
+ ✓ app/src/refresh.test.ts (9 tests) 9ms
+ ✓ shared/planner.test.ts (29 tests) 11ms
+ ✓ app/src/inventory.test.ts (4 tests) 2ms
+ ✓ app/src/wallet.test.ts (4 tests) 9ms
+ ✓ shared/reserve-capital.test.ts (42 tests) 8ms
+ ✓ app/src/transfer.test.ts (4 tests | 1 skipped) 5ms
+ ✓ app/src/tx-intent.test.ts (5 tests | 1 skipped) 4ms
+ ✓ app/src/policy.test.ts (3 tests | 2 skipped) 6ms
+ ✓ app/src/errors.test.ts (4 tests) 7ms
+ ✓ app/src/main-pool.test.ts (23 tests) 4ms
+ ✓ app/src/main-pool-exit.test.ts (7 tests) 5ms
+ ✓ app/src/main-manager-exit.test.ts (9 tests) 15ms
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 8ms
+ ✓ app/src/limits.test.ts (9 tests) 6ms
+ ✓ app/src/main-pool-settings.test.ts (5 tests) 4ms
+ ✓ shared/listing.test.ts (2 tests) 1ms
+ ✓ app/src/limit.test.ts (2 tests) 45ms
+ ✓ app/src/tx.test.ts (8 tests) 7ms
+ ✓ app/src/ledger.test.ts (5 tests) 3ms
+ ↓ app/src/creation-replacement.test.ts (2 tests | 2 skipped)
+ ✓ app/src/chain.test.ts (4 tests | 3 skipped) 651ms
+   ✓ explains the failure when there is no browser wallet to read through  650ms
+ ✓ shared/design.test.ts (18 tests) 994ms
+   ✓ designer presets as functions of one counts array > each preset produces the same counts and packed target as before, at every tested pool size  755ms
+
+ Test Files  21 passed | 1 skipped (22)
+      Tests  199 passed | 12 skipped (211)
+   Start at  10:03:25
+   Duration  1.62s (transform 985ms, setup 0ms, collect 5.95s, tests 1.80s, environment 2ms, prepare 1.35s)
+

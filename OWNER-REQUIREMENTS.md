@@ -441,3 +441,19 @@ Accepted and documented; no contract behavior change and no outcome bound change
   creator's local `restockGas` and `restockFlat` can raise Shape listing prices beyond the markup range; the markup
   limits do not cap the restocking charge. Where local economics are edited, the app shows the resulting charge per
   Shape at the gas price ceiling for the entered values (`restockGas x gasPriceCeiling + restockFlat`).
+
+## Community keeper service (owner, 2026-11-24)
+
+- R106. Host the existing community-pool keeper on **Fly.io**, for factory
+  `0x526FbD402624B50861f54c081B592cdCeE322929`, starting at block `26482707`, using
+  `https://mainnet.gateway.tenderly.co`. Persist state, restart on failure, expose health checks, and document owner
+  operations. This service targets this factory only (`LEGACY_FACTORIES=0`). No contract economics change.
+- R107. Use a fresh dedicated, nondelegated EOA, created and funded by the owner. Owner choice: **0.01 ETH funding**.
+  The owner puts its key directly in the host's secret store; no key is supplied through chat, files or command arguments.
+- R108. **`MAX_LOSS_WEI=0`, `MAX_GAS_PRICE_GWEI=1.5`, no cumulative spending cap.** Owner rejected the proposed
+  `CANARY_PLAN`: "don't cap it". Zero modeled subsidy does not eliminate reverted-transaction gas or guarantee profit.
+- R109. **Better Stack email alerts** for availability, stale ticks, low keeper balance and repeated stuck pools.
+  The implementation uses a 2-minute stale threshold, a 0.007 ETH balance threshold and the existing `STUCK_TICKS=5`.
+- R110. Build in a worktree and prepare a PR. Pushes, merges and deploys require the owner's go. Deploys run only
+  from `/Users/dd/CascadeProjects/fwa-pool-balancer` on `main`, fast-forwarded to `origin/main`. Funding, setting secrets
+  and starting the mainnet service remain owner actions. Fork acceptance reuses port 8545; it must never kill that node.

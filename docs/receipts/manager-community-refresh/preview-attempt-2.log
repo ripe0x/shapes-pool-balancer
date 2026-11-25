@@ -1,0 +1,10 @@
+locator.waitFor: Timeout 45000ms exceeded.
+Call log:
+[2m  - waiting for locator('.mp-manager-exit').getByText(/Manager closeout complete:/) to be visible[22m
+
+    at /Users/dd/CascadeProjects/shapes-pool-app-completion/docs/receipts/manager-community-refresh/preview.cjs:65:56 {
+  log: [
+    "  - waiting for locator('.mp-manager-exit').getByText(/Manager closeout complete:/) to be visible"
+  ],
+  name: 'TimeoutError'
+}

@@ -1049,3 +1049,14 @@ asserts the factory and local values differ first. `app/src/policy.ts` turned a 
 `keeperQuotes: undefined` with `policyUnavailable: false`; the failure now rejects, so the app takes its existing
 unavailable path. `keeper/e2e.ts`, `scripts/current-local-rehearsal.ts` and `docs/CURRENT-LOCAL-REHEARSAL.md` are
 marked historical (they call removed policy functions); `script/deploy.sh` no longer calls that route current.
+
+## Owner decisions, 2026-11-24
+
+1. **`PoolBalancer.owner()`.** Pools expose ERC-173 `owner()` returning the creator, with `OwnershipTransferred` on
+   creation and on `acceptCreator`. Control still moves only through `transferCreator` then `acceptCreator`.
+2. **Swappable implementation for new pools only (option B).** `BalancerFactory.setImplementation` (policy admin,
+   immediate, `ImplementationChanged`) sets the code future clones copy. Existing pools never change (fixed EIP-1167
+   clones); upgradeable pools were not chosen. The implementation is bound into `creationSettingsHash`, so a creation
+   reviewed against another implementation reverts with `StaleSettings`. Trust: the policy admin chooses the code
+   future pools run. A later implementation must keep `initialize`, `SHAPES()` and `pool()`; the app and keeper treat
+   functions an older pool lacks as absent.

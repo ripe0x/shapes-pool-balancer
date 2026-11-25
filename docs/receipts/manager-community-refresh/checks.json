@@ -1,0 +1,72 @@
+{
+ "scope": "Community main refresh conflict resolution plus affected app/main-manager callers",
+ "headBeforeMerge": "f037af2c9f3997348195913464d5d024b3631715",
+ "communityMain": "3217bb36fccc67fa4a26244e4223984d3e765320",
+ "reviewedStagedTree": "9543190395d7982ec5177c51a17fc0bb5e787ed9",
+ "environment": {
+  "SHAPES_FWA_POOL": "/Users/dd/CascadeProjects/shapes-fwa-pool-completion"
+ },
+ "checks": [
+  {
+   "command": [
+    "npm",
+    "run",
+    "test:ts",
+    "--",
+    "app/src",
+    "shared/listing.test.ts",
+    "shared/design.test.ts",
+    "shared/planner.test.ts",
+    "shared/reserve-capital.test.ts"
+   ],
+   "exitStatus": 0,
+   "elapsedSeconds": 2.095,
+   "log": "docs/receipts/manager-community-refresh/check-0.log"
+  },
+  {
+   "command": [
+    "node",
+    "scripts/export-main-pool-abi.mjs",
+    "--check"
+   ],
+   "exitStatus": 0,
+   "elapsedSeconds": 0.033,
+   "log": "docs/receipts/manager-community-refresh/check-1.log"
+  }
+ ],
+ "workerTypecheck": {
+  "command": [
+   "npm",
+   "run",
+   "typecheck"
+  ],
+  "exitStatus": 0,
+  "reportedBy": "independent implementer /root/inspect_app",
+  "sourceTree": "9543190395d7982ec5177c51a17fc0bb5e787ed9",
+  "repeatRun": false
+ },
+ "tests": {
+  "passed": 199,
+  "skipped": 12,
+  "filesPassed": 21,
+  "filesSkipped": 1
+ },
+ "preview": {
+  "command": [
+   "node",
+   "docs/receipts/manager-community-refresh/preview.cjs"
+  ],
+  "exitStatus": 0,
+  "result": "docs/receipts/manager-community-refresh/preview.json",
+  "resultSha256": "7892cd70e0d8028a3dec9b85deea104580063414bad150c7b0e791af9724afc8",
+  "sourceSha256": "71417db84a861ca46f6d2184ad9aadb08c520553e67fd979ce5f9bef62d9490b",
+  "publicTransactions": 0,
+  "observedSendOrSignRpc": 0
+ },
+ "independentReview": {
+  "reviewer": "/root/manager_final_review",
+  "sourceTree": "9543190395d7982ec5177c51a17fc0bb5e787ed9",
+  "actionableFindings": 0,
+  "scope": "Three conflict resolutions and affected route/owner/deployment integration; no audit or tests"
+ }
+}

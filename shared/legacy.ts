@@ -29,5 +29,18 @@ export const legacyEconomics = (policyMaxReward: bigint): Economics => ({
   paymentCap: policyMaxReward,
 });
 
+/** Earlier factories whose pools need community-v1 handling: no economics getter, a keeper policy contract, fixed limits
+ *  and the two-argument configure. Pools of later factories (community-v2) expose the current interface less newer
+ *  views, so they are managed as current pools; only discovery and the keeper's ABI choice use their entry. */
 export const legacyFactory = (factory: string | undefined): LegacyFactory | undefined =>
-  factory === undefined ? undefined : LEGACY_FACTORIES.find((f) => f.factory.toLowerCase() === factory.toLowerCase());
+  factory === undefined ? undefined : LEGACY_FACTORIES.find((f) => f.factory.toLowerCase() === factory.toLowerCase()
+    && !f.poolBalancerAbi.some((x) => x.type === 'function' && x.name === 'effectiveEconomics'));
+
+/** The legacy factories a keeper services: `0` none, unset all, or a comma-separated list of labels (an unknown label
+ *  is refused). The creation factory is never listed twice. */
+export function selectLegacyFactories(spec: string | undefined, creationFactory: string): LegacyFactory[] {
+  const labels = spec === undefined || spec.trim() === '' ? undefined : spec.trim() === '0' ? [] : spec.split(',').map((l) => l.trim());
+  const unknown = labels?.filter((l) => !LEGACY_FACTORIES.some((f) => f.label === l)) ?? [];
+  if (unknown.length) throw new Error(`LEGACY_FACTORIES names unknown factories: ${unknown.join(', ')}`);
+  return LEGACY_FACTORIES.filter((f) => f.factory.toLowerCase() !== creationFactory.toLowerCase() && (!labels || labels.includes(f.label)));
+}

@@ -44,15 +44,15 @@ export const INITIAL_SETTINGS = {
   bucketCapacity: parseEther('0.622'), bucketRefill: parseEther('0.05') / 12n, productLimits: [1000, 1000, 10000] as const,
 };
 /** `BalancerFactory.creationSettingsHash`: a new pool's `KeeperPolicyCalls.settingsHash` (follows the factory, source 0,
- *  generation 0, paid upkeep on, at `mintFee`) bound to the default bucket it copies. */
+ *  generation 0, paid upkeep on, at `mintFee`) bound to the default bucket it copies and the implementation it clones. */
 export function creationSettingsHash(economics: typeof INITIAL_SETTINGS.economics, mintFee: bigint,
-  bucketCapacity: bigint, bucketRefill: bigint): Hex {
+  bucketCapacity: bigint, bucketRefill: bigint, implementation: Address): Hex {
   const e = economics;
   const pool = keccak256(encodeAbiParameters(
     parseAbiParameters('(uint64,uint32,uint32,uint64,uint64,uint32,uint64,uint32,uint32,uint32,uint32,uint32,uint16,uint16), uint8, uint64, bool, uint256'),
     [[e.workFee, e.maxGas, e.overheadGas, e.gasPriceCeiling, e.priorityAllowance, e.restockGas, e.restockFlat, e.baseGas, e.processGas, e.reconcileGas, e.shapeGas, e.prizeGas, e.processGraceBlocks, e.pausedProcessGraceBlocks],
       0, 0n, true, mintFee]));
-  return keccak256(encodeAbiParameters(parseAbiParameters('bytes32, uint128, uint96'), [pool, bucketCapacity, bucketRefill]));
+  return keccak256(encodeAbiParameters(parseAbiParameters('bytes32, uint128, uint96, address'), [pool, bucketCapacity, bucketRefill, implementation]));
 }
 
 /** Deployment constants come from Deploy.s.sol itself, so the verifier cannot drift from the reviewed script. */
@@ -169,7 +169,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   const limits = await pub.readContract({ address: f, abi: balancerFactoryAbi, functionName: 'productLimits' });
   if (limits.join() !== INITIAL_SETTINGS.productLimits.join()) bad.push(`factory.productLimits() = ${limits}, expected ${INITIAL_SETTINGS.productLimits}`);
   const mintFee = await read(c.shapes, 'mintFee') as bigint;
-  await eq('factory', f, 'creationSettingsHash', creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill));
+  await eq('factory', f, 'creationSettingsHash', creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill, impl));
   await eq('implementation', impl, 'creator', '0x0000000000000000000000000000000000000001');
   await eq('implementation', impl, 'FWA_FACTORY', c.fwaFactory);
   await eq('implementation', impl, 'FWA_IMPLEMENTATION', c.fwaImpl);
@@ -191,7 +191,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
       checkedAtBlockHash: (await pub.getBlock({ blockNumber: head })).hash,
       factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer,
       initialSettings: { economics: want, defaultBucketCapacity: INITIAL_SETTINGS.bucketCapacity, defaultBucketRefill: INITIAL_SETTINGS.bucketRefill,
-        productLimits: INITIAL_SETTINGS.productLimits, creationSettingsHash: creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill), shapesMintFeeWei: mintFee },
+        productLimits: INITIAL_SETTINGS.productLimits, creationSettingsHash: creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill, impl), shapesMintFeeWei: mintFee },
       roles, transactions: deployed, preexistingLibraries, reusedDependencies: reused?.dependencies ?? null,
       deploymentGasWei: Object.values(deployed).reduce((s, d) => s + BigInt(d.gasUsed) * BigInt(d.effectiveGasPrice), 0n).toString(),
     },

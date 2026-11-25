@@ -52,13 +52,13 @@ export const canRetryCreation = (outcome: CreationOutcome, a: CreationAttempt, c
 
 export const creationStatus = (outcome: CreationOutcome) => ({
   confirmed: 'Pool creation verified.',
-  cancelled: 'Creation was cancelled. Your saved design can be retried.',
-  replaced: 'Creation was replaced by another transaction. Your saved design can be retried.',
-  reverted: 'Creation reverted. Your saved design can be retried.',
-  pending: 'Creation is pending.',
-  unknown: 'Creation confirmation is unavailable. Check the existing submission before trying again.',
-  context: 'Reconnect the creating account and network to verify this pool.',
-  mismatch: 'The pool does not match the submitted design. Check it before continuing.',
+  cancelled: 'You cancelled this in your wallet. Nothing was created and your design is saved.',
+  replaced: 'Another transaction from your wallet replaced this one. Nothing was created and your design is saved.',
+  reverted: 'The transaction failed, so nothing was created. Your ETH stayed in your wallet, minus gas. Your design is saved.',
+  pending: "Waiting for the transaction to confirm. You can leave this page; it picks up here when you come back. Don't create the pool again in the meantime.",
+  unknown: "We can't confirm this yet. Check the transaction in your wallet before trying anything else.",
+  context: 'Switch to the creating account and network to check this pool.',
+  mismatch: "A pool exists at this address but doesn't match the design you sent. Check it before adding ETH.",
 })[outcome];
 
 type Remember = (next: CreationAttempt, previous?: CreationAttempt) => void;

@@ -1,0 +1,171 @@
+Shapes on FWA
+Community pools
+Main pool
+How it works
+0x5b01…F14D
+Listing. 0 packs on FWA's main pool. Account settings govern further work.
+Selected fresh pack value / primary mints
+0.03 ETH / 3
+Live / accepted mint fee per Shape
+0.000500 / 0.001000 ETH
+Renewal
+Fresh after acquisition; every fresh Shape pays a mint fee
+Eligible returned / kept replacements
+1 / 0
+Maintenance reserve / renewal float
+0.00500 / 0.21413 ETH
+Renewal cash available
+2.75128 ETH
+Routine cash / spending permission
+2.54215 / 0.02961 ETH
+Quoted renewal work before fee collection
+0.001128 ETH
+Your manager
+Manager 1 of 2
+Manager 2 of 2
+0x037eDa3aDB1198021A9b2e88C22B464fD38db3f3
+Copy address
+
+Your own account on FWA's main pool. Only you can withdraw. The factory that created it has no access.
+
+Packs
+
+Selected fresh recipe: 0.03 ETH, 3 paid primary mints. New backing: 0.21 ETH. Existing packs retain their contents.
+
+Idle 1
+Keep receipts recorded
+0
+Other resolved selections
+1
+Controls
+Pause new listings
+
+Listed packs stay listed. Resume any time.
+
+Pause
+Exit mode
+
+Complete closeout below stops investment first. Exit work is not automatic.
+
+Review closeout below
+Withdraw idle packs
+
+Takes unlisted packs to your wallet.
+
+Withdraw up to 16 packs
+Complete an owner-paid manager exit
+
+You pay wallet gas to stop investment, recover settlements, process eligible FWA requests, unlist, redeem packs, collect earnings and withdraw ETH to your wallet. Each bounded step needs its own confirmation. FWA randomness, request deadlines and crown exit delays can require waiting.
+
+Total wallet debit limit (ETH)
+
+Every signed maximum stays reserved toward this limit, including reverted steps. Refunds, claims and lower observed gas do not replenish it.
+
+The limit covers app-reviewed requests. Wallet changes already signed cannot be undone; a larger signed maximum blocks further steps until explicitly reviewed.
+
+Maximum reserved toward the limit
+0 ETH
+Gas expense observed in first receipts
+0 ETH
+ETH sent observed in first receipts
+0 ETH
+
+Observed amounts can change after a chain reorganization. The reserved maximum is retained.
+
+Review next manager exit step
+Start owner-paid manager closeout
+Estimated wallet gas expense
+0.00008660415 ETH
+ETH sent
+0 ETH
+Maximum wallet debit for this step
+0.00011957484 ETH
+
+Reviewed at block 26385268. Required recovery runs even when keeper reimbursement would be unprofitable.
+
+Confirm this bounded step
+Owner settings
+
+Changes apply immediately. Raising spending capacity supplies no ETH and does not refill spent allowance.
+
+70,000 bps backing and 25 bps uplift are provisional local evaluation settings.
+
+Live mint fee per Shape
+0.0005 ETH
+Accepted mint fee maximum
+0.001 ETH
+Accept 0.0005 ETH per fresh Shape
+
+Fresh replacement pays a mint fee for every new Shape. Reusing returned packs pays no new primary mint fee.
+
+Renewal mode
+Fresh after acquisition
+Reuse returned packs
+Allowed fresh pack values
+
+No sizes selected disables fresh builds. Existing inventory keeps its actual contents.
+
+ 0.03 ETH 0.04 ETH 0.05 ETH 0.06 ETH 0.07 ETH 0.08 ETH 0.09 ETH 0.10 ETH 0.11 ETH 0.12 ETH 0.13 ETH 0.14 ETH 0.15 ETH 0.16 ETH 0.17 ETH 0.18 ETH 0.19 ETH 0.20 ETH 0.21 ETH 0.22 ETH 0.23 ETH 0.24 ETH 0.25 ETH 0.26 ETH 0.27 ETH 0.28 ETH 0.29 ETH 0.30 ETH
+Backing ratio (bps)
+Maximum unresolved keep uplift (bps)
+Replacement packs held as renewal float (count)
+Maintenance reserve (ETH)
+Minimum selection edge (bps)
+Listing buffer (bps)
+Routine keeper gas markup (bps)
+Maximum optional payment share (bps)
+Routine gas ceiling (gwei)
+Exit gas ceiling (gwei)
+Priority allowance (gwei)
+Fee per verified service unit (ETH)
+Routine spending capacity (ETH)
+Routine refill per day (ETH)
+Exit spending capacity (ETH)
+Exit refill per day (ETH)
+Quoted gas schedule
+
+Allowances price verified work. They do not change transaction work limits.
+
+checkpoint (gas)
+allocation entry (gas)
+allocation read (gas)
+build (gas)
+build pack (gas)
+build shape (gas)
+list (gas)
+listed (gas)
+sync (gas)
+required tail (gas)
+distribution proof (gas)
+journal (gas)
+scan (gas)
+selected (gas)
+synced (gas)
+pruned (gas)
+unlist (gas)
+unlisted (gas)
+liquidate (gas)
+liquidate pack (gas)
+redeem shape (gas)
+recovery base (gas)
+recovery shape (gas)
+recovery unseal (gas)
+harvest (gas)
+harvested (gas)
+credit (gas)
+fund (gas)
+Review settings
+Reset to current
+Booked principal; NAV pending maintenance
+2.786
+ETH
+Add ETH
+Withdraw
+Amount
+ETH
+Packs it can list
+10
+Reserve kept
+0.005 ETH
+Enter an amount
+All numbers ▾
