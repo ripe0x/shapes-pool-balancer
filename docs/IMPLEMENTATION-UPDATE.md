@@ -228,3 +228,24 @@ exact-source independent review remain required by the existing production gate.
 
 Things that don't make sense: the broad economic harness still fabricates randomness. Its 28 old-source scorecards
 cannot be refreshed unchanged as no-mock release evidence.
+
+
+### Genuine-proof economic lifecycle and synthetic-path retirement (2026-11-25)
+
+Added test/AuthenticEconomicFlows.t.sol: 47 Shape/Pack prizes with 1.7 ETH backing, 25% markup, 5 ETH funding and
+three genuine historical VRF proofs. All three purchases deliver actual prizes; independent quote arithmetic,
+66,278,634,547,026,369 wei proceeds, exactly 2,651,145,381,881,054 wei creator credit booked once, paid reconciliation,
+exact remaining backing redemption and creator closeout pass. The final creator claim is 4,913,901,123,666,667,089 wei.
+Historical fee context is asserted inside state-changing calls. The pre-existing authentic failed-delivery recovery
+and reporting tests also pass; reader checks pass seven tests. See docs/receipts/authentic-economics-20261125/README.md
+for commands, failures/repairs, all bounded claims and the scorecard. No public-chain transaction occurred.
+
+The historical campaign's synthetic word/callback methods now revert, candidate execution is refused, and the shared
+reporter rejects unverified producers before writing. No release scorecards or approved outcome/configuration values
+were changed. This new three-draw case is additional scoped evidence, not any of the 28 required monthly regimes.
+
+Remaining: distinct historical request/proof corpus and compatible scheduling for the full workload, followed by
+28 current-source regimes and exact-source independent review. There is no claim of fresh oracle availability,
+production wallet gas profit, keeper-only liveness or complete protocol/mint/oracle-fee conservation.
+
+Things that don't make sense: forced winners and reused proofs cannot be relabelled as authentic full-regime evidence.

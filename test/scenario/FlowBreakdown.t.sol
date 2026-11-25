@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Vm} from "forge-std/Vm.sol";
-import {ForkBase, IVRFService} from "../utils/ForkBase.sol";
+import {ForkBase} from "../utils/ForkBase.sol";
 import {FlowBreakdown, GasProbe} from "../utils/FlowBreakdown.sol";
 import {ReceiptGas} from "../utils/ReceiptGas.sol";
 import {KeeperPolicyCalls} from "../../src/KeeperPolicyCalls.sol";
@@ -36,8 +36,10 @@ interface IPackValue {
     function valueOf(uint256 packId) external view returns (uint256);
 }
 
-/// @notice Flow breakdown (docs/SYSTEM-MAP.md): one pool under eight operating regimes on the pinned mainnet fork, with
-///         the real FWA pool and randomness service (words delivered as its Chainlink coordinator), real Shapes, this
+/// @notice Historical controlled model retained as the specification for the full economic campaign.
+///         Synthetic delivery and release scorecard writing are disabled. AuthenticEconomicFlows.t.sol provides
+///         bounded genuine-proof coverage; it does not replace the approved 28 regimes. Historically this used
+///         the real FWA pool with synthetic coordinator words, real Shapes, this
 ///         system's Draw Packs and real BAYC tokens as the creator's NFTs. Each regime prints where every wei that
 ///         entered (creator deposits and player payments) ended up and writes docs/receipts/flow/<regime>.json for
 ///         asset_gate.py. It measures and prints; it asserts only the environment, a few absolute amounts and that
@@ -204,7 +206,12 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
     uint256 internal withdrawCuratedAt = type(uint256).max;
     uint256 internal listCuratedAt = type(uint256).max;
 
+    error HistoricalProofCorpusRequired();
+
     function setUp() public {
+        if (vm.envOr("CANDIDATE_RUN", false) || bytes(vm.envOr("SOURCE_HASH", string(""))).length != 0) {
+            revert HistoricalProofCorpusRequired();
+        }
         setUpFork();
         keeperStart = keeper.balance;
     }
@@ -1211,17 +1218,9 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
-    function _word(uint256 i) internal returns (uint256) {
-        if (i == forceTopA || i == forceTopB) {
-            uint256[] memory ids = balancer.getActiveIds();
-            for (uint256 k; k < ids.length; ++k) {
-                (uint8 kind, uint8 d,,,) = balancer.items(ids[k]);
-                (,,,,,, uint256 slot, uint8 status) = pool.listings(ids[k]);
-                if (kind == SHAPE_KIND && d == TOP && status == 1) return wordForSlot(slot);
-            }
-            ++topNotListedWhenForced;
-        }
-        return uint256(keccak256(abi.encode(SEED, i)));
+    /// @dev Chosen words cannot stand in for a genuine proof, including forced large-prize outcomes.
+    function _word(uint256) internal pure returns (uint256) {
+        revert HistoricalProofCorpusRequired();
     }
 
     function _gasPhase(uint256 i) internal {
@@ -1283,22 +1282,10 @@ contract FlowBreakdownTest is ForkBase, FlowBreakdown {
         }
     }
 
-    /// @dev One word through the real FWA randomness service, as its coordinator, three blocks later.
-    function _deliver(uint256 id, uint256 word) internal {
-        vm.roll(vm.getBlockNumber() + 3);
-        uint256[] memory words = new uint256[](1);
-        words[0] = word;
-        address coordinator = IVRFService(VRF_SERVICE).coordinator();
-        vm.recordLogs();
-        vm.prank(coordinator);
-        try IVRFService(VRF_SERVICE).rawFulfillRandomWords{gas: 5_000_000}(id, words) {
-            ++delivered;
-            _recordOwnerAccruals(vm.getRecordedLogs());
-        } catch {
-            ++deliverReverts;
-        }
+    /// @dev Fail before any protocol call; the historical callback impersonation is retired.
+    function _deliver(uint256, uint256) internal pure {
+        revert HistoricalProofCorpusRequired();
     }
-
 
     /// @dev Books each newly final draw, from the harness's own listing records and FWA's state (the Balancer forgets
     ///      an item once reconciled).

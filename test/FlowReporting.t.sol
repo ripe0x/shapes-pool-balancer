@@ -8,6 +8,19 @@ import {LibString} from "solady/utils/LibString.sol";
 contract FlowReportingTest is FlowBreakdown {
     bool private recorded;
 
+    // This producer only serializes local input data into test/fixtures, never release evidence.
+    function flowEvidenceValidated() internal view override returns (bool) { return recorded; }
+
+    function reportUnverified() external {
+        Snap memory before = flowBegin(0.55 gwei, 0.5 gwei, 0);
+        flowReport("unverified-must-not-write", before, new Fact[](0));
+    }
+
+    function testUnverifiedEvidenceCannotWriteScorecards() public {
+        vm.expectRevert(UnverifiedFlowEvidence.selector);
+        this.reportUnverified();
+    }
+
     function flowInflows() internal view override returns (Item[] memory items) {
         items = new Item[](1);
         items[0] = Item("report input", recorded ? 1.926 ether : 0);
