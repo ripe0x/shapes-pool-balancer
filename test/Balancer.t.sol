@@ -7,6 +7,7 @@ import {
 } from "./utils/Mocks.sol";
 import {Vm} from "forge-std/Test.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
+import {BalancerFactory} from "../src/BalancerFactory.sol";
 import {LibString} from "solady/utils/LibString.sol";
 import {ListOne} from "./utils/ListOne.sol";
 
@@ -51,6 +52,55 @@ contract BalancerTest is ForkBase {
     }
 
     /*////////////////////////////// factory //////////////////////////////*/
+
+    /// The policy admin (this test contract in ForkBase) points new pools at another implementation; existing pools keep
+    /// theirs, and a creation reviewed before the change is refused.
+    function test_factory_setImplementation_newPoolsOnly() public {
+        address oldImpl = factory.implementation();
+        PoolBalancer next = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
+        vm.prank(stranger);
+        vm.expectRevert(BalancerFactory.Unauthorized.selector);
+        factory.setImplementation(address(next));
+        vm.expectRevert(BalancerFactory.InvalidImplementation.selector);
+        factory.setImplementation(makeAddr("no code"));
+
+        address other = makeAddr("other");
+        vm.deal(other, 1 ether);
+        bytes32 salt = bytes32(uint256(9));
+        address predictedBefore = factory.predictBalancer(other, salt);
+        bytes32 reviewed = factory.creationSettingsHash();
+
+        vm.expectEmit(true, true, false, false, address(factory));
+        emit BalancerFactory.ImplementationChanged(oldImpl, address(next));
+        factory.setImplementation(address(next));
+        assertEq(factory.implementation(), address(next));
+        assertTrue(factory.creationSettingsHash() != reviewed, "the implementation is part of the reviewed settings");
+        assertTrue(factory.predictBalancer(other, salt) != predictedBefore, "the next pool's address follows the implementation");
+
+        PoolBalancer.CuratedInput[] memory none;
+        PoolBalancer.CreationConfig memory stale = PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), false, reviewed);
+        vm.prank(other);
+        vm.expectRevert(BalancerFactory.StaleSettings.selector);
+        factory.createBalancer{value: 0.1 ether}(salt, stale, none);
+
+        assertEq(_cloneTarget(address(balancer)), oldImpl, "an existing pool keeps its code");
+        PoolBalancer b2 = _createFixture(other, salt, 0);
+        assertEq(_cloneTarget(address(b2)), address(next), "a new pool clones the new implementation");
+        assertEq(address(b2), factory.predictBalancer(other, salt));
+        assertTrue(factory.isBalancer(address(b2)) && factory.isBalancer(address(balancer)));
+        assertEq(b2.owner(), other);
+    }
+
+    /// The implementation an EIP-1167 clone delegates to: the 20 bytes after its only PUSH20.
+    function _cloneTarget(address clone) internal view returns (address target) {
+        bytes memory code = clone.code;
+        for (uint256 i; i + 20 < code.length; ++i) {
+            if (code[i] == 0x73) {
+                assembly { target := shr(96, mload(add(add(code, 0x21), i))) }
+                return target;
+            }
+        }
+    }
 
     function test_factory_isolatedBalancersAndPools() public {
         address other = makeAddr("other");

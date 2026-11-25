@@ -11,12 +11,16 @@ library moves them.
 A generated `deployments/1.json` or a successful simulation is not a deployment. Only step 7's
 `DEPLOYMENT VERIFIED` against mined receipts establishes one.
 
-## 0. owner() redeploy (2026-11-24, unsigned)
+## 0. owner() and setImplementation redeploy (2026-11-24, unsigned)
 
-The only contract change since the deployed `858eb21` is `PoolBalancer.owner()` (returns `creator`) and its
-`OwnershipTransferred` event. Libraries are unchanged, so the dry run must send exactly **PoolBalancer then
-BalancerFactory** (about 6.6M gas; 5.18M and 1.39M last time) and link KeeperPolicyCalls `0x5c63…e7f7`, PoolInventory
-`0x155E…3648` and PoolPage `0x67C8…fBcf` as preexisting. The factory constructor still starts at a 5 gwei ceiling;
+The contract changes since the deployed `858eb21` are `PoolBalancer.owner()` (returns `creator`) with its
+`OwnershipTransferred` event, and `BalancerFactory.setImplementation` (policy admin; new pools only; the implementation
+is bound into `creationSettingsHash`). After this deployment, a new PoolBalancer version needs only an implementation
+deployment and one `setImplementation` call, not a new factory. PoolInventory's source is unchanged, but today's build
+has a different metadata hash than `0x155E…3648` (runtime otherwise identical, compared with links and its own-address
+immutable filled), so Forge deploys a new copy by CREATE2: the dry run sends **PoolInventory, PoolBalancer,
+BalancerFactory** (about 12.3M gas) and links KeeperPolicyCalls `0x5c63…e7f7` and PoolPage `0x67C8…fBcf` as
+preexisting. The factory constructor still starts at a 5 gwei ceiling;
 step 8 sets 1.5 gwei, as on `0x526F…2929`. The current factory `0x526F…2929` becomes the `community-v2` entry in
 `deployments/1.legacy.json` (its exact deployed ABIs; managed as a current pool, not with community-v1 rules). Records
 use the `1.owner.*` prefix so the `1.replacement.*` records of `0x526F…2929` stay unchanged.
@@ -55,14 +59,15 @@ else from this account until step 7.
 ```bash
 cd /Users/dd/CascadeProjects/fwa-pool-balancer && script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow && cp broadcast/Deploy.s.sol/1/dry-run/run-latest.json deployments/1.owner.reviewed-dry-run.json && shasum -a 256 deployments/1.owner.reviewed-dry-run.json
 ```
-Check: `ASSET FLOW GATE: PASS`; the transaction list is exactly `PoolBalancer` (nonce N) and `BalancerFactory`
-(N+1), with no library; note the SHA-256 as `DRY_SHA`.
+Check: `ASSET FLOW GATE: PASS`; the transaction list is exactly `PoolInventory` (CREATE2, nonce N), `PoolBalancer`
+(N+1) and `BalancerFactory` (N+2); note the SHA-256 as `DRY_SHA`.
 
 **6 → Broadcast and publish source.** The only deployment step that signs; `--verify` submits both to Etherscan.
 ```bash
-cd /Users/dd/CascadeProjects/fwa-pool-balancer && script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow --broadcast --verify && cp broadcast/Deploy.s.sol/1/run-latest.json deployments/1.owner.broadcast.json
+cd /Users/dd/CascadeProjects/fwa-pool-balancer && script/deploy.sh --rpc-url $RPC --account ripe0x --sender $DEPLOYER --slow --priority-gas-price 50000000 --broadcast --verify && cp broadcast/Deploy.s.sol/1/run-latest.json deployments/1.owner.broadcast.json
 ```
-Check: `ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.`, the same two addresses as step 5, and `Pass - Verified` for each.
+Check: `ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.`, the same three addresses as step 5, and `Pass - Verified` for
+each. The 0.05 gwei priority fee keeps inclusion prompt; step 7 matches nonce, address and calldata, not fees.
 
 **7 → Verify from canonical receipts.**
 ```bash
