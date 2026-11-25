@@ -1,0 +1,61 @@
+{
+  "planHash": "96fa4ad6dcad52e7cecc3f1125b120960a282bbb2a64f9e8af67ba95a0c95e0a",
+  "sourceFingerprint": "04f39214095b36a140f70742cf807b286c801d08b7d75ede48214dca7435b64b",
+  "receipts": [],
+  "mutations": [
+    "fund once synthetic deployer 1000000000000000000",
+    "unlock synthetic deployer",
+    "fund once synthetic packsAdmin 10000000000000000",
+    "unlock synthetic packsAdmin",
+    "fund once synthetic keeperAdmin 10000000000000000",
+    "unlock synthetic keeperAdmin",
+    "fund once synthetic policyAdmin 1000000000000000000",
+    "unlock synthetic policyAdmin",
+    "fund once synthetic creatorA 500000000000000000",
+    "unlock synthetic creatorA",
+    "fund once synthetic creatorB 500000000000000000",
+    "unlock synthetic creatorB",
+    "fund once synthetic keeper 100000000000000000",
+    "unlock synthetic keeper",
+    "fund once synthetic buyer 100000000000000000",
+    "unlock synthetic buyer"
+  ],
+  "pools": [],
+  "draws": [],
+  "reports": [],
+  "contributions": [],
+  "spent": {
+    "deposits": "0",
+    "buyer": "0",
+    "edge": "0",
+    "vrf": "0"
+  },
+  "nonces": {
+    "0x000000000000000000000000000000000001e001": 0,
+    "0x000000000000000000000000000000000001e002": 0,
+    "0x000000000000000000000000000000000001e003": 0,
+    "0x000000000000000000000000000000000001e004": 0,
+    "0x000000000000000000000000000000000001e005": 0,
+    "0x000000000000000000000000000000000001e006": 0,
+    "0x000000000000000000000000000000000001e007": 0,
+    "0x000000000000000000000000000000000001e008": 0
+  },
+  "funded": {
+    "deployer": "1000000000000000000",
+    "packsAdmin": "10000000000000000",
+    "keeperAdmin": "10000000000000000",
+    "policyAdmin": "1000000000000000000",
+    "creatorA": "500000000000000000",
+    "creatorB": "500000000000000000",
+    "keeper": "100000000000000000",
+    "buyer": "100000000000000000"
+  },
+  "checkedBlock": "26493115",
+  "checkedHash": "0x875078e7cc96da79b598f78a8cda7db77040462e757c422aacc41c284bedf65e",
+  "inFlight": {
+    "deployment": true
+  },
+  "completed": false,
+  "scratch": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-KKQkVB",
+  "failure": "Error: Command failed: bash /var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-KKQkVB/script/deploy.sh --current-local-rehearsal-plan /Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/current-rehearsal/20261125153241612-1ede6d7/bounded-plan.json --approved-plan-hash 96fa4ad6dcad52e7cecc3f1125b120960a282bbb2a64f9e8af67ba95a0c95e0a --rpc-url http://127.0.0.1:18786 --unlocked --sender 0x000000000000000000000000000000000001e001 --with-gas-price 20000000000 --priority-gas-price 50000000 --slow --broadcast\n\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-KKQkVB/deployments/1.legacy.json' imported from /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-KKQkVB/shared/legacy.ts\n    at finalizeResolution (node:internal/modules/esm/resolve:274:11)\n    at moduleResolve (node:internal/modules/esm/resolve:859:10)\n    at defaultResolve (node:internal/modules/esm/resolve:983:11)\n    at nextResolve (node:internal/modules/esm/hooks:748:28)\n    at resolveBase (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/tsx/dist/register-nyXW-TH3.mjs:2:10494)\n    at async resolveDirectory (file:///Users/dd/CascadeProjects/fwa-pool-balancer/node_modules/tsx/dist/register-nyXW-TH3.mjs:2:11575) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file:///private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-KKQkVB/deployments/1.legacy.json'\n}\n\nNode.js v22.19.0\n"
+}

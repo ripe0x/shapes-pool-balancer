@@ -1,0 +1,57 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/inventory-acceptance.test.ts (4 tests) 116ms
+ ❯ scripts/current-local-rehearsal.test.ts (25 tests | 1 failed) 5468ms
+   ✓ bounded rehearsal receipt polling > finds a later receipt without a block API or another mined block 2ms
+   ✓ bounded rehearsal receipt polling > stops polling at the existing 60000 ms deadline if the receipt stays absent 15ms
+   ✓ bounded rehearsal receipt polling > keeps the same deadline when an individual receipt RPC never resolves 0ms
+   ✓ bounded rehearsal receipt polling > propagates other RPC errors without polling again 0ms
+   ✓ current local rehearsal control inputs, without node mutation > keeps the fixed scope separate from any deployment or owner approval 152ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects mainnet independent of a plan hash 76ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects testnet independent of a plan hash 68ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects remote RPC independent of a plan hash 70ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects old owned node independent of a plan hash 71ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects arbitrary signer independent of a plan hash 70ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects higher spending independent of a plan hash 65ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different negative action independent of a plan hash 70ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects repeated proof recovery independent of a plan hash 71ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects no standard-mode pool independent of a plan hash 71ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects curated NFTs in the Shapes-only pool independent of a plan hash 74ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects keeper-paid proof recovery independent of a plan hash 75ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects different action count independent of a plan hash 74ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects parent-path evidence independent of a plan hash 77ms
+   ✓ current local rehearsal control inputs, without node mutation > enforces the actual sender budget boundary before any mutation or submission 0ms
+   × current local rehearsal control inputs, without node mutation > limits proof recovery to one buyer-paid, zero-value refresh of the planned pool 1ms
+     → Got unwanted exception.
+Actual message: "Cannot read properties of undefined (reading 'schema')"
+   ✓ current local rehearsal control inputs, without node mutation > rejects stale approval before touching a node or preparation file 73ms
+   ✓ current local rehearsal control inputs, without node mutation > rejects altered command arguments, signer, relay and resume paths 73ms
+   ✓ current local rehearsal control inputs, without node mutation > binds every current app helper and actual artifact while excluding evidence outputs  2288ms
+   ✓ current local rehearsal control inputs, without node mutation > stages real pinned dependency source bytes without library symlinks or Git metadata  1852ms
+   ✓ current local rehearsal control inputs, without node mutation > preserves the production gate tail exactly and requires an explicit new local route 76ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/current-local-rehearsal.test.ts > current local rehearsal control inputs, without node mutation > limits proof recovery to one buyer-paid, zero-value refresh of the planned pool
+AssertionError: Got unwanted exception.
+Actual message: "Cannot read properties of undefined (reading 'schema')"
+
+simple
+
+ ❯ scripts/current-local-rehearsal.test.ts:109:16
+    107|         const state = { journal: { pools: [first, second], receipts: […
+    108|         const refresh = (actor = ROLES.buyer, to = first.balancer, arg…
+    109|         assert.doesNotThrow(() => refresh());
+       |                ^
+    110|         for (const actor of [ROLES.creatorA, ROLES.keeper, ROLES.creat…
+    111|             assert.throws(() => refresh(actor));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 28 passed (29)
+   Start at  10:40:53
+   Duration  5.91s (transform 127ms, setup 0ms, collect 441ms, tests 5.58s, environment 0ms, prepare 56ms)
+

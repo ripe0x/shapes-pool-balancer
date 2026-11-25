@@ -93,7 +93,7 @@ export function verifyActions(dir: string) {
     const immutable = artifact.deployedBytecode.immutableReferences ?? {};
     const values: Record<string, readonly (string | bigint)[]> = {
       PoolBalancer: [constructorArguments[0], constructorArguments[1], constructorArguments[3], constructorArguments[4], constructorArguments[5]] as string[],
-      BalancerFactory: [constructorArguments[0]] as string[],
+      BalancerFactory: Object.keys(artifact.deployedBytecode.immutableReferences ?? {}).length ? [constructorArguments[0]] as string[] : [],
       ShapePackRenderer: [constructorArguments[0]] as string[],
       ShapePacks: a.contractName === 'ShapePacks' ? [constructorArguments[0] as string, BigInt(String(constructorArguments[5])) * 10n ** 16n] : [],
     };
@@ -127,7 +127,10 @@ export function verifyActions(dir: string) {
   equal(String(impl[3]), shapes); equal(String(impl[4]), reuse ? '0xfE11c0E794475fd86801fb3020d779bd7887cB2D' : at('ShapePacks').predictedAddress);
   equal(String(impl[5]), '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e');
   const factory = at('BalancerFactory').constructorArguments;
-  [at('PoolBalancer').predictedAddress, actors.keeperAdmin, actors.policyAdmin, at('KeeperPolicyV1').predictedAddress].forEach((value, i) => equal(String(factory[i]), value));
+  const expectedFactory = [at('PoolBalancer').predictedAddress, actors.keeperAdmin, actors.policyAdmin];
+  if (factory.length === 4) expectedFactory.push(at('KeeperPolicyV1').predictedAddress);
+  assert.equal(factory.length, expectedFactory.length);
+  expectedFactory.forEach((value, i) => equal(String(factory[i]), value));
   return { actions, gasReserve, reuse };
 }
 async function main() {

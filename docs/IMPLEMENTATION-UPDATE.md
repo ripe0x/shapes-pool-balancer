@@ -130,3 +130,52 @@ The previous evidence above is historical; the following checks cover this follo
 
 Things that don't make sense: the old factory cannot gain a pause through an implementation switch. Real-randomness
 recovery, signed UI acceptance and the new production-path rehearsal remain unexecuted, explicitly scoped evidence gaps.
+
+
+## Authentic recovery proof and guarded rehearsal follow-up (2026-11-25)
+
+This section supersedes the earlier claim that successful recovery necessarily needs a new live oracle request.
+A genuine historical proof replay now exercises the candidate through the real coordinator and FWA service.
+The test forks immediately before purchase transaction
+`0x2d9d2a85771c6ea346a6ed9e581fe5c5c1f5aefb770f669effcee35e254f8283`, creates three real requests with
+exact historical request IDs, preserves accounts reached through real calls, advances to canonical block 26,442,757,
+and executes the original proof-bearing transactions using `vm.transact`. Setup and proof execution require separate
+transaction boundaries; a numerical block roll alone does not provide the canonical blockhash needed by the proof.
+No oracle caller is impersonated, no random words are fabricated, and no protocol storage/code/balance is assigned.
+Persistent accounts intentionally omit intervening historical mutations: this is a modified-fork proof test, not
+complete canonical-history replay or evidence of new live oracle availability. The creator-controlled rejecting
+NFT collection is an accepted untrusted counterparty, not a replacement for an integrated protocol.
+
+| Focused asset-flow scorecard | Observed outcome | Limit |
+| --- | --- | --- |
+| Purchase -> failed delivery -> refund | Three actual failed deliveries (status 6), each 0.0105 ETH including historical 5% edge | Historical fork and genuine historical proofs |
+| Buyer refund withdrawal | Exactly 0.0315 ETH returned; refund credit becomes 0; creator sale proceeds remain 0 | Forge wallet accounting is not a signed-wallet gas-cost benchmark |
+| Refunded batch recovery | All three exact NFTs return to creator; all three Balancer item records clear | Signed UI recovery remains unexercised |
+| Zero-draw rehearsal | New hash-bound mode caps scenario at 30 transactions, 0.1 ETH deposit, 0.1 real WETH, 1 test ETH gas; creation remains paused | Preparation/guard evidence only until completed journal |
+
+Evidence scope is the source tree based on `1ede6d72b7e4baa1d09e144c02b42dedc8cdd0e2`, frozen in this
+follow-up commit. `forge test --match-path test/AuthenticRefundRecovery.t.sol -vvvv` exits 0: one focused test passes
+at explicit nonzero historical basefee/gas-price settings. Three failed experimental runs are preserved alongside
+the final successful trace in `docs/receipts/authentic-refund-recovery-20261125/`.
+The production frontend build (`CANDIDATE_RUN=1 npm run build:app`) and `npm run typecheck` also exited 0.
+Four new inventory guard tests and 21 existing pure control-input tests pass after one fixture repair. The initial
+combined run exited 1 because that old fixture lacked the newly required schema; only that case was rerun, exit 0.
+Four inherited receipt-polling cases were inadvertently included; they supply successful service answers, and
+are excluded from no-mock acceptance evidence. No new successful-service mocks were added.
+Independent focused reviews inspected the authentic proof trace and the local guard/staging repairs; they are
+not a full-candidate audit, economic release approval or deployment authorization.
+
+The owner-approved local plan `96fa4ad6dcad52e7cecc3f1125b120960a282bbb2a64f9e8af67ba95a0c95e0a`
+at `http://127.0.0.1:18786` failed before broadcast because its staged checkout lacked the public legacy discovery
+file required by the deployment wrapper. Eight named synthetic wallets were funded once, totaling 3.22 test ETH;
+there are zero broadcast receipts and no deployed candidate contracts. Preserve the node, journal and failure log
+in `docs/receipts/current-rehearsal/20261125153241612-1ede6d7/`. The repaired manifest includes that public file;
+its changed source fingerprint requires a fresh exact plan approval, not replay of the interrupted journal.
+
+Remaining acceptance: complete the corrected production-path local transaction batch, signed creator UI flows,
+and the repository-required economic regimes/exact-source review/outcome approvals. Historical economic runs that
+fabricate VRF cannot establish new no-mock evidence. No mainnet deployment or implementation switch occurred.
+
+Things that don't make sense: the old factory cannot acquire a creation pause through an implementation switch.
+The successful historical proof closes the refunded-recovery code-path gap, but does not close signed UI or
+new-live-oracle availability evidence.

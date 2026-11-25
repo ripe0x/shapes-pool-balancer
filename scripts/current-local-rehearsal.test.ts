@@ -91,8 +91,8 @@ describe('current local rehearsal control inputs, without node mutation', () => 
     });
     it('enforces the actual sender budget boundary before any mutation or submission', () => {
         // Direct numeric inputs exercise the shared validator without constructing a node, service or RPC response.
-        const validate = Reflect.get(CurrentRehearsal.prototype, 'budget') as (this: {plan:{maxFeePerGas:string};gas:()=>bigint;closing:boolean}, gas:bigint, price:bigint) => void;
-        const state = {plan:{maxFeePerGas:'20000000000'},gas:()=>0n,closing:false};
+        const validate = Reflect.get(CurrentRehearsal.prototype, 'budget') as (this: {plan:{maxFeePerGas:string;scenario:typeof SCENARIO;caps:typeof CAPS};gas:()=>bigint;closing:boolean}, gas:bigint, price:bigint) => void;
+        const state = {plan:{maxFeePerGas:'20000000000',scenario:SCENARIO,caps:CAPS},gas:()=>0n,closing:false};
         assert.doesNotThrow(() => validate.call(state,5_000_000n,20_000_000_000n));
         assert.throws(() => validate.call(state,5_000_000n,24_050_000_000n), /per-transaction fee ceiling/);
         assert.throws(() => validate.call(state,1n,20_000_000_001n), /per-transaction fee ceiling/);
@@ -104,7 +104,7 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         const permit = Reflect.get(CurrentRehearsal.prototype, 'permitted') as (...args: unknown[]) => void;
         const first = { creator: ROLES.creatorA, balancer: '0x000000000000000000000000000000000000a001', pool: '0x000000000000000000000000000000000000a002' };
         const second = { creator: ROLES.creatorB, balancer: '0x000000000000000000000000000000000000b001', pool: '0x000000000000000000000000000000000000b002' };
-        const state = { journal: { pools: [first, second], receipts: [] as { function: string }[] } };
+        const state = { plan: { schema: 'protected-revenue-local-rehearsal-v1' }, journal: { pools: [first, second], receipts: [] as { function: string }[] } };
         const refresh = (actor = ROLES.buyer, to = first.balancer, args: unknown[] = [2n], value = 0n) => permit.call(state, actor, to, 'refreshCuratedWitness', args, value);
         assert.doesNotThrow(() => refresh());
         for (const actor of [ROLES.creatorA, ROLES.keeper, ROLES.creatorB])
