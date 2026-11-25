@@ -2,18 +2,41 @@
   "schema": "community-deployment-preflight-v1",
   "chainId": 1,
   "checkedBlock": {
-    "number": "26482720",
-    "hash": "0x2306b51a0d851a293b97d16261396c8c54723bcf82eecf351125bd51714d4cce",
-    "timestamp": "1795495691"
+    "number": "26489445",
+    "hash": "0xcbde0559486911cb77a23ffbb6a21ad9404d115581924f399d44a09765bba5ce",
+    "timestamp": "1795576547"
   },
   "ok": true,
   "problems": [],
   "legacyFactories": [
     {
+      "label": "community-v2",
+      "balancerFactory": "0x526FbD402624B50861f54c081B592cdCeE322929",
+      "scannedFromBlock": "26482707",
+      "scannedToBlock": "26489445",
+      "poolCount": 1,
+      "pools": [
+        {
+          "balancer": "0xB4A519F2EC35AbEF476C63E0Bb3246fB83CACC33",
+          "creator": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+          "pool": "0xa942288598628714f058DCc48fc45E3b908B1cA4",
+          "salt": "0xb8162f3b0af7aac2ffb935ece16be567f9eded91141b150e2a8fed9c7e742832",
+          "blockNumber": "26487776",
+          "transactionHash": "0xa8857d99619d98b262c7ac71ea07add81e87ac0c1c358335d7f3d8a433269355",
+          "logIndex": 660
+        }
+      ],
+      "abiName": "community-v2",
+      "missingAbiSelectors": {
+        "balancerFactory": [],
+        "poolBalancer": []
+      }
+    },
+    {
       "label": "community-v1",
       "balancerFactory": "0x91C31Ad620555DE24e62290906aD1aA14C4CE281",
       "scannedFromBlock": "26475448",
-      "scannedToBlock": "26482720",
+      "scannedToBlock": "26489445",
       "poolCount": 0,
       "pools": [],
       "abiName": "community-v1",
@@ -27,7 +50,7 @@
       "label": "community-v0",
       "balancerFactory": "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece",
       "scannedFromBlock": "26453686",
-      "scannedToBlock": "26482720",
+      "scannedToBlock": "26489445",
       "poolCount": 0,
       "pools": [],
       "abiName": null,
@@ -78,7 +101,7 @@
       "rendererShapes": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
       "fwaFactoryImplementation": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
       "fwaMaxAcquisitionsPerTx": 5,
-      "shapesMintFeeWei": "1000000000000000"
+      "shapesMintFeeWei": "500000000000000"
     },
     "matchesLocalBuild": {
       "packs": true,
