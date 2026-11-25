@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {IENS, IReverseRegistrar} from "./interfaces/External.sol";
+
 import {LibString} from "solady/utils/LibString.sol";
 import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 
@@ -10,6 +12,14 @@ import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 library PoolPage {
     /// @dev Same signature as PoolBalancer.InvalidConfig, so callers of `approvePoolPage` see PoolBalancer's error.
     error InvalidConfig();
+
+    event ENSNameSet(string name);
+
+    /// @dev Delegatecall preserves the Balancer as the reverse-record owner.
+    function setENSName(IENS ens, bytes32 node, string calldata name) external {
+        IReverseRegistrar(ens.owner(node)).setName(name);
+        emit ENSNameSet(name);
+    }
 
     /// @dev FWA Pools V1 factory, named in FWA's pool-page message next to the V2 PoolFactory.
     string internal constant FWA_V1_FACTORY = "0xf5a3a153164791ab579c3d9ba5dbecf7cdfd300c";

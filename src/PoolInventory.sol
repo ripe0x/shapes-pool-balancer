@@ -219,6 +219,43 @@ library PoolInventory {
         pool.withdrawListingTo(lid, to);
         emit CuratedWithdrawn(lid, to);
     }
+
+    function withdrawCuratedBatch(State storage s, IFWAPool pool, uint256[] calldata ids, address to) public {
+        _checkBatch(ids);
+        if (to == address(0)) revert InvalidRecipient();
+        for (uint256 i; i < ids.length; ++i) {
+            uint256 lid = ids[i];
+            Item storage it = s.items[lid];
+            if (it.kind != 1 || it.state != ACTIVE) revert InvalidItem();
+            removeActive(s, lid);
+            delete s.items[lid];
+            emit CuratedWithdrawn(lid, to);
+        }
+        pool.withdrawListingsTo(ids, to);
+    }
+
+    function updateCuratedPricesBatch(State storage s, IFWAPool pool, uint256[] calldata ids,
+        uint256[] calldata bases) public
+    {
+        _checkBatch(ids);
+        if (ids.length != bases.length) revert InvalidBatch();
+        for (uint256 i; i < ids.length; ++i) updateCurated(s, pool, ids[i], bases[i]);
+    }
+
+    function recoverRefundedBatch(State storage s, IFWAPool pool, address shapes, address packs,
+        uint256[] calldata ids, address to) public returns (uint256 eth)
+    {
+        _checkBatch(ids);
+        for (uint256 i; i < ids.length; ++i) eth += recoverRefunded(s, pool, shapes, packs, ids[i], to);
+    }
+
+    function _checkBatch(uint256[] calldata ids) private pure {
+        if (ids.length == 0 || ids.length > 20) revert InvalidBatch();
+        for (uint256 i; i < ids.length; ++i) {
+            for (uint256 j; j < i; ++j) if (ids[i] == ids[j]) revert InvalidBatch();
+        }
+    }
+
     function recoverRefunded(State storage s, IFWAPool pool, address shapes, address packs, uint256 lid, address to)
         public returns (uint256 eth)
     {

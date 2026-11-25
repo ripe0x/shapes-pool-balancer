@@ -54,7 +54,16 @@ contract Deploy is Script {
     bytes32 constant FWA_FACTORY_CODEHASH = 0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e;
 
     function run() external returns (BalancerFactory factory, PoolBalancer impl, address packs) {
+        bool implementationOnly = vm.envOr("IMPLEMENTATION_ONLY", false);
         bool reuse = vm.envOr("REUSE_DEPENDENCIES", false);
+        address existing = implementationOnly ? vm.envAddress("EXISTING_FACTORY") : address(0);
+        bytes32 beforeSettings;
+        if (implementationOnly) {
+            require(reuse && existing.code.length != 0, "existing factory and reused dependencies required");
+            factory = BalancerFactory(existing);
+            require(factory.implementation() == vm.envAddress("EXPECTED_IMPLEMENTATION"), "implementation changed");
+            beforeSettings = _factoryConfiguration(factory);
+        }
         address keeperAdmin = vm.envAddress("KEEPER_ADMIN");
         require(keeperAdmin != address(0), "KEEPER_ADMIN");
         address policyAdmin = vm.envAddress("POLICY_ADMIN");
@@ -85,10 +94,15 @@ contract Deploy is Script {
                 abi.encode(SHAPES, renderer, packsAdmin, PACKS_NAME, PACKS_SYMBOL, PACK_MIN_UNITS)
             );
         }
-        (impl, factory) = _deploySystem(packs, keeperAdmin, policyAdmin);
+        if (implementationOnly) impl = _deployImplementation(packs);
+        else (impl, factory) = _deploySystem(packs, keeperAdmin, policyAdmin);
         vm.stopBroadcast();
 
-        _postflight(factory, impl, packs, keeperAdmin, policyAdmin);
+        if (implementationOnly) {
+            require(_factoryConfiguration(factory) == beforeSettings, "factory configuration changed");
+            require(factory.implementation() == vm.envAddress("EXPECTED_IMPLEMENTATION"), "factory pointer changed");
+            _checkImplementation(impl);
+        } else _postflight(factory, impl, packs, keeperAdmin, policyAdmin);
         if (reuse) _checkReusedDependencies(); // still intact after the broadcast
 
         string memory o = "deployment";
@@ -102,7 +116,9 @@ contract Deploy is Script {
         vm.serializeAddress(o, "policyAdmin", policyAdmin);
         string memory json = vm.serializeAddress(o, "balancerFactory", address(factory));
         vm.createDir("./deployments", true); // not tracked in git: a fresh clone has no such folder
-        vm.writeJson(json, string.concat("./deployments/", vm.toString(block.chainid), ".json"));
+        vm.writeJson(json, implementationOnly
+            ? string.concat("./deployments/", vm.toString(block.chainid), ".implementation-", vm.toString(address(impl)), ".json")
+            : string.concat("./deployments/", vm.toString(block.chainid), ".json"));
         console.log("PoolBalancer implementation", address(impl));
         console.log("BalancerFactory", address(factory));
         console.log("Packs", packs, reuse ? "(reused)" : "(created)");
@@ -113,8 +129,47 @@ contract Deploy is Script {
         internal
         returns (PoolBalancer impl, BalancerFactory factory)
     {
-        impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
+        impl = _deployImplementation(packs);
         factory = new BalancerFactory(address(impl), keeperAdmin, policyAdmin);
+    }
+
+    function _deployImplementation(address packs) internal returns (PoolBalancer) {
+        return new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
+    }
+
+    function _factoryConfiguration(BalancerFactory factory) internal view returns (bytes32) {
+        (uint16 maxPrizes, uint16 minMarkup, uint16 maxMarkup) = factory.productLimits();
+        return keccak256(abi.encode(factory.keeperAdmin(), factory.policyAdmin(), factory.keepersRestricted(),
+            factory.pendingKeeperAdmin(), factory.pendingPolicyAdmin(), factory.economics(),
+            factory.defaultBucketCapacity(), factory.defaultBucketRefill(), maxPrizes, minMarkup, maxMarkup));
+    }
+
+    function _checkImplementation(PoolBalancer impl) internal view {
+        require(address(impl).code.length != 0 && impl.creator() == address(1), "implementation not locked");
+        require(address(impl.FWA_FACTORY()) == FWA_FACTORY && impl.FWA_IMPLEMENTATION() == FWA_IMPL, "FWA wiring");
+        require(address(impl.SHAPES()) == SHAPES && address(impl.PACKS()) == PACKS && address(impl.ENS()) == ENS,
+            "dependency wiring");
+    }
+
+    /// @notice Separate operation: never invoked by run(). Obtain decoded confirmation before broadcasting this call.
+    function switchImplementation() external {
+        require(block.chainid == 1 || block.chainid == 31337, "mainnet or local fork only");
+        require(block.chainid != 1 || keccak256(bytes(vm.envOr("ASSET_GATE_PASSED", string("")))) == keccak256("yes"),
+            "asset-flow gate: deploy with script/deploy.sh");
+        BalancerFactory factory = BalancerFactory(vm.envAddress("EXISTING_FACTORY"));
+        address previous = vm.envAddress("EXPECTED_IMPLEMENTATION");
+        PoolBalancer next = PoolBalancer(payable(vm.envAddress("NEW_IMPLEMENTATION")));
+        require(factory.implementation() == previous, "implementation changed");
+        _checkReusedDependencies();
+        require(IFWAPoolFactory(FWA_FACTORY).implementation() == FWA_IMPL, "FWA implementation changed: re-review");
+        require(IFWAPoolFactory(FWA_FACTORY).maxAcquisitionsPerTx() == 5, "FWA batch limit changed");
+        _checkImplementation(next);
+        bytes32 beforeSettings = _factoryConfiguration(factory);
+        vm.startBroadcast();
+        factory.setImplementation(address(next));
+        vm.stopBroadcast();
+        require(factory.implementation() == address(next), "factory pointer unchanged");
+        require(_factoryConfiguration(factory) == beforeSettings, "factory configuration changed");
     }
 
     /// @dev Readbacks of the created contracts. Merge constructor or initial-setting changes here.

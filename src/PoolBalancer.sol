@@ -501,10 +501,27 @@ contract PoolBalancer is ReentrancyGuard {
         PoolInventory.updateCurated(_inventory, pool, listingId, newBase);
     }
 
+    /// @notice Atomically reprice 1 to 20 distinct curated listings under FWA's existing draw lock.
+    function updateCuratedPricesBatch(uint256[] calldata listingIds, uint256[] calldata newBases)
+        external onlyCreator nonReentrant
+    {
+        PoolInventory.updateCuratedPricesBatch(_inventory, pool, listingIds, newBases);
+    }
+
     /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
     ///         unsettled.
     function withdrawCurated(uint256 listingId, address to) external onlyCreator nonReentrant {
         PoolInventory.withdrawCurated(_inventory, pool, listingId, to);
+    }
+
+    /// @notice Atomically withdraw 1 to 20 distinct curated listings. Keep the single-item path for failing collections.
+    function withdrawCuratedBatch(uint256[] calldata listingIds, address to) external onlyCreator nonReentrant {
+        PoolInventory.withdrawCuratedBatch(_inventory, pool, listingIds, to);
+    }
+
+    /// @notice Immutable per-pool capability marker; a factory may have clones of several implementations.
+    function inventoryBatchVersion() external pure returns (uint256) {
+        return 1;
     }
 
     /// @notice Recover an item whose FWA delivery was refunded to its winner: a curated NFT goes to `to`; a Shape or
@@ -512,6 +529,13 @@ contract PoolBalancer is ReentrancyGuard {
     ///         Upkeep never touches curated collections, so a hostile collection cannot burn keeper gas or block upkeep.
     function recoverRefunded(uint256 listingId, address to) external onlyCreator nonReentrant returns (uint256 eth) {
         return PoolInventory.recoverRefunded(_inventory, pool, address(SHAPES), address(PACKS), listingId, to);
+    }
+
+    /// @notice Atomically recover 1 to 20 distinct listings after their purchasers have taken FWA's refunds.
+    function recoverRefundedBatch(uint256[] calldata listingIds, address to)
+        external onlyCreator nonReentrant returns (uint256 eth)
+    {
+        return PoolInventory.recoverRefundedBatch(_inventory, pool, address(SHAPES), address(PACKS), listingIds, to);
     }
 
     /// @notice Return an NFT this contract holds outside FWA, e.g. one sent to it directly.
@@ -572,8 +596,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Set this contract's ENS reverse record via the current `addr.reverse` registrar ("" clears it).
     function setENSName(string calldata name) external onlyCreator nonReentrant {
-        IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name);
-        emit ENSNameSet(name);
+        PoolPage.setENSName(ENS, ADDR_REVERSE_NODE, name);
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -17,3 +17,26 @@ export const activationBatch = (listings: readonly ListingState[], unsettled: bi
   if (unsettled !== 0n) return 0n;
   return BigInt(Math.min(20, listings.filter(isStaged).length));
 };
+
+export const isPendingDelivery = (listing: ListingState) => listing.state === 2 && [6, 7].includes(listing.fwaStatus);
+export const isRefunded = (listing: ListingState) => listing.state === 2 && listing.fwaStatus === 7;
+export const inventoryBatches = <T,>(items: readonly T[], batched: boolean): T[][] => {
+  const size = batched ? 20 : 1;
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, (i + 1) * size));
+};
+
+/** An unavailable history or reserve read never establishes that the creator has nothing left. */
+export function closeoutState(d: { listings: readonly ListingState[]; pending: readonly ListingState[];
+  proceeds: bigint; surplus?: bigint; unsettled: bigint; awaitingUpkeep: number; historyLoading: boolean; historyError?: string }) {
+  if (d.unsettled > 0n || d.awaitingUpkeep > 0) return 'settling';
+  if (d.historyLoading || d.historyError || d.surplus === undefined) return 'unknown';
+  if (d.proceeds > 0n || d.surplus > 0n || d.listings.some(l => isSelectable(l) || isStaged(l)) || d.pending.some(isRefunded)) return 'recoverable';
+  if (d.pending.some(isPendingDelivery)) return 'waiting';
+  return 'empty';
+}
+
+/** A completed retry leaves local tracking intact; retain it in the ledger, but never offer recovery. */
+export function deliveryHistory<T extends ListingState>(items: readonly T[]) {
+  const tracked = items.filter(l => l.state === 2);
+  return { tracked, pending: tracked.filter(isPendingDelivery) };
+}

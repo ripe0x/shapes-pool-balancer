@@ -1060,3 +1060,19 @@ marked historical (they call removed policy functions); `script/deploy.sh` no lo
    reviewed against another implementation reverts with `StaleSettings`. Trust: the policy admin chooses the code
    future pools run. A later implementation must keep `initialize`, `SHAPES()` and `pool()`; the app and keeper treat
    functions an older pool lacks as absent.
+
+
+## Inventory batches and closeout follow-up (2026-11-25, implementation)
+
+The owner requested implementation of the reviewed inventory/exit gaps. New implementations expose bounded batches
+of 1–20 distinct listings for curated withdrawal, curated repricing and refunded recovery, retaining every single-item
+exit. `inventoryBatchVersion()` identifies support per clone, since one factory can create several implementation
+versions. No generic execution, custody migration, keeper formula or ERC20 recovery right is introduced.
+
+The dashboard collects FWA proceeds and recovers eligible refunded inventory during closeout, checks remaining assets,
+retains winner rights over unresolved deliveries, and does not infer empty holdings from unavailable history. Completed
+retry deliveries are excluded from recovery. Creation settings are rechecked before each approval and final submission.
+
+The existing deployment entry point supports implementation-only deployment and a separate factory-pointer switch.
+Existing pools remain immutable, factory settings/discovery history are retained, and the normal release gates and
+per-transaction broadcast confirmation remain required. This implementation entry is not release approval or a broadcast.

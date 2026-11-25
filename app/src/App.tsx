@@ -17,7 +17,7 @@ import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
 import { MAIN_POOL_OPEN, VAULT } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
-import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
+import { activationBatch, closeoutState, curatedWitness, deliveryHistory, inventoryBatches, isHeld, isRefunded, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
 import { setupListingLimit, setupListingWaits } from '../../shared/listing';
@@ -27,6 +27,7 @@ import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/l
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
+const inventoryVersionAbi = parseAbi(['function inventoryBatchVersion() pure returns (uint256)']);
 const fwaActivationAbi = parseAbi(['function activateListings(uint256 maxCount)']);
 const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'function poolCreationEnabled() view returns (bool)', 'function implementation() view returns (address)']);
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
@@ -92,7 +93,8 @@ function useBalancer(b?: Address) {
     const blockNumber = block.number;
     const r = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: b, abi: poolBalancerAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
-    const pool = await r<Address>('pool');
+    const [pool, inventoryBatchVersion] = await Promise.all([r<Address>('pool'),
+      pub.readContract({ address: b, abi: inventoryVersionAbi, functionName: 'inventoryBatchVersion', blockNumber }).catch(() => 0n)]);
     const p = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
     const [creator, pendingCreator, markupBps, target, enabled, admission, required, surplus, activeIds, activeShapes, balance, mintFeeCap, reconciled, creatorCredit, creatorRevenueBps, curatedRequired] =
@@ -150,7 +152,7 @@ function useBalancer(b?: Address) {
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
     return {
-      balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
+      balancer: b, pool, inventoryBatches: inventoryBatchVersion === 1n, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
       keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber, ...generation, keeper,
@@ -243,7 +245,7 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     ]);
     return { id, kind: it[0], denom: it[1], state: it[2], base: it[3], price: it[4], collection: l[0], tokenId: l[3], weight: l[7] === 1 ? l[4] : 0n, fwaStatus: l[7] };
   };
-  const pending = (await Promise.all(failedIds.map(listing))).filter((l) => l.state === 2);
+  const { tracked: failedDeliveries, pending } = deliveryHistory(await Promise.all(failedIds.map(listing)));
     const sum = (name: string, f: (a: Record<string, unknown>) => bigint) => events.filter((l) => l.eventName === name).reduce((t, l) => t + f(l.args as Record<string, unknown>), 0n);
     const values = new Map<bigint, bigint>();
     for (const l of events) if (l.eventName === 'CuratedListed' || l.eventName === 'CuratedRepriced') values.set((l.args as { listingId: bigint }).listingId, (l.args as { base: bigint }).base);
@@ -256,7 +258,7 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     // FWA status 1 is selectable, 5 staged, 6 a failed delivery awaiting retry or refund, 7 refunded (the creator recovers it). Any
     // other status on a prize the Balancer still tracks means FWA delivered it: before upkeep reconciled the draw, or
     // on a retry after a failed delivery (which the Balancer never revisits).
-    const tracked = [...listings, ...pending];
+    const tracked = [...listings, ...failedDeliveries];
     const stillHeld = isHeld;
     const delivered = tracked.filter((l) => !stillHeld(l));
     const deliveredNfts = delivered.filter((l) => l.kind === 1);
@@ -471,10 +473,14 @@ const reclaimable = (d: D) => d.listings.filter((l) => (l.kind === 1 || l.kind =
 /** One sentence for the pool's state, and the action or tab that resolves it. */
 function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | 'fund' | 'reclaim' | Tab; label?: string } {
   if (d.retired) {
-    const left = reclaimable(d).length > 0 || (d.surplus ?? 0n) > 0n;
-    return left
-      ? { head: 'Retired.', body: 'Sales have stopped. Your prizes and ETH are still in the pool.', act: 'reclaim', label: 'Take everything back' }
-      : { head: 'Retired.', body: 'Sales have stopped. Nothing is left to take back.' };
+    const state = closeoutState(d);
+    if (state === 'settling') return { head: 'Retired.', body: 'Outstanding draws must settle and be reconciled before closeout.',
+      ...(d.upkeep.needed ? { act: 'upkeep' as const, label: 'Reconcile draws' } : {}) };
+    if (state === 'unknown') return { head: 'Retired.', body: 'Remaining assets are not verified. Recovery history and balances must finish loading.' };
+    if (state === 'waiting') return { head: 'Retired.', body: 'An NFT is awaiting delivery or its winner’s refund. Recovery is not available yet.', act: 'nfts' };
+    return state === 'recoverable'
+      ? { head: 'Retired.', body: 'Your prizes or ETH remain in the pool.', act: 'reclaim', label: 'Take everything back' }
+      : { head: 'Retired.', body: 'No listed prizes or operating ETH remain.' };
   }
   const fund = d.balance - d.creatorCredit;
   const shortfall = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
@@ -796,20 +802,44 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
   // While stocking, the same run is "List Shapes", so the setup block shows its progress.
   const upkeep = () => tx.send(d.admission === 2 ? 'List Shapes' : 'Run maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
   const viewer = me === ZERO_ADDR;
-  // Retired pool: each curated NFT back to the wallet, Shapes unlisted (redeemed, at most 20 per transaction), then all
-  // withdrawable ETH, read when that step runs so it includes the redeemed Shapes.
   const reclaim = () => {
     const left = reclaimable(d);
     const nfts = left.filter((l) => l.kind === 1);
     const shapes = left.filter((l) => l.kind === 2).map((l) => l.id);
-    const steps: Step[] = nfts.map((l) => [`Withdraw ${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`, () => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })]);
+    const steps: Step[] = [];
+    for (const batch of inventoryBatches(d.pending.filter(isRefunded), d.inventoryBatches)) {
+      steps.push([`Recover ${batch.length} refunded NFT(s)`, () => tx.write({ ...B,
+        functionName: d.inventoryBatches ? 'recoverRefundedBatch' : 'recoverRefunded',
+        args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })]);
+    }
+    for (const batch of inventoryBatches(nfts, d.inventoryBatches)) {
+      steps.push([`Withdraw ${batch.length} curated NFT(s)`, () => tx.write({ ...B,
+        functionName: d.inventoryBatches ? 'withdrawCuratedBatch' : 'withdrawCurated',
+        args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })]);
+    }
     for (let i = 0; i < shapes.length; i += 20) {
       const batch = shapes.slice(i, i + 20);
       steps.push([`Unlist ${batch.length} Shape${batch.length === 1 ? '' : 's'}`, () => tx.write({ ...B, functionName: 'unlistShapes', args: [batch] })]);
     }
+    steps.push(['Collect from sales', async () => {
+      const amount = await pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'ownerProceeds' });
+      return amount > 0n ? tx.write({ ...B, functionName: 'collectProceeds' }) : undefined;
+    }]);
     steps.push(['Withdraw ETH', async () => {
       const amount = await pub!.readContract({ ...B, functionName: 'withdrawableSurplus' }) as bigint;
       return amount > 0n ? tx.write({ ...B, functionName: 'claimSurplus', args: [amount, me] }) : undefined;
+    }]);
+    steps.push(['Check remaining assets', async () => {
+      const [ids, proceeds, balance, pending] = await Promise.all([
+        pub!.readContract({ ...B, functionName: 'getActiveIds' }),
+        pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'ownerProceeds' }),
+        pub!.getBalance({ address: balancer }),
+        Promise.all(d.pending.map(l => pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'listings', args: [l.id] }))),
+      ]);
+      if (ids.length || proceeds > 0n || balance > 0n || pending.some(l => [6, 7].includes(l[7]))) {
+        throw new Error('Assets remain. Refresh the pool to review waiting or recoverable items.');
+      }
+      return undefined;
     }]);
     return tx.send('Take everything back', steps);
   };
@@ -1408,6 +1438,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const approvalKey = mode === 'new' ? toList.map((n) => nftKey(n.collection!, n.tokenId!)).join() : '';
   useEffect(() => {
+    setApproved({});
     if (!pub || !me || !approvalKey) return;
     let live = true;
     (async () => {
@@ -1422,7 +1453,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       if (live) setApproved(Object.fromEntries(entries));
     })().catch(() => undefined);
     return () => { live = false; };
-  }, [pub, me, salt, approvalKey, tx.busy]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
+  }, [pub, me, salt, approvalKey, tx.busy, create?.reviewedHash]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
   const toApprove = toList.filter((n) => !approved[nftKey(n.collection!, n.tokenId!)]);
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
@@ -1481,7 +1512,16 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       if (refused.length) return;
       const B = { address: balancer, abi: poolBalancerAbi } as const;
       const steps: Step[] = [];
-      steps.push(...approveSteps(pub, tx, me, balancer, toList));
+      const checkCreationReview = async () => {
+        if (mode === 'new' && await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) !== reviewedHash) {
+          setStaleReview(reviewedHash ?? '0x');
+          throw new Error('Creation settings changed. Review the new pool address and approvals before continuing.');
+        }
+      };
+      steps.push(...approveSteps(pub, tx, me, balancer, toList).map(step => {
+        const [label, send] = Array.isArray(step) ? step : ['Approve NFT', step];
+        return [label, async () => { await checkCreationReview(); return send(); }] as Step;
+      }));
       if (mode === 'new') {
         const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0, settingsHash: reviewedHash! };
         const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
@@ -1490,6 +1530,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
         saveDraft(current());
         steps.push([`Create the pool and deposit ${eth(deposit, 5)} ETH`, async () => {
+          await checkCreationReview();
           await submitCreation(attempt,
             (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
               args: [salt, config, curated], value: deposit }, beforeWallet),
@@ -1923,6 +1964,16 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   const selectableCurated = curated.filter(isSelectable);
   const [edit, setEdit] = useState<{ id: bigint; value: string }>();
   const [stray, setStray] = useState({ open: false, collection: '', tokenId: '' });
+  const [selected, setSelected] = useState<bigint[]>([]);
+  const [batchValue, setBatchValue] = useState('');
+  const picked = curated.filter(l => selected.includes(l.id));
+  const withdrawSelected = () => tx.send('Withdraw selected NFTs', inventoryBatches(picked, d.inventoryBatches).map(batch =>
+    [`Withdraw ${batch.length} NFT(s)`, () => tx.write({ ...B, functionName: d.inventoryBatches ? 'withdrawCuratedBatch' : 'withdrawCurated',
+      args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })] as Step));
+  const repriceSelected = () => tx.send('Change selected values', inventoryBatches(picked, d.inventoryBatches).map(batch =>
+    [`Change ${batch.length} value(s)`, () => tx.write({ ...B, functionName: d.inventoryBatches ? 'updateCuratedPricesBatch' : 'updateCuratedPrice',
+      args: d.inventoryBatches ? [batch.map(l => l.id), batch.map(() => ethOr(batchValue, 0n))] : [batch[0].id, ethOr(batchValue, 0n)] })] as Step));
+
   const odds = (l: Listing) => (d.totalWeight ? Number(l.weight) / Number(d.totalWeight) : 0);
   const name = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
   return (
@@ -1935,6 +1986,14 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
             <div><h2>Curated NFTs</h2><p className="desc">{selectableCurated.length === 1 ? 'One NFT' : `${word(selectableCurated.length)} NFTs`} players can win. The value is your asking price; a higher value makes it rarer.</p></div>
           </div>
           <div className="group-body nfts-list">
+            {isCreator && curated.length > 0 && <div className="section">
+              <button className="link" onClick={() => setSelected(picked.length === curated.length ? [] : curated.map(l => l.id))}>{picked.length === curated.length ? 'Clear selection' : 'Select all'}</button>
+              <button className="btn sec" disabled={!!tx.busy || picked.length === 0} onClick={withdrawSelected}>Withdraw selected ({picked.length})</button>
+              <label className="form-label" htmlFor="batch-nft-value">Value per selected NFT (ETH)</label>
+              <input id="batch-nft-value" value={batchValue} onChange={e => setBatchValue(e.target.value)} inputMode="decimal" />
+              <button className="btn sec" disabled={!!tx.busy || picked.length === 0 || ethOr(batchValue, 0n) <= 0n} onClick={repriceSelected}>Change selected values</button>
+              {tx.msg && !tx.msg.ok && <p className="note">The failed batch was reverted. Exclude any NFT refusing transfers, or use its individual Withdraw action.</p>}
+            </div>}
             {d.historyLoading && <p className="note">Loading failed delivery history…</p>}
             {d.historyError && <p className="note error">Failed delivery history unavailable: {d.historyError}</p>}
             {curated.length === 0 && d.pending.length === 0 && <p className="note">No curated NFTs listed.</p>}
@@ -1942,6 +2001,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               const editing = edit?.id === l.id;
               return (
                 <div className="nft-row" key={l.id.toString()}>
+                  {isCreator && <input type="checkbox" aria-label={`Select ${name(l)}`} checked={selected.includes(l.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids, l.id] : ids.filter(id => id !== l.id))} />}
                   <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
                   <div className="id">
                     <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>

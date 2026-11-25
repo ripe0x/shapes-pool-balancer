@@ -261,6 +261,11 @@ Tracked inventory is never held by the Balancer between transactions (listings a
 FWA pool), so `ownerOf == this`, checked under the reentrancy lock, proves the NFT is untracked. It never calls the FWA
 pool or factory.
 
+New implementations also expose `withdrawCuratedBatch(ids,to)`, `updateCuratedPricesBatch(ids,values)` and
+`recoverRefundedBatch(ids,to)`. Each accepts 1–20 distinct listing IDs and is atomic; a failing collection reverts the
+batch. Existing single-item functions remain available. `inventoryBatchVersion() == 1` is the per-clone capability,
+independent of the factory's current implementation. Old clones continue to use single-item calls.
+
 ## Lifecycle
 
 `close` → process/reconcile outstanding draws → `unlistShapes` (repeat) → `withdrawCurated` → `collectProceeds` → `claimSurplus`. `retire` (closed only) calls FWA `retirePool`,

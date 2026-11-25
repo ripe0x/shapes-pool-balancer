@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # The deploy entry point for mainnet and for rehearsal.
 # Usage: PACKS_ADMIN=0x.. KEEPER_ADMIN=0x.. POLICY_ADMIN=0x.. script/deploy.sh --rpc-url <url> <signer flags> [--broadcast] [--verify]
+# IMPLEMENTATION_ONLY=true REUSE_DEPENDENCIES=true EXISTING_FACTORY=0x.. EXPECTED_IMPLEMENTATION=0x.. deploys only the replacement.
+# A separately confirmed switch uses --sig "switchImplementation()" and NEW_IMPLEMENTATION; never part of run().
 # Every argument goes to `forge script script/Deploy.s.sol`. Signer: --account <keystore>, --ledger, or --unlocked on a
 # local fork. Never pass a private key.
 set -euo pipefail
