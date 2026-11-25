@@ -1,5 +1,5 @@
 // Generated from shapes-fwa-pool deploy/manager.json; provisional local evaluation values, not production approval.
-export const mainPoolDefaultsSha256 = 'f216770efacfe587770fe3d3821d0f2489d40c4e4f7758a051be77195ac0c026';
+export const mainPoolDefaultsSha256 = '24f8c18184fde67f007aaa3c94d8d0fc693e9879893f8aab0c59eb6054b07288';
 export const defaultManagerParams = {
   minEdgeBps: 100,
   bufferBps: 0,
@@ -31,15 +31,15 @@ export const defaultManagerParams = {
   build: 360000,
   buildPack: 300000,
   buildShape: 130000,
-  list: 280000,
+  list: 380000,
   listed: 825000,
   sync: 125000,
   requiredTail: 120000,
   distributionProof: 80000,
   journal: 22000,
   scan: 30000,
-  selected: 180000,
-  synced: 120000,
+  selected: 225000,
+  synced: 285000,
   pruned: 45000,
   unlist: 340000,
   unlisted: 285000,

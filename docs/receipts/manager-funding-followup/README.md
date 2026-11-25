@@ -39,3 +39,18 @@ legacy routes and keeper integration remain untouched. The replacement shared va
 undeployed and both main public launch switches remain false. Both PRs stay draft.
 
 Things that don't make sense: treating preserved old return figures as current economic evidence.
+
+## Measured manager calibration defaults
+
+The main manager's provisional gas allowances now use selected 225000, synced 285000 and list
+base 380000. This changes three generated default values and their source digest only; the ABI
+and UI interaction code are unchanged. The real keeper accepted the corresponding required
+small operations on isolated Osaka forks at both .2 and .5 gwei. These remain evaluation inputs,
+not production approval, and the full corrected economic assessment remains in the main repository.
+
+One affected batch passed: `npm run typecheck`, the same fourteen main manager-exit/settings
+tests, and the non-writing main ABI/default export check. Exact statuses and generated-file hashes
+are in [manager-calibration-followup/checks.json](../manager-calibration-followup/checks.json).
+No new browser interaction is claimed for this numerical-default change; existing interaction
+and layout evidence retains its original source revision. No community contract, route,
+deployment selection, keeper or live launch switch changed.

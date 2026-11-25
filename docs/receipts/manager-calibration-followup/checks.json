@@ -1,0 +1,41 @@
+{
+ "scope": "Three manager gas defaults; ABI and interaction code unchanged",
+ "sourceSha256": {
+  "shared/main-pool-defaults.ts": "1ffe81984ff8a724d57018d26955c041331af345aafd213c1049908f51afec58",
+  "shared/main-pool-abi.ts": "5010856e6916dfbe3a8ef62c818c9733c9a3f488472e3d02e888e7a506fdaae2"
+ },
+ "checks": [
+  {
+   "command": [
+    "npm",
+    "run",
+    "typecheck"
+   ],
+   "exitStatus": 0,
+   "elapsedSeconds": 8.836,
+   "log": "docs/receipts/manager-calibration-followup/check-0.log"
+  },
+  {
+   "command": [
+    "npx",
+    "vitest",
+    "run",
+    "app/src/main-manager-exit.test.ts",
+    "app/src/main-pool-settings.test.ts"
+   ],
+   "exitStatus": 0,
+   "elapsedSeconds": 0.985,
+   "log": "docs/receipts/manager-calibration-followup/check-1.log"
+  },
+  {
+   "command": [
+    "node",
+    "scripts/export-main-pool-abi.mjs",
+    "--check"
+   ],
+   "exitStatus": 0,
+   "elapsedSeconds": 0.035,
+   "log": "docs/receipts/manager-calibration-followup/check-2.log"
+  }
+ ]
+}
