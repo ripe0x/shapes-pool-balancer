@@ -21,4 +21,21 @@ agent-selected 49,152 scenarios are not an owner-required acceptance condition, 
 results support no return conclusion. Keep this PR draft and both public main launch switches false.
 No public transaction, live cutover, merge, deployment approval or acceptance signature is included.
 
+## Operating evidence follow-up, 2026-11-25
+
+The main repository now also has authenticated billed renewal/reuse and fee-change samples,
+paid listing size measurements, a current production-image factory/restart/owner-exit rehearsal,
+and refreshed unsigned manager-only deployment data. See the main draft PR's
+[operating verification](https://github.com/ripe0x/shapes-fwa-pool/blob/codex/main-pool-completion/docs/receipts/manager-operating-verification.md)
+and [economic assessment](https://github.com/ripe0x/shapes-fwa-pool/blob/codex/main-pool-completion/docs/receipts/manager-operating-economics.md).
+Those records preserve their actual source revisions, assumptions and remaining limits; they do
+not make an older UI receipt a new operating-return observation.
+
+The ABI/default non-writing check above passed again against the unchanged main runtime on
+2026-11-25. This follow-up changes documentation only. The fourteen existing affected tests and
+actual preview evidence retain their original revisions; typechecking, building and UI rehearsal
+were not repeated for unchanged interaction code. Community contracts, deployment selection,
+legacy routes and keeper integration remain untouched. The replacement shared vault remains
+undeployed and both main public launch switches remain false. Both PRs stay draft.
+
 Things that don't make sense: treating preserved old return figures as current economic evidence.
