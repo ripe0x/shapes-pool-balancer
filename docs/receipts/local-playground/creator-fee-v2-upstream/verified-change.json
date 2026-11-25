@@ -1,0 +1,93 @@
+{
+  "approved": "Owner allowed temporary upstream fallback, preserving fork state and 1 test ETH deployment gas cap. PublicNode denied archive data; used existing configured archive provider.",
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "forkBlock": 26485619,
+  "before": {
+    "block": "26486065",
+    "accounts": [
+      {
+        "address": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+        "balance": "0",
+        "nonce": 3,
+        "codeHash": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780"
+      },
+      {
+        "address": "0x2Aacb8aFe400b3Ffe61063142AAE5A351A69A0Db",
+        "balance": "26371557017463264",
+        "nonce": 1,
+        "codeHash": "0xda2df2c401d7e859a995245e240ca5581da6b68211eca778fac373820f37bbdd"
+      },
+      {
+        "address": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+        "balance": "95462641579134830",
+        "nonce": 1,
+        "codeHash": "0xb8b3299cf420013f60b22ec424e2371adfcd2ef0c8312df872934a92df4b85f4"
+      },
+      {
+        "address": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+        "balance": "1094783925358567868526",
+        "nonce": 4210,
+        "codeHash": "0xb12aa4bc4e1b15c9f45948affce3805fa4cb9d06f3847f942a96b2d20f1f9473"
+      },
+      {
+        "address": "0x000000000000000000000000000000000001e001",
+        "balance": "996987933358187649",
+        "nonce": 9,
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      },
+      {
+        "address": "0x000000000000000000000000000000000001e004",
+        "balance": "100000920716386828151",
+        "nonce": 23,
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      }
+    ],
+    "implementation": "0x0176016958744B0030c96cC10896bd0817D94855",
+    "creationPaused": false
+  },
+  "after": {
+    "block": "26486065",
+    "accounts": [
+      {
+        "address": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+        "balance": "0",
+        "nonce": 3,
+        "codeHash": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780"
+      },
+      {
+        "address": "0x2Aacb8aFe400b3Ffe61063142AAE5A351A69A0Db",
+        "balance": "26371557017463264",
+        "nonce": 1,
+        "codeHash": "0xda2df2c401d7e859a995245e240ca5581da6b68211eca778fac373820f37bbdd"
+      },
+      {
+        "address": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+        "balance": "95462641579134830",
+        "nonce": 1,
+        "codeHash": "0xb8b3299cf420013f60b22ec424e2371adfcd2ef0c8312df872934a92df4b85f4"
+      },
+      {
+        "address": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+        "balance": "1094783925358567868526",
+        "nonce": 4210,
+        "codeHash": "0xb12aa4bc4e1b15c9f45948affce3805fa4cb9d06f3847f942a96b2d20f1f9473"
+      },
+      {
+        "address": "0x000000000000000000000000000000000001e001",
+        "balance": "996987933358187649",
+        "nonce": 9,
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      },
+      {
+        "address": "0x000000000000000000000000000000000001e004",
+        "balance": "100000920716386828151",
+        "nonce": 23,
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+      }
+    ],
+    "implementation": "0x0176016958744B0030c96cC10896bd0817D94855",
+    "creationPaused": false
+  },
+  "upstream": "existing configured archive RPC (URL withheld)"
+}

@@ -10,13 +10,14 @@ import {verifyActions} from './prepare-local-rehearsal';
 import {factorySnapshot,matchPlan,verifyImplementationUpdate} from './verify-deployment';
 import {balancerFactoryAbi,poolBalancerAbi} from '../shared/abi';
 export const FACTORY='0xbe49677a403f77136e81498e5681f8dc22aa1181' as Address;
-export const PREVIOUS='0x940815eE17aa44E861bEfe77e6812EB0f2da9710' as Address;
+export const PREVIOUS='0x0176016958744B0030c96cC10896bd0817D94855' as Address;
 const CAP=10n**18n;
+const upstream=()=>{assert.ok(process.env.ALCHEMY_MAINNET_URL,'configured archive upstream required for approved temporary fallback');return process.env.ALCHEMY_MAINNET_URL;};
 const pub=createPublicClient({transport:http(RPC,{retryCount:0}),cacheTime:0});
 const baseEnv={REUSE_DEPENDENCIES:'true',IMPLEMENTATION_ONLY:'true',EXISTING_FACTORY:FACTORY,EXPECTED_IMPLEMENTATION:PREVIOUS,KEEPER_ADMIN:ROLES.keeperAdmin,POLICY_ADMIN:ROLES.policyAdmin};
 export function args(phase:'deploy'|'switch') {return ['--rpc-url',RPC,'--unlocked','--sender',phase==='deploy'?ROLES.deployer:ROLES.policyAdmin,'--with-gas-price','20000000000','--priority-gas-price','50000000','--slow',...(phase==='switch'?['--sig','switchImplementation()']:[]),'--broadcast'];}
 export const broadcastFile=(root:string,phase:'deploy'|'switch',dry=false)=>join(root,'broadcast/Deploy.s.sol/31337',...(dry?['dry-run']:[]),phase==='switch'?'switchImplementation-latest.json':'run-latest.json');
-const environment=(implementation?:Address)=>({PATH:process.env.PATH,HOME:process.env.HOME,...baseEnv,...(implementation?{NEW_IMPLEMENTATION:implementation}:{})});
+const environment=(implementation?:Address)=>({PATH:process.env.PATH,HOME:process.env.HOME,ALCHEMY_MAINNET_URL:process.env.ALCHEMY_MAINNET_URL,...baseEnv,...(implementation?{NEW_IMPLEMENTATION:implementation}:{})});
 export function bounds(p:any){
  assert.equal(p.schema,'local-implementation-8545-v1');assert.equal(p.rpc,RPC);assert.equal(p.chainId,31337);assert.equal(p.factory,FACTORY);assert.equal(p.previous,PREVIOUS);
  assert.equal(p.deployer,ROLES.deployer);assert.equal(p.admin,ROLES.policyAdmin);assert.equal(p.gasCapWei,String(CAP));assert.equal(p.maxTransactions,5);assert.equal(p.fundingWei,'0');assert.equal(p.draws,0);
@@ -26,7 +27,7 @@ export function bounds(p:any){
  assert.equal(p.implementation,p.deployment.at(-1).predictedAddress);assert.ok(p.deployment.reduce((sum:bigint,a:any)=>sum+BigInt(a.gasLimit)*20000000000n,0n)+500000n*20000000000n<=CAP);
 }
 async function validate(packet:any,approved:string,root=ROOT){
- assert.equal(packet.planHash,approved);assert.equal(digest(json(packet.plan)),approved);const p=packet.plan;bounds(p);sourceCheck(p,root);await node(p);
+ assert.equal(packet.planHash,approved);assert.equal(digest(json(packet.plan)),approved);const p=packet.plan;bounds(p);sourceCheck(p,root);await node(p,upstream());
  assert.equal((await pub.readContract({address:FACTORY,abi:balancerFactoryAbi,functionName:'policyAdmin'})).toLowerCase(),p.admin.toLowerCase());
  return p;
 }
@@ -35,7 +36,7 @@ function run(dir:string,argv:string[],env:any,file:string){
  catch(e:any){writeFileSync(file,String(e.stdout??'')+'\n'+String(e.stderr??''));throw e;}
 }
 async function prepare(){
- const identity=await node();const block=await pub.getBlockNumber();const snapshot=await factorySnapshot(pub,FACTORY,block);
+ const identity=await node(undefined,upstream());const block=await pub.getBlockNumber();const snapshot=await factorySnapshot(pub,FACTORY,block);
  assert.equal(snapshot.implementation.toLowerCase(),PREVIOUS.toLowerCase());assert.equal(snapshot.creationPaused,false);
  const nonce=await pub.getTransactionCount({address:ROLES.deployer,blockTag:'pending'});
  for(const address of [ROLES.deployer,ROLES.policyAdmin])assert.equal(await pub.getCode({address})??'0x','0x','synthetic EOA only');
@@ -63,7 +64,7 @@ async function execute(packet:any,approved:string){
  try{
   invoke('deploy');const path=broadcastFile(scratch,'deploy');const raw=JSON.parse(readFileSync(path,'utf8'));assert.deepEqual(matchPlan(JSON.parse(readFileSync(dryPath,'utf8')).transactions,raw.transactions,true),[]);await receipts(raw,'deploy');
   for(const a of p.deployment)assert.equal(keccak256((await pub.getCode({address:a.predictedAddress}))!),a.runtimeCodeHash);
-  assert.equal(await pub.readContract({address:p.implementation,abi:poolBalancerAbi,functionName:'profitAccountingVersion'}),1n);assert.equal(await pub.readContract({address:p.implementation,abi:poolBalancerAbi,functionName:'creator'}),'0x0000000000000000000000000000000000000001');
+  assert.equal(await pub.readContract({address:p.implementation,abi:poolBalancerAbi,functionName:'profitAccountingVersion'}),2n);assert.equal(await pub.readContract({address:p.implementation,abi:poolBalancerAbi,functionName:'creator'}),'0x0000000000000000000000000000000000000001');
   assert.deepEqual(await factorySnapshot(pub,FACTORY,await pub.getBlockNumber()),p.factorySnapshot);
   run(scratch,args('switch').filter(a=>a!=='--broadcast'),environment(p.implementation),join(p.directory,'switch-simulation.log'));
   const switchDry=JSON.parse(readFileSync(broadcastFile(scratch,'switch',true),'utf8'));assert.equal(switchDry.transactions.length,1);journal.switchNonce=Number(BigInt(switchDry.transactions[0].transaction.nonce));save();

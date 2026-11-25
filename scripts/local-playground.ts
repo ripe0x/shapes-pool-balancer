@@ -25,16 +25,18 @@ export function stage(p:any){
  for(const n of ['out','cache'])cpSync(join(ROOT,n),join(dir,n),{recursive:true,preserveTimestamps:true});
  copyStagedDependencies(p,dir);symlinkSync(realpathSync(join(ROOT,'node_modules')),join(dir,'node_modules'));sourceCheck(p,dir);return dir;
 }
-export async function node(p?:any){
+export async function node(p?:any, expectedUpstream=UPSTREAM){
  assert.equal(await pub.getChainId(),31337,'local chain only');
  const info:any=await pub.request({method:'anvil_nodeInfo' as any});
- assert.equal(info.forkConfig.forkUrl,UPSTREAM,'actual Tenderly fork, not a loopback relay');
+ assert.ok(expectedUpstream===UPSTREAM || (!!process.env.ALCHEMY_MAINNET_URL && expectedUpstream===process.env.ALCHEMY_MAINNET_URL),'unapproved fork upstream');
+ assert.ok(info.forkConfig.forkUrl===expectedUpstream,'unexpected fork upstream');
+ if(p?.node?.upstreamHash)assert.equal(digest(info.forkConfig.forkUrl),p.node.upstreamHash);
  const ids=execFileSync('lsof',['-nP','-iTCP:8545','-sTCP:LISTEN','-Fp'],{encoding:'utf8'}).split('\n').filter(s=>s.startsWith('p'));
  assert.equal(ids.length,1);const pid=Number(ids[0].slice(1));
  const command=execFileSync('ps',['-p',String(pid),'-o','command='],{encoding:'utf8'}).trim();
  assert.match(command,/^anvil /);assert.ok(command.includes(`--fork-url ${UPSTREAM}`));assert.ok(command.includes('--chain-id 31337'));assert.ok(command.includes('--port 8545'));
  if(p){assert.equal(pid,p.node.pid);assert.equal(command,p.node.command);assert.equal(info.forkConfig.forkBlockNumber,p.node.forkBlock);}
- return {pid,command,forkBlock:info.forkConfig.forkBlockNumber};
+ return {pid,command,forkBlock:info.forkConfig.forkBlockNumber,upstreamHash:digest(info.forkConfig.forkUrl)};
 }
 export function bounds(p:any){
  assert.equal(p.schema,'local-playground-8545-v1');assert.equal(p.rpc,RPC);assert.equal(p.chainId,31337);
