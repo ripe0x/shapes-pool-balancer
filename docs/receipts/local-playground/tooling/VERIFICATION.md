@@ -57,3 +57,15 @@ One batched verification: `npm run typecheck`, exit 0; `npx vitest run app/src/l
 Economic display scorecard: actual earned credit 0 ETH; returned-capital availability displayed 0.00220 ETH; combined availability displayed 0.00220 ETH. No change to who contributes, controls or receives those assets. Withdrawal sends and connected-creator controls were not executed in this display-only check; existing contract evidence was not rerun.
 
 Things that do not make sense: none newly found.
+
+## Owner-requested collection approvals, 2026-11-25
+
+Owner: "Yeah, we should do the batch approval one"; specifically asked about listing from the NFT tab after creation. UI listing remains listSteps -> listCuratedBatch, max20 inputs per transaction. Shared approveSteps now groups by collection and sends one setApprovalForAll to the Balancer per collection, skipping an existing operator grant or fully covered individual token approvals. Coverage read failures and setApprovalForAll simulation failures stop with their actual error rather than causing an assumed broader grant or individual fallback. Creation counts/labels and post-creation Add NFTs disclose the collection-wide permission; confirmation modal repeats the scope. No Solidity, ABI or earnings policy change is part of this slice.
+
+Verification at parent10b178c: npm run typecheck exit0; npx vitest run app/src/nft-approvals.test.ts exit0,2passed. Read-failure hardening reran typecheck exit0; pure grouping/permission tests remain valid. The actual DemoNFT collection's setApprovalForAll call was simulated successfully on8545, with isApprovedForAll unchanged before/after; no transaction sent.
+
+Browser acceptance at http://127.0.0.1:5280/: connected the existing funded local dev account, selected Demo Curated #1 and #2 together from the wallet picker, entered0.1/0.2ETH draftvalues. The creation review showed2total wallet confirmations:1collectionapproval forbothNFTs plus1create transaction, and the all-owned-NFT scope notice. No approval, listing or creation was broadcast. Reset only the test draft to its original defaults and left the existing pool's NFT tab open. Post-creation creator writes were not executed; the unchanged AddNft batch call path and shared approval helper were read/reviewed.
+
+Independent focused static review found no actionable issue in grouping, coverage checks, actual setApprovalForAll preflight/send or broad permission disclosure. ChangedsourceSHA256 app/src/App.tsx: `567758df42cde24ad60f01732bb4fed14ed6653bc8f16840afff0ffecc41471e`. Profit-accounting implementation is separately pending the owner's curated-NFT economic decision; this approval change does not imply that accounting was changed. User-owned draw journal changes were preserved and not staged.
+
+Things that do not make sense: different ERC721 collections cannot share one standard operator-approval transaction; the limit is one transaction per collection, followed by listing batches.

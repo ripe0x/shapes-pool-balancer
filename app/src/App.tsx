@@ -3,6 +3,7 @@ import { useAccount, useConnect, usePublicClient, useSendTransaction, useWriteCo
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther, formatGwei, getAddress, parseAbi, parseAbiItem, parseEther, type Address, type Hash, type Hex } from 'viem';
 import { normalize } from 'viem/ens';
+import { approvalCollections, needsCollectionApproval } from './nft-approvals';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
@@ -973,7 +974,7 @@ function useHeld(pub: Pub | undefined, me: Address | undefined, list: DraftNft[]
 }
 const NOT_HELD = "This wallet doesn't hold this NFT. Remove it to continue.";
 
-const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)']);
+const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)', 'function setApprovalForAll(address operator, bool approved)']);
 type Prereq = { creation: boolean; impl: boolean };
 
 /** The Design page for a pool that does not exist yet: live fees from chain; NFTs and budget from the draft. */
@@ -1142,10 +1143,25 @@ async function refusesContracts(pub: Pub, me: Address, list: DraftNft[]) {
   return (await Promise.all(list.map(async (n) => (await sim(n, '0x000000000000000000000000000000000000dEaD')) && !(await sim(n, SHAPES))))).some(Boolean);
 }
 
-/** NFTs whose collection will not approve `balancer` (e.g. marketplace allowlists), with the reason. */
+const collectionLabel = (n: DraftNft) => n.name ? `${n.name} (${short(n.collection!)})` : short(n.collection!);
+
+async function collectionNeedsApproval(pub: Pub, me: Address, balancer: Address, group: DraftNft[]) {
+  const collection = group[0].collection!;
+  const all = await pub.readContract({ address: collection, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, balancer] });
+  if (all) return false;
+  const tokens = await Promise.all(group.map(n => pub.readContract({ address: collection, abi: approvalAbi, functionName: 'getApproved', args: [BigInt(n.tokenId!)] })));
+  return needsCollectionApproval(false, tokens, balancer);
+}
+
+/** Collections whose requested operator approval fails, with the actual rejection reason. */
 async function refusedApprovals(pub: Pub, me: Address, balancer: Address, list: DraftNft[]) {
-  return (await Promise.all(list.map((n) => pub.simulateContract({ address: n.collection!, abi: erc721Abi, functionName: 'approve', args: [balancer, BigInt(n.tokenId!)], account: me })
-    .then(() => undefined, (e) => `${nftLabel(n)} (${explain(e)})`)))).filter(Boolean) as string[];
+  return (await Promise.all(approvalCollections(list).map(async group => {
+    try {
+      if (!(await collectionNeedsApproval(pub, me, balancer, group))) return undefined;
+      await pub.simulateContract({ address: group[0].collection!, abi: approvalAbi, functionName: 'setApprovalForAll', args: [balancer, true], account: me });
+      return undefined;
+    } catch (e) { return `${collectionLabel(group[0])} (${explain(e)})`; }
+  }))).filter(Boolean) as string[];
 }
 
 /** FWA lists at most 20 NFTs per transaction (MAX_INVENTORY_BATCH); a longer list is sent in batches. There is no
@@ -1161,18 +1177,12 @@ const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId
   return steps;
 };
 
-/** One approval per NFT, skipped when the pool is already approved. */
-const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => list.map((n) => {
-  const id = BigInt(n.tokenId!);
-  return [`Approve ${nftLabel(n)}`, async () => {
-    const [one, all] = await Promise.all([
-      pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'getApproved', args: [id] }).catch(() => ZERO_ADDR),
-      pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, balancer] }).catch(() => false),
-    ]);
-    if (all || (one as string).toLowerCase() === balancer.toLowerCase()) return undefined;
-    return tx.write({ address: n.collection!, abi: erc721Abi, functionName: 'approve', args: [balancer, id] });
-  }];
-});
+/** One approval per collection, skipped when existing permissions cover the selected NFTs. */
+const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => approvalCollections(list).map(group =>
+  [`Approve ${collectionLabel(group[0])} collection`, async () => {
+    if (!(await collectionNeedsApproval(pub, me, balancer, group))) return undefined;
+    return tx.write({ address: group[0].collection!, abi: approvalAbi, functionName: 'setApprovalForAll', args: [balancer, true] });
+  }]);
 
 /** Upkeep, skipped when there is nothing for it to do; anyone (including a keeper) can run it later. The precheck
  *  simulates exactly as the send will (EIP-1559 fees from the node, the creator account), so NoUpkeepNeeded is not
@@ -1460,16 +1470,18 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     return () => { live = false; };
   }, [pub, me, salt, approvalKey, tx.busy, create?.reviewedHash]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
   const toApprove = toList.filter((n) => !approved[nftKey(n.collection!, n.tokenId!)]);
+  const collectionsToApprove = approvalCollections(toApprove);
+  const collectionCount = approvalCollections(toList).length;
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
-    ? [toList.length > 0 && `approve ${nftWord(toList.length)}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
+    ? [collectionsToApprove.length > 0 && `approve ${word(collectionsToApprove.length)} collection${collectionsToApprove.length === 1 ? '' : 's'}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
     : [configChanged && (feeOnly ? `accept the ${eth(d.mintFee, 6)} ETH Shapes mint fee` : 'save the design'),
       rateChange && `set the earnings rate to ${reviewedRate / 100}% of sales`, toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
       shortBy > 0n && `deposit ${eth(shortBy, 6)} ETH`, extra.length > 0 && `unlist ${word(extra.length)} extra prizes`,
       (toList.length > 0 || configChanged) && 'run upkeep'].filter(Boolean) as string[];
-  const confirmations = mode === 'new' ? toList.length + 1
-    : (shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (rateChange ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
+  const confirmations = mode === 'new' ? collectionsToApprove.length + 1
+    : (shortBy > 0n ? 1 : 0) + (toList.length ? collectionCount + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (rateChange ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
   const blocked = (d as { feesLoading?: boolean }).feesLoading ? 'Loading current fees…'
@@ -1515,7 +1527,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
         : d.balancer;
       const refused = await refusedApprovals(pub, me, balancer, toList);
-      setRefused(refused.length ? `This pool cannot list ${refused.join(', ')}: the collection does not let this pool take the NFT. Choose another NFT.` : undefined);
+      setRefused(refused.length ? `Collection approval unavailable for ${refused.join(', ')}. Choose another collection.` : undefined);
       if (refused.length) return;
       const B = { address: balancer, abi: poolBalancerAbi } as const;
       const steps: Step[] = [];
@@ -1527,7 +1539,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         }
       };
       steps.push(...approveSteps(pub, tx, me, balancer, toList).map(step => {
-        const [label, send] = Array.isArray(step) ? step : ['Approve NFT', step];
+        const [label, send] = Array.isArray(step) ? step : ['Approve collection', step];
         return [label, async () => { await checkCreationReview(); return send(); }] as Step;
       }));
       if (mode === 'new') {
@@ -1588,12 +1600,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
   const walletSteps = mode === 'new' && <div className="wsteps">
-    <span className="lbl">{toApprove.length + 1} wallet confirmation{toApprove.length ? 's' : ''}</span>
+    <span className="lbl">{collectionsToApprove.length + 1} wallet confirmation{collectionsToApprove.length ? 's' : ''}</span>
     <ol>
-      {toApprove.map((n, k) => <li key={nftKey(n.collection!, n.tokenId!)}><span className="n">{k + 1}</span><span>Approve {nftLabel(n)}</span></li>)}
-      <li><span className="n">{toApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
+      {collectionsToApprove.map((group, k) => <li key={group[0].collection!.toLowerCase()}><span className="n">{k + 1}</span><span title={group[0].collection}>Approve {collectionLabel(group[0])} collection</span></li>)}
+      <li><span className="n">{collectionsToApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
     </ol>
-    {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
+    {collectionsToApprove.length > 0 && <p className="note">Collection approval lets this pool transfer all NFTs you own in that collection. Nothing leaves your wallet until step {collectionsToApprove.length + 1}.</p>}
   </div>;
   const backingWei = ready ? capitalOf(counts) : 0n;
   // The cost shows for a new design, connected or not; an existing pool's Prices & mix shows its operating rows instead.
@@ -1722,6 +1734,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         </button>
       </div>
       {mode !== 'new' && !blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
+      {mode !== 'new' && toList.length > 0 && <p className="note">Collection approval lets this pool transfer all NFTs you own in each approved collection.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
     </div>
   );
@@ -2104,6 +2117,7 @@ function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (o
   return <dialog ref={ref} className="modal" aria-labelledby="confirm-values" onCancel={(e) => { e.preventDefault(); onClose(false); }}>
     <h2 className="h" id="confirm-values">Confirm NFT values</h2>
     <p className="desc">Each NFT is listed on FWA at this value.</p>
+    <p className="note">Any new collection approval lets this pool transfer all NFTs you own in that collection.</p>
     <div className="modal-rows">
       {items.map((n, i) => {
         const low = belowFloor(n);
@@ -2160,7 +2174,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
     if (restricted !== key && await refusesContracts(pub, me, picks)) { setRestricted(key); return; }
     const r = await refusedApprovals(pub, me, d.balancer, picks);
-    setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
+    setRefused(r.length ? `Collection approval unavailable for ${r.join(', ')}.` : undefined);
     if (r.length) return;
     if (!(await values.confirm(picks))) return;
     const ok = await tx.send('List NFTs', [
@@ -2208,6 +2222,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
         </button>
       )}
       {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>New listings may be staged while draws settle.</p>}
+      {picks.length > 0 && <p className="note">Up to {approvalCollections(picks).length} collection approval{approvalCollections(picks).length === 1 ? '' : 's'} and {Math.ceil(picks.length / LIST_BATCH)} listing transaction{picks.length <= LIST_BATCH ? '' : 's'}, plus maintenance. Collection approval covers all NFTs you own in that collection.</p>}
     </>
   );
 }
