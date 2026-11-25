@@ -19,13 +19,13 @@ export function validateDeploymentEnvironment(values:Record<string,string|undefi
  for(const [key,value]of Object.entries(DEPLOYMENT_VALUES))assert.equal(values[key],value,`reviewed ${key}`);
  for(const key of Object.keys(values))if(/^(FOUNDRY_|DAPP_|ETH_|SOLC_)/.test(key)||['IMPLEMENTATION_ONLY','EXISTING_FACTORY','EXPECTED_IMPLEMENTATION','NEW_IMPLEMENTATION','PACKS_ADMIN'].includes(key))assert.fail(`unreviewed deployment environment key: ${key}`);
 }
-function stage(p:any){
+export function stage(p:any){
  const dir=mkdtempSync(join(tmpdir(),'fwa-playground-'));
  for(const i of p.inputs){mkdirSync(dirname(join(dir,i.path)),{recursive:true});cpSync(join(ROOT,i.path),join(dir,i.path),{preserveTimestamps:true});}
  for(const n of ['out','cache'])cpSync(join(ROOT,n),join(dir,n),{recursive:true,preserveTimestamps:true});
  copyStagedDependencies(p,dir);symlinkSync(realpathSync(join(ROOT,'node_modules')),join(dir,'node_modules'));sourceCheck(p,dir);return dir;
 }
-async function node(p?:any){
+export async function node(p?:any){
  assert.equal(await pub.getChainId(),31337,'local chain only');
  const info:any=await pub.request({method:'anvil_nodeInfo' as any});
  assert.equal(info.forkConfig.forkUrl,UPSTREAM,'actual Tenderly fork, not a loopback relay');

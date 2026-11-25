@@ -28,6 +28,16 @@ if [[ "${1:-}" == "--local-playground-plan" ]]; then
     unset ASSET_GATE_PASSED
     exec forge script script/Deploy.s.sol "$@"
 fi
+# Existing factory implementation replacement on the preserved 8545 playground only.
+if [[ "${1:-}" == "--local-implementation-plan" ]]; then
+    [[ $# -ge 5 && "${3:-}" == "--approved-plan-hash" ]] || { echo "implementation update requires exact reviewed plan" >&2; exit 1; }
+    implementation_plan="$2"
+    implementation_hash="$4"
+    shift 4
+    node --import tsx scripts/local-implementation-update.ts --gate "$implementation_plan" --approved-plan-hash "$implementation_hash" -- "$@"
+    unset ASSET_GATE_PASSED
+    exec forge script script/Deploy.s.sol "$@"
+fi
 # Historical 2026-11-18 protected-revenue candidate route (scripts/current-local-rehearsal.ts): never an archived
 # approval, and not evidence for the community release (its scenario calls the removed setKeeperPolicy).
 if [[ "${1:-}" == "--current-local-rehearsal-plan" ]]; then
@@ -41,7 +51,7 @@ if [[ "${1:-}" == "--current-local-rehearsal-plan" ]]; then
 fi
 for argument in "$@"; do
     case "$argument" in
-        --local-rehearsal-plan*|--current-local-rehearsal-plan*|--local-playground-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
+        --local-rehearsal-plan*|--current-local-rehearsal-plan*|--local-playground-plan*|--local-implementation-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
     esac
 done
 # Owner-authorized inventory-update gate; the full economic campaign remains in asset-flow.json.

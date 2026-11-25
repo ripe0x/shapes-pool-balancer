@@ -5,6 +5,22 @@ local-playground packet; no production deployment/signature approval is inherite
 The normal Anvil example addresses on this fork have inherited EIP-7702 code, so the playground uses clean synthetic
 accounts instead. No private keys are needed or should be imported.
 
+## Cost-first implementation update (2026-11-25)
+
+The existing local factory now points to `0x0176016958744B0030c96cC10896bd0817D94855`.
+`profitAccountingVersion()` is 1 and public creation remains unpaused. New pools created through the app use cost-first
+creator proceeds with no manually configured earnings percentage. Existing pools, including
+`0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4`, retain their original implementation and accounting.
+
+The app at http://127.0.0.1:5280/ is open on the new-pool designer. Connect the wallet you want to own the new pool,
+using chain 31337. The existing simulated-draw keeper is restricted to the old pool; a new pool needs a separately
+scoped local keeper/draw setup. Do not run the old pool's fixed-address draw helper against a new pool.
+
+The deployment and pointer switch used `script/Deploy.s.sol` through the bounded local wrapper, reused dependencies,
+and sent three zero-value transactions. Total gas cost was 0.000437757079398893 test ETH. No funding, factory redeploy,
+node reset, mainnet transaction or new pool creation was performed by the agent. Receipts and the interrupted
+receipt-filename recovery are in [the update record](receipts/local-playground/implementation-20261125205304625/README.md).
+
 ## App
 
 Setup completed on November 25, 2026. Open http://127.0.0.1:5280/ and click **Local dev account** if it is not already connected.
