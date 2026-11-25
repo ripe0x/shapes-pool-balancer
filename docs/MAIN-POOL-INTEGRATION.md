@@ -19,7 +19,7 @@ required recovery/holder/refund views. Deployment integers are preserved exactly
 record the SHA-256 of their source manager configuration. Node 22 or later is required.
 
 The selected local candidate is a 0.03 ETH pack with three paid 0.01 ETH primary mints. Its
-70,000 bps backing ratio, fresh replacement mode, one renewal float and 25 bps unresolved-uplift
+70,000 bps backing ratio and 25 bps unresolved-uplift
 limit are evaluation values, not approved production settings. Account views determine active
 quotes and settings; existing inventory is not assumed to have the current fresh recipe.
 
@@ -41,7 +41,7 @@ loads. Account aggregates are authoritative; exact NAV additionally requires a v
 witness. Until that proof succeeds, the UI labels the displayed amount booked principal.
 
 Factory creation funding estimates are conditional on FWA admission and live economics. They include principal, separate FWA backing, actual live mint fees,
-initial keeper compensation, maintenance reserve and the separately funded renewal float.
+an upper estimate for initial keeper work and the maintenance reserve. Returned packs are reused; no renewal float is reserved.
 Creation starts idle. Wallet creation gas is additional. Account-specific quotes replace the old fixed 0.1248 ETH
 charge reference and the use of vault charges to price personal managers.
 
@@ -104,14 +104,88 @@ wallet cap, explicit bounded steps and a complete final owner withdrawal. Hardwa
 a separate limitation when an unlocked local wallet bridge is used. Production/community deployment
 selection and live routes remain unchanged until separately authorized.
 
-The focused manager acceptance exercised the actual local page with no vault address: creation,
+The earlier manager acceptance exercised the actual local page with no vault address: creation,
 pause/resume, zero keeper capacities/refills, a one-wei cap refusal, a genuine pending request,
 owner-paid queue progress after its real expiry and complete withdrawal. The manager's ETH,
 inventory, receipts and fee credit all ended at zero. Raw receipts and limitations are in the
 main repository's `docs/receipts/manager-ui.json` and `manager-closeout.json`.
 
-The app currently requires its quoted opening funding for creation. That is a UI restriction;
-the contract and unsigned CLI template permit smaller idle accounts. Hardware signing,
-recovery-only oversized inventory and a standalone credited harvest were not reached in this
-new UI run. The latter contract paths retain their separate real-fork coverage. Both public
-launch switches remain false. No live application cutover is included.
+The app permits zero ETH creation for an idle import destination; opening funding remains a conditional estimate.
+The new reuse-only measured-payment and migration changes passed the affected app tests, production build and a
+local UI pass with actual manager, FWA, Shapes and pack contracts. The UI created two managers, then migrated four
+intact packs with seven canonical transactions and an explicit 0.87 ETH wallet transfer under a 0.9 ETH stated cap.
+An orphaned receipt was re-included at the same nonce and reconciled without an extra reservation. Hardware signing,
+a >30-Shape unsupported recovery pack in the live UI, and a standalone credited harvest were not reached in this
+UI pass; focused contract and app tests cover those conditions separately. The main repository retains the raw
+local UI receipts. Both public launch switches remain false. No live application cutover is included.
+
+
+## Reuse-only measured payments and pack-preserving migration
+
+Returned packs retain their actual Shapes and are relisted. New growth still uses paid primary mints.
+The owner gas schedule contains operation caps and a per-transaction overhead allowance. Actual
+keeper compensation uses bounded measured gas and verified service units. Funding estimates and
+quote views are upper bounds, not fixed actual payments.
+
+The manager-only migration panel uses the configured current official manager factory. It verifies
+`isManager`, the exact optimized Solady clone runtime and immutable implementation, both current
+owners and the canonical FWA/Shapes/ShapePacks tuple. An arbitrary contract exposing matching getter
+names is insufficient. Future factories require an explicit reviewed allowlist and source ABI update;
+this release does not implicitly trust the historic factory address in older deployment examples.
+
+Migration refuses exit mode at either endpoint and pauses listings at both endpoints. Each reviewed,
+bounded owner-funded step recovers settlement, optionally processes an eligible FWA queue, unlists
+without redemption, withdraws intact packs directly to the destination and imports its preheld packs.
+Canonical ERC-721 transfer receipts record the actual transferred IDs. Existing held IDs can also be
+supplied in batches of 16. Import discovery checks at most 16 recorded IDs per review and advances
+incrementally. Unsupported recovery inventory or unsealed packs can block this preserving flow;
+it never substitutes liquidation or reminting. Existing owner withdrawal/recovery controls remain.
+
+Only after source inventory and receipts finish does the flow collect remaining credit and withdraw
+source ETH to its owner. Any additional wallet ETH transfer is an explicitly entered amount and
+recipient, reviewed as a separate step. No growth topup is inferred. Its value and maximum wallet gas
+are both reserved against the durable flow limit; receipts, refunds and lower replacement fees never
+replenish it. Both owners and clone identities are rechecked before each send. Listing resumption is
+an explicit later owner action. The shared vault address may remain unset and both public launch
+switches remain false.
+
+
+Migration effects are derived from a durable nonce-keyed receipt journal. Receipt hash, transaction
+intent, nonce, block identity and canonical block hash must match before IDs or successful ETH
+funding count. A canonical ancestor anchor preserves prior checks; a reorg invalidates cached effects
+and rechecks at most 16 receipts per refresh. An orphaned or replaced transaction reopens its exact
+pending nonce without releasing or reserving its signed maximum again. Missing RPC data blocks
+progress. Pack import progress additionally reads actual destination custody and book records in
+pages of 16, and the selected next step is recomputed before signing. Completion/approval is cleared
+when reconciliation fails or invalidates an observation.
+
+There is only one wallet-ETH attempt per migration flow. A canonical reverted ETH attempt does not
+count as sent and is not automatically retried at another nonce: both signed transactions could
+otherwise succeed after a reorganization. Its amount remains fixed and matching same-nonce
+replacement recovery remains available. This conservative failed-flow condition does not move or
+redeem any additional assets. The local UI pass exercised this reorganization path with an actual
+node snapshot and replacement header.
+
+
+Sealed recovery inventory is checked in pages of at most 16 entries using a durable round-robin
+cursor. Transfer eligibility requires `recoveryUnsealed == false`, no canonical pack claimant and
+actual pack ownership by the source manager. Migration selects one checked index and pack ID with
+`withdrawRecoveryPack(destination,index,expectedPackId)`; swap-pop changes invalidate stale indices
+instead of selecting another token. An unsealed tail does not block a sealed pack elsewhere in the
+checked page. Actual canonical transfer logs remain the import-ID source. If this page has no sealed
+candidate, the UI explicitly offers another page/recheck and does not report the entire book searched.
+After sealed packs leave, a remaining unsealed claim keeps migration waiting for its existing owner
+recovery path. No pack is redeemed and no exit mode is enabled by this preserving flow.
+
+
+Before any source pack transfer, migration checks actual canonical import eligibility. The canonical
+collection has no bounded count getter: `contentsOf` copies its storage array. The app uses raw
+`eth_call` with gas 150,000, rejects returndata outside 96..1,024 bytes before decoding and accepts
+only 1..30 distinct Shape IDs. It checks the actual pack holder/claimant, underlying Shapes collection,
+each Shape's holder and `packOf`, positive backing and total backing against canonical pack value.
+Ordinary idle withdrawals use only the verified contiguous LIFO prefix (at most 16 packs); a changed
+or unsupported tail stays tracked at source and cannot be skipped with the batch withdrawal method.
+Recovery discovery skips unimportable candidates within its bounded page and can transfer another
+supported sealed pack. Unsupported inventory never counts as migration completion and is never sent
+to the destination merely to discover import failure there. RPC outages remain failures, not evidence
+that a pack is importable; only explicit canonical execution failure can classify it as unsupported.

@@ -226,7 +226,7 @@ export function HowItWorksMain() {
 
       <section className="hiw-sec">
         <h2 className="h3">3. Keep or bid</h2>
-        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack returns. In fresh renewal mode it is retired and replaced with paid new Shapes when funded; in reuse mode it is relisted.</p>
+        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack returns. It is relisted with its existing Shapes.</p>
       </section>
 
       <section className="hiw-sec">

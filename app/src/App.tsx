@@ -358,6 +358,9 @@ export function useTx(onDone: () => void) {
     const { prepared, intent } = await prepareTransfer(pub!, address, to, value);
     return submit(intent, () => sendTransactionAsync(prepared as never));
   };
+  const transferReviewed = (prepared: Awaited<ReturnType<typeof prepareTransfer>>['prepared'], beforeWallet: () => void) =>
+    submit({ chainId: prepared.chainId!, from: prepared.account, to: prepared.to, input: '0x', value: prepared.value },
+      () => sendTransactionAsync(prepared as never), beforeWallet);
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last transaction the wallet submitted in the current or latest `send`, for its explorer link.
@@ -402,7 +405,7 @@ export function useTx(onDone: () => void) {
     }
   };
   const reset = () => { setMsg(undefined); setSteps(undefined); setHash(undefined); };
-  return { send, busy, msg, hash, steps, reset, write, transfer, failure };
+  return { send, busy, msg, hash, steps, reset, write, transfer, transferReviewed, failure };
 }
 
 /** A step of a `send`, as the progress panel shows it. `declined`: the wallet refused it (nothing was submitted). */

@@ -16,9 +16,14 @@ if (!params?.components.some((entry) => entry.name === 'gasSchedule')) throw new
 for (const abi of [entries.packVaultAbi, entries.packManagerAbi, entries.packManagerFactoryAbi]) {
   if (abi.some((entry) => ['keeperPolicy', 'policy', 'setPolicy'].includes(entry.name))) throw new Error('Main build still contains the retired external keeper policy');
 }
-for (const name of ['holderState', 'configurationHash', 'recover', 'recoverUnlist', 'recoverLiquidate', 'recoverCheckpoint', 'checkpointRefund', 'renewalQuote', 'relistEdgeFor', 'MAX_BUILD_BATCH', 'MAX_LIST_BATCH']) {
+for (const name of ['holderState', 'configurationHash', 'recover', 'recoverUnlist', 'recoverLiquidate', 'recoverCheckpoint', 'checkpointRefund', 'relistEdgeFor', 'MAX_BUILD_BATCH', 'MAX_LIST_BATCH']) {
   if (!entries.packVaultAbi.some((entry) => entry.type === 'function' && entry.name === name)) throw new Error(`Main build is stale: missing ${name}`);
 }
+for (const name of ['importPacks', 'unlistForWithdrawal', 'withdrawRecoveryPack']) {
+  if (!entries.packManagerAbi.some((entry) => entry.type === 'function' && entry.name === name)) throw new Error(`Main manager build is stale: missing ${name}`);
+}
+if (params.components.some((entry) => ['renewalMode', 'renewalFloatCount'].includes(entry.name))) throw new Error('Main build still exposes fresh-renewal settings');
+if (!params.components.find((entry) => entry.name === 'gasSchedule')?.components.some((entry) => entry.name === 'overhead')) throw new Error('Main build lacks measured-payment overhead');
 const valuesText = readFileSync(`${root}/deploy/manager.json`, 'utf8');
 // Source text preserves uint128/uint64 values that JSON numbers otherwise round in JavaScript.
 const values = JSON.parse(valuesText, (_key, value, context) => {

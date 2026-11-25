@@ -7,12 +7,13 @@ import { chain } from './chain';
 import { explain } from './errors';
 import { MainPoolSettings } from './MainPoolSettings';
 import { CallerFundedExit, CheckpointContributions } from './MainPoolExit';
+import { MainManagerMigration } from './MainManagerMigration';
 import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
 import { eth, short, useTx } from './App';
 import {
   MAIN_POOL_INTERACTIVE, MAIN_MANAGER_INTERACTIVE, MAIN_POOL_VISIBLE, MANAGER_FACTORY, MANAGER_PARAMS, VAULT, mainTabForProducts, checkCreation, clearManagerCreation,
-  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge, renewalWaits,
+  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge,
   saveManagerCreation, vaultStatus, previewManager, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
 
@@ -162,7 +163,7 @@ function Compare({ v, hasManager, setTab }: { v?: Vault; hasManager: boolean; se
   const onePack = preview.data === undefined ? '–' : ethText(preview.data.openingCash, 3);
   const rows: [string, string, string][] = [
     ...COMPARE,
-    ['Initial capital', 'Any deposit above the account minimum.', `Funding estimate: ${onePack} ETH for one pack, maintenance reserve and renewal float. Listing is conditional.`],
+    ['Initial capital', 'Any deposit above the account minimum.', `Funding estimate: ${onePack} ETH for one pack, maintenance reserve. Listing is conditional.`],
     ['Cost', v === undefined ? '–' : v.requestCharge > 0n ? `${ethText(v.requestCharge, 5)} ETH per deposit or redemption. No vault fee.` : 'Checkpoint already funded. No vault fee.',
       'Creation gas. No factory fee.'],
     ['Ownership', 'You own vault shares.', 'You own the manager and its settings.'],
@@ -174,7 +175,7 @@ function Compare({ v, hasManager, setTab }: { v?: Vault; hasManager: boolean; se
     <main className="page mp-overview">
       <div className="intro">
         <h1 className="title">Earn on FWA's main pool</h1>
-        <p className="lead">Your ETH builds 0.03 ETH Shape packs and lists them on the main pool with ETH backing. When a buyer keeps a pack, the backing comes back and a new pack is built. Returned packs follow the account's renewal mode: fresh paid replacement or reuse.</p>
+        <p className="lead">Your ETH builds 0.03 ETH Shape packs and lists them on the main pool with ETH backing. When a buyer keeps a pack, the backing comes back and a new pack is built. Returned packs are relisted with their existing Shapes.</p>
         <a className="disclose" href="#how-main">How the main pool works ▾</a>
       </div>
       <div className="compare">
@@ -392,6 +393,7 @@ function ManagerTab({ me, managers }: { me?: Address; managers: ReturnType<typeo
   const pub = usePublicClient();
   const wallet = usePolled<bigint>(pub && me ? `manager-wallet:${pub.chain.id}:${me}` : undefined, () => pub!.getBalance({ address: me! }));
   const [index, setIndex] = useState(0);
+  const [creating, setCreating] = useState(false);
   const [record, setRecord] = useState<ManagerCreation | undefined>(() => loadManagerCreation());
   const [creation, setCreation] = useState<CreationState>();
   const mine = record && me && record.owner.toLowerCase() === me.toLowerCase() && record.chainId === chain.id
@@ -414,13 +416,14 @@ function ManagerTab({ me, managers }: { me?: Address; managers: ReturnType<typeo
     const timer = setInterval(() => { managers.refresh(); }, 5_000);
     return () => { live = false; clearInterval(timer); };
   }, [pub, mine?.hash, mine?.since, managers.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  const created = () => { setRecord(loadManagerCreation()); managers.refresh(); wallet.refresh(); };
+  const created = () => { setCreating(false); setRecord(loadManagerCreation()); managers.refresh(); wallet.refresh(); };
 
   if (me && !managers.data) return <p className={`txline${managers.error ? ' bad' : ''}`}>{managers.error ?? 'Looking for your managers…'}</p>;
   if (mine) return <CreationView record={mine} state={creation} onDiscard={() => { clearManagerCreation(); setRecord(undefined); setCreation(undefined); }} />;
   const selected = list[Math.min(index, list.length - 1)];
+  if (creating) return <><button className="link" style={{ margin: 24 }} onClick={() => setCreating(false)}>Back to your manager</button><CreateManager wallet={wallet.data} me={me} onCreated={created} /></>;
   if (!me || !selected) return <CreateManager wallet={wallet.data} me={me} onCreated={created} />;
-  return <ManagerPage key={selected} manager={selected} wallet={wallet.data} refreshWallet={wallet.refresh} me={me} count={list.length} index={list.indexOf(selected)} setIndex={setIndex} />;
+  return <><button className="link" style={{ margin: 24 }} onClick={() => setCreating(true)}>Create another manager</button><ManagerPage key={selected} manager={selected} wallet={wallet.data} refreshWallet={wallet.refresh} me={me} count={list.length} index={list.indexOf(selected)} setIndex={setIndex} /></>;
 }
 
 function CreationView({ record, state, onDiscard }: { record: ManagerCreation; state?: CreationState; onDiscard: () => void }) {
@@ -454,16 +457,14 @@ function CreateManager({ wallet, me, onCreated }: { wallet?: bigint; me?: Addres
   const value = parse(amount);
   const preview = usePolled(pub && MANAGER_FACTORY ? `manager-preview:${pub.chain.id}:${MANAGER_FACTORY}:${params.acceptedMintFee}` : undefined, () => previewManager(pub!, MANAGER_FACTORY!, params));
   const quoted = preview.data;
-  const cost = quoted ? quoted.openingCash - params.reserve - quoted.floatRequired : undefined;
+  const cost = quoted ? quoted.openingCash - params.reserve : undefined;
   const threshold = quoted?.openingCash;
-  const packs = cost !== undefined && value !== undefined ? packsFor(value, params.reserve + (quoted?.floatRequired ?? 0n), cost) : undefined;
+  const packs = cost !== undefined && value !== undefined ? packsFor(value, params.reserve, cost) : undefined;
   const disabled = !quoted ? preview.error ?? 'Current costs are unavailable'
-    : quoted.mintFee > params.acceptedMintFee ? 'Accept the current mint fee first'
-    : !value ? 'Enter an amount'
-    : value < threshold! ? `At least ${ethText(threshold!, 2)} ETH for this funding estimate`
+    : value === undefined || value < 0n ? 'Enter a nonnegative amount'
     : me && wallet === undefined ? 'Wallet balance unavailable' : wallet !== undefined && value > wallet ? `Your wallet has ${eth(wallet)} ETH` : undefined;
   const run = async () => {
-    if (!pub || !me || !value || disabled || !MANAGER_FACTORY || !quoted) return;
+    if (!pub || !me || value === undefined || disabled || !MANAGER_FACTORY || !quoted) return;
     const record: ManagerCreation = { chainId: chain.id, factory: MANAGER_FACTORY, owner: me, value: String(value),
       fromBlock: String(await pub.getBlockNumber()), since: Date.now() };
     const ok = await tx.send('Create manager', [['Create manager', async () => {
@@ -489,15 +490,14 @@ function CreateManager({ wallet, me, onCreated }: { wallet?: bigint; me?: Addres
         <section>
           <h1 className="title">Create a personal manager</h1>
           <p className="lead">It runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee.</p>
-          <p className="note">Provisional local candidate: 0.03 ETH packs, 70,000 bps backing, fresh paid replacements, one renewal float, 25 bps uplift limit.</p>
+          <p className="note">Provisional local candidate: 0.03 ETH packs, 70,000 bps backing, returned-pack reuse, 25 bps uplift limit.</p>
           {quoted && <Group title="Conditional opening funding estimate"><div className="group-body">
             <div className="kv"><span className="k">Shapes principal per pack</span><span>{ethText(quoted.principal)} ETH</span></div>
             <div className="kv"><span className="k">FWA backing per pack</span><span>{ethText(quoted.backing)} ETH</span></div>
             <div className="kv"><span className="k">Fresh mint fees per pack</span><span>{ethText(quoted.mintCost)} ETH</span></div>
-            <div className="kv"><span className="k">Renewal float</span><span>{ethText(quoted.floatRequired)} ETH</span></div>
             <div className="kv"><span className="k">Maintenance reserve</span><span>{ethText(params.reserve)} ETH</span></div>
             <div className="kv"><span className="k">Live / accepted mint fee per Shape</span><span>{ethText(quoted.mintFee)} / {ethText(params.acceptedMintFee)} ETH</span></div>
-            <p className="note">Funding estimate includes quoted initial keeper work. FWA admission and live economics are checked on the created manager. Creation starts idle; wallet creation gas is additional.</p>
+            <p className="note">Funding estimate includes quoted initial keeper work. FWA admission and live economics are checked on the created manager. Zero ETH creates an idle manager for importing existing packs. Wallet creation gas is additional.</p>
             {quoted.mintFee !== params.acceptedMintFee && <button className="btn sec" onClick={() => setParams((p) => ({ ...p, acceptedMintFee: quoted.mintFee }))}>Use {ethText(quoted.mintFee, 6)} ETH as this manager's accepted mint fee maximum</button>}
           </div></Group>}
           <Group title="Before you start">
@@ -606,6 +606,7 @@ function ManagerPage({ manager, wallet, refreshWallet, me, count, index, setInde
               </div>
             </div>
           </Group>
+          <MainManagerMigration source={manager} owner={me} enabled={owner} refresh={changed} />
           <CallerFundedExit manager vault={manager} holder={me} refresh={changed} enabled={owner} />
           <MainPoolSettings key={manager} address={manager} params={m.params} configHash={m.configHash} mintFee={m.mintFee} tx={tx} enabled={owner} />
         </section>
@@ -655,23 +656,16 @@ function ManagerPage({ manager, wallet, refreshWallet, me, count, index, setInde
 }
 
 
-function RenewalStatus({ account }: { account: Pick<Manager, 'params' | 'mintFee' | 'renewalState' | 'budget' | 'operatingReserve' | 'minimumRenewalQuote' | 'renewalCashRequired' | 'renewalInventoryReady' | 'mintCount' | 'packValue' | 'keeperCash' | 'edge'> }) {
-  const [returned, kept, float, cash] = account.renewalState;
-  const waits = renewalWaits(account);
+function RenewalStatus({ account }: { account: Pick<Manager, 'params' | 'mintFee' | 'budget' | 'mintCount' | 'packValue' | 'keeperCash' | 'edge'> }) {
   return <div className="group-body main-renewal-state" role="status">
     <div className="kv"><span className="k">Selected fresh pack value / primary mints</span><span>{eth(account.packValue, 2)} ETH / {account.mintCount.toString()}</span></div>
     <div className="kv"><span className="k">Live / accepted mint fee per Shape</span><span>{eth(account.mintFee, 6)} / {eth(account.params.acceptedMintFee, 6)} ETH</span></div>
-    <div className="kv"><span className="k">Renewal</span><span>{account.params.renewalMode === 0 ? 'Fresh after acquisition; every fresh Shape pays a mint fee' : 'Reuse returned packs'}</span></div>
-    <div className="kv"><span className="k">Eligible returned / kept replacements</span><span>{returned.toString()} / {kept.toString()}</span></div>
-    <div className="kv"><span className="k">Maintenance reserve / renewal float</span><span>{eth(account.params.reserve, 5)} / {eth(float, 5)} ETH</span></div>
-    <div className="kv"><span className="k">Renewal cash available</span><span>{eth(cash, 5)} ETH</span></div>
+    <div className="kv"><span className="k">Returned packs</span><span>Reused with their existing Shapes</span></div>
+    <div className="kv"><span className="k">Maintenance reserve</span><span>{eth(account.params.reserve, 5)} ETH</span></div>
     <div className="kv"><span className="k">Routine cash / spending permission</span><span>{eth(account.keeperCash, 5)} / {eth(account.budget[0], 5)} ETH</span></div>
-    {waits.feeNotAccepted && <p className="note error">Fresh minting waits: the live mint fee exceeds the accepted maximum.</p>}
+    <p className="note">Keeper payment uses bounded measured gas and verified work.</p>
+    {account.mintFee > account.params.acceptedMintFee && <p className="note error">Fresh minting waits: the live mint fee exceeds the accepted maximum. Existing packs can still be reused.</p>}
     {account.params.packUnitsMask === 0n && <p className="note">Fresh minting is disabled. Existing unselected inventory may still be relisted.</p>}
-    {returned > 0n && !account.renewalInventoryReady && <p className="note">Eligible return needs recovery or bounded inventory discovery.</p>}
-    {!account.edge[2] && <p className="note">New listing admission is currently unavailable.</p>}
-    {account.minimumRenewalQuote > 0n && <div className="kv"><span className="k">Quoted renewal work before fee collection</span><span>{eth(account.minimumRenewalQuote, 6)} ETH</span></div>}
-    {waits.cashShort && <p className="note error">Renewal needs cash or eligible fee collection. Raising spending permission adds no ETH.</p>}
-    {waits.allowanceTooSmall && <p className="note error">Renewal waits for spending permission. The allowance cannot cover the quoted renewal work.</p>}
+    {!account.edge[2] && <p className="note">New investment admission is currently unavailable.</p>}
   </div>;
 }

@@ -39,13 +39,13 @@ const ACTIVE = 1, ALLOCATED = 2, OWED = 3;
 
 export const GAS_FIELDS = ['checkpoint', 'allocationEntry', 'allocationRead', 'build', 'buildPack', 'buildShape', 'list', 'listed',
   'sync', 'requiredTail', 'distributionProof', 'journal', 'scan', 'selected', 'synced', 'pruned', 'unlist', 'unlisted', 'liquidate',
-  'liquidatePack', 'redeemShape', 'recoveryBase', 'recoveryShape', 'recoveryUnseal', 'harvest', 'harvested', 'credit', 'fund'] as const;
+  'liquidatePack', 'redeemShape', 'recoveryBase', 'recoveryShape', 'recoveryUnseal', 'harvest', 'harvested', 'credit', 'fund', 'overhead'] as const;
 export type GasSchedule = Record<(typeof GAS_FIELDS)[number], number>;
 export interface Params {
   minEdgeBps: number; bufferBps: number; distributionBps: number; payMarkupBps: number; keeperShareBps: number; upliftBoundBps: number;
   packUnitsMask: bigint; gasCeiling: bigint; essentialCeiling: bigint; maxTip: bigint; workFee: bigint;
   routineCap: bigint; routineRate: bigint; essentialCap: bigint; essentialRate: bigint; reserve: bigint; tvlCap: bigint;
-  backingRatioBps: number; renewalMode: number; renewalFloatCount: number; acceptedMintFee: bigint;
+  backingRatioBps: number; acceptedMintFee: bigint;
   minDeposit: bigint; minDistribution: bigint; gasSchedule: GasSchedule;
 }
 /** Exact defaults are exported with the ABI from the same main repository checkout. */
@@ -86,7 +86,6 @@ const named = (logs: EventLog[], name: string) => logs.filter((l) => l.eventName
 /** Each refresh examines one bounded page to find a NAV witness, regardless of the position count. */
 export const BOOK_PAGE_SIZE = 32n;
 const bookPages = new Map<string, { next: bigint; witness?: bigint }>();
-const renewalPages = new Map<string, bigint>();
 export function bookPage(count: bigint, next = 0n) {
   const start = next < count ? next : 0n;
   const end = start + BOOK_PAGE_SIZE < count ? start + BOOK_PAGE_SIZE : count;
@@ -150,40 +149,16 @@ export function observedResolutions(updates: { listingId: bigint; state: number 
 export async function readAccountConfig(pub: Pub, address: Address, abi: typeof packVaultAbi | typeof packManagerAbi, blockNumber: bigint) {
   const r = <T,>(functionName: string, args: unknown[] = []) =>
     pub.readContract({ address, abi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
-  const [params, configHash, referenceUnits, referencePositionValue, owner, operatingReserve, renewalState, keeperCash, liveMintFee] = await Promise.all([
+  const [params, configHash, referenceUnits, referencePositionValue, owner, operatingReserve, keeperCash, liveMintFee] = await Promise.all([
     r<Params>('getParams'), r<Hex>('configurationHash'), r<bigint>('referenceUnits'), r<bigint>('referencePositionValue'),
-    r<Address>('owner'), r<bigint>('operatingReserve'),
-    r<readonly [bigint, bigint, bigint, bigint]>('renewalState'),
-    r<bigint>('keeperCash'),
+    r<Address>('owner'), r<bigint>('operatingReserve'), r<bigint>('keeperCash'),
     pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee', blockNumber }),
   ]);
-  const n = primaryMintCount(referenceUnits);
   const [edge, buildCost] = await Promise.all([
     r<readonly [bigint, bigint, boolean]>('edge', [referenceUnits]), r<bigint>('buildCost', [referenceUnits]),
   ]);
-  let renewalPack: bigint | undefined = renewalState[1] > 0n ? 0n : undefined;
-  let returnedPrincipal = 0n;
-  if (renewalPack === undefined && renewalState[0] > 0n && params.renewalMode === 0 && params.packUnitsMask !== 0n) {
-    const count = await r<bigint>('idlePackCount');
-    const key = `${pub.chain?.id}:${address.toLowerCase()}`;
-    const remembered = renewalPages.get(key);
-    const end = remembered !== undefined && remembered > 0n && remembered <= count ? remembered : count;
-    const start = end > BOOK_PAGE_SIZE ? end - BOOK_PAGE_SIZE : 0n;
-    const ids = await Promise.all(Array.from({ length: Number(end - start) }, (_, i) => r<bigint>('idlePackAt', [end - BigInt(i) - 1n])));
-    const eligible = await Promise.all(ids.map((id) => r<boolean>('renewalEligible', [id])));
-    renewalPack = ids.find((_, i) => eligible[i]);
-    renewalPages.set(key, renewalPack === undefined ? start : end);
-    if (renewalPack !== undefined) returnedPrincipal = await r<bigint>('idleValueOf', [renewalPack]);
-  }
-  const minimumRenewalQuote = renewalPack !== undefined && params.renewalMode === 0 && params.packUnitsMask !== 0n
-    ? await r<bigint>('renewalQuote', [renewalPack, 0n, false]) : 0n;
-  const packValue = referenceUnits * parseEther('0.01');
-  const targetBacking = edge[2] ? edge[1] : packValue * BigInt(params.backingRatioBps) / 10_000n / 10_000n * 10_000n;
-  const renewalCost = packValue + targetBacking + n * liveMintFee + minimumRenewalQuote;
-  const renewalCashRequired = renewalPack === undefined ? undefined : renewalCost > returnedPrincipal ? renewalCost - returnedPrincipal : 0n;
-  return { params, configHash, referenceUnits, referencePositionValue, owner, operatingReserve, renewalState, keeperCash,
-    minimumRenewalQuote, renewalCashRequired, renewalInventoryReady: renewalPack !== undefined,
-    mintCount: n, mintFee: liveMintFee, packValue, buildCost, edge };
+  return { params, configHash, referenceUnits, referencePositionValue, owner, operatingReserve, keeperCash,
+    mintCount: primaryMintCount(referenceUnits), mintFee: liveMintFee, packValue: referenceUnits * parseEther('0.01'), buildCost, edge };
 }
 
 export type Vault = Awaited<ReturnType<typeof readVault>>;
@@ -257,16 +232,6 @@ export function vaultStatus(v: Pick<Vault, 'windingDown' | 'depositsPaused' | 'p
 }
 
 export const primaryMintCount = (units: bigint) => units / 10n + units % 10n / 5n + units % 5n;
-export function renewalWaits(account: Pick<Manager, 'params' | 'mintFee' | 'renewalState' | 'budget' | 'minimumRenewalQuote'> & { renewalCashRequired?: bigint }) {
-  const [returned, kept, float, cash] = account.renewalState;
-  const freshPending = account.params.renewalMode === 0 && account.params.packUnitsMask !== 0n && returned + kept > 0n;
-  return {
-    feeNotAccepted: account.mintFee > account.params.acceptedMintFee,
-    cashShort: freshPending && cash < (account.renewalCashRequired ?? float),
-    allowanceTooSmall: freshPending && account.budget[0] < account.minimumRenewalQuote,
-  };
-}
-
 /** ETH one more pack takes: its Shapes, the backing it posts and the work of building and listing it. */
 export const packCost = (value: bigint, backing: bigint, buildCost: bigint) => value + backing + buildCost;
 export const packsFor = (eth: bigint, reserve: bigint, cost: bigint) => (cost > 0n && eth > reserve ? (eth - reserve) / cost : 0n);
@@ -335,11 +300,11 @@ export async function findManagers(pub: Pub, factory: Address, me: Address) {
 export async function previewManager(pub: Pub, factory: Address, params: Params) {
   const block = await pub.getBlock();
   const [preview, mintFee] = await Promise.all([
-    pub.readContract({ address: factory, abi: packManagerFactoryAbi, functionName: 'preview' as never, args: [params] as never, blockNumber: block.number }) as Promise<readonly [bigint, bigint, bigint, bigint, bigint, bigint, Hex]>,
+    pub.readContract({ address: factory, abi: packManagerFactoryAbi, functionName: 'preview' as never, args: [params] as never, blockNumber: block.number }) as Promise<readonly [bigint, bigint, bigint, bigint, bigint, Hex]>,
     pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee', blockNumber: block.number }),
   ]);
-  const [units, principal, backing, mintCost, floatRequired, openingCash, configHash] = preview;
-  return { units, principal, backing, mintCost, floatRequired, openingCash, configHash, mintFee, blockNumber: block.number };
+  const [units, principal, backing, mintCost, openingCash, configHash] = preview;
+  return { units, principal, backing, mintCost, openingCash, configHash, mintFee, blockNumber: block.number };
 }
 
 /** A manager creation sent from this browser, kept until its outcome is known so a reload resumes it. */

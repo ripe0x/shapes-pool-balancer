@@ -12,7 +12,7 @@ describe('main account owner settings', () => {
     expect(result.gasSchedule.scan).toBe(0);
     expect(result.gasCeiling).toBe(1250000000n);
     expect(result.acceptedMintFee).toBe(MANAGER_PARAMS.acceptedMintFee);
-    expect(GAS_FIELDS).toHaveLength(28);
+    expect(GAS_FIELDS).toHaveLength(29);
     expect(parseSettings(draft, MANAGER_PARAMS)).toEqual(MANAGER_PARAMS);
   });
   it('permits disabling fresh builds and rejects invalid pack values or imprecise gas integers', () => {

@@ -1,5 +1,5 @@
 // Generated from shapes-fwa-pool deploy/manager.json; provisional local evaluation values, not production approval.
-export const mainPoolDefaultsSha256 = '24f8c18184fde67f007aaa3c94d8d0fc693e9879893f8aab0c59eb6054b07288';
+export const mainPoolDefaultsSha256 = '66423b7ed03e758fafe3b0a0b79a861f7894e97bf1885a8f13cfe887f38385cc';
 export const defaultManagerParams = {
   minEdgeBps: 100,
   bufferBps: 0,
@@ -19,8 +19,6 @@ export const defaultManagerParams = {
   reserve: 5000000000000000n,
   tvlCap: 0n,
   backingRatioBps: 70000,
-  renewalMode: 0,
-  renewalFloatCount: 1,
   acceptedMintFee: 1000000000000000n,
   minDeposit: 10000000000000000n,
   minDistribution: 10000000000000000n,
@@ -53,5 +51,6 @@ export const defaultManagerParams = {
   harvested: 80000,
   credit: 40000,
   fund: 40000,
+  overhead: 50000,
 },
 } as const;

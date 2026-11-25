@@ -1,6 +1,6 @@
 import { parseEther } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { creationState, depositShares, managerStatus, observedResolutions, packCost, packsFor, bookPage, historyRange, navWitnessCandidates, MANAGER_PARAMS, redeemCharge, renewalWaits, vaultStatus, type ManagerCreation } from './main-pool';
+import { creationState, depositShares, managerStatus, observedResolutions, packCost, packsFor, bookPage, historyRange, navWitnessCandidates, MANAGER_PARAMS, redeemCharge, vaultStatus, type ManagerCreation } from './main-pool';
 
 const eth = parseEther;
 
@@ -118,30 +118,5 @@ describe('bounded account reads', () => {
       { state: 1, feeDebt: 100n }, { state: 1, feeDebt: 10n }, { state: 2, feeDebt: 0n },
     ])).toEqual([10n, 50n]);
     expect(navWitnessCandidates([50n, 10n], [{ state: 1, feeDebt: 100n }, { state: 1, feeDebt: 100n }])).toEqual([10n, 50n]);
-  });
-});
-
-describe('shared vault and manager renewal status', () => {
-  const funded = {
-    params: MANAGER_PARAMS, mintFee: eth('0.001'), renewalState: [1n, 1n, eth('0.214'), eth('0.215')] as const,
-    budget: [eth('0.001'), 0n] as const, minimumRenewalQuote: eth('0.0008'),
-  };
-  it('distinguishes a funded manager from exhausted spending permission without inventing a cash shortage', () => {
-    expect(renewalWaits(funded)).toEqual({ feeNotAccepted: false, cashShort: false, allowanceTooSmall: false });
-    expect(renewalWaits({ ...funded, budget: [0n, 0n] })).toEqual({ feeNotAccepted: false, cashShort: false, allowanceTooSmall: true });
-    expect(renewalWaits({ ...funded, renewalState: [1n, 0n, eth('0.214'), 0n] })).toEqual({ feeNotAccepted: false, cashShort: true, allowanceTooSmall: false });
-  });
-  it('does not apply fresh-replacement waits to reuse mode', () => {
-    expect(renewalWaits({ ...funded, params: { ...MANAGER_PARAMS, renewalMode: 1 }, budget: [0n, 0n] }).allowanceTooSmall).toBe(false);
-  });
-  it('uses the full returned-pack work quote and actual required cash instead of the ceiling-priced float target', () => {
-    const returned = { ...funded, minimumRenewalQuote: eth('0.000475'), renewalCashRequired: eth('0.213475'),
-      renewalState: [1n, 0n, eth('0.2140975'), eth('0.2135')] as const, budget: [eth('0.0005'), 0n] as const };
-    expect(renewalWaits(returned).cashShort).toBe(false);
-    expect(renewalWaits({ ...returned, budget: [eth('0.00045'), 0n] }).allowanceTooSmall).toBe(true);
-  });
-  it('does not imply that cash or permission can restart disabled fresh minting', () => {
-    const disabled = { ...funded, params: { ...MANAGER_PARAMS, packUnitsMask: 0n }, budget: [0n, 0n] as const };
-    expect(renewalWaits(disabled).allowanceTooSmall).toBe(false);
   });
 });

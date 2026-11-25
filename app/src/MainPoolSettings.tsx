@@ -11,7 +11,6 @@ type Field = { key: Exclude<keyof Params, 'gasSchedule' | 'acceptedMintFee'>; la
 const FIELDS: Field[] = [
   { key: 'backingRatioBps', label: 'Backing ratio', unit: 'bps' },
   { key: 'upliftBoundBps', label: 'Maximum unresolved keep uplift', unit: 'bps' },
-  { key: 'renewalFloatCount', label: 'Replacement packs held as renewal float', unit: 'count' },
   { key: 'reserve', label: 'Maintenance reserve', unit: 'ETH' },
   { key: 'minDeposit', label: 'Minimum deposit', unit: 'ETH' },
   { key: 'minDistribution', label: 'Minimum distribution', unit: 'ETH' },
@@ -35,7 +34,7 @@ export function settingsDraft(params: Params): Record<string, string> {
   return Object.fromEntries([
     ...FIELDS.map((f) => [f.key, f.unit === 'ETH' ? formatEther(params[f.key] as bigint)
       : f.unit === 'gwei' ? formatGwei(params[f.key] as bigint) : String(params[f.key])]),
-    ['renewalMode', String(params.renewalMode)], ['packUnitsMask', String(params.packUnitsMask)],
+    ['packUnitsMask', String(params.packUnitsMask)],
     ...GAS_FIELDS.map((key) => [`gas.${key}`, String(params.gasSchedule[key])]),
   ]);
 }
@@ -50,8 +49,6 @@ export function parseSettings(draft: Record<string, string>, current: Params): P
     if (typeof current[f.key] === 'number' && value > 0xffffffffn) throw new Error(`${f.label} exceeds its supported range.`);
     (next as unknown as Record<string, unknown>)[f.key] = typeof current[f.key] === 'number' ? Number(value) : value;
   }
-  next.renewalMode = Number(draft.renewalMode);
-  if (next.renewalMode !== 0 && next.renewalMode !== 1) throw new Error('Choose a renewal mode.');
   next.packUnitsMask = BigInt(draft.packUnitsMask);
   if (next.packUnitsMask < 0n || next.packUnitsMask >> 31n || next.packUnitsMask & 7n) throw new Error('Choose pack sizes from 0.03 to 0.30 ETH.');
   for (const key of GAS_FIELDS) {
@@ -92,11 +89,7 @@ export function MainPoolSettings({ address, vault = false, params, configHash, m
         tx.send('Accept current mint fee', [() => tx.write({ address, abi, functionName: 'acceptMintFee', args: [mintFee, configHash] })])}>
         Accept {formatEther(mintFee)} ETH per fresh Shape
       </button>
-      <p className="note">Fresh replacement pays a mint fee for every new Shape. Reusing returned packs pays no new primary mint fee.</p>
-      <label className="ctl" htmlFor={`renewal-${address}`}>Renewal mode</label>
-      <select id={`renewal-${address}`} className="input" disabled={!enabled || !!tx.busy} value={draft.renewalMode} onChange={(e) => change('renewalMode', e.target.value)}>
-        <option value="0">Fresh after acquisition</option><option value="1">Reuse returned packs</option>
-      </select>
+      <p className="note">Returned packs are reused without a new primary mint fee.</p>
       <fieldset disabled={!enabled || !!tx.busy}>
         <legend>Allowed fresh pack values</legend>
         <p className="note">No sizes selected disables fresh builds. Existing inventory keeps its actual contents.</p>
@@ -108,7 +101,7 @@ export function MainPoolSettings({ address, vault = false, params, configHash, m
         <label className="kv" key={f.key}><span className="k">{f.label} ({f.unit})</span>
           <input className="input" inputMode="decimal" disabled={!enabled || !!tx.busy} value={draft[f.key]} onChange={(e) => change(f.key, e.target.value)} />
         </label>)}</div>
-      <details><summary>Quoted gas schedule</summary><p className="note">Allowances price verified work. They do not change transaction work limits.</p>
+      <details><summary>Keeper gas caps and overhead</summary><p className="note">Actual compensation uses bounded measured gas. These caps do not change transaction work limits.</p>
         {GAS_FIELDS.map((key) => <label className="kv" key={key}><span className="k">{label(key)} (gas)</span>
           <input className="input" inputMode="numeric" disabled={!enabled || !!tx.busy} value={draft[`gas.${key}`]} onChange={(e) => change(`gas.${key}`, e.target.value)} />
         </label>)}

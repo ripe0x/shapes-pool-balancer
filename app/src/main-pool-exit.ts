@@ -35,7 +35,7 @@ export function checkExitSpend(state: ExitSpend, gas: bigint, maxFeePerGas: bigi
   if (maximumDebit > state.limit - state.debited) throw new Error('This step exceeds your remaining wallet spending limit. Raise the limit explicitly or wait for lower gas.');
   return maximumDebit;
 }
-export interface ExitCall { label: string; functionName: string; args: readonly unknown[]; value?: bigint; target?: Address }
+export interface ExitCall { label: string; functionName: string; args: readonly unknown[]; value?: bigint; target?: Address; transfer?: boolean }
 export function exitBatches(ids: bigint[]) {
   return Array.from({ length: Math.ceil(ids.length / 16) }, (_, i) => ids.slice(i * 16, i * 16 + 16));
 }
@@ -85,7 +85,7 @@ export async function reviewExit(pub: PublicClient, vault: Address, holder: Addr
 }
 
 export type ExitReview = Awaited<ReturnType<typeof reviewExit>>;
-export interface SavedExitSpend { chainId: number; vault: Address; holder: Address; limit: string; debited: string; temporaryFunding: string; actualGas: string;
+export interface SavedExitSpend { chainId: number; vault: Address; holder: Address; limit: string; debited: string; temporaryFunding: string; actualGas: string; migration?: import('./main-manager-migration').Migration;
   pending?: { id: string; minimumNonce: number; nonce?: number; hash?: Hash; maximumDebit: string; value: string; input: Hex; to?: Address } }
 export const exitSpendKey = (chainId: number, vault: Address, holder: Address) => `main-exit:${chainId}:${vault.toLowerCase()}:${holder.toLowerCase()}`;
 export const serializeSpend = (s: ExitSpend) => ({ limit: String(s.limit), debited: String(s.debited), temporaryFunding: String(s.temporaryFunding), actualGas: String(s.actualGas) });
@@ -147,6 +147,8 @@ export async function settleExitSpend(pub: PublicClient, saved: SavedExitSpend):
   const intent: TransactionIntent = { chainId: saved.chainId, from: saved.holder, to: pending.to ?? saved.vault, input: pending.input, value: BigInt(pending.value) };
   assertTransactionIntent(intent, transaction);
   if (transaction.blockHash !== receipt.blockHash || transaction.blockNumber !== receipt.blockNumber) throw new Error('Exit confirmation is inconsistent. Refresh before continuing.');
+  const canonical = await pub.getBlock({ blockNumber: receipt.blockNumber });
+  if (canonical.hash !== receipt.blockHash) throw new Error('Exit receipt is no longer canonical. Its maximum remains reserved.');
   const gas = receipt.gasUsed * receipt.effectiveGasPrice;
   const bounded = reserveExitReplacement(saved, signedExitMaximum(transaction));
   return observeExitReceipt(bounded, gas, receipt.status === 'success');
