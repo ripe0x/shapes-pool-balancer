@@ -25,3 +25,19 @@ This is local interactive tooling, not a production release scorecard or the ful
 The older preparation packet is preserved as superseded, never approved/executed. Current packet: `../20261125174335482/bounded-plan.json`, hash `dc8e8319d5818376d618a1439aaeb621b14383f82ad5c9f35e60b567791de552`.
 
 Things that do not make sense: claiming timeout refunds prove successful random NFT delivery. They do not; the two paths remain separate.
+
+## Approved setup execution
+
+Owner explicitly approved the prepared local batch and app start. Executed exact packet `dc8e8319d5818376d618a1439aaeb621b14383f82ad5c9f35e60b567791de552` at tooling revision `a80f2c7` through the canonical staged deployment path. Exit 0. Earlier prepared-only table entries above describe the pre-approval state; this section supersedes their setup status.
+
+- Seven successful transactions, blocks 26485861–26485867; aggregate gas cost 2,575,982,763,183,130 wei (0.00257598276318313 test ETH), below 12 transaction / 1 ETH caps. Raw receipts, calldata, hashes and gas are in `../20261125174335482/journal.json`; deployment output is preserved there too.
+- Same Anvil PID 28171, original command and Tenderly fork block 26485619 preserved. Chain ID 31337.
+- Factory `0xbe49677a403f77136e81498e5681f8dc22aa1181`, implementation `0x940815eE17aa44E861bEfe77e6812EB0f2da9710`, batch marker 2. Public creation remains paused; policy admin is the local creator 0x000000000000000000000000000000000001e004. Deployment runtime hashes matched the approved packet.
+- Creator and buyer each retain exactly 100 test ETH. Deployer balance 997424017236816870 wei; funding minus measured gas reconciles exactly.
+- Demo collection `0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955`, IDs 1 and 2 both verified owned by the creator.
+- App on http://127.0.0.1:5280/ responds HTTP 200. Browser visibly connected local creator e004, displayed the pool designer and enabled Create pool button. No pool was created, no approvals/draws/withdrawals were submitted. NFT discovery did not finish during the short browser check; documented manual contract/token entry uses actual fork ownership reads.
+- Vite runs in persistent exec session 38606. Existing app environment files, deployment records and services were not overwritten. No background keeper was started.
+
+Current receipt readbacks: `../20261125174335482/postflight.json`. No production release gate or full economic campaign was rerun for this local setup.
+
+Things that do not make sense: live Chainlink delivery cannot service fresh requests on this private fork. Timeout/refund checks are explicitly separate from successful winner delivery.

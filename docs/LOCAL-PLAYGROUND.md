@@ -7,17 +7,17 @@ accounts instead. No private keys are needed or should be imported.
 
 ## App
 
-After the setup journal reports complete, open http://127.0.0.1:5280/ and click **Local dev account**.
+Setup completed on November 25, 2026. Open http://127.0.0.1:5280/ and click **Local dev account** if it is not already connected.
 
 - Creator/admin: `0x000000000000000000000000000000000001e004`, funded with 100 test ETH.
 - Buyer: `0x000000000000000000000000000000000001e008`, funded with 100 test ETH.
 - Factory: `0xbe49677a403f77136e81498e5681f8dc22aa1181`.
 - Demo NFT collection: `0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955`, tokens 1 and 2 belong to the creator.
 
-These addresses are frozen dry-run predictions until bootstrap receipts/readbacks confirm them. Public creation
+These addresses are confirmed by bootstrap receipts and onchain readbacks. Public creation
 stays paused. The connected policy-admin creator can create its own canary pools while paused.
 
-1. Create a pool using the design page. Curated NFTs are optional; choose the demo collection/tokens if desired.
+1. Create a pool using the design page. Curated NFTs are optional. For the local demo tokens, click **Choose from your wallet**, then **Enter a contract and token ID instead**. Enter the demo collection above and token ID `1` or `2`; the app checks ownership on the fork. Wallet discovery can take time, so manual entry is the direct local path.
 2. Confirm each local approval/creation step. Once created, use **List Shapes** / maintenance until the initial mix
    is stocked and purchases are admitted. No background keeper is automatically started by bootstrap.
 3. Copy the **Balancer address** from the app. The commands below resolve its underlying FWA pool automatically.

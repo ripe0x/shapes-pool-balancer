@@ -1,0 +1,46 @@
+{
+  "chainId": 31337,
+  "node": {
+    "currentBlockNumber": "0x194246b",
+    "currentBlockTimestamp": 1795625109,
+    "currentBlockHash": "0x5a510e652107a49c3bb639ffc2f24841b63586b2569b2c9563341916d7d0a6c2",
+    "hardFork": "Bpo2",
+    "transactionOrder": "fees",
+    "environment": {
+      "baseFee": "0x5d0ccc1",
+      "chainId": 31337,
+      "gasLimit": "0x3938700",
+      "gasPrice": "0x416b96c1"
+    },
+    "forkConfig": {
+      "forkUrl": "https://mainnet.gateway.tenderly.co",
+      "forkBlockNumber": 26485619,
+      "forkRetryBackoff": 1000
+    },
+    "network": "ethereum"
+  },
+  "implementation": "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+  "inventoryBatchVersion": "2",
+  "creationPaused": true,
+  "policyAdmin": "0x000000000000000000000000000000000001e004",
+  "balances": {
+    "deployer": "997424017236816870",
+    "policyAdmin": "100000000000000000000",
+    "buyer": "100000000000000000000"
+  },
+  "nfts": {
+    "1": "0x000000000000000000000000000000000001e004",
+    "2": "0x000000000000000000000000000000000001e004"
+  },
+  "codeHashes": {
+    "0xbe49677a403f77136e81498e5681f8dc22aa1181": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780",
+    "0x940815eE17aa44E861bEfe77e6812EB0f2da9710": "0xc44a99ff80da91463009379966bf6e3c4cf2f40d9a35ccacf3a3bacee66e10bc",
+    "0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955": "0xe76e881390cd6576f2d5d5a371a7b1dba132ca192871355c0e37c7b5160ea83b"
+  },
+  "appURL": "http://127.0.0.1:5280/",
+  "appHTTP": 200,
+  "nodeProcess": {
+    "pid": 28171,
+    "command": "anvil --fork-url https://mainnet.gateway.tenderly.co --chain-id 31337 --port 8545 --silent"
+  }
+}

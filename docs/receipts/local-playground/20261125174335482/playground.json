@@ -1,0 +1,10 @@
+{
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "fromBlock": "26485861",
+  "demo": "0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955",
+  "creator": "0x000000000000000000000000000000000001e004",
+  "buyer": "0x000000000000000000000000000000000001e008",
+  "directory": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-playground/20261125174335482"
+}
