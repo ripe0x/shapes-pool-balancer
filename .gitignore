@@ -32,3 +32,6 @@ audit/**/slither-out/
 /audit/round8/source-inventory-page.json
 /audit/round8/source-inventory-pool.json
 .netlify/
+# Cost-first local walkthrough: live state stays mutable; frozen evidence is committed separately.
+docs/receipts/local-playground/cost-first-2aac/journal.json
+docs/receipts/local-playground/cost-first-2aac/keeper-state.json*

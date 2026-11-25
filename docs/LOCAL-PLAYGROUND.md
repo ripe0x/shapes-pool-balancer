@@ -13,13 +13,32 @@ creator proceeds with no manually configured earnings percentage. Existing pools
 `0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4`, retain their original implementation and accounting.
 
 The app at http://127.0.0.1:5280/ is open on the new-pool designer. Connect the wallet you want to own the new pool,
-using chain 31337. The existing simulated-draw keeper is restricted to the old pool; a new pool needs a separately
-scoped local keeper/draw setup. Do not run the old pool's fixed-address draw helper against a new pool.
+using chain 31337. The old keeper remains restricted to the old pool. A separate keeper is now attached to the new cost-first pool
+listed below. Do not run the old pool's fixed-address draw helper against the new pool.
 
 The deployment and pointer switch used `script/Deploy.s.sol` through the bounded local wrapper, reused dependencies,
 and sent three zero-value transactions. Total gas cost was 0.000437757079398893 test ETH. No funding, factory redeploy,
 node reset, mainnet transaction or new pool creation was performed by the agent. Receipts and the interrupted
 receipt-filename recovery are in [the update record](receipts/local-playground/implementation-20261125205304625/README.md).
+
+## Current cost-first pool draws
+
+Balancer `0x2Aacb8aFe400b3Ffe61063142AAE5A351A69A0Db` belongs to ripe0x.eth. Its real paid local keeper is running
+as synthetic account `0x000000000000000000000000000000000001e007`, PID 32605. The first 20 draws delivered 20
+actual NFT wins. Final restocking was partial: one 0.05 ETH Shape is missing, with a 0.027212084938469441 ETH reserve
+shortfall at block 26486050. Earned and withdrawable proceeds were both zero; no pool capital was added.
+
+Run another batch only after the previous draw command releases its lock:
+
+```bash
+cd /Users/dd/CascadeProjects/fwa-pool-balancer
+X=5
+node --import tsx scripts/local-cost-first-draws.ts --execute --allow-simulated-randomness --draws "$X"
+```
+
+X is 1–20, within shared 1 test ETH purchase / 1 test ETH gas / 200 transaction limits. Simulated callbacks are local
+only, not genuine VRF proof verification. See [the frozen 20-draw record](receipts/local-playground/cost-first-2aac/README.md).
+The later generic timeout commands and the older simulated helper section refer to their separately described scopes.
 
 ## App
 

@@ -1,0 +1,10 @@
+{
+  "chainId": 31337,
+  "block": "26486050",
+  "balancer": "0x2Aacb8aFe400b3Ffe61063142AAE5A351A69A0Db",
+  "from": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "method": "claimSurplus",
+  "amountWei": "1",
+  "result": "reverted: InsufficientSurplus",
+  "broadcast": false
+}
