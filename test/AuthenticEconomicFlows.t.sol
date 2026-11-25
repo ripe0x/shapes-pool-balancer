@@ -25,6 +25,7 @@ abstract contract AuthenticEconomicFlowsBase is ForkBase {
     GasProbe internal probe;
 
     function _curatedOnly() internal pure virtual returns (bool) { return false; }
+    function _publicProofs() internal pure virtual returns (bool) { return false; }
 
     function setUp() public {
         vm.createSelectFork("mainnet", bytes32(0x2d9d2a85771c6ea346a6ed9e581fe5c5c1f5aefb770f669effcee35e254f8283));
@@ -129,10 +130,10 @@ abstract contract AuthenticEconomicFlowsBase is ForkBase {
     }
 
     function _assertCostFirstProfit() internal view returns (uint256 profit) {
-        uint256 actualAssets = address(balancer).balance + _actualBacking();
+        uint256 actualAssets = address(balancer).balance + _actualBacking() - balancer.creatorCredit();
         uint256 capital = balancer.operatingCapital();
         profit = actualAssets > capital ? actualAssets - capital : 0;
-        assertEq(balancer.creatorCredit(), profit, "independent cash plus actual custody backing minus capital");
+        assertEq(balancer.bankrollProfit(), profit, "independent operating cash plus custody backing minus capital");
     }
 
     function _submitAuthenticProofs() internal {
@@ -143,7 +144,7 @@ abstract contract AuthenticEconomicFlowsBase is ForkBase {
         probe.record();
         assertEq(probe.gasPrice(), 565418379, "inside state-changing execution");
         assertEq(probe.baseFee(), 548662718, "actual replay block base fee");
-        if (_curatedOnly()) {
+        if (_curatedOnly() || _publicProofs()) {
             // Public submission avoids the separate vm.transact replay journal after pre-reading queue counters.
             string memory corpus = vm.readFile("test/fixtures/authentic-vrf-proofs.json");
             address coordinator = IVRFService(VRF_SERVICE).coordinator();
@@ -229,7 +230,7 @@ contract AuthenticEconomicFlowsTest is AuthenticEconomicFlowsBase {
         }
         _assertCostFirstProfit();
         uint256 capitalBeforeClaim = balancer.operatingCapital();
-        uint256 profitBeforeClaim = balancer.creatorCredit();
+        uint256 profitBeforeClaim = balancer.creatorCredit() + balancer.bankrollProfit();
         uint256 claim = balancer.withdrawableSurplus();
         emit log_named_uint("launch_closeout_return_wei", claim);
         emit log_named_uint("launch_closeout_profit_wei", profitBeforeClaim);
@@ -271,7 +272,8 @@ contract AuthenticPositiveProceedsTest is AuthenticEconomicFlowsBase {
         uint256 actualPostSaleCosts = cashBeforeSales + 0.6 ether - address(balancer).balance - _actualBacking();
         assertEq(actualPostSaleCosts, shapes.mintFee(), "one restored Shape incurs its real mint fee");
         uint256 profit = _assertCostFirstProfit();
-        assertEq(profit, 0.6 ether - actualSetupCosts - actualPostSaleCosts);
+        uint256 feeCredit = balancer.creatorCredit();
+        assertEq(profit, 0.6 ether - actualSetupCosts - actualPostSaleCosts - feeCredit);
         assertGt(profit, 0.5 ether, "no invented basis or payout deduction for the three supplied NFTs");
         emit log_named_uint("curated_sales_wei", 0.6 ether);
         emit log_named_uint("curated_setup_cost_wei", actualSetupCosts);
@@ -281,22 +283,23 @@ contract AuthenticPositiveProceedsTest is AuthenticEconomicFlowsBase {
         vm.prank(creator);
         balancer.configure(2500, uint256(10) << 64, mintCap);
         assertGt(balancer.requiredReserve(), address(balancer).balance, "ten missing 1 ETH prizes exceed available cash");
-        assertEq(balancer.creatorCredit(), profit, "a target change does not rewrite earned profit");
+        assertEq(balancer.bankrollProfit(), profit, "a target change does not rewrite bankroll profit");
         assertEq(balancer.withdrawableSurplus(), 0, "fund the current prize deficit before withdrawing earnings");
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
         balancer.claimSurplus(1, creator);
         vm.prank(creator);
         balancer.configure(2500, 1, mintCap);
-        assertEq(balancer.creatorCredit(), profit, "removing the deficit trigger does not manufacture income");
-        uint256 spare = address(balancer).balance - balancer.requiredReserve();
-        assertEq(balancer.withdrawableSurplus(), profit < spare ? profit : spare);
+        assertEq(balancer.bankrollProfit(), profit, "removing the deficit trigger does not manufacture income");
+        uint256 spare = address(balancer).balance - feeCredit - balancer.requiredReserve();
+        assertEq(balancer.withdrawableSurplus(), feeCredit + (profit < spare ? profit : spare));
         uint256 amount = balancer.withdrawableSurplus();
         uint256 wallet = creator.balance;
         vm.prank(creator); balancer.claimSurplus(amount, creator);
         assertEq(creator.balance - wallet, amount);
         assertEq(balancer.operatingCapital(), 5 ether, "claiming profit never withdraws contributed capital");
-        assertEq(balancer.creatorCredit(), profit - amount);
+        assertEq(balancer.creatorCredit(), 0, "the creator fee bucket is paid first");
+        assertEq(balancer.bankrollProfit(), profit - (amount - feeCredit));
         _assertCostFirstProfit();
         for (uint256 i; i < 3; ++i) assertEq(nft.ownerOf(100 + i), buyer);
     }

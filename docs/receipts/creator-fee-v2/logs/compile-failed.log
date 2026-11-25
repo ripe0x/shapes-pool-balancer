@@ -1,0 +1,6 @@
+Error: Compiler run failed:
+Error (2314): Expected ';' but got reserved keyword 'partial'
+   --> test/CreatorFeeReinvestment.t.sol:161:17:
+    |
+161 |         uint256 partial = gap / 2;
+    |                 ^^^^^^^

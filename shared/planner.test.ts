@@ -265,6 +265,23 @@ describe('planner', () => {
     expect(loss.creatorEarningsPerDraw).toBeLessThan(0);
   });
 
+  it('separates V2 automatic gross creator fees from bankroll cash margin', () => {
+    const at = { ...inputs, curatedBases: [], markupBps: 2500, mintFee: 0n, restockFee: 0n, paidUpkeepEnabled: false, profitAccounting: true, creatorFeeAccounting: true };
+    const e = economics([1], at);
+    expect(e.creatorRevenueBps).toBe(1200);
+    expect(e.creatorFeesPerDraw).toBe(0.0015);
+    expect(e.creatorEarningsPerDraw).toBe(0.0015);
+    expect(e.retainedRevenuePerDraw).toBe(0.011);
+    expect(e.marginPerDraw).toBe(0.001);
+    const unknown = economics([1], { ...at, paidUpkeepEnabled: true, v1Preview: false });
+    expect(unknown.creatorEarningsKnown).toBe(true);
+    expect(unknown.creatorFeesPerDraw).toBe(0.0015);
+    expect(unknown.marginPerDraw).toBeUndefined();
+    const saved = economics([1], { ...at, creatorRevenueBps: 500 });
+    expect(saved.creatorRevenueBps).toBe(500);
+    expect(saved.creatorFeesPerDraw).toBe(0.000625);
+  });
+
   it('separates maintenance funding from a 100 ETH inventory deficit', () => {
     const baseFee = 500_000_000n;
     // Two outstanding draws at (2.15M + 60k) gas and two work fees each, plus the larger operating call at

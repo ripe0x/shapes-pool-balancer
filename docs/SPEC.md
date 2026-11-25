@@ -1,4 +1,5 @@
-> New accounting candidate (2026-11-25): [cost-first creator proceeds](COST-FIRST-PROCEEDS.md) and owner requirements R114–R117 supersede fixed-percentage creator credit for new implementations. Historical readiness and economic results below do not establish readiness for this change. Existing immutable pools retain their original behavior.
+> Current accounting candidate (2026-11-25): [automatic creator fees and optional replenishment](COST-FIRST-PROCEEDS.md), owner requirements R118–R121. Version 2 separates reserved fees from bankroll profit and permits exact-shortfall reinvestment. Historical readiness below does not establish readiness for this source change; existing clones retain their original behavior. No deployment is included.
+
 
 # Functional specification
 

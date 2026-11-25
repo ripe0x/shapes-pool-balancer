@@ -104,10 +104,11 @@ contract AuthenticSequenceTest is ForkBase {
             else if(denom==9)backing+=0.02 ether;else revert("unexpected launch denomination");
         }
         assertEq(backing,1.7 ether);
-        uint256 assets=address(balancer).balance+backing;
+        uint256 assets=address(balancer).balance+backing-balancer.creatorCredit();
         uint256 capital=balancer.operatingCapital();
-        uint256 credit=assets>capital?assets-capital:0;
-        assertEq(balancer.creatorCredit(),credit,"actual surviving assets repay costs before earnings");
+        uint256 profit=assets>capital?assets-capital:0;
+        assertEq(balancer.bankrollProfit(),profit,"actual operating assets repay costs before bankroll profit");
+        uint256 credit=balancer.creatorCredit();
         balancer.collectProceeds(); assertEq(balancer.creatorCredit(),credit,"keeper already collected each actual sale once");
         vm.prank(creator); balancer.close();
         uint256[] memory ids=balancer.getActiveIds();

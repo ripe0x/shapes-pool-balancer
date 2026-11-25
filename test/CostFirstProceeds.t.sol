@@ -56,9 +56,9 @@ contract CostFirstProceedsTest is ForkBase {
     }
 
     function _assertProfit() internal view {
-        uint256 assets = address(balancer).balance + _backingHeld();
+        uint256 assets = address(balancer).balance + _backingHeld() - balancer.creatorCredit();
         uint256 capital = balancer.operatingCapital();
-        assertEq(balancer.creatorCredit(), assets > capital ? assets - capital : 0, "actual cash and redeemable backing less capital");
+        assertEq(balancer.bankrollProfit(), assets > capital ? assets - capital : 0, "actual cash and redeemable backing less capital");
     }
 
     function _stock(uint256 count) internal {
@@ -74,8 +74,7 @@ contract CostFirstProceedsTest is ForkBase {
     }
 
     function test_depositsAreCapitalNotEarnedProceeds() public {
-        assertEq(balancer.profitAccountingVersion(), 1);
-        assertEq(balancer.creatorRevenueBps(), 0);
+        assertEq(balancer.profitAccountingVersion(), 2);
         vm.prank(stranger);
         balancer.depositETH{value: 0.25 ether}();
         assertEq(balancer.operatingCapital(), 1.25 ether);

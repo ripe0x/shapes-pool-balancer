@@ -3,6 +3,10 @@ import { BaseError, ContractFunctionRevertedError, ContractFunctionZeroDataError
 export const profitAbi = parseAbi([
   'function profitAccountingVersion() pure returns (uint256)',
   'function operatingCapital() view returns (uint256)',
+  'function bankrollProfit() view returns (uint256)',
+  'function creatorFeeTopUpAvailable() view returns (uint256)',
+  'function creatorFeeUpdatePending() view returns (bool)',
+  'function reinvestCreatorFees(uint256 maximumAmount)',
 ]);
 
 /** Accounting follows the fixed clone, independently of the factory's current implementation. */
@@ -18,10 +22,10 @@ export async function readProfitVersion(pub: Pick<PublicClient, 'readContract'>,
   }
 }
 
-export const operatingCash = (balance: bigint, credit: bigint, profitAccounting: boolean) => profitAccounting ? balance : balance - credit;
+export const operatingCash = (balance: bigint, credit: bigint, profitAccounting: boolean, creatorFeeAccounting = false) => profitAccounting && !creatorFeeAccounting ? balance : balance - credit;
 
-export function withdrawalBreakdown(credit: bigint, surplus: bigint | undefined, profitAccounting: boolean) {
+export function withdrawalBreakdown(credit: bigint, surplus: bigint | undefined, profitAccounting: boolean, creatorFeeAccounting = false) {
   const total = surplus ?? (profitAccounting ? 0n : credit);
-  const earnings = profitAccounting && total < credit ? total : credit;
+  const earnings = (profitAccounting || creatorFeeAccounting) && total < credit ? total : credit;
   return { total, earnings, capital: surplus === undefined ? undefined : total - earnings };
 }

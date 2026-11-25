@@ -30,6 +30,11 @@ library PoolInventory {
         uint256 accountedCash;
         uint256 capital;
         uint256 backing;
+        uint256 creatorFees;
+        uint256 curatedWeight;
+        uint256 curatedWeightedPrice;
+        uint16 creatorRevenueBps;
+        bool feeRateDirty;
     }
     struct Fill {
         uint256 plan;
@@ -89,7 +94,7 @@ library PoolInventory {
     function earned(State storage s) public view returns (uint256) {
         uint256 cash = address(this).balance;
         if (cash > s.accountedCash) cash = s.accountedCash;
-        uint256 assets = cash + s.backing;
+        uint256 assets = cash + s.backing - s.creatorFees;
         return assets > s.capital ? assets - s.capital : 0;
     }
 
@@ -106,12 +111,72 @@ library PoolInventory {
         pool.withdrawOwnerProceeds();
         amount = address(this).balance - before;
         recordCash(s);
+        uint256 fee = amount * s.creatorRevenueBps / 10_000;
+        s.creatorFees += fee;
+        emit CreatorFeesAccrued(fee);
         emit ProceedsCollected(amount);
     }
 
-    function settledEarnings(State storage s, IFWAPool pool, uint64 reconciled) public view returns (uint256) {
+    event CreatorFeesAccrued(uint256 amount);
+    event CreatorRevenueChanged(uint16 previousBps, uint16 newBps);
+    event CreatorFeesReinvested(uint256 amount);
+
+    /// @dev Rates are collection epochs: existing receipts use the old effective rate. No per-ticket rate hook
+    /// exists on FWA. Unreconciled wins and unactivated staging must never rewrite the effective mix.
+    function refreshCreatorRate(State storage s, IFWAPool pool, uint64 reconciled, uint256 target, uint256 markup,
+        uint256 fee, KeeperPolicyCalls.Economics memory econ) public
+    {
+        if (!s.feeRateDirty || pool.unsettledAcquisitionCount() != 0 || pool.lastIssuedSequence() != reconciled
+            || pool.activeListingCount() != s.activeIds.length) return;
+        uint256 totalWeight = s.curatedWeight;
+        uint256 weightedPrice = s.curatedWeightedPrice;
+        uint256 allocation;
+        uint256 excess = markup > 1_000 ? markup - 1_000 : 0;
+        for (uint256 d; d < DENOMS; ++d) {
+            uint256 n = _count(target, d);
+            if (n == 0) continue;
+            uint256 price = _prizeBase(d, fee, markup) + KeeperPolicyCalls.restock(econ, _shapesIn(d), block.basefee);
+            uint256 weight = n * (1e36 / price);
+            totalWeight += weight;
+            weightedPrice += weight * price;
+            allocation += weight * (_amount(d) * excess / 10_000);
+        }
+        uint256 ownerEV = totalWeight == 0 ? 0 : weightedPrice / totalWeight;
+        uint16 rate = ownerEV == 0 ? 0 : uint16(allocation * 10_000 / (totalWeight * ownerEV));
+        emit CreatorRevenueChanged(s.creatorRevenueBps, rate);
+        s.creatorRevenueBps = rate;
+        s.feeRateDirty = false;
+    }
+
+    function settledProfit(State storage s, IFWAPool pool, uint64 reconciled) public view returns (uint256) {
         if (pool.lastIssuedSequence() != reconciled) return 0;
         return earned(s);
+    }
+
+    function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+        uint256 target, uint256 mintFee) public view returns (uint256)
+    {
+        // The accepted cap bounds replacement cost even if the live mint fee rises.
+        r.mintFee = mintFee;
+        r.target = target;
+        r.have = s.activeShapes;
+        return KeeperPolicyCalls.reserve(econ, r);
+    }
+
+    function topUpAvailable(State storage s, uint256 reserve) public view returns (uint256) {
+        uint256 operating = address(this).balance - s.creatorFees;
+        uint256 gap = reserve > operating ? reserve - operating : 0;
+        return gap < s.creatorFees ? gap : s.creatorFees;
+    }
+
+    function reinvest(State storage s, uint256 maximum, uint256 reserve) public returns (uint256 amount) {
+        amount = topUpAvailable(s, reserve);
+        if (amount > maximum) amount = maximum;
+        if (amount == 0) revert InsufficientSurplus();
+        syncCapital(s);
+        s.creatorFees -= amount;
+        s.capital += amount;
+        emit CreatorFeesReinvested(amount);
     }
 
     function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
@@ -119,10 +184,12 @@ library PoolInventory {
     {
         if (pool.unsettledAcquisitionCount() != 0 || pool.lastIssuedSequence() != reconciled) return 0;
         uint256 cash = address(this).balance;
-        uint256 spare = cash > reserve ? cash - reserve : 0;
-        if (!enabled) return spare;
+        if (!enabled) return cash > reserve ? cash - reserve : 0;
+        uint256 operating = cash - s.creatorFees;
+        if (operating < reserve) return 0;
+        uint256 spare = operating - reserve;
         uint256 profit = earned(s);
-        return profit < spare ? profit : spare;
+        return s.creatorFees + (profit < spare ? profit : spare);
     }
 
     function recordCash(State storage s) public { s.accountedCash = address(this).balance; }
@@ -135,7 +202,10 @@ library PoolInventory {
         if (amount > maximum) revert InsufficientSurplus();
         syncCapital(s);
         uint256 profit = earned(s);
-        if (amount > profit) s.capital -= amount - profit;
+        uint256 fees = amount < s.creatorFees ? amount : s.creatorFees;
+        s.creatorFees -= fees;
+        uint256 remainder = amount - fees;
+        if (remainder > profit) s.capital -= remainder - profit;
         s.accountedCash -= amount;
         SafeTransferLib.safeTransferETH(to, amount);
         emit SurplusClaimed(to, amount);
@@ -313,6 +383,11 @@ library PoolInventory {
         _checkValue(base);
         it.base = uint104(base);
         if (base != it.price) {
+            uint256 oldWeight = 1e36 / it.price;
+            uint256 newWeight = 1e36 / base;
+            s.curatedWeight = s.curatedWeight - oldWeight + newWeight;
+            s.curatedWeightedPrice = s.curatedWeightedPrice - oldWeight * it.price + newWeight * base;
+            s.feeRateDirty = true;
             pool.updatePrice(lid, base);
             it.price = uint104(base);
         }
@@ -503,6 +578,11 @@ library PoolInventory {
         Item storage it = s.items[lid];
         if (it.kind == SHAPE) {
             ++s.listedPrizes;
+        } else {
+            uint256 weight = 1e36 / it.price;
+            s.curatedWeight += weight;
+            s.curatedWeightedPrice += weight * it.price;
+            s.feeRateDirty = true;
         }
         s.activeIds.push(lid);
         s.activeIndexPlusOne[lid] = s.activeIds.length;
@@ -513,6 +593,11 @@ library PoolInventory {
         Item storage it = s.items[lid];
         if (it.kind == SHAPE) {
             --s.listedPrizes;
+        } else {
+            uint256 weight = 1e36 / it.price;
+            s.curatedWeight -= weight;
+            s.curatedWeightedPrice -= weight * it.price;
+            s.feeRateDirty = true;
         }
         uint256 lastId = s.activeIds[s.activeIds.length - 1];
         s.activeIds[idx - 1] = lastId;

@@ -31,3 +31,10 @@ it('preserves protected-credit withdrawal display for earlier immutable clones',
   expect(withdrawalBreakdown(30n, 100n, false)).toEqual({ total: 100n, earnings: 30n, capital: 70n });
   expect(withdrawalBreakdown(30n, undefined, false)).toEqual({ total: 30n, earnings: 30n, capital: undefined });
 });
+
+it('keeps V2 creator fees outside operating cash and blocks withdrawal during a reserve deficit', () => {
+  expect(operatingCash(100n, 30n, true, true)).toBe(70n);
+  expect(withdrawalBreakdown(30n, 0n, true, true)).toEqual({ total: 0n, earnings: 0n, capital: 0n });
+  expect(withdrawalBreakdown(30n, 40n, true, true)).toEqual({ total: 40n, earnings: 30n, capital: 10n });
+  expect(withdrawalBreakdown(30n, undefined, true, true)).toEqual({ total: 0n, earnings: 0n, capital: undefined });
+});

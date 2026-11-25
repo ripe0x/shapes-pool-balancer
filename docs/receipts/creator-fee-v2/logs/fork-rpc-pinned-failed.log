@@ -1,0 +1,8 @@
+No files changed, compilation skipped
+Error: failed to retrieve chain ID from fork endpoint
+
+Context:
+- Max retries exceeded HTTP error 429 with body: {"id":0,"jsonrpc":"2.0","error":{"code":-32005,"message":"rate limit exceeded"}}
+
+HTTP diagnostics:
+server: envoy

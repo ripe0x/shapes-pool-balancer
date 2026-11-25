@@ -173,8 +173,10 @@ export interface PoolInputs {
   markupBps: number;
   /** Stored payout percentage. Omit only for a new design, to preview its initial suggestion. */
   creatorRevenueBps?: number;
-  /** New clones retain revenue for costs and report net profit rather than a stored sales allocation. */
+  /** V1 reports net profit; V2 also sets creatorFeeAccounting to reserve automatic creator fees. */
   profitAccounting?: boolean;
+  /** V2 reserves an automatic markup-based creator fee before bankroll costs. */
+  creatorFeeAccounting?: boolean;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
   restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
@@ -390,8 +392,9 @@ export function suggestedCreatorRevenueBps(counts: Counts, inputs: PoolInputs): 
 /** Per-draw expectation at actual listed prices. Collections round credit once per collected amount. */
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
-  const creatorRevenueBps = inputs.profitAccounting ? 0 : inputs.creatorRevenueBps ?? suggestedCreatorRevenueBps(counts, inputs);
-  if (inputs.profitAccounting && inputs.creatorRevenueBps !== undefined && inputs.creatorRevenueBps !== 0) throw new Error('Profit accounting has no creator revenue percentage');
+  const netProfit = inputs.profitAccounting && !inputs.creatorFeeAccounting;
+  const creatorRevenueBps = netProfit ? 0 : inputs.creatorRevenueBps ?? suggestedCreatorRevenueBps(counts, inputs);
+  if (netProfit && inputs.creatorRevenueBps !== undefined && inputs.creatorRevenueBps !== 0) throw new Error('Profit accounting has no creator revenue percentage');
   if (!Number.isInteger(creatorRevenueBps) || creatorRevenueBps < 0 || creatorRevenueBps > 10_000) {
     throw new Error('Creator revenue share must be 0 to 10000 basis points');
   }
@@ -428,10 +431,11 @@ export function economics(counts: Counts, inputs: PoolInputs) {
   const mint = average(mintWeighted);
   const keeper = keeperCostKnown ? average(keeperWeighted) : undefined;
   const margin = keeper === undefined ? undefined : retained - replacement - mint - keeper;
-  const creator = inputs.profitAccounting ? margin ?? 0n : allocated;
+  const creator = netProfit ? margin ?? 0n : allocated;
   return {
     creatorRevenueBps,
-    creatorEarningsKnown: !inputs.profitAccounting || keeperCostKnown,
+    creatorEarningsKnown: !netProfit || keeperCostKnown,
+    creatorFeesPerDraw: toEth(allocated),
     keeperCostKnown,
     ownerProceeds: toEth(ev.ownerProceedsPerDraw),
     creatorEarningsPerDraw: toEth(creator),
