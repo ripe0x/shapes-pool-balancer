@@ -1,0 +1,20 @@
+{
+ "url": "http://127.0.0.1:5221",
+ "rpcUrl": "http://127.0.0.1:18784",
+ "owner": "0x5b01599a32C3b99826bca57E97FEBe76986dF14D",
+ "scope": "Post-conflict community navigation/help, actual returned manager owner settings/cap review, completed second-manager review",
+ "checks": [
+  "Community design remains the disconnected landing page",
+  "Community help and its current mint-fee example retained",
+  "Help tabs retain the three-paid-Shape and owner-funded manager explanation",
+  "Actual fork manager discovered for the connected owner without a vault address",
+  "Owner settings and named quoted gas schedule remain accessible",
+  "One-wei caller limit refuses the real first-manager work before confirmation",
+  "Sufficient stated limit displays the bounded cost review without submitting"
+ ],
+ "writes": [],
+ "errors": [],
+ "beforeNonce": "0x3",
+ "status": "FAIL",
+ "failure": "TimeoutError: locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.mp-manager-exit').getByText(/Manager closeout complete:/) to be visible\u001b[22m\n"
+}

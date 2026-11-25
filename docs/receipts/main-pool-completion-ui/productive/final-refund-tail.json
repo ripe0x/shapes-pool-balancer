@@ -1,0 +1,25 @@
+{
+  "engine": "156.0.8078.4",
+  "checks": [
+    "Claim 0.0000450009695 ETH",
+    "No claimable refund remains on complete bounded history page"
+  ],
+  "writes": [
+    {
+      "jsonrpc": "2.0",
+      "id": 63,
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0xcc4b616200000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000b",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x1a810",
+          "maxFeePerGas": "0x3b9aceb3",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

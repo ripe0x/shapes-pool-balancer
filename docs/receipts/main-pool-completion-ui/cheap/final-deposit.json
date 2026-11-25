@@ -1,0 +1,56 @@
+{
+  "stage": "deposit",
+  "engine": "156.0.8078.4",
+  "block": 26484921,
+  "checks": [
+    "Deposited 0.1ETH gross wallet value through real UI",
+    "Positive one-wei exit limit refuses real executable cancellation before signing",
+    "Cancel uncommitted deposit",
+    "Deposited 0.1ETH gross wallet value through real UI"
+  ],
+  "errors": [],
+  "writes": [
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0xb214faa5a80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x616f0",
+          "maxFeePerGas": "0x3b9b4a43",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x16345785d8a0000"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x3d561602",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x2e75d",
+          "maxFeePerGas": "0x3b9b3a66",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0xb214faa5a80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x54cd4",
+          "maxFeePerGas": "0x3b9b2c7e",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x16345785d8a0000"
+        }
+      ]
+    }
+  ]
+}

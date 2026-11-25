@@ -15,7 +15,7 @@ import { canRetryCreation, creationContextMatches, creationNotSubmitted, creatio
 import { explain } from './errors';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
-import { MAIN_POOL_OPEN, VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, MAIN_MANAGER_OPEN, MAIN_POOL_VISIBLE } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
 import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -358,6 +358,9 @@ export function useTx(onDone: () => void) {
     const { prepared, intent } = await prepareTransfer(pub!, address, to, value);
     return submit(intent, () => sendTransactionAsync(prepared as never));
   };
+  const transferReviewed = (prepared: Awaited<ReturnType<typeof prepareTransfer>>['prepared'], beforeWallet: () => void) =>
+    submit({ chainId: prepared.chainId!, from: prepared.account, to: prepared.to, input: '0x', value: prepared.value },
+      () => sendTransactionAsync(prepared as never), beforeWallet);
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
   // The last transaction the wallet submitted in the current or latest `send`, for its explorer link.
@@ -402,7 +405,7 @@ export function useTx(onDone: () => void) {
     }
   };
   const reset = () => { setMsg(undefined); setSteps(undefined); setHash(undefined); };
-  return { send, busy, msg, hash, steps, reset, write, transfer, failure };
+  return { send, busy, msg, hash, steps, reset, write, transfer, transferReviewed, failure };
 }
 
 /** A step of a `send`, as the progress panel shows it. `declined`: the wallet refused it (nothing was submitted). */
@@ -539,7 +542,7 @@ function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activ
 
 type Page = 'home' | 'list' | 'pool' | 'new' | 'main';
 // 'list' falls through to the Design page when disconnected or once the pool list loads empty.
-const LANDING: Page = MAIN_POOL_OPEN ? 'home' : 'list';
+const LANDING: Page = MAIN_POOL_OPEN || MAIN_MANAGER_OPEN ? 'home' : 'list';
 // #how-<section> opens How it works at that section; #how-main is the main pool's page.
 /** A pool's permalink, #pool/0x…[/nfts|mix|settings]: opens that pool, with or without a wallet. */
 const poolRouteOf = (hash: string): { b: Address; tab: Tab } | undefined => {
@@ -682,11 +685,11 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
+        <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN || MAIN_MANAGER_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
-          {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
-          <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = 'how'; }}>How it works</button>
+          {MAIN_POOL_VISIBLE && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
+          <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = view === 'main' ? 'how-main' : 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (
           <div className="right">
@@ -702,7 +705,7 @@ export function App() {
           </div>
         )}
       </header>
-      {!FACTORY && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
+      {!FACTORY && community && <p className="txline bad">VITE_FACTORY is not set. See app/.env.example.</p>}
       {help === 'how' && <HowItWorks onDesign={() => go('new')} />}
       {help === 'how-main' && <HowItWorksMain />}
       <div hidden={!!help}>

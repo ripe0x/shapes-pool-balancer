@@ -1,0 +1,71 @@
+[
+  {
+    "name": "abi-defaults-check",
+    "command": [
+      "node",
+      "scripts/export-main-pool-abi.mjs",
+      "--check"
+    ],
+    "cwd": "/Users/dd/CascadeProjects/shapes-pool-app-completion",
+    "exit_status": 0,
+    "elapsed_seconds": 0.039,
+    "log": "/tmp/shapes-app-ui-preview/final-batch-abi-defaults-check.log"
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "npm",
+      "run",
+      "typecheck"
+    ],
+    "cwd": "/Users/dd/CascadeProjects/shapes-pool-app-completion",
+    "exit_status": 0,
+    "elapsed_seconds": 11.176,
+    "log": "/tmp/shapes-app-ui-preview/final-batch-typecheck.log"
+  },
+  {
+    "name": "affected-tests",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "app/src/main-pool.test.ts",
+      "app/src/main-pool-settings.test.ts",
+      "app/src/main-pool-exit.test.ts",
+      "app/src/errors.test.ts",
+      "app/src/creation.test.ts",
+      "app/src/creation-replacement.test.ts",
+      "app/src/chain.test.ts",
+      "app/src/policy.test.ts"
+    ],
+    "cwd": "/Users/dd/CascadeProjects/shapes-pool-app-completion",
+    "exit_status": 0,
+    "elapsed_seconds": 2.291,
+    "log": "/tmp/shapes-app-ui-preview/final-batch-affected-tests.log"
+  },
+  {
+    "name": "build-app",
+    "command": [
+      "npm",
+      "run",
+      "build:app"
+    ],
+    "cwd": "/Users/dd/CascadeProjects/shapes-pool-app-completion",
+    "exit_status": 0,
+    "elapsed_seconds": 7.442,
+    "log": "/tmp/shapes-app-ui-preview/final-batch-build-app.log"
+  },
+  {
+    "name": "stale-abi-negative",
+    "command": [
+      "node",
+      "/Users/dd/CascadeProjects/shapes-pool-app-completion/scripts/export-main-pool-abi.mjs",
+      "--check"
+    ],
+    "cwd": "temporary copy of shared outputs",
+    "exit_status": 1,
+    "expected": "nonzero with explicit stale ABI rejection",
+    "passed": true,
+    "log": "/tmp/shapes-app-ui-preview/final-batch-stale-abi-negative.log"
+  }
+]

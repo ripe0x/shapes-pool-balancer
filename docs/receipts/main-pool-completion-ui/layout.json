@@ -1,0 +1,16 @@
+[
+  {
+    "name": "desktop",
+    "statusHeight": 168,
+    "document": 1360,
+    "viewport": 1360,
+    "overflow": []
+  },
+  {
+    "name": "mobile",
+    "statusHeight": 497,
+    "document": 390,
+    "viewport": 390,
+    "overflow": []
+  }
+]

@@ -1,0 +1,10 @@
+page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5217/#main/vault
+Call log:
+[2m  - navigating to "http://127.0.0.1:5217/#main/vault", waiting until "load"[22m
+
+    at /private/tmp/shapes-app-ui-preview/final-flow-owned.cjs:7:12 {
+  log: [
+    '  - navigating to "http://127.0.0.1:5217/#main/vault", waiting until "load"'
+  ],
+  name: 'Error'
+}

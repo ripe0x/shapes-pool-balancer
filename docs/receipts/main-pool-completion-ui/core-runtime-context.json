@@ -1,0 +1,48 @@
+{
+  "vault": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+  "source_sha256": {
+    "src/PackAccount.sol": "a4286b894ae4131fcee5bb24e38d31a56ff9dc669e94b5b27c7ceb5d1352d940",
+    "src/PackManager.sol": "5c23cb253699b76a78e8bb06fc12c7b77516a2e30625729538fafbb5c6545c88",
+    "src/PackManagerFactory.sol": "a2f0154daf881185bbd7cefac5cd0e54666f5003621d4d830a1d489d23bfeea2",
+    "src/PackVault.sol": "05c5d2db28aae1064362fbf7730da7f27540b1b68c01679fc189b9350f753b2f",
+    "src/ScanLib.sol": "342dbc5b8998a6bf74ca84bdddc28bca71663972abaccb196d52df6af8a62a2c",
+    "src/StrategyLib.sol": "23c387fd44c39e4c5939ef8e984d9a0b8ac16605c142fc1fd8c23f1573eb930e",
+    "src/VaultLib.sol": "e15213f9c80a3336fcff847654a56743be6278f9624e1248d9e329487458e788",
+    "src/interfaces/External.sol": "aa0a1d3c0c965e664eade6854a03fc803e09caa7116c62a2966249f9a588b879"
+  },
+  "source_unchanged_during_deploy": true,
+  "runtimes": [
+    {
+      "name": "ScanLib",
+      "address": "0x4ac701799b22e4c7a0f24301ccc904ad6fb3f005",
+      "runtime_bytes": 22993,
+      "runtime_sha256": "43cfcbbdd579daaa57805e3872b108c4ee413b7fe8df5176d314ed682462a750"
+    },
+    {
+      "name": "VaultLib",
+      "address": "0x650b28e26586dbfea4d2be777d3983816d0d1a2f",
+      "runtime_bytes": 22260,
+      "runtime_sha256": "41ca863d790c9998ede66ee20ada1f413567cc16c6bb9faeab0a954fe0d6fab3"
+    },
+    {
+      "name": "StrategyLib",
+      "address": "0xe899b8ac4712842d6af7a9f47a7b6951bda4b519",
+      "runtime_bytes": 18090,
+      "runtime_sha256": "4e4b25cc13bdeadd3bde15c831498635d46a0994ec08c3d1538e2eee08984cd8"
+    },
+    {
+      "name": "PackVault",
+      "address": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+      "runtime_bytes": 24095,
+      "runtime_sha256": "6a5c13f9d19ef1c4d908bf8918eec5c1e41cf145ac6bec4deed92d552c2ce87d"
+    },
+    {
+      "name": "PackManagerFactory",
+      "address": "0x67bc465229c9b1c92f5efbbf0f3d61aec91a496f",
+      "runtime_bytes": 4986,
+      "runtime_sha256": "1d42a16bd0777e1dcf6d3f63b63ac0e8ad770ca7170b80e2ff95a34ad9229a70"
+    }
+  ],
+  "selected_context": "Latest recorded source-R runtime context; earlier phase contexts in the same append-only campaign log are not this UI candidate.",
+  "runtime_readback_at_block": 26484944
+}

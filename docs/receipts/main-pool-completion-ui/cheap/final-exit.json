@@ -1,0 +1,70 @@
+{
+  "stage": "exit",
+  "engine": "156.0.8078.4",
+  "block": 26484928,
+  "checks": [
+    "Request redemption of all shares",
+    "Price the next redemption fill",
+    "Claim priced ETH",
+    "Complete exit: no deposit, shares, redemption or priced claim remains",
+    "Claim 0.0000450150175 ETH contribution refund"
+  ],
+  "errors": [],
+  "writes": [
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x3b7041d2000000000000000000000000000000000000000000000000002293a2eedde2f9a80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x60fe0",
+          "maxFeePerGas": "0x3b9b03d9",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x28eed0ce2ba0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x72d5146c0000000000000000000000000000000000000000000000000000000000000000",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x4dabb",
+          "maxFeePerGas": "0x3b9afcb3",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0x4e71d92d",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x24b70",
+          "maxFeePerGas": "0x3b9af66c",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "method": "eth_sendTransaction",
+      "params": [
+        {
+          "data": "0xcc4b61620000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000008",
+          "from": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+          "gas": "0x27542",
+          "maxFeePerGas": "0x3b9af0e9",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "to": "0xb0858bf1b8a167188847499b3008e597b57eaebc"
+        }
+      ]
+    }
+  ]
+}

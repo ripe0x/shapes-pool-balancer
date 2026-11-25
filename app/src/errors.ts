@@ -3,6 +3,9 @@ import { BaseError, ContractFunctionRevertedError, decodeErrorResult, parseAbi }
 const FWA_ERRORS = parseAbi(['error WithdrawLocked()']);
 
 const ERRORS: Record<string, string> = {
+  ConfigurationChanged: 'the account settings or live mint fee changed; refresh and review again',
+  ExplicitFeeAcceptanceRequired: 'accept a new mint fee maximum separately from other account settings',
+  MintFeeNotAccepted: 'fresh minting waits until the account owner accepts the current mint fee',
   NoUpkeepNeeded: 'nothing to do right now',
   WithdrawLocked: 'draws are settling on FWA; try again in a minute',
   InsufficientSurplus: 'amount exceeds claimable surplus',

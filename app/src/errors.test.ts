@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ContractFunctionRevertedError, toFunctionSelector } from 'viem';
 import { poolBalancerAbi } from '../../shared/abi';
 import { explain } from './errors';
+import { packVaultAbi } from '../../shared/main-pool-abi';
 
 const revert = (data: `0x${string}`) => new ContractFunctionRevertedError({ abi: poolBalancerAbi, data, functionName: 'unlistShapes' });
 
@@ -14,5 +15,9 @@ describe('explain', () => {
   });
   it('falls back to the short message for unknown errors', () => {
     expect(explain(revert('0xdeadbeef'))).toMatch(/0xdeadbeef|reverted/i);
+  });
+  it('explains a changed main-account configuration before funds are committed', () => {
+    const error = new ContractFunctionRevertedError({ abi: packVaultAbi, data: toFunctionSelector('ConfigurationChanged()'), functionName: 'deposit' });
+    expect(explain(error)).toBe('the account settings or live mint fee changed; refresh and review again');
   });
 });

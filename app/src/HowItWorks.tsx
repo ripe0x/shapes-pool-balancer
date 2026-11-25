@@ -3,7 +3,7 @@ import { parseEther } from 'viem';
 import { BY_VALUE, DENOMS, V1_ECONOMICS, capitalOf, economics, evaluate, maxSurchargeOf, prizeLabel, reserveBreakdownAt, restockFeeAt, type Counts } from '../../shared/planner';
 import { ethNeeded, playerView, presetCounts, type DesignInputs, type Style } from '../../shared/design';
 import { StatusBar, useVault } from './MainPool';
-import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, MAIN_MANAGER_OPEN, MANAGER_FACTORY, MAIN_POOL_VISIBLE, VAULT } from './main-pool';
 
 // One worked example: a 0.2 ETH NFT, 20 small Shapes, 15% markup, 0.0005 ETH mint fee and 1 gwei basefee.
 const EXAMPLE: DesignInputs = {
@@ -59,12 +59,12 @@ function Bar({ parts }: { parts: { label: string; share: number; style: CSSPrope
 
 /** Tabs between the two How it works pages; community pools and the main pool are separate products. */
 function HiwTabs({ main }: { main: boolean }) {
-  if (!VAULT) return null;
+  if (!MAIN_POOL_VISIBLE) return null;
   return (
     <nav className="tabs sub" aria-label="How it works">
       <button aria-current={main ? undefined : 'page'} onClick={() => { location.hash = 'how'; }}>Community pools</button>
       <button aria-current={main ? 'page' : undefined} onClick={() => { location.hash = 'how-main'; }}>
-        Main pool{!MAIN_POOL_OPEN && <span className="tab-tag">Coming soon</span>}
+        Main pool{!MAIN_POOL_OPEN && !MAIN_MANAGER_OPEN && <span className="tab-tag">Coming soon</span>}
       </button>
     </nav>
   );
@@ -89,7 +89,7 @@ export function HowItWorks({ onDesign }: { onDesign: () => void }) {
     <>
     <HiwTabs main={false} />
     <main className="page hiw">
-      {VAULT && <p className="note hiw-switch">Pools a creator designs and runs with their own prizes.</p>}
+      {MAIN_POOL_VISIBLE && <p className="note hiw-switch">Pools a creator designs and runs with their own prizes.</p>}
       <h1 className="title">How it works</h1>
       <p className="lead">A pool is a prize inventory on FWA. Players pay a draw price and win one prize at random. You put in ETH and, optionally, your NFTs; keepers restock prizes from the pool's operating ETH.</p>
       <p className="note" style={{ marginTop: 10 }}>Every number below comes from one example: a 0.2 ETH NFT, the Balanced style at 20 small Shapes, and a 15% markup.</p>
@@ -204,11 +204,11 @@ const FAQ: [string, string][] = [
 /** The main pool page: what the shared vault and personal managers do with ETH. Live figures come from the vault. */
 export function HowItWorksMain() {
   const { data: v } = useVault();
-  const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'an amount set from FWA\'s live fees';
+  const backing = v?.edge[2] ? `about ${eth(v.edge[1], 4)} ETH` : 'the account owner\'s configured amount';
   return (
     <>
     <HiwTabs main />
-    {!MAIN_POOL_OPEN && <StatusBar head="Not open yet." body={`The shared vault${MANAGER_FACTORY ? ' and personal managers are' : ' is'} coming soon.`} />}
+    {!MAIN_POOL_OPEN && !MAIN_MANAGER_OPEN && <StatusBar head="Not open yet." body={VAULT ? `The shared vault${MANAGER_FACTORY ? ' and personal managers are' : ' is'} coming soon.` : 'Personal managers are coming soon.'} />}
     <main className="page hiw">
       <p className="note hiw-switch">Earning on FWA's main pool through the shared vault{MANAGER_FACTORY ? ' or a personal manager' : ''}.</p>
       <h1 className="title">How the main pool works</h1>
@@ -216,30 +216,30 @@ export function HowItWorksMain() {
 
       <section className="hiw-sec">
         <h2 className="h3">1. The pack</h2>
-        <p className="hiw-p">Each pack is one 0.05 ETH Shape and one 0.01 ETH Shape, minted straight into a ShapePack: <b>0.06 ETH</b> of Shapes that redeem for exactly that ETH.</p>
+        <p className="hiw-p">The launch pack contains three directly minted 0.01 ETH Shapes: <b>0.03 ETH</b> of Shapes that redeem for exactly that ETH.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">2. Listing with backing</h2>
-        <p className="hiw-p">A pack is listed on FWA's main pool with <b>{backing}</b> of backing. While it is listed it earns a share of every acquisition fee on the pool. Backing is set so that a buyer who draws the pack does better keeping it than taking FWA's bid.</p>
+        <p className="hiw-p">A pack is listed on FWA's main pool with <b>{backing}</b> of backing. While it is listed it earns a share of every acquisition fee on the pool. The account owner sets the backing ratio. The buyer chooses whether to keep the pack or take a bid.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">3. Keep or bid</h2>
-        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack comes back and is listed again.</p>
+        <p className="hiw-p">When FWA selects a pack, the buyer chooses. <b>Keep</b>: the buyer takes the pack, the backing comes back less FWA's settlement fee, and a new pack is built. <b>Bid</b>: the buyer takes FWA's bid instead, which is paid from the backing; the pack returns. It is relisted with its existing Shapes.</p>
       </section>
 
       <section className="hiw-sec">
         <h2 className="h3">4. The shared vault's checkpoints</h2>
         <p className="hiw-p">Holders own shares that can't be transferred. Deposits and redemptions wait for the next <b>checkpoint</b>, which runs at most once every 12 hours, in FWA's quiet window, and prices them together.</p>
-        <p className="hiw-p">A deposit can be cancelled for a full refund until it is priced. A redemption locks shares; each checkpoint fills it from the vault's free ETH and the rest stays invested until filled. Filled ETH waits for you to <b>claim</b> it.</p>
+        <p className="hiw-p">A deposit can be cancelled until it is priced. Checkpoint sponsorship may remain refundable separately. A redemption locks shares; each checkpoint fills it from the vault's free ETH and the rest stays invested until filled. Filled ETH waits for you to <b>claim</b> it.</p>
       </section>
 
       {MANAGER_FACTORY && (
         <section className="hiw-sec">
           <h2 className="h3">5. Personal managers</h2>
           <p className="hiw-p">A manager runs the same strategy with only your ETH, in a contract only you can withdraw from. The factory that created it keeps no control. There are no shares or checkpoints: idle ETH can be withdrawn at any time.</p>
-          <p className="hiw-p"><b>Exit mode</b> unlists every pack and turns it back into ETH. A pack a buyer has already drawn returns once FWA settles it. You can leave exit mode later; listing stays paused until you resume it.</p>
+          <p className="hiw-p"><b>Owner-paid closeout</b> stops new investment. You choose a wallet spending limit and confirm each bounded settlement, queue-processing, unlisting, pack redemption, fee collection and final withdrawal step. Randomness, request deadlines and crown exit delays can require waiting. Keeper profitability does not block these owner-paid steps. You can leave exit mode later; listing stays paused until you resume it.</p>
         </section>
       )}
 

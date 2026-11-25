@@ -1,29 +1,25 @@
 import { parseEther } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { POSITION_VALUE, creationState, depositShares, managerStatus, outcomes, packCost, packsFor, redeemCharge, vaultStatus, type ManagerCreation } from './main-pool';
+import { creationState, depositShares, managerStatus, observedResolutions, packCost, packsFor, bookPage, historyRange, navWitnessCandidates, MANAGER_PARAMS, redeemCharge, vaultStatus, type ManagerCreation } from './main-pool';
 
 const eth = parseEther;
 
 describe('vault request math (mirrors PackVault.deposit and requestRedeem)', () => {
-  it('matches the deployment charge PackVault escrowed for a real 0.5 ETH deposit', () => {
-    // Fork observation: deposit{value: 0.5 ETH} with requestCharge 38,001 gwei and deployCharge 2,109,250,009,695,000
-    // wei stored amount 499,961,999,000,000,000 and charge 8,309,440,416,339,404.
-    const v = { requestCharge: 38_001_000_000_000n, deployCharge: 2_109_250_009_695_000n, pricePerShare: eth('10') };
-    const net = eth('0.5') - v.requestCharge;
-    expect(net).toBe(499_961_999_000_000_000n);
-    const charge = (net * v.deployCharge) / (POSITION_VALUE + v.deployCharge);
-    expect(charge).toBe(8_309_440_416_339_404n);
-    expect(depositShares(eth('0.5'), v)).toBe(((net - charge) * 10n ** 18n) / eth('10'));
+  it('uses the account reference value for estimated construction charges', () => {
+    const v = { requestCharge: eth('0.0001'), deployCharge: eth('0.004'), referencePositionValue: eth('0.24'), pricePerShare: eth('1') };
+    // 0.488 principal + 0.0001 request charge: construction takes 1/61 of the net deposit.
+    expect(depositShares(eth('0.4881'), v)).toBe(eth('0.48'));
+    expect(depositShares(eth('0.4881'), { ...v, referencePositionValue: eth('0.12') })).toBeLessThan(eth('0.48'));
   });
 
   it('buys nothing at or below the request charge', () => {
-    expect(depositShares(1000n, { requestCharge: 1000n, deployCharge: 0n, pricePerShare: eth('1') })).toBe(0n);
+    expect(depositShares(1000n, { requestCharge: 1000n, deployCharge: 0n, referencePositionValue: eth('0.24'), pricePerShare: eth('1') })).toBe(0n);
   });
 
   it('charges the request charge plus the unwind charge on the shares value at the last checkpoint', () => {
-    const v = { requestCharge: eth('0.0001'), unwindCharge: eth('0.001'), lastNav: eth('20'), totalShares: eth('2') };
-    // 0.5 shares are worth 5 ETH; 5 / 0.1248 positions at 0.001 ETH each.
-    expect(redeemCharge(eth('0.5'), v)).toBe(eth('0.0001') + (eth('5') * eth('0.001')) / POSITION_VALUE);
+    const v = { requestCharge: eth('0.0001'), unwindCharge: eth('0.001'), lastNav: eth('20'), totalShares: eth('2'), referencePositionValue: eth('0.24') };
+    // 0.5 shares are worth 5 ETH; each 0.24 ETH position carries a 0.001 ETH unwind allowance.
+    expect(redeemCharge(eth('0.5'), v)).toBe(eth('0.0001') + (eth('5') * eth('0.001')) / v.referencePositionValue);
     expect(redeemCharge(eth('0.5'), { ...v, unwindCharge: 0n })).toBe(eth('0.0001'));
   });
 });
@@ -44,27 +40,35 @@ describe('vault status', () => {
 });
 
 describe('manager status and capacity', () => {
-  const m = { exiting: false, listingPaused: false, edge: [0n, eth('0.0649'), true] as const, book: { listed: 3, idle: 0 }, balance: 0n, params: { reserve: eth('0.005') } };
-  const cost = packCost(eth('0.0649'), eth('0.0021'));
-  it('lists', () => expect(managerStatus(m as never, cost).body).toBe("3 packs on FWA's main pool. Nothing needs attention."));
+  const m = { exiting: false, listingPaused: false, edge: [0n, eth('0.21'), true] as const, book: { listed: 3, idle: 0 }, balance: 0n, operatingReserve: eth('0.25'), params: MANAGER_PARAMS };
+  const cost = packCost(eth('0.03'), eth('0.21'), eth('0.004'));
+  it('lists', () => expect(managerStatus(m as never, cost).body).toBe("3 packs on FWA's main pool. Account settings govern further work."));
   it('reports exit, pause and FWA gate in that order', () => {
     expect(managerStatus({ ...m, exiting: true, listingPaused: true } as never, cost).head).toBe('Exiting.');
     expect(managerStatus({ ...m, listingPaused: true } as never, cost).head).toBe('Listing paused.');
     expect(managerStatus({ ...m, edge: [0n, 0n, false] } as never, cost).head).toBe('New investment paused.');
   });
+  it('does not treat the reference fallback as fresh-build permission when every recipe is disabled', () => {
+    expect(managerStatus({ ...m, params: { ...MANAGER_PARAMS, packUnitsMask: 0n }, balance: eth('1') } as never, cost)).toEqual({
+      head: 'Fresh minting disabled.', body: 'Existing unselected packs may still be relisted. Withdrawals remain available.',
+    });
+  });
   it('asks for the ETH one pack and the reserve still need', () => {
     const st = managerStatus({ ...m, book: { listed: 0, idle: 0 }, balance: eth('0.1') } as never, cost);
     expect(st.head).toBe('Not enough ETH to list.');
-    expect(st.short).toBe(cost + eth('0.005') - eth('0.1'));
+    expect(st.short).toBe(cost + eth('0.25') - eth('0.1'));
+    const withPrincipalOnly = managerStatus({ ...m, book: { listed: 0, idle: 0 }, balance: eth('0.3') } as never, cost);
+    expect(withPrincipalOnly.head).toBe('Not enough ETH to list.');
+    expect(withPrincipalOnly.short).toBe(eth('0.194'));
   });
   it('counts whole packs above the reserve', () => {
-    expect(cost).toBe(eth('0.127'));
-    expect(packsFor(eth('1'), eth('0.005'), cost)).toBe(7n);
+    expect(cost).toBe(eth('0.244'));
+    expect(packsFor(eth('1'), eth('0.005'), cost)).toBe(4n);
     expect(packsFor(eth('0.004'), eth('0.005'), cost)).toBe(0n);
   });
 });
 
-describe('keep and bid outcomes from position events', () => {
+describe('observed resolution activity from position events', () => {
   it('counts a selection resolved by a keep receipt as a keep, by a returned pack as a bid, and ignores unlists', () => {
     const updates = [
       { listingId: 1n, state: 1 }, { listingId: 1n, state: 2 }, { listingId: 1n, state: 0 }, // kept
@@ -72,7 +76,7 @@ describe('keep and bid outcomes from position events', () => {
       { listingId: 3n, state: 1 }, { listingId: 3n, state: 0 }, // unlisted, never selected
       { listingId: 4n, state: 1 }, { listingId: 4n, state: 2 }, // still waiting
     ];
-    expect(outcomes(updates, [1n])).toEqual({ keeps: 1, bids: 1 });
+    expect(observedResolutions(updates, [1n])).toEqual({ recordedKeeps: 1, otherResolved: 1 });
   });
 });
 
@@ -90,5 +94,29 @@ describe('saved manager creation', () => {
   it('keeps a creation with no hash unknown for a day, then lets it go', () => {
     expect(creationState(c, facts).state).toBe('unknown');
     expect(creationState(c, { ...facts, now: 25 * 3600 * 1000 }).state).toBe('failed');
+  });
+});
+
+describe('bounded account reads', () => {
+  it('reads at most 32 positions even with a million listings and wraps after the final page', () => {
+    expect(bookPage(1000000n).indexes).toHaveLength(32);
+    expect(bookPage(1000000n, 999999n)).toEqual({ indexes: [999999n], next: 0n });
+    expect(bookPage(2n, 50n)).toEqual({ indexes: [0n, 1n], next: 0n });
+    expect(bookPage(0n).indexes).toEqual([]);
+  });
+  it('bounds each history RPC independently of the full history length', () => {
+    expect(historyRange(10n, 10000000n)).toEqual({ fromBlock: 10n, toBlock: 2009n });
+    expect(historyRange(10n, 12n)).toEqual({ fromBlock: 10n, toBlock: 12n });
+  });
+  it('keeps the local candidate recipe explicit', () => {
+    expect(MANAGER_PARAMS.packUnitsMask).toBe(8n);
+    expect(MANAGER_PARAMS.backingRatioBps).toBe(70000);
+    expect(MANAGER_PARAMS.upliftBoundBps).toBe(25);
+  });
+  it('prefers an older fee-bearing witness over a cached new listing and retains every bounded alternative', () => {
+    expect(navWitnessCandidates([50n, 10n, 20n], [
+      { state: 1, feeDebt: 100n }, { state: 1, feeDebt: 10n }, { state: 2, feeDebt: 0n },
+    ])).toEqual([10n, 50n]);
+    expect(navWitnessCandidates([50n, 10n], [{ state: 1, feeDebt: 100n }, { state: 1, feeDebt: 100n }])).toEqual([10n, 50n]);
   });
 });

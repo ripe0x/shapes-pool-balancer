@@ -1,0 +1,20 @@
+{
+  "cheap": {
+    "chainId": 31337,
+    "vault": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+    "holder": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+    "limit": "10000000000000000",
+    "debited": "1101127368833423",
+    "temporaryFunding": "45006170500000",
+    "actualGas": "691097264071075"
+  },
+  "productive": {
+    "chainId": 31337,
+    "vault": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+    "holder": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+    "limit": "10000000000000000",
+    "debited": "3387874407673575",
+    "temporaryFunding": "90007278500000",
+    "actualGas": "2105811542944575"
+  }
+}

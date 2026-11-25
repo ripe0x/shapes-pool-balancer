@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/shapes-pool-app-completion
+
+ ✓ app/src/main-manager-exit.test.ts (9 tests) 10ms
+ ✓ app/src/main-pool-settings.test.ts (5 tests) 4ms
+
+ Test Files  2 passed (2)
+      Tests  14 passed (14)
+   Start at  09:20:34
+   Duration  421ms (transform 116ms, setup 0ms, collect 386ms, tests 14ms, environment 0ms, prepare 62ms)
+

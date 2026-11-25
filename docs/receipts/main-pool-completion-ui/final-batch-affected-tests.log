@@ -1,0 +1,18 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/shapes-pool-app-completion
+
+ ↓ app/src/creation-replacement.test.ts (2 tests | 2 skipped)
+ ✓ app/src/errors.test.ts (4 tests) 11ms
+ ✓ app/src/main-pool.test.ts (23 tests) 6ms
+ ✓ app/src/policy.test.ts (3 tests | 2 skipped) 8ms
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 12ms
+ ✓ app/src/main-pool-exit.test.ts (7 tests) 5ms
+ ✓ app/src/main-pool-settings.test.ts (5 tests) 8ms
+ ✓ app/src/chain.test.ts (4 tests | 3 skipped) 945ms
+   ✓ explains the failure when there is no browser wallet to read through  944ms
+
+ Test Files  7 passed | 1 skipped (8)
+      Tests  51 passed | 10 skipped (61)
+   Start at  10:18:50
+   Duration  1.56s (transform 467ms, setup 0ms, collect 2.91s, tests 995ms, environment 1ms, prepare 745ms)
+

@@ -1,0 +1,101 @@
+Shapes on FWA
+Community pools
+Main pool
+How it works
+0x5b01…F14D
+Listing. 1 pack on FWA's main pool. Account settings govern further work.
+Selected fresh pack value / primary mints
+0.03 ETH / 3
+Live / accepted mint fee per Shape
+0.000500 / 0.001000 ETH
+Renewal
+Fresh after acquisition; every fresh Shape pays a mint fee
+Eligible returned / kept replacements
+0 / 0
+Maintenance reserve / renewal float
+0.00500 / 0.21413 ETH
+Renewal cash available
+0.25252 ETH
+Routine cash / spending permission
+0.04340 / 0.02902 ETH
+Your manager
+Manager 1 of 2
+Manager 2 of 2
+0xDDc10602782af652bB913f7bdE1fD82981Db7dd9
+Copy address
+
+Your own account on FWA's main pool. Only you can withdraw. The factory that created it has no access.
+
+Packs
+
+Selected fresh recipe: 0.03 ETH, 3 paid primary mints. New backing: 0.21 ETH. Existing packs retain their contents.
+
+Listed 1
+Keep receipts recorded
+0
+Other resolved selections
+0
+Controls
+Pause new listings
+
+Listed packs stay listed. Resume any time.
+
+Pause
+Exit mode
+
+Complete closeout below stops investment first. Exit work is not automatic.
+
+Review closeout below
+Withdraw idle packs
+
+Takes unlisted packs to your wallet. None are idle now.
+
+Withdraw up to 16 packs
+Complete an owner-paid manager exit
+
+You pay wallet gas to stop investment, recover settlements, process eligible FWA requests, unlist, redeem packs, collect earnings and withdraw ETH to your wallet. Each bounded step needs its own confirmation. FWA randomness, request deadlines and crown exit delays can require waiting.
+
+Total wallet debit limit (ETH)
+
+Every signed maximum stays reserved toward this limit, including reverted steps. Refunds, claims and lower observed gas do not replenish it.
+
+The limit covers app-reviewed requests. Wallet changes already signed cannot be undone; a larger signed maximum blocks further steps until explicitly reviewed.
+
+Maximum reserved toward the limit
+0 ETH
+Gas expense observed in first receipts
+0 ETH
+ETH sent observed in first receipts
+0 ETH
+
+Observed amounts can change after a chain reorganization. The reserved maximum is retained.
+
+Review next manager exit step
+Start owner-paid manager closeout
+Estimated wallet gas expense
+0.00008660415 ETH
+ETH sent
+0 ETH
+Maximum wallet debit for this step
+0.00011957484 ETH
+
+Reviewed at block 26385268. Required recovery runs even when keeper reimbursement would be unprofitable.
+
+Confirm this bounded step
+Owner settings
+Value
+0.498
+ETH
+Add ETH
+Withdraw
+Amount
+ETH · MAX
+Available now
+0.258 ETH
+Backing on FWA
+0.210 ETH
+Enter an amount
+
+For listed or recovery packs, use the owner-paid closeout below.
+
+All numbers ▾

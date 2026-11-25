@@ -1,0 +1,84 @@
+{
+ "vault": "0xb0858bf1b8a167188847499b3008e597b57eaebc",
+ "owner": "0x37Dcd875c4E367e080f1e05F18F10dB0D45a65B5",
+ "before": {
+  "pending": 999954997215000000,
+  "pool": 45002785000000,
+  "shares": 0,
+  "supply": 1000000000000000,
+  "nav": 10257917736006886,
+  "float": 214127500000000000,
+  "open": 0,
+  "free": 10257917736006886
+ },
+ "afterCP": {
+  "pending": 0,
+  "pool": 0,
+  "shares": 96224845814640956,
+  "supply": 97224845814640956,
+  "nav": 1010212914951006886,
+  "float": 214127500000000000,
+  "open": 0,
+  "free": 1010212914951006886
+ },
+ "afterBuild": {
+  "pending": 0,
+  "pool": 0,
+  "shares": 96224845814640956,
+  "supply": 97224845814640956,
+  "nav": 1010212914951006886,
+  "float": 214127500000000000,
+  "open": 1,
+  "free": 767079159575381886
+ },
+ "afterReady": {
+  "pending": 0,
+  "pool": 0,
+  "shares": 96224845814640956,
+  "supply": 97224845814640956,
+  "nav": 1010212914951006886,
+  "float": 214127500000000000,
+  "open": 1,
+  "free": 767079159575381886
+ },
+ "creatorFeesWei": 3000000000000000,
+ "backingWei": 210000000000000000,
+ "receipts": [
+  {
+   "function": "checkpoint(uint256,uint256,bytes32)",
+   "arguments": [
+    0,
+    1,
+    "0xa80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3"
+   ],
+   "value_wei": 0,
+   "receipt": {
+    "transactionHash": "0x3597a065939959827235502a14f6298e6b93fe5392f6d5e26aa4cc1822b51a04",
+    "status": "0x1",
+    "blockNumber": "0x19420c5",
+    "blockHash": "0x2c157dfcd65cc7fa1b66e276e8cbb5ab72a48920e4da1f53557434f8d6e0e7c2",
+    "gasUsed": "0x54c5f",
+    "effectiveGasPrice": "0x2faff19"
+   }
+  },
+  {
+   "function": "build(uint256,uint256[],uint256,bytes32)",
+   "arguments": [
+    3,
+    "[210000000000000000]",
+    1,
+    "0xa80ced9e4146048af18fc528c4a51335332e76adb0e337b16906a3548dea5dd3"
+   ],
+   "value_wei": 0,
+   "receipt": {
+    "transactionHash": "0x43c7fdb76089337b65238750977204b31174bbd08fcd425b22c07c4243c45720",
+    "status": "0x1",
+    "blockNumber": "0x19420c7",
+    "blockHash": "0xaa69cd744a8dc34a7bbdf5ea71618d04d41f26545dbec38f813c420eabeac5aa",
+    "gasUsed": "0x1d0d1c",
+    "effectiveGasPrice": "0x2fafbb3"
+   }
+  }
+ ],
+ "note": "Exactly one productive launch pack; real paid primary mints. Historical local block reads reconstruct already-successful CP. Only isolated fork time advanced to quiet blackout after crown exit delay; no trusted state replaced."
+}
