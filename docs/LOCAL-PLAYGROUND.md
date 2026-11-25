@@ -18,7 +18,7 @@ These addresses are confirmed by bootstrap receipts and onchain readbacks. At th
 
 1. Create a pool using the design page. Curated NFTs are optional. For the local demo tokens, click **Choose from your wallet**, then **Enter a contract and token ID instead**. Enter the demo collection above and token ID `1` or `2`; the app checks ownership on the fork. Wallet discovery can take time, so manual entry is the direct local path.
 2. Confirm each local approval/creation step. Once created, use **List Shapes** / maintenance until the initial mix
-   is stocked and purchases are admitted. No background keeper is automatically started by bootstrap.
+   is stocked and purchases are admitted. Bootstrap itself starts no keeper; the subsequent walkthrough now has a paid keeper watching the existing pool listed below.
 3. Copy the **Balancer address** from the app. The commands below resolve its underlying FWA pool automatically.
    The external “Pool on FWA” link points to the public website, not this local chain.
 4. To withdraw, close purchases first. Withdraw selected curated NFTs; unlist Shapes to redeem their backing.
@@ -107,3 +107,15 @@ a new UI pool until you create that pool; preview is the first real-contract che
 
 Things that don't make sense: presenting timeout refunds as winning draws, or using the inherited delegated default
 accounts as clean local wallets. This playground does neither.
+
+## Authorized NFT-win walkthrough and keeper
+
+The owner authorized simulated oracle callbacks only for local Balancer `0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4` on 8545. The bounded helper is `scripts/local-simulated-draws.ts`. Twenty purchases delivered 20 distinct NFT prizes to the test buyer, with real paid maintenance from `keeper/keeper.ts`. No extra capital was deposited. Historical proof tests remain separate; these callbacks do not verify genuine VRF proofs or consume actual coordinator commitments/billing.
+
+The paid keeper now watches this pool as funded synthetic account `0x000000000000000000000000000000000001e004`. It uses normal profitability checks and the remaining aggregate 1 test ETH gas / 100 transaction budget, and refuses other pools. Its mutable state is `docs/receipts/local-playground/20261125174335482/simulated-draws/keeper-state.json`. Only one process may use that state and signer. Background command (already running):
+
+```sh
+node --import tsx scripts/local-simulated-draws.ts --keeper
+```
+
+Do not rerun the completed one-shot draw batch. The final state remains open with 13 of 14 prizes listed; the last 0.05 ETH win left a 0.022612951932364688 ETH operating shortfall. The keeper will replace it when operating cash becomes sufficient through a creator contribution or subsequent sales. Earned credit is protected separately and is not silently used to cover that shortfall. See `docs/receipts/local-playground/20261125174335482/simulated-draws/README.md` for actual receipts, errors, limits and the distinction between partial restocking and a paused pool.

@@ -1,0 +1,41 @@
+{
+  "keeper": "discovered",
+  "balancer": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+  "factory": "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+  "block": "26485869"
+}
+{
+  "from": "0x000000000000000000000000000000000001E008",
+  "to": "0x802d4E8D7315a4B7ceA1ba97e8BbE271fAa3F581",
+  "name": "acquireBatch",
+  "args": [
+    "0x000000000000000000000000000000000001E008",
+    "1",
+    "20796112255897150",
+    "0",
+    "10000",
+    "4",
+    "1795628508"
+  ],
+  "value": "23136513289777150",
+  "nonce": 6,
+  "gas": "1500000",
+  "gasPrice": "1000171382"
+}
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'reverted'
+- 'success'
+
+    at send (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:205:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async run (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:259:24)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-simulated-draws.ts:287:3) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'reverted',
+  expected: 'success',
+  operator: 'strictEqual',
+  diff: 'simple'
+}

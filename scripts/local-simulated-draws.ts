@@ -4,9 +4,10 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { createPublicClient, createTestClient, createWalletClient, decodeFunctionData, encodePacked, getAddress, http, keccak256, parseAbi, type Abi, type Address, type Hex } from 'viem';
+import { createPublicClient, createTestClient, createWalletClient, decodeErrorResult, decodeFunctionData, encodePacked, getAddress, http, keccak256, parseAbi, type Abi, type Address, type Hex } from 'viem';
 import { foundry } from 'viem/chains';
 import { balancerFactoryAbi, fwaPoolAbi, poolBalancerAbi } from '../shared/abi';
+import { Keeper } from '../keeper/keeper';
 
 export const SCOPE = {
   rpc: 'http://127.0.0.1:8545', chainId: 31337, forkBlock: 26485619, nodePid: 28171,
@@ -22,6 +23,8 @@ const UPSTREAM = 'https://mainnet.gateway.tenderly.co';
 const ROOT = resolve(import.meta.dirname, '..');
 const DIRECTORY = resolve(ROOT, 'docs/receipts/local-playground/20261125174335482/simulated-draws');
 const JOURNAL = resolve(DIRECTORY, 'journal.json');
+const KEEPER_FILE = resolve(DIRECTORY, 'keeper-state.json');
+export const KEEPER_ADDRESS = getAddress('0x000000000000000000000000000000000001e004');
 export const TOPUP_WEI = 5n * 10n ** 17n;
 const extraPoolAbi = parseAbi([
   'function acquisitionRefundCredit(address) view returns(uint256)',
@@ -68,8 +71,39 @@ export function validateWrite(from: Address, to: Address, name: string, args: re
   if (name !== 'acquireBatch' && name !== 'depositETH') assert.equal(value, 0n);
 }
 export const testWord = (id: bigint) => BigInt(keccak256(encodePacked(['string', 'uint256'], ['owner-approved-local-8545-simulation-v1', id])));
+export const fullyRestocked = (counts: readonly number[], expected: readonly number[]) => counts.length === expected.length && counts.every((n, i) => n === expected[i]);
+export const requestDeadline = (chainTime: bigint, wallTime: bigint) => (chainTime > wallTime ? chainTime : wallTime) + 600n;
 export function validateCalldata(abi: Abi, data: Hex, name: string, args: readonly unknown[]) {
   const decoded = decodeFunctionData({ abi, data }); assert.equal(decoded.functionName, name); assert.deepEqual(decoded.args ?? [], args);
+}
+export function keeperBudget(state: any) {
+  const reserved = new Map<number, bigint>();
+  for (const item of [...Object.values(state.pending ?? {}), ...Object.values(state.accounting ?? {}).map((v: any) => v.pending)] as any[]) {
+    const cost = BigInt(item.gas) * BigInt(item.maxFeePerGas);
+    if (cost > (reserved.get(item.nonce) ?? 0n)) reserved.set(item.nonce, cost);
+  }
+  return { gas: BigInt(state.stats?.spentWei ?? 0) + [...reserved.values()].reduce((a, b) => a + b, 0n), transactions: Number(state.stats?.sent ?? 0) + Number(state.stats?.replaced ?? 0) };
+}
+const currentKeeperBudget = () => keeperBudget(existsSync(KEEPER_FILE) ? JSON.parse(readFileSync(KEEPER_FILE, 'utf8')) : {});
+function createLocalKeeper() {
+  const keeper: Keeper = new Keeper({ rpcUrl: SCOPE.rpc, factory: SCOPE.factory, fromBlock: 26485861n, account: KEEPER_ADDRESS,
+    stateFile: KEEPER_FILE, legacyFactories: [], priorityGwei: 0.05, maxGasPriceGwei: 5, maxLossWei: 0n,
+    log: (message, data) => { if (message !== 'tick complete') console.log(json({ keeper: message, ...data })); },
+    beforeSend: async (next): Promise<boolean> => {
+      assert.equal(await keeper.pub.getChainId(), 31337);
+      const info: any = await keeper.pub.request({ method: 'anvil_nodeInfo' as any }); assert.equal(info.forkConfig.forkUrl, UPSTREAM); assert.equal(info.forkConfig.forkBlockNumber, SCOPE.forkBlock);
+      assert.equal(execFileSync('ps', ['-p', String(SCOPE.nodePid), '-o', 'command='], { encoding: 'utf8' }).trim(), `anvil --fork-url ${UPSTREAM} --chain-id 31337 --port 8545 --silent`);
+      assert.equal(await keeper.pub.getCode({ address: KEEPER_ADDRESS }) ?? '0x', '0x');
+      assert.ok([...keeper.state.balancers, ...Object.keys(keeper.state.pending), ...Object.values(keeper.state.accounting).map(v => v.balancer)].every(a => getAddress(a) === SCOPE.balancer), 'keeper may service only this pool');
+      equalAddress(await keeper.pub.readContract({ address: SCOPE.balancer, abi: poolBalancerAbi, functionName: 'factory' }), SCOPE.factory);
+      const journal = JSON.parse(readFileSync(JOURNAL, 'utf8')); if (journal.nextAction || journal.pendingHash) return false;
+      for (const address of [SCOPE.factory, SCOPE.balancer]) assert.equal(keccak256((await keeper.pub.getCode({ address }))!), journal.plan.codeHashes[address]);
+      const own = keeperBudget(keeper.state);
+      return BigInt(journal.gasWei) + own.gas + next.gas * next.maxFeePerGas <= SCOPE.gasCapWei
+        && journal.transactions.length + own.transactions < SCOPE.maxTransactions;
+    },
+  });
+  return keeper;
 }
 
 async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
@@ -137,7 +171,13 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
       validateWrite(action.from, action.to, action.name, action.args, action.value, action.name === 'depositETH');
       equalAddress(tx.from, action.from); equalAddress(tx.to!, action.to); assert.equal(tx.nonce, action.nonce); assert.equal(tx.value, action.value);
       const abi = action.to === SCOPE.service ? serviceAbi : action.to === SCOPE.pool ? poolAbi : poolBalancerAbi;
-      validateCalldata(abi, tx.input, action.name, action.args); assert.equal(receipt.status, 'success'); assert.equal(receipt.blockHash, action.receipt.blockHash);
+      validateCalldata(abi, tx.input, action.name, action.args); assert.equal(receipt.blockHash, action.receipt.blockHash);
+      if (receipt.status !== 'success') {
+        assert.equal(action.name, 'acquireBatch'); assert.equal(action.receipt.status, 'reverted');
+        const trace: any = await c.request({ method: 'debug_traceTransaction' as any, params: [action.hash, { tracer: 'callTracer' }] as any });
+        const reason = decodeErrorResult({ abi: parseAbi(['error TransactionExpired(uint256 deadline)']), data: trace.output });
+        assert.equal(reason.errorName, 'TransactionExpired'); assert.equal(reason.args[0], action.args[6]);
+      }
       gas += receipt.gasUsed * receipt.effectiveGasPrice; if (action.name === 'acquireBatch') purchases += action.value;
     }
     assert.equal(gas, journal.gasWei); assert.equal(purchases, journal.forwardPurchaseWei);
@@ -145,6 +185,7 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
     journal.resumes ??= []; journal.resumes.push({ sourceSHA256: plan.sourceSHA256, before: initial, previousFailure: journal.failure }); delete journal.failure;
   }
   const save = () => writeFileSync(JOURNAL, json(journal) + '\n'); save();
+  const keeper = createLocalKeeper();
   const unlocked = (await wallet.getAddresses()).map(a => getAddress(a));
   assert.ok(unlocked.includes(SCOPE.buyer), 'approved buyer must already be unlocked');
   const newlyUnlocked = !unlocked.includes(SCOPE.coordinator);
@@ -157,7 +198,8 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
     if (name === 'rawFulfillRandomWords') { equalAddress(await s<Address>('requestPool', [args[0]]), SCOPE.pool); assert.equal(Number(await s<number>('requestStatus', [args[0]])), 1); }
     const nonce = nonces.get(from)!; assert.equal(await c.getTransactionCount({ address: from, blockTag: 'pending' }), nonce);
     const gas = name === 'rawFulfillRandomWords' ? 5_000_000n : name === 'performUpkeepUnpaid' ? 8_000_000n : name === 'acquireBatch' ? 1_500_000n : 3_000_000n;
-    gasPrice ??= await price(); assert.ok(journal.transactions.length < SCOPE.maxTransactions); assert.ok(journal.gasWei + gas * gasPrice <= SCOPE.gasCapWei);
+    const keeperCost = currentKeeperBudget();
+    gasPrice ??= await price(); assert.ok(journal.transactions.length + keeperCost.transactions < SCOPE.maxTransactions); assert.ok(journal.gasWei + keeperCost.gas + gas * gasPrice <= SCOPE.gasCapWei);
     if (name === 'acquireBatch') assert.ok(journal.forwardPurchaseWei + value <= SCOPE.purchaseCapWei);
     assert.ok(await c.getBalance({ address: from }) >= value + gas * gasPrice, 'no funding or top-ups are authorized');
     const simulation = await c.simulateContract({ address: to, abi, functionName: name, args, account: from, value, nonce, gas, gasPrice });
@@ -179,6 +221,21 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
     assert.equal(await read<string>(SCOPE.coordinator, coordinatorAbi, 's_requestCommitments', [id]), commitment, 'simulation does not consume authentic commitment');
     return { id, simulatedWord: testWord(id), genuineCommitmentStillPending: commitment };
   }
+  async function maintain() {
+    for (let work = 0; work < 8; work++) {
+      await keeper.tick();
+      const state = await snapshot();
+      const pending = Object.keys(keeper.state.pending).length + Object.keys(keeper.state.accounting).length;
+      if (!pending && state.reconciled === state.sequence && (fullyRestocked(state.activeShapes, expectedCounts) || state.requiredReserve > state.balances.balancer - state.creatorCredit)) break;
+      assert.equal(Object.keys(keeper.errors).length, 0, json(keeper.errors));
+    }
+    const state = await snapshot(); assert.equal(state.reconciled, state.sequence); assert.equal(state.ownerProceeds, 0n);
+    const shortfall = state.requiredReserve - (state.balances.balancer - state.creatorCredit);
+    const full = fullyRestocked(state.activeShapes, expectedCounts);
+    assert.ok(full || shortfall > 0n, 'unexplained incomplete restocking');
+    journal.keeper = { address: KEEPER_ADDRESS, stats: keeper.state.stats, receipts: keeper.state.receipts }; save();
+    return { state, full, shortfall: shortfall > 0n ? shortfall : 0n };
+  }
   try {
     if (newlyUnlocked) await test.impersonateAccount({ address: SCOPE.coordinator });
     if (approvedTopup) {
@@ -188,9 +245,8 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
       journal.additionalCapital = { amountWei: TOPUP_WEI, before, after }; save();
     }
     if (resume && journal.wins.length && !journal.wins.at(-1).restored) {
-      await send(SCOPE.buyer, SCOPE.balancer, poolBalancerAbi, 'performUpkeepUnpaid', []);
-      const restored = await snapshot(); assert.deepEqual(restored.activeShapes, expectedCounts); assert.equal(restored.reconciled, restored.sequence);
-      assert.equal(restored.creatorCredit, initial.creatorCredit); journal.wins.at(-1).restored = restored; save();
+      const maintenance = await maintain(); assert.equal(maintenance.state.creatorCredit, initial.creatorCredit);
+      journal.wins.at(-1).maintenance = maintenance; if (maintenance.full) journal.wins.at(-1).restored = maintenance.state; save();
     }
     for (const id of expired) {
       const before = await snapshot(), acquisition = await p<readonly any[]>('acquisitions', [id]); const proof = await callback(id); const after = await snapshot();
@@ -198,7 +254,7 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
       journal.cleanup.push({ ...proof, before, after }); save();
     }
     for (let i = journal.wins.length; i < SCOPE.count; i++) {
-      const before = await snapshot(); assert.equal(before.admission, 0); assert.equal(before.unsettled, 0n); assert.deepEqual(before.activeShapes, expectedCounts);
+      const before = await snapshot(); assert.equal(before.admission, 0, 'actual contract admission must allow the next draw'); assert.equal(before.unsettled, 0n);
       const gasPrice = await price();
       const [fee, vrf, total] = await read<readonly [bigint, bigint, bigint]>(SCOPE.pool, poolAbi, 'quoteAcquisitionPrice', [1n], gasPrice);
       assert.equal(total, fee + vrf); assert.ok(fee > 0n && vrf > 0n);
@@ -207,7 +263,7 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
       for (const lid of ids) { const listing = await p<readonly any[]>('listings', [lid]); weight += BigInt(listing[4]); weightedPrice += BigInt(listing[4]) * BigInt(listing[5]); }
       const ownerBase = weightedPrice / weight;
       const version = await p<bigint>('inventoryVersion'), block = await c.getBlock(); const walletBefore = await c.getBalance({ address: SCOPE.buyer });
-      const purchase = await send(SCOPE.buyer, SCOPE.pool, poolAbi, 'acquireBatch', [SCOPE.buyer, 1n, fee, 0n, 10000n, version, block.timestamp + 600n], total, gasPrice);
+      const purchase = await send(SCOPE.buyer, SCOPE.pool, poolAbi, 'acquireBatch', [SCOPE.buyer, 1n, fee, 0n, 10000n, version, requestDeadline(block.timestamp, BigInt(Math.floor(Date.now() / 1000)))], total, gasPrice);
       assert.equal(walletBefore - await c.getBalance({ address: SCOPE.buyer }), total + purchase.gasUsed * purchase.effectiveGasPrice);
       assert.equal(await p<bigint>('lastIssuedSequence'), before.sequence + 1n); const id = await p<bigint>('requestIdAtSequence', [before.sequence + 1n]);
       const proof = await callback(id);
@@ -217,23 +273,23 @@ async function run(execute: boolean, resume: boolean, approvedTopup: boolean) {
       const settled = await snapshot(); assert.equal(settled.unsettled, 0n); assert.equal(settled.ownerProceeds - before.ownerProceeds, ownerBase); assert.equal(settled.refundCredit, before.refundCredit);
       const win: any = { index: i + 1, ...proof, fee, vrf, total, ownerBase, collection: listing[0], tokenId: listing[3], listingId: acquisition[3], before, settled }; journal.wins.push(win); save();
       const creditBefore = settled.creatorCredit, rate = BigInt(await b<number>('creatorRevenueBps'));
-      for (let work = 0; work < 3; work++) {
-        await send(SCOPE.buyer, SCOPE.balancer, poolBalancerAbi, 'performUpkeepUnpaid', []);
-        const state = await snapshot(); if (state.reconciled === state.sequence && state.activeShapes.every((n, j) => n === expectedCounts[j])) break;
-      }
-      const restored = await snapshot(); assert.equal(restored.reconciled, restored.sequence); assert.deepEqual(restored.activeShapes, expectedCounts, 'restocking shortfall; stop without unauthorized top-up'); assert.equal(restored.admission, 0); assert.equal(restored.ownerProceeds, 0n);
-      assert.equal(restored.creatorCredit - creditBefore, ownerBase * rate / 10000n); win.restored = restored; save(); console.log(json({ wins: i + 1, collection: win.collection, tokenId: win.tokenId, restocked: true }));
+      const maintenance = await maintain(); assert.equal(maintenance.state.creatorCredit - creditBefore, ownerBase * rate / 10000n);
+      win.maintenance = maintenance; if (maintenance.full) win.restored = maintenance.state; save(); console.log(json({ wins: i + 1, collection: win.collection, tokenId: win.tokenId, restocked: maintenance.full, shortfallWei: maintenance.shortfall }));
     }
     for (const win of journal.wins) equalAddress(await read<Address>(win.collection, nftAbi, 'ownerOf', [win.tokenId]), SCOPE.buyer);
     assert.equal(new Set(journal.wins.map((w: any) => `${w.collection}:${w.tokenId}`)).size, SCOPE.count);
-    journal.final = await snapshot(); assert.equal(journal.final.servicePoolOutstanding, 0n); journal.complete = true; save();
-    console.log(json({ complete: true, wins: journal.wins.length, transactions: journal.transactions.length, forwardPurchaseWei: journal.forwardPurchaseWei, gasWei: journal.gasWei, journal: JOURNAL }));
+    journal.final = await snapshot(); save(); assert.equal(journal.final.servicePoolOutstanding, 0n); assert.deepEqual(journal.final.activeShapes, expectedCounts, 'draws completed but final target remains underfunded'); journal.complete = true; save();
+    console.log(json({ complete: true, wins: journal.wins.length, transactions: journal.transactions.length + currentKeeperBudget().transactions, forwardPurchaseWei: journal.forwardPurchaseWei, gasWei: journal.gasWei + currentKeeperBudget().gas, journal: JOURNAL }));
   } catch (error) { journal.failure = String(error); save(); throw error; }
   finally { if (newlyUnlocked) await test.stopImpersonatingAccount({ address: SCOPE.coordinator }); }
 }
 
 async function main() {
   const args = process.argv.slice(2);
+  if (args.length === 1 && args[0] === '--keeper') {
+    assert.ok(existsSync(JOURNAL)); mkdirSync(DIRECTORY, { recursive: true });
+    const keeper = createLocalKeeper(); console.log(json({ message: 'local paid keeper watching authorized pool', rpc: SCOPE.rpc, balancer: SCOPE.balancer, signer: KEEPER_ADDRESS, gasCapWei: SCOPE.gasCapWei })); await keeper.runForever(1000); return;
+  }
   assert.ok(args.length === 0 || (args[0] === '--execute' && args[1] === '--allow-simulated-randomness' && (args.length === 2 || (args[2] === '--resume' && (args.length === 3 || (args.length === 4 && args[3] === '--approved-topup-0.5'))))), 'invalid arguments');
   await run(args.length > 0, args.includes('--resume'), args.includes('--approved-topup-0.5'));
 }

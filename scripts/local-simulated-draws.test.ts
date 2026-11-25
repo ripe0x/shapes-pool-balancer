@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { encodeFunctionData } from 'viem';
 import { poolBalancerAbi } from '../shared/abi';
-import { SCOPE, TOPUP_WEI, testWord, validateCalldata, validateScope, validateWrite } from './local-simulated-draws';
+import { SCOPE, TOPUP_WEI, fullyRestocked, keeperBudget, requestDeadline, testWord, validateCalldata, validateScope, validateWrite } from './local-simulated-draws';
 
 it('restricts the owner exception to this pool, node endpoint, chain and twenty draws', () => {
   expect(() => validateScope(SCOPE.rpc, 31337, SCOPE.pool, 20)).not.toThrow();
@@ -49,4 +49,25 @@ it('allows only the separately approved exact contribution to this Balancer from
   expect(() => validateWrite(SCOPE.buyer, SCOPE.balancer, 'depositETH', [], TOPUP_WEI + 1n, true)).toThrow();
   expect(() => validateWrite(SCOPE.coordinator, SCOPE.balancer, 'depositETH', [], TOPUP_WEI, true)).toThrow();
   expect(() => validateWrite(SCOPE.buyer, SCOPE.pool, 'depositETH', [], TOPUP_WEI, true)).toThrow();
+});
+
+it('never labels a partial or differently distributed prize mix as fully restocked', () => {
+  expect(fullyRestocked([7, 4, 1, 2], [7, 4, 1, 2])).toBe(true);
+  expect(fullyRestocked([7, 3, 1, 2], [7, 4, 1, 2])).toBe(false);
+  expect(fullyRestocked([8, 3, 1, 2], [7, 4, 1, 2])).toBe(false);
+  expect(fullyRestocked([7, 4, 1], [7, 4, 1, 2])).toBe(false);
+});
+
+it('reserves keeper pending/accounting gas once per nonce at its largest liability', () => {
+  expect(keeperBudget({})).toEqual({ gas: 0n, transactions: 0 });
+  expect(keeperBudget({ stats: { spentWei: '100', sent: 2, replaced: 1 },
+    pending: { pool: { nonce: 7, gas: '10', maxFeePerGas: '20' } },
+    accounting: { seven: { pending: { nonce: 7, gas: '20', maxFeePerGas: '20' } },
+      eight: { pending: { nonce: 8, gas: '5', maxFeePerGas: '10' } } },
+  })).toEqual({ gas: 550n, transactions: 3 });
+});
+
+it('keeps an idle fork purchase deadline ahead of both wall and chain timestamps', () => {
+  expect(requestDeadline(1000n, 2000n)).toBe(2600n);
+  expect(requestDeadline(2000n, 1000n)).toBe(2600n);
 });

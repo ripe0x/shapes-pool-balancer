@@ -8,6 +8,8 @@ dist/
 .vite/
 # keeper runtime state
 keeper/state*.json
+# Local walkthrough keeper runtime; immutable completion snapshots are committed separately.
+docs/receipts/local-playground/**/simulated-draws/keeper-state.json*
 # secrets: never commit env files; examples are allowlisted
 .env
 .env.*
