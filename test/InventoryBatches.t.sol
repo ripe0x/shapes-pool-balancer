@@ -38,7 +38,7 @@ contract InventoryBatchesTest is ForkBase {
         assertEq(pool.activeListingCount(), 0);
         assertEq(pool.inventoryVersion(), version + 1, "one FWA batch mutation");
         assertEq(address(balancer).balance, cash, "curated withdrawals move no ETH");
-        assertEq(balancer.inventoryBatchVersion(), 1);
+        assertEq(balancer.inventoryBatchVersion(), 2);
         for (uint256 i; i < ids.length; ++i) {
             (uint8 kind,,,,) = balancer.items(ids[i]);
             (,,,,,,, uint8 status) = pool.listings(ids[i]);

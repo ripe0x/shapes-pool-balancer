@@ -3,6 +3,7 @@ import { BaseError, ContractFunctionRevertedError, decodeErrorResult, parseAbi }
 const FWA_ERRORS = parseAbi(['error WithdrawLocked()']);
 
 const ERRORS: Record<string, string> = {
+  CreationPaused: 'public pool creation is paused',
   NoUpkeepNeeded: 'nothing to do right now',
   WithdrawLocked: 'draws are settling on FWA; try again in a minute',
   InsufficientSurplus: 'amount exceeds claimable surplus',

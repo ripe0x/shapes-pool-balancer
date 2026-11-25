@@ -457,3 +457,14 @@ Accepted and documented; no contract behavior change and no outcome bound change
 - R110. Build in a worktree and prepare a PR. Pushes, merges and deploys require the owner's go. Deploys run only
   from `/Users/dd/CascadeProjects/fwa-pool-balancer` on `main`, fast-forwarded to `origin/main`. Funding, setting secrets
   and starting the mainnet service remain owner actions. Fork acceptance reuses port 8545; it must never kill that node.
+
+
+## ERC20 recovery and creation pause (owner, 2026-11-25)
+
+- R111. Owner annotation "add it" on the excluded ERC20 rescue, following the proposed creator-only recovery rule:
+  add recovery of ERC20 balances held by the Balancer to its current creator. Third-party transfers create no
+  separate depositor claim; operating ETH, credits and assets held by FWA remain outside this path.
+- R112. Owner annotation "add this too" on the missing factory creation pause: add a policy-admin public creation
+  pause to new factories. Implementation starts paused and permits the policy admin's own canary while paused;
+  existing pool operations and exits continue. The existing factory is immutable, so this requires a replacement
+  factory to become available onchain. No broadcast, new spending budget or migration is authorized by this record.

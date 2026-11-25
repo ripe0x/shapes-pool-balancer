@@ -178,6 +178,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
     event CuratedWitnessRefreshed(uint256 indexed listingId, uint256 slot);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
+    event ERC20Recovered(address indexed token, address indexed to, uint256 amount);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
     event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost);
@@ -521,7 +522,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Immutable per-pool capability marker; a factory may have clones of several implementations.
     function inventoryBatchVersion() external pure returns (uint256) {
-        return 1;
+        return 2;
     }
 
     /// @notice Recover an item whose FWA delivery was refunded to its winner: a curated NFT goes to `to`; a Shape or
@@ -536,6 +537,11 @@ contract PoolBalancer is ReentrancyGuard {
         external onlyCreator nonReentrant returns (uint256 eth)
     {
         return PoolInventory.recoverRefundedBatch(_inventory, pool, address(SHAPES), address(PACKS), listingIds, to);
+    }
+
+    /// @notice Return ERC20 tokens held here to the current creator. Depositors acquire no separate claim.
+    function recoverERC20(address token, uint256 amount) external onlyCreator nonReentrant {
+        PoolInventory.recoverERC20(token, creator, amount);
     }
 
     /// @notice Return an NFT this contract holds outside FWA, e.g. one sent to it directly.

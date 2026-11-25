@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { checkDependencies } from './deployment-preflight';
+import { readFactoryCreation } from '../app/src/factory-creation';
 import {
   createPublicClient, decodeEventLog, encodeAbiParameters, encodeFunctionData, getAddress, getContractAddress, http, keccak256, parseAbi, parseAbiParameters, parseEther, parseGwei, slice, zeroAddress,
   type Address, type Hex, type PublicClient,
@@ -26,7 +27,7 @@ const abi = parseAbi([
   'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
   'function pendingPolicyAdmin() view returns (address)', 'function creator() view returns (address)',
   'function defaultBucketCapacity() view returns (uint128)', 'function defaultBucketRefill() view returns (uint96)', 'function mintFee() view returns (uint256)',
-  'function creationSettingsHash() view returns (bytes32)',
+  'function creationSettingsHash() view returns (bytes32)', 'function creationPaused() view returns (bool)',
   'function FWA_FACTORY() view returns (address)', 'function FWA_IMPLEMENTATION() view returns (address)', 'function SHAPES() view returns (address)',
   'function PACKS() view returns (address)', 'function ENS() view returns (address)', 'function shapes() view returns (address)', 'function MIN_PACK_VALUE() view returns (uint256)',
   'function admin() view returns (address)', 'function renderer() view returns (address)', 'function presentationLocked() view returns (bool)',
@@ -161,6 +162,7 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     if (JSON.stringify(after) !== JSON.stringify(existing.snapshot)) bad.push('existing factory changed since reviewed snapshot');
   } else {
   await eq('factory', f, 'implementation', impl);
+  await eq('factory', f, 'creationPaused', true);
   await eq('factory', f, 'keeperAdmin', roles.keeperAdmin);
   await eq('factory', f, 'policyAdmin', roles.policyAdmin);
   await eq('factory', f, 'keepersRestricted', false);
@@ -206,9 +208,10 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
 export async function factorySnapshot(pub: PublicClient, factory: Address, blockNumber: bigint) {
   const names = ['implementation', 'keeperAdmin', 'policyAdmin', 'keepersRestricted', 'pendingKeeperAdmin',
     'pendingPolicyAdmin', 'economics', 'defaultBucketCapacity', 'defaultBucketRefill', 'productLimits'] as const;
+  const creation = await readFactoryCreation(pub, factory, undefined, blockNumber);
   const values = await Promise.all(names.map(functionName => pub.readContract({ address: factory,
     abi: balancerFactoryAbi, functionName, blockNumber } as never)));
-  return JSON.parse(JSON.stringify(Object.fromEntries(names.map((name, i) => [name, values[i]])),
+  return JSON.parse(JSON.stringify({ ...Object.fromEntries(names.map((name, i) => [name, values[i]])), ...(creation.supported ? { creationPaused: creation.paused } : {}) },
     (_, v) => typeof v === 'bigint' ? v.toString() : v));
 }
 

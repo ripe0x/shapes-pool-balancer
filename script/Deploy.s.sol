@@ -139,7 +139,9 @@ contract Deploy is Script {
 
     function _factoryConfiguration(BalancerFactory factory) internal view returns (bytes32) {
         (uint16 maxPrizes, uint16 minMarkup, uint16 maxMarkup) = factory.productLimits();
-        return keccak256(abi.encode(factory.keeperAdmin(), factory.policyAdmin(), factory.keepersRestricted(),
+        // Old immutable factories have no pause getter; include the raw deterministic EVM response in the snapshot.
+        (bool pauseSupported, bytes memory pauseState) = address(factory).staticcall(abi.encodeWithSignature("creationPaused()"));
+        return keccak256(abi.encode(pauseSupported, pauseState, factory.keeperAdmin(), factory.policyAdmin(), factory.keepersRestricted(),
             factory.pendingKeeperAdmin(), factory.pendingPolicyAdmin(), factory.economics(),
             factory.defaultBucketCapacity(), factory.defaultBucketRefill(), maxPrizes, minMarkup, maxMarkup));
     }
@@ -181,6 +183,7 @@ contract Deploy is Script {
         address policyAdmin
     ) internal view {
         require(factory.implementation() == address(impl), "factory wiring");
+        require(factory.creationPaused(), "new factory must keep public creation paused");
         require(factory.keeperAdmin() == keeperAdmin && !factory.keepersRestricted(), "keeper list: admin set, open");
         require(factory.pendingKeeperAdmin() == address(0) && factory.pendingPolicyAdmin() == address(0), "no pending admin");
         require(factory.policyAdmin() == policyAdmin, "factory admin");

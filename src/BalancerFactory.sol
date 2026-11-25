@@ -19,6 +19,9 @@ contract BalancerFactory {
     ///      `SHAPES()` and `pool()`, which this factory calls.
     address public implementation;
 
+    /// @notice New public pools start paused; the policy admin may create its own canary while paused.
+    bool public creationPaused = true;
+
     mapping(address balancer => bool) public isBalancer;
 
     address public keeperAdmin;
@@ -55,11 +58,13 @@ contract BalancerFactory {
     event PolicyAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event ProductLimitsChanged(uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps);
     event ImplementationChanged(address indexed previousImplementation, address indexed newImplementation);
+    event CreationPauseChanged(bool paused);
 
     error Unauthorized();
     error InvalidLimits();
     error StaleSettings();
     error InvalidImplementation();
+    error CreationPaused();
 
     modifier onlyKeeperAdmin() {
         if (msg.sender != keeperAdmin) revert Unauthorized();
@@ -151,6 +156,13 @@ contract BalancerFactory {
         implementation = next;
     }
 
+    /// @notice Pause public creation without changing any existing pool's operations or exit rights.
+    function setCreationPaused(bool paused) external {
+        if (msg.sender != policyAdmin) revert Unauthorized();
+        creationPaused = paused;
+        emit CreationPauseChanged(paused);
+    }
+
     /// @notice Set the limits on newly submitted designs. Immediate; existing listings keep their prices.
     /// @dev Bounds are storage widths, not product preferences: a target holds 16-bit counts and markup is a uint16.
     ///      `minMarkupBps` stays above zero because a zero markup marks an unconfigured pool.
@@ -214,6 +226,7 @@ contract BalancerFactory {
     function createBalancer(bytes32 salt, PoolBalancer.CreationConfig calldata config, PoolBalancer.CuratedInput[] calldata curated)
         external payable returns (address balancer)
     {
+        if (creationPaused && msg.sender != policyAdmin) revert CreationPaused();
         if (config.settingsHash != creationSettingsHash()) revert StaleSettings();
         balancer = LibClone.cloneDeterministic(implementation, _salt(msg.sender, salt));
         isBalancer[balancer] = true;

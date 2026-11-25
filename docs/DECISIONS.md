@@ -1076,3 +1076,19 @@ retry deliveries are excluded from recovery. Creation settings are rechecked bef
 The existing deployment entry point supports implementation-only deployment and a separate factory-pointer switch.
 Existing pools remain immutable, factory settings/discovery history are retained, and the normal release gates and
 per-transaction broadcast confirmation remain required. This implementation entry is not release approval or a broadcast.
+
+
+## ERC20 rescue and factory creation pause (2026-11-25)
+
+Owner requested both additions. `recoverERC20(token,amount)` is creator-only and non-reentrant, sends only the ERC20
+transfer selector, transfers zero native ETH, and pays only the current creator. The inventory capability version is
+2; version 1 retains batching. The creator bears transaction gas; no keeper fee or new debt is booked.
+
+New factories begin with public creation paused. Only policyAdmin may pause/resume, and that admin can create its
+own canary while paused. Existing pools and predicted-address reads are unaffected. Ordinary local fixtures explicitly
+resume; local lifecycle drivers check ownership and resume only their owned fork, while historical prepared journals
+fail closed until their permitted actions are updated. Production deployment never silently resumes creation.
+
+This supersedes the previous implementation-only deployment recommendation when the pause is required: a new
+factory is necessary, reusing dependencies and retaining legacy discovery. No existing immutable factory or Balancer
+acquires these methods. Existing source/outcome approvals and rehearsal evidence are not promoted to this candidate.

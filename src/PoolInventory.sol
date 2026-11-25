@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
 import {PoolBalancer} from "./PoolBalancer.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 import {IFWAPool, IShapes, IShapePacks, IERC721Min} from "./interfaces/External.sol";
@@ -61,6 +63,7 @@ library PoolInventory {
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
     event CuratedWitnessRefreshed(uint256 indexed listingId, uint256 slot);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
+    event ERC20Recovered(address indexed token, address indexed to, uint256 amount);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     error InvalidBatch();
     error InvalidRecipient();
@@ -87,6 +90,13 @@ library PoolInventory {
             weight += n * _weight(d);
         }
         if (prizes == 0 || prizes > (old > maxPrizes ? old : maxPrizes)) revert InvalidPlan();
+    }
+
+    /// @dev Only the ERC20 transfer selector is called; no ETH or approvals are sent.
+    function recoverERC20(address token, address to, uint256 amount) public {
+        if (token.code.length == 0 || amount == 0) revert InvalidItem();
+        SafeTransferLib.safeTransfer(token, to, amount);
+        emit ERC20Recovered(token, to, amount);
     }
 
     function recoverUntracked(address pool, address factory, address collection, uint256 tokenId, address to) public {

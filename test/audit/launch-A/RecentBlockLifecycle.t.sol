@@ -33,6 +33,7 @@ contract RecentBlockLifecycleTest is ForkBase {
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
         factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
+        factory.setCreationPaused(false);
         nft = new MockNFT();
         vm.deal(creator, 5 ether);
         vm.deal(buyer, 5 ether);

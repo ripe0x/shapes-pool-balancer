@@ -13,6 +13,7 @@ import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransa
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
+import { readFactoryCreation } from './factory-creation';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
 import { MAIN_POOL_OPEN, VAULT } from './main-pool';
@@ -152,7 +153,7 @@ function useBalancer(b?: Address) {
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
     return {
-      balancer: b, pool, inventoryBatches: inventoryBatchVersion === 1n, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
+      balancer: b, pool, inventoryBatches: inventoryBatchVersion >= 1n, erc20Recovery: inventoryBatchVersion >= 2n, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
       keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber, ...generation, keeper,
@@ -1046,7 +1047,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     const timer = setInterval(() => void check().catch(() => undefined), 15_000);
     return () => { live = false; clearInterval(timer); };
   }, [pub, me, attempt, tx.busy]);
-  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
+  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket; creationAllowed: boolean }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
   // Completed fee loads, so a retry after a revert runs once the refreshed fees are in.
@@ -1066,16 +1067,20 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketCapacity' }),
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketRefill' }),
       ]);
-      const [costs, edgeBps, vrfFee, productLimits] = await Promise.all([
+      const [costs, edgeBps, vrfFee, productLimits, creation] = await Promise.all([
         policyEconomics(pub, economics, undefined, block),
         pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
-        liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number),
+        liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number), readFactoryCreation(pub, FACTORY, me, block.number),
       ]);
-      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill } });
+      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill }, creationAllowed: creation.allowed });
       setFetched((n) => n + 1);
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
-  }, [pub, loadTry]);
+  }, [pub, loadTry, me]);
+  useEffect(() => {
+    const timer = setInterval(() => { if (!document.hidden) setLoadTry(n => n + 1); }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => { if (!loadError) return; const t = setTimeout(() => setLoadTry((n) => n + 1), 30_000); return () => clearTimeout(t); }, [loadError]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
   // During a creation started on this visit the design page's progress panel reports it; the pending page takes over
@@ -1122,7 +1127,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
   const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched, attempt, outcome }} />;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, creationAllowed: live?.creationAllowed, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched, attempt, outcome }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -1182,7 +1187,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
+type Create = { creationAllowed?: boolean; wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
 type Bucket = { capacity: bigint; refill: bigint };
 
 /**
@@ -1472,6 +1477,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : d.mintFeeUnavailable ? 'The Shapes mint fee is unavailable.'
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
+    : mode === 'new' && create?.creationAllowed === false ? 'Pool creation is paused.'
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
     : toList.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold."
     : toList.length > 0 && holding.checking ? 'Checking that this wallet holds your NFTs…'
@@ -1495,6 +1501,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     try {
       // The creation binds the keeper settings the creator reviewed; changed ones need a new review, not a silent swap.
       const reviewedHash = create?.reviewedHash;
+      if (mode === 'new' && !(await readFactoryCreation(pub, FACTORY, me)).allowed) throw new Error('Pool creation is paused.');
       if (mode === 'new' && (!reviewedHash || await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) !== reviewedHash)) {
         setStaleReview(reviewedHash ?? '0x');
         return;
@@ -1513,6 +1520,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       const B = { address: balancer, abi: poolBalancerAbi } as const;
       const steps: Step[] = [];
       const checkCreationReview = async () => {
+        if (mode === 'new' && !(await readFactoryCreation(pub, FACTORY, me)).allowed) throw new Error('Pool creation is paused.');
         if (mode === 'new' && await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) !== reviewedHash) {
           setStaleReview(reviewedHash ?? '0x');
           throw new Error('Creation settings changed. Review the new pool address and approvals before continuing.');
@@ -1966,6 +1974,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   const [stray, setStray] = useState({ open: false, collection: '', tokenId: '' });
   const [selected, setSelected] = useState<bigint[]>([]);
   const [batchValue, setBatchValue] = useState('');
+  const [tokenRescue, setTokenRescue] = useState({ token: '', amount: '' });
   const picked = curated.filter(l => selected.includes(l.id));
   const withdrawSelected = () => tx.send('Withdraw selected NFTs', inventoryBatches(picked, d.inventoryBatches).map(batch =>
     [`Withdraw ${batch.length} NFT(s)`, () => tx.write({ ...B, functionName: d.inventoryBatches ? 'withdrawCuratedBatch' : 'withdrawCurated',
@@ -2048,6 +2057,14 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
       {isCreator && (
         <section className="sticky results">
           <AddNft d={d} tx={tx} me={me} setTab={setTab} />
+          {d.erc20Recovery && <div className="section">
+            <h3>Return ERC20 tokens</h3>
+            <label className="form-label" htmlFor="rescue-token">Token address</label>
+            <input id="rescue-token" value={tokenRescue.token} onChange={e => setTokenRescue({ ...tokenRescue, token: e.target.value })} />
+            <label className="form-label" htmlFor="rescue-amount">Amount in raw token units</label>
+            <input id="rescue-amount" inputMode="numeric" value={tokenRescue.amount} onChange={e => setTokenRescue({ ...tokenRescue, amount: e.target.value })} />
+            <button className="btn sec" disabled={!!tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(tokenRescue.token) || !/^[1-9][0-9]*$/.test(tokenRescue.amount)} onClick={() => tx.send('Return ERC20 tokens', [() => tx.write({ ...B, functionName: 'recoverERC20', args: [tokenRescue.token as Address, BigInt(tokenRescue.amount)] })])}>Return to my wallet</button>
+          </div>}
           <div className="section">
             <button className="disclose quiet" onClick={() => setStray({ ...stray, open: !stray.open })}>Return an NFT sent to the pool directly {stray.open ? '▴' : '▾'}</button>
             {stray.open && (

@@ -33,8 +33,12 @@ contract DevSetup is Script {
         BalancerFactory factory = BalancerFactory(vm.envAddress("FACTORY"));
         bytes32 salt = bytes32(vm.envOr("SALT", uint256(0)));
         vm.startBroadcast();
-        DemoNFT nft = new DemoNFT();
         (, address creator,) = vm.readCallers();
+        (bool hasPause, bytes memory pauseData) = address(factory).staticcall(abi.encodeWithSignature("creationPaused()"));
+        if (hasPause && pauseData.length == 32 && abi.decode(pauseData, (bool))) {
+            require(creator == factory.policyAdmin(), "public creation paused: local policy admin must resume before demo NFT transactions");
+        }
+        DemoNFT nft = new DemoNFT();
         address predicted = factory.predictBalancer(creator, salt);
         PoolBalancer.CuratedInput[] memory nfts = new PoolBalancer.CuratedInput[](2);
         for (uint256 i = 1; i <= 2; ++i) {
