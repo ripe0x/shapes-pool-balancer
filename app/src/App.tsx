@@ -2250,6 +2250,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const reopen = !d.enabled && !d.retired && openingShortfall > 0n;
   const suggestedDeposit = openingShortfall > short_ ? openingShortfall : short_;
   const withdrawable = d.surplus ?? d.creatorCredit;
+  const spareWithdrawable = d.surplus === undefined ? undefined : withdrawable - d.creatorCredit;
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? formatEther(withdrawable) : suggestedDeposit > 0n ? formatEther(suggestedDeposit) : '0.01'); };
   const deposit = (value: bigint): Step => () => tx.write({ ...B, functionName: 'depositETH', value });
   const check = rateCheck(d);
@@ -2415,18 +2416,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
             <p className="warn">Out of date. Your markup and mix now set {check.suggested / 100}%.</p>
             {isCreator && <div className="acts"><button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Update earnings rate', [rateStep(tx, d.balancer, check.suggested)])}>Update to {check.suggested / 100}%</button></div>}
           </>}
-          <div style={{ marginTop: 20 }}><span className="fig32">{eth(withdrawable, 5)}</span><span className="u13">ETH ready to withdraw</span></div>
-          {isCreator && <div className="acts">
-            <button className="btn" disabled={!!tx.busy || withdrawable === 0n} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [withdrawable, me] })])}>Withdraw {ethDown(withdrawable)} ETH</button>
-            <button className="link" disabled={withdrawable === 0n} onClick={() => start('claim')}>Other amount</button>
-          </div>}
-          {isCreator && mode === 'claim' && (
-            <div className="acts">
-              <div className="field" style={{ width: 180 }}><input aria-label="Withdraw amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
-              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH</button>
-            </div>
-          )}
-          <p className="foot">{d.surplus === undefined ? 'Operating surplus unavailable. Earnings remain withdrawable.' : "Withdrawals take earnings first, then any operating ETH above what's needed."}{d.surplus !== undefined && d.surplus < idle && ' More becomes available as pending draws settle.'}</p>
+          <div style={{ marginTop: 20 }}><span className="fig32">{eth(d.creatorCredit, 5)}</span><span className="u13">ETH earnings available</span></div>
           {econ ? <>
             <div className="kvs">
               <div className="kv"><span className="k">Estimated earnings</span><span className={month < 0 ? 'error' : undefined}>{signed(month)} ETH a month</span></div>
@@ -2442,6 +2432,26 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               <p className="foot">Earnings are separate from overall pool creator net results. Demand, replacement backing, mint costs and keeper costs affect those results.</p>
             </div>}
           </> : <p className="foot">{d.policyUnavailable ? 'Estimate unavailable while keeper quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Earnings appear once an NFT is listed and a mix is saved.'}</p>}
+        </div>
+
+        <div className="blk">
+          <h2 className="h">Withdraw ETH</h2>
+          <div className="kvs">
+            <div className="kv"><span className="k">Your earnings</span><span>{eth(d.creatorCredit, 5)} ETH</span></div>
+            <div className="kv"><span className="k">Spare operating ETH</span><span>{spareWithdrawable === undefined ? 'Unavailable' : `${eth(spareWithdrawable, 5)} ETH`}</span></div>
+            <div className="kv sum"><span className="k">Total available to withdraw</span><span>{eth(withdrawable, 5)} ETH</span></div>
+          </div>
+          {isCreator && <div className="acts">
+            <button className="btn" disabled={!!tx.busy || withdrawable === 0n} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [withdrawable, me] })])}>Withdraw {ethDown(withdrawable)} ETH</button>
+            <button className="link" disabled={withdrawable === 0n} onClick={() => start('claim')}>Other amount</button>
+          </div>}
+          {isCreator && mode === 'claim' && (
+            <div className="acts">
+              <div className="field" style={{ width: 180 }}><input aria-label="Withdraw amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+              <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH</button>
+            </div>
+          )}
+          <p className="foot">{d.surplus === undefined ? 'Operating surplus unavailable. Earnings remain withdrawable.' : "Withdrawals take earnings first, then any operating ETH above what's needed."}{d.surplus !== undefined && d.surplus < idle && ' More becomes available as pending draws settle.'}</p>
           <h3 className="sub">Withdrawals</h3>
           {L ? (claims.length ? <div className="kvs hist" style={{ marginTop: 8 }}>
             {(allClaims ? claims : claims.slice(0, 5)).map((c) => {
