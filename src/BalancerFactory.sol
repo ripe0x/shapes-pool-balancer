@@ -7,11 +7,17 @@ import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
 
 /// @title BalancerFactory
 /// @notice Deploys immutable pool clones. Keeper eligibility and keeper economics have separate authorities.
+///         The policy admin may change the implementation new clones copy; existing clones never change.
 ///         The policy admin's economics and product-limit changes take effect immediately, in constant work: every pool
 ///         that follows the factory reads `economics()` at its next operation (pools with local economics keep
 ///         theirs), and product limits apply to designs submitted after the change.
 contract BalancerFactory {
-    address public immutable implementation;
+    /// @notice The code new Balancers clone. Changing it affects only pools created afterwards: each clone is a
+    ///         fixed EIP-1167 proxy of the implementation it was created with. It is part of `creationSettingsHash`,
+    ///         so a creation reviewed against another implementation is refused.
+    /// @dev Trust: the policy admin chooses the code future pools run. A replacement must keep `initialize`,
+    ///      `SHAPES()` and `pool()`, which this factory calls.
+    address public implementation;
 
     mapping(address balancer => bool) public isBalancer;
 
@@ -48,10 +54,12 @@ contract BalancerFactory {
     event PolicyAdminTransferStarted(address indexed admin, address indexed pendingAdmin);
     event PolicyAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
     event ProductLimitsChanged(uint16 maxPrizes, uint16 minMarkupBps, uint16 maxMarkupBps);
+    event ImplementationChanged(address indexed previousImplementation, address indexed newImplementation);
 
     error Unauthorized();
     error InvalidLimits();
     error StaleSettings();
+    error InvalidImplementation();
 
     modifier onlyKeeperAdmin() {
         if (msg.sender != keeperAdmin) revert Unauthorized();
@@ -68,6 +76,7 @@ contract BalancerFactory {
     constructor(address implementation_, address keeperAdmin_, address policyAdmin_) {
         if (keeperAdmin_ == address(0) || policyAdmin_ == address(0)) revert Unauthorized();
         implementation = implementation_;
+        emit ImplementationChanged(address(0), implementation_);
         keeperAdmin = keeperAdmin_;
         policyAdmin = policyAdmin_;
         emit KeeperAdminTransferred(address(0), keeperAdmin_);
@@ -120,13 +129,26 @@ contract BalancerFactory {
     }
 
     /// @notice What a pool created now starts with: the pool's own `settingsHash` (these economics followed, paid upkeep
-    ///         on, the live Shapes mint fee) bound to the default spending bucket it copies. `createBalancer` requires it
-    ///         in `CreationConfig.settingsHash`, so any of these changing after the creator's review refuses creation.
-    /// @dev    keccak256(abi.encode(poolSettingsHash, defaultBucketCapacity, defaultBucketRefill)). The pool's own
-    ///         `settingsHash` leaves the bucket out: it is the creator's spending limit, not economics a keeper prices.
+    ///         on, the live Shapes mint fee) bound to the default spending bucket it copies and the implementation it
+    ///         clones. `createBalancer` requires it in `CreationConfig.settingsHash`, so any of these changing after the
+    ///         creator's review refuses creation.
+    /// @dev    keccak256(abi.encode(poolSettingsHash, defaultBucketCapacity, defaultBucketRefill, implementation)). The
+    ///         pool's own `settingsHash` leaves the bucket out: it is the creator's spending limit, not economics a keeper
+    ///         prices.
     function creationSettingsHash() public view returns (bytes32) {
         return keccak256(abi.encode(KeeperPolicyCalls.settingsHash(_economics, KeeperPolicyCalls.FOLLOW, 0, true,
-            PoolBalancer(payable(implementation)).SHAPES().mintFee()), defaultBucketCapacity, defaultBucketRefill));
+            PoolBalancer(payable(implementation)).SHAPES().mintFee()), defaultBucketCapacity, defaultBucketRefill,
+            implementation));
+    }
+
+    /// @notice Clone `next` for pools created after this call. Existing pools keep their code. Immediate; a creation
+    ///         reviewed against the previous implementation is refused (`StaleSettings`), and the predicted address of a
+    ///         creator's next pool changes with it.
+    function setImplementation(address next) external {
+        if (msg.sender != policyAdmin) revert Unauthorized();
+        if (next.code.length == 0) revert InvalidImplementation();
+        emit ImplementationChanged(implementation, next);
+        implementation = next;
     }
 
     /// @notice Set the limits on newly submitted designs. Immediate; existing listings keep their prices.
