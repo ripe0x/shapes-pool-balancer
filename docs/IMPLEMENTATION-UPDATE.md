@@ -304,3 +304,22 @@ these focused outcomes/configuration. The prior full-campaign signature is not c
 
 Things that don't make sense: a focused gate cannot establish monthly profitability, new oracle availability,
 production wallet inclusion or public launch readiness. Those remain separate claims and canary work.
+
+
+### Callback regression and final focused binding
+
+After commit d2e268a, one additional hostile callback regression establishes actualnonzero creator credit from
+three genuine fulfilled sales and0.1realWETH held by the Balancer. The acceptedcurrent creator's token callback
+attempts nativeclaim and WETHrecovery; both fail with Reentrancy, so authorization rejection cannot disguise
+a missing lock. NativeETH/WETH/credit remain intact;100issued adversarial tokenunits recover and subsequent
+legitimate0.1WETH recovery succeeds. No protocol party is replaced or mocked.
+
+The five-case affected pass (three regenerated reference flows, callback case and inherited authentic economiccase)
+is green. Together with the initial27case pass, this covers28uniquefocused cases; unchanged35wrapperchecks remain
+valid. Independent callback/repairreview refreshed the source seal. The final gate readback still has exactly one
+incomplete item: owner signature missing. Focused approval hash is now 191c4b697f12aa9908add65777a92f04a2a11115120ea8388dc6289019620f4d;
+it replaces the earlier focused packet hash because the test/evidence list expanded, not because outcomes changed.
+No production Solidity or runtime changed. OWNER-SIGNATURE.md contains the concrete public signing packet.
+
+Things that don't make sense: local guard tests and exactsource review do not establish liveoracle availability or
+complete all distinct protocol/mint/oracle-fee economics. The full campaign and livecanary remain separate.

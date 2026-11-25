@@ -24,7 +24,8 @@
     "scripts/deployment-preflight.ts",
     "scripts/current-local-rehearsal.ts",
     "scripts/prepare-local-rehearsal.ts",
-    "OWNER-REQUIREMENTS.md"
+    "OWNER-REQUIREMENTS.md",
+    "test/FocusedERC20Callbacks.t.sol"
   ],
   "scorecard_dir": "docs/receipts/flow/inventory-update-v2",
   "review_dir": "audit/inventory-update-b44e35f",
@@ -38,7 +39,7 @@
       "inventory_roundtrip"
     ]
   ],
-  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'focused gas evidence needs Foundry 1.8.1'; exit 1; }; CANDIDATE_RUN=1 forge test --match-contract '^(FocusedReleaseFlowTest|FocusedInventoryGasTest|InventoryBatchesTest|ERC20RecoveryTest|FactoryPauseTest|AuthenticRefundRecoveryTest|AuthenticEconomicFlowsTest)$' -vv",
+  "test_command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'focused gas evidence needs Foundry 1.8.1'; exit 1; }; CANDIDATE_RUN=1 forge test --match-contract '^(FocusedERC20CallbacksTest|FocusedReleaseFlowTest|FocusedInventoryGasTest|InventoryBatchesTest|ERC20RecoveryTest|FactoryPauseTest|AuthenticRefundRecoveryTest|AuthenticEconomicFlowsTest)$' -vv",
   "outcomes": [
     {
       "id": "I1",
@@ -95,7 +96,7 @@
   "explained": [],
   "approval": {
     "date": "2026-11-25",
-    "outcomes_sha256": "0046e6fa71e7dfa028da101e6c6df33f8ceb9ab0ae388e59ef2058d854eb8ca4",
+    "outcomes_sha256": "191c4b697f12aa9908add65777a92f04a2a11115120ea8388dc6289019620f4d",
     "signature": ""
   }
 }
