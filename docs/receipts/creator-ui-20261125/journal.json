@@ -1,0 +1,290 @@
+{
+  "planHash": "802d8dd575e37d9ee81255a0420a3934232a4237ee571c972723eb33f0ed46fd",
+  "approval": "Owner approved local UI batch and 15 minutes, 2026-11-25",
+  "started": "2026-11-25T16:15:23.040Z",
+  "startBlock": "26493182",
+  "startingNonce": 14,
+  "chainId": 31337,
+  "balances": {
+    "ownerEth": "898724110310173952",
+    "balancerEth": "0"
+  },
+  "receipts": [
+    {
+      "hash": "0x359f4e1e33d40df71b480f0cf25a8c4cc409f9870b6857424a7a556b1411a215",
+      "nonce": 14,
+      "to": "0x5f7365d1ce9d5247be8cbe5bf1ebeabe5121579c",
+      "input": "0x095ea7b30000000000000000000000005e638324a84cf6cf1394d2066cb0a7ac4c655cd90000000000000000000000000000000000000000000000000000000000000001",
+      "value": "0",
+      "decoded": {
+        "functionName": "approve",
+        "args": [
+          "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+          "1"
+        ]
+      },
+      "gasUsed": "48106",
+      "gasPrice": "1064497515",
+      "gasWei": "51208717456590",
+      "block": "26493183",
+      "blockHash": "0x7a3ec6ae350a637c6f6f254da32fd1fabb5d07052a1f9f782cf9e0ba97c77a98",
+      "basefee": "64497515",
+      "status": "success"
+    },
+    {
+      "hash": "0x812369f80a25fe4445eb0e394645a814a24af29dcca4c0122db24f9836be4cc8",
+      "nonce": 15,
+      "to": "0x5f7365d1ce9d5247be8cbe5bf1ebeabe5121579c",
+      "input": "0x095ea7b30000000000000000000000005e638324a84cf6cf1394d2066cb0a7ac4c655cd90000000000000000000000000000000000000000000000000000000000000002",
+      "value": "0",
+      "decoded": {
+        "functionName": "approve",
+        "args": [
+          "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+          "2"
+        ]
+      },
+      "gasUsed": "48106",
+      "gasPrice": "1056448254",
+      "gasWei": "50821499706924",
+      "block": "26493184",
+      "blockHash": "0xb9410a5e918e57fb466334907f7ff565ca2432048915308759f1003d49f061be",
+      "basefee": "56448254",
+      "status": "success"
+    },
+    {
+      "hash": "0x73b710e67efee5de1d4224fe86838351bc3b6914a7449ec1e959527a29439fe4",
+      "nonce": 16,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x1f21d364000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000020000000000000000000000005f7365d1ce9d5247be8cbe5bf1ebeabe5121579c000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000002c68af0bb1400000000000000000000000000005f7365d1ce9d5247be8cbe5bf1ebeabe5121579c00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000429d069189e0000",
+      "value": "0",
+      "decoded": {
+        "functionName": "listCuratedBatch",
+        "args": [
+          [
+            {
+              "collection": "0x5f7365D1ce9d5247BE8cbE5BF1eBeAbE5121579c",
+              "tokenId": "1",
+              "base": "200000000000000000"
+            },
+            {
+              "collection": "0x5f7365D1ce9d5247BE8cbE5BF1eBeAbE5121579c",
+              "tokenId": "2",
+              "base": "300000000000000000"
+            }
+          ]
+        ]
+      },
+      "gasUsed": "1587528",
+      "gasPrice": "1049403537",
+      "gasWei": "1665957498286536",
+      "block": "26493185",
+      "blockHash": "0x0eca14c84ad51828ad3337bb289954f6d557825bbedc5900b01f7e3ec0009202",
+      "basefee": "49403537",
+      "status": "success"
+    },
+    {
+      "hash": "0xf21bc301c90aa61bca1d33e0f4e0804fea2e5997ee412b206e2c9db3bcf20ee4",
+      "nonce": 17,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x849d1d51000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000058d15e176280000000000000000000000000000000000000000000000000000058d15e176280000",
+      "value": "0",
+      "decoded": {
+        "functionName": "updateCuratedPricesBatch",
+        "args": [
+          [
+            "3",
+            "4"
+          ],
+          [
+            "400000000000000000",
+            "400000000000000000"
+          ]
+        ]
+      },
+      "gasUsed": "329406",
+      "gasPrice": "1043554885",
+      "gasWei": "343753240448310",
+      "block": "26493186",
+      "blockHash": "0x6004d68975f230f5ff2508ed691422a18238200796cc9fa9079d34d5bcc6442f",
+      "basefee": "43554885",
+      "status": "success"
+    },
+    {
+      "hash": "0x586a216a7dad65e2e16a5c988fbbb9f98b765704c8a2cd4a7b148ac1a9cf5e1f",
+      "nonce": 18,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x7a3b9ccc0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000001e00400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003",
+      "value": "0",
+      "decoded": {
+        "functionName": "withdrawCuratedBatch",
+        "args": [
+          [
+            "3"
+          ],
+          "0x000000000000000000000000000000000001e004"
+        ]
+      },
+      "gasUsed": "343904",
+      "gasPrice": "1038170305",
+      "gasWei": "357030920570720",
+      "block": "26493187",
+      "blockHash": "0x88f3e04b8be72cad37c2c18f418a557efc42c1365432711cffaed2d6eb6b27e3",
+      "basefee": "38170305",
+      "status": "success"
+    },
+    {
+      "hash": "0x5d3d7cc55824cda7e6e1c77bf7e642f1c6b09ff7c09c45986f1d1c90c43d0cf2",
+      "nonce": 19,
+      "to": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "input": "0xa9059cbb0000000000000000000000005e638324a84cf6cf1394d2066cb0a7ac4c655cd9000000000000000000000000000000000000000000000000016345785d8a0000",
+      "value": "0",
+      "decoded": {
+        "functionName": "transfer",
+        "args": [
+          "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+          "100000000000000000"
+        ]
+      },
+      "gasUsed": "46794",
+      "gasPrice": "83453713",
+      "gasWei": "3905133046122",
+      "block": "26493188",
+      "blockHash": "0x93dce7cb831274e56f183355c2b74263af278fef757efb42f491a471a7dc27fc",
+      "basefee": "33453713",
+      "status": "success"
+    },
+    {
+      "hash": "0x59e97ece4e664eb1839818399dc31c3ca31a15ea25ec6be866f27f41ffe088b6",
+      "nonce": 20,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x8980f11f000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000016345785d8a0000",
+      "value": "0",
+      "decoded": {
+        "functionName": "recoverERC20",
+        "args": [
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "100000000000000000"
+        ]
+      },
+      "gasUsed": "63383",
+      "gasPrice": "1029278522",
+      "gasWei": "65238760559926",
+      "block": "26493189",
+      "blockHash": "0x30b80911cc6bb0e074721f907be7cfa1ce3a5f455ae6024ac9831d221bcfcafa",
+      "basefee": "29278522",
+      "status": "success"
+    },
+    {
+      "hash": "0xd6774dcf3ecd28883c619ea26de8e0a435f4e1d397c666e5fb10537b8831f460",
+      "nonce": 21,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0xf6326fb3",
+      "value": "100000000000000000",
+      "decoded": {
+        "functionName": "depositETH"
+      },
+      "gasUsed": "27020",
+      "gasPrice": "1025626440",
+      "gasWei": "27712426408800",
+      "block": "26493190",
+      "blockHash": "0xf6ebe7eb47dfbb54d04b200192bc020ece397c3cdb3a9ca1dd504195e16935e8",
+      "basefee": "25626440",
+      "status": "success"
+    },
+    {
+      "hash": "0x9740b32194092c67a5d1da73897051d45e6087b2661de1309794c78b29514729",
+      "nonce": 22,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0xa4874d77",
+      "value": "0",
+      "decoded": {
+        "functionName": "retire"
+      },
+      "gasUsed": "50407",
+      "gasPrice": "1022426021",
+      "gasWei": "51537428440547",
+      "block": "26493191",
+      "blockHash": "0x076170e7a5f03a945b4455b3856b6427519d07b9dc0d5ae8a6c2234ed5b601a2",
+      "basefee": "22426021",
+      "status": "success"
+    },
+    {
+      "hash": "0x5d596ad24ea5d56c37cd50e161a82addde1130ea3dc63bebf893a32a0be439ae",
+      "nonce": 23,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x7a3b9ccc0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000001e00400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000004",
+      "value": "0",
+      "decoded": {
+        "functionName": "withdrawCuratedBatch",
+        "args": [
+          [
+            "4"
+          ],
+          "0x000000000000000000000000000000000001e004"
+        ]
+      },
+      "gasUsed": "287284",
+      "gasPrice": "1019627479",
+      "gasWei": "292922660677036",
+      "block": "26493192",
+      "blockHash": "0x93ebedd0b4c66bfa5cd33308e2fa918839ec8c515fd0112bf43aca5b3db20308",
+      "basefee": "19627479",
+      "status": "success"
+    },
+    {
+      "hash": "0x00a568e799730a4ebfef80e3aa99823305e24689dea59c668d0b966a5c5110f0",
+      "nonce": 24,
+      "to": "0x5e638324a84cf6cf1394d2066cb0a7ac4c655cd9",
+      "input": "0x3c553a25000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000000000000000000000000000000000000001e004",
+      "value": "0",
+      "decoded": {
+        "functionName": "claimSurplus",
+        "args": [
+          "100000000000000000",
+          "0x000000000000000000000000000000000001e004"
+        ]
+      },
+      "gasUsed": "82624",
+      "gasPrice": "1017197539",
+      "gasWei": "84044929462336",
+      "block": "26493193",
+      "blockHash": "0x9401a792dcfddad1a904750542e3a15c8860bb4772853765308786e517054d9e",
+      "basefee": "17197539",
+      "status": "success"
+    }
+  ],
+  "completed": true,
+  "gasWei": "2994133215063847",
+  "finished": "2026-11-25T16:21:31.702Z",
+  "postflight": {
+    "block": "26493193",
+    "blockHash": "0x9401a792dcfddad1a904750542e3a15c8860bb4772853765308786e517054d9e",
+    "chainId": 31337,
+    "paused": true,
+    "retired": true,
+    "nftOwners": [
+      "0x000000000000000000000000000000000001e004",
+      "0x000000000000000000000000000000000001e004"
+    ],
+    "activeIds": [],
+    "balancerEth": "0",
+    "poolEth": "0",
+    "balancerWeth": "0",
+    "ownerWeth": "100000000000000000",
+    "ownerProceeds": "0",
+    "unsettled": "0",
+    "ownerEth": "895729977095110105",
+    "factoryRuntime": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780",
+    "balancerRuntime": "0xb8b3299cf420013f60b22ec424e2371adfcd2ef0c8312df872934a92df4b85f4",
+    "listingStatuses": [
+      3,
+      3
+    ]
+  },
+  "limitations": [
+    "Local unlocked-node wallet only; no production wallet signing",
+    "No draws or refunded-history UI exercised",
+    "Not economic release evidence or mainnet canary"
+  ]
+}

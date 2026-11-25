@@ -205,3 +205,26 @@ It has not been executed or approved. It adds no wallet funding and caps writes 
 
 Things that don't make sense: the previous broad economic gate uses fabricated randomness and cannot count as fresh
 no-mock evidence. UI and economic release evidence remain outstanding; no mainnet deployment/switch is approved.
+
+
+### Completed creator UI batch (2026-11-25)
+
+The owner approved the prepared local creator UI batch and 15 active minutes, then explicitly amended the omitted
+`depositETH()` method before its 0.1 test ETH deposit. The CUA-driven app preview at http://127.0.0.1:5211/
+completed 11 successful local transactions, nonces 14 through 24, on the preserved owned fork at http://127.0.0.1:18790.
+Two NFTs were listed at 0.2/0.3 ETH and repriced together to 0.4 ETH. NFT #1 was selectively withdrawn with NFT #2
+excluded; a reload showed NFT #2 still listed. The actual ERC20 form recovered 0.1 real fork WETH. After deposit and
+retirement, Take everything back returned NFT #2 and 0.1 test ETH. Its final UI message agreed with independent
+readbacks. Gas totaled 0.002994133215063847 test ETH, below 0.1; the owner's native wallet decrease equals that
+receipt gas exactly. The Balancer and FWA pool hold zero native ETH, Balancer WETH is zero, both NFTs belong to the
+synthetic creator, active inventory is empty, FWA proceeds/unsettled counts are zero, and public creation remains
+paused. No new wallet funding occurred. Independent focused acceptance review found no consequential inconsistency.
+
+See `docs/receipts/creator-ui-20261125/README.md`, journal, amendment, exact intents and postflight for scope,
+nonzero transaction fee context and preserved read-only operator failures. This is unlocked-node development-wallet
+UI evidence, not production extension signing or refunded-history UI evidence. No production source changed;
+existing valid build/fork proofs remain reusable. Economic harness correction, 28 current-source regimes and
+exact-source independent review remain required by the existing production gate. No mainnet transaction occurred.
+
+Things that don't make sense: the broad economic harness still fabricates randomness. Its 28 old-source scorecards
+cannot be refreshed unchanged as no-mock release evidence.

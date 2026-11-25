@@ -1,0 +1,25 @@
+{
+  "block": "26493193",
+  "blockHash": "0x9401a792dcfddad1a904750542e3a15c8860bb4772853765308786e517054d9e",
+  "chainId": 31337,
+  "paused": true,
+  "retired": true,
+  "nftOwners": [
+    "0x000000000000000000000000000000000001e004",
+    "0x000000000000000000000000000000000001e004"
+  ],
+  "activeIds": [],
+  "balancerEth": "0",
+  "poolEth": "0",
+  "balancerWeth": "0",
+  "ownerWeth": "100000000000000000",
+  "ownerProceeds": "0",
+  "unsettled": "0",
+  "ownerEth": "895729977095110105",
+  "factoryRuntime": "0x737bd28292605e753a2e4cfdf81364817fbc245bdf2b917277925198908b9780",
+  "balancerRuntime": "0xb8b3299cf420013f60b22ec424e2371adfcd2ef0c8312df872934a92df4b85f4",
+  "listingStatuses": [
+    3,
+    3
+  ]
+}
