@@ -58,12 +58,12 @@ describe('local rehearsal gate without chain mutations',()=>{
       [...proposed.plan.forgeArguments,'--rpc-url','https://mainnet.gateway.tenderly.co'],
     ]) assert.throws(()=>validateForgeArgs(proposed.plan,args,'deploy'));
   });
-  it('preserves every byte of the original production gate and Forge tail',()=>{
+  it('preserves the focused gate, review/signature enforcement and Forge tail',()=>{
     const after=readFileSync(resolve(root,'script/deploy.sh'),'utf8');
-    // Frozen 04bc760 production tail; shallow CI checkouts need no historical commit objects.
-    assert.equal(digest(after.slice(after.indexOf('GATE='))),'34d5e5f61b2ea38bfaf92fc4cc841a5f4e113f6d53d9b47975a324e8d78a5e0d');
+    // Owner-authorized focused-gate migration; shallow CI needs no historical commit objects.
+    assert.equal(digest(after.slice(after.indexOf('GATE='))),'e41bd1be39034eff5724190c55477c8033ff07c73061baf27d9e447f68399cd8');
     assert.match(after,/unset ASSET_GATE_PASSED\s+exec forge script script\/Deploy.s.sol "\$@"/);
-    assert.match(after,/--require-review/);
+    assert.match(after,/--config asset-flow-focused\.json --require-review/);
   });
   it('rejects incomplete or misplaced local wrapper flags before any deployment',()=>{
     for(const args of [['--local-rehearsal-plan'],['--rpc-url','https://mainnet.gateway.tenderly.co','--approved-plan-hash','invalid']]) {

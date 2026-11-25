@@ -275,3 +275,32 @@ approved workloads/outcomes. No public-chain broadcast, fresh oracle-service ava
 is claimed. The four-pair capture and bounded passing evidence are in the receipt README and fixture.
 
 Things that don't make sense: four verified proofs must not be described as836verified proofs or full-regime completion.
+
+
+### Owner-authorized focused release gate (2026-11-25)
+
+R113 narrows this inventory/recovery/pause update to asset-flow-focused.json. The production wrapper reuses the
+existing asset_gate.py with --config asset-flow-focused.json --require-review. Owner outcome signatures, exact-source
+independent review and decoded broadcast controls remain mandatory. asset-flow.json is unchanged and retains the
+full economic campaign; no monthly economic result is relabelled or claimed. New focused scorecards live below
+its existing directory in flow/inventory-update-v2, separate from the full-campaign regimes.
+
+The frozen pass ran27focused Solidity tests and35selected deployment-wrapper checks successfully. These cover the
+new entrypoints and their real FWA/WETH/ENS callers, authorization, atomic rollback, pending-draw locks,20-IDbounds,
+creator handoff, pause/canary/resume/exits, authentic refunded recovery and creator economics. Three no-oracle
+reference roundtrips write an actual native-capital ledger plus separate NFT/ERC20 facts:1ETH inventory capital
+returned,1WETH recovered to current creator,0.1ETH admin canary fully exited, zero remaining reference assets.
+Maximum20raw gas observations: reprice1476308 versus5558400 across20scalar calls; withdraw2010227 versus6355675.
+Snapshots share one Forge transaction; these are raw observations, not independent signed-transaction fee savings.
+Balancer runtime is24453bytes (123below EIP170); factory5594, inventory library13331 and page library1693bytes.
+No production Solidity, ABI or compiler settings changed during gate migration, so valid UI/rehearsal evidence is reused.
+
+Independent review is recorded in audit/inventory-update-b44e35f/REPORT.md and its SOURCE_HASH. It found no actionable
+defect in this timeboxed changed-flow review and recommends no new whole-repository audit solely for this narrow
+update. Static callback proofs and execution gaps remain explicit; the report is not an absence-of-defects claim.
+The completed gate readback in docs/receipts/focused-inventory-update/gate-pre-signature.log has exactly one incomplete
+item: owner signature missing. Approval hash0046e6fa71e7dfa028da101e6c6df33f8ceb9ab0ae388e59ef2058d854eb8ca4 covers
+these focused outcomes/configuration. The prior full-campaign signature is not copied. No public transaction occurred.
+
+Things that don't make sense: a focused gate cannot establish monthly profitability, new oracle availability,
+production wallet inclusion or public launch readiness. Those remain separate claims and canary work.

@@ -34,10 +34,11 @@ for argument in "$@"; do
         --local-rehearsal-plan*|--current-local-rehearsal-plan*|--approved-plan-hash*) echo "local gate flags must precede Forge arguments" >&2; exit 1 ;;
     esac
 done
-# Production retains the full asset-flow gate, owner signature and exact-source review requirement.
+# Owner-authorized inventory-update gate; the full economic campaign remains in asset-flow.json.
+# Production still requires the focused outcome signature and exact-source independent review.
 GATE="$HOME/.agents/guidance/asset-flow-kit/asset_gate.py"
 [[ -f "$GATE" ]] || { echo "asset gate missing at $GATE; refusing to deploy." >&2; exit 1; }
-python3 "$GATE" "$PWD" --require-review || { echo "asset gate not PASS (exit $?); refusing to deploy." >&2; exit 1; }
+python3 "$GATE" "$PWD" --config asset-flow-focused.json --require-review || { echo "asset gate not PASS (exit $?); refusing to deploy." >&2; exit 1; }
 # read by Deploy.s.sol, which refuses chain id 1 without it (a hand-set variable defeats it)
 export ASSET_GATE_PASSED=yes
 exec forge script script/Deploy.s.sol "$@"

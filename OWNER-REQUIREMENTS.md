@@ -468,3 +468,8 @@ Accepted and documented; no contract behavior change and no outcome bound change
   pause to new factories. Implementation starts paused and permits the policy admin's own canary while paused;
   existing pool operations and exits continue. The existing factory is immutable, so this requires a replacement
   factory to become available onchain. No broadcast, new spending budget or migration is authorized by this record.
+
+
+## Focused inventory-update release gate (owner, 2026-11-25)
+
+- R113. "narrow the release gate to the focused checks for this update and do the remaining review and regressions. keep the full economic campaign separate and commit along the way." The inventory/batch/recovery/pause release uses asset-flow-focused.json; asset-flow.json retains the unchanged full economic campaign and its approved outcomes. Focused acceptance does not establish the monthly economic claims. Existing owner-signature, exact-source review, deployment authority and live-canary controls remain.

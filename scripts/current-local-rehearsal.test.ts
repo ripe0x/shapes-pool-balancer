@@ -156,12 +156,12 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         writeFileSync(join(dir,source),'// modified staging input');
         assert.throws(() => assertStagedDependencies(p,dir), /staged pinned dependency source/);
     });
-    it('preserves the production gate tail exactly and requires an explicit new local route', () => {
+    it('preserves the authorized focused production gate tail and requires an explicit new local route', () => {
         const wrapper = readFileSync(join(ROOT, 'script/deploy.sh'), 'utf8');
-        assert.equal(digest(wrapper.slice(wrapper.indexOf('GATE='))), '34d5e5f61b2ea38bfaf92fc4cc841a5f4e113f6d53d9b47975a324e8d78a5e0d');
+        assert.equal(digest(wrapper.slice(wrapper.indexOf('GATE='))), 'e41bd1be39034eff5724190c55477c8033ff07c73061baf27d9e447f68399cd8');
         assert.match(wrapper, /--current-local-rehearsal-plan/);
         assert.match(wrapper, /--phase deploy/);
-        assert.match(wrapper, /--require-review/);
+        assert.match(wrapper, /--config asset-flow-focused\.json --require-review/);
         assert.throws(() => execFileSync('bash', ['script/deploy.sh', '--current-local-rehearsal-plan'], { cwd: ROOT, stdio: 'pipe' }));
     });
 });
