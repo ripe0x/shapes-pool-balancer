@@ -1,0 +1,115 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.88s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:166:46:
+    |
+166 |     function topUpAvailable(State storage s, uint256 reserve) public view returns (uint256) {
+    |                                              ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:172:57:
+    |
+172 |     function reinvest(State storage s, uint256 maximum, uint256 reserve) public returns (uint256 amount) {
+    |                                                         ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:182:92:
+    |
+182 |     function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
+    |                                                                                            ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:302:13:
+    |
+302 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:314:9:
+    |
+314 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 6 tests for test/FactoryPause.t.sol:FactoryPauseTest
+[PASS] test_freshFactoryStartsPublicCreationPaused() (gas: 30730)
+[PASS] test_onlyPolicyAdminCanPauseAndResume() (gas: 140586)
+[PASS] test_pausePreservesExistingPoolMaintenanceAndExit() (gas: 3646481)
+[PASS] test_pausedPublicCreationMovesNoETHOrNFTs() (gas: 254548)
+[PASS] test_policyAdminCanCreateCanaryWhilePublicCreationPaused() (gas: 1290066)
+[PASS] test_resumeAllowsPublicCreationWithUnchangedReviewedSettings() (gas: 1305393)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 276.02ms (9.61ms CPU time)
+
+Ran 3 tests for test/FocusedReleaseFlow.t.sol:FocusedReleaseFlowTest
+[PASS] test_focusedCreationPause() (gas: 2391717)
+Logs:
+
+  FLOW BREAKDOWN  creation_pause   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   0.1000   100.00%
+    native capital returned                                                       0.1000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        0.1000   100.00%  | returned 0.1000
+
+[PASS] test_focusedERC20Roundtrip() (gas: 4284783)
+Logs:
+
+  FLOW BREAKDOWN  erc20_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+[PASS] test_focusedInventoryRoundtrip() (gas: 6981534)
+Logs:
+
+  FLOW BREAKDOWN  inventory_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.13s (22.92ms CPU time)
+
+Ran 2 test suites in 1.41s (1.40s CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

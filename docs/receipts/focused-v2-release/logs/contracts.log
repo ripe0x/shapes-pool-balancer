@@ -1,0 +1,60 @@
+No files changed, compilation skipped
+
+Ran 2 tests for test/AuthenticContinuation.t.sol:AuthenticContinuationTest
+[PASS] test_publicProofsRejectTamperingAndReplayThenRestock() (gas: 48021116)
+[PASS] test_threeAuthenticLaunchDrawsCollectCreditAndCloseCreatorAssets() (gas: 10140621)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  launch_setup_cost_wei: 72396898447862775
+  launch_owner_proceeds_wei: 66278634547026369
+  launch_closeout_return_wei: 4913643653057350512
+  launch_closeout_profit_wei: 7071930306167713
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 2.80s (1.94s CPU time)
+
+Ran 1 test for test/AuthenticEconomicFlows.t.sol:AuthenticEconomicFlowsTest
+[PASS] test_threeAuthenticLaunchDrawsCollectCreditAndCloseCreatorAssets() (gas: 10140444)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  launch_setup_cost_wei: 72396898447862775
+  launch_owner_proceeds_wei: 66278634547026369
+  launch_closeout_return_wei: 4913643653057350512
+  launch_closeout_profit_wei: 7071930306167713
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.59s (675.66ms CPU time)
+
+Ran 1 test for test/AuthenticEconomicFlows.t.sol:AuthenticPositiveProceedsTest
+[PASS] test_genuineCuratedSalesRepayCostsBeforeOpenPoolProfitLeaves() (gas: 4905404)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  curated_sales_wei: 600000000000000000
+  curated_setup_cost_wei: 1578589821236817
+  curated_restock_cost_wei: 1000000000000000
+  curated_earned_profit_wei: 581701410178763183
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.05s (274.67ms CPU time)
+
+Ran 1 test for test/AuthenticRefundRecovery.t.sol:AuthenticRefundRecoveryTest
+[PASS] test_authenticProofReplayAndRefundBatch() (gas: 997140)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.52s (619.06ms CPU time)
+
+Ran 1 test for test/AuthenticSequence.t.sol:AuthenticSequenceTest
+[PASS] test_distinctHistoricalBatchesContinueAfterActualRestocking() (gas: 34707701)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.93s (1.22s CPU time)
+
+Ran 6 tests for test/CostFirstProceeds.t.sol:CostFirstProceedsTest
+[PASS] test_depositsAreCapitalNotEarnedProceeds() (gas: 464960)
+[PASS] test_forcedETHRaisesCapitalWithoutManufacturingProfit() (gas: 329329)
+[PASS] test_keeperDonationDuringRewardRemainsCapital() (gas: 2395832)
+[PASS] test_manualRevenueRateRejectedIncludingLegacyZeroSetter() (gas: 1140486)
+[PASS] test_targetShrinkAndCreatorTransferDoNotReleaseCapitalAsEarnings() (gas: 5179546)
+[PASS] test_unlistingAndReopeningNeverTurnCapitalIntoProfit() (gas: 3067033)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 298.21ms (26.76ms CPU time)
+
+Ran 6 test suites in 9.27s (9.18s CPU time): 12 tests passed, 0 failed, 0 skipped (12 total tests)

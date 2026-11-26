@@ -1,0 +1,9 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ app/src/profit.test.ts (7 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:15:19
+   Duration  277ms (transform 21ms, setup 0ms, collect 87ms, tests 3ms, environment 0ms, prepare 38ms)

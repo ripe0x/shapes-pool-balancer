@@ -14,12 +14,17 @@ accounting review reconciles all 24 cases. Randomness is simulated; this does no
 R126–R127 accept partial-inventory operation and the measured slippage-refund/randomness-charge behavior.
 Those observations remain in the frozen reports but require no product or contract repair.
 
-**Next action:** finish the focused version 2 release evidence: the previously RPC-blocked genuine-proof
-contract regressions, transactional UI acceptance for the new fee/reinvestment flow, and binding the focused
-gate/review to the version 2 candidate. Reuse valid deployment, stress and review evidence. Keep the full economic
-campaign separate under R113; do not add a whole-repository audit or repeat broad simulations by default.
-Then prepare the exact production deployment and factory actions for owner review. Existing deployment,
-signature and external-action controls still apply; no mainnet transaction follows from this status update.
+**Focused release progress (2026-11-25):** [current evidence](receipts/focused-v2-release/README.md) records
+46 passing focused contract tests, including the formerly RPC-blocked genuine-proof v2 cases, three refreshed
+scorecards, the signed bankroll-loss UI repair and read-only component acceptance. The original blocked checkpoint
+below is historical and remains preserved. [Production preparation](MAINNET-CREATOR-FEE-V2.md) uses a replacement
+factory because the live immutable factory has no creation pause. Runtime contracts remain unchanged from `213a6ab`.
+
+**Next action:** complete the separately requested bounded local creator-fee UI transaction batch, then present the
+[current focused signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md). The informed independent
+review binds the current candidate; it does not constitute a full audit. Owner signature, authorized merge to main,
+fresh production dry run and immediate decoded broadcast approval remain. Full campaign and authentic live oracle/
+service availability claims stay separate. No production transaction has been sent.
 
 | Bucket | Rule |
 | --- | --- |

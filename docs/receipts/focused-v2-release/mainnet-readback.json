@@ -1,0 +1,21 @@
+{
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "chainId": 1,
+  "checkedBlock": "26496902",
+  "blockHash": "0x8a0369ef369fddd7c19f0b1979e1b50c437565a54646e9ec2de37be64dcc5c1a",
+  "factory": "0x6F018fF718Ab5A4287F937e4e4729Aa65610f53b",
+  "signer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "reads": {
+    "implementation": "0xfEBaFdbFf526afb2bE2DCCedcb740962B5E91089",
+    "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "keeperAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "creationPaused": {
+      "reverted": true,
+      "reason": "The contract function \"creationPaused\" reverted."
+    }
+  },
+  "factoryCodeHash": "0xb767d7a4707a0cc77c5471f30bc943444d8b3940998fed26317f5ce78c06aa70",
+  "signerCode": "0xef0100612373d7003d694220f7800eeaf8e3924c0951d3",
+  "signerBalance": "173661172256497776",
+  "signerNonce": 4249
+}
