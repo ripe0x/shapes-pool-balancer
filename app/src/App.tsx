@@ -1492,6 +1492,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : <span><span className="figure-s">{eth(v, dp)}</span><span className="unit">ETH</span></span>);
   // What saving does, in order. The predicted address receives approvals before atomic creation.
   const toList = pending.filter(({ n }) => n.collection && nftBase(n) > 0n).map(({ n }) => n);
+  // A chosen NFT with no value and no known floor would otherwise be left out of the pool without a word.
+  const unvalued = pending.filter(({ n }) => n.collection && nftBase(n) === 0n).map(({ n }) => n);
   // NFTs a new pool still needs approval for, checked against the predicted pool so the wallet steps list (and its
   // count) leaves out approvals already made. Unknown counts as needed.
   const [approved, setApproved] = useState<Record<string, boolean>>({});
@@ -1534,6 +1536,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
     : mode === 'new' && create?.creationAllowed === false ? 'Pool creation is paused.'
+    : unvalued.length ? `Give ${unvalued.length === 1 ? nftLabel(unvalued[0]) : `${word(unvalued.length)} NFTs`} a value, or remove ${unvalued.length === 1 ? 'it' : 'them'}.`
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
     : toList.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold."
     : toList.length > 0 && holding.checking ? 'Checking that this wallet holds your NFTs…'
@@ -1840,10 +1843,11 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
               <div className="id">
                 <div className="t">{n.collection ? <a className="tlink" href={openSeaAsset(n.collection, n.tokenId!)} target="_blank" rel="noreferrer" title="View on OpenSea">{name}</a> : name}</div>
                 {sub && <div className="s">{sub}</div>}
+                {n.collection && nftBase(n) === 0n && <div className="s error">Needs a value.</div>}
                 {belowFloor(n) && <div className="s error">Below the {floorValue(n.floor)} ETH floor. A buyer could win it for much less than it's worth.</div>}
                 {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
               </div>
-              <div className={`field${belowFloor(n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} placeholder={floorValue(n.floor) || undefined} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
+              <div className={`field${belowFloor(n) || (n.collection && nftBase(n) === 0n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} placeholder={floorValue(n.floor) || undefined} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
           );
