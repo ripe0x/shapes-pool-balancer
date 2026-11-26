@@ -1,0 +1,15 @@
+{
+  "branchInstanceId": "0x2d2a37ba5bd9fa14c514a1b8ce363643ac40a6e6ebda09b2b0f378f68b823b92",
+  "rpc": "http://127.0.0.1:18555",
+  "chainId": 31337,
+  "branchPid": 13725,
+  "sourceProxy": "http://127.0.0.1:18557",
+  "source": "http://127.0.0.1:8545",
+  "sourcePid": 28171,
+  "sourceAnchor": "26486068",
+  "sourceAnchorHash": "0xa5d84cff89843a95a3c99f9684add18b005435ccf0e662a94867f4d0fa9e86db",
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "implementation": "0xc02d40577880fa2c489fc5461ce3830d4eed7724",
+  "implementationCodeHash": "0xc281a95f89740fc88e6211a26ce36a2ae9290fddcbc11008f69ba6efab0f57e1",
+  "directory": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-stress/20261125-v2"
+}

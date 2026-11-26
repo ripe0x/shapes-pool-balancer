@@ -1,0 +1,46 @@
+{
+  "schema": "local-stress-source-meter-v1",
+  "source": "http://127.0.0.1:8545",
+  "sourcePid": 28171,
+  "maxForwardedReads": 12000,
+  "maxExecutionMs": 1800000,
+  "forwarded": 12000,
+  "preflightReads": 14,
+  "cacheHits": 20038,
+  "refused": 5,
+  "errors": 3,
+  "denied": 2,
+  "exhausted": 3,
+  "deniedMethods": {
+    "eth_gasPrice": 1,
+    "eth_getAccountInfo": 1
+  },
+  "methods": {
+    "eth_chainId": 2,
+    "anvil_nodeInfo": 2,
+    "eth_getBlockByNumber": 6,
+    "eth_call": 4,
+    "eth_getCode": 42,
+    "eth_getBalance": 40,
+    "eth_getTransactionCount": 40,
+    "eth_getStorageAt": 9668,
+    "eth_getTransactionReceipt": 2196
+  },
+  "closed": false,
+  "startedAt": "2026-11-26T00:33:44.496Z",
+  "anchor": "26486068",
+  "anchorHash": "0xa5d84cff89843a95a3c99f9684add18b005435ccf0e662a94867f4d0fa9e86db",
+  "implementation": "0xc02d40577880fa2c489fc5461ce3830d4eed7724",
+  "implementationCodeHash": "0xc281a95f89740fc88e6211a26ce36a2ae9290fddcbc11008f69ba6efab0f57e1",
+  "executionStartedAt": "2026-11-26T00:40:07.305Z",
+  "deadline": "2026-11-26T01:10:07.305Z",
+  "extensions": [
+    {
+      "at": "2026-11-26T00:51:21.869Z",
+      "from": 5000,
+      "to": 12000,
+      "spent": 5000,
+      "reason": "Initial agent-selected ceiling reached; owner broadly authorized completing the local campaign. Preserve cumulative reads and original deadline; reuse snapshot pool addresses to reduce archive work."
+    }
+  ]
+}

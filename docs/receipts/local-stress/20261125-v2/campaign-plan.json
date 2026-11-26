@@ -1,0 +1,700 @@
+{
+  "revision": "8b9913e",
+  "scope": {
+    "rpc": "http://127.0.0.1:18555",
+    "upstream": "http://127.0.0.1:18557",
+    "chainId": 31337,
+    "factory": "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+    "implementation": "0xc02d40577880fA2C489Fc5461ce3830D4EeD7724",
+    "creator": "0x00000000000000000000000000000000000C5501",
+    "buyer": "0x00000000000000000000000000000000000C5502",
+    "keeper": "0x00000000000000000000000000000000000c5503",
+    "demo": "0x8B4087D01443ba7619BB3A6E2a8668C5AF0d1955",
+    "service": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+    "coordinator": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a"
+  },
+  "sourceSha256": {
+    "scripts/local-stress-branch.ts": "9d5ae99b4d79e32429d4978022d6b5a039f36700fecabeff4ba5fd43c42945e2",
+    "scripts/local-stress-campaign.ts": "6d2fd5148e5cb048222c0409377a889e9e8ef7243cfc7a1938a8afbcacabcbd4",
+    "app/public/stress-results/index.html": "7dc9c9170077c7699ad822c6e4121866995348c2e4f4bba77673844ff11bc35a"
+  },
+  "scenarios": [
+    {
+      "id": "small-10",
+      "design": {
+        "name": "small",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1500
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "small-240",
+      "design": {
+        "name": "small",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1500
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "small-86400",
+      "design": {
+        "name": "small",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1500
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "balanced-10",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "balanced-240",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "balanced-86400",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "topheavy-10",
+      "design": {
+        "name": "topheavy",
+        "counts": [
+          4,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "topheavy-240",
+      "design": {
+        "name": "topheavy",
+        "counts": [
+          4,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "topheavy-86400",
+      "design": {
+        "name": "topheavy",
+        "counts": [
+          4,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "jackpot-10",
+      "design": {
+        "name": "jackpot",
+        "counts": [
+          24,
+          6,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "jackpot-240",
+      "design": {
+        "name": "jackpot",
+        "counts": [
+          24,
+          6,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "jackpot-86400",
+      "design": {
+        "name": "jackpot",
+        "counts": [
+          24,
+          6,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "zeroFee-10",
+      "design": {
+        "name": "zeroFee",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1000
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "zeroFee-240",
+      "design": {
+        "name": "zeroFee",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1000
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "zeroFee-86400",
+      "design": {
+        "name": "zeroFee",
+        "counts": [
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 1000
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "pack-10",
+      "design": {
+        "name": "pack",
+        "counts": [
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 10,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "pack-240",
+      "design": {
+        "name": "pack",
+        "counts": [
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "pack-86400",
+      "design": {
+        "name": "pack",
+        "counts": [
+          10,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          2,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 86400,
+      "mode": "baseline",
+      "seed": 1
+    },
+    {
+      "id": "balanced-keeperOutage",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "keeperOutage",
+      "seed": 1
+    },
+    {
+      "id": "balanced-gasSpike",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "gasSpike",
+      "seed": 1
+    },
+    {
+      "id": "balanced-forcedLargest",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "forcedLargest",
+      "seed": 1
+    },
+    {
+      "id": "balanced-feeReinvestOnGap",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "feeReinvestOnGap",
+      "seed": 1
+    },
+    {
+      "id": "balanced-feeWithdrawEvery20",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "feeWithdrawEvery20",
+      "seed": 1
+    },
+    {
+      "id": "balanced-zeroDemandWinddown",
+      "design": {
+        "name": "balanced",
+        "counts": [
+          12,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "markup": 2500
+      },
+      "rate": 240,
+      "mode": "zeroDemandWinddown",
+      "seed": 1
+    }
+  ],
+  "maxDrawsPerScenario": 120,
+  "randomness": "simulated",
+  "preservesOriginal8545": true,
+  "maxSourceForwardedReads": 5000,
+  "executionMilliseconds": 1800000
+}

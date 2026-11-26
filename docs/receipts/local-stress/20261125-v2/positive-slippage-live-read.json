@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-26T00:59:45.753913+00:00",
+  "scenarioAtRead": "zeroFee-10",
+  "pool": "0xd8969c55724a9346c0940a9fa215089e4e054078",
+  "rpc": "http://127.0.0.1:18555",
+  "getter": "selectionSlippageBps()(uint256)",
+  "result": 1000,
+  "scope": "Current shared-address scenario view read, not historical per-refund reconstruction."
+}
