@@ -1,0 +1,8 @@
+{
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "attempt": "fresh current-factory economics readback",
+  "firstMethod": "eth_blockNumber",
+  "status": 429,
+  "code": -32005,
+  "result": "blocked before receiving a head or economics; no successful readback or broadcast"
+}

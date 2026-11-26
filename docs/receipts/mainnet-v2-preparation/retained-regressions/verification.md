@@ -24,3 +24,9 @@ Temporary real-factory 940k proposal: same failing test, all four cumulative ass
 All production init/runtime artifact object hashes are identical before/after/final. Test changes and parameter-only simulations have not changed the reviewed deployment bytecode or SSH-approved gate. No mainnet broadcast, service cutover, live oracle generation, new full economic campaign or proof of whole-system safety follows from these results.
 
 Things that don't make sense: the current 910k surcharge fails its original at-cap coverage claim; suppressing the failure would hide a pricing decision. The proposed 940k covers four exercised cycles, not every possible inventory/gas/callback workload.
+
+## Approved launch-setting follow-up
+
+The owner approved940k and confirmed that launch defaults must remain1.5gwei. Production source and the existing signed digest remain unchanged. `Hardening.t.sol` now sets these launch values through the real factory API; a separate case exercises the creator's existing authority to raise only its local pool to5gwei while the factory stays1.5. The shared four-restock coverage helper asserts nonzero actual reward and measured gas, as requested by independent review. Surcharges are explicitly offers on newly listed replacements, not collected income. At1.5gwei, the940k plus .0002 flat surcharge is .00161ETH per Shape unit.
+
+Compilation succeeded, but two local runtime attempts failed before test execution because Tenderly returnedHTTP429 on fork initialization. Logs `hardening-approved-launch-local-override.log` and `hardening-approved-caps.log` are preserved as blocked, not passing evidence. Hosted CI must run the final changed paths before acceptance; the earlier940k FOLLOW-at5 test does not establish these new two paths. No RPC fallback, paid Alchemy use, production setting or broadcast occurred.

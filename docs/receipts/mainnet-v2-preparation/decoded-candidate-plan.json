@@ -1,5 +1,5 @@
 {
-  "status": "READ_ONLY_SIMULATION_PASS_RESTOCK_SETTING_DECISION_PENDING",
+  "status": "READ_ONLY_SIMULATION_PASS_APPROVED_LAUNCH_SETTINGS_CI_PENDING",
   "sourceHash": "58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b",
   "approvalHash": "5acc93973dcad11c81c9945851f85ddd62ea24a1ebea2f55264e7528331f4d3f",
   "candidateCommit": "8db66c2",
@@ -80,9 +80,9 @@
     "service cutover"
   ],
   "pending": [
-    "Owner economic decision on the confirmed R94 surcharge gap",
-    "Complete and push remaining calibration regression, then green CI",
+    "Hosted verification of retained fixture repairs and approved 1.5-gwei/940k Hardening cases",
     "Authorized merge to main and checkout equality",
     "Fresh nonce/fee/source/code readbacks and decoded per-broadcast approval"
-  ]
+  ],
+  "launchValuesFile": "docs/receipts/mainnet-v2-preparation/launch-values.json"
 }
