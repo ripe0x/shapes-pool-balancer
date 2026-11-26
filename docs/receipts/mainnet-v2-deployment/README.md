@@ -30,6 +30,12 @@ Readback of `economics()` matches [launch-values.json](../mainnet-v2-preparation
 - Keeper `keeper/fly.toml`: `FACTORY` 0x96fd…7671, `FROM_BLOCK` 26499988, `LEGACY_FACTORIES` `community-v3,community-v2`. Dashboard: Netlify `VITE_FACTORY` and `VITE_FROM_BLOCK` to the same values.
 - Checks: typecheck; 8 affected vitest files, 56 passed, 4 skipped. Local preview against mainnet loaded the new factory's economics without console errors; legacy pool listing needs a connected wallet and was not exercised in the preview.
 
+## Production cutover, 2026-11-26
+
+- `4fda6dc` pushed to `origin/main`.
+- Netlify site `shapes-pool-balancer` (pools.shapes.ripe.wtf): `VITE_FACTORY` and `VITE_FROM_BLOCK` set in all four contexts, then `netlify deploy --build --prod`. The live bundle `index-BtStD0ip.js` contains the new factory and block; no localhost RPC.
+- Keeper `shapes-community-keeper`, machine `80e9615a750398`, deployed via `keeper/deploy.sh` at `4fda6dc`: env reads back `FACTORY` 0x96fd…7671, `FROM_BLOCK` 26499988, `LEGACY_FACTORIES` community-v3,community-v2, `MAX_GAS_PRICE_GWEI` 1.5, expected signer `0x8D23…949d`. `/health` ok at block 26500043 with 1 balancer, no alerts, pending or errors.
+
 ## Not done
 
 `setCreationPaused(false)` requires separate owner signing. No mainnet canary (R83).
