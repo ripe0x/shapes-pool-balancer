@@ -115,8 +115,14 @@ contract SettingsTest is ForkBase {
         higher.gasPriceCeiling = 50 gwei;
         higher.workFee = 0.00005 ether;
         vm.fee(5 gwei); vm.txGasPrice(5.05 gwei);
-        uint256 claimable = balancer.withdrawableSurplus();
-        vm.prank(creator); balancer.claimSurplus(claimable, creator);
+        uint256 keep = balancer.requiredReserve();
+        assertEq(balancer.withdrawableSurplus(), 0, "unearned opening capital is not withdrawable while open");
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(address(balancer).balance - keep, creator);
+        balancer.open();
+        vm.stopPrank();
+        assertEq(address(balancer).balance, keep, "real closed capital recovery leaves the current operating reserve");
         vm.prank(creator); balancer.setLocalEconomics(same); // same numbers: no new exposure, no funding needed
         (uint256 required, uint256 shortfall) = balancer.maintenanceFunding(higher);
         assertGt(shortfall, 0);

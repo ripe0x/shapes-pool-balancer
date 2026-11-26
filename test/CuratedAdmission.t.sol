@@ -86,6 +86,7 @@ contract CuratedAdmissionTest is ForkBase {
         assertEq(status, 5);
         assertEq(balancer.admissionStatus(), 0, "sales open: the 50-block processing grace applies");
         vm.roll(vm.getBlockNumber() + 50); // past FWA's word deadline and the 50-block processing grace (sales open)
+        pool.processAcquisitions(1); // Expired Selecting requests are processed publicly on FWA, not by paid upkeep.
         upkeep();
         assertEq(pool.unsettledAcquisitionCount(), 0);
         vm.prank(creator); balancer.withdrawCurated(originalCurated, creator);

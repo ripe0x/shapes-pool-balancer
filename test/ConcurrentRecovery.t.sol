@@ -153,7 +153,20 @@ contract ConcurrentRecoveryTest is ForkBase {
         _fillUntilIdle();
         assertEq(balancer.getActiveShapes()[0], 20);
         assertEq(minted, 0.22 ether, "actual inventory backing plus one-way mint fees");
-        _ledger("exact minimum opening");
+        // V2 protects capital while open; a closed principal return leaves the same real operating boundary.
+        uint256 cash = address(balancer).balance;
+        uint256 wallet = creator.balance;
+        uint256 principal = cash - buffer;
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(principal, creator);
+        balancer.open();
+        vm.stopPrank();
+        claimed += principal;
+        assertEq(creator.balance - wallet, principal);
+        assertEq(address(balancer).balance, buffer);
+        assertEq(balancer.withdrawableSurplus(), 0, "the retained operating contribution is not profit");
+        _ledger("exact minimum opening after closed principal recovery");
     }
 
     function _context(uint256 base, uint256 bid) internal {

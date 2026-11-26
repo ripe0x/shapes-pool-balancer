@@ -206,7 +206,7 @@ contract KeeperPayTest is ForkBase {
     }
 
     /// Audit rc-ec5259c finding 3, repaired (owner decision D3): while closed, `requiredReserve` holds one maximum keeper
-    /// reward per unreconciled draw, including deliberately split settlement, so the creator cannot claim it before reconciliation.
+    /// reward per unreconciled draw, including deliberately split settlement. V2 also retains other cash until reconciliation.
     function test_postCloseReconcileIsPaidFromHeldAmount() public {
         _open(0.5 gwei);
         fillUp();
@@ -214,26 +214,33 @@ contract KeeperPayTest is ForkBase {
         vm.prank(creator);
         balancer.close();
         uint256 held = 5 * _reconciliationBudget();
+        assertEq(held, 0.0062775 ether, "5 * ((2.15M + 60k) * .55 gwei + .00004 ETH)");
         assertEq(balancer.requiredReserve(), held, "five unreconciled draws: one bounded reconciliation each");
-        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - held, "everything else is claimable");
-        uint256 claimable = balancer.withdrawableSurplus();
+        uint256 cash = address(balancer).balance;
+        assertGe(cash, held, "actual cash covers all five reconciliation budgets");
+        assertEq(balancer.withdrawableSurplus(), 0, "pending draws retain capital as well as keeper pay");
         vm.prank(creator);
-        balancer.claimSurplus(claimable, creator);
-        assertEq(address(balancer).balance, held, "only the held pay is left");
+        vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(1, creator);
+        assertEq(address(balancer).balance, cash, "pending-work refusal moves no cash");
 
         vm.roll(vm.getBlockNumber() + 40); // past FWA's word deadline
         pool.processAcquisitions(5);
         assertEq(pool.ownerProceeds(), 0, "all five expired: no proceeds");
         assertEq(balancer.reconciledSequence(), 0, "reached: five processed draws await reconciliation");
+        assertEq(balancer.withdrawableSurplus(), 0, "settlement alone does not release unreconciled capital");
         (uint256 reward, uint256 measured,) = _paid();
         assertEq(balancer.reconciledSequence(), 5, "the call did useful work");
         assertEq(reward, (measured + V1_OVERHEAD) * gasPrice + 5 * WORK_FEE, "five completed draw sequences");
         assertEq(balancer.requiredReserve(), 0, "nothing owed once reconciled");
         uint256 rest = address(balancer).balance;
-        assertEq(rest, held - reward, "the unspent hold stays in the pool");
+        assertLe(reward, held, "the reserved reconciliation budget covers the actual payment");
+        assertEq(rest, cash - reward, "only the actual keeper payment leaves retained capital");
         assertEq(balancer.withdrawableSurplus(), rest, "and is claimable again");
+        uint256 creatorBefore = creator.balance;
         vm.prank(creator);
         balancer.claimSurplus(rest, creator);
+        assertEq(creator.balance - creatorBefore, rest, "the creator receives the exact post-work remainder");
         assertEq(address(balancer).balance, 0, "closeout leaves nothing");
         emit log_named_decimal_uint("held at close", held, 18);
         emit log_named_decimal_uint("paid to the keeper", reward, 18);
@@ -251,9 +258,12 @@ contract KeeperPayTest is ForkBase {
         vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
         balancer.claimSurplus(all, creator);
         uint256 free = balancer.withdrawableSurplus();
-        assertEq(all - free, 5 * _reconciliationBudget(), "exactly the held pay is refused");
+        assertEq(balancer.requiredReserve(), 5 * _reconciliationBudget(), "all five reconciliation budgets remain reserved");
+        assertEq(free, 0, "pending draws block the entire capital claim");
+        assertGe(all, balancer.requiredReserve(), "retained cash covers the keeper hold");
         vm.prank(creator);
         balancer.claimSurplus(free, creator);
+        assertEq(address(balancer).balance, all, "a zero claim cannot release pending-work capital");
     }
 
     /// Nothing is held after closing when every draw is already reconciled.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {ForkBase} from "./utils/ForkBase.sol";
+import {ForkBase, ITimeout} from "./utils/ForkBase.sol";
 import {
     MockNFT, FreezableNFT, ReentrantNFT, LyingNFT, RejectingKeeper, GasBurnNFT
 } from "./utils/Mocks.sol";
@@ -78,7 +78,7 @@ contract BalancerTest is ForkBase {
         assertTrue(factory.predictBalancer(other, salt) != predictedBefore, "the next pool's address follows the implementation");
 
         PoolBalancer.CuratedInput[] memory none;
-        PoolBalancer.CreationConfig memory stale = PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), false, reviewed);
+        PoolBalancer.CreationConfig memory stale = PoolBalancer.CreationConfig(MARKUP, 0, 1, shapes.mintFee(), false, reviewed);
         vm.prank(other);
         vm.expectRevert(BalancerFactory.StaleSettings.selector);
         factory.createBalancer{value: 0.1 ether}(salt, stale, none);
@@ -129,10 +129,10 @@ contract BalancerTest is ForkBase {
         assertEq(b3.pool().owner(), address(b3));
         assertEq(address(b2.factory()), address(factory), "reads this factory's keeper list");
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
+        b2.initialize(stranger, PoolBalancer.CreationConfig(1500, 0, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
         PoolBalancer impl = PoolBalancer(payable(factory.implementation()));
         vm.expectRevert(PoolBalancer.AlreadyInitialized.selector);
-        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 400, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
+        impl.initialize(stranger, PoolBalancer.CreationConfig(1500, 0, 1, 0.001 ether, false, bytes32(0)), new PoolBalancer.CuratedInput[](0));
     }
 
     /*////////////////////////////// permissions //////////////////////////////*/
@@ -456,10 +456,16 @@ contract BalancerTest is ForkBase {
 
     function test_claimToRejectingRecipientReverts() public {
         RejectingKeeper rk = new RejectingKeeper();
+        vm.prank(creator); balancer.close();
         uint256 s = balancer.withdrawableSurplus();
+        assertGt(s, 0, "real closed principal reaches the rejecting-recipient path");
+        uint256 cash = address(balancer).balance;
+        uint256 capital = balancer.operatingCapital();
         vm.prank(creator);
         vm.expectRevert();
         balancer.claimSurplus(s, address(rk));
+        assertEq(address(balancer).balance, cash, "refused transfer rolls back cash");
+        assertEq(balancer.operatingCapital(), capital, "refused transfer rolls back capital accounting");
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InvalidRecipient.selector);
         balancer.claimSurplus(s, address(0));
@@ -514,10 +520,8 @@ contract BalancerTest is ForkBase {
         assertEq(base, 0.1 ether + 0.005 ether + 0.1 ether * uint256(MARKUP) / 10_000, "the new fee is in the price");
         assertEq(price, base + balancer.restockFee(), "plus one restocking fee");
 
-        // a fee drop keeps the gate open even after the creator claims all surplus (old liveness bug)
-        uint256 s = balancer.withdrawableSurplus();
-        vm.prank(creator);
-        balancer.claimSurplus(s, creator);
+        // Recover excess capital while closed, then reopen at the working-buffer boundary before the fee drop.
+        _retainWorkingCapital();
         vm.prank(SHAPES_ADMIN);
         IShapesAdmin(SHAPES).setMintFee(0);
         assertTrue(balancer.canPurchase(buyer), "a fee drop never closes the pool");
@@ -530,10 +534,29 @@ contract BalancerTest is ForkBase {
         uint256 expected = _workingBuffer();
         assertEq(expected, 0.001993 ether, "independent normal-gas working buffer");
         assertEq(balancer.requiredReserve(), expected);
-        assertEq(balancer.withdrawableSurplus(), address(balancer).balance - expected);
+        assertEq(balancer.creatorCredit(), 0);
+        assertEq(balancer.bankrollProfit(), 0);
+        assertEq(balancer.withdrawableSurplus(), 0, "opening capital above reserve is not earned income");
+    }
+
+    function _retainWorkingCapital() internal {
+        uint256 keep = balancer.requiredReserve();
+        assertEq(keep, 0.001993 ether, "normal-gas buffer for the fully stocked reference mix");
+        uint256 cash = address(balancer).balance;
+        uint256 wallet = creator.balance;
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(cash - keep, creator);
+        balancer.open();
+        vm.stopPrank();
+        assertEq(address(balancer).balance, keep);
+        assertEq(creator.balance - wallet, cash - keep, "principal is recovered only during the closed interval");
+        assertEq(balancer.creatorCredit(), 0);
+        assertEq(balancer.withdrawableSurplus(), 0);
     }
 
     function test_claimSurplusRespectsReserveWhileOpen() public {
+        _retainWorkingCapital();
         uint256 s = balancer.withdrawableSurplus();
         vm.prank(creator);
         vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
@@ -557,14 +580,27 @@ contract BalancerTest is ForkBase {
         assertEq(balancer.getActiveShapes()[2], 2, "explicit creator funding restores the expensive target");
     }
 
-    /// claimSurplus no longer requires the pool to be idle, but cannot drop below the (raised) reserve.
+    /// Pending and settled-but-unreconciled requests block claims; removing the trigger never releases deposits as profit.
     function test_claimDuringUnsettledDraw() public {
-        _drawOneShape();
-        balancer.collectProceeds(); // pull the draw's proceeds first so the claim is exact
-        uint256 s = balancer.withdrawableSurplus();
-        vm.prank(creator);
-        balancer.claimSurplus(s, creator); // allowed while a draw is pending
+        buy(buyer, 1);
+        assertEq(pool.unsettledAcquisitionCount(), 1);
+        balancer.collectProceeds();
         assertEq(balancer.withdrawableSurplus(), 0);
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(1, creator);
+        vm.roll(block.number + ITimeout(address(pool)).selectionTimeoutBlocks() + 1);
+        pool.processAcquisitions(1);
+        assertEq(pool.unsettledAcquisitionCount(), 0);
+        assertGt(pool.lastIssuedSequence(), balancer.reconciledSequence());
+        assertEq(balancer.withdrawableSurplus(), 0, "actual pending work still blocks a claim");
+        vm.prank(creator);
+        vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(1, creator);
+        upkeep();
+        assertEq(pool.lastIssuedSequence(), balancer.reconciledSequence());
+        assertEq(balancer.creatorCredit(), 0, "timeout refunds create no fee receipts");
+        assertEq(balancer.withdrawableSurplus(), 0, "reconciled deposits remain contributed capital");
         assertGe(address(balancer).balance, balancer.requiredReserve());
     }
 
