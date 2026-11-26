@@ -103,6 +103,6 @@
   "approval": {
     "date": "2026-11-25",
     "outcomes_sha256": "5acc93973dcad11c81c9945851f85ddd62ea24a1ebea2f55264e7528331f4d3f",
-    "signature": ""
+    "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgT10UwBigHu/hL3vKFUPPNoDIN6\n6Wsrnx17avHqp4qC8AAAAKYXNzZXQtZmxvdwAAAAAAAAAGc2hhNTEyAAAAUwAAAAtzc2gt\nZWQyNTUxOQAAAECkkGUiq6zJG2dfsK6ZEssrEKsGw8/p8yvOQUILt5QwdSPHu/XFTPFbU1\nRpG5hnlznjXfhxngrSGFJ4CHaGMGEI\n-----END SSH SIGNATURE-----\n"
   }
 }
