@@ -1,7 +1,12 @@
 # Dashboard only. VITE_CHAIN_ID, VITE_RPC_URL, VITE_FACTORY and VITE_FROM_BLOCK are set on the Netlify site, not here.
+# ALCHEMY_MAINNET_URL is a functions-only site variable (never in build scope): only netlify/functions read it.
 [build]
   command = "npm run build:app"
   publish = "app/dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [build.environment]
   NODE_VERSION = "22"

@@ -9,7 +9,7 @@ import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
-import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL, LOCAL_FORK_RESET } from './chain';
+import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL, LOCAL_FORK_RESET, POOL_INDEX_URL } from './chain';
 import { confirmAction, localTransactionNonce, localTransferContext, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
@@ -36,6 +36,11 @@ const fwaActivationAbi = parseAbi(['function activateListings(uint256 maxCount)'
 const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'function poolCreationEnabled() view returns (bool)', 'function implementation() view returns (address)']);
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
 const CREATOR_TRANSFERRED = parseAbiItem('event CreatorTransferred(address indexed oldCreator, address indexed newCreator)');
+type PoolIndex = { created: { factory: Address; balancer: Address; creator: Address }[]; transfers: { balancer: Address; newCreator: Address }[] };
+/** The server-side pool index, or undefined when it is absent (dev, local fork) or fails within 8 s. */
+const fetchPoolIndex = async (): Promise<PoolIndex | undefined> => POOL_INDEX_URL
+  ? fetch(POOL_INDEX_URL, { signal: AbortSignal.timeout(8_000) }).then((r) => (r.ok ? r.json() as Promise<PoolIndex> : undefined)).catch(() => undefined)
+  : undefined;
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
 /** Pool lifetime activity, independent of the current creator or connected viewer. */
 const LEDGER = [
@@ -628,12 +633,20 @@ export function App() {
     // stays within public RPC limits, where an unfiltered one would search every contract on chain.
     // Legacy factories' pools are listed too and open through the legacy route (their own ABI, marked Legacy).
     const sources = [{ factory: FACTORY, fromBlock: FROM_BLOCK }, ...LEGACY_FACTORIES];
-    const all = (await Promise.all(sources.map((s) => pub.getLogs({ address: s.factory, event: CREATED, fromBlock: s.fromBlock })))).flat();
-    const factoryOf = new Map(all.map((l) => [l.args.balancer!.toLowerCase(), l.address as Address]));
-    const created = all.filter((l) => chain.id === 31337 || l.args.creator?.toLowerCase() === address.toLowerCase());
-    const pools = all.map((l) => l.args.balancer!);
-    const received = pools.length ? await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: sources.reduce((m, s) => (s.fromBlock < m ? s.fromBlock : m), FROM_BLOCK) }) : [];
-    const candidates = [...new Set([...created.map((l) => l.args.balancer!), ...received.map((l) => l.address as Address)])];
+    const known = new Set(sources.map((s) => s.factory.toLowerCase()));
+    // The server-side index answers in one request; if it is unreachable, scan the logs from the browser as before.
+    const index = await fetchPoolIndex();
+    const all = index
+      ? index.created.filter((c) => known.has(c.factory.toLowerCase()))
+      : (await Promise.all(sources.map((s) => pub.getLogs({ address: s.factory, event: CREATED, fromBlock: s.fromBlock })))).flat()
+        .map((l) => ({ factory: l.address as Address, balancer: l.args.balancer!, creator: l.args.creator! }));
+    const factoryOf = new Map(all.map((c) => [c.balancer.toLowerCase(), c.factory]));
+    const created = all.filter((c) => chain.id === 31337 || c.creator.toLowerCase() === address.toLowerCase());
+    const pools = all.map((c) => c.balancer);
+    const received = index
+      ? index.transfers.filter((t) => t.newCreator.toLowerCase() === address.toLowerCase()).map((t) => t.balancer)
+      : pools.length ? (await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: sources.reduce((m, s) => (s.fromBlock < m ? s.fromBlock : m), FROM_BLOCK) })).map((l) => l.address as Address) : [];
+    const candidates = [...new Set([...created.map((c) => c.balancer), ...received])].filter((b) => factoryOf.has(b.toLowerCase()));
     // Any contract can emit CreatorTransferred: only Balancers this dashboard's factories deployed are listed.
     const owned = await Promise.all(candidates.map(async (b) => {
       const [ours, c] = await Promise.all([
