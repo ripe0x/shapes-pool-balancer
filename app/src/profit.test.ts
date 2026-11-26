@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { BaseError, ContractFunctionZeroDataError } from 'viem';
-import { operatingCash, readProfitVersion, withdrawalBreakdown } from './profit';
+import { bankrollResult, operatingCash, readProfitVersion, withdrawalBreakdown } from './profit';
 
 it('does not classify a transport failure as legacy accounting', async () => {
   const failure = new BaseError('RPC unavailable', { cause: new Error('connection refused') });
@@ -37,4 +37,17 @@ it('keeps V2 creator fees outside operating cash and blocks withdrawal during a 
   expect(withdrawalBreakdown(30n, 0n, true, true)).toEqual({ total: 0n, earnings: 0n, capital: 0n });
   expect(withdrawalBreakdown(30n, 40n, true, true)).toEqual({ total: 40n, earnings: 30n, capital: 10n });
   expect(withdrawalBreakdown(30n, undefined, true, true)).toEqual({ total: 0n, earnings: 0n, capital: undefined });
+});
+
+it('shows signed bankroll loss separately from protected fees and excludes deposits and reinvestment from income', () => {
+  const eth = 10n ** 18n;
+  expect(bankrollResult(eth, 0n, 0n, eth, 0n, 0, 0n)).toBe(0n);
+  expect(bankrollResult(eth, 0n, eth / 10n, eth, 0n, 0, 0n)).toBe(-eth / 10n);
+  expect(bankrollResult(eth, eth / 5n, eth / 10n, eth, 0n, 0, 0n)).toBe(eth / 10n);
+  expect(bankrollResult(2n * eth, eth / 5n, eth / 10n, 2n * eth, 0n, 0, 0n)).toBe(eth / 10n);
+  expect(bankrollResult(eth, eth / 5n, eth / 20n, eth + eth / 20n, 0n, 0, 0n)).toBe(eth / 10n);
+  expect(bankrollResult(eth, 0n, 0n, eth, 1n, 0, 0n)).toBeUndefined();
+  expect(bankrollResult(eth, 0n, 0n, eth, 0n, 1, 0n)).toBeUndefined();
+  expect(bankrollResult(eth, 0n, 0n, eth, 0n, 0, 1n)).toBeUndefined();
+  expect(bankrollResult(eth, 0n, 0n, undefined, 0n, 0, 0n)).toBeUndefined();
 });

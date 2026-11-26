@@ -57,7 +57,7 @@ contract FocusedReleaseFlowTest is ForkBase, FlowBreakdown {
     function test_focusedCreationPause() public {
         Snap memory a=flowBegin(1 gwei,0.5 gwei,FORK_BLOCK);
         factory.setCreationPaused(true);
-        PoolBalancer.CreationConfig memory c=PoolBalancer.CreationConfig(MARKUP,400,1,shapes.mintFee(),false,factory.creationSettingsHash());
+        PoolBalancer.CreationConfig memory c=PoolBalancer.CreationConfig(MARKUP,0,1,shapes.mintFee(),false,factory.creationSettingsHash());
         uint256 before=stranger.balance;vm.prank(stranger);vm.expectRevert(BalancerFactory.CreationPaused.selector);
         factory.createBalancer{value:0.1 ether}(bytes32(uint256(77)),c,new PoolBalancer.CuratedInput[](0));
         assertEq(stranger.balance,before);assertEq(address(factory).balance,0);

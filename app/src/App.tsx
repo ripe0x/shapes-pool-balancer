@@ -15,7 +15,7 @@ import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
 import { readFactoryCreation } from './factory-creation';
-import { operatingCash, profitAbi, readProfitVersion, withdrawalBreakdown } from './profit';
+import { bankrollResult, operatingCash, profitAbi, readProfitVersion, withdrawalBreakdown } from './profit';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
 import { MAIN_POOL_OPEN, VAULT } from './main-pool';
@@ -2283,6 +2283,7 @@ export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCre
   const withdrawals = withdrawalBreakdown(d.creatorCredit, d.surplus, d.profitAccounting, d.creatorFeeAccounting);
   const withdrawable = withdrawals.total;
   const spareWithdrawable = withdrawals.capital;
+  const operatingResult = d.creatorFeeAccounting ? bankrollResult(d.balance, backing + stagedBacking, d.creatorCredit, d.contributedCapital, d.unsettled, d.awaitingUpkeep, d.proceeds) : undefined;
   const feeTopUp = d.creatorFeeAccounting ? d.creatorFeeTopUpAvailable ?? 0n : 0n;
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? formatEther(withdrawable) : suggestedDeposit > 0n ? formatEther(suggestedDeposit) : '0.01'); };
   const deposit = (value: bigint): Step => () => tx.write({ ...B, functionName: 'depositETH', value });
@@ -2453,7 +2454,7 @@ export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCre
           <h2 className="h">{d.creatorFeeAccounting ? 'Gross creator fees' : d.profitAccounting ? 'Earned creator proceeds' : 'Your earnings'}</h2>
           <p className="desc">{d.creatorFeeAccounting ? <>Your automatic creator fee: {d.creatorRevenueBps / 100}% of settled owner proceeds. Fees are separate from bankroll profit.</> : d.profitAccounting ? 'Proceeds above contributed ETH capital after recorded costs. Withdrawals retain the ETH needed for restocking and maintenance.' : <>Your share of every draw sale: {d.creatorRevenueBps / 100}%, set by your markup and mix. It builds up as draws settle and you can withdraw it any time.</>}</p>
           {d.creatorFeeAccounting && d.creatorFeeUpdatePending && <p className="foot">Creator fee updates after pending draws and listings settle.</p>}
-          {d.creatorFeeAccounting && d.bankrollProfit !== undefined && <p className="foot">Bankroll profit: {eth(d.bankrollProfit, 5)} ETH.</p>}
+          {d.creatorFeeAccounting && <p className="foot">Bankroll profit / loss: {operatingResult === undefined ? 'Pending settlement' : `${eth(operatingResult, 5)} ETH`}.</p>}
           {check?.stale && <>
             <p className="warn">Out of date. Your markup and mix now set {check.suggested / 100}%.</p>
             {isCreator && <div className="acts"><button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Update earnings rate', [rateStep(tx, d.balancer, check.suggested)])}>Update to {check.suggested / 100}%</button></div>}

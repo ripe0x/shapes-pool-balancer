@@ -29,3 +29,10 @@ export function withdrawalBreakdown(credit: bigint, surplus: bigint | undefined,
   const earnings = (profitAccounting || creatorFeeAccounting) && total < credit ? total : credit;
   return { total, earnings, capital: surplus === undefined ? undefined : total - earnings };
 }
+
+/** Settled operating result excludes protected fees and contributed capital. Uncollected sales remain pending. */
+export function bankrollResult(balance: bigint, backing: bigint, fees: bigint, capital: bigint | undefined,
+  unsettled: bigint, awaitingUpkeep: number, proceeds: bigint): bigint | undefined {
+  if (capital === undefined || unsettled !== 0n || awaitingUpkeep !== 0 || proceeds !== 0n) return undefined;
+  return balance + backing - fees - capital;
+}

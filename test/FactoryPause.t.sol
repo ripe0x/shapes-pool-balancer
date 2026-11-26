@@ -15,7 +15,7 @@ contract FactoryPauseTest is ForkBase {
     }
 
     function _config(BalancerFactory f) internal view returns (PoolBalancer.CreationConfig memory) {
-        return PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), false, f.creationSettingsHash());
+        return PoolBalancer.CreationConfig(MARKUP, 0, 1, shapes.mintFee(), false, f.creationSettingsHash());
     }
 
     function test_freshFactoryStartsPublicCreationPaused() public {
