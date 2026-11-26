@@ -730,6 +730,8 @@ export function App() {
       {view === 'home' && <Home hasPools={isConnected && loaded && mine.length > 0} onNew={() => go('new')} onList={() => go('list')} onMain={(t) => go('main', t)} />}
       {view === 'main' && <MainPool tab={mainTab} setTab={(t) => go('main', t)} />}
       {isConnected && view === 'list' && (loadFailed || !loaded) && <main className="page narrow-page">
+        {/* Creating a pool never waits on discovery, which scans every factory's logs over public RPCs. */}
+        <div className="section-head"><h1 className="title t2">Your community pools</h1><button className="btn" onClick={() => go('new')}>New community pool</button></div>
         {loadFailed ? <p className="txline bad">Pool discovery unavailable. <button className="link" onClick={reload}>Retry discovery</button></p> : <p className="txline">Discovering your community pools…</p>}
         {/* Opening a pool by address is the way in only while discovery is failing. */}
         {loadFailed && <>
