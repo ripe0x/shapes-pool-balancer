@@ -2317,6 +2317,8 @@ export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCre
 
   // Live inventory: every listing FWA can draw now, weighted as FWA weights it.
   const cost = d.fee; // the draw price; FWA's randomness fee and gas are not included
+  // During setup (admission 2) FWA's price reflects only the prizes listed so far, not the design.
+  const settingUp = d.admission === 2;
   const live = d.listings.filter((l) => l.weight > 0n);
   const tw = live.reduce((s, l) => s + l.weight, 0n);
   const sizes = [...new Set(live.filter((l) => l.kind === 2).map((l) => l.denom))].sort((x, y) => BY_VALUE.indexOf(x) - BY_VALUE.indexOf(y));
@@ -2347,9 +2349,9 @@ export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCre
       <section>
         <div className="blk">
           <h2 className="h">Draw price</h2>
-          <div style={{ marginTop: 12 }}><span className="fig56">{d.fee ? eth(d.fee, 5) : '–'}</span><span className="u13">ETH</span></div>
+          <div style={{ marginTop: 12 }}><span className="fig56">{d.fee && !settingUp ? eth(d.fee, 5) : '–'}</span>{!settingUp && <span className="u13">ETH</span>}</div>
           <p className="desc">What a player pays for one draw. It follows the prizes listed and your markup, so it moves as prizes are won and restocked.{d.vrfFee !== undefined && ` FWA adds its own randomness fee on top, about ${eth(d.vrfFee, 5)} ETH at current gas.`}</p>
-          {d.admission === 2 && <p className="foot">Projected until the Shapes are listed.</p>}
+          {settingUp && <p className="foot">Shown once all Shapes are listed.</p>}
         </div>
 
         <div className="blk">
@@ -2378,7 +2380,7 @@ export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCre
             </div>}
             {items.length > 0 && <div className="tr sum" role="row"><span>Average prize value</span><span /><span>{avgPrize.toFixed(5)} ETH</span></div>}
           </div>
-          {items.length > 0 && <p className="foot">{price > 0 && `${Math.round((avgPrize / price) * 100)}% of the draw price, across the prizes listed now. `}If several draws land before the pool restocks, the price can drift and FWA refunds those draws; the randomness fee isn't refunded.</p>}
+          {items.length > 0 && <p className="foot">{price > 0 && !settingUp && `${Math.round((avgPrize / price) * 100)}% of the draw price, across the prizes listed now. `}If several draws land before the pool restocks, the price can drift and FWA refunds those draws; the randomness fee isn't refunded.</p>}
         </div>
 
         <div className="blk">

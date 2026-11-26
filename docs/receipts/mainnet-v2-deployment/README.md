@@ -36,6 +36,10 @@ Readback of `economics()` matches [launch-values.json](../mainnet-v2-preparation
 - Netlify site `shapes-pool-balancer` (pools.shapes.ripe.wtf): `VITE_FACTORY` and `VITE_FROM_BLOCK` set in all four contexts, then `netlify deploy --build --prod`. The live bundle `index-BtStD0ip.js` contains the new factory and block; no localhost RPC.
 - Keeper `shapes-community-keeper`, machine `80e9615a750398`, deployed via `keeper/deploy.sh` at `4fda6dc`: env reads back `FACTORY` 0x96fd…7671, `FROM_BLOCK` 26499988, `LEGACY_FACTORIES` community-v3,community-v2, `MAX_GAS_PRICE_GWEI` 1.5, expected signer `0x8D23…949d`. `/health` ok at block 26500043 with 1 balancer, no alerts, pending or errors.
 
+## Etherscan source verification
+
+The broadcast omitted `--verify`, so the four contracts were verified afterwards with `forge verify-contract` (solc 0.8.28, via IR, 50 runs, Cancun, linked KeeperPolicyCalls `0x5c63…e7f7`, PoolInventory `0xe64f…EAa5`, PoolPage `0x8Ca9…890C`): PoolPage, PoolInventory, PoolBalancer and BalancerFactory all `Pass - Verified`. Factory pools are EIP-1167 clones; Etherscan links each to the verified implementation automatically (pool `0xB975…B7B6` reads as PoolBalancer). Future deployments use `--verify` on the broadcast.
+
 ## Public opening
 
 `setCreationPaused(false)` on the new factory, nonce 4256, tx `0xe3c250a03b237020830df7c0a237be767008274917dc6b79e0148c3078bca030`, block 26500054, status 1, 29,919 gas at 0.147043365 gwei. `creationPaused()` reads back `false`. Receipt: [`deployments/1.creator-fee-v2.unpause-receipt.json`](../../../deployments/1.creator-fee-v2.unpause-receipt.json). No mainnet canary (R83).
