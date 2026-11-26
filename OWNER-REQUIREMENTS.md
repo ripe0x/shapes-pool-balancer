@@ -503,3 +503,8 @@ Accepted and documented; no contract behavior change and no outcome bound change
 
 - R126. On continued purchases with the jackpot absent and a replacement-funding gap: "the creator can choose their settings differently if they want to. this is not a problem." Retain creator-selected admission/settings and partial-inventory operation. This observation does not require a new jackpot-availability or reserve-shortfall purchase pause and is not an unresolved product blocker.
 - R127. On burst slippage refunds and charged randomness fees that are not returned: "this is fine too." Retain the existing FWA price protection and refund semantics. The measured top-heavy case had 90 refunds from 120 requests with 0.11583 ETH of charged VRF fees on those requests. These observations remain documented, accepted behavior; they do not require a new batch restriction or pricing change. Acceptance is not a forecast of other scenarios, a security finding resolution, or mainnet broadcast authority.
+
+## Fresh local playground (owner, 2026-11-25)
+
+- R128. After the local 8545 process stopped, owner: "just kill it and redeploy". Replace the failed local fork with a fresh 8545 deployment and reconnect the app. This supersedes preservation of the prior fork's local pools for this reset. Preserve its saved evidence/backups; no mainnet action. Reuse the approved local deployment roles and test setup, including unpaused creation and ripe0x.eth test funding.
+- R129. "make sure keeper is running too". Run the production keeper locally against the freshly deployed factory so it discovers and services new local pools. Local unsigned synthetic signer only; no production key or mainnet service action.

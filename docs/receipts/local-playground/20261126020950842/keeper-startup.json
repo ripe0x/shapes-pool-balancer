@@ -1,0 +1,15 @@
+{
+  "pid": 22144,
+  "rpc": "http://127.0.0.1:8545",
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "fromBlock": "26485620",
+  "chainId": 31337,
+  "account": "0x000000000000000000000000000000000001e004",
+  "health": "http://127.0.0.1:8787/health",
+  "state": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-playground/20261126020950842/keeper-state.json",
+  "pollMs": 2000,
+  "legacyFactories": [],
+  "maxGasPriceGwei": 5,
+  "maxLossWei": "0",
+  "privateKeyUsed": false
+}

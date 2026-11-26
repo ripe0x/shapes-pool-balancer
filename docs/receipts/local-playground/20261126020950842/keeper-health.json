@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "checks": {
+    "live": true,
+    "tick": true,
+    "balance": true,
+    "pools": true
+  },
+  "alerts": [],
+  "healthStaleMs": 120000,
+  "balanceWei": "99999994465128820633",
+  "lowBalanceWei": "0",
+  "stuckTicks": 5,
+  "stuck": [],
+  "lastTick": "2026-11-26T02:19:04.605Z",
+  "block": "26485627",
+  "keeper": "0x000000000000000000000000000000000001e004",
+  "balancers": 0,
+  "pending": [],
+  "errors": {},
+  "policies": {},
+  "expenseEstimator": "trace when supported",
+  "accounting": {
+    "coverage": "journal",
+    "journalEntries": 0,
+    "retryNonces": [],
+    "reorgWindow": 64,
+    "journalPrunedThrough": "0",
+    "errors": {}
+  },
+  "stats": {
+    "sent": 0,
+    "mined": 0,
+    "reverted": 0,
+    "replaced": 0,
+    "skippedUnprofitable": 0,
+    "spentWei": "0",
+    "earnedWei": "0"
+  }
+}

@@ -1,11 +1,30 @@
 # Local pool playground
 
-Use the preserved Anvil fork at http://127.0.0.1:8545, chain 31337. Setup is controlled by the owner-approved
-local-playground packet; no production deployment/signature approval is inherited. Do not restart or reset this node.
+Use the fresh Anvil fork at http://127.0.0.1:8545, chain 31337. The owner explicitly requested replacing the failed
+fork under R128. Prior pools and fixed-pool draw commands below belong to that discarded fork. Saved evidence
+and backups remain intact; no production deployment/signature approval is inherited.
 The normal Anvil example addresses on this fork have inherited EIP-7702 code, so the playground uses clean synthetic
 accounts instead. No private keys are needed or should be imported.
 
-## Cost-first implementation update (2026-11-25)
+## Current fresh deployment (2026-11-25)
+
+- App: http://127.0.0.1:5280/; discovery starts at block 26485620, not the old fork's later deployment block.
+- Factory: `0xbe49677a403f77136e81498e5681f8dc22aa1181`; creation is unpaused.
+- Implementation: `0x940815eE17aa44E861bEfe77e6812EB0f2da9710`; accounting version 2.
+- Anvil PID 13432 and app PID 20512 are detached. Anvil saves current state every 30 seconds to
+  `/tmp/fwa-8545-fresh-current-state.json`. The file remains subject to operating-system temporary-file cleanup.
+- Production keeper PID 22144 watches this factory from block 26485620, every two seconds, with no legacy factories.
+  Its unsigned local account is `0x000000000000000000000000000000000001e004`, cap 5 gwei and modeled loss allowance 0.
+  Health: http://127.0.0.1:8787/health. State and startup details are in the fresh receipt directory.
+- ripe0x.eth (`0xCB43078C32423F5348Cab5885911C3B5faE217F9`) received 1,000 additional test ETH on the fresh fork.
+
+Receipts: [fresh deployment](receipts/local-playground/20261126020950842/README.md).
+The app's local development connector completed discovery and exposed Create pool. A curated-NFT review check
+opened Confirm NFT values for Demo Curated #1 at 0.25 ETH and was cancelled before any approval or creation.
+No pool was created during that check. The keeper is healthy and ready to discover the user's next pool;
+it has not yet performed upkeep on a new pool in this fresh deployment.
+
+## Historical cost-first implementation update (prior fork)
 
 The existing local factory now points to `0x0176016958744B0030c96cC10896bd0817D94855`.
 `profitAccountingVersion()` is 1 and public creation remains unpaused. New pools created through the app use cost-first
@@ -21,7 +40,7 @@ and sent three zero-value transactions. Total gas cost was 0.000437757079398893 
 node reset, mainnet transaction or new pool creation was performed by the agent. Receipts and the interrupted
 receipt-filename recovery are in [the update record](receipts/local-playground/implementation-20261125205304625/README.md).
 
-## Current cost-first pool draws
+## Historical cost-first pool draws (prior fork)
 
 Balancer `0x2Aacb8aFe400b3Ffe61063142AAE5A351A69A0Db` belongs to ripe0x.eth. Its real paid local keeper is running
 as synthetic account `0x000000000000000000000000000000000001e007`, PID 32605. The first 20 draws delivered 20
