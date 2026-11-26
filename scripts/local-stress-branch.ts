@@ -43,7 +43,7 @@ export async function start(directory:string,resume=false,maxReads=MAX_SOURCE_RE
  directory=resolve(directory);assert.ok(directory.startsWith(join(ROOT,'docs/receipts/local-stress/')),'campaign receipt directory required');mkdirSync(directory,{recursive:true});
  freePort(PROXY_PORT);if(!resume)freePort(BRANCH_PORT);
  const statsFile=join(directory,'source-meter.json');assert.equal(existsSync(statsFile),resume,'fresh start or explicit metered continuation required');
- assert.ok(Number.isSafeInteger(maxReads)&&maxReads>=MAX_SOURCE_READS&&maxReads<=12000,'bounded source read ceiling');
+ assert.ok(Number.isSafeInteger(maxReads)&&maxReads>=MAX_SOURCE_READS&&maxReads<=24000,'bounded source read ceiling');
  const previous:any=resume?JSON.parse(readFileSync(statsFile,'utf8')):undefined;
  if(previous){assert.equal(previous.schema,'local-stress-source-meter-v1');assert.equal(previous.source,SOURCE);assert.equal(previous.sourcePid,28171);assert.ok(!previous.closed,'finished source meter cannot reopen');assert.ok(maxReads>=previous.maxForwardedReads&&previous.forwarded<=maxReads,'source ceiling or spent counter cannot decrease');}
  let deadline=previous?.deadline?Date.parse(previous.deadline):0;
