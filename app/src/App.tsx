@@ -946,6 +946,9 @@ type DraftNft = { value: string; collection?: Address; tokenId?: string; name?: 
 const belowFloor = (n: DraftNft) => !!n.floor && n.value.trim() !== '' && Number(n.value) < n.floor;
 /** A chosen NFT's starting value: its collection's floor, or empty when there is none. */
 const floorValue = (floor?: number) => (floor && floor >= 0.000001 ? floor.toFixed(6).replace(/\.?0+$/, '') : '');
+/** A chosen NFT's value in wei: what was entered, or its collection floor while the field is empty. The draw price,
+ *  the confirmation and the listing all use this, so an NFT left at its default is priced and listed alike. */
+const nftBase = (n: DraftNft) => ethOr(n.value.trim() || floorValue(n.floor), 0n);
 /** Design work before submission, retained across wallet connection and reloads. */
 type Draft = { salt?: Hash; creation?: CreationAttempt; curatedRequired?: boolean; markup: number; counts?: Counts; style?: Style | null; nfts?: DraftNft[];
   /** Drafts saved before `counts`: 0.01 ETH Shapes and the other sizes, kept apart. Read once, never written. */
@@ -1213,7 +1216,7 @@ const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId
   for (let k = 0; k < ns.length; k += LIST_BATCH) {
     const batch = ns.slice(k, k + LIST_BATCH);
     const label = ns.length <= LIST_BATCH ? `List ${ns.length === 1 ? 'your NFT' : `${word(ns.length)} NFTs`}` : `List NFTs ${k + 1} to ${k + batch.length} of ${ns.length}`;
-    steps.push([label, () => write(batch.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) })))]);
+    steps.push([label, () => write(batch.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: nftBase(n) })))]);
   }
   return steps;
 };
@@ -1269,7 +1272,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // Every NFT the design counts: listed ones, then rows with a value. Once connected, only rows with a chosen token.
   const rows = [
     ...listed.map((l) => ({ key: `l${l.id}`, name: nftName(l), base: l.base })),
-    ...pending.filter(({ n }) => n.collection).map(({ n, i }) => ({ key: `d${i}`, name: nftLabel(n), base: ethOr(n.value, 0n) })).filter((r) => r.base > 0n),
+    ...pending.filter(({ n }) => n.collection).map(({ n, i }) => ({ key: `d${i}`, name: nftLabel(n), base: nftBase(n) })).filter((r) => r.base > 0n),
   ];
   const bases = rows.map((r) => r.base);
   const curatedPrices = listed.map((l) => l.price);
@@ -1488,7 +1491,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     ? <span className="figure-s muted">—</span>
     : <span><span className="figure-s">{eth(v, dp)}</span><span className="unit">ETH</span></span>);
   // What saving does, in order. The predicted address receives approvals before atomic creation.
-  const toList = pending.filter(({ n }) => n.collection && ethOr(n.value, 0n) > 0n).map(({ n }) => n);
+  const toList = pending.filter(({ n }) => n.collection && nftBase(n) > 0n).map(({ n }) => n);
   // NFTs a new pool still needs approval for, checked against the predicted pool so the wallet steps list (and its
   // count) leaves out approvals already made. Unknown counts as needed.
   const [approved, setApproved] = useState<Record<string, boolean>>({});
@@ -1585,7 +1588,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       }));
       if (mode === 'new') {
         const config = { markupBps, creatorRevenueBps: d.profitAccounting ? 0 : reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0, settingsHash: reviewedHash! };
-        const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
+        const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: nftBase(n) }));
         const attempt: CreationAttempt = { chainId: chain.id, factory: FACTORY, creator: me, salt, predicted: balancer,
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
@@ -1840,7 +1843,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 {belowFloor(n) && <div className="s error">Below the {floorValue(n.floor)} ETH floor. A buyer could win it for much less than it's worth.</div>}
                 {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
               </div>
-              <div className={`field${belowFloor(n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
+              <div className={`field${belowFloor(n) ? ' bad' : ''}`}><input id={`nft-value-${i}`} aria-label={`Value of ${name}`} placeholder={floorValue(n.floor) || undefined} value={n.value} onChange={(e) => setNft(i, { value: e.target.value })} inputMode="decimal" /><span className="u">ETH</span></div>
               <button className="link quiet rm" aria-label={`Remove ${name}`} onClick={() => removeRow(i)}>Remove</button>
             </div>
           );
@@ -2152,7 +2155,7 @@ function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (o
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
   // Exact listed amounts, padded to the same number of decimals so the column lines up.
-  const amounts = items.map((n) => formatEther(ethOr(n.value, 0n)));
+  const amounts = items.map((n) => formatEther(nftBase(n)));
   const places = Math.max(0, ...amounts.map((x) => x.split('.')[1]?.length ?? 0));
   const pad = (x: string) => { const [w, f = ''] = x.split('.'); return places ? `${w}.${f.padEnd(places, '0')}` : w; };
   const below = items.filter(belowFloor).length;
@@ -2168,7 +2171,7 @@ function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (o
           <div className="mid">
             <div className="t">{nftLabel(n)}</div>
             {n.floor !== undefined && <div className={`s${low ? ' error' : ''}`}>
-              {n.value === floorValue(n.floor) ? 'At the collection floor' : `${low ? 'Below' : 'Above'} the ${floorValue(n.floor)} ETH collection floor`}
+              {(n.value.trim() || floorValue(n.floor)) === floorValue(n.floor) ? 'At the collection floor' : `${low ? 'Below' : 'Above'} the ${floorValue(n.floor)} ETH collection floor`}
             </div>}
           </div>
           <div className="amt"><b>{pad(amounts[i])}</b><span className="u13">ETH</span></div>
@@ -2195,10 +2198,10 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const keyOf = (n: DraftNft) => nftKey(n.collection!, n.tokenId!);
   const key = picks.map(keyOf).join();
   const holding = useHeld(pub, me, picks);
-  const valued = picks.length > 0 && picks.every((n) => ethOr(n.value, 0n) > 0n);
+  const valued = picks.length > 0 && picks.every((n) => nftBase(n) > 0n);
   const ready = valued && !holding.checking && !picks.some(holding.notHeld);
   const values = useConfirmValues();
-  const newBases = picks.map((n) => ethOr(n.value, 0n)).filter((v) => v > 0n);
+  const newBases = picks.map(nftBase).filter((v) => v > 0n);
   const plan = d.target ? listedShapeCounts(d.listings) : undefined;
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
@@ -2238,7 +2241,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
             {holding.notHeld(n) && <div className="s error">{NOT_HELD}</div>}
             {n.floor && <div className={`s${belowFloor(n) ? ' error' : ''}`}>{belowFloor(n) ? `Below the ${floorValue(n.floor)} ETH collection floor` : `Collection floor ${floorValue(n.floor)} ETH`}</div>}
           </div>
-          <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder="Your value" value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
+          <div className="field end" style={{ width: 140 }}><input aria-label={`Value of ${nftLabel(n)}`} placeholder={floorValue(n.floor) || 'Your value'} value={n.value} onChange={(e) => setPicks(picks.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} inputMode="decimal" /><span className="u">ETH</span></div>
           <button className="link quiet" aria-label={`Remove ${nftLabel(n)}`} onClick={() => setPicks(picks.filter((_, j) => j !== i))}>×</button>
         </div>
       ))}
