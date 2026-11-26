@@ -1,0 +1,48 @@
+{
+  "functionName": "setPaidUpkeepEnabled",
+  "hash": "0x8904ea22a9da008f7b2115608a3b786f7874562024c6e304206cbd797786cb94"
+}
+
+{
+  "functionName": "configure",
+  "hash": "0xd163c28347110badfe5ef863ac1ba50388f9e195aaa17d74cec9a1d4d3269589"
+}
+
+{
+  "functionName": "depositETH",
+  "hash": "0x67fad109072ee996aa45af248f557c3907247cf9dbcdd9e7560cb74fcc169e42"
+}
+
+{
+  "block": "26486119",
+  "cash": "189249451076042451",
+  "fees": "4498902152084901",
+  "capital": "214459643444269380",
+  "profit": "290905479688170",
+  "reserve": "187000000000000000",
+  "topUp": "2249451076042450",
+  "withdrawable": "0",
+  "target": "20",
+  "enabled": true,
+  "active": [
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "unsettled": "0",
+  "proceeds": "0",
+  "operating": "184750548923957550"
+}

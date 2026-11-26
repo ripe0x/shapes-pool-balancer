@@ -1,0 +1,171 @@
+{
+  "rpc": "http://127.0.0.1:8545",
+  "factory": "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+  "balancer": "0xDEd100384216DCcdD69C5eEd735E773dF0Dc3395",
+  "pool": "0x126211b470E8B564a971CD19a37B1ce9675d6087",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "count": 3,
+  "maxForwardSpendWei": "100000000000000000",
+  "gasCapWei": "1000000000000000000",
+  "timeoutRefund": false
+}
+LOCAL SIMULATED RANDOMNESS: actual NFT delivery and production-keeper restocking; no authentic VRF proof claim.
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0x000000000000000000000000000000000001E008",
+  "target": "0x126211b470E8B564a971CD19a37B1ce9675d6087",
+  "functionName": "acquireBatch",
+  "args": [
+    "0x000000000000000000000000000000000001E008",
+    "1",
+    "14432775006688500",
+    "0",
+    "10000",
+    "1",
+    "1795668424"
+  ],
+  "valueWei": "16772775039448500",
+  "gasLimit": "844335",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0x59c4599231e52d70b6f2fcd02e412808da1462704077d25855d93f7e8b10c93b",
+  "block": "26486088",
+  "gasWei": "589581004127067"
+}
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "target": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "functionName": "rawFulfillRandomWords",
+  "args": [
+    "99949394275025222479168920068297078095881527564399318044684887380101418461867",
+    [
+      "72870461279923789566316087976554662180423741614961982742905020616313060533758"
+    ]
+  ],
+  "valueWei": "0",
+  "gasLimit": "5000000",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0xfe44c59f98b56edf1dea2dba5a161fe1c025e43727e6d62c65476eb70a7a4ab1",
+  "block": "26486089",
+  "gasWei": "534920003744440"
+}
+{
+  "completedDraws": 1,
+  "nftWin": true,
+  "fullyRestocked": true,
+  "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+  "tokenId": "1711",
+  "spendETH": "0.0167727750394485"
+}
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0x000000000000000000000000000000000001E008",
+  "target": "0x126211b470E8B564a971CD19a37B1ce9675d6087",
+  "functionName": "acquireBatch",
+  "args": [
+    "0x000000000000000000000000000000000001E008",
+    "1",
+    "14432775006688500",
+    "0",
+    "10000",
+    "2",
+    "1795668426"
+  ],
+  "valueWei": "16772775039448500",
+  "gasLimit": "844335",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0x209ccbe110ff72c02cb486217ad91ddc91b4b4d1797bf2fb22e495533f311ce2",
+  "block": "26486097",
+  "gasWei": "589581004127067"
+}
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "target": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "functionName": "rawFulfillRandomWords",
+  "args": [
+    "62570987853028803830392472058665821359831749380629755551925897947592187188173",
+    [
+      "37372958671547848616527004186008165781931937985295142707241447332491504121103"
+    ]
+  ],
+  "valueWei": "0",
+  "gasLimit": "5000000",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0x65c22b975a60963f354caba471cfd0f0f90f3d33fcc969da8322a1f4a97192c4",
+  "block": "26486098",
+  "gasWei": "519571003636997"
+}
+{
+  "completedDraws": 2,
+  "nftWin": true,
+  "fullyRestocked": true,
+  "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+  "tokenId": "1709",
+  "spendETH": "0.033545550078897"
+}
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0x000000000000000000000000000000000001E008",
+  "target": "0x126211b470E8B564a971CD19a37B1ce9675d6087",
+  "functionName": "acquireBatch",
+  "args": [
+    "0x000000000000000000000000000000000001E008",
+    "1",
+    "14432775006688500",
+    "0",
+    "10000",
+    "3",
+    "1795668428"
+  ],
+  "valueWei": "16772775039448500",
+  "gasLimit": "844335",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0x4a67590be13906ac12feff0ad0395c32454639802d4df529107cad9fbefffed7",
+  "block": "26486107",
+  "gasWei": "589581004127067"
+}
+{
+  "mode": "execute",
+  "buyer": "0x000000000000000000000000000000000001E008",
+  "from": "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a",
+  "target": "0x7D93Bd9de5dc121992EA4A59E61B2519Fa1Ed65d",
+  "functionName": "rawFulfillRandomWords",
+  "args": [
+    "95147080713200937480579442034693728906818950620421023467672808409893868206103",
+    [
+      "8230052873758764234511674498037548458227041168352850145898072312562491387137"
+    ]
+  ],
+  "valueWei": "0",
+  "gasLimit": "5000000",
+  "maxFeePerGas": "1000000014"
+}
+{
+  "hash": "0xb97acd0fe8da1835fae35e011481e7d73145305f09d6cfbcfb2505ffebc191c4",
+  "block": "26486108",
+  "gasWei": "521240003648680"
+}
+{
+  "completedDraws": 3,
+  "nftWin": true,
+  "fullyRestocked": true,
+  "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+  "tokenId": "1710",
+  "spendETH": "0.0503183251183455"
+}

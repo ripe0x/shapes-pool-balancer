@@ -1,0 +1,2 @@
+PASS: full cash destination ledger, minted/delivered/retained backing, fee/capital reclassification, actual wallet receipt and cumulative batch caps
+Native deposits: 214459643444269380 owner receipts: 41236500019110000 mint backing+fees: 253000000000000000 keeper rewards: 446692387336929 creator withdrawal: 2249451076042451 remaining cash: 0

@@ -4,7 +4,7 @@
   "unique_contract_tests_passed": 46,
   "unique_ts_tests_passed": 73,
   "ts_skipped": 7,
-  "ui_transactional": "awaiting bounded local approval",
+  "ui_transactional": "PASS: actual local synthetic connector top-up, upkeep and fee withdrawal; ../focused-v2-ui/postflight.json",
   "records": [
     {
       "scope": "initial focused Solidity attempt; seven suites omitted",
@@ -60,5 +60,6 @@
       "exit": 0,
       "log": "logs/app-build.log"
     }
-  ]
+  ],
+  "owner_signature_commit": "9d0e79d"
 }

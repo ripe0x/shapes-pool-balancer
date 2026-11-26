@@ -1,6 +1,6 @@
 # Creator-fee v2 mainnet preparation
 
-**Unsigned, no broadcast authorized or performed.** Code candidate `e47fdef`; source/evidence digest `58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b`. [Focused evidence](receipts/focused-v2-release/README.md) preserves original failures, repairs, measurements and limits. [Signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md) includes exact commands. Local creator UI transaction approval remains pending; do not call this ready for production execution until it is completed or the owner explicitly accepts that gap.
+**Owner outcome signature recorded; no production broadcast authorized or performed.** Code candidate `e47fdef`; source/evidence digest `58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b`. [Focused evidence](receipts/focused-v2-release/README.md) preserves original failures, repairs, measurements and limits. [Signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md) includes exact commands. [Local creator UI transaction proof](receipts/focused-v2-ui/README.md) is complete; the signed gate passes. Next are owner-authorized merge to main and the fresh canonical dry run before decoded broadcast approval.
 
 ## Deployment decision
 
@@ -20,7 +20,7 @@ Read-only Tenderly checks at mainnet block **26496902** found:
 
 The observed nonce, balance, pool count and addresses are readbacks, not future transaction commitments. Re-read at execution; obtain exact deployment addresses, count, calldata and gas from the dry run. Keep the existing factory operational for its pools. A new current-factory pool appearing before cutover needs its deployed ABI retained and inclusion in legacy discovery/keeper coverage.
 
-## After UI acceptance, signature, and owner-authorized merge
+## After owner-authorized merge
 
 R110 requires the main checkout on `main`, fast-forwarded to `origin/main`. A local commit grants no remote authority. The PR/merge remains for owner approval. Check that main contains the candidate and the public outcome signature; stop on a source digest mismatch. Do not reset unrelated work or switch this dirty checkout automatically.
 
@@ -63,7 +63,7 @@ shasum -a 256 deployments/1.creator-fee-v2.reviewed-dry-run.json
 
 Review its decoded library creations, implementation dependencies, factory constructor, all zero native values, signer/nonces and estimated gas. Set a concrete max-fee/gas allowance for the exact action. At this point obtain immediate owner broadcast approval with that digest, predicted addresses and consequences. Deployment and later public unpause are separate approvals. R83 explicitly declined a mainnet canary for this launch; this packet does not reinstate one. The keystore handles signing; do not put keys/passwords in command literals.
 
-The subsequent authorized deployment uses the same wrapper/arguments with `--broadcast --verify` and sequential `--slow`. Its exact fee cap is chosen against fresh fees and the reviewed allowance, not a stale number in this document. Reconcile partial receipts/nonces before any retry, never blindly rerun deployment. No broadcast command is executable from this unsigned packet alone.
+The subsequent authorized deployment uses the same wrapper/arguments with `--broadcast --verify` and sequential `--slow`. Its exact fee cap is chosen against fresh fees and the reviewed allowance, not a stale number in this document. Reconcile partial receipts/nonces before any retry, never blindly rerun deployment. The outcome signature does not authorize executing a production broadcast.
 
 Copy the actual broadcast file to `deployments/1.creator-fee-v2.broadcast.json`, then verify against the approved dry-run digest:
 

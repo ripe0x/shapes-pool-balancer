@@ -16,15 +16,17 @@ Those observations remain in the frozen reports but require no product or contra
 
 **Focused release progress (2026-11-25):** [current evidence](receipts/focused-v2-release/README.md) records
 46 passing focused contract tests, including the formerly RPC-blocked genuine-proof v2 cases, three refreshed
-scorecards, the signed bankroll-loss UI repair and read-only component acceptance. The original blocked checkpoint
+scorecards, the signed bankroll-loss UI repair and read-only component acceptance. The subsequent
+[approved local UI batch](receipts/focused-v2-ui/README.md) verifies real top-up/withdrawal receipts, three simulated
+NFT wins with production keeper restocking, and exact retained backing. Owner signature is committed as `9d0e79d`; gate PASS. The original blocked checkpoint
 below is historical and remains preserved. [Production preparation](MAINNET-CREATOR-FEE-V2.md) uses a replacement
 factory because the live immutable factory has no creation pause. Runtime contracts remain unchanged from `213a6ab`.
 
-**Next action:** complete the separately requested bounded local creator-fee UI transaction batch, then present the
-[current focused signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md). The informed independent
-review binds the current candidate; it does not constitute a full audit. Owner signature, authorized merge to main,
-fresh production dry run and immediate decoded broadcast approval remain. Full campaign and authentic live oracle/
-service availability claims stay separate. No production transaction has been sent.
+**Next action:** owner-authorized merge to main, then a fresh canonical production dry run and immediate decoded
+broadcast approval. The [focused signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md) is signed;
+its source/evidence digest remains unchanged. The informed independent review is bounded and does not constitute a
+full audit. Full campaign and authentic live oracle/service availability claims stay separate. No production
+transaction has been sent.
 
 | Bucket | Rule |
 | --- | --- |

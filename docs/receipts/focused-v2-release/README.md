@@ -4,7 +4,7 @@ Candidate code commit: `e47fdef` (based on `c887bc7`; contract sources unchanged
 Gate source/evidence digest: `58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b`.
 Focused outcome/config digest: `5acc93973dcad11c81c9945851f85ddd62ea24a1ebea2f55264e7528331f4d3f`.
 
-**Contract checks and read-only UI acceptance completed. Transactional creator-fee UI acceptance awaits the separately requested local batch approval. Owner signature and all production writes remain outstanding.** This is focused evidence, not a full economic campaign or whole-system audit.
+**Focused contract checks, independent review and local transactional UI acceptance completed. Owner signature committed as `9d0e79d`; gate PASS. Production writes remain unapproved.** This is focused evidence, not a full economic campaign or whole-system audit.
 
 ## Execution record
 
@@ -46,9 +46,9 @@ Read-only actual React `Overview` preview used static props, with transaction ca
 
 Independent review: `audit/inventory-update-b44e35f/creator-fee-v2-20261125/`. One actionable signed-loss UI finding was repaired and re-reviewed. Review is informed and bounded, not a new full audit or proof of safety.
 
-Transactional UI top-up/withdrawal remains unexecuted in this batch until the requested bounded authorization arrives. Static props, source review, contract tests and scripted stress receipts do not replace this missing interaction evidence. Seven TS opt-in receipt/live tests remain skipped; no claim of a full frontend wallet suite is made.
+[The approved subsequent UI batch](../focused-v2-ui/README.md) now supplies actual local app top-up/withdrawal transactions, full keeper restocking after three simulated wins, exact per-token backing and receipt-ledger assertions. It closes the previously pending interaction gap for the synthetic local connector. It does not establish extension-wallet/mainnet signing or live authentic VRF. Seven TS opt-in receipt/live tests remain skipped; no claim of a full frontend wallet suite is made.
 
 ## Things that don't make sense
 
 - Forge silently accepted a selected test batch while omitting ABI-only cached artifacts. The new fail-closed precheck prevents that omission on this focused gate path.
-- A green focused gate alone would not exercise the pending creator UI transaction, authorize mainnet transactions, establish current oracle liveness, or validate the separate full economic campaign.
+- A green focused gate alone would not establish UI transaction behavior, authorize mainnet transactions, establish current oracle liveness, or validate the separate full economic campaign. The separate real local UI evidence is now recorded.
