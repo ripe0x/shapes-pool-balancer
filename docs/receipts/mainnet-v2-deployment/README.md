@@ -1,0 +1,30 @@
+# Mainnet v2 deployment record, 2026-11-26
+
+**Deployed, verified and configured on Ethereum mainnet. Public creation remains paused.** Owner-approved broadcasts from the main checkout at `6d94d01` (code candidate `cf4dccd`), signer `0xCB43078C32423F5348Cab5885911C3B5faE217F9` via keystore `ripe0x`, through Alchemy because Tenderly returned 429. Approval packet: [APPROVAL.md](../mainnet-v2-preparation/APPROVAL.md).
+
+## Deployment, nonces 4251–4254
+
+| Contract | Address | Tx | Block | Gas used |
+| --- | --- | --- | ---: | ---: |
+| PoolPage (CREATE2) | `0x8Ca9E6CfE4A4F4F10cEF1d2EfF6954e476bd890C` | `0x01eb77bcfae2dfc52613a1e95479726eddb2e9969101fa60d1cf1589e520298d` | 26499985 | 420,065 |
+| PoolInventory (CREATE2) | `0xe64f685C24056e41C30e4cf35C8Cb28381F1EAa5` | `0x6a38e7a9092f079c3f4b0b8ddb052d0a11f9b2f48f5def4a41fc9eabd73270f5` | 26499986 | 4,209,251 |
+| PoolBalancer implementation | `0x45754494B606f9E3AebfB9984330eC788A87eF76` | `0xa52e0620b60fa06a736ab675772e02da0da00d5366832f2e53b5a9da905860fa` | 26499987 | 5,401,048 |
+| BalancerFactory | `0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671` | `0xde0bce7b521adc1d63cda7d583fddf894360150773b51602e65101b1573d5a1b` | 26499988 | 1,483,846 |
+
+Total **11,514,210 gas, 0.001571642619637461 ETH** (approved cap 0.0039301835 ETH), all zero native value.
+
+- Asset gate PASS at source hash `58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b`. Its fork tests ran through Alchemy using a `FOUNDRY_RPC_ENDPOINTS` environment override; `foundry.toml` was not edited. Two earlier attempts stopped at keystore decryption (wrong password) and broadcast nothing; nonce 4251 was confirmed unchanged after each.
+- `scripts/verify-deployment.ts` against the reviewed dry run (SHA-256 `b196c10b91293be329970fc6a61d6fc6203be214e6094f3e261311f46d789902`): `DEPLOYMENT VERIFIED`. Output: [`deployments/1.creator-fee-v2.verified.json`](../../../deployments/1.creator-fee-v2.verified.json); broadcast: [`deployments/1.creator-fee-v2.broadcast.json`](../../../deployments/1.creator-fee-v2.broadcast.json).
+- Readbacks: `creationPaused() == true`, `policyAdmin == 0xCB43…17F9`, implementation `profitAccountingVersion() == 2`, signer nonce 4255.
+
+## Paused launch setup, nonce 4255
+
+`setEconomics` on the new factory, tx `0x6b8be303a6402537882d856864462b7263d1e1680cd39c7ab3ccb54d34290253`, block 26499997, status 1, 48,984 gas at 0.151013981 gwei. Receipt: [`deployments/1.creator-fee-v2.setup-receipt.json`](../../../deployments/1.creator-fee-v2.setup-receipt.json).
+
+Readback of `economics()` matches [launch-values.json](../mainnet-v2-preparation/launch-values.json) exactly, including **gasPriceCeiling 1.5 gwei and restockGas 940000**. `creationPaused()` still true.
+
+## Not done
+
+Post-deployment legacy-factory rescan, app/keeper cutover to factory `0x96fd…7671` (start block 26499988), and `setCreationPaused(false)` each require separate owner approval. No mainnet canary (R83).
+
+Things that don't make sense: none.

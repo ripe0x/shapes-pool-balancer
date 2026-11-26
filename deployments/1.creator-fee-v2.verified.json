@@ -1,0 +1,134 @@
+{
+  "verified": true,
+  "source": "canonical receipts and contract reads",
+  "chainId": 1,
+  "checkedAtBlock": "26499989",
+  "checkedAtBlockHash": "0xbab50bb95a1f9313029d96a49278008f372c54950a4ebfbe18173fdf87cef2be",
+  "factoryDeploymentBlock": "26499988",
+  "balancerFactory": "0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671",
+  "poolBalancerImplementation": "0x45754494B606f9E3AebfB9984330eC788A87eF76",
+  "packs": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+  "renderer": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+  "initialSettings": {
+    "economics": {
+      "workFee": "20000000000000",
+      "maxGas": 3200000,
+      "overheadGas": 60000,
+      "gasPriceCeiling": "5000000000",
+      "priorityAllowance": "50000000",
+      "restockGas": 910000,
+      "restockFlat": "200000000000000",
+      "baseGas": 200000,
+      "processGas": 1800000,
+      "reconcileGas": 150000,
+      "shapeGas": 700000,
+      "prizeGas": 150000,
+      "processGraceBlocks": 50,
+      "pausedProcessGraceBlocks": 10
+    },
+    "defaultBucketCapacity": "622000000000000000",
+    "defaultBucketRefill": "4166666666666666",
+    "productLimits": [
+      1000,
+      1000,
+      10000
+    ],
+    "creationSettingsHash": "0x8777ca8e839a54835e9250dfd64116ffa0b396ab2ca208219502be4d19dc70c5",
+    "shapesMintFeeWei": "500000000000000"
+  },
+  "roles": {
+    "deployer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "packsAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "keeperAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9"
+  },
+  "transactions": {
+    "PoolPage": {
+      "address": "0x8Ca9E6CfE4A4F4F10cEF1d2EfF6954e476bd890C",
+      "hash": "0x01eb77bcfae2dfc52613a1e95479726eddb2e9969101fa60d1cf1589e520298d",
+      "block": "26499985",
+      "blockHash": "0xcde48498bb70133de53ebcf647f3f82b79afb0cbab225d3650bb381eba4d6bce",
+      "gasUsed": "420065",
+      "effectiveGasPrice": "127851175"
+    },
+    "PoolInventory": {
+      "address": "0xe64f685C24056e41C30e4cf35C8Cb28381F1EAa5",
+      "hash": "0x6a38e7a9092f079c3f4b0b8ddb052d0a11f9b2f48f5def4a41fc9eabd73270f5",
+      "block": "26499986",
+      "blockHash": "0x8db37a428a6af9c34a2c16d02e42e17bcabc6e383e29c8621ce79aad6092520c",
+      "gasUsed": "4209251",
+      "effectiveGasPrice": "135086686"
+    },
+    "PoolBalancer": {
+      "address": "0x45754494B606f9E3AebfB9984330eC788A87eF76",
+      "hash": "0xa52e0620b60fa06a736ab675772e02da0da00d5366832f2e53b5a9da905860fa",
+      "block": "26499987",
+      "blockHash": "0xccdaa987ee7f2e1bf74acaff589ef273a5278131ddd57f1e7afe9c7b33ee8113",
+      "gasUsed": "5401048",
+      "effectiveGasPrice": "137148721"
+    },
+    "BalancerFactory": {
+      "address": "0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671",
+      "hash": "0xde0bce7b521adc1d63cda7d583fddf894360150773b51602e65101b1573d5a1b",
+      "block": "26499988",
+      "blockHash": "0x1bed0fba87e192d3efabee6c2223010f25143e5ea7751d18ae270b6d1c286ee3",
+      "gasUsed": "1483846",
+      "effectiveGasPrice": "140564602"
+    }
+  },
+  "preexistingLibraries": {
+    "KeeperPolicyCalls": "0x5c6322442650A1177b4aFbF5f95166A59Ef7e7f7"
+  },
+  "reusedDependencies": {
+    "code": {
+      "shapes": {
+        "address": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "codeHash": "0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7",
+        "codeBytes": 22460,
+        "recordedCodeHash": "0x5128789aebafbd129f209fc3d84928373b7c9fa07d1721fbc71ee92a412387d7"
+      },
+      "packs": {
+        "address": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+        "codeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c",
+        "codeBytes": 17768,
+        "recordedCodeHash": "0xf823982603df82f696e86d255ea1699635890085f4e203e035405dad07d03a7c"
+      },
+      "renderer": {
+        "address": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+        "codeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe",
+        "codeBytes": 9354,
+        "recordedCodeHash": "0x4315f1dd1c4c69497c28249e5600d8df497786a251bcec610de64977a2b866fe"
+      },
+      "fwaFactory": {
+        "address": "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+        "codeHash": "0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e",
+        "codeBytes": 18856,
+        "recordedCodeHash": "0xb998454c11b09cf943751b5aa593a2607febac940de51a1a65f41b924369e36e"
+      },
+      "fwaImplementation": {
+        "address": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+        "codeHash": "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+        "codeBytes": 24280,
+        "recordedCodeHash": "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02"
+      }
+    },
+    "readbacks": {
+      "packsShapes": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "packsRenderer": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+      "packsMinimumWei": "20000000000000000",
+      "packsAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "packsPresentationLocked": false,
+      "packsName": "Pool Prize Packs",
+      "packsSymbol": "PRIZEPACK",
+      "rendererShapes": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "fwaFactoryImplementation": "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+      "fwaMaxAcquisitionsPerTx": 5,
+      "shapesMintFeeWei": "500000000000000"
+    },
+    "matchesLocalBuild": {
+      "packs": true,
+      "renderer": true
+    }
+  },
+  "deploymentGasWei": "1571642619637461"
+}

@@ -1,6 +1,8 @@
 # Creator-fee v2 mainnet preparation
 
-**Latest packet:** [2026-11-26 decoded deployment approval](receipts/mainnet-v2-preparation/APPROVAL.md). PR #57 is merged; focused/regression checks and the signed gate pass. The owner's explicitly authorized Alchemy preflight clears the Tenderly 429 readback blocker using 87 reads and reuses the identical canonical simulation. No broadcast is authorized or performed. The new factory stays paused through mined verification and separate setup of the approved 940k/1.5 gwei launch values.
+**Deployed 2026-11-26:** factory `0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671` (block 26499988), implementation `0x45754494B606f9E3AebfB9984330eC788A87eF76`, verified, launch values applied, creation still paused. [Deployment record](receipts/mainnet-v2-deployment/README.md).
+
+**Approval packet:** [2026-11-26 decoded deployment approval](receipts/mainnet-v2-preparation/APPROVAL.md). PR #57 is merged; focused/regression checks and the signed gate pass. The owner's explicitly authorized Alchemy preflight clears the Tenderly 429 readback blocker using 87 reads and reuses the identical canonical simulation. No broadcast is authorized or performed. The new factory stays paused through mined verification and separate setup of the approved 940k/1.5 gwei launch values.
 
 **Owner outcome signature recorded; no production broadcast authorized or performed.** Code candidate `e47fdef`; source/evidence digest `58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b`. [Focused evidence](receipts/focused-v2-release/README.md) preserves original failures, repairs, measurements and limits. [Signature packet](receipts/focused-inventory-update/OWNER-SIGNATURE.md) includes exact commands. [Local creator UI transaction proof](receipts/focused-v2-ui/README.md) is complete; the signed gate passes. Next are owner-authorized merge to main and the fresh canonical dry run before decoded broadcast approval.
 
