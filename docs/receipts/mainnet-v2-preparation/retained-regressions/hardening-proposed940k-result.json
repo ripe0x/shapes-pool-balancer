@@ -1,0 +1,16 @@
+{
+  "command": [
+    "forge",
+    "test",
+    "--match-path",
+    "test/Hardening.t.sol",
+    "--match-test",
+    "gasJump",
+    "--threads",
+    "1",
+    "-vv"
+  ],
+  "exit": 0,
+  "elapsed_seconds": 5.379376173019409,
+  "scope": "temporary proposed 940000 restockGas only; not approved for release"
+}

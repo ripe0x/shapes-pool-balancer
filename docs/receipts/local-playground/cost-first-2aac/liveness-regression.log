@@ -1,0 +1,9 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/local-cost-first-draws.test.ts (5 tests | 4 skipped) 1ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 4 skipped (5)
+   Start at  16:22:31
+   Duration  474ms (transform 96ms, setup 0ms, collect 273ms, tests 1ms, environment 0ms, prepare 34ms)

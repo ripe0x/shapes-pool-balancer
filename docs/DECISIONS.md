@@ -1060,3 +1060,58 @@ marked historical (they call removed policy functions); `script/deploy.sh` no lo
    reviewed against another implementation reverts with `StaleSettings`. Trust: the policy admin chooses the code
    future pools run. A later implementation must keep `initialize`, `SHAPES()` and `pool()`; the app and keeper treat
    functions an older pool lacks as absent.
+
+
+## Inventory batches and closeout follow-up (2026-11-25, implementation)
+
+The owner requested implementation of the reviewed inventory/exit gaps. New implementations expose bounded batches
+of 1–20 distinct listings for curated withdrawal, curated repricing and refunded recovery, retaining every single-item
+exit. `inventoryBatchVersion()` identifies support per clone, since one factory can create several implementation
+versions. No generic execution, custody migration, keeper formula or ERC20 recovery right is introduced.
+
+The dashboard collects FWA proceeds and recovers eligible refunded inventory during closeout, checks remaining assets,
+retains winner rights over unresolved deliveries, and does not infer empty holdings from unavailable history. Completed
+retry deliveries are excluded from recovery. Creation settings are rechecked before each approval and final submission.
+
+The existing deployment entry point supports implementation-only deployment and a separate factory-pointer switch.
+Existing pools remain immutable, factory settings/discovery history are retained, and the normal release gates and
+per-transaction broadcast confirmation remain required. This implementation entry is not release approval or a broadcast.
+
+
+## ERC20 rescue and factory creation pause (2026-11-25)
+
+Owner requested both additions. `recoverERC20(token,amount)` is creator-only and non-reentrant, sends only the ERC20
+transfer selector, transfers zero native ETH, and pays only the current creator. The inventory capability version is
+2; version 1 retains batching. The creator bears transaction gas; no keeper fee or new debt is booked.
+
+New factories begin with public creation paused. Only policyAdmin may pause/resume, and that admin can create its
+own canary while paused. Existing pools and predicted-address reads are unaffected. Ordinary local fixtures explicitly
+resume; local lifecycle drivers check ownership and resume only their owned fork, while historical prepared journals
+fail closed until their permitted actions are updated. Production deployment never silently resumes creation.
+
+This supersedes the previous implementation-only deployment recommendation when the pause is required: a new
+factory is necessary, reusing dependencies and retaining legacy discovery. No existing immutable factory or Balancer
+acquires these methods. Existing source/outcome approvals and rehearsal evidence are not promoted to this candidate.
+
+## Cost-first creator proceeds (2026-11-25, owner-approved implementation)
+
+R114–R117 supersede the protected fixed-rate credit design for new implementations. A native ETH capital hurdle
+tracks deposits and unsolicited/forced ETH, including prefunding a predicted address. Earned proceeds are positive
+accounted cash plus tracked redeemable automatic backing minus outstanding contributed capital. Initial mint fees,
+keeper payments and automatic prize wins therefore consume earnings or create a loss carried forward. All cash is
+available to maintenance; no earnings bucket is protected from restocking. Curated asking prices create no monetary
+basis or debt. Creator proceeds are game cash proceeds, not the creator's personal NFT investment return.
+
+Every automatic prize is written off when its allocated draw is reconciled, including failed delivery. A later
+refund redemption restores actual cash; a successful retry cannot leave phantom backing in the ledger. Unlisting
+active automatic inventory converts backing into cash without creating income. Unknown ETH is capital, never sales.
+
+Open claims require all issued draws reconciled, no unsettled acquisitions and enough remaining ETH for the current
+replacement, accepted mint-fee, keeper-work and maintenance reserve. Withdrawals are capped by earned proceeds.
+Closing permits capital recovery too; only the portion beyond pre-claim earnings reduces the capital hurdle. Losses
+survive closure, reopening and creator transfer. Profit reporting is zero while draw outcomes remain unreconciled.
+
+The creation tuple retains its old percentage field for ABI compatibility but requires zero. The legacy setter
+explicitly rejects, and the legacy getter returns zero. `profitAccountingVersion() == 1` identifies this behavior per
+clone. Existing fixed clones and their historical fixed-share evidence remain unchanged. Their economics campaign
+is separate; historical pass results do not validate the new model. No mainnet deployment is authorized.

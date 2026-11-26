@@ -1,0 +1,92 @@
+{
+  "verified": true,
+  "operation": "implementation-update",
+  "chainId": 31337,
+  "balancerFactory": "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+  "previousImplementation": "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+  "poolBalancerImplementation": "0x0176016958744B0030c96cC10896bd0817D94855",
+  "activeAtBlock": "26485986",
+  "activeAtBlockHash": "0x82079da41cd457f90f4f0ea1e1348f0c48e8e8f97f841843541745b6d768e211",
+  "transactionHash": "0x6c00789bc9cf6fe0a5ed7b40fdae00aa981a262413c1fc3cb36a208eb2366551",
+  "block": "26485986",
+  "blockHash": "0x82079da41cd457f90f4f0ea1e1348f0c48e8e8f97f841843541745b6d768e211",
+  "gasUsed": "33464",
+  "effectiveGasPrice": "50000023",
+  "factoryState": {
+    "implementation": "0x0176016958744B0030c96cC10896bd0817D94855",
+    "keeperAdmin": "0x000000000000000000000000000000000001E003",
+    "policyAdmin": "0x000000000000000000000000000000000001e004",
+    "keepersRestricted": false,
+    "pendingKeeperAdmin": "0x0000000000000000000000000000000000000000",
+    "pendingPolicyAdmin": "0x0000000000000000000000000000000000000000",
+    "economics": {
+      "workFee": "20000000000000",
+      "maxGas": 3200000,
+      "overheadGas": 60000,
+      "gasPriceCeiling": "5000000000",
+      "priorityAllowance": "50000000",
+      "restockGas": 910000,
+      "restockFlat": "200000000000000",
+      "baseGas": 200000,
+      "processGas": 1800000,
+      "reconcileGas": 150000,
+      "shapeGas": 700000,
+      "prizeGas": 150000,
+      "processGraceBlocks": 50,
+      "pausedProcessGraceBlocks": 10
+    },
+    "defaultBucketCapacity": "622000000000000000",
+    "defaultBucketRefill": "4166666666666666",
+    "productLimits": [
+      1000,
+      1000,
+      10000
+    ],
+    "creationPaused": false
+  },
+  "profitAccountingVersion": 1,
+  "creationPaused": false,
+  "oldPoolUnchanged": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+  "totalGasWei": "437757079398893",
+  "transactions": [
+    {
+      "phase": "deploy",
+      "hash": "0x267db47bc12d6c8e31aa0e03b70b8005f8d222576b432bf76af1d73d483b31c5",
+      "gasUsed": "3529132",
+      "gasPrice": "50000028",
+      "gasWei": "176456698815696",
+      "block": "26485984",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e001",
+      "nonce": 7,
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "value": "0"
+    },
+    {
+      "phase": "deploy",
+      "hash": "0x4352d489b43ca0db9d7222b515d606db3ad901f602d423b946d583de5099806d",
+      "gasUsed": "5192541",
+      "gasPrice": "50000025",
+      "gasWei": "259627179813525",
+      "block": "26485985",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e001",
+      "nonce": 8,
+      "to": null,
+      "value": "0"
+    },
+    {
+      "phase": "switch",
+      "hash": "0x6c00789bc9cf6fe0a5ed7b40fdae00aa981a262413c1fc3cb36a208eb2366551",
+      "gasUsed": "33464",
+      "gasPrice": "50000023",
+      "gasWei": "1673200769672",
+      "block": "26485986",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e004",
+      "nonce": 22,
+      "to": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "value": "0"
+    }
+  ]
+}

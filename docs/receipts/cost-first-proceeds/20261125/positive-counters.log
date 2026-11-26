@@ -1,0 +1,34 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 5.72s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:232:13:
+    |
+232 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:244:9:
+    |
+244 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 1 test for test/AuthenticEconomicFlows.t.sol:AuthenticPositiveProceedsTest
+[FAIL: custom error 0xb3b4ff10] test_genuineCuratedSalesRepayCostsBeforeOpenPoolProfitLeaves() (block: 26442757) (gas: 279093)
+Logs:
+  replay_unsettled: 3
+  replay_next_sequence: 1
+  replay_last_sequence: 3
+
+Suite result: FAILED. 0 passed; 1 failed; 0 skipped; finished in 12.96s (3.33s CPU time)
+
+Ran 1 test suite in 13.26s (12.96s CPU time): 0 tests passed, 1 failed, 0 skipped (1 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/AuthenticEconomicFlows.t.sol:AuthenticPositiveProceedsTest
+[FAIL: custom error 0xb3b4ff10] test_genuineCuratedSalesRepayCostsBeforeOpenPoolProfitLeaves() (block: 26442757) (gas: 279093)
+
+Encountered a total of 1 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

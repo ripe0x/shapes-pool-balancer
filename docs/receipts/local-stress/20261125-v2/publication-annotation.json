@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-26T01:07:27.279427+00:00",
+  "rawRunnerOutput": "docs/receipts/local-stress/20261125-v2-regimes/results.json",
+  "rawSha256": "b97ce224a56bf989ad4d987d8455bcb6d6c8aa2bdea537b89d65c389123dba4c",
+  "publishedViewerData": "app/public/stress-results/results.json",
+  "publishedSha256": "ae397e55e2434ed49599f6d7f8c1d12a9e038b834fa2c97e8e48b6edc18ae1aa",
+  "changes": "Correct only historical source-cap finding flags and provenance using unchanged failed-attempt records; all scenario and monetary data identical.",
+  "findings": [
+    {
+      "scenarioId": "balanced-10",
+      "attemptSource": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-stress/20261125-v2/results.json"
+    },
+    {
+      "scenarioId": "jackpot-240",
+      "attemptSource": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-stress/20261125-v2-continuation/results.json"
+    }
+  ],
+  "runtimeRunnerSha256": "03ce36b4578e2b1736de9f41a42e3f9ffaf853080de383b70276bda73b866292",
+  "sourceMeter": {
+    "forwarded": 19778,
+    "maxForwardedReads": 24000,
+    "deadline": "2026-11-26T01:10:07.305Z",
+    "closed": true
+  }
+}

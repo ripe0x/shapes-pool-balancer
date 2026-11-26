@@ -1,0 +1,25 @@
+import React, {useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {WagmiProvider} from 'wagmi';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {config} from './src/chain';
+import {Overview} from './src/App';
+import './src/styles.css';
+const ETH=10n**18n;
+const address='0x0000000000000000000000000000000000001234';
+const counts=[1,...Array(15).fill(0)];
+const tx={busy:false,send:async()=>{throw new Error('Read-only component preview');},write:async()=>{throw new Error('Read-only component preview');}};
+function Preview(){
+ const [scenario,setScenario]=useState('Deposit only');
+ const deposit=scenario==='Deposit only'; const partial=scenario==='Partial top-up'; const blocked=scenario==='Reserve shortfall'||partial; const closed=scenario==='Closed'; const legacy=scenario==='V1 compatibility';
+ const credit=deposit?0n:partial?ETH/100n:ETH/20n; const op=blocked||closed?ETH/100n:ETH;
+ const d:any={balancer:address,pool:address,creator:address,factoryAddr:address,profitAccounting:true,creatorFeeAccounting:!legacy,bankrollProfit:0n,creatorFeeTopUpAvailable:legacy||deposit?0n:closed?11n*ETH/1000n:blocked?(partial?ETH/100n:ETH/50n):0n,creatorFeeUpdatePending:false,contributedCapital:ETH,
+ enabled:!closed,admission:0,retired:false,unsettled:0n,awaitingUpkeep:0,creatorCredit:legacy?15n*ETH/1000n:credit,creatorRevenueBps:legacy?0:1150,
+ balance:legacy?1005n*ETH/1000n:op+credit,required:closed?0n:blocked?3n*ETH/100n:105n*ETH/10000n,surplus:deposit||blocked?0n:closed?op+credit:legacy?15n*ETH/1000n:credit,
+ target:BigInt(blocked||closed?3:1),activeShapes:deposit?Array(16).fill(0):counts,markupBps:2500,mintFeeCap:ETH/2000n,mintFee:ETH/2000n,edgeBps:1000,
+ fee:13n*ETH/1000n,proceeds:0n,restockFee:0n,baseFee:500000000n,paidUpkeepEnabled:false,policyUnavailable:false,mintFeeUnavailable:false,
+ names:{},listings:deposit?[]:[{id:1n,kind:2,denom:0,state:1,base:13n*ETH/1000n,price:13n*ETH/1000n,weight:10n**36n/(13n*ETH/1000n),fwaStatus:1,slot:1n,collection:address,tokenId:1n}],
+ ledger:undefined,historyError:true};
+ return <div className="pp"><div style={{padding:24,borderBottom:'1px solid #888'}}>Read-only component preview · static scenarios · transactions disabled<br/><label>Scenario <select aria-label="Scenario" value={scenario} onChange={e=>setScenario(e.target.value)}>{['Deposit only','Creator fees','Reserve shortfall','Partial top-up','Closed','V1 compatibility'].map(s=><option key={s}>{s}</option>)}</select></label></div><Overview key={scenario} d={d} tx={tx as any} isCreator={true} me={address} setTab={()=>{}}/></div>;
+}
+createRoot(document.getElementById('root')!).render(<WagmiProvider config={config}><QueryClientProvider client={new QueryClient()}><Preview/></QueryClientProvider></WagmiProvider>);

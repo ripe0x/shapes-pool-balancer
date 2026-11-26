@@ -1,0 +1,20 @@
+diff --git a/test/Hardening.t.sol b/test/Hardening.t.sol
+index e9fdb7e..1b7eef8 100644
+--- a/test/Hardening.t.sol
++++ b/test/Hardening.t.sol
+@@ -5,0 +6 @@ import {ForkBase} from "./utils/ForkBase.sol";
++import {GasProbe} from "./utils/FlowBreakdown.sol";
+@@ -302 +303 @@ contract HardeningTest is ForkBase {
+-        vm.fee(80 gwei);
++        vm.fee(4.95 gwei);
+@@ -303,0 +305,4 @@ contract HardeningTest is ForkBase {
++        GasProbe probe = new GasProbe();
++        probe.record();
++        assertEq(probe.baseFee(), 4.95 gwei, "includable basefee inside a state-changing call");
++        assertEq(probe.gasPrice(), 5 gwei, "actual bid reaches the reimbursement cap");
+@@ -320,0 +326,5 @@ contract HardeningTest is ForkBase {
++            emit log_named_uint("restock_iteration", i);
++            emit log_named_uint("restock_measured_gas", gasUsed);
++            emit log_named_uint("restock_keeper_reward_wei", reward);
++            emit log_named_uint("restock_listed_surcharge_wei", price - base);
++            emit log_named_uint("minimum_restock_gas_at_5_gwei", reward > 0.0002 ether ? (reward - 0.0002 ether + 5 gwei - 1) / 5 gwei : 0);

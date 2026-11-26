@@ -20,6 +20,11 @@ contract GasProbe {
 ///         scorecard per regime for asset_gate.py. Amounts are wei (or any integer unit); names must not contain `"`.
 ///         Usage: `Snap a = flowBegin(gas, basefee, forkBlock); ...drive the regime...; flowReport("quiet", a, facts);`
 abstract contract FlowBreakdown is Test {
+    error UnverifiedFlowEvidence();
+
+    /// @dev Each producer must establish its actual oracle path; source freshness alone is insufficient.
+    function flowEvidenceValidated() internal view virtual returns (bool) { return false; }
+
     struct Item { string name; uint256 amount; } // cumulative counter
     struct Bucket { string name; uint256 held; bool hasImplied; uint256 implied; bool hasNeed; uint256 need; }
     struct Flow { string name; uint256 amount; bool hasReturn; uint256 returned; } // cumulative, bucket to bucket
@@ -70,6 +75,7 @@ abstract contract FlowBreakdown is Test {
     }
 
     function flowReport(string memory regime, Snap memory a, Fact[] memory reached) internal {
+        if (!flowEvidenceValidated()) revert UnverifiedFlowEvidence();
         fbCheckGas();
         Snap memory b = flowSnap();
         Out memory r;

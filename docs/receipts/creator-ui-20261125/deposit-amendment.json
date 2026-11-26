@@ -1,0 +1,18 @@
+{
+  "originalPlanHash": "802d8dd575e37d9ee81255a0420a3934232a4237ee571c972723eb33f0ed46fd",
+  "approval": "Owner explicitly approved depositETH amendment",
+  "at": "2026-11-25T16:19:14.372Z",
+  "rpc": "http://127.0.0.1:18790",
+  "chainId": 31337,
+  "from": "0x000000000000000000000000000000000001e004",
+  "to": "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+  "nonce": 21,
+  "value": "100000000000000000",
+  "data": "0xf6326fb3",
+  "decoded": {
+    "functionName": "depositETH"
+  },
+  "replaces": "native transfer with empty calldata",
+  "capsChanged": false,
+  "timeAllowanceChanged": false
+}

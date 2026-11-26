@@ -1,0 +1,3 @@
+restoring accounts true
+restoring history true
+{"complete":true,"chainId":31337,"rpc":"http://127.0.0.1:8545","accounts":81,"blocks":446,"transactions":293,"head":"26486065","headHash":"0x8eb9697d35870b5b7d8c87b272e480d1520f602d91cf6b49edf2f1185c58d9b0","automine":true,"uncachedReadNowWorks":true,"backupSha256":"94dfde3e7c832b6be9f46adbfce79c5f82cfc651d677c2de4032621118f2ed54","repair":"Original load exceeded Anvil2MB request limit; restored genuine backup via account chunk with null checkpoint, then complete saved blocks/transactions/checkpoint chunk. All full saved account records and recorded history match.","limitations":"Owner-approved old rollback snapshot IDs and historical account-state snapshot loss."}

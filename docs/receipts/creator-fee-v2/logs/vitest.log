@@ -1,0 +1,13 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ shared/planner.test.ts (32 tests) 8ms
+ ✓ app/src/profit.test.ts (6 tests) 2ms
+ ✓ app/src/ledger.test.ts (5 tests) 3ms
+ ↓ app/src/creation-replacement.test.ts (2 tests | 2 skipped)
+ ✓ app/src/creation.test.ts (13 tests | 3 skipped) 7ms
+
+ Test Files  4 passed | 1 skipped (5)
+      Tests  53 passed | 5 skipped (58)
+   Start at  16:51:48
+   Duration  589ms (transform 185ms, setup 0ms, collect 1.30s, tests 20ms, environment 0ms, prepare 223ms)

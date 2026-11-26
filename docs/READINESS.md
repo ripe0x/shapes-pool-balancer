@@ -1,3 +1,6 @@
+> Current accounting candidate (2026-11-25): [automatic creator fees and optional replenishment](COST-FIRST-PROCEEDS.md), owner requirements R118–R121. Version 2 separates reserved fees from bankroll profit and permits exact-shortfall reinvestment. Historical readiness below does not establish readiness for this source change; existing clones retain their original behavior. No deployment is included.
+
+
 **Current release status (2026-11-19): see [RELEASE-RECORD.md](RELEASE-RECORD.md).** Everything below is history for its named revision.
 
 # Current implementation status: focused audit follow-up, 2026-11-18

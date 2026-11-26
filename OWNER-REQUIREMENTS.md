@@ -457,3 +457,54 @@ Accepted and documented; no contract behavior change and no outcome bound change
 - R110. Build in a worktree and prepare a PR. Pushes, merges and deploys require the owner's go. Deploys run only
   from `/Users/dd/CascadeProjects/fwa-pool-balancer` on `main`, fast-forwarded to `origin/main`. Funding, setting secrets
   and starting the mainnet service remain owner actions. Fork acceptance reuses port 8545; it must never kill that node.
+
+
+## ERC20 recovery and creation pause (owner, 2026-11-25)
+
+- R111. Owner annotation "add it" on the excluded ERC20 rescue, following the proposed creator-only recovery rule:
+  add recovery of ERC20 balances held by the Balancer to its current creator. Third-party transfers create no
+  separate depositor claim; operating ETH, credits and assets held by FWA remain outside this path.
+- R112. Owner annotation "add this too" on the missing factory creation pause: add a policy-admin public creation
+  pause to new factories. Implementation starts paused and permits the policy admin's own canary while paused;
+  existing pool operations and exits continue. The existing factory is immutable, so this requires a replacement
+  factory to become available onchain. No broadcast, new spending budget or migration is authorized by this record.
+
+
+## Focused inventory-update release gate (owner, 2026-11-25)
+
+- R113. "narrow the release gate to the focused checks for this update and do the remaining review and regressions. keep the full economic campaign separate and commit along the way." The inventory/batch/recovery/pause release uses asset-flow-focused.json; asset-flow.json retains the unchanged full economic campaign and its approved outcomes. Focused acceptance does not establish the monthly economic claims. Existing owner-signature, exact-source review, deployment authority and live-canary controls remain.
+
+## Cost-first creator proceeds (owner, 2026-11-25)
+
+- R114. "implement cost-first profit withdrawals. cover restocking, mint fees and keeper costs before creator earnings, and don't count deposits as profit. update the UI and tests and commit it. no mainnet deployment." This supersedes R62–R65 for the new implementation; existing immutable clones retain their accounting.
+- R115. Owner approved the game-first creator-proceeds model: a **1 ETH deposit creates 0 earnings**. If **0.02 ETH** of settled receipts leaves **0.015 ETH** after actual game costs, at most **0.015 ETH** can be withdrawn once reserves and contributed native ETH capital are covered. Mint fees, keeper payments, automatic prize backing delivered to players and prior operating losses reduce proceeds before withdrawal. Closing permits separate capital recovery.
+- R116. Curated NFT listing prices create **0 ETH debt** to the creator. A curated NFT listed at **1 ETH** does not establish a **1 ETH** acquisition cost or claim; personal NFT investment profit is outside the contract. Repricing, listing and returning a curated NFT do not create earned ETH.
+- R117. There is **no manually configured earnings percentage** in new clones. Markup and prize mix determine pricing and a projection of cash margin; only actual settled economics determine earned proceeds. Historical clones remain identified per clone. Local source implementation, focused verification and commits are authorized; no mainnet deployment or switch is authorized.
+
+
+## Automatic creator fees and optional replenishment (owner, 2026-11-25)
+
+- R118. Owner accepted restoring automatic creator compensation from settled draw receipts, separately from bankroll profit/loss. The share derives from markup and intended automatic prize mix plus active curated mix: markup above the first **10 percentage points** funds the creator allocation. No manually set earnings percentage. This supersedes R114–R115 and R117 only where they previously required every prior bankroll loss to be recovered before any creator fee accrues. Deposits still create **0 earnings**, and R116's no invented curated cost basis remains.
+- R119. Owner: "top it off with my profits" and "It shouldn't like dump all the profit in there". Provide **Top up from creator fees**. Reinvest exactly `min(current refill shortfall, accrued creator fees, approved maximum)`: a **0.02 ETH** shortfall with **0.05 ETH** fees uses **0.02 ETH**, retains **0.03 ETH** in fees and transfers **0 ETH** between wallets. These are illustrative arithmetic, not a measured current-pool outcome. Fees stay protected until withdrawal or explicit reinvestment; reinvestment becomes contributed bankroll capital and creates **0 new profit**. Closed pools may fund reopening; retired pools have **0** reinvestment allowance.
+- R120. Open-pool withdrawals retain the restocking, accepted mint-fee and keeper reserve. A reserve shortfall permits **0 ETH** withdrawal, even if fees have accrued. Separate accrued creator fees, reserve-gated withdrawals and bankroll profit/loss in the UI. Creator fees are gross compensation, not a promise of positive total investment return.
+- R121. Implement, verify affected paths, update the UI and commit. **No deployment** is included in this follow-up. Existing immutable v0/v1 pools retain their code and accounting. Collection epochs preserve settled receipts at the old effective rate before a design change; pending draws or unactivated listings defer rate changes. This is approximate mix allocation, not per-ticket rate attribution.
+
+## Local version 2 playground deployment (owner, 2026-11-25)
+
+- R122. "deploy this to the fork. Get this up and running so I can test it." Deploy the creator-fee/reinvestment implementation to the existing local 8545 fork and set it on its existing factory. Preserve pool assets and balances; no mainnet deployment. Existing local synthetic deployment/admin signers, zero new funding and the 1 test ETH deployment gas ceiling remain.
+- R123. Owner approved a temporary upstream fallback after Tenderly refused uncached state reads, then specifically instructed: "use the alchemy key that we have stored in the system here - but use sparingly and dont waste my money!" Use the existing configured archive RPC only for required local setup and checks, without copying credentials into files, arguments or logs. Do not run the broad economic campaign against this paid service.
+- R124. Owner explicitly replied **"approve refresh"** after disclosure that the same-process database refresh preserves current accounts, pools, NFTs, balances, nonces and recorded blocks/transactions while discarding old evm_snapshot IDs and historical account-state snapshots. Perform the approved refresh/restore and continue the existing local deployment scope; no mainnet action.
+
+## Local stress diagnostics (owner, 2026-11-25)
+
+- R125. "run a bunch of different sims on the local fork contract so i can browse the results. different pool designs, different draw rates, etc. stress test this shit! you have approval for wharever you need". Authorizes the local diagnostic campaign, synthetic actor funding, actual clone/game/keeper transactions and explicitly labelled simulated randomness, with browsable results. Preserve the existing8545 playground by using its isolated child fork; no mainnet broadcasts or economic rule changes. Stored Alchemy use remains sparing. Scenario counts and execution caps are agent choices, not owner-approved profitability outcomes or release requirements.
+
+## Accepted stress-diagnostic behavior (owner, 2026-11-25)
+
+- R126. On continued purchases with the jackpot absent and a replacement-funding gap: "the creator can choose their settings differently if they want to. this is not a problem." Retain creator-selected admission/settings and partial-inventory operation. This observation does not require a new jackpot-availability or reserve-shortfall purchase pause and is not an unresolved product blocker.
+- R127. On burst slippage refunds and charged randomness fees that are not returned: "this is fine too." Retain the existing FWA price protection and refund semantics. The measured top-heavy case had 90 refunds from 120 requests with 0.11583 ETH of charged VRF fees on those requests. These observations remain documented, accepted behavior; they do not require a new batch restriction or pricing change. Acceptance is not a forecast of other scenarios, a security finding resolution, or mainnet broadcast authority.
+
+## Fresh local playground (owner, 2026-11-25)
+
+- R128. After the local 8545 process stopped, owner: "just kill it and redeploy". Replace the failed local fork with a fresh 8545 deployment and reconnect the app. This supersedes preservation of the prior fork's local pools for this reset. Preserve its saved evidence/backups; no mainnet action. Reuse the approved local deployment roles and test setup, including unpaused creation and ripe0x.eth test funding.
+- R129. "make sure keeper is running too". Run the production keeper locally against the freshly deployed factory so it discovers and services new local pools. Local unsigned synthetic signer only; no production key or mainnet service action.

@@ -1,0 +1,13 @@
+{
+  "command": "node --import tsx scripts/local-simulated-draws.ts --keeper",
+  "pid": 74403,
+  "execSession": 62832,
+  "rpc": "http://127.0.0.1:8545",
+  "account": "0x000000000000000000000000000000000001e004",
+  "scope": "0xE0C94BA1ECD2380df5b90eB515D115a3365BB8F4",
+  "runtimeStateRecent": true,
+  "lastScanned": "26485974",
+  "pending": 0,
+  "failures": 0,
+  "boundedBy": "remaining aggregate 1 test ETH gas and 100 transaction budget including draws"
+}

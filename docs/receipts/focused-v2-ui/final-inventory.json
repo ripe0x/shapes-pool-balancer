@@ -1,0 +1,127 @@
+{
+  "status": "PASS",
+  "blockNumber": "26486125",
+  "totalBackingWei": "200000000000000000",
+  "inventory": [
+    {
+      "listingId": "4",
+      "tokenId": "1712",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "5",
+      "tokenId": "1713",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "6",
+      "tokenId": "1714",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "7",
+      "tokenId": "1715",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "8",
+      "tokenId": "1716",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "9",
+      "tokenId": "1717",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "10",
+      "tokenId": "1718",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "11",
+      "tokenId": "1719",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "12",
+      "tokenId": "1720",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "13",
+      "tokenId": "1721",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "14",
+      "tokenId": "1722",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "15",
+      "tokenId": "1723",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "16",
+      "tokenId": "1724",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "17",
+      "tokenId": "1725",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "18",
+      "tokenId": "1726",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "19",
+      "tokenId": "1727",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "20",
+      "tokenId": "1728",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "21",
+      "tokenId": "1729",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "22",
+      "tokenId": "1730",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    },
+    {
+      "listingId": "23",
+      "tokenId": "1731",
+      "collection": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+      "backingWei": "10000000000000000"
+    }
+  ]
+}

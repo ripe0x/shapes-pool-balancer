@@ -1,0 +1,70 @@
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -67,11 +67,27 @@
+         run: npm run test:ts
+       - if: steps.changes.outputs.full == 'true'
+         run: npm run build:app
++      # V2 fee/inventory regressions replace superseded manual-fee suites. The full campaign remains separate (R113).
++      - if: steps.changes.outputs.full == 'true'
++        run: |
++          SOURCE_HASH=$(python3 - <<'PYHASH'
++          import hashlib, json, pathlib, subprocess
++          config = json.loads(pathlib.Path('asset-flow-focused.json').read_text())
++          paths = config['source_paths'] + config.get('evidence_paths', [])
++          files = subprocess.check_output(['git', 'ls-files', '-z', '--', *paths]).decode().split('\0')
++          digest = hashlib.sha256()
++          for name in sorted(f for f in files if f):
++              path = pathlib.Path(name)
++              if path.is_file():
++                  digest.update(name.encode() + b'\0' + path.read_bytes() + b'\0')
++          print(digest.hexdigest())
++          PYHASH
++          )
++          export SOURCE_HASH
++          bash scripts/focused-release-check.sh
+       # Fork scenario against the real FWA pool and Shapes (public RPC, pinned block).
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/Fork.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/CommunityConfigAcceptance.t.sol
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/Settings.t.sol
+       - if: steps.changes.outputs.full == 'true'
+@@ -81,15 +97,10 @@
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/PolicyModelParity.t.sol
+       - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/Reserve.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/ReserveCapital.t.sol
+       # Its overhead assertion holds only with each test in its own transaction.
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/KeeperPay.t.sol --isolate
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/KeeperEconomics.t.sol
+-      # Measures the restocking gas behind restockGas 910,000.
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/Hardening.t.sol
+       - if: steps.changes.outputs.full == 'true'
+@@ -97,21 +108,10 @@
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/KeeperAdversarial.t.sol
+       - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/ProtectedRevenueAtomic.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/ProductLimits.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/MintFeeChange.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/CuratedAdmission.t.sol
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/OptionalCurated.t.sol
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-path test/Balancer.t.sol
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-contract ParityFixture
+       - if: steps.changes.outputs.full == 'true'
+         run: forge test --match-contract GasBench --isolate
+-      # Whole suite exceeds the default 2^30 test gas limit.
+-      - if: steps.changes.outputs.full == 'true'
+-        run: forge test --match-path test/scenario/FlowBreakdown.t.sol --gas-limit 100000000000 --isolate

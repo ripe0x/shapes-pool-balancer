@@ -1,0 +1,22 @@
+--- a/test/Hardening.t.sol
++++ b/test/Hardening.t.sol
+@@ -4,6 +4,7 @@
+ import {Vm} from "forge-std/Test.sol";
+ import {ForkBase} from "./utils/ForkBase.sol";
+ import {GasProbe} from "./utils/FlowBreakdown.sol";
++import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
+ import {MockNFT, FreezableNFT, LyingNFT, ContractBlockingNFT, NonRefundingBuyer} from "./utils/Mocks.sol";
+ import {PoolBalancer} from "../src/PoolBalancer.sol";
+ import {ListOne} from "./utils/ListOne.sol";
+@@ -299,7 +300,10 @@
+     /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
+     /// fee covers the keeper's pay for that call.
+     function test_gasJumpRestockPaidByTheNewListingsFee() public {
+-        uint256 capFee = V1_RESTOCK_GAS * 5 gwei + 0.0002 ether;
++        KeeperPolicyCalls.Economics memory proposed = factory.economics();
++        proposed.restockGas = 940_000;
++        factory.setEconomics(proposed);
++        uint256 capFee = uint256(940_000) * 5 gwei + 0.0002 ether;
+         vm.fee(4.95 gwei);
+         vm.txGasPrice(5 gwei);
+         GasProbe probe = new GasProbe();

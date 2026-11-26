@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/current-local-rehearsal.test.ts (25 tests | 24 skipped) 9ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 24 skipped (25)
+   Start at  10:41:22
+   Duration  422ms (transform 108ms, setup 0ms, collect 226ms, tests 9ms, environment 0ms, prepare 32ms)
+

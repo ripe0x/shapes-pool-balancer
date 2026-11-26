@@ -1,0 +1,30 @@
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper45.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper44.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/src/KeeperPolicyV1.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/src/interfaces/IKeeperPolicy.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper42.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper46.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper40.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper39.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper41.sol
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/src/interfaces/IKeeperPolicy.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper44.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper41.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper40.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper42.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper39.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper46.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/src/KeeperPolicyV1.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/foundry-pp/DeployHelper45.sol
+Error: ENOENT: no such file or directory, open '/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/broadcast/Deploy.s.sol/31337/dry-run/run-latest.json'
+    at readFileSync (node:fs:441:20)
+    at execute (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-implementation-update.ts:68:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-implementation-update.ts:83:28) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/broadcast/Deploy.s.sol/31337/dry-run/run-latest.json'
+}

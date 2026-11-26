@@ -1,0 +1,6 @@
+{
+  "command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'focused gas evidence needs Foundry 1.8.1'; exit 1; }; CANDIDATE_RUN=1 forge test --match-contract '^(FocusedERC20CallbacksTest|FocusedReleaseFlowTest|FocusedInventoryGasTest|InventoryBatchesTest|ERC20RecoveryTest|FactoryPauseTest|AuthenticRefundRecoveryTest|AuthenticEconomicFlowsTest|AuthenticPositiveProceedsTest|AuthenticContinuationTest|AuthenticSequenceTest|CreatorFeeReinvestmentTest|CostFirstProceedsTest)$' --threads 1 -vv",
+  "source_hash": "34287edf0423ee1017b26d8a9c75fbf62d592ccbaacafd3c6e1ab9deb73bc1ca",
+  "exit_status": 0,
+  "elapsed_seconds": 9.547293901443481
+}

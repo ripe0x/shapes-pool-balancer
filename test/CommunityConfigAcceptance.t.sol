@@ -1784,6 +1784,7 @@ contract CommunityLegacyFactoryAcceptanceTest is ForkBase {
         // The replacement factory, reusing the community Draw Packs, becomes the creation target.
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, COMMUNITY_PACKS, ENS);
         factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
+        factory.setCreationPaused(false);
         bytes32 h = factory.creationSettingsHash();
         vm.prank(creator);
         address fresh = factory.createBalancer{value: 1 ether}(bytes32(uint256(16)),

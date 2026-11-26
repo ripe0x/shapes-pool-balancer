@@ -173,6 +173,10 @@ export interface PoolInputs {
   markupBps: number;
   /** Stored payout percentage. Omit only for a new design, to preview its initial suggestion. */
   creatorRevenueBps?: number;
+  /** V1 reports net profit; V2 also sets creatorFeeAccounting to reserve automatic creator fees. */
+  profitAccounting?: boolean;
+  /** V2 reserves an automatic markup-based creator fee before bankroll costs. */
+  creatorFeeAccounting?: boolean;
   edgeBps: number; // FWA factory edgeBps (500 at time of review)
   mintFee: bigint; // Shapes.mintFee()
   restockFee: bigint; // PoolBalancer.restockFee(), per Shape (restockFeeAt(basefee))
@@ -388,7 +392,9 @@ export function suggestedCreatorRevenueBps(counts: Counts, inputs: PoolInputs): 
 /** Per-draw expectation at actual listed prices. Collections round credit once per collected amount. */
 export function economics(counts: Counts, inputs: PoolInputs) {
   const ev = evaluate(counts, inputs);
-  const creatorRevenueBps = inputs.creatorRevenueBps ?? suggestedCreatorRevenueBps(counts, inputs);
+  const netProfit = inputs.profitAccounting && !inputs.creatorFeeAccounting;
+  const creatorRevenueBps = netProfit ? 0 : inputs.creatorRevenueBps ?? suggestedCreatorRevenueBps(counts, inputs);
+  if (netProfit && inputs.creatorRevenueBps !== undefined && inputs.creatorRevenueBps !== 0) throw new Error('Profit accounting has no creator revenue percentage');
   if (!Number.isInteger(creatorRevenueBps) || creatorRevenueBps < 0 || creatorRevenueBps > 10_000) {
     throw new Error('Creator revenue share must be 0 to 10000 basis points');
   }
@@ -419,13 +425,17 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     }
   });
   const average = (weighted: bigint) => totalWeight === 0n ? 0n : weighted / totalWeight;
-  const creator = ev.ownerProceedsPerDraw * BigInt(creatorRevenueBps) / BPS;
-  const retained = ev.ownerProceedsPerDraw - creator;
+  const allocated = ev.ownerProceedsPerDraw * BigInt(creatorRevenueBps) / BPS;
+  const retained = ev.ownerProceedsPerDraw - allocated;
   const replacement = average(backingWeighted);
   const mint = average(mintWeighted);
   const keeper = keeperCostKnown ? average(keeperWeighted) : undefined;
+  const margin = keeper === undefined ? undefined : retained - replacement - mint - keeper;
+  const creator = netProfit ? margin ?? 0n : allocated;
   return {
     creatorRevenueBps,
+    creatorEarningsKnown: !netProfit || keeperCostKnown,
+    creatorFeesPerDraw: toEth(allocated),
     keeperCostKnown,
     ownerProceeds: toEth(ev.ownerProceedsPerDraw),
     creatorEarningsPerDraw: toEth(creator),
@@ -436,6 +446,6 @@ export function economics(counts: Counts, inputs: PoolInputs) {
     restockFeesPerDraw: toEth(average(surchargeWeighted)),
     /** Estimates assume one maintenance call per won prize; complete execution simulation decides keeper bids. */
     keeperPayPerDraw: keeper === undefined ? undefined : toEth(keeper),
-    marginPerDraw: keeper === undefined ? undefined : toEth(retained - replacement - mint - keeper),
+    marginPerDraw: margin === undefined ? undefined : toEth(margin),
   };
 }

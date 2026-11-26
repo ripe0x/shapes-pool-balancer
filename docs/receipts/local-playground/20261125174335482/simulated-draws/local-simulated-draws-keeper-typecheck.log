@@ -1,0 +1,7 @@
+
+> typecheck
+> tsc --noEmit -p tsconfig.json
+
+scripts/local-simulated-draws.ts(88,9): error TS7022: 'keeper' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+scripts/local-simulated-draws.ts(91,5): error TS7023: 'beforeSend' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+scripts/local-simulated-draws.ts(96,134): error TS18046: 'v' is of type 'unknown'.

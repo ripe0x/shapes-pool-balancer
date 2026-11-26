@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import {
   createPublicClient, getAddress, http, keccak256, parseAbi, parseAbiItem, toFunctionSelector, type Abi, type Address, type Hex, type PublicClient,
 } from 'viem';
-import { scriptConstants } from './verify-deployment';
+import { scriptConstants, factorySnapshot } from './verify-deployment';
 
 export const MAINNET = 'https://mainnet.gateway.tenderly.co';
 const LOG_CHUNK = 5_000n;
@@ -143,6 +143,12 @@ async function main(argv: string[]) {
   const pub = createPublicClient({ transport: http(rpc, { timeout: 60_000 }) }) as PublicClient;
   const result = await preflight(pub, arg('--block') === undefined ? undefined : BigInt(arg('--block')!), readFileSync('script/Deploy.s.sol', 'utf8'),
     JSON.parse(readFileSync('deployments/1.legacy.json', 'utf8')));
+  if (arg('--existing-factory')) {
+    if (!arg('--factory-snapshot-out') || !arg('--expected-implementation')) throw new Error('existing factory requires --expected-implementation and --factory-snapshot-out');
+    const snapshot = await factorySnapshot(pub, getAddress(arg('--existing-factory')!), BigInt(result.checkedBlock.number));
+    if (getAddress(snapshot.implementation) !== getAddress(arg('--expected-implementation')!)) throw new Error('existing implementation differs');
+    writeFileSync(arg('--factory-snapshot-out')!, JSON.stringify(snapshot, null, 2) + '\n');
+  }
   const out = arg('--out') ?? `deployments/${result.chainId}.preflight.json`;
   writeFileSync(out, JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2) + '\n');
   console.log(JSON.stringify({ rpc, out, checkedBlock: result.checkedBlock, ok: result.ok, problems: result.problems,

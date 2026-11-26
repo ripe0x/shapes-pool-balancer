@@ -1,3 +1,4 @@
+// Historical diagnostic: this driver fabricates VRF delivery and is not real-randomness release evidence.
 // Launch rehearsal on a local mainnet fork: the production deploy script, two pools, the real keeper service
 // (`keeper/keeper.ts`, run as its own process exactly as in production) and a driver that only does what players,
 // creators and the network do: buys draws on FWA, delivers randomness, moves basefee, edits curated inventory,
@@ -9,7 +10,7 @@
 // the wei against its gas receipts, reward events and any other value transfers.
 // Run: npm run rehearsal [-- --rounds 300]
 import assert from 'node:assert/strict';
-import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { execSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -125,6 +126,7 @@ async function buyAndSettle(b: Address, count: number, buyer: Address, words: bi
 async function main() {
   const roundsArg = process.argv.indexOf('--rounds');
   const ROUNDS = roundsArg > 0 ? Number(process.argv[roundsArg + 1]) : 150;
+  assert.equal(spawnSync('lsof', ['-nP', `-iTCP:${PORT}`, '-sTCP:LISTEN'], { stdio: 'ignore' }).status, 1, 'isolated rehearsal port must be free');
   const anvil = spawn('anvil', ['--fork-url', 'https://mainnet.gateway.tenderly.co', '--fork-block-number', FORK_BLOCK.toString(), '--port', String(PORT), '--chain-id', '31337', '--silent'], { stdio: 'ignore' });
   let keeper: ChildProcess | undefined;
   const keeperLog: string[] = [];
@@ -133,6 +135,14 @@ async function main() {
     assert.equal(await pub.getCode({ address: KEEPER, blockNumber: FORK_BLOCK }), undefined, 'keeper has no code or delegation at the fork block');
     sh(`PACKS_ADMIN=${DEPLOYER} KEEPER_ADMIN=${DEPLOYER} POLICY_ADMIN=${DEPLOYER} forge script script/Deploy.s.sol --rpc-url ${RPC} --unlocked --sender ${DEPLOYER} --broadcast`);
     const factory = JSON.parse(readFileSync('deployments/31337.json', 'utf8')).balancerFactory as Address;
+    assert.equal(await pub.getChainId(), 31337);
+    const local = await pub.request({ method: 'anvil_nodeInfo' as never }) as any;
+    assert.equal(local.forkConfig.forkUrl, 'https://mainnet.gateway.tenderly.co');
+    assert.equal(BigInt(local.forkConfig.forkBlockNumber), FORK_BLOCK);
+    assert.equal((await read<Address>(factory, balancerFactoryAbi, 'policyAdmin')).toLowerCase(), DEPLOYER.toLowerCase());
+    assert.equal(await read<boolean>(factory, balancerFactoryAbi, 'creationPaused'), true, 'fresh factory starts paused');
+    await send({ address: factory, abi: balancerFactoryAbi, functionName: 'setCreationPaused', args: [false], account: DEPLOYER });
+    assert.equal(await read<boolean>(factory, balancerFactoryAbi, 'creationPaused'), false);
     const balancers: Address[] = [];
     const demo: Address[] = [];
     for (const c of CREATORS) {
@@ -373,6 +383,9 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
 
 /** The same real Keeper and FWA driver, operating through the current candidate's bounded transaction journal. */
 export async function runPreparedRehearsal(run: CurrentRehearsal) {
+    await run.check();
+    assert.equal(await run.read<boolean>(run.factory, balancerFactoryAbi, 'creationPaused'), false,
+        'historical prepared plan cannot resume creation: a fresh plan must explicitly authorize the policy-admin operation');
     const r = run.roles, p = run.plan, zero = `0x${'00'.repeat(32)}` as Hex;
     const more = parseAbi(['function selectionTimeoutBlocks() view returns(uint256)', 'function acquisitionEscrowTotal() view returns(uint256)', 'function deliveryEscrowTotal() view returns(uint256)', 'function acquisitionRefundCreditTotal() view returns(uint256)', 'function accruedProtocolFees() view returns(uint256)', 'function acquisitionRefundCredit(address) view returns(uint256)', 'function withdrawAcquisitionRefund() returns(uint256)']);
     const service = parseAbi(['function coordinator() view returns(address)', 'function requestStatus(uint256) view returns(uint8)', 'function rawFulfillRandomWords(uint256,uint256[])', 'function deliverRandomness(uint256) returns(bool)']);

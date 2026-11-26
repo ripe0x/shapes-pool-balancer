@@ -1,0 +1,37 @@
+{
+  "schema": "local-stress-source-meter-v1",
+  "source": "http://127.0.0.1:8545",
+  "sourcePid": 28171,
+  "maxForwardedReads": 5000,
+  "maxExecutionMs": 1800000,
+  "forwarded": 5000,
+  "preflightReads": 7,
+  "cacheHits": 5762,
+  "refused": 4,
+  "errors": 2,
+  "denied": 2,
+  "exhausted": 2,
+  "deniedMethods": {
+    "eth_gasPrice": 1,
+    "eth_getAccountInfo": 1
+  },
+  "methods": {
+    "eth_chainId": 1,
+    "anvil_nodeInfo": 1,
+    "eth_getBlockByNumber": 4,
+    "eth_call": 2,
+    "eth_getCode": 25,
+    "eth_getBalance": 24,
+    "eth_getTransactionCount": 24,
+    "eth_getStorageAt": 4126,
+    "eth_getTransactionReceipt": 793
+  },
+  "closed": false,
+  "startedAt": "2026-11-26T00:33:44.496Z",
+  "anchor": "26486068",
+  "anchorHash": "0xa5d84cff89843a95a3c99f9684add18b005435ccf0e662a94867f4d0fa9e86db",
+  "implementation": "0xc02d40577880fa2c489fc5461ce3830d4eed7724",
+  "implementationCodeHash": "0xc281a95f89740fc88e6211a26ce36a2ae9290fddcbc11008f69ba6efab0f57e1",
+  "executionStartedAt": "2026-11-26T00:40:07.305Z",
+  "deadline": "2026-11-26T01:10:07.305Z"
+}

@@ -1,0 +1,108 @@
+{
+  "source_paths": [
+    "src",
+    "script",
+    "foundry.toml",
+    ".gitmodules"
+  ],
+  "drift_threshold_bps": 500,
+  "evidence_paths": [
+    "test/FocusedReleaseFlow.t.sol",
+    "test/FocusedInventoryGas.t.sol",
+    "test/InventoryBatches.t.sol",
+    "test/ERC20Recovery.t.sol",
+    "test/FactoryPause.t.sol",
+    "test/AuthenticRefundRecovery.t.sol",
+    "test/AuthenticEconomicFlows.t.sol",
+    "test/utils/ForkBase.sol",
+    "test/utils/FlowBreakdown.sol",
+    "test/utils/Mocks.sol",
+    "test/utils/ReceiptGas.sol",
+    "app/src",
+    "shared",
+    "scripts/verify-deployment.ts",
+    "scripts/deployment-preflight.ts",
+    "scripts/current-local-rehearsal.ts",
+    "scripts/prepare-local-rehearsal.ts",
+    "OWNER-REQUIREMENTS.md",
+    "test/FocusedERC20Callbacks.t.sol",
+    "test/CreatorFeeReinvestment.t.sol",
+    "test/CostFirstProceeds.t.sol",
+    "test/AuthenticContinuation.t.sol",
+    "test/AuthenticSequence.t.sol",
+    "test/fixtures/authentic-vrf-proofs.json",
+    "scripts/focused-release-check.sh"
+  ],
+  "scorecard_dir": "docs/receipts/flow/inventory-update-v2",
+  "review_dir": "audit/inventory-update-b44e35f",
+  "required_regimes": [
+    "inventory_roundtrip",
+    "erc20_roundtrip",
+    "creation_pause"
+  ],
+  "drift_groups": [
+    [
+      "inventory_roundtrip"
+    ]
+  ],
+  "test_command": "bash scripts/focused-release-check.sh",
+  "outcomes": [
+    {
+      "id": "I1",
+      "text": "Curated inventory operations return exactly two NFTs to the chosen creator in the reference roundtrip; native capital is unchanged and returned in full. Batches remain limited to 1 through 20 distinct IDs.",
+      "metric": "facts.nfts_returned",
+      "min": 2,
+      "max": 2,
+      "regimes": [
+        "inventory_roundtrip"
+      ]
+    },
+    {
+      "id": "I2",
+      "text": "Exactly 1 WETH supplied by an external actor is recovered only to the current creator; external transfers create no separate depositor claim (R111).",
+      "metric": "facts.erc20_returned_wei",
+      "min": 1000000000000000000,
+      "max": 1000000000000000000,
+      "regimes": [
+        "erc20_roundtrip"
+      ]
+    },
+    {
+      "id": "I3",
+      "text": "Public creation remains paused while the policy admin creates and fully exits its own canary (R112).",
+      "metric": "facts.public_creation_paused",
+      "min": 1,
+      "max": 1,
+      "regimes": [
+        "creation_pause"
+      ]
+    },
+    {
+      "id": "I4",
+      "text": "A public caller refused by the creation pause moves zero native value.",
+      "metric": "facts.rejected_creation_value_moved",
+      "max": 0,
+      "regimes": [
+        "creation_pause"
+      ]
+    },
+    {
+      "id": "I5",
+      "text": "The exercised reference roundtrips leave zero tracked inventory or recoverable ERC20/native assets; FWA proceeds and creator credit are zero at exit.",
+      "metric": "facts.assets_left",
+      "max": 0
+    },
+    {
+      "id": "I6",
+      "text": "Each reference roundtrip returns all native principal; new inventory/ERC20 operations consume zero pool native capital. Gas paid by transaction senders is separate.",
+      "metric": "facts.native_lost",
+      "max": 0
+    }
+  ],
+  "explained": [],
+  "approval": {
+    "date": "2026-11-25",
+    "outcomes_sha256": "5acc93973dcad11c81c9945851f85ddd62ea24a1ebea2f55264e7528331f4d3f",
+    "signature": "-----BEGIN SSH SIGNATURE-----\nU1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgT10UwBigHu/hL3vKFUPPNoDIN6\n6Wsrnx17avHqp4qC8AAAAKYXNzZXQtZmxvdwAAAAAAAAAGc2hhNTEyAAAAUwAAAAtzc2gt\nZWQyNTUxOQAAAECkkGUiq6zJG2dfsK6ZEssrEKsGw8/p8yvOQUILt5QwdSPHu/XFTPFbU1\nRpG5hnlznjXfhxngrSGFJ4CHaGMGEI\n-----END SSH SIGNATURE-----\n"
+  }
+}

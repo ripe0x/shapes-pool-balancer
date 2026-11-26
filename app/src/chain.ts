@@ -22,6 +22,11 @@ export const localFork = defineChain({
 export const chain = chainId === 31337 ? localFork : mainnet;
 export const FACTORY = import.meta.env.VITE_FACTORY as Address;
 export const FROM_BLOCK = BigInt(import.meta.env.VITE_FROM_BLOCK ?? 0);
+// Reset evidence is local-only data supplied by the playground bootstrap, never a mainnet override.
+export const LOCAL_FORK_RESET = chainId === 31337 && import.meta.env.VITE_LOCAL_FORK_INSTANCE_ID
+  ? { instanceId: import.meta.env.VITE_LOCAL_FORK_INSTANCE_ID as string,
+    retiredHashes: ((import.meta.env.VITE_RETIRED_LOCAL_TRANSFER_HASHES as string | undefined) ?? '').split(',').filter(Boolean) }
+  : undefined;
 export const FWA_POOL_URL = (pool: string) => `https://pools.fwa.fun/pools/${pool}`;
 
 // WalletConnect (mobile and QR wallets) is offered only when a project ID is configured; browser wallets need none.

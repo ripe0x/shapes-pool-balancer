@@ -1,0 +1,21 @@
+ASSET FLOW GATE: PASS   regimes inventory_roundtrip, erc20_roundtrip, creation_pause   (scorecards NOT regenerated)
+export SOURCE_HASH=58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b
+review: recorded in audit/inventory-update-b44e35f/creator-fee-v2-20261125
+
+OUTCOMES (each must hold in every regime listed for it)
+  I1: Curated inventory operations return exactly two NFTs to the chosen creator in the reference roundtrip; native capital is unchanged and returned in full. Batches remain limited to 1 through 20 distinct IDs.  [2 to 2; only in inventory_roundtrip]
+      worst 2 in inventory_roundtrip   OK
+  I2: Exactly 1 WETH supplied by an external actor is recovered only to the current creator; external transfers create no separate depositor claim (R111).  [1000000000000000000 to 1000000000000000000; only in erc20_roundtrip]
+      worst 1000000000000000000 in erc20_roundtrip   OK
+  I3: Public creation remains paused while the policy admin creates and fully exits its own canary (R112).  [1 to 1; only in creation_pause]
+      worst 1 in creation_pause   OK
+  I4: A public caller refused by the creation pause moves zero native value.  [at most 0; only in creation_pause]
+      worst 0 in creation_pause   OK
+  I5: The exercised reference roundtrips leave zero tracked inventory or recoverable ERC20/native assets; FWA proceeds and creator credit are zero at exit.  [at most 0]
+      worst 0 in inventory_roundtrip   OK
+  I6: Each reference roundtrip returns all native principal; new inventory/ERC20 operations consume zero pool native capital. Gas paid by transaction senders is separate.  [at most 0]
+      worst 0 in inventory_roundtrip   OK
+
+DESTINATIONS (% of inflow; largest 7 rows; only the like-for-like regimes: inventory_roundtrip)
+  name                                             inventory_rou
+  native capital returned                                 100.0%

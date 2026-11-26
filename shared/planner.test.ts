@@ -246,6 +246,42 @@ describe('planner', () => {
     expect(e.replacementCostsPerDraw).toBeGreaterThan(0);
   });
 
+  it('estimates cost-first profit from proceeds after backing, mint fees and keeper costs without a revenue rate', () => {
+    const e = economics([10], { ...inputs, curatedBases: [], profitAccounting: true, creatorRevenueBps: 0 });
+    expect(e.creatorRevenueBps).toBe(0);
+    expect(e.creatorEarningsKnown).toBe(true);
+    expect(e.retainedRevenuePerDraw).toBe(e.ownerProceeds);
+    expect(e.creatorEarningsPerDraw).toBeCloseTo(e.ownerProceeds - e.replacementCostsPerDraw - e.mintFeesPerDraw - e.keeperPayPerDraw!, 15);
+    expect(e.creatorEarningsPerDraw).toBe(e.marginPerDraw);
+    expect(() => economics([10], { ...inputs, profitAccounting: true, creatorRevenueBps: 500 })).toThrow('no creator revenue percentage');
+  });
+
+  it('withholds a cost-first earnings estimate when keeper costs are unknown and exposes negative net margins', () => {
+    const unknown = economics([2], { ...inputs, profitAccounting: true, creatorRevenueBps: 0, v1Preview: false });
+    expect(unknown.creatorEarningsKnown).toBe(false);
+    expect(unknown.marginPerDraw).toBeUndefined();
+    const loss = economics([2], { ...inputs, profitAccounting: true, creatorRevenueBps: 0, keeperQuotes: { replace: [10n ** 18n], reconcile: 10n ** 18n } });
+    expect(loss.creatorEarningsKnown).toBe(true);
+    expect(loss.creatorEarningsPerDraw).toBeLessThan(0);
+  });
+
+  it('separates V2 automatic gross creator fees from bankroll cash margin', () => {
+    const at = { ...inputs, curatedBases: [], markupBps: 2500, mintFee: 0n, restockFee: 0n, paidUpkeepEnabled: false, profitAccounting: true, creatorFeeAccounting: true };
+    const e = economics([1], at);
+    expect(e.creatorRevenueBps).toBe(1200);
+    expect(e.creatorFeesPerDraw).toBe(0.0015);
+    expect(e.creatorEarningsPerDraw).toBe(0.0015);
+    expect(e.retainedRevenuePerDraw).toBe(0.011);
+    expect(e.marginPerDraw).toBe(0.001);
+    const unknown = economics([1], { ...at, paidUpkeepEnabled: true, v1Preview: false });
+    expect(unknown.creatorEarningsKnown).toBe(true);
+    expect(unknown.creatorFeesPerDraw).toBe(0.0015);
+    expect(unknown.marginPerDraw).toBeUndefined();
+    const saved = economics([1], { ...at, creatorRevenueBps: 500 });
+    expect(saved.creatorRevenueBps).toBe(500);
+    expect(saved.creatorFeesPerDraw).toBe(0.000625);
+  });
+
   it('separates maintenance funding from a 100 ETH inventory deficit', () => {
     const baseFee = 500_000_000n;
     // Two outstanding draws at (2.15M + 60k) gas and two work fees each, plus the larger operating call at

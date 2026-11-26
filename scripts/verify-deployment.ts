@@ -8,8 +8,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { checkDependencies } from './deployment-preflight';
+import { readFactoryCreation } from '../app/src/factory-creation';
 import {
-  createPublicClient, encodeAbiParameters, getAddress, getContractAddress, http, keccak256, parseAbi, parseAbiParameters, parseEther, parseGwei, slice, zeroAddress,
+  createPublicClient, decodeEventLog, encodeAbiParameters, encodeFunctionData, getAddress, getContractAddress, http, keccak256, parseAbi, parseAbiParameters, parseEther, parseGwei, slice, zeroAddress,
   type Address, type Hex, type PublicClient,
 } from 'viem';
 import { balancerFactoryAbi } from '../shared/abi';
@@ -18,7 +19,7 @@ const CREATE2_DEPLOYER = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
 export const LIBRARIES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory'];
 /** Contracts Deploy.s.sol creates, in order. Reuse mode creates no Packs or renderer; any library may already be on chain.
  *  No keeper policy contract: the payment formula is in KeeperPolicyCalls (owner decision R95). */
-export const creationOrder = (reuse: boolean) => [...LIBRARIES, ...(reuse ? [] : ['ShapePackRenderer', 'ShapePacks']), 'PoolBalancer', 'BalancerFactory'];
+export const creationOrder = (reuse: boolean, implementationOnly = false) => [...LIBRARIES, ...(reuse ? [] : ['ShapePackRenderer', 'ShapePacks']), 'PoolBalancer', ...(implementationOnly ? [] : ['BalancerFactory'])];
 /** Reuse mode is a dry run that creates no Packs instance. */
 export const isReuse = (dry: { contractName: string }[]) => !dry.some(t => t.contractName === 'ShapePacks');
 const abi = parseAbi([
@@ -26,7 +27,7 @@ const abi = parseAbi([
   'function keepersRestricted() view returns (bool)', 'function pendingKeeperAdmin() view returns (address)',
   'function pendingPolicyAdmin() view returns (address)', 'function creator() view returns (address)',
   'function defaultBucketCapacity() view returns (uint128)', 'function defaultBucketRefill() view returns (uint96)', 'function mintFee() view returns (uint256)',
-  'function creationSettingsHash() view returns (bytes32)',
+  'function creationSettingsHash() view returns (bytes32)', 'function creationPaused() view returns (bool)',
   'function FWA_FACTORY() view returns (address)', 'function FWA_IMPLEMENTATION() view returns (address)', 'function SHAPES() view returns (address)',
   'function PACKS() view returns (address)', 'function ENS() view returns (address)', 'function shapes() view returns (address)', 'function MIN_PACK_VALUE() view returns (uint256)',
   'function admin() view returns (address)', 'function renderer() view returns (address)', 'function presentationLocked() view returns (bool)',
@@ -83,10 +84,10 @@ export function linkedLibraries(path: string): Record<string, Address> {
 /** The broadcast must be the reviewed dry run, transaction for transaction: same sender, nonce, kind, target and calldata.
  *  Forge skips a library whose CREATE2 address already holds code; that address commits to the library's exact init code,
  *  so a dry run may omit libraries, and verify() then requires code at each omitted library's linked address. */
-export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[]): string[] {
+export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[], implementationOnly = false): string[] {
   const bad: string[] = [];
   const names = dry.map(t => t.contractName);
-  if (JSON.stringify(names) !== JSON.stringify(creationOrder(isReuse(dry)).filter(n => names.includes(n) || !LIBRARIES.includes(n)))) bad.push(`reviewed dry run is not the deployment order: ${names}`);
+  if (JSON.stringify(names) !== JSON.stringify(creationOrder(isReuse(dry), implementationOnly).filter(n => names.includes(n) || !LIBRARIES.includes(n)))) bad.push(`reviewed dry run is not the deployment order: ${names}`);
   if (sent.length !== dry.length) bad.push(`broadcast has ${sent.length} transactions, reviewed dry run ${dry.length}`);
   sent.forEach((t, i) => {
     const d = dry[i];
@@ -99,10 +100,10 @@ export function matchPlan(dry: ArtifactTx[], sent: ArtifactTx[]): string[] {
   return bad;
 }
 
-export async function verify(pub: PublicClient, dryPath: string, sentPath: string, roles: { deployer: Address; packsAdmin: Address; keeperAdmin: Address; policyAdmin: Address }, deploySource: string, outDir = 'out') {
+export async function verify(pub: PublicClient, dryPath: string, sentPath: string, roles: { deployer: Address; packsAdmin: Address; keeperAdmin: Address; policyAdmin: Address }, deploySource: string, outDir = 'out', existing?: { factory: Address; deploymentBlock: string; snapshot: Record<string, any> }) {
   const c = scriptConstants(deploySource);
   const dry = txs(dryPath), sent = txs(sentPath);
-  const bad = matchPlan(dry, sent);
+  const bad = matchPlan(dry, sent, !!existing);
   const reuse = isReuse(dry);
   if (!reuse && await pub.getChainId() === 1) bad.push('mainnet deployment must reuse the community dependencies');
   if (bad.length) return { bad };
@@ -148,18 +149,24 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     const norm = (v: unknown) => typeof v === 'string' && v.startsWith('0x') ? v.toLowerCase() : String(v);
     if (norm(got) !== norm(want)) bad.push(`${label}.${fn} = ${got}, expected ${want}`);
   };
-  const [f, impl] = [at.BalancerFactory, at.PoolBalancer];
+  const [f, impl] = [existing?.factory ?? at.BalancerFactory, at.PoolBalancer];
   const [packs, renderer] = reuse ? [c.packs, c.renderer] : [at.ShapePacks, at.ShapePackRenderer];
   const head = await pub.getBlockNumber();
   // Reused dependencies are checked at the same block as the record, after every created contract's receipt.
   const reused = reuse ? await checkDependencies(pub, c, head, outDir) : undefined;
   bad.push(...(reused?.bad ?? []));
+  const want = INITIAL_SETTINGS.economics;
+  const mintFee = await read(c.shapes, 'mintFee') as bigint;
+  if (existing) {
+    const after = await factorySnapshot(pub, f, head);
+    if (JSON.stringify(after) !== JSON.stringify(existing.snapshot)) bad.push('existing factory changed since reviewed snapshot');
+  } else {
   await eq('factory', f, 'implementation', impl);
+  await eq('factory', f, 'creationPaused', true);
   await eq('factory', f, 'keeperAdmin', roles.keeperAdmin);
   await eq('factory', f, 'policyAdmin', roles.policyAdmin);
   await eq('factory', f, 'keepersRestricted', false);
   for (const fn of ['pendingKeeperAdmin', 'pendingPolicyAdmin']) await eq('factory', f, fn, zeroAddress);
-  const want = INITIAL_SETTINGS.economics;
   const economics = await pub.readContract({ address: f, abi: balancerFactoryAbi, functionName: 'economics' });
   for (const [k, v] of Object.entries(want)) if (String(economics[k as keyof typeof economics]).toLowerCase() !== String(v).toLowerCase())
     bad.push(`factory.economics().${k} = ${economics[k as keyof typeof economics]}, expected ${v}`);
@@ -168,8 +175,8 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   await eq('factory', f, 'defaultBucketRefill', INITIAL_SETTINGS.bucketRefill);
   const limits = await pub.readContract({ address: f, abi: balancerFactoryAbi, functionName: 'productLimits' });
   if (limits.join() !== INITIAL_SETTINGS.productLimits.join()) bad.push(`factory.productLimits() = ${limits}, expected ${INITIAL_SETTINGS.productLimits}`);
-  const mintFee = await read(c.shapes, 'mintFee') as bigint;
   await eq('factory', f, 'creationSettingsHash', creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill, impl));
+  }
   await eq('implementation', impl, 'creator', '0x0000000000000000000000000000000000000001');
   await eq('implementation', impl, 'FWA_FACTORY', c.fwaFactory);
   await eq('implementation', impl, 'FWA_IMPLEMENTATION', c.fwaImpl);
@@ -189,8 +196,8 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
     record: {
       verified: true, source: 'canonical receipts and contract reads', chainId: await pub.getChainId(), checkedAtBlock: head.toString(),
       checkedAtBlockHash: (await pub.getBlock({ blockNumber: head })).hash,
-      factoryDeploymentBlock: deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer,
-      initialSettings: { economics: want, defaultBucketCapacity: INITIAL_SETTINGS.bucketCapacity, defaultBucketRefill: INITIAL_SETTINGS.bucketRefill,
+      factoryDeploymentBlock: existing?.deploymentBlock ?? deployed.BalancerFactory.block, balancerFactory: f, poolBalancerImplementation: impl, packs, renderer,
+      initialSettings: existing ? existing.snapshot : { economics: want, defaultBucketCapacity: INITIAL_SETTINGS.bucketCapacity, defaultBucketRefill: INITIAL_SETTINGS.bucketRefill,
         productLimits: INITIAL_SETTINGS.productLimits, creationSettingsHash: creationSettingsHash(want, mintFee, INITIAL_SETTINGS.bucketCapacity, INITIAL_SETTINGS.bucketRefill, impl), shapesMintFeeWei: mintFee },
       roles, transactions: deployed, preexistingLibraries, reusedDependencies: reused?.dependencies ?? null,
       deploymentGasWei: Object.values(deployed).reduce((s, d) => s + BigInt(d.gasUsed) * BigInt(d.effectiveGasPrice), 0n).toString(),
@@ -198,9 +205,63 @@ export async function verify(pub: PublicClient, dryPath: string, sentPath: strin
   };
 }
 
+export async function factorySnapshot(pub: PublicClient, factory: Address, blockNumber: bigint) {
+  const names = ['implementation', 'keeperAdmin', 'policyAdmin', 'keepersRestricted', 'pendingKeeperAdmin',
+    'pendingPolicyAdmin', 'economics', 'defaultBucketCapacity', 'defaultBucketRefill', 'productLimits'] as const;
+  const creation = await readFactoryCreation(pub, factory, undefined, blockNumber);
+  const values = await Promise.all(names.map(functionName => pub.readContract({ address: factory,
+    abi: balancerFactoryAbi, functionName, blockNumber } as never)));
+  return JSON.parse(JSON.stringify({ ...Object.fromEntries(names.map((name, i) => [name, values[i]])), ...(creation.supported ? { creationPaused: creation.paused } : {}) },
+    (_, v) => typeof v === 'bigint' ? v.toString() : v));
+}
+
+/** Checks a separately confirmed pointer update against the already verified deployment and factory snapshot. */
+export async function verifyImplementationUpdate(pub: PublicClient, hash: Hex, deployment: any) {
+  if (deployment.verified !== true || deployment.transactions?.BalancerFactory) throw new Error('verified implementation-only deployment required');
+  const factory = getAddress(deployment.balancerFactory), implementation = getAddress(deployment.poolBalancerImplementation);
+  const before = deployment.initialSettings;
+  if (await pub.getChainId() !== deployment.chainId) throw new Error('implementation update network differs from verified deployment');
+  const [receipt, tx] = await Promise.all([pub.getTransactionReceipt({ hash }), pub.getTransaction({ hash })]);
+  if (receipt.status !== 'success' || !tx.to || getAddress(tx.to) !== factory || tx.value !== 0n
+    || getAddress(tx.from) !== getAddress(before.policyAdmin)
+    || tx.input.toLowerCase() !== encodeFunctionData({ abi: balancerFactoryAbi, functionName: 'setImplementation', args: [implementation] }).toLowerCase())
+    throw new Error('pointer update does not match the reviewed factory, implementation, admin and zero value');
+  const block = await pub.getBlock({ blockNumber: receipt.blockNumber });
+  if (block.hash !== receipt.blockHash) throw new Error('pointer update receipt is not canonical');
+  if (tx.blockHash !== receipt.blockHash || tx.blockNumber !== receipt.blockNumber) throw new Error('setter transaction and receipt differ');
+  const changes = receipt.logs.filter(log => getAddress(log.address) === factory).flatMap(log => {
+    try {
+      const event = decodeEventLog({ abi: balancerFactoryAbi, data: log.data, topics: log.topics });
+      return event.eventName === 'ImplementationChanged' ? [event.args] : [];
+    } catch { return []; }
+  });
+  if (changes.length !== 1 || getAddress(changes[0].previousImplementation) !== getAddress(before.implementation)
+    || getAddress(changes[0].newImplementation) !== implementation) throw new Error('implementation change event differs from reviewed transition');
+  const after = await factorySnapshot(pub, factory, receipt.blockNumber);
+  if (JSON.stringify(after) !== JSON.stringify({ ...before, implementation })) throw new Error('factory state differs beyond implementation');
+  const current = await pub.getBlock();
+  const active = await factorySnapshot(pub, factory, current.number);
+  if (JSON.stringify(active) !== JSON.stringify({ ...before, implementation })) throw new Error('implementation or factory settings changed after the setter receipt');
+  if ((await pub.getBlock({ blockNumber: current.number })).hash !== current.hash) throw new Error('activation readback block changed');
+  return { verified: true, operation: 'implementation-update', chainId: await pub.getChainId(),
+    balancerFactory: factory, factoryDeploymentBlock: deployment.factoryDeploymentBlock, previousImplementation: before.implementation,
+    poolBalancerImplementation: implementation, activeAtBlock: current.number.toString(), activeAtBlockHash: current.hash, transactionHash: hash, block: receipt.blockNumber.toString(), blockHash: receipt.blockHash,
+    gasUsed: receipt.gasUsed.toString(), effectiveGasPrice: receipt.effectiveGasPrice.toString(), factoryState: after };
+}
+
 async function main(argv: string[]) {
   const arg = (n: string) => { const i = argv.indexOf(n); return i < 0 ? undefined : argv[i + 1]; };
-  const rpc = arg('--rpc-url'), dry = arg('--reviewed-dry-run'), sent = arg('--broadcast');
+  const rpc = arg('--rpc-url');
+  if (arg('--update-tx')) {
+    const record = arg('--verified-implementation'), digest = arg('--verified-implementation-sha256');
+    if (!rpc || !record || !digest || !arg('--out')) throw new Error('update verification requires RPC, verified implementation record/hash and separate output');
+    if (createHash('sha256').update(readFileSync(record)).digest('hex') !== digest) throw new Error('verified implementation record hash differs');
+    const update = await verifyImplementationUpdate(createPublicClient({ transport: http(rpc) }) as PublicClient, arg('--update-tx')! as Hex, JSON.parse(readFileSync(record, 'utf8')));
+    writeFileSync(arg('--out')!, JSON.stringify(update, null, 2) + '\n');
+    console.log('IMPLEMENTATION UPDATE VERIFIED');
+    return 0;
+  }
+  const dry = arg('--reviewed-dry-run'), sent = arg('--broadcast');
   const dryHash = arg('--reviewed-dry-run-sha256');
   if (!rpc || !dry || !sent || !dryHash) { console.error('usage: verify-deployment.ts --rpc-url <url> --reviewed-dry-run <json> --reviewed-dry-run-sha256 <from the approved plan> --broadcast <run-latest.json> [--out <file>]  (env DEPLOYER, PACKS_ADMIN, KEEPER_ADMIN, POLICY_ADMIN)'); return 2; }
   const actual = createHash('sha256').update(readFileSync(dry)).digest('hex');
@@ -209,7 +270,11 @@ async function main(argv: string[]) {
   const roles = { deployer: env('DEPLOYER'), packsAdmin: env('PACKS_ADMIN'), keeperAdmin: env('KEEPER_ADMIN'), policyAdmin: env('POLICY_ADMIN') };
   const pub = createPublicClient({ transport: http(rpc, { timeout: 60_000 }) }) as PublicClient;
   console.log(JSON.stringify({ rpc }));
-  const result = await verify(pub, dry, sent, roles, readFileSync('script/Deploy.s.sol', 'utf8'));
+  const snapshotPath = arg('--factory-snapshot');
+  const snapshot = snapshotPath ? JSON.parse(readFileSync(snapshotPath, 'utf8')) : undefined;
+  if (arg('--existing-factory') && (!snapshot || !arg('--factory-deployment-block') || !arg('--out'))) throw new Error('implementation-only verification requires factory snapshot, original deployment block and separate --out');
+  const existing = arg('--existing-factory') ? { factory: getAddress(arg('--existing-factory')!), deploymentBlock: arg('--factory-deployment-block')!, snapshot } : undefined;
+  const result = await verify(pub, dry, sent, roles, readFileSync('script/Deploy.s.sol', 'utf8'), 'out', existing);
   if (result.bad.length) { console.error('DEPLOYMENT NOT VERIFIED\n' + result.bad.map(b => '  ' + b).join('\n')); return 1; }
   const out = arg('--out') ?? `deployments/${result.record!.chainId}.verified.json`;
   writeFileSync(out, JSON.stringify(result.record, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2) + '\n');

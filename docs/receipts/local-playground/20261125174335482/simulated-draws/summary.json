@@ -1,0 +1,32 @@
+{
+  "verifiedNFTWins": 20,
+  "distinctNFTs": 20,
+  "successfulPurchases": 20,
+  "extraCapitalDeposits": 0,
+  "actualPurchaseWei": "470438084109075683",
+  "conservativeForwardCapUsedWei": "493574597398852833",
+  "totalGasWei": "23315821354911064",
+  "transactions": 66,
+  "keeper": {
+    "address": "0x000000000000000000000000000000000001e004",
+    "sent": 19,
+    "mined": 19,
+    "reverted": 0,
+    "replaced": 0,
+    "skippedUnprofitable": 0,
+    "spentWei": "794793649846330",
+    "earnedWei": "1634808977375438",
+    "netWei": "840015327529108"
+  },
+  "creatorCreditWei": "46236887919508480",
+  "operatingWei": "28325548474045312",
+  "requiredReserveWei": "50938500406410000",
+  "shortfallWei": "22612951932364688",
+  "fullTargetRestored": false,
+  "remainingMissingPrize": "one 0.05 ETH Shape",
+  "admissionStatus": 0,
+  "unsettled": "0",
+  "reconciledSequence": "25",
+  "lastIssuedSequence": "25",
+  "oracle": "simulated; real coordinator commitments and subscription billing not completed"
+}

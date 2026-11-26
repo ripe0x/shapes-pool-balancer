@@ -1,0 +1,364 @@
+No files changed, compilation skipped
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 25 tests for test/Gas.t.sol:GasBench
+[PASS] test_breakEven_fillStep() (gas: 22127561)
+Logs:
+  fill step, 5 mints (creator-caused, full incentive)
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000104596280000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000119445800000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000137123800000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000172479800000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000200764600000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000225513800000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000250263000000000
+
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000276780000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_gasJumpAfterListing() (gas: 14636838)
+Logs:
+  1 draw, prizes listed at 0.08 gwei, restocked at each basefee
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000049277320000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000079250200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000114932200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000186296200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000243387400000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000293342200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000343297000000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000396820000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_steadyGas_oneDraw() (gas: 67079617)
+Logs:
+  1 draw per call, 0.01-only pool
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000049277320000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000079250200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000114932200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000186296200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000243387400000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000293342200000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000343297000000000
+
+    billed gas: 878520
+    keeper PnL (ETH): 0.000396820000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_breakEven_steadyGas_threeDraws() (gas: 91324705)
+Logs:
+  3 draws per call, 0.01-only pool
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000133021320000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000175090200000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000225172200000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000325336200000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000405467400000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000475582200000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000545697000000000
+
+    billed gas: 1719641
+    keeper PnL (ETH): 0.000620820000000000
+    => highest profitable basefee tested (gwei): 4.950000000
+
+[PASS] test_gas_canPurchase() (gas: 5763964)
+Logs:
+  canPurchase (operator check under the FWA 100k stipend)
+    billed gas (after refund): 39968
+    refund: 0
+    measured gas: 0
+    canPurchase gas: 56757
+
+[PASS] test_gas_createBalancer() (gas: 3015554)
+Logs:
+  createBalancer (clone + FWA pool + operator + approval)
+    billed gas (after refund): 352986
+    refund: 88246
+    measured gas: 0
+
+[PASS] test_gas_curatedOnlyReconcile() (gas: 7053123)
+Logs:
+  upkeep: reconcile 1 curated draw
+    billed gas (after refund): 271853
+    refund: 24800
+    measured gas: 243717
+
+[PASS] test_gas_initialFill() (gas: 21842652)
+Logs:
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2638106
+    refund: 28300
+    measured gas: 2613462
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2557467
+    refund: 28300
+    measured gas: 2532823
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2613545
+    refund: 28300
+    measured gas: 2588901
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2537418
+    refund: 28300
+    measured gas: 2512774
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2575397
+    refund: 28300
+    measured gas: 2550753
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2537469
+    refund: 28300
+    measured gas: 2512825
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2622136
+    refund: 28300
+    measured gas: 2597492
+  upkeep: fill step (<= 5 mint+list)
+    billed gas (after refund): 2566959
+    refund: 28300
+    measured gas: 2542315
+
+[PASS] test_gas_packFillStep() (gas: 17657411)
+Logs:
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1503926
+    refund: 39500
+    measured gas: 1490486
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1350027
+    refund: 39500
+    measured gas: 1336587
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1384227
+    refund: 39500
+    measured gas: 1370787
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1350042
+    refund: 39500
+    measured gas: 1336602
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1367143
+    refund: 39500
+    measured gas: 1353703
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1350027
+    refund: 39500
+    measured gas: 1336587
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1401326
+    refund: 39500
+    measured gas: 1387886
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1350043
+    refund: 39500
+    measured gas: 1336603
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1367144
+    refund: 39500
+    measured gas: 1353704
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1350027
+    refund: 39500
+    measured gas: 1336587
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1384210
+    refund: 39500
+    measured gas: 1370770
+  upkeep: pack fill step (1 three-Shape pack mint+list)
+    billed gas (after refund): 1357438
+    refund: 39500
+    measured gas: 1343998
+
+[PASS] test_gas_purchaseWithOperator() (gas: 7377587)
+Logs:
+  FWA acquireBatch(5) incl. operator check
+    billed gas (after refund): 1661039
+    refund: 59400
+    measured gas: 0
+
+[PASS] test_gas_refundOnlyBatch() (gas: 6626085)
+Logs:
+  upkeep: reconcile refund-only batch
+    billed gas (after refund): 186039
+    refund: 2800
+    measured gas: 133103
+
+[PASS] test_gas_replaceFive() (gas: 13803337)
+Logs:
+  upkeep: reconcile + replace 5 Shapes
+    billed gas (after refund): 2197574
+    refund: 107500
+    measured gas: 2252134
+
+[PASS] test_gas_replaceFiveMixed() (gas: 14602412)
+Logs:
+  upkeep: reconcile + replace 5 Shapes across 4 denominations
+    billed gas (after refund): 2666092
+    refund: 130300
+    measured gas: 2743452
+
+[PASS] test_gas_replaceFivePacks() (gas: 21720438)
+Logs:
+  upkeep: reconcile + replace 5 three-Shape packs (staged)
+    billed gas (after refund): 1459635
+    refund: 113500
+    measured gas: 1520199
+
+[PASS] test_gas_replaceOne() (gas: 8382764)
+Logs:
+  upkeep: reconcile + replace 1 Shape
+    billed gas (after refund): 878520
+    refund: 64300
+    measured gas: 889884
+
+[PASS] test_gas_unlistShapes20() (gas: 13215264)
+Logs:
+  unlistShapes(20): withdraw + redeem 20 Shapes (creator)
+    billed gas (after refund): 2645121
+    refund: 661280
+    measured gas: 0
+
+[PASS] test_gas_worstCaseUpkeep() (gas: 72170176)
+Logs:
+  WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 2 three-Shape packs
+    billed gas (after refund): 1613593
+    refund: 113500
+    measured gas: 1674157
+    actual gas used (measured span + overhead): 1732957
+
+[PASS] test_gas_worstCaseUpkeepFullUnits() (gas: 67052023)
+Logs:
+  WORST CASE upkeep: reconcile 5 draws + mint/list 5 Shapes in 4 sizes
+    billed gas (after refund): 2668003
+    refund: 119100
+    measured gas: 2734163
+
+[PASS] test_gas_worstCaseUpkeepFullUnits_1000Prizes() (gas: 1041890070)
+Logs:
+  WORST CASE upkeep at 1,000 prizes and 100 NFTs
+    billed gas (after refund): 2633780
+    refund: 119100
+    measured gas: 2699940
+
+[PASS] test_gas_worstCaseUpkeepFullUnits_200Prizes() (gas: 212842752)
+Logs:
+  WORST CASE upkeep at 200 prizes and 20 NFTs
+    billed gas (after refund): 2633735
+    refund: 119100
+    measured gas: 2699895
+
+[PASS] test_gas_worstCaseUpkeepShapes() (gas: 62046632)
+Logs:
+  WORST CASE upkeep: reconcile 5 of 10 draws + mint/list 5 Shapes
+    billed gas (after refund): 2783508
+    refund: 130300
+    measured gas: 2860868
+    actual gas used (measured span + overhead): 2953456
+
+[PASS] test_gas_worstCaseUpkeepSixSizes() (gas: 69111022)
+Logs:
+  WORST CASE upkeep: reconcile 5 draws + mint/list 4 Shapes in 4 sizes
+    billed gas (after refund): 2284702
+    refund: 116300
+    measured gas: 2348062
+
+[PASS] test_profitAtCap_curatedReconcilePaid() (gas: 8261968)
+Logs:
+  reconcile 1 curated draw
+    billed gas: 271853
+    keeper PnL (ETH): 0.000179320000000000
+
+[PASS] test_profitAtCap_fillSteps() (gas: 21892460)
+Logs:
+  fill step
+    billed gas: 2638106
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2557467
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2613545
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2537418
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2575397
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2537469
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2622136
+    keeper PnL (ETH): 0.000276780000000000
+  fill step
+    billed gas: 2566959
+    keeper PnL (ETH): 0.000276780000000000
+
+[PASS] test_profitAtCap_replaceFiveMixed() (gas: 14604165)
+Logs:
+  replace 5 Shapes, 4 denominations, listed at the cap
+    billed gas: 2666092
+    keeper PnL (ETH): 0.000886800000000000
+
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 3.81s (3.53s CPU time)
+
+Ran 1 test suite in 3.81s (3.81s CPU time): 25 tests passed, 0 failed, 0 skipped (25 total tests)

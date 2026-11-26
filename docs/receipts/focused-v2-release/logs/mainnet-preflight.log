@@ -1,0 +1,16 @@
+{
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "out": "docs/receipts/focused-v2-release/mainnet-preflight.json",
+  "checkedBlock": {
+    "number": "26496902",
+    "hash": "0x8a0369ef369fddd7c19f0b1979e1b50c437565a54646e9ec2de37be64dcc5c1a",
+    "timestamp": "1795666367"
+  },
+  "ok": true,
+  "problems": [],
+  "legacyPools": {
+    "0x526FbD402624B50861f54c081B592cdCeE322929": 1,
+    "0x91C31Ad620555DE24e62290906aD1aA14C4CE281": 0,
+    "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece": 0
+  }
+}

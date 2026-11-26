@@ -1,0 +1,25 @@
+{
+  "appPid": 35250,
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "instanceId": "0x6518a4ca87cd31c66fe37cb668400be58d8c88b87be33e111edc714d5723e591",
+  "retiredHashes": [
+    "0xa1b5d34465857b982f9e8e1aeb4a6f0687011522a421fcdd9ca36ae6db4c848a"
+  ],
+  "proof": {
+    "backup": "/tmp/fwa-8545-before-archive-rebind.state",
+    "oldBlock": 26485987,
+    "oldNonce": 4206,
+    "oldStatus": "success",
+    "from": "0xcb43078c32423f5348cab5885911c3b5fae217f9",
+    "to": "0xbe49677a403f77136e81498e5681f8dc22aa1181"
+  },
+  "mainnetChanged": false,
+  "oldGuardBlocked": true,
+  "correctedGuardBlocks": false,
+  "staleApprovalDropped": true,
+  "staleApprovalHash": "0x387c732b2a513d3e357ea8c124056626ea59b66fb456a39dc6b42846906029ec",
+  "nextWalletNonce": 4163,
+  "noNonceMutation": true,
+  "ETHTransferredByFix": "0"
+}

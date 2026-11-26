@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ app/src/nft-approvals.test.ts (2 tests) 2ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:21:21
+   Duration  303ms (transform 27ms, setup 0ms, collect 21ms, tests 2ms, environment 0ms, prepare 54ms)
+

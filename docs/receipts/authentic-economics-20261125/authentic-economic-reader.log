@@ -1,0 +1,84 @@
+test_inconsistent_null_excess_is_incomplete (__main__.FlowReportingTests.test_inconsistent_null_excess_is_incomplete) ... /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-u7uwfia2/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-u7uwfia2/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-u7uwfia2/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-u7uwfia2/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-9fogepqx/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-9fogepqx/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-9fogepqx/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-9fogepqx/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-1igj1tvh/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-1igj1tvh/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-1igj1tvh/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-1igj1tvh/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_known_backing_shortfall_and_withdrawable_amounts (__main__.FlowReportingTests.test_known_backing_shortfall_and_withdrawable_amounts) ... ok
+test_known_outcome_still_fails_its_bound (__main__.FlowReportingTests.test_known_outcome_still_fails_its_bound) ... /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-lb_i121t/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-lb_i121t/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-lb_i121t/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-lb_i121t/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_legacy_numeric_reports_remain_readable (__main__.FlowReportingTests.test_legacy_numeric_reports_remain_readable) ... ok
+test_unknown_bound_is_incomplete_instead_of_zero_or_pass (__main__.FlowReportingTests.test_unknown_bound_is_incomplete_instead_of_zero_or_pass) ... /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-8iv8_ai2/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-8iv8_ai2/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-8iv8_ai2/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-8iv8_ai2/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_unknown_is_null_and_not_a_numeric_metric (__main__.FlowReportingTests.test_unknown_is_null_and_not_a_numeric_metric) ... ok
+test_unknown_unbounded_bucket_does_not_break_known_outcome (__main__.FlowReportingTests.test_unknown_unbounded_bucket_does_not_break_known_outcome) ... /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-x6260nb8/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:108: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-x6260nb8/asset-flow.json' mode='r' encoding='UTF-8'>
+  cfg = json.load(open(cfg_path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:13: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-x6260nb8/source.txt'>
+  h.update(f.encode() + b"\0" + open(p, "rb").read() + b"\0")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py:136: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/flow-reporting-x6260nb8/scorecards/flow-reporting.json' mode='r' encoding='UTF-8'>
+  j = json.load(open(p))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.170s
+
+OK

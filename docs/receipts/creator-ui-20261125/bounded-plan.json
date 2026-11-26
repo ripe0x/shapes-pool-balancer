@@ -1,0 +1,71 @@
+{
+  "planHash": "802d8dd575e37d9ee81255a0420a3934232a4237ee571c972723eb33f0ed46fd",
+  "plan": {
+    "schema": "creator-ui-local-acceptance-v1",
+    "revision": "da603f70156693ea32a0b0dbe484c50880c6bc36",
+    "sourceFingerprint": "52c0d30093adc9d74f673f0567e095ee7babaf88191e252f5bc29932a9203bed",
+    "rpc": "http://127.0.0.1:18790",
+    "chainId": 31337,
+    "node": {
+      "pid": 23449,
+      "command": [
+        "anvil",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18790",
+        "--chain-id",
+        "31337",
+        "--accounts",
+        "0",
+        "--fork-url",
+        "https://mainnet.gateway.tenderly.co",
+        "--fork-block-number",
+        "26493164",
+        "--silent"
+      ]
+    },
+    "signer": "0x000000000000000000000000000000000001e004",
+    "startingNonce": 14,
+    "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+    "balancer": "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+    "demo": "0x5f7365D1ce9d5247BE8cbE5BF1eBeAbE5121579c",
+    "weth": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "caps": {
+      "additionalFundingWei": "0",
+      "nativeTransferWei": "100000000000000000",
+      "wethTransferWei": "100000000000000000",
+      "gasWei": "100000000000000000",
+      "transactions": 12,
+      "draws": 0,
+      "oracleCalls": 0
+    },
+    "steps": [
+      "Read-only public-creation pause refusal with synthetic creatorA; reconnect synthetic policyAdmin owner",
+      "Approve demo NFT IDs 1 and 2 only to existing Balancer; list both via actual app at 0.2 and 0.3 ETH",
+      "Select both; set each value to 0.4 ETH; exclude NFT 2; withdraw NFT 1 to signer; reload and confirm NFT 2 remains",
+      "Transfer existing 0.1 test WETH to Balancer; use app ERC20 recovery form for exactly 100000000000000000 raw units to signer",
+      "Deposit 0.1 test ETH into existing Balancer; retire the local canary through app confirmation",
+      "Use Take everything back to return remaining NFT 2 and claim exactly 0.1 test ETH; verify actual ownership, empty inventory, zero WETH/ETH, and public creation still paused"
+    ],
+    "permittedFunctions": [
+      "approve(address,uint256)",
+      "listCuratedBatch((address,uint256,uint256)[])",
+      "updateCuratedPricesBatch(uint256[],uint256[])",
+      "withdrawCuratedBatch(uint256[],address)",
+      "transfer(address,uint256)",
+      "recoverERC20(address,uint256)",
+      "retire()",
+      "claimSurplus(uint256,address)",
+      "native transfer with empty calldata"
+    ],
+    "conditions": [
+      "Synthetic local signer only; no production wallet or external signing",
+      "No deployment, implementation switch, public unpause, buyer draws, randomness, protocol storage edits or balance edits",
+      "Decode and check each action/nonce/target/code/value, retain canonical receipts and readbacks, stop on mismatch",
+      "App uses real local RPC answers and unlocked-node wallet, not successful-service stubs",
+      "This does not exercise refunded-history UI or close economic release gates"
+    ],
+    "executionAllowance": "15 additional active minutes including repairs; stop at cap"
+  }
+}

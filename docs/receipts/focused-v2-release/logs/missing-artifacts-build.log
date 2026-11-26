@@ -1,0 +1,49 @@
+Warning: lib/forge-std: missing from foundry.lock (found dc647cc030d9d65910d8f1172a0cde48d7106e32)
+Warning: lib/shape-packs: missing from foundry.lock (found 3a463f750eee56b0ca175999f184a32909173780)
+Warning: lib/solady: missing from foundry.lock (found acd959aa4bd04720d640bf4e6a5c71037510cc4b)
+Compiling 44 files with Solc 0.8.28
+Solc 0.8.28 finished in 20.07s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:166:46:
+    |
+166 |     function topUpAvailable(State storage s, uint256 reserve) public view returns (uint256) {
+    |                                              ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:172:57:
+    |
+172 |     function reinvest(State storage s, uint256 maximum, uint256 reserve) public returns (uint256 amount) {
+    |                                                         ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:182:92:
+    |
+182 |     function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
+    |                                                                                            ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:302:13:
+    |
+302 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:314:9:
+    |
+314 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^

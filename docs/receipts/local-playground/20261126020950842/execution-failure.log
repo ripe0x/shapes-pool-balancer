@@ -1,0 +1,14 @@
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper42.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper39.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper40.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper44.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/src/interfaces/IKeeperPolicy.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/src/KeeperPolicyV1.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper45.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper41.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-Zopk3y/foundry-pp/DeployHelper46.sol
+TypeError: Cannot read properties of undefined (reading 'object')
+    at execute (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-playground.ts:80:116)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async main (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-playground.ts:90:791)

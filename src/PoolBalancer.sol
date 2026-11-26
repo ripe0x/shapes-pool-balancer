@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PoolPage} from "./PoolPage.sol";
 import {PoolInventory} from "./PoolInventory.sol";
 import {KeeperPolicyCalls} from "./KeeperPolicyCalls.sol";
@@ -33,7 +32,7 @@ interface IBalancerFactory {
 ///        of the target's weight. A Shapes mint fee above what the creator accepted
 ///        stops minting, not purchases of listed prizes; depletion then pauses purchases through the weight gate. Purchases do not
 ///        wait for a fully funded target: expensive deficits may remain while sales replenish operating capital.
-///        A stored share of actual collected owner proceeds is protected as creator credit.
+///        Settled sales accrue automatic creator fees. Withdrawals retain the operating reserve; fees can be reinvested.
 ///        `open` funds current inventory/setup work and a maintenance buffer, without duplicate prize backing.
 ///      - A curated NFT is listed at the creator's value, with no markup. Shape prizes carry the markup.
 ///      - Prices are set when a listing is made, at the markup in force then. Nothing is repriced. A Shape prize is
@@ -68,7 +67,6 @@ contract PoolBalancer is ReentrancyGuard {
     ///      Six units with five reconciles measured 3.13M against the default 3.2M reimbursable gas; five keeps a margin.
     uint256 internal constant MAX_OPS = 5;
     /// @dev Settled FWA sequences reconciled per upkeep call (~33k gas each), one FWA batch.
-    uint256 internal constant MAX_RECONCILE = 5;
     /// @dev Prize sizes restocked per upkeep call: each size is its own mint call (~0.5M gas with its listing). Six sizes
     ///      in one call measured 3.19M against the default 3.2M reimbursable gas.
     uint256 internal constant MAX_RESTOCK_SIZES = 4;
@@ -78,7 +76,6 @@ contract PoolBalancer is ReentrancyGuard {
     bytes32 internal constant ADDR_REVERSE_NODE = 0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2;
 
     // FWA ListingStatus / AcquisitionStatus values.
-    uint8 internal constant A_FULFILLED = 2;
 
     // Item kinds and states.
     uint8 internal constant CURATED = 1;
@@ -131,9 +128,9 @@ contract PoolBalancer is ReentrancyGuard {
     /// @dev Purchases need a proven active curated NFT. Off by default: curated NFTs are optional prizes.
     bool public curatedRequired;
     uint64 public reconciledSequence;
-    /// @dev Only actual FWA owner proceeds create credit, including collections after closing.
-    uint256 public creatorCredit;
-    uint16 public creatorRevenueBps;
+    // Reserved legacy slots; new clones use cost-first accounting in _inventory.
+    uint256 private _legacyCreatorCredit;
+    uint16 private _legacyCreatorRevenueBps;
     /// @dev The highest Shapes mint fee the creator accepted. Upkeep mints at the live fee while it is at most this,
     ///      and nothing above it; the reserve prices missing prizes at this cap.
     uint256 public mintFeeCap;
@@ -178,6 +175,7 @@ contract PoolBalancer is ReentrancyGuard {
     event CuratedWithdrawn(uint256 indexed listingId, address indexed to);
     event CuratedWitnessRefreshed(uint256 indexed listingId, uint256 slot);
     event RefundedRecovered(uint256 indexed listingId, address indexed to, uint256 eth);
+    event ERC20Recovered(address indexed token, address indexed to, uint256 amount);
     event UntrackedNFTRecovered(address indexed collection, uint256 tokenId, address indexed to);
     event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered);
     event ShapesMinted(uint8 indexed denom, uint256 firstTokenId, uint256 quantity, uint256 cost);
@@ -186,6 +184,8 @@ contract PoolBalancer is ReentrancyGuard {
     event KeeperPaid(address indexed keeper, uint256 amount, uint256 gasUsed);
     event Deposited(address indexed from, uint256 amount);
     event ProceedsCollected(uint256 amount);
+    event CreatorFeesAccrued(uint256 amount);
+    event CreatorFeesReinvested(uint256 amount);
     event SurplusClaimed(address indexed to, uint256 amount);
     event PoolRetired();
     event ENSNameSet(string name);
@@ -280,7 +280,7 @@ contract PoolBalancer is ReentrancyGuard {
         fillGateBps = 7_000;
         backlogThreshold = uint16(MAX_BATCH);
         _configure(config.markupBps, config.target, config.mintFeeCap);
-        _setCreatorRevenueBps(config.creatorRevenueBps);
+        if (config.creatorRevenueBps != 0) revert InvalidConfig();
         _setCuratedRequired(config.curatedRequired);
         if (curated.length != 0) _listCurated(curated, creator_);
         _open();
@@ -327,6 +327,7 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _configure(uint16 newMarkupBps, uint256 newTarget, uint256 fee) internal {
+        if (target != 0) _collect();
         // The width bound keeps every Shape listing price (backing, markup, three fees, surcharge < 2^98) inside its
         // uint104 record and the reserve's products far below uint256.
         if (SHAPES.mintFee() > fee || fee > type(uint96).max) revert InvalidConfig();
@@ -336,22 +337,25 @@ contract PoolBalancer is ReentrancyGuard {
         target = newTarget;
         targetWeight = w;
         mintFeeCap = fee;
+        _inventory.feeRateDirty = true;
+        _refreshCreatorRate();
         _creatorChanged();
         emit Configured(newMarkupBps, newTarget, fee);
     }
 
-    /// @notice Collect available proceeds at the old rate; later collections use the new rate, even for pending draws.
-    function setCreatorRevenueBps(uint16 newBps) external onlyCreator nonReentrant {
-        if (newBps > BPS) revert InvalidConfig();
+    /// @notice Legacy selector retained to reject stale clients explicitly.
+    function setCreatorRevenueBps(uint16) external view onlyCreator { revert InvalidConfig(); }
+    function creatorRevenueBps() external view returns (uint16) { return _inventory.creatorRevenueBps; }
+    function profitAccountingVersion() external pure returns (uint256) { return 2; }
+    function creatorCredit() public view returns (uint256) { return _inventory.creatorFees; }
+    function bankrollProfit() public view returns (uint256) { return PoolInventory.settledProfit(_inventory, pool, reconciledSequence); }
+    function creatorFeeUpdatePending() external view returns (bool) { return _inventory.feeRateDirty; }
+    function creatorFeeTopUpAvailable() external view returns (uint256) { return PoolInventory.topUpAvailable(_inventory, _reinvestmentReserve()); }
+    function reinvestCreatorFees(uint256 maximumAmount) external onlyCreator nonReentrant returns (uint256 amount) {
         _collect();
-        _setCreatorRevenueBps(newBps);
+        return PoolInventory.reinvest(_inventory, maximumAmount, _reinvestmentReserve());
     }
-
-    function _setCreatorRevenueBps(uint16 newBps) internal {
-        if (newBps > BPS) revert InvalidConfig();
-        emit CreatorRevenueChanged(creatorRevenueBps, newBps);
-        creatorRevenueBps = newBps;
-    }
+    function operatingCapital() external view returns (uint256) { return PoolInventory.capital(_inventory); }
 
     /// @notice Require a proven active curated NFT for purchases, or not. Takes effect at the next admission check.
     function setCuratedRequired(bool required) external onlyCreator nonReentrant {
@@ -437,7 +441,7 @@ contract PoolBalancer is ReentrancyGuard {
     function _paidEcon() internal view returns (KeeperPolicyCalls.Economics memory e) {
         if (_keeper.enabled) e = _econ();
     }
-    function _fund() internal view returns (uint256) { return address(this).balance - creatorCredit; }
+    function _fund() internal view returns (uint256) { return address(this).balance - _inventory.creatorFees; }
 
     /// @notice Fund initial inventory, its bounded setup work and short-term maintenance. Later large wins can
     ///         leave a partial target; admission depends on the actual remaining prize weight, not a spare board.
@@ -455,7 +459,7 @@ contract PoolBalancer is ReentrancyGuard {
         emit PurchasesOpened();
     }
 
-    /// @notice Stop new purchases immediately. Creator credit, outstanding draws and purchaser refund rights survive.
+    /// @notice Stop new purchases immediately. Outstanding draws and purchaser refund rights survive.
     function close() external onlyCreator nonReentrant {
         enabled = false;
         creatorWork = false;
@@ -486,7 +490,10 @@ contract PoolBalancer is ReentrancyGuard {
     }
 
     function _listCurated(CuratedInput[] calldata inputs, address source) internal returns (uint256[] memory) {
-        return PoolInventory.listCurated(_inventory, pool, address(SHAPES), address(PACKS), source, inputs);
+        _collect();
+        uint256[] memory ids = PoolInventory.listCurated(_inventory, pool, address(SHAPES), address(PACKS), source, inputs);
+        _refreshCreatorRate();
+        return ids;
     }
 
     /// @notice Prove one tracked curated NFT is active. Anyone may refresh at their own gas cost; no assets move.
@@ -498,13 +505,38 @@ contract PoolBalancer is ReentrancyGuard {
     /// @notice Set a curated NFT's value, which is its FWA price.
     ///         FWA allows this only while no draw is unsettled.
     function updateCuratedPrice(uint256 listingId, uint256 newBase) external onlyCreator nonReentrant {
+        _collect();
         PoolInventory.updateCurated(_inventory, pool, listingId, newBase);
+        _refreshCreatorRate();
+    }
+
+    /// @notice Atomically reprice 1 to 20 distinct curated listings under FWA's existing draw lock.
+    function updateCuratedPricesBatch(uint256[] calldata listingIds, uint256[] calldata newBases)
+        external onlyCreator nonReentrant
+    {
+        _collect();
+        PoolInventory.updateCuratedPricesBatch(_inventory, pool, listingIds, newBases);
+        _refreshCreatorRate();
     }
 
     /// @notice Withdraw an active curated listing from FWA directly to `to`. FWA allows this only while no draw is
     ///         unsettled.
     function withdrawCurated(uint256 listingId, address to) external onlyCreator nonReentrant {
+        _collect();
         PoolInventory.withdrawCurated(_inventory, pool, listingId, to);
+        _refreshCreatorRate();
+    }
+
+    /// @notice Atomically withdraw 1 to 20 distinct curated listings. Keep the single-item path for failing collections.
+    function withdrawCuratedBatch(uint256[] calldata listingIds, address to) external onlyCreator nonReentrant {
+        _collect();
+        PoolInventory.withdrawCuratedBatch(_inventory, pool, listingIds, to);
+        _refreshCreatorRate();
+    }
+
+    /// @notice Immutable per-pool capability marker; a factory may have clones of several implementations.
+    function inventoryBatchVersion() external pure returns (uint256) {
+        return 2;
     }
 
     /// @notice Recover an item whose FWA delivery was refunded to its winner: a curated NFT goes to `to`; a Shape or
@@ -512,6 +544,18 @@ contract PoolBalancer is ReentrancyGuard {
     ///         Upkeep never touches curated collections, so a hostile collection cannot burn keeper gas or block upkeep.
     function recoverRefunded(uint256 listingId, address to) external onlyCreator nonReentrant returns (uint256 eth) {
         return PoolInventory.recoverRefunded(_inventory, pool, address(SHAPES), address(PACKS), listingId, to);
+    }
+
+    /// @notice Atomically recover 1 to 20 distinct listings after their purchasers have taken FWA's refunds.
+    function recoverRefundedBatch(uint256[] calldata listingIds, address to)
+        external onlyCreator nonReentrant returns (uint256 eth)
+    {
+        return PoolInventory.recoverRefundedBatch(_inventory, pool, address(SHAPES), address(PACKS), listingIds, to);
+    }
+
+    /// @notice Return ERC20 tokens held here to the current creator. Depositors acquire no separate claim.
+    function recoverERC20(address token, uint256 amount) external onlyCreator nonReentrant {
+        PoolInventory.recoverERC20(token, creator, amount);
     }
 
     /// @notice Return an NFT this contract holds outside FWA, e.g. one sent to it directly.
@@ -530,7 +574,8 @@ contract PoolBalancer is ReentrancyGuard {
 
     receive() external payable {}
 
-    function depositETH() external payable {
+    function depositETH() external payable nonReentrant {
+        PoolInventory.syncCapital(_inventory);
         emit Deposited(msg.sender, msg.value);
     }
 
@@ -539,14 +584,9 @@ contract PoolBalancer is ReentrancyGuard {
         amount = _collect();
     }
 
-    /// @notice Existing credit claims make no external reads. Capital beyond credit must retain the full reserve.
+    /// @notice Withdraw earned proceeds while open; closing also permits contributed capital recovery.
     function claimSurplus(uint256 amount, address to) external onlyCreator nonReentrant {
-        if (to == address(0)) revert InvalidRecipient();
-        uint256 mine = creatorCredit;
-        if (amount > mine && amount > withdrawableSurplus()) revert InsufficientSurplus();
-        creatorCredit = amount < mine ? mine - amount : 0;
-        SafeTransferLib.safeTransferETH(to, amount);
-        emit SurplusClaimed(to, amount);
+        PoolInventory.claim(_inventory, amount, to, withdrawableSurplus());
     }
 
     /// @notice Withdraw up to 20 listed Shape or pack prizes from FWA and redeem them here for their backing: extra
@@ -572,8 +612,7 @@ contract PoolBalancer is ReentrancyGuard {
 
     /// @notice Set this contract's ENS reverse record via the current `addr.reverse` registrar ("" clears it).
     function setENSName(string calldata name) external onlyCreator nonReentrant {
-        IReverseRegistrar(ENS.owner(ADDR_REVERSE_NODE)).setName(name);
-        emit ENSNameSet(name);
+        PoolPage.setENSName(ENS, ADDR_REVERSE_NODE, name);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -688,20 +727,17 @@ contract PoolBalancer is ReentrancyGuard {
             gasStart -= unpaid;
         }
 
-        // 1. Collect actual settled proceeds at the stored revenue share.
+        // 1. Collect settled receipts and reserve the automatic creator allocation.
+        bool rateWasDirty = _inventory.feeRateDirty;
         bool collected = _collect() != 0;
 
         // 2. Reconcile settled FWA sequences in order. Processed sequences are final: their listing is fixed.
-        uint64 s = reconciledSequence;
-        uint64 end = p.nextSequenceToProcess() - 1;
-        if (end > s + MAX_RECONCILE) end = s + uint64(MAX_RECONCILE);
-        while (s < end) {
-            (,,, uint256 lid, uint8 aStatus,) = p.acquisitions(p.requestIdAtSequence(++s));
-            if (lid != 0) _onDrawn(lid, aStatus == A_FULFILLED);
-        }
+        (uint64 s, uint256 removedWeight) = PoolInventory.reconcile(_inventory, p, reconciledSequence);
+        prizeWeight -= removedWeight;
         uint256 draws = s - reconciledSequence;
         bool reconciled = draws != 0;
         if (reconciled) reconciledSequence = s;
+        _refreshCreatorRate();
 
         // 3. Restock while open, in a call that settled no draw: a draw that reserved FWA's maximum six listings costs
         //    up to about 1.15M gas to process, so processing two and restocking in one call can pass the 3.2M pay cap and
@@ -717,30 +753,11 @@ contract PoolBalancer is ReentrancyGuard {
             }
         }
 
-        if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup) revert NoUpkeepNeeded();
+        if (!reconciled && ops == 0 && !collected && creatorWork == wasSetup && rateWasDirty == _inventory.feeRateDirty) revert NoUpkeepNeeded();
         if (paid && (ops != 0 || reconciled)) {
             reward = _payKeeper(e, gasStart, draws, ops, listed, processed);
         }
         if (reward < minimumReward) revert MinimumPaymentNotMet();
-    }
-
-    function _onDrawn(uint256 lid, bool delivered) internal {
-        PoolInventory.Item storage it = _inventory.items[lid];
-        // Every pool listing is ours and tracked until drawn. Never revert here: reconciliation must not be bricked.
-        if (it.state != ACTIVE) return;
-        uint8 kind = it.kind;
-        uint8 d = it.denom;
-        _removeActive(lid);
-        if (kind == SHAPE) {
-            --_inventory.activeShapes[d];
-            prizeWeight -= PoolInventory._weight(d);
-        }
-        if (delivered) {
-            delete _inventory.items[lid];
-        } else {
-            it.state = PENDING;
-        }
-        emit ItemDrawn(lid, kind, d, delivered);
     }
 
     /// @dev Mint missing prizes, smallest value first, within MAX_OPS Shape units, MAX_RESTOCK_SIZES sizes and the ETH
@@ -751,7 +768,7 @@ contract PoolBalancer is ReentrancyGuard {
     {
         uint256 added;
         (used, listed, added) = PoolInventory.fill(_inventory, PoolInventory.Fill(
-            target, markupBps, creatorCredit, e, draws, fee, address(SHAPES), address(PACKS), address(p), paid
+            target, markupBps, _inventory.creatorFees, e, draws, fee, address(SHAPES), address(PACKS), address(p), paid
         ));
         prizeWeight += added;
     }
@@ -761,7 +778,9 @@ contract PoolBalancer is ReentrancyGuard {
     {
         uint256 measured = gasStart - gasleft();
         KeeperPolicyCalls.Work memory w = KeeperPolicyCalls.Work(measured, tx.gasprice, block.basefee, draws, units, listed, processed);
-        return KeeperPolicyCalls.pay(_keeper, e, w, _fund());
+        PoolInventory.syncCapital(_inventory);
+        reward = KeeperPolicyCalls.pay(_keeper, e, w, _fund());
+        PoolInventory.spend(_inventory, reward);
     }
 
     function availableKeeperAllowance() public view returns (uint256) { return KeeperPolicyCalls.available(_keeper); }
@@ -770,17 +789,19 @@ contract PoolBalancer is ReentrancyGuard {
                                   VIEWS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Credit plus operating cash above the reserve. Credit is excluded before calculating the surplus.
+    /// @notice Costs and outstanding outcomes are settled before proceeds can leave. Capital is returned only closed.
     function withdrawableSurplus() public view returns (uint256) {
-        uint256 mine = creatorCredit;
-        uint256 operating = address(this).balance - mine;
-        uint256 req = requiredReserve();
-        return mine + (operating > req ? operating - req : 0);
+        return PoolInventory.withdrawable(_inventory, pool, reconciledSequence, enabled, requiredReserve());
     }
 
     /// @notice Working capital for missing assets and their bounded listing work, actual unreconciled draws and
     ///         one maintenance call. It limits withdrawals, not legitimate maintenance spending.
-    function requiredReserve() public view returns (uint256) { return KeeperPolicyCalls.reserve(_paidEcon(), _reserveInput()); }
+    function requiredReserve() public view returns (uint256) { return _reserve(false); }
+
+    function _reinvestmentReserve() internal view returns (uint256) {
+        if (pool.retired()) return 0;
+        return _reserve(true);
+    }
 
     function _maintenanceInput() internal view returns (KeeperPolicyCalls.Reserve memory r) {
         r.enabled = enabled;
@@ -788,14 +809,10 @@ contract PoolBalancer is ReentrancyGuard {
         r.baseFee = block.basefee;
     }
 
-    function _reserveInput() internal view returns (KeeperPolicyCalls.Reserve memory r) {
-        r = _maintenanceInput();
-        if (enabled) {
-            // The accepted fee: upkeep never mints above it, so a higher live fee adds nothing to reserve for.
-            r.mintFee = mintFeeCap;
-            r.target = target;
-            r.have = _inventory.activeShapes;
-        }
+    function _reserve(bool refill) internal view returns (uint256) {
+        KeeperPolicyCalls.Reserve memory r = _maintenanceInput();
+        if (refill) r.enabled = true;
+        return PoolInventory.reserve(_inventory, _paidEcon(), r, target, mintFeeCap);
     }
 
     /// @notice A tracked listing: kind (1 curated, 2 Shape or pack), size, state, `base` and FWA price.
@@ -829,18 +846,16 @@ contract PoolBalancer is ReentrancyGuard {
         creatorWork = enabled && creatorWork && _missingUnits() != 0;
     }
 
-    /// @dev Collection is the rate boundary. Pending purchases have no historical rate snapshot.
+    /// @dev Only actual settled owner receipts increase earned cash. Deposits are capital.
     function _collect() internal returns (uint256 amount) {
-        IFWAPool p = pool;
-        if (p.ownerProceeds() == 0) return 0;
-        uint256 before = address(this).balance;
-        p.withdrawOwnerProceeds();
-        amount = address(this).balance - before;
-        creatorCredit += (amount / BPS) * creatorRevenueBps + (amount % BPS) * creatorRevenueBps / BPS;
-        emit ProceedsCollected(amount);
+        amount = PoolInventory.collect(_inventory, pool);
+        _refreshCreatorRate();
     }
 
-    function _removeActive(uint256 lid) internal { PoolInventory.removeActive(_inventory, lid); }
+    function _refreshCreatorRate() internal {
+        PoolInventory.refreshCreatorRate(_inventory, pool, reconciledSequence, target, markupBps, mintFeeCap, _econ());
+    }
+
     function listedShapePrizes() external view returns (uint256) { return _inventory.listedPrizes; }
 
 

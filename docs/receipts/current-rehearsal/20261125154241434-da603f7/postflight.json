@@ -1,0 +1,20 @@
+{
+  "planHash": "63f25eebe0c29822fbda34a90898c80ca3419810a4145b2aa2e6f27f6871f37b",
+  "chainId": 31337,
+  "block": "26493182",
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "balancer": "0x5E638324A84CF6Cf1394D2066cB0a7AC4C655cd9",
+  "demo": "0x5f7365D1ce9d5247BE8cbE5BF1eBeAbE5121579c",
+  "pool": "0x4D2847DABaC6317edB19e68c6fB16d0D74F9E3E2",
+  "creator": "0x000000000000000000000000000000000001e004",
+  "paused": true,
+  "active": [],
+  "balancerEth": "0",
+  "balancerWeth": "0",
+  "nftOwners": [
+    "0x000000000000000000000000000000000001e004",
+    "0x000000000000000000000000000000000001e004"
+  ],
+  "receipts": 18,
+  "gasWei": "7270741620849468"
+}

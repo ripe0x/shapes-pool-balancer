@@ -1,3 +1,4 @@
+// Historical diagnostic: this driver fabricates VRF delivery and is not real-randomness release evidence.
 // Isolated actual-receipt economic review. No keys, external writes, or fabricated protocol state.
 // Run after compiling test/ReserveEconomicReview.t.sol: npx tsx keeper/reserve-economics.ts
 import assert from 'node:assert/strict';
@@ -82,6 +83,10 @@ async function main(){
   const factory=JSON.parse(readFileSync('deployments/31337.json','utf8')).balancerFactory as Address;
   assert.ok(await pub.getCode({address:factory}));
   assert.equal((await read(factory,fAbi,'keeperAdmin')).toLowerCase(),A.deployer.toLowerCase());
+  assert.equal((await read(factory,fAbi,'policyAdmin')).toLowerCase(),A.deployer.toLowerCase());
+  assert.equal(await read(factory,fAbi,'creationPaused'),true,'fresh factory starts paused');
+  await send(A.deployer,factory,fAbi,'setCreationPaused',[false],0n,'resume isolated diagnostic creation');
+  assert.equal(await read(factory,fAbi,'creationPaused'),false);
   for(const a of [A.creator,A.buyer,A.keeper]){
    assert.equal(await pub.getCode({address:a}),undefined,'fresh actor has no delegation');
    await test.impersonateAccount({address:a});await test.setBalance({address:a,value:1000n*10n**18n});

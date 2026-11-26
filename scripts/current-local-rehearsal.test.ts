@@ -91,8 +91,8 @@ describe('current local rehearsal control inputs, without node mutation', () => 
     });
     it('enforces the actual sender budget boundary before any mutation or submission', () => {
         // Direct numeric inputs exercise the shared validator without constructing a node, service or RPC response.
-        const validate = Reflect.get(CurrentRehearsal.prototype, 'budget') as (this: {plan:{maxFeePerGas:string};gas:()=>bigint;closing:boolean}, gas:bigint, price:bigint) => void;
-        const state = {plan:{maxFeePerGas:'20000000000'},gas:()=>0n,closing:false};
+        const validate = Reflect.get(CurrentRehearsal.prototype, 'budget') as (this: {plan:{maxFeePerGas:string;scenario:typeof SCENARIO;caps:typeof CAPS};gas:()=>bigint;closing:boolean}, gas:bigint, price:bigint) => void;
+        const state = {plan:{maxFeePerGas:'20000000000',scenario:SCENARIO,caps:CAPS},gas:()=>0n,closing:false};
         assert.doesNotThrow(() => validate.call(state,5_000_000n,20_000_000_000n));
         assert.throws(() => validate.call(state,5_000_000n,24_050_000_000n), /per-transaction fee ceiling/);
         assert.throws(() => validate.call(state,1n,20_000_000_001n), /per-transaction fee ceiling/);
@@ -104,7 +104,7 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         const permit = Reflect.get(CurrentRehearsal.prototype, 'permitted') as (...args: unknown[]) => void;
         const first = { creator: ROLES.creatorA, balancer: '0x000000000000000000000000000000000000a001', pool: '0x000000000000000000000000000000000000a002' };
         const second = { creator: ROLES.creatorB, balancer: '0x000000000000000000000000000000000000b001', pool: '0x000000000000000000000000000000000000b002' };
-        const state = { journal: { pools: [first, second], receipts: [] as { function: string }[] } };
+        const state = { plan: { schema: 'protected-revenue-local-rehearsal-v1' }, journal: { pools: [first, second], receipts: [] as { function: string }[] } };
         const refresh = (actor = ROLES.buyer, to = first.balancer, args: unknown[] = [2n], value = 0n) => permit.call(state, actor, to, 'refreshCuratedWitness', args, value);
         assert.doesNotThrow(() => refresh());
         for (const actor of [ROLES.creatorA, ROLES.keeper, ROLES.creatorB])
@@ -156,12 +156,12 @@ describe('current local rehearsal control inputs, without node mutation', () => 
         writeFileSync(join(dir,source),'// modified staging input');
         assert.throws(() => assertStagedDependencies(p,dir), /staged pinned dependency source/);
     });
-    it('preserves the production gate tail exactly and requires an explicit new local route', () => {
+    it('preserves the authorized focused production gate tail and requires an explicit new local route', () => {
         const wrapper = readFileSync(join(ROOT, 'script/deploy.sh'), 'utf8');
-        assert.equal(digest(wrapper.slice(wrapper.indexOf('GATE='))), '34d5e5f61b2ea38bfaf92fc4cc841a5f4e113f6d53d9b47975a324e8d78a5e0d');
+        assert.equal(digest(wrapper.slice(wrapper.indexOf('GATE='))), 'e41bd1be39034eff5724190c55477c8033ff07c73061baf27d9e447f68399cd8');
         assert.match(wrapper, /--current-local-rehearsal-plan/);
         assert.match(wrapper, /--phase deploy/);
-        assert.match(wrapper, /--require-review/);
+        assert.match(wrapper, /--config asset-flow-focused\.json --require-review/);
         assert.throws(() => execFileSync('bash', ['script/deploy.sh', '--current-local-rehearsal-plan'], { cwd: ROOT, stdio: 'pipe' }));
     });
 });

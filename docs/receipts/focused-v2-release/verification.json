@@ -1,0 +1,65 @@
+{
+  "candidate": "e47fdef",
+  "source_hash": "58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b",
+  "unique_contract_tests_passed": 46,
+  "unique_ts_tests_passed": 73,
+  "ts_skipped": 7,
+  "ui_transactional": "PASS: actual local synthetic connector top-up, upkeep and fee withdrawal; ../focused-v2-ui/postflight.json",
+  "records": [
+    {
+      "scope": "initial focused Solidity attempt; seven suites omitted",
+      "command": "forge --version | grep -q 'Version: 1.8.1' || { echo 'focused gas evidence needs Foundry 1.8.1'; exit 1; }; CANDIDATE_RUN=1 forge test --match-contract '^(FocusedERC20CallbacksTest|FocusedReleaseFlowTest|FocusedInventoryGasTest|InventoryBatchesTest|ERC20RecoveryTest|FactoryPauseTest|AuthenticRefundRecoveryTest|AuthenticEconomicFlowsTest|AuthenticPositiveProceedsTest|AuthenticContinuationTest|AuthenticSequenceTest|CreatorFeeReinvestmentTest|CostFirstProceedsTest)$' --threads 1 -vv",
+      "exit": 0,
+      "log": "logs/contracts.log"
+    },
+    {
+      "scope": "restore seven missing executable artifacts",
+      "command": "CANDIDATE_RUN=1 forge build test/CreatorFeeReinvestment.t.sol test/FocusedERC20Callbacks.t.sol test/FocusedReleaseFlow.t.sol test/FocusedInventoryGas.t.sol test/InventoryBatches.t.sol test/ERC20Recovery.t.sol test/FactoryPause.t.sol --no-cache",
+      "exit": 0,
+      "log": "logs/missing-artifacts-build.log"
+    },
+    {
+      "scope": "previously omitted suites; three obsolete manual-rate fixture failures",
+      "command": "SOURCE_HASH=<34287edf...> CANDIDATE_RUN=1 forge test --match-contract '^(FocusedERC20CallbacksTest|FocusedReleaseFlowTest|FocusedInventoryGasTest|InventoryBatchesTest|ERC20RecoveryTest|FactoryPauseTest|CreatorFeeReinvestmentTest)$' --threads 1 -vv",
+      "exit": 1,
+      "log": "logs/omitted-suites.log"
+    },
+    {
+      "scope": "fixed fixtures and all three current scorecard producers",
+      "command": "SOURCE_HASH=$(python3 /Users/dd/.agents/guidance/asset-flow-kit/asset_gate.py . --config asset-flow-focused.json --print-source-hash) CANDIDATE_RUN=1 forge test --match-contract '^(FactoryPauseTest|FocusedReleaseFlowTest)$' --threads 1 -vv",
+      "exit": 0,
+      "log": "logs/pause-scorecard-repair.log"
+    },
+    {
+      "scope": "affected TypeScript and existing implementation verifier",
+      "command": "CANDIDATE_RUN=1 npx vitest run app/src/profit.test.ts shared/planner.test.ts app/src/creation.test.ts app/src/creation-replacement.test.ts app/src/ledger.test.ts app/src/transfer.test.ts app/src/tx.test.ts scripts/verify-deployment.test.ts scripts/deployment-preflight.test.ts",
+      "exit": 0,
+      "log": "logs/typescript-tests.log"
+    },
+    {
+      "scope": "actual implementation verifier file",
+      "command": "CANDIDATE_RUN=1 npx vitest run scripts/implementation-deployment.test.ts",
+      "exit": 0,
+      "log": "logs/implementation-tests.log"
+    },
+    {
+      "scope": "signed loss display repair",
+      "command": "CANDIDATE_RUN=1 npx vitest run app/src/profit.test.ts",
+      "exit": 0,
+      "log": "logs/profit-after-review.log"
+    },
+    {
+      "scope": "final typecheck",
+      "command": "CANDIDATE_RUN=1 npm run typecheck",
+      "exit": 0,
+      "log": "logs/typecheck-after-review.log"
+    },
+    {
+      "scope": "production app build",
+      "command": "CANDIDATE_RUN=1 npm run build:app",
+      "exit": 0,
+      "log": "logs/app-build.log"
+    }
+  ],
+  "owner_signature_commit": "9d0e79d"
+}

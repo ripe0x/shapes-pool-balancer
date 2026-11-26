@@ -1,0 +1,11 @@
+{
+  "balancerFactory": "0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671",
+  "block": 26497158,
+  "chainId": 1,
+  "keeperAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "packs": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+  "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "poolBalancerImplementation": "0x45754494B606f9E3AebfB9984330eC788A87eF76",
+  "renderer": "0xA998bE44f1f06E119523C33Bb0d65f45728Ea65A",
+  "reusedDependencies": true
+}

@@ -1,0 +1,179 @@
+No files changed, compilation skipped
+
+Ran 7 tests for test/CreatorFeeReinvestment.t.sol:CreatorFeeReinvestmentTest
+[PASS] test_closedPoolCanReinvestExactOpeningGapButRetiredPoolCannot() (gas: 8298800)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+[PASS] test_feeCreditCapsTopUpAndLeavesUnfundedRemainder() (gas: 7752867)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+[PASS] test_maintenanceUsesOperatingCashAndCannotAutomaticallyReinvestFees() (gas: 14240424)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+[PASS] test_partialThenExactGapReinvestmentLeavesUnusedFeesReserved() (gas: 8283475)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+[PASS] test_pendingDrawsCollectAtOldRateBeforeConfigEpochAdvances() (gas: 6642407)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+
+[PASS] test_reservedFeeAccruesDespiteBankrollLossAndPaysSeparately() (gas: 7306002)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+[PASS] test_staleMaximumCannotReinvestMoreThanCurrentGap() (gas: 8061906)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  actual_owner_receipts_wei: 66278634547026369
+  automatic_creator_rate_bps: 1067
+  reserved_creator_fee_wei: 7071930306167713
+  bankroll_loss_wei: 97190194207004119
+
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 3.67s (2.78s CPU time)
+
+Ran 5 tests for test/ERC20Recovery.t.sol:ERC20RecoveryTest
+[PASS] test_badTokenAmountAndRefusedTransferLeaveAssetsUntouched() (gas: 295881)
+[PASS] test_partialAndFullRecoveryPayOnlyCreatorAndPreserveOperatingETH() (gas: 181327)
+[PASS] test_pauseCloseAndRetirementDoNotBlockRecovery() (gas: 153403)
+[PASS] test_recoveryFollowsAcceptedCreatorTransfer() (gas: 227266)
+[PASS] test_senderAndOtherActorsHaveNoRecoveryAuthority() (gas: 44698)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 265.94ms (1.56ms CPU time)
+
+Ran 6 tests for test/FactoryPause.t.sol:FactoryPauseTest
+[PASS] test_freshFactoryStartsPublicCreationPaused() (gas: 30730)
+[PASS] test_onlyPolicyAdminCanPauseAndResume() (gas: 140586)
+[PASS] test_pausePreservesExistingPoolMaintenanceAndExit() (gas: 3646481)
+[PASS] test_pausedPublicCreationMovesNoETHOrNFTs() (gas: 254573)
+[FAIL: InvalidConfig()] test_policyAdminCanCreateCanaryWhilePublicCreationPaused() (block: 26382349) (gas: 1141635)
+[FAIL: InvalidConfig()] test_resumeAllowsPublicCreationWithUnchangedReviewedSettings() (block: 26382349) (gas: 1180402)
+Suite result: FAILED. 4 passed; 2 failed; 0 skipped; finished in 295.88ms (11.10ms CPU time)
+
+Ran 2 tests for test/FocusedERC20Callbacks.t.sol:FocusedERC20CallbacksTest
+[PASS] test_authorizedCreatorCallbackCannotDrainNativeWETHOrNonzeroCredit() (gas: 1442119)
+[PASS] test_threeAuthenticLaunchDrawsCollectCreditAndCloseCreatorAssets() (gas: 10140664)
+Logs:
+  replay_unsettled: 0
+  replay_next_sequence: 4
+  replay_last_sequence: 3
+  launch_setup_cost_wei: 72396898447862775
+  launch_owner_proceeds_wei: 66278634547026369
+  launch_closeout_return_wei: 4913643653057350512
+  launch_closeout_profit_wei: 7071930306167713
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 2.21s (1.42s CPU time)
+
+Ran 1 test for test/FocusedInventoryGas.t.sol:FocusedInventoryGasTest
+[PASS] test_maximumCuratedBatchGasAndConservation() (gas: 21328906)
+Logs:
+  20-item batch reprice raw EVM gas: 1574319
+  20 separate reprice calls raw EVM gas: 7005620
+  20-item batch withdraw raw EVM gas: 2085973
+  20 separate withdraw calls raw EVM gas: 7792137
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 316.28ms (33.77ms CPU time)
+
+Ran 3 tests for test/FocusedReleaseFlow.t.sol:FocusedReleaseFlowTest
+[FAIL: InvalidConfig()] test_focusedCreationPause() (block: 26382349) (gas: 1492299)
+[PASS] test_focusedERC20Roundtrip() (gas: 4284783)
+Logs:
+
+  FLOW BREAKDOWN  erc20_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+[PASS] test_focusedInventoryRoundtrip() (gas: 6981534)
+Logs:
+
+  FLOW BREAKDOWN  inventory_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+Suite result: FAILED. 2 passed; 1 failed; 0 skipped; finished in 303.41ms (25.53ms CPU time)
+
+Ran 10 tests for test/InventoryBatches.t.sol:InventoryBatchesTest
+[PASS] test_allBatchEntryPointsRequireCreator() (gas: 106895)
+[PASS] test_batchBoundsAndDuplicateIds() (gas: 728607)
+[PASS] test_refusingCollectionRollsBackBatchAndSingleWithdrawalStillWorks() (gas: 2404568)
+[PASS] test_repriceBatchSetsAbsoluteValuesWithoutMarkup() (gas: 491119)
+[PASS] test_repriceFailureRollsBackEarlierPrice() (gas: 402607)
+[PASS] test_reverseNameExtractionPreservesBalancerIdentity() (gas: 243060)
+[PASS] test_shapeRejectedAndPendingRealDrawLocksCuratedBatches() (gas: 2381182)
+[PASS] test_withdrawBatchReturnsExactNFTsAndClearsInventory() (gas: 498552)
+[PASS] test_withdrawMaximumBatch() (gas: 9867608)
+[PASS] test_withdrawRejectsInvalidRecipientAndNonCuratedListing() (gas: 317384)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 313.42ms (25.02ms CPU time)
+
+Ran 7 test suites in 7.43s (7.38s CPU time): 31 tests passed, 3 failed, 0 skipped (34 total tests)
+
+Failing tests:
+Encountered 2 failing tests in test/FactoryPause.t.sol:FactoryPauseTest
+[FAIL: InvalidConfig()] test_policyAdminCanCreateCanaryWhilePublicCreationPaused() (block: 26382349) (gas: 1141635)
+[FAIL: InvalidConfig()] test_resumeAllowsPublicCreationWithUnchangedReviewedSettings() (block: 26382349) (gas: 1180402)
+
+Encountered 1 failing test in test/FocusedReleaseFlow.t.sol:FocusedReleaseFlowTest
+[FAIL: InvalidConfig()] test_focusedCreationPause() (block: 26382349) (gas: 1492299)
+
+Encountered a total of 3 failing tests, 31 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 3 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger

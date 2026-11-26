@@ -1,0 +1,1005 @@
+{
+  "planHash": "ab445f763d9a028976e66627ffd08e957e9388d46fa9391b37a384b66e07707a",
+  "plan": {
+    "schema": "local-implementation-8545-v1",
+    "repositoryRoot": "/Users/dd/CascadeProjects/fwa-pool-balancer",
+    "revision": "3ff1ddd6f0311f57bd49d941b4f937615daeff7b",
+    "directory": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-playground/implementation-20261125205213044",
+    "planFile": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-playground/implementation-20261125205213044/bounded-plan.json",
+    "rpc": "http://127.0.0.1:8545",
+    "chainId": 31337,
+    "node": {
+      "pid": 28171,
+      "command": "anvil --fork-url https://mainnet.gateway.tenderly.co --chain-id 31337 --port 8545 --silent",
+      "forkBlock": 26485619
+    },
+    "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+    "previous": "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+    "deployer": "0x000000000000000000000000000000000001e001",
+    "admin": "0x000000000000000000000000000000000001e004",
+    "nonce": 7,
+    "gasCapWei": "1000000000000000000",
+    "maxTransactions": 5,
+    "fundingWei": "0",
+    "draws": 0,
+    "deploymentEnvironment": {
+      "REUSE_DEPENDENCIES": "true",
+      "IMPLEMENTATION_ONLY": "true",
+      "EXISTING_FACTORY": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "EXPECTED_IMPLEMENTATION": "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+      "KEEPER_ADMIN": "0x000000000000000000000000000000000001e003",
+      "POLICY_ADMIN": "0x000000000000000000000000000000000001e004"
+    },
+    "forgeArguments": [
+      "--rpc-url",
+      "http://127.0.0.1:8545",
+      "--unlocked",
+      "--sender",
+      "0x000000000000000000000000000000000001e001",
+      "--with-gas-price",
+      "20000000000",
+      "--priority-gas-price",
+      "50000000",
+      "--slow",
+      "--broadcast"
+    ],
+    "switchArguments": [
+      "--rpc-url",
+      "http://127.0.0.1:8545",
+      "--unlocked",
+      "--sender",
+      "0x000000000000000000000000000000000001e004",
+      "--with-gas-price",
+      "20000000000",
+      "--priority-gas-price",
+      "50000000",
+      "--slow",
+      "--sig",
+      "switchImplementation()",
+      "--broadcast"
+    ],
+    "factorySnapshot": {
+      "implementation": "0x940815eE17aa44E861bEfe77e6812EB0f2da9710",
+      "keeperAdmin": "0x000000000000000000000000000000000001E003",
+      "policyAdmin": "0x000000000000000000000000000000000001e004",
+      "keepersRestricted": false,
+      "pendingKeeperAdmin": "0x0000000000000000000000000000000000000000",
+      "pendingPolicyAdmin": "0x0000000000000000000000000000000000000000",
+      "economics": {
+        "workFee": "20000000000000",
+        "maxGas": 3200000,
+        "overheadGas": 60000,
+        "gasPriceCeiling": "5000000000",
+        "priorityAllowance": "50000000",
+        "restockGas": 910000,
+        "restockFlat": "200000000000000",
+        "baseGas": 200000,
+        "processGas": 1800000,
+        "reconcileGas": 150000,
+        "shapeGas": 700000,
+        "prizeGas": 150000,
+        "processGraceBlocks": 50,
+        "pausedProcessGraceBlocks": 10
+      },
+      "defaultBucketCapacity": "622000000000000000",
+      "defaultBucketRefill": "4166666666666666",
+      "productLimits": [
+        1000,
+        1000,
+        10000
+      ],
+      "creationPaused": false
+    },
+    "inputs": [
+      {
+        "path": ".gitignore",
+        "sha256": "5f733e345755e17cee743205f41dda47c74be71e7173bac3a291d2e6287f0fa2"
+      },
+      {
+        "path": ".gitmodules",
+        "sha256": "d728958dd78663d75e42eec6ae03a223fa3eb55dd0078ee2a9f4aa45cc856206"
+      },
+      {
+        "path": "OWNER-REQUIREMENTS.md",
+        "sha256": "36c598f7ced02bdc89d36391e98e029d21a0e9871ed007b519ee50d4f3303ae1"
+      },
+      {
+        "path": "README.md",
+        "sha256": "4d08fbf0b4f349d821376e86dfe5ef39376599101ee4d767d0ae63b760a7829e"
+      },
+      {
+        "path": "app/index.html",
+        "sha256": "b47e599dea9d1b2bb6f6771d6a523d706f5c4ebccd68357cf00fa2b5f37120cd"
+      },
+      {
+        "path": "app/public/favicon.ico",
+        "sha256": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932"
+      },
+      {
+        "path": "app/src/App.tsx",
+        "sha256": "5d7c66d56530f3c92afef663602d358d8604db2066acd68c21c09e1c6856aab7"
+      },
+      {
+        "path": "app/src/HowItWorks.tsx",
+        "sha256": "d3e26d090db4a7daf21ba969ef7025bfb41cadd8be5bce4c14090d1528a27a3b"
+      },
+      {
+        "path": "app/src/MainPool.tsx",
+        "sha256": "25d84dfa27e72415cc24b5833d4924c897db4bf8b2b2b7a83d780b6ec6e4db85"
+      },
+      {
+        "path": "app/src/PoolSettings.tsx",
+        "sha256": "dc368ad2677e0e054262649f3f973062b06e49f18ac0e2761edc36ffe156d871"
+      },
+      {
+        "path": "app/src/chain.test.ts",
+        "sha256": "24c77faee56a0d5a7944c17838e1583412b90417313aecc02ac0d3ef33a3fa8c"
+      },
+      {
+        "path": "app/src/chain.ts",
+        "sha256": "898e68224568eebe9c8c0652322f8758974b45e07cc49310ecb976d06e4de391"
+      },
+      {
+        "path": "app/src/creation-replacement.test.ts",
+        "sha256": "290ffc3428b85a2716ec9cdaa3aefdecd2507b1f166be2df6e85b281cbe38982"
+      },
+      {
+        "path": "app/src/creation.test.ts",
+        "sha256": "64918f981d152420017bf1d4c002cc2d7c8dfd38d016b4f3b72101c35d48b944"
+      },
+      {
+        "path": "app/src/creation.ts",
+        "sha256": "e574cc1157a083008c624a289df5a02866343d8b17a3c4b8cd1abfe9acb8ee5e"
+      },
+      {
+        "path": "app/src/errors.test.ts",
+        "sha256": "6b444bafd534f871b75171b88c269964fca98dac716d91e3b08447fb78bb072e"
+      },
+      {
+        "path": "app/src/errors.ts",
+        "sha256": "18632e393b666fc168f96c0729687b9223a0c25cbb3216fc0c0ded076afbb99b"
+      },
+      {
+        "path": "app/src/factory-creation.test.ts",
+        "sha256": "a7bfab43c7d03fa26fdb2550fbda87e9d26ffdd048f39712a48ae34868765252"
+      },
+      {
+        "path": "app/src/factory-creation.ts",
+        "sha256": "fdc87185bf5eacca9b2bac8c684d201d6ad27b8d7e68b1c05b93047ab15b8f8c"
+      },
+      {
+        "path": "app/src/inventory.test.ts",
+        "sha256": "1de3c971e412fff332fb0ec56367300b425244254894d3dfc9dca34fa46981f7"
+      },
+      {
+        "path": "app/src/inventory.ts",
+        "sha256": "af5ea06b2608dd492014a009ba95430079c492fd20a99a46c742e2b9a6c8c39c"
+      },
+      {
+        "path": "app/src/ledger.test.ts",
+        "sha256": "cb671b9189a37813d3ef2d51164a2735ddc116bf8018b24faa4da87b2a61e294"
+      },
+      {
+        "path": "app/src/ledger.ts",
+        "sha256": "b8a1f7cc0f9b0839b4809317c21f939a128d8081de6dcaa0e6a144470cdbee6e"
+      },
+      {
+        "path": "app/src/limit.test.ts",
+        "sha256": "e9df0be9a55c9d7b872637ee19c6ba5afaeca2174a78ac2d89f28afed6c355a4"
+      },
+      {
+        "path": "app/src/limit.ts",
+        "sha256": "515b255b1504009adb0cc14738ed51696468a71f8fb2ad01200cf641e7317c2a"
+      },
+      {
+        "path": "app/src/limits.test.ts",
+        "sha256": "4d24370b5173f21653b8be5b2436a7104b4bcf0308777d9378ac9d05336dfeda"
+      },
+      {
+        "path": "app/src/limits.ts",
+        "sha256": "5651a275890b6e2a7f0a58d0cb4be5a03443de5ce94cdd1e51d766f1d8615db2"
+      },
+      {
+        "path": "app/src/main-pool.test.ts",
+        "sha256": "af8ff4932077de409e5afab3fd56944740c92fae2d7f8adf680c49017ac6f1ab"
+      },
+      {
+        "path": "app/src/main-pool.ts",
+        "sha256": "eeed141aecdc37422b6532fd3b1f4f70896ee369582b252600cf4467e4ddea67"
+      },
+      {
+        "path": "app/src/main.tsx",
+        "sha256": "dbcb6e75bebba98fd697987302f093cff332c35207c0a67cc8ac643064c7c7cb"
+      },
+      {
+        "path": "app/src/nft-approvals.test.ts",
+        "sha256": "06141e7a0ee8d8d60d45c8dcdd7c4c2ad0a8b79b5eebcddbee34546d317135b7"
+      },
+      {
+        "path": "app/src/nft-approvals.ts",
+        "sha256": "65f1c437c7f078088f5b9309b797c4d63d573bf9e035176e5e39512fee4a50ad"
+      },
+      {
+        "path": "app/src/policy.test.ts",
+        "sha256": "206d68fb3e34f188daed8e7cbb1fb021ada0ba7c7b51533177f2959dbbbadf0a"
+      },
+      {
+        "path": "app/src/policy.ts",
+        "sha256": "9021f9b18b7d5d23fc764836199b985b5a160a55ca000efc3794ad57d55885ba"
+      },
+      {
+        "path": "app/src/profit.test.ts",
+        "sha256": "dcdd555a659fab11e0fd95840d73f209975ea568026f48d20a8cc30c04ed3779"
+      },
+      {
+        "path": "app/src/profit.ts",
+        "sha256": "c0f2608f2530d1002d53a10d3dd5dc8c3c445d56ebf789ec036cf9596b78957b"
+      },
+      {
+        "path": "app/src/refresh.test.ts",
+        "sha256": "00ae744c9de2377e9af8bedfc0b45b2213d1ce27767000eff3b414583571f3f8"
+      },
+      {
+        "path": "app/src/refresh.ts",
+        "sha256": "f2d54c75eccfbce7c1a88818ea77ea51091e564e97e28ea4deb69f69159c35f1"
+      },
+      {
+        "path": "app/src/styles.css",
+        "sha256": "8d8d484fb026559731f17f2657818ed788de862f6c1b3ca46e510aaabff04c8f"
+      },
+      {
+        "path": "app/src/transfer.test.ts",
+        "sha256": "7acbad90a8ae493bd762e623eb5f779d359d96c7ba1cbaa4f141949116314844"
+      },
+      {
+        "path": "app/src/tx-intent.test.ts",
+        "sha256": "44f0a7961af90c47a0e5e7bc926f5bf3d8756080236d8537c3ed8603f8f57903"
+      },
+      {
+        "path": "app/src/tx.test.ts",
+        "sha256": "a2f2aac8790d2997907be5d7dbfe20fb9ae4e09a0045bd8a7a483a76d7e7e3cb"
+      },
+      {
+        "path": "app/src/tx.ts",
+        "sha256": "b1a5d6df1ace48fc178d2736fe40b3a3d9cbf511851f9110316acc6f0c082037"
+      },
+      {
+        "path": "app/src/vite-env.d.ts",
+        "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5"
+      },
+      {
+        "path": "app/src/wallet.test.ts",
+        "sha256": "57961a980ecbd9b3bd8b321824f1369016018a9702e87e67abc955c7c16b595d"
+      },
+      {
+        "path": "app/src/wallet.ts",
+        "sha256": "d6c60917b2b0988942345e75c7e11ce5d49eec810d1719a92ad0a238edc3a962"
+      },
+      {
+        "path": "app/vite.config.ts",
+        "sha256": "5b22d3c4e62874e55807041140df4116a69ea633e45a5904fb44669dfea53775"
+      },
+      {
+        "path": "asset-flow.json",
+        "sha256": "0cdf355c0628f27262d12d764ed6ae66dcef9efd90751a9019eeb5c9daedecd2"
+      },
+      {
+        "path": "deployments/1.legacy.json",
+        "sha256": "4716923dbbc01393a825ec9e3ce95193710e401f71d76967e772b77b002c5abe"
+      },
+      {
+        "path": "docs/KEEPER-POLICIES.md",
+        "sha256": "cd89aa5054427afe32f715243c1a07eab2aefdfcf7c7afe25b2f113e1b9a8cef"
+      },
+      {
+        "path": "docs/OPERATIONS.md",
+        "sha256": "b65fed4b12513704120197a6cf5d5f89f58bc347aac9ea77170db0730dc90f62"
+      },
+      {
+        "path": "docs/RESERVES.md",
+        "sha256": "783919fe2cda1648147553a40268d86de8d38e7d143951979b4bf4ad3760b288"
+      },
+      {
+        "path": "docs/SPEC.md",
+        "sha256": "4273bb24fe2e525869789116f1c7c88183041f36c6d7a0b3d1f37d3135ef2814"
+      },
+      {
+        "path": "foundry.toml",
+        "sha256": "02605e47e05c956bebe8119fe6c50d102b22bf870c63457f5f90d7f8dcaf8a14"
+      },
+      {
+        "path": "keeper/Dockerfile",
+        "sha256": "835b52736f93ae89354e40d414ec9eca97da7b94f1020dd25d1c923fa521fdcf"
+      },
+      {
+        "path": "keeper/community-acceptance.ts",
+        "sha256": "e0cebc5b2020443b0d853dc73c9bc0f00b5e2f87d10348530e025273ac5d0d8f"
+      },
+      {
+        "path": "keeper/deploy.sh",
+        "sha256": "99f1049f91753951234eece742c6a651c7c0197a0d38520963fe91b257c85208"
+      },
+      {
+        "path": "keeper/devRandomness.ts",
+        "sha256": "52f0aea25dc20ed514153e5a1a9a281818570c60a4821c50f24651c68d3ea2ab"
+      },
+      {
+        "path": "keeper/e2e.ts",
+        "sha256": "6312290caf0772b98b9b3f9bfa0f1bdb75824f72179a94366a820b198051b8a9"
+      },
+      {
+        "path": "keeper/fly.toml",
+        "sha256": "52fb73ad72c4906bc9533ee9cf4d1fb3bb8df3d191772e916a740a7f5cd3cc16"
+      },
+      {
+        "path": "keeper/keeper.test.ts",
+        "sha256": "2afd2ad362390b766328f7d8c949d169601c9bf7086cc942ae64c9659daeb492"
+      },
+      {
+        "path": "keeper/keeper.ts",
+        "sha256": "ded47edf5f738aaff533dbca591c18cea0615169c573a2d6676b1042dc8744ae"
+      },
+      {
+        "path": "keeper/rehearsal.ts",
+        "sha256": "c2afc3628d97bb5dde2f9a55e316e743435b109c8ff11b022c4a090bbd05b050"
+      },
+      {
+        "path": "keeper/reserve-economics.ts",
+        "sha256": "301e1766ffa3e46d1b162ffcbee4ce04f63e6e02d26aecda14d24bd87b2f75ef"
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "313ac4f309179fadd4fb82f21be410abea54aea15200e40709820e4fc13b1b02"
+      },
+      {
+        "path": "package.json",
+        "sha256": "3a96adddf9ccc90bd63e7c54e5b1ddb502d3e58050a58d72cc50b49c3393b441"
+      },
+      {
+        "path": "script/Deploy.s.sol",
+        "sha256": "b0728c14946c3352afc12451683352b27b1d616add25576853ea08f21d38d2e4"
+      },
+      {
+        "path": "script/DevSetup.s.sol",
+        "sha256": "bf6445e472d44637621885340f043d0dc2246ed3ecf00fd2380881050695c98e"
+      },
+      {
+        "path": "script/d6-price-caps.py",
+        "sha256": "0c0006084209145145a12745d7f0791d2bf0abcaa610d655f4711cc7582d0bd4"
+      },
+      {
+        "path": "script/deploy.sh",
+        "sha256": "d2c1142f1b23330c712498d00030d622b0c6cb245a1b9f6731a5e15f81caa926"
+      },
+      {
+        "path": "scripts/approved-local-readback.ts",
+        "sha256": "d032d2edfcb0d23a39bf21016a645bbb1ed2dd4d7a1f60de007bb5a3e9b2d116"
+      },
+      {
+        "path": "scripts/approved-local-rehearsal.ts",
+        "sha256": "87994db3efa94aa8557cf8e430cfe07587a1e938fc62b66854e95597f0be3e72"
+      },
+      {
+        "path": "scripts/canary-guard.test.ts",
+        "sha256": "c8472f88cbc106f124c412a271c84d64daff108e11f110a0c83101d64cef5a88"
+      },
+      {
+        "path": "scripts/canary-guard.ts",
+        "sha256": "ac7195b136856b113b86a37a0dfafef2c60c216cfe7e990766a390e493598188"
+      },
+      {
+        "path": "scripts/collect-authentic-vrf.ts",
+        "sha256": "e922760287a20101055991249c38998b89ef955e9668cd67a925c3d042db449e"
+      },
+      {
+        "path": "scripts/current-local-rehearsal.test.ts",
+        "sha256": "34f31d5a96ee495331da82b377c62e79cb9084f49e5bacf0b39ce106d7c5de24"
+      },
+      {
+        "path": "scripts/current-local-rehearsal.ts",
+        "sha256": "fd8d546bdcb36d68b76e456aff567445d7b85bf3e55300277313b93264359a20"
+      },
+      {
+        "path": "scripts/deployment-preflight.test.ts",
+        "sha256": "c635668924acee7c3117e0059bbe4630e98a5fb24085d92f38a73d1cd19df4f6"
+      },
+      {
+        "path": "scripts/deployment-preflight.ts",
+        "sha256": "556e3c179993f8035d32c97339913713df3bb1daa44486e4264fed90202d09bc"
+      },
+      {
+        "path": "scripts/export-abi.mjs",
+        "sha256": "5f6f1e36a09a6e99480cab506d40107155b8f9043d42915b2b026e942c93ebe4"
+      },
+      {
+        "path": "scripts/export-main-pool-abi.mjs",
+        "sha256": "d7ff602847377bc1a967676cddeabce5671d945b77ee706a82cdce400bfa818d"
+      },
+      {
+        "path": "scripts/implementation-deployment.test.ts",
+        "sha256": "3fe694713fc7f1cab1f11e6e5ad68c964098987d167075537384a84222b6a23c"
+      },
+      {
+        "path": "scripts/inventory-acceptance.test.ts",
+        "sha256": "5253d805c736092ff3595cf654c73c10356c5bd2a61a25ddf029522235da5c9f"
+      },
+      {
+        "path": "scripts/inventory-acceptance.ts",
+        "sha256": "2afbd1255983956eb981da0162a71e407eaff5658423ee740bae46a018fc2429"
+      },
+      {
+        "path": "scripts/local-draws.ts",
+        "sha256": "14f0e59b7be343f597b3e9837dbce39bf4360953ffc1f6337fca663715a7662c"
+      },
+      {
+        "path": "scripts/local-implementation-update.test.ts",
+        "sha256": "dd7428140e9d27d1a476e1d9bc90557b284a850ffbbfb201ede1875da0768609"
+      },
+      {
+        "path": "scripts/local-implementation-update.ts",
+        "sha256": "6cbb4ccb8a637b92e65f50184bb34056113a683ffd3a0acae662c9fe102ce7bd"
+      },
+      {
+        "path": "scripts/local-playground.test.ts",
+        "sha256": "e6f54a02d06e971c4feca22ccbd02d7cb9d90903e98741cef4b28620658ec006"
+      },
+      {
+        "path": "scripts/local-playground.ts",
+        "sha256": "786725308a28642f79c24dc357606ad8c1c1233402909eb6bc7dd68c848555ea"
+      },
+      {
+        "path": "scripts/local-rehearsal-gate.test.ts",
+        "sha256": "e4275dca94cb55ad657f90e203288a2b64288feb15d75b53059f77bf2f07f198"
+      },
+      {
+        "path": "scripts/local-rehearsal-gate.ts",
+        "sha256": "69935d7bfe0296de563f515e2824c9e7c28164b1e8d68be0c232fd1eef8dff56"
+      },
+      {
+        "path": "scripts/local-simulated-draws.test.ts",
+        "sha256": "4caaa94c9238b3a9d0e9798fd0c457dc22d080a062bb4bfa68eb09c1872f9f9a"
+      },
+      {
+        "path": "scripts/local-simulated-draws.ts",
+        "sha256": "165c0f54d2410f2195909b2ae7e2be769e57fe2ae315b2b13239ed020181a940"
+      },
+      {
+        "path": "scripts/prepare-local-rehearsal.ts",
+        "sha256": "b477cf3fd5328bda0313787fd78ec4710546ef2b7fd72a6bd4b3cf9c6d2d7528"
+      },
+      {
+        "path": "scripts/run-local-rehearsal.ts",
+        "sha256": "53419ff40eaf025fcf7c4382d4e89ccddf6339d590fccb593ab6610bb60eb2de"
+      },
+      {
+        "path": "scripts/test-flow-reporting.py",
+        "sha256": "c64374d3093442fbb751de11e3b0057ca187cbac33874e2676fcac3e6161347d"
+      },
+      {
+        "path": "scripts/verify-deployment.ts",
+        "sha256": "efd612b9b00b9101d125019f32993fba2b8b4c09db320bd19f023c0fd81afab2"
+      },
+      {
+        "path": "shared/abi.ts",
+        "sha256": "773e2a7f87f6d9b99ed9bfff0e1769958e74aaa75c474797679b2d62d6496446"
+      },
+      {
+        "path": "shared/design.test.ts",
+        "sha256": "33762f305a34440ec0b0403805ae5dedfb0bb87e6e013bb13c7c05b22fc60a4a"
+      },
+      {
+        "path": "shared/design.ts",
+        "sha256": "4f746657a3093de830cd3827b6c78f26c71e86d2354966d7d717be6b3b4c3f86"
+      },
+      {
+        "path": "shared/legacy.ts",
+        "sha256": "b45b1a829bd03f8284b967baa6eb29b1ed7efb3f6612aade8fd23b88aa21d833"
+      },
+      {
+        "path": "shared/listing.test.ts",
+        "sha256": "45031fda5a85490ab12ee764f182b5e8c09393069d4d2e0e30d3a5a17562926a"
+      },
+      {
+        "path": "shared/listing.ts",
+        "sha256": "8ddc5e3d9a78b1ebe1a39b499d887c2ef09670c7a2669fd65779c22872824e47"
+      },
+      {
+        "path": "shared/main-pool-abi.ts",
+        "sha256": "0f6b07065f051a4051a265cf6ca12c562a4c27137979e2b76b9f9d199e332b61"
+      },
+      {
+        "path": "shared/planner.test.ts",
+        "sha256": "b25e93df02643151b41f27cfd792ddcab04d4c34e4abb30b0d73760ca580a57f"
+      },
+      {
+        "path": "shared/planner.ts",
+        "sha256": "01e280557e29b90d3940369619ddf392e346081b69f61bf549f1cce3a3f77f40"
+      },
+      {
+        "path": "shared/policy-money-path.test.ts",
+        "sha256": "2d57596569f6c129a5dd7773a2a4abe2f1ce47806b403856b31ba3c4da92e878"
+      },
+      {
+        "path": "shared/policy-quotes.test.ts",
+        "sha256": "d3adee3f26fd0ab8dc5b8badd7667d227a5ab18915bacbae434683c9ee8ed395"
+      },
+      {
+        "path": "shared/policy-simulation.test.ts",
+        "sha256": "9262ec795b6d9e15b8d89cb34e81eae5fb1d338b88bd655f47014fd2c9956635"
+      },
+      {
+        "path": "shared/reserve-capital.test.ts",
+        "sha256": "d4cc8d695e9d1263fa822af295252775cfcd3c014cdb4696f5617e2e0a8ccb30"
+      },
+      {
+        "path": "src/BalancerFactory.sol",
+        "sha256": "8c68c7b14292bc30035c74ead8c7e37ebdcdf22d9d979b259bdedd40a404643c"
+      },
+      {
+        "path": "src/KeeperPolicyCalls.sol",
+        "sha256": "126ad06384c63c0d30be81cd9851a266b658b4a459d1d341333095f5de4223c3"
+      },
+      {
+        "path": "src/PoolBalancer.sol",
+        "sha256": "10e32be6cdca4f56f553d9fa2aed3e3de921f0404f93abd32b9c4e389bf0fb5c"
+      },
+      {
+        "path": "src/PoolInventory.sol",
+        "sha256": "31a94d98ec6baf7e8526ad4c33b149a052fe6c2e91ff110fdc3e352bb6b27b07"
+      },
+      {
+        "path": "src/PoolPage.sol",
+        "sha256": "5f82cdeca0e3d0a685a6a2535543e155dd9ce52774862dc27d0e89b69a55f4c5"
+      },
+      {
+        "path": "src/interfaces/External.sol",
+        "sha256": "4d4a3316ef85e104543a635e80386c6095287ddfda5e4a6ecc64ac87e0bc54db"
+      },
+      {
+        "path": "src/vendor/PacksBuild.sol",
+        "sha256": "15ec15fd2482a1e1c8e5fbb8d3b659cd7d04d4f45b417837a0569140ba4b8b84"
+      },
+      {
+        "path": "test/AuthenticContinuation.t.sol",
+        "sha256": "5b88c0948735256d08b03e0b2b7da1fc93a068f6d8d26a993c80f2175dc5b1eb"
+      },
+      {
+        "path": "test/AuthenticEconomicFlows.t.sol",
+        "sha256": "505ef3804138481a4a2d88c4a206140d5df3ae0aabc4754827b8d205e80620b0"
+      },
+      {
+        "path": "test/AuthenticRefundRecovery.t.sol",
+        "sha256": "51703cfb5fdfcb01213b3af59c2c5a2c6cbbce4086ab7a3c6365ef4821dab212"
+      },
+      {
+        "path": "test/AuthenticSequence.t.sol",
+        "sha256": "ee209088f03e254f0bda8d48d4318e6a5efe36a107f507e8e12ef7c49280f779"
+      },
+      {
+        "path": "test/Balancer.t.sol",
+        "sha256": "b4dd59bf707d8351d283acd8a018c8debe9c5bf210e3ce4a9b867c0732a3a16e"
+      },
+      {
+        "path": "test/BatchSlippage.t.sol",
+        "sha256": "a210ba64c8187652da36c2072396ddb79a2cf6b35c3b4fa7031e6370eb40b262"
+      },
+      {
+        "path": "test/CommunityConfigAcceptance.t.sol",
+        "sha256": "fcbb0208ea0aba71731219b1f0f4ea4c295d5f710ae6bb4bbd254e51e69dbe30"
+      },
+      {
+        "path": "test/ConcurrentRecovery.t.sol",
+        "sha256": "965b8edf6a3c1dfb1bdc84e158332f8bd558603d3ded0fcb0efaba7fce45904f"
+      },
+      {
+        "path": "test/CostFirstProceeds.t.sol",
+        "sha256": "e73cf9ed13c539174be897b00f5a7ccca12fb9687f47072078419901896d4da0"
+      },
+      {
+        "path": "test/CuratedAdmission.t.sol",
+        "sha256": "c3eeadde51f93c906a034a599e0658011d6eae8ce032323ce7a4a6a4aec43106"
+      },
+      {
+        "path": "test/ERC20Recovery.t.sol",
+        "sha256": "d149a07aac9fb7fdd81979e70a15a3cccc2777271dfd5006d2de84c2901bd93d"
+      },
+      {
+        "path": "test/EconFork.t.sol",
+        "sha256": "906dbd5fd344f9abf02c39beab9c76f2af5c7c302e6a9d1889d1bd86fd639211"
+      },
+      {
+        "path": "test/FactoryPause.t.sol",
+        "sha256": "01491347077ac2055c5101034cb76c719daf1827e9695090b14ae3257497d739"
+      },
+      {
+        "path": "test/FlowReporting.t.sol",
+        "sha256": "9a1e31943015acb98ba34137c1c07d36a8a061a276b97ad78ad320dbb8cab655"
+      },
+      {
+        "path": "test/FocusedERC20Callbacks.t.sol",
+        "sha256": "d66e2ca5acb396fb2ccd5a265a55b565e82d50f4474eb8a80a751b92ce1135eb"
+      },
+      {
+        "path": "test/FocusedInventoryGas.t.sol",
+        "sha256": "2be2f2bf71dc75c218abda564fce425c71e04182496e2ba8cbf28fdb0d019221"
+      },
+      {
+        "path": "test/FocusedReleaseFlow.t.sol",
+        "sha256": "1ba8c51be9fd4a22609e9285a4fe5d4333dff7e1b0bcae1204695ffd03618754"
+      },
+      {
+        "path": "test/Fork.t.sol",
+        "sha256": "5035cc58787f1bf3176cb70ad613dc6437edf0d0491101da61fb131e726f7bb2"
+      },
+      {
+        "path": "test/ForkContext.t.sol",
+        "sha256": "b27ed28ace9dab36aa247633af95fe120cc784ae586c3c88014e3d40e2d39ad0"
+      },
+      {
+        "path": "test/Gas.t.sol",
+        "sha256": "ed29dffddc09756c8b179ed54debd6098edc782f84f623469ac342db433b8a39"
+      },
+      {
+        "path": "test/Hardening.t.sol",
+        "sha256": "ea7f10da2394c63bd4406604251ec4d175058984714890fc1703bcbc1cd444fa"
+      },
+      {
+        "path": "test/HostileCollection.t.sol",
+        "sha256": "5b16458170eec9596a2a6083671194334c1980ebed72e853ea42eac39e14237b"
+      },
+      {
+        "path": "test/Invariant.t.sol",
+        "sha256": "019685b09903414a5029eb58f9d012b9ac775f7e36bcb204165858281bcdbf39"
+      },
+      {
+        "path": "test/InventoryBatches.t.sol",
+        "sha256": "c8cf2dea6d1f334984ca5838e84ce4cf7678d4af0397092c474acfceb61e663d"
+      },
+      {
+        "path": "test/KeeperAdversarial.t.sol",
+        "sha256": "585870c0e840d3c5a591689a5d8a27eb48e8141ed4192436e12e592f664aaaf3"
+      },
+      {
+        "path": "test/KeeperEconomics.t.sol",
+        "sha256": "5defd6a377414f59ff97ac83a328c8d3980d3be05d04ddb43bfd7f813d32e362"
+      },
+      {
+        "path": "test/KeeperList.t.sol",
+        "sha256": "de572d55e23ae0320b17f6faa5c25cebb8b784d5d212c270b0bb36a4583686aa"
+      },
+      {
+        "path": "test/KeeperPay.t.sol",
+        "sha256": "968c66ed0cf8363663fb7157e76e40ce95c0d3d37ecc5e3a6e05b58bd47e2bca"
+      },
+      {
+        "path": "test/MintFeeChange.t.sol",
+        "sha256": "2b481b7c09e8c2ed96f344893f9663fd6d0e36b1e2d035da79eec652555b2606"
+      },
+      {
+        "path": "test/OptionalCurated.t.sol",
+        "sha256": "e7199974acec0268d6cb2c729a73537fae539f6d24048363bc81ce73930f787f"
+      },
+      {
+        "path": "test/Packs.t.sol",
+        "sha256": "41da5d90a25bb2e7c805d7eba3e478495a7032aa5a8335b8cbc03daf53befda0"
+      },
+      {
+        "path": "test/Parity.t.sol",
+        "sha256": "d5e74ccd271899500aa3b1182945d768d9f70df6502721fecd41d6075cc15c75"
+      },
+      {
+        "path": "test/PolicyEconomicReview.t.sol",
+        "sha256": "92d1aa761e793539b94ef729b27a3a531c45d67c0375e5604da095846d050309"
+      },
+      {
+        "path": "test/PolicyLifecycle.t.sol",
+        "sha256": "53e08182e903d05ab65ac728195356b61696922643e7dc7fddc4c1c60d6943aa"
+      },
+      {
+        "path": "test/PolicyModelParity.t.sol",
+        "sha256": "d6746d3e1f3a82075005194f0bf797b8a3fd64488c4207bfbd5087abf5696be4"
+      },
+      {
+        "path": "test/PolicyPreview.t.sol",
+        "sha256": "8574012899d41c6e8fe5182037681a20cf1e8860d5ab881c1386ab6b5b05961b"
+      },
+      {
+        "path": "test/PolicySecurityReview.t.sol",
+        "sha256": "58f5909c396d3ed99ff911b2f72b939dc7629aef4659fd3e02ad4d91b107056f"
+      },
+      {
+        "path": "test/ProcessQueue.t.sol",
+        "sha256": "6697aebe623ef7599002b6f6dbb7aa237ee176de872bc68f211efd927f0679f6"
+      },
+      {
+        "path": "test/ProductLimits.t.sol",
+        "sha256": "17951cb6520ae0a04b21c4667e919ff06e14abc44a171028633f507918dd8801"
+      },
+      {
+        "path": "test/ProtectedRevenueAtomic.t.sol",
+        "sha256": "f528cdbbe44fab063c86e80458f4ff7c3ce5c876e664c8f661dfa414ddec646c"
+      },
+      {
+        "path": "test/Reserve.t.sol",
+        "sha256": "0b3455d5e0148b785543367b204bc6f2b9ddfc65f980bf7d4ff618920acddb23"
+      },
+      {
+        "path": "test/ReserveCapital.t.sol",
+        "sha256": "a8ded488a2894c33849d0e3e689ade1df246ff72be81b5ab9beeeb0bd3dda9cf"
+      },
+      {
+        "path": "test/ReserveCapitalMatrix.t.sol",
+        "sha256": "77b1025f9ba33f6d1c7aee2a3d892ce07f5bfb4c00b0e5c8c07a7c4bd1fd04eb"
+      },
+      {
+        "path": "test/ReserveEconomicReview.t.sol",
+        "sha256": "85a2f3160e2c394d482c7be92aca2b426027c19c28ff051b0066c8e0a281d0ee"
+      },
+      {
+        "path": "test/ReserveSecurityReview.t.sol",
+        "sha256": "8227973cbe00c33cc68a73aa00d19aea59698de9edcbc9eaecea8f50a8341fab"
+      },
+      {
+        "path": "test/SelectableInventory.t.sol",
+        "sha256": "2a3423ea3464f565921807bdd2ae1df9320dae092d12c060e69f3d2abf01f311"
+      },
+      {
+        "path": "test/Settings.t.sol",
+        "sha256": "278ba8629c32283e55389ece1772cd9725df21ff569b6d8be62871fd7aaa6d47"
+      },
+      {
+        "path": "test/audit/D3ReAttack.t.sol",
+        "sha256": "350284a95f6c971469f6289f3054a8d65a391a5879bc75c61f0b9c5a5d5d1559"
+      },
+      {
+        "path": "test/audit/LaunchB.t.sol",
+        "sha256": "a8235addbf21b1985fbb57a82a43854f0910396d5612c7b0ca8289efca5172b3"
+      },
+      {
+        "path": "test/audit/LowBalanceHoldProbe.t.sol",
+        "sha256": "9181a625a1946ac8e2e717660749dd7d7d88d900ba9b9e82e9bdb422ea46d725"
+      },
+      {
+        "path": "test/audit/NormalGasBoundary.t.sol",
+        "sha256": "3c838a0d37c5a1a50cd9fd8a1014469ba06dbd9d769fe1250d52ca7050deb3ec"
+      },
+      {
+        "path": "test/audit/O10Ratios.t.sol",
+        "sha256": "9df1331901ad1a2a865db1975ca0c1f231bb0527a6faca9a080f614f45f7c33c"
+      },
+      {
+        "path": "test/audit/OwnHoldChallenge.t.sol",
+        "sha256": "b43aa20c0399e6488ed1b736c340484b9e988117e8810ec0af4c7f345159e16e"
+      },
+      {
+        "path": "test/audit/TopHeavyGateChallenge.t.sol",
+        "sha256": "3e72f00fe8826d5fe4634799e3e261509f7f43f2e72076ba0012d7c0053f21b9"
+      },
+      {
+        "path": "test/audit/d16/ClosedHold.t.sol",
+        "sha256": "160f4a02dcdce41a6544fdc030cf1badabd4f532d4a0e45fda96f042fe75b24b"
+      },
+      {
+        "path": "test/audit/d16/NaturalReserved.t.sol",
+        "sha256": "71d0e105a13157d4d92c42dede022709586ce92645e83f8dae1505cef84e1e43"
+      },
+      {
+        "path": "test/audit/d16/Stall.t.sol",
+        "sha256": "9440a3b0366ab46265295f20dd17da35fb3a4e4db70c851f80ef2bb2d7411968"
+      },
+      {
+        "path": "test/audit/d16/Starve.t.sol",
+        "sha256": "a439e48f395c2ec830583a42b2553d59569efa5048a5dbf16993f047e5eb4d6d"
+      },
+      {
+        "path": "test/audit/d16/WorstUpkeep.t.sol",
+        "sha256": "1e30da7a560e0d83695a1b26e009ad11ab0f1048eaed1562d90c66ec32e53148"
+      },
+      {
+        "path": "test/audit/d16b/ClosedHoldHostile.t.sol",
+        "sha256": "4ee47a51656c936db0639067bd79609819d1de015fdfaa8642b11b0a063c589e"
+      },
+      {
+        "path": "test/audit/d16b/EstimateStarve.t.sol",
+        "sha256": "6dcaba459d4f2f8a22fc317ff8760409fd62cfbadf6915ca127ad816c385ebfd"
+      },
+      {
+        "path": "test/audit/d16b/GasLimitWindow.t.sol",
+        "sha256": "66bb7ad66f8f671f0d6ff1e4d3d878f09d6c766fe93429706b864ee799427378"
+      },
+      {
+        "path": "test/audit/d16b/SustainedPlay.t.sol",
+        "sha256": "96f4cfee190ef2aed0e934413d5db7ec8881d8d95e1587e209adab3e93a9e35e"
+      },
+      {
+        "path": "test/audit/d16b/WorstUpkeepB.t.sol",
+        "sha256": "8b0ecc9fec32771595d153e3fe2b177b0a89ab15a4467109f411bdf654b1e803"
+      },
+      {
+        "path": "test/audit/d16c/EstimatePolicy.t.sol",
+        "sha256": "910b09a8cfd4bf98c21057aeb6bcc574b8ee612cc4330fa0b360c47ad621f3de"
+      },
+      {
+        "path": "test/audit/d16c/FineSweep.t.sol",
+        "sha256": "d4ec7c35da93527fe6c9da6c9bff8e5ab4d1f939d695b7370b50a5c55a94f1a9"
+      },
+      {
+        "path": "test/audit/d16c/GasGate.t.sol",
+        "sha256": "ee7ec6d9661e5da850300426682d2f048dd5b98eaf35a8e16372f5fbc8d82fb0"
+      },
+      {
+        "path": "test/audit/d16c/StarveAbove.t.sol",
+        "sha256": "3db93cb31c6e9e7251768bec96af31a35ad6c267dc73caa6d39a07beec7f2a17"
+      },
+      {
+        "path": "test/audit/d16d/CatchMargin.t.sol",
+        "sha256": "d3dbf7b48c6f616e605c60bb3a21eae678492f86dee54405578676e508509f95"
+      },
+      {
+        "path": "test/audit/launch-A/AdmissionBoundary.t.sol",
+        "sha256": "c6fa37de078d21953020f1124acd7b91d7d25e189a9045fe78d13e5d9f1b0165"
+      },
+      {
+        "path": "test/audit/launch-A/RecentBlockLifecycle.t.sol",
+        "sha256": "0dd5d47cdfc68d2ce0b90875bfbe91d7612fdf7e056eeae4283582dab83460a5"
+      },
+      {
+        "path": "test/fixtures/authentic-vrf-proofs.json",
+        "sha256": "363ff135b43059cfbb9705926497ad1c3249464ec7b91771212092023d80a7da"
+      },
+      {
+        "path": "test/fixtures/flow-reporting.json",
+        "sha256": "bf0c57b2883e527e9063cfba656f3249ed9273d7a4d046e37b03f91c0e260134"
+      },
+      {
+        "path": "test/fixtures/fwa-service-fees.json",
+        "sha256": "2d2005a7e78371a58eb5f29041828c3e8323ef5a36bee22522ae7f92a96a61e5"
+      },
+      {
+        "path": "test/fixtures/keeper-enforcement.json",
+        "sha256": "29cdc782d903c5449892702862c932d85bee6ee5bbac74afacde382ef5b37402"
+      },
+      {
+        "path": "test/fixtures/keeper-policy-money-path.json",
+        "sha256": "b728371fd2bdfdae5a1c301ddf99daf221a306d3215c90c80ba1eae7e7df3cb3"
+      },
+      {
+        "path": "test/fixtures/keeper-policy-quotes.json",
+        "sha256": "242d3085575fe27dbe368e97c62866ed6bfb8a6fb84376bb9b3071db32317014"
+      },
+      {
+        "path": "test/fixtures/keeper-policy-v1.json",
+        "sha256": "c50dd7256929f3a77386d37d7d7e0994e213bd60d12ab78131c3de8ae928928d"
+      },
+      {
+        "path": "test/fixtures/parity.json",
+        "sha256": "3fd7425209012c6afc41ecb021dd21e2f515796afa878a5f2da028696e10e4bb"
+      },
+      {
+        "path": "test/fixtures/reserve-capital.json",
+        "sha256": "6dfc9a5af9c36124095d4128dea5b4cc2001abdbd9bd926fc6073f51855ea123"
+      },
+      {
+        "path": "test/scenario/FlowBreakdown.t.sol",
+        "sha256": "6b8214d5a3b51050ccbd93dd702394524f155bd8504006789e3a74b554d72cd8"
+      },
+      {
+        "path": "test/scenario/PriceCaps.t.sol",
+        "sha256": "483d22fd3a7ee2d091eab248ca6da62da62172d215147d7463e85240ee4a20ab"
+      },
+      {
+        "path": "test/utils/FlowBreakdown.sol",
+        "sha256": "64a7a87d5f98ab9707e5380c6d43907db4a987240e97b8cb26102dea08a94e07"
+      },
+      {
+        "path": "test/utils/ForkBase.sol",
+        "sha256": "b2da46837092a2dd4aa773f3f7125d2900719b491b94030fb7066740be7115e4"
+      },
+      {
+        "path": "test/utils/ListOne.sol",
+        "sha256": "0e75dbd863a11e25d9df2fde191ab17449937a80e4dc31ac5dae79a2518ee04a"
+      },
+      {
+        "path": "test/utils/Mocks.sol",
+        "sha256": "05ece02fdfb66c83ba43928c8788f97d774e914692f68eb6a6a97f215d98751c"
+      },
+      {
+        "path": "test/utils/ReceiptGas.sol",
+        "sha256": "1b588acfa23152b9cbd4b9cb7ea3b2c15e1965e97b795d8b361885e24675e13f"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "736927b484d2ce6c3fec08cd842011b469366bc6420291df40d0e083534a6c71"
+      },
+      {
+        "path": "vitest.config.ts",
+        "sha256": "5ab620efc566e282363f30531ddcc3a4d0f2cf6536ae8c49cb128bb60f10ad78"
+      }
+    ],
+    "dependencies": [
+      "dc647cc030d9d65910d8f1172a0cde48d7106e32 lib/forge-std (v1.17.0-10-gdc647cc)",
+      "3a463f750eee56b0ca175999f184a32909173780 lib/shape-packs (heads/main-1-g3a463f7)",
+      "1b84c102a6603ca9751d863ff259b08870d22a6b lib/shape-packs/lib/shapes (remotes/origin/claude/auction-contract-deployment-59baac-3-g1b84c10)",
+      "acd959aa4bd04720d640bf4e6a5c71037510cc4b lib/solady (v0.1.26)"
+    ],
+    "runtime": {
+      "node": "v22.19.0",
+      "binaries": [
+        {
+          "path": "/Users/dd/.nvm/versions/node/v22.19.0/bin/node",
+          "sha256": "0d005c18e095027ca8f9fe1cc1126f767ee4ad7b004f4d6fb781ec4228a7c5d1"
+        },
+        {
+          "path": "/Users/dd/.local/agent-guards/bin/agent-guard",
+          "sha256": "19f8c6fa96f74d6da8f594fba4e8785f8e1ba99e8039118c4c5ed5b3d4758c4c"
+        },
+        {
+          "path": "/Users/dd/.foundry/versions/foundry-rs/foundry/v1.8.1/anvil",
+          "sha256": "cad9ae8b74a37fd417e2b8d29b2caca869ba10fd015a1e92059ed15973188e66"
+        },
+        {
+          "path": "/Users/dd/.svm/0.8.28/solc-0.8.28",
+          "sha256": "81515b0e53deaa266d549545ccaac0a5a96e6d4e8201c77f673b2c710976d9ea"
+        },
+        {
+          "path": "/Users/dd/.foundry/versions/foundry-rs/foundry/v1.8.1/forge",
+          "sha256": "2ffdebdfb9fd8c8992412f555133519ab3933cb48f042bce96d71f547b2facec"
+        }
+      ],
+      "installedLock": "4ed1691e8e736c30fc9d836897427ebc661704bfdecf9ea1ce6b746553fcd189"
+    },
+    "artifacts": {
+      "out/KeeperPolicyCalls.sol/KeeperPolicyCalls.json": "0e9eb5d10ef15b936f6d99e6e3a971c47275a4c7b4360131ff4bf5319976f635",
+      "out/PoolPage.sol/PoolPage.json": "a8cae1d6fc3e7f2e471740b82bcd730151630060d329446c56ba15ddff78d11b",
+      "out/PoolInventory.sol/PoolInventory.json": "a6b6b5a657e5066a5552cfb87330ccf8dc7d0e4e5c3180f98274df46635d6800",
+      "out/ShapePackRenderer.sol/ShapePackRenderer.json": "b2bc785962aa79194c377c3bf6f46b3c805b5a5f3a712ac36a9fcf156e8a3a97",
+      "out/ShapePacks.sol/ShapePacks.json": "454ec6e584de4d167e8bcb41f74736c15aece1e252cdc8f38e43d974f7eb7bbd",
+      "out/PoolBalancer.sol/PoolBalancer.json": "db68e9f5d3af9341fadb3b7b4a49868b1b9440b53f0852181651639c9e4b8522",
+      "out/BalancerFactory.sol/BalancerFactory.json": "2c5e8a0e86ec10125efb80f68196b86529f3d2d3b4587c56b1b0960401d56e4d",
+      "out/DevSetup.s.sol/DemoNFT.json": "2a4d5a774c88ceb9e1540cc066ae50c94caee9b1f1bad0204ff8c35445ce2247"
+    },
+    "sourceFingerprint": "2c6e57609e62b6c1130b9383ab16e0e732956394513b1dddcd49f8be15e43859",
+    "simulationRoot": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-H6O0Om",
+    "deployment": [
+      {
+        "index": 0,
+        "nonce": "7",
+        "type": "CREATE2",
+        "name": "PoolInventory",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+        "predictedAddress": "0x24cf2635b6ccaa2cbf8957a39b0cc923f4c4f42f",
+        "constructorArguments": [],
+        "gasLimit": "4874612",
+        "valueWei": "0",
+        "inputHash": "0x6d79ec42b26db92550ffe063fb010b2d909e5086de86befba020a56972d5c9b7",
+        "runtimeCodeHash": "0x9e880f7a8d3a0f0f52415c885078058026db2b0c00b45593b43d0875e35f47d9",
+        "runtimeBytes": 16047
+      },
+      {
+        "index": 1,
+        "nonce": "8",
+        "type": "CREATE",
+        "name": "PoolBalancer",
+        "from": "0x000000000000000000000000000000000001e001",
+        "to": null,
+        "predictedAddress": "0x0176016958744b0030c96cc10896bd0817d94855",
+        "constructorArguments": [
+          "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+          "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+          "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+          "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+          "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+          "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+        ],
+        "gasLimit": "6750303",
+        "valueWei": "0",
+        "inputHash": "0x3553ae2ce45a249716c272a39453dc7c682d8f66800edf1a67cfdddd5500fdc8",
+        "runtimeCodeHash": "0x36e4b27e80081fd3aa5df3f460e870942cf2ba9c436a0d8af2c313747041d2cf",
+        "runtimeBytes": 23474
+      }
+    ],
+    "implementation": "0x0176016958744b0030c96cc10896bd0817d94855",
+    "simulationHash": "7fdb6aa988f7966e2d4eb8c4245c41207ce92cc065f52598152ec62652dcd446"
+  }
+}

@@ -1,0 +1,9 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ app/src/transfer.test.ts (7 tests | 6 skipped) 27ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 6 skipped (7)
+   Start at  21:29:21
+   Duration  306ms (transform 32ms, setup 0ms, collect 104ms, tests 27ms, environment 0ms, prepare 29ms)

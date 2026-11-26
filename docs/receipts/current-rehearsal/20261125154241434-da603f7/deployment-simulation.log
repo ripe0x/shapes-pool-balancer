@@ -1,0 +1,33 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Return ==
+factory: contract BalancerFactory 0xbe49677a403F77136e81498e5681f8DC22Aa1181
+impl: contract PoolBalancer 0x940815eE17aa44E861bEfe77e6812EB0f2da9710
+packs: address 0xfE11c0E794475fd86801fb3020d779bd7887cB2D
+
+== Logs ==
+  PoolBalancer implementation 0x940815eE17aa44E861bEfe77e6812EB0f2da9710
+  BalancerFactory 0xbe49677a403F77136e81498e5681f8DC22Aa1181
+  Packs 0xfE11c0E794475fd86801fb3020d779bd7887cB2D (reused)
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 20 gwei
+
+Estimated total gas used for script: 13630444
+
+Estimated amount required: 0.27260888 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-2TjryS/broadcast/Deploy.s.sol/31337/dry-run/run-latest.json
+
+Sensitive values saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-2TjryS/cache/Deploy.s.sol/31337/dry-run/run-latest.json
+

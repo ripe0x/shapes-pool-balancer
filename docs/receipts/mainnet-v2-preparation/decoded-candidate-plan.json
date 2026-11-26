@@ -1,0 +1,88 @@
+{
+  "status": "READ_ONLY_SIMULATION_PASS_APPROVED_LAUNCH_SETTINGS_CI_PENDING",
+  "sourceHash": "58c252dd452c6c54b2b91694ed6c25e52f65eb9face0725d6ba1b88461c0596b",
+  "approvalHash": "5acc93973dcad11c81c9945851f85ddd62ea24a1ebea2f55264e7528331f4d3f",
+  "candidateCommit": "8db66c2",
+  "chainId": 1,
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "signer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "dryRunSha256": "b196c10b91293be329970fc6a61d6fc6203be214e6094f3e261311f46d789902",
+  "transactions": [
+    {
+      "label": "PoolPage",
+      "kind": "CREATE2",
+      "sender": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "nonce": "4251",
+      "target": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "createdAddress": "0x8Ca9E6CfE4A4F4F10cEF1d2EfF6954e476bd890C",
+      "constructorArguments": [],
+      "nativeValueWei": "0",
+      "gasLimit": "614344",
+      "calldataKeccak256": "0x57a476c3e52405b243cec5f69852ebfaef4069251d17fc01f0a07616e359ec24"
+    },
+    {
+      "label": "PoolInventory",
+      "kind": "CREATE2",
+      "sender": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "nonce": "4252",
+      "target": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "createdAddress": "0xe64f685C24056e41C30e4cf35C8Cb28381F1EAa5",
+      "constructorArguments": [],
+      "nativeValueWei": "0",
+      "gasLimit": "6156029",
+      "calldataKeccak256": "0x9ce81b57d7a96a45e82b972fd51c9cab05d7fff7927fbd1684cb8d588512b6ba"
+    },
+    {
+      "label": "PoolBalancer",
+      "kind": "CREATE",
+      "sender": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "nonce": "4253",
+      "target": null,
+      "createdAddress": "0x45754494B606f9E3AebfB9984330eC788A87eF76",
+      "constructorArguments": [
+        "0x8919814D825a5Af238cC04DE06b1C18c9eaA477C",
+        "0x85Faf92967705dc45535eBCA74D6333F6bCBfEe7",
+        "0x0af01fc1a6ea7ea81fd81004fdb3bd5483872df384d2e4ab4a7599e0d2f0ce02",
+        "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0",
+        "0xfE11c0E794475fd86801fb3020d779bd7887cB2D",
+        "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+      ],
+      "nativeValueWei": "0",
+      "gasLimit": "7021362",
+      "calldataKeccak256": "0x4f348e582c6d43bb566726609d8cf5cb55b44dd449a79c642b14882025c419c3"
+    },
+    {
+      "label": "BalancerFactory",
+      "kind": "CREATE",
+      "sender": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+      "nonce": "4254",
+      "target": null,
+      "createdAddress": "0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671",
+      "constructorArguments": [
+        "0x45754494B606f9E3AebfB9984330eC788A87eF76",
+        "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+        "0xCB43078C32423F5348Cab5885911C3B5faE217F9"
+      ],
+      "nativeValueWei": "0",
+      "gasLimit": "1928999",
+      "calldataKeccak256": "0x27ea6aa201dc3ce26ad9388a0b6e955c1e8a29a96a500a25436c1c5f73f31708"
+    }
+  ],
+  "totalGasLimit": "15720734",
+  "proposedMaxFeePerGasWei": "250000000",
+  "proposedPriorityFeePerGasWei": "50000000",
+  "maximumGasCostWei": "3930183500000000",
+  "nativeValueWei": "0",
+  "consequence": "Deploy libraries, v2 implementation, and new publicly paused factory. No existing implementation pointer, pool assets, creation pause, or live service is changed.",
+  "notYetAuthorized": [
+    "production broadcast",
+    "public unpause",
+    "service cutover"
+  ],
+  "pending": [
+    "Hosted verification of retained fixture repairs and approved 1.5-gwei/940k Hardening cases",
+    "Authorized merge to main and checkout equality",
+    "Fresh nonce/fee/source/code readbacks and decoded per-broadcast approval"
+  ],
+  "launchValuesFile": "docs/receipts/mainnet-v2-preparation/launch-values.json"
+}

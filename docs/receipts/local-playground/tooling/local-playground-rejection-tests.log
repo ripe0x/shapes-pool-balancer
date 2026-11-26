@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/local-playground.test.ts (3 tests | 2 skipped) 6ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 2 skipped (3)
+   Start at  12:41:40
+   Duration  456ms (transform 118ms, setup 0ms, collect 236ms, tests 6ms, environment 0ms, prepare 30ms)
+

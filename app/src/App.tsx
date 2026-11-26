@@ -3,21 +3,24 @@ import { useAccount, useConnect, usePublicClient, useSendTransaction, useWriteCo
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther, formatGwei, getAddress, parseAbi, parseAbiItem, parseEther, type Address, type Hash, type Hex } from 'viem';
 import { normalize } from 'viem/ens';
+import { approvalCollections, needsCollectionApproval } from './nft-approvals';
 import { balancerFactoryAbi, erc721Abi, fwaPoolAbi, poolBalancerAbi, shapesAbi } from '../../shared/abi';
 import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
-import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
+import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL, LOCAL_FORK_RESET } from './chain';
+import { confirmAction, localTransactionNonce, localTransferContext, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
+import { readFactoryCreation } from './factory-creation';
+import { bankrollResult, operatingCash, profitAbi, readProfitVersion, withdrawalBreakdown } from './profit';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
 import { MAIN_POOL_OPEN, VAULT } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
-import { activationBatch, curatedWitness, isHeld, isSelectable, isStaged, listedShapeCounts } from './inventory';
+import { activationBatch, closeoutState, curatedWitness, deliveryHistory, inventoryBatches, isHeld, isRefunded, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
 import { applyRefreshEvent, createLatestRefresh, type RefreshState } from './refresh';
 import { setupListingLimit, setupListingWaits } from '../../shared/listing';
@@ -27,6 +30,8 @@ import { LEGACY_FACTORIES, legacyEconomics, legacyFactory } from '../../shared/l
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
 const FWA_FACTORY: Address = '0x8919814D825a5Af238cC04DE06b1C18c9eaA477C';
+const inventoryVersionAbi = parseAbi(['function inventoryBatchVersion() pure returns (uint256)']);
+const legacyRateAbi = parseAbi(['function setCreatorRevenueBps(uint16 newBps)']);
 const fwaActivationAbi = parseAbi(['function activateListings(uint256 maxCount)']);
 const fwaFactoryAbi = parseAbi(['function edgeBps() view returns (uint16)', 'function poolCreationEnabled() view returns (bool)', 'function implementation() view returns (address)']);
 const CREATED = parseAbiItem('event BalancerCreated(address indexed creator, address indexed balancer, address indexed pool, bytes32 salt)');
@@ -92,10 +97,14 @@ function useBalancer(b?: Address) {
     const blockNumber = block.number;
     const r = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: b, abi: poolBalancerAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
-    const pool = await r<Address>('pool');
+    const [pool, inventoryBatchVersion, profitAccountingVersion] = await Promise.all([r<Address>('pool'),
+      pub.readContract({ address: b, abi: inventoryVersionAbi, functionName: 'inventoryBatchVersion', blockNumber }).catch(() => 0n), readProfitVersion(pub, b, blockNumber)]);
+    const profitAccounting = profitAccountingVersion >= 1n;
+    const creatorFeeAccounting = profitAccountingVersion >= 2n;
+    const contributedCapitalRead = profitAccounting ? pub.readContract({ address: b, abi: profitAbi, functionName: 'operatingCapital', blockNumber }) : Promise.resolve(undefined);
     const p = <T,>(functionName: string, args: unknown[] = []) =>
       pub.readContract({ address: pool, abi: fwaPoolAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
-    const [creator, pendingCreator, markupBps, target, enabled, admission, required, surplus, activeIds, activeShapes, balance, mintFeeCap, reconciled, creatorCredit, creatorRevenueBps, curatedRequired] =
+    const [creator, pendingCreator, markupBps, target, enabled, admission, required, surplus, activeIds, activeShapes, balance, mintFeeCap, reconciled, creatorCredit, creatorRevenueBps, curatedRequired, contributedCapital, bankrollProfit, creatorFeeTopUpAvailable, creatorFeeUpdatePending] =
       await Promise.all([
         r<Address>('creator'), r<Address>('pendingCreator'), r<number>('markupBps'), r<bigint>('target'),
         r<boolean>('enabled'), r<number>('admissionStatus').catch(() => 255),
@@ -103,7 +112,10 @@ function useBalancer(b?: Address) {
         r<number[]>('getActiveShapes'), pub.getBalance({ address: b, blockNumber }), r<bigint>('mintFeeCap'), r<bigint>('reconciledSequence'),
         r<bigint>('creatorCredit'), r<number>('creatorRevenueBps'),
         // Pools from the first release always require a curated NFT and have no such view.
-        r<boolean>('curatedRequired').catch(() => undefined),
+        r<boolean>('curatedRequired').catch(() => undefined), contributedCapitalRead,
+        creatorFeeAccounting ? pub.readContract({ address: b, abi: profitAbi, functionName: 'bankrollProfit', blockNumber }) : Promise.resolve(undefined),
+        creatorFeeAccounting ? pub.readContract({ address: b, abi: profitAbi, functionName: 'creatorFeeTopUpAvailable', blockNumber }) : Promise.resolve(undefined),
+        creatorFeeAccounting ? pub.readContract({ address: b, abi: profitAbi, functionName: 'creatorFeeUpdatePending', blockNumber }) : Promise.resolve(false),
       ]);
     // Upkeep is needed exactly when simulating it succeeds: as the creator (always allowed, whatever the keeper list) at
     // current fees (the reward bound it must leave unspent grows with the gas price).
@@ -150,7 +162,7 @@ function useBalancer(b?: Address) {
       [c, await (pub.readContract({ address: c, abi: nameAbi, functionName: 'name' }) as Promise<string>).catch(() => short(c))] as const)));
     const ensName = await pub.getEnsName({ address: b }).catch(() => null);
     return {
-      balancer: b, pool, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
+      balancer: b, pool, profitAccounting, creatorFeeAccounting, contributedCapital, bankrollProfit, creatorFeeTopUpAvailable, creatorFeeUpdatePending, inventoryBatches: inventoryBatchVersion >= 1n, erc20Recovery: inventoryBatchVersion >= 2n, creator, pendingCreator, enabled, admission, upkeep, required, surplus, creatorCredit, creatorRevenueBps: Number(creatorRevenueBps), curatedRequired, balance, target, markupBps: Number(markupBps),
       activeShapes: activeShapes.map(Number), mintFeeCap, awaitingUpkeep: Number(lastIssued - reconciled),
       fee, proceeds, totalWeight, retired, unsettled, mintFee: mintFee ?? mintFeeCap, mintFeeUnavailable: mintFee === undefined, edgeBps, ...policyCosts, policyMaxReward, vrfFee, listings, names, ensName,
       keepersRestricted, keeperPolicy, paidUpkeepEnabled, recommendedPolicy, factoryAddr, blockNumber, ...generation, keeper,
@@ -243,7 +255,7 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     ]);
     return { id, kind: it[0], denom: it[1], state: it[2], base: it[3], price: it[4], collection: l[0], tokenId: l[3], weight: l[7] === 1 ? l[4] : 0n, fwaStatus: l[7] };
   };
-  const pending = (await Promise.all(failedIds.map(listing))).filter((l) => l.state === 2);
+  const { tracked: failedDeliveries, pending } = deliveryHistory(await Promise.all(failedIds.map(listing)));
     const sum = (name: string, f: (a: Record<string, unknown>) => bigint) => events.filter((l) => l.eventName === name).reduce((t, l) => t + f(l.args as Record<string, unknown>), 0n);
     const values = new Map<bigint, bigint>();
     for (const l of events) if (l.eventName === 'CuratedListed' || l.eventName === 'CuratedRepriced') values.set((l.args as { listingId: bigint }).listingId, (l.args as { base: bigint }).base);
@@ -256,7 +268,7 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     // FWA status 1 is selectable, 5 staged, 6 a failed delivery awaiting retry or refund, 7 refunded (the creator recovers it). Any
     // other status on a prize the Balancer still tracks means FWA delivered it: before upkeep reconciled the draw, or
     // on a retry after a failed delivery (which the Balancer never revisits).
-    const tracked = [...listings, ...pending];
+    const tracked = [...listings, ...failedDeliveries];
     const stillHeld = isHeld;
     const delivered = tracked.filter((l) => !stillHeld(l));
     const deliveredNfts = delivered.filter((l) => l.kind === 1);
@@ -273,6 +285,7 @@ async function loadHistory(pub: NonNullable<ReturnType<typeof usePublicClient>>,
     const setupKeeper = setupSum('KeeperPaid', (a) => a.amount as bigint);
     const ledger: Ledger = {
       throughBlock: blockNumber,
+      // Reinvesting reserved creator fees changes internal allocation, never lifetime ETH inflows.
       ...poolEthLedger({ deposits: capitalFlows('Deposited', 'from'), withdrawals: capitalFlows('SurplusClaimed', 'to'),
         held, sales, prizesWon, mintFees, keeperPay }),
       nftsWon: nftWins.length + deliveredNfts.length,
@@ -310,15 +323,17 @@ export function useTx(onDone: () => void) {
   const submitted = useRef<{ hash: Hash; intent: TransactionIntent }>();
   const { sendTransactionAsync } = useSendTransaction();
   /** Every reviewed send: an ETH transfer first passes the pending-transfer guard, then the wallet submits. */
-  const submit = async (intent: TransactionIntent, send: () => Promise<Hash>, beforeWallet?: () => void) => {
+  const submit = async (intent: TransactionIntent, send: (nonce?: number) => Promise<Hash>, beforeWallet?: () => void) => {
     const key = intent.value > 0n ? transferKey(intent) : undefined;
-    const reservation = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
+    const reservation: PendingTransfer & { id: string } = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
     if (key) {
       if (!navigator.locks) throw new Error(NO_STORAGE);
       // Check and reserve as one step across this site's tabs, so two tabs cannot both find no earlier transfer.
       await navigator.locks.request(key, async () => {
+        const local = await localTransferContext(pub!, intent.chainId, LOCAL_FORK_RESET);
+        if (local) reservation.forkInstanceId = local.instanceId;
         const earlier = loadPending(key);
-        const state = earlier && await transferState(pub!, earlier);
+        const state = earlier && await transferState(pub!, earlier, Date.now(), local);
         if (earlier && state?.unresolved) {
           if (state.nonce !== undefined && earlier.nonce === undefined) savePending(key, { ...earlier, nonce: state.nonce });
           throw new Error(earlier.hash
@@ -332,13 +347,15 @@ export function useTx(onDone: () => void) {
     beforeWallet?.();
     let hash: Hash;
     try {
-      hash = await send();
+      const nonce = await localTransactionNonce(pub!, intent.chainId, intent.from);
+      hash = await send(nonce);
     } catch (e) {
       if (key) releasePending(key, reservation.id);
       throw e;
     }
     if (key) {
-      // The wallet chooses the nonce; keep it once a node shows the transaction. If saving fails now, the hashless
+      // Production wallets choose the nonce; local requests suggest the node's pending nonce. Record the actual
+      // nonce only once the node shows the transaction. If saving fails now, the hashless
       // reservation still blocks.
       const seen = await pub!.getTransaction({ hash }).catch(() => undefined);
       try { if (loadPending(key)?.id === reservation.id) savePending(key, { ...reservation, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
@@ -351,12 +368,12 @@ export function useTx(onDone: () => void) {
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
   const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
     const prepared = await prepareWrite(pub!, address, params);
-    return submit(reviewedIntent(prepared), () => writeContractAsync(prepared as never), beforeWallet);
+    return submit(reviewedIntent(prepared), (nonce) => writeContractAsync({ ...prepared, ...(nonce === undefined ? {} : { nonce }) } as never), beforeWallet);
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
   /** A plain ETH transfer (to a contract's receive function), reviewed and guarded like `write`. */
   const transfer = async (to: Address, value: bigint) => {
     const { prepared, intent } = await prepareTransfer(pub!, address, to, value);
-    return submit(intent, () => sendTransactionAsync(prepared as never));
+    return submit(intent, (nonce) => sendTransactionAsync({ ...prepared, ...(nonce === undefined ? {} : { nonce }) } as never));
   };
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
@@ -471,12 +488,16 @@ const reclaimable = (d: D) => d.listings.filter((l) => (l.kind === 1 || l.kind =
 /** One sentence for the pool's state, and the action or tab that resolves it. */
 function statusLine(d: D): { head: string; body: string; act?: 'upkeep' | 'activate' | 'proof' | 'open' | 'fund' | 'reclaim' | Tab; label?: string } {
   if (d.retired) {
-    const left = reclaimable(d).length > 0 || (d.surplus ?? 0n) > 0n;
-    return left
-      ? { head: 'Retired.', body: 'Sales have stopped. Your prizes and ETH are still in the pool.', act: 'reclaim', label: 'Take everything back' }
-      : { head: 'Retired.', body: 'Sales have stopped. Nothing is left to take back.' };
+    const state = closeoutState(d);
+    if (state === 'settling') return { head: 'Retired.', body: 'Outstanding draws must settle and be reconciled before closeout.',
+      ...(d.upkeep.needed ? { act: 'upkeep' as const, label: 'Reconcile draws' } : {}) };
+    if (state === 'unknown') return { head: 'Retired.', body: 'Remaining assets are not verified. Recovery history and balances must finish loading.' };
+    if (state === 'waiting') return { head: 'Retired.', body: 'An NFT is awaiting delivery or its winner’s refund. Recovery is not available yet.', act: 'nfts' };
+    return state === 'recoverable'
+      ? { head: 'Retired.', body: 'Your prizes or ETH remain in the pool.', act: 'reclaim', label: 'Take everything back' }
+      : { head: 'Retired.', body: 'No listed prizes or operating ETH remain.' };
   }
-  const fund = d.balance - d.creatorCredit;
+  const fund = operatingCash(d.balance, d.creatorCredit, d.profitAccounting, d.creatorFeeAccounting);
   const shortfall = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
   const target = unpackPlan(d.target);
   const listed = listedShapeCounts(d.listings);
@@ -796,20 +817,44 @@ function PoolView({ balancer, me, tab, setTab, onBack, created }: { balancer: Ad
   // While stocking, the same run is "List Shapes", so the setup block shows its progress.
   const upkeep = () => tx.send(d.admission === 2 ? 'List Shapes' : 'Run maintenance', [async () => tx.write({ ...B, functionName: 'performUpkeepUnpaid' })]);
   const viewer = me === ZERO_ADDR;
-  // Retired pool: each curated NFT back to the wallet, Shapes unlisted (redeemed, at most 20 per transaction), then all
-  // withdrawable ETH, read when that step runs so it includes the redeemed Shapes.
   const reclaim = () => {
     const left = reclaimable(d);
     const nfts = left.filter((l) => l.kind === 1);
     const shapes = left.filter((l) => l.kind === 2).map((l) => l.id);
-    const steps: Step[] = nfts.map((l) => [`Withdraw ${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`, () => tx.write({ ...B, functionName: 'withdrawCurated', args: [l.id, me] })]);
+    const steps: Step[] = [];
+    for (const batch of inventoryBatches(d.pending.filter(isRefunded), d.inventoryBatches)) {
+      steps.push([`Recover ${batch.length} refunded NFT(s)`, () => tx.write({ ...B,
+        functionName: d.inventoryBatches ? 'recoverRefundedBatch' : 'recoverRefunded',
+        args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })]);
+    }
+    for (const batch of inventoryBatches(nfts, d.inventoryBatches)) {
+      steps.push([`Withdraw ${batch.length} curated NFT(s)`, () => tx.write({ ...B,
+        functionName: d.inventoryBatches ? 'withdrawCuratedBatch' : 'withdrawCurated',
+        args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })]);
+    }
     for (let i = 0; i < shapes.length; i += 20) {
       const batch = shapes.slice(i, i + 20);
       steps.push([`Unlist ${batch.length} Shape${batch.length === 1 ? '' : 's'}`, () => tx.write({ ...B, functionName: 'unlistShapes', args: [batch] })]);
     }
+    steps.push(['Collect from sales', async () => {
+      const amount = await pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'ownerProceeds' });
+      return amount > 0n ? tx.write({ ...B, functionName: 'collectProceeds' }) : undefined;
+    }]);
     steps.push(['Withdraw ETH', async () => {
       const amount = await pub!.readContract({ ...B, functionName: 'withdrawableSurplus' }) as bigint;
       return amount > 0n ? tx.write({ ...B, functionName: 'claimSurplus', args: [amount, me] }) : undefined;
+    }]);
+    steps.push(['Check remaining assets', async () => {
+      const [ids, proceeds, balance, pending] = await Promise.all([
+        pub!.readContract({ ...B, functionName: 'getActiveIds' }),
+        pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'ownerProceeds' }),
+        pub!.getBalance({ address: balancer }),
+        Promise.all(d.pending.map(l => pub!.readContract({ address: d.pool, abi: fwaPoolAbi, functionName: 'listings', args: [l.id] }))),
+      ]);
+      if (ids.length || proceeds > 0n || balance > 0n || pending.some(l => [6, 7].includes(l[7]))) {
+        throw new Error('Assets remain. Refresh the pool to review waiting or recoverable items.');
+      }
+      return undefined;
     }]);
     return tx.send('Take everything back', steps);
   };
@@ -942,7 +987,7 @@ function useHeld(pub: Pub | undefined, me: Address | undefined, list: DraftNft[]
 }
 const NOT_HELD = "This wallet doesn't hold this NFT. Remove it to continue.";
 
-const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)']);
+const approvalAbi = parseAbi(['function getApproved(uint256 tokenId) view returns (address)', 'function isApprovedForAll(address owner, address operator) view returns (bool)', 'function setApprovalForAll(address operator, bool approved)']);
 type Prereq = { creation: boolean; impl: boolean };
 
 /** The Design page for a pool that does not exist yet: live fees from chain; NFTs and budget from the draft. */
@@ -1016,7 +1061,7 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
     const timer = setInterval(() => void check().catch(() => undefined), 15_000);
     return () => { live = false; clearInterval(timer); };
   }, [pub, me, attempt, tx.busy]);
-  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket }>();
+  const [live, setLive] = useState<Awaited<ReturnType<typeof policyEconomics>> & { edgeBps: number; mintFee: bigint; vrfFee?: bigint; productLimits: Awaited<ReturnType<typeof readProductLimits>>; settingsHash: Hex; bucket: Bucket; creationAllowed: boolean; profitAccounting: boolean; creatorFeeAccounting: boolean }>();
   const [loadError, setLoadError] = useState<string>();
   const [loadTry, setLoadTry] = useState(0);
   // Completed fee loads, so a retry after a revert runs once the refreshed fees are in.
@@ -1029,23 +1074,29 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
       // factory's default spending bucket, so a bucket change after review also refuses creation).
       const block = await pub.getBlock();
       const at = { blockNumber: block.number };
-      const [economics, settingsHash, mintFee, capacity, refill] = await Promise.all([
+      const [economics, settingsHash, mintFee, capacity, refill, implementation] = await Promise.all([
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'economics' }) as Promise<Economics>,
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) as Promise<Hex>,
         pub.readContract({ ...at, address: SHAPES, abi: shapesAbi, functionName: 'mintFee' }),
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketCapacity' }),
         pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'defaultBucketRefill' }),
+        pub.readContract({ ...at, address: FACTORY, abi: balancerFactoryAbi, functionName: 'implementation' }),
       ]);
-      const [costs, edgeBps, vrfFee, productLimits] = await Promise.all([
+      const [costs, edgeBps, vrfFee, productLimits, creation, profitVersion] = await Promise.all([
         policyEconomics(pub, economics, undefined, block),
         pub.readContract({ address: FWA_FACTORY, abi: fwaFactoryAbi, functionName: 'edgeBps' }),
-        liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number),
+        liveVrfFee(pub), readProductLimits(pub, FACTORY, block.number), readFactoryCreation(pub, FACTORY, me, block.number), readProfitVersion(pub, implementation, block.number),
       ]);
-      setLive({ ...costs, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill } });
+      const profitAccounting = profitVersion >= 1n;
+      setLive({ ...costs, profitAccounting, creatorFeeAccounting: profitVersion >= 2n, edgeBps, mintFee, vrfFee, productLimits, settingsHash, bucket: { capacity, refill }, creationAllowed: creation.allowed });
       setFetched((n) => n + 1);
       setLoadError(undefined);
     })().catch((e) => setLoadError(explain(e)));
-  }, [pub, loadTry]);
+  }, [pub, loadTry, me]);
+  useEffect(() => {
+    const timer = setInterval(() => { if (!document.hidden) setLoadTry(n => n + 1); }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => { if (!loadError) return; const t = setTimeout(() => setLoadTry((n) => n + 1), 30_000); return () => clearTimeout(t); }, [loadError]);
   useEffect(() => { if (pub && me) pub.getBalance({ address: me }).then(setWallet).catch(() => undefined); }, [pub, me, tx.busy]);
   // During a creation started on this visit the design page's progress panel reports it; the pending page takes over
@@ -1091,8 +1142,8 @@ function NewPool({ me, prereq, onCreated }: { me?: Address; prereq?: Prereq; onC
   // Until the factory economics load, nothing is budgeted for paid upkeep (paidUpkeepEnabled false) and creation is blocked.
   const fees = live ?? { paidUpkeepEnabled: false, baseFee: 0n, gasPrice: 0n, chainTimestamp: 0n, edgeBps: 0, mintFee: 0n, policyUnavailable: true, mintFeeUnavailable: true, feesLoading: !loadError };
   // Only the fields Design reads; a pool that does not exist has no target, listings or balance.
-  const d = { target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
-  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched, attempt, outcome }} />;
+  const d = { profitAccounting: live?.profitAccounting ?? false, creatorFeeAccounting: live?.creatorFeeAccounting ?? false, contributedCapital: 0n, target: 0n, markupBps: 0, listings: [], balance: 0n, creatorCredit: 0n, creatorRevenueBps: 0, proceeds: 0n, awaitingUpkeep: 0, activeShapes: ZERO, names: {}, balancer: ZERO_ADDR, enabled: false, paidUpkeepEnabled: true, mintFeeCap: fees.mintFee, ...fees } as unknown as D;
+  return <Design d={d} tx={tx} mode={me ? 'new' : 'preview'} me={me} create={{ wallet, prereq, onCreated, trackCreation, rejectCreation, resumeCreation: setAttempt, reviewedHash: live?.settingsHash, creationAllowed: live?.creationAllowed, bucket: live?.bucket, reload: () => setLoadTry((n) => n + 1), fetched, attempt, outcome }} />;
 }
 
 type Pub = NonNullable<ReturnType<typeof usePublicClient>>;
@@ -1107,10 +1158,25 @@ async function refusesContracts(pub: Pub, me: Address, list: DraftNft[]) {
   return (await Promise.all(list.map(async (n) => (await sim(n, '0x000000000000000000000000000000000000dEaD')) && !(await sim(n, SHAPES))))).some(Boolean);
 }
 
-/** NFTs whose collection will not approve `balancer` (e.g. marketplace allowlists), with the reason. */
+const collectionLabel = (n: DraftNft) => n.name ? `${n.name} (${short(n.collection!)})` : short(n.collection!);
+
+async function collectionNeedsApproval(pub: Pub, me: Address, balancer: Address, group: DraftNft[]) {
+  const collection = group[0].collection!;
+  const all = await pub.readContract({ address: collection, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, balancer] });
+  if (all) return false;
+  const tokens = await Promise.all(group.map(n => pub.readContract({ address: collection, abi: approvalAbi, functionName: 'getApproved', args: [BigInt(n.tokenId!)] })));
+  return needsCollectionApproval(false, tokens, balancer);
+}
+
+/** Collections whose requested operator approval fails, with the actual rejection reason. */
 async function refusedApprovals(pub: Pub, me: Address, balancer: Address, list: DraftNft[]) {
-  return (await Promise.all(list.map((n) => pub.simulateContract({ address: n.collection!, abi: erc721Abi, functionName: 'approve', args: [balancer, BigInt(n.tokenId!)], account: me })
-    .then(() => undefined, (e) => `${nftLabel(n)} (${explain(e)})`)))).filter(Boolean) as string[];
+  return (await Promise.all(approvalCollections(list).map(async group => {
+    try {
+      if (!(await collectionNeedsApproval(pub, me, balancer, group))) return undefined;
+      await pub.simulateContract({ address: group[0].collection!, abi: approvalAbi, functionName: 'setApprovalForAll', args: [balancer, true], account: me });
+      return undefined;
+    } catch (e) { return `${collectionLabel(group[0])} (${explain(e)})`; }
+  }))).filter(Boolean) as string[];
 }
 
 /** FWA lists at most 20 NFTs per transaction (MAX_INVENTORY_BATCH); a longer list is sent in batches. There is no
@@ -1126,18 +1192,12 @@ const listSteps = (ns: DraftNft[], write: (batch: { collection: Address; tokenId
   return steps;
 };
 
-/** One approval per NFT, skipped when the pool is already approved. */
-const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => list.map((n) => {
-  const id = BigInt(n.tokenId!);
-  return [`Approve ${nftLabel(n)}`, async () => {
-    const [one, all] = await Promise.all([
-      pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'getApproved', args: [id] }).catch(() => ZERO_ADDR),
-      pub.readContract({ address: n.collection!, abi: approvalAbi, functionName: 'isApprovedForAll', args: [me, balancer] }).catch(() => false),
-    ]);
-    if (all || (one as string).toLowerCase() === balancer.toLowerCase()) return undefined;
-    return tx.write({ address: n.collection!, abi: erc721Abi, functionName: 'approve', args: [balancer, id] });
-  }];
-});
+/** One approval per collection, skipped when existing permissions cover the selected NFTs. */
+const approveSteps = (pub: Pub, tx: Tx, me: Address, balancer: Address, list: DraftNft[]): Step[] => approvalCollections(list).map(group =>
+  [`Approve ${collectionLabel(group[0])} collection`, async () => {
+    if (!(await collectionNeedsApproval(pub, me, balancer, group))) return undefined;
+    return tx.write({ address: group[0].collection!, abi: approvalAbi, functionName: 'setApprovalForAll', args: [balancer, true] });
+  }]);
 
 /** Upkeep, skipped when there is nothing for it to do; anyone (including a keeper) can run it later. The precheck
  *  simulates exactly as the send will (EIP-1559 fees from the node, the creator account), so NoUpkeepNeeded is not
@@ -1152,7 +1212,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
-type Create = { wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
+type Create = { creationAllowed?: boolean; wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
 type Bucket = { capacity: bigint; refill: bigint };
 
 /**
@@ -1210,6 +1270,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
   const maxPrizes = prizeLimit(limits, shapeCount(savedCounts));
   const base: DesignInputs = {
+    profitAccounting: d.profitAccounting, creatorFeeAccounting: d.creatorFeeAccounting,
     curatedBases: bases, curatedPrices, markupBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee ?? 0n, maxPrizes,
     have: d.activeShapes, baseFee: d.baseFee, unreconciled: d.awaitingUpkeep, paidUpkeepEnabled: d.paidUpkeepEnabled, economics: d.economics, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes,
   };
@@ -1237,8 +1298,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const actual = has && !edited && !stocking;
   const inputs: DesignInputs = actual ? { ...base, shapePrices: livePrices } : base;
   const suggestedRate = suggestedCreatorRevenueBps(counts, base);
-  // Earnings are what the markup brings in above the 10% that runs the pool. A new pool takes this rate; saving an
-  // existing pool's markup or mix sets it again.
+  // Older pools keep their saved revenue allocation; profit-accounting clones have no payout percentage.
   const [curatedRequired, setCuratedRequired] = useState(!!draft?.curatedRequired);
   // Until a design is saved on chain, keep it in this browser so it survives connecting, reloading and a failed step.
   const current = (): Draft => ({ salt, curatedRequired, markup, counts, style: style ?? null, nfts });
@@ -1276,8 +1336,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   // higher or lower. Configure binds the fee shown here as the accepted cap and reverts if the live fee is above it.
   const feeOnly = has && markupBps === d.markupBps && target === d.target && d.mintFee !== d.mintFeeCap;
   const configChanged = !has || markupBps !== d.markupBps || target !== d.target || feeOnly;
-  const reviewedRate = fresh || (configChanged && !d.legacy) ? suggestedRate : d.creatorRevenueBps;
-  const rateChange = has && !d.legacy && reviewedRate !== d.creatorRevenueBps;
+  const reviewedRate = d.profitAccounting && !d.creatorFeeAccounting ? 0 : fresh || (configChanged && !d.legacy) ? suggestedRate : d.creatorRevenueBps;
+  const rateChange = has && !d.legacy && !d.profitAccounting && reviewedRate !== d.creatorRevenueBps;
   const revenueValid = Number.isInteger(reviewedRate) && reviewedRate >= 0 && reviewedRate <= 10_000;
   // The reserve uses the accepted fee (PoolBalancer.requiredReserve): a pending configure accepts the live fee.
   const savedReserveFee = d.mintFeeCap;
@@ -1297,7 +1357,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const left = [...d.activeShapes];
   const extra = mode === 'pool' ? d.listings.filter((l) => l.kind === 2 && l.state === 1 && l.fwaStatus === 1 && left[l.denom] > counts[l.denom] && left[l.denom]--).slice(0, 20) : [];
   const redeemed = extra.reduce((sum, listing) => sum + DENOMS[listing.denom], 0n);
-  const have = fresh ? deposit : d.balance - d.creatorCredit + redeemed;
+  const have = fresh ? deposit : operatingCash(d.balance, d.creatorCredit, d.profitAccounting, d.creatorFeeAccounting) + redeemed;
   const shortBy = needed > have ? roundFunding(needed - have) : 0n;
   const econ = ready && revenueValid && !d.policyUnavailable && !d.mintFeeUnavailable ? economics(quotedCounts, { ...inputs, creatorRevenueBps: reviewedRate }) : undefined;
   const tierOf = (i: number) => view?.tiers.find((t) => t.kind === 'shape' && t.size === i);
@@ -1408,6 +1468,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   const [approved, setApproved] = useState<Record<string, boolean>>({});
   const approvalKey = mode === 'new' ? toList.map((n) => nftKey(n.collection!, n.tokenId!)).join() : '';
   useEffect(() => {
+    setApproved({});
     if (!pub || !me || !approvalKey) return;
     let live = true;
     (async () => {
@@ -1422,18 +1483,20 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
       if (live) setApproved(Object.fromEntries(entries));
     })().catch(() => undefined);
     return () => { live = false; };
-  }, [pub, me, salt, approvalKey, tx.busy]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
+  }, [pub, me, salt, approvalKey, tx.busy, create?.reviewedHash]); // eslint-disable-line react-hooks/exhaustive-deps -- approvalKey identifies toList
   const toApprove = toList.filter((n) => !approved[nftKey(n.collection!, n.tokenId!)]);
+  const collectionsToApprove = approvalCollections(toApprove);
+  const collectionCount = approvalCollections(toList).length;
   // Prizes above a smaller mix are unlisted and redeemed (up to 20 per transaction; the rest from Settings).
   const nftWord = (k: number) => `${k === 1 ? 'your' : word(k)} NFT${k === 1 ? '' : 's'}`;
   const actions = mode === 'new'
-    ? [toList.length > 0 && `approve ${nftWord(toList.length)}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
+    ? [collectionsToApprove.length > 0 && `approve ${word(collectionsToApprove.length)} collection${collectionsToApprove.length === 1 ? '' : 's'}`, `create the configured pool with ${eth(deposit, 6)} ETH and enter stocking`].filter(Boolean) as string[]
     : [configChanged && (feeOnly ? `accept the ${eth(d.mintFee, 6)} ETH Shapes mint fee` : 'save the design'),
       rateChange && `set the earnings rate to ${reviewedRate / 100}% of sales`, toList.length > 0 && `approve and list ${nftWord(toList.length)}`,
       shortBy > 0n && `deposit ${eth(shortBy, 6)} ETH`, extra.length > 0 && `unlist ${word(extra.length)} extra prizes`,
       (toList.length > 0 || configChanged) && 'run upkeep'].filter(Boolean) as string[];
-  const confirmations = mode === 'new' ? toList.length + 1
-    : (shortBy > 0n ? 1 : 0) + (toList.length ? toList.length + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (rateChange ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
+  const confirmations = mode === 'new' ? collectionsToApprove.length + 1
+    : (shortBy > 0n ? 1 : 0) + (toList.length ? collectionCount + Math.ceil(toList.length / LIST_BATCH) : 0) + (configChanged ? 1 : 0) + (rateChange ? 1 : 0) + (extra.length ? 1 : 0) + (actions.length ? 1 : 0);
   const sentence = (xs: string[]) => cap(xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] ?? '');
   const wallet = create?.wallet;
   const blocked = (d as { feesLoading?: boolean }).feesLoading ? 'Loading current fees…'
@@ -1441,6 +1504,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     : d.mintFeeUnavailable ? 'The Shapes mint fee is unavailable.'
     : !revenueValid ? 'Choose pool creator earnings from 0% to 100%.'
     : !markupAllowed(limits, markupBps, has ? d.markupBps : 0) ? `Choose a markup from ${limits.minMarkupBps / 100}% to ${limits.maxMarkupBps / 100}%${has && !limits.fixed ? `, or keep ${d.markupBps / 100}%` : ''}.`
+    : mode === 'new' && create?.creationAllowed === false ? 'Pool creation is paused.'
     : mode === 'new' && toList.length > LIST_BATCH ? 'Create with up to 20 curated NFTs. Add the others after creation.'
     : toList.some(holding.notHeld) ? "Remove the NFTs this wallet doesn't hold."
     : toList.length > 0 && holding.checking ? 'Checking that this wallet holds your NFTs…'
@@ -1464,6 +1528,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
     try {
       // The creation binds the keeper settings the creator reviewed; changed ones need a new review, not a silent swap.
       const reviewedHash = create?.reviewedHash;
+      if (mode === 'new' && !(await readFactoryCreation(pub, FACTORY, me)).allowed) throw new Error('Pool creation is paused.');
       if (mode === 'new' && (!reviewedHash || await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) !== reviewedHash)) {
         setStaleReview(reviewedHash ?? '0x');
         return;
@@ -1477,19 +1542,30 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         ? (await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'predictBalancer', args: [me, salt] })) as Address
         : d.balancer;
       const refused = await refusedApprovals(pub, me, balancer, toList);
-      setRefused(refused.length ? `This pool cannot list ${refused.join(', ')}: the collection does not let this pool take the NFT. Choose another NFT.` : undefined);
+      setRefused(refused.length ? `Collection approval unavailable for ${refused.join(', ')}. Choose another collection.` : undefined);
       if (refused.length) return;
       const B = { address: balancer, abi: poolBalancerAbi } as const;
       const steps: Step[] = [];
-      steps.push(...approveSteps(pub, tx, me, balancer, toList));
+      const checkCreationReview = async () => {
+        if (mode === 'new' && !(await readFactoryCreation(pub, FACTORY, me)).allowed) throw new Error('Pool creation is paused.');
+        if (mode === 'new' && await pub.readContract({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'creationSettingsHash' }) !== reviewedHash) {
+          setStaleReview(reviewedHash ?? '0x');
+          throw new Error('Creation settings changed. Review the new pool address and approvals before continuing.');
+        }
+      };
+      steps.push(...approveSteps(pub, tx, me, balancer, toList).map(step => {
+        const [label, send] = Array.isArray(step) ? step : ['Approve collection', step];
+        return [label, async () => { await checkCreationReview(); return send(); }] as Step;
+      }));
       if (mode === 'new') {
-        const config = { markupBps, creatorRevenueBps: reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0, settingsHash: reviewedHash! };
+        const config = { markupBps, creatorRevenueBps: d.profitAccounting ? 0 : reviewedRate, target, mintFeeCap: d.mintFee, curatedRequired: curatedRequired && toList.length > 0, settingsHash: reviewedHash! };
         const curated = toList.map((n) => ({ collection: n.collection!, tokenId: BigInt(n.tokenId!), base: ethOr(n.value, 0n) }));
         const attempt: CreationAttempt = { chainId: chain.id, factory: FACTORY, creator: me, salt, predicted: balancer,
           config: { ...config, target: String(target), mintFeeCap: String(d.mintFee) },
           curated: curated.map((n) => ({ ...n, tokenId: String(n.tokenId), base: String(n.base) })), value: String(deposit) };
         saveDraft(current());
         steps.push([`Create the pool and deposit ${eth(deposit, 5)} ETH`, async () => {
+          await checkCreationReview();
           await submitCreation(attempt,
             (beforeWallet) => tx.write({ address: FACTORY, abi: balancerFactoryAbi, functionName: 'createBalancer',
               args: [salt, config, curated], value: deposit }, beforeWallet),
@@ -1539,12 +1615,12 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
   </div>;
   const staleShown = mode === 'new' && staleReview !== undefined && staleReview === (create?.reviewedHash ?? '0x');
   const walletSteps = mode === 'new' && <div className="wsteps">
-    <span className="lbl">{toApprove.length + 1} wallet confirmation{toApprove.length ? 's' : ''}</span>
+    <span className="lbl">{collectionsToApprove.length + 1} wallet confirmation{collectionsToApprove.length ? 's' : ''}</span>
     <ol>
-      {toApprove.map((n, k) => <li key={nftKey(n.collection!, n.tokenId!)}><span className="n">{k + 1}</span><span>Approve {nftLabel(n)}</span></li>)}
-      <li><span className="n">{toApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
+      {collectionsToApprove.map((group, k) => <li key={group[0].collection!.toLowerCase()}><span className="n">{k + 1}</span><span title={group[0].collection}>Approve {collectionLabel(group[0])} collection</span></li>)}
+      <li><span className="n">{collectionsToApprove.length + 1}</span><span>Create the pool and deposit {eth(deposit, 5)} ETH</span></li>
     </ol>
-    {toApprove.length > 0 && <p className="note">Approvals let the new pool take each NFT when it's created. Nothing leaves your wallet until step {toApprove.length + 1}.</p>}
+    {collectionsToApprove.length > 0 && <p className="note">Collection approval lets this pool transfer all NFTs you own in that collection. Nothing leaves your wallet until step {collectionsToApprove.length + 1}.</p>}
   </div>;
   const backingWei = ready ? capitalOf(counts) : 0n;
   // The cost shows for a new design, connected or not; an existing pool's Prices & mix shows its operating rows instead.
@@ -1556,7 +1632,8 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         <div className="sub"><span>Shapes mint fees</span><span>{eth(capital.inventoryCost - backingWei, 5)}</span></div>
         <div className="sub"><span>Listing and maintenance budget</span><span>{eth(deposit - capital.inventoryCost, 5)}</span></div>
       </>}
-      <div className="row2"><span className="k">Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+      <div className="row2"><span className="k">{d.creatorFeeAccounting ? 'Estimated creator fees per draw' : d.profitAccounting ? 'Estimated creator proceeds per draw' : 'Your earnings per draw'}</span><span>{econ?.creatorEarningsKnown ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+      {d.creatorFeeAccounting && <div className="row2"><span className="k">Projected bankroll cash margin per draw</span><span>{econ?.marginPerDraw === undefined ? 'Unavailable' : `${perDraw(econ.marginPerDraw)} ETH`}</span></div>}
     </div>
   );
   // Progress panel (7b): while a creation started here runs, and after it stops on an error, in place of the button and
@@ -1673,6 +1750,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
         </button>
       </div>
       {mode !== 'new' && !blocked && ev?.feasible && actions.length > 0 && <p className="note steps-note" style={{ marginTop: 10 }}>{sentence(actions)}. Up to {confirmations} confirmations in your wallet.</p>}
+      {mode !== 'new' && toList.length > 0 && <p className="note">Collection approval lets this pool transfer all NFTs you own in each approved collection.</p>}
       {has && !d.mintFeeUnavailable && d.mintFee !== d.mintFeeCap && <p className="note" style={{ marginTop: 10 }}>Shapes mint fee: {eth(d.mintFee, 6)} ETH now, {eth(d.mintFeeCap, 6)} ETH accepted. Saving accepts {d.legacy ? 'the fee live when the transaction runs' : `at most ${eth(d.mintFee, 6)} ETH`}.</p>}
     </div>
   );
@@ -1781,7 +1859,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
             <li>Your NFTs are the prizes you give away. You set each one's value; a lower value is won more often.</li>
             <li>A Shape is a token that holds a fixed amount of ETH, from 0.01 to 100. The winner can redeem it for that ETH.</li>
             <li>Your ETH buys the Shapes. When one is won, upkeep uses available operating ETH and collected sales to replace it. A shortage can delay replenishment.</li>
-            <li>Shape markup changes listing prices. Your earnings are what the markup brings in above 10%; the rest of each sale stays in the pool to restock it. Curated NFTs carry no markup.</li>
+            <li>{d.creatorFeeAccounting ? 'Markup and mix set the automatic creator fee. The first 10 markup points stay with the bankroll. Curated NFTs carry no markup.' : d.profitAccounting ? 'Shape markup changes listing prices. Earned creator proceeds remain subject to costs and restocking reserves. Curated NFTs carry no markup.' : 'Shape markup changes listing prices. Your earnings are what the markup brings in above 10%; the rest of each sale stays in the pool to restock it. Curated NFTs carry no markup.'}</li>
             <li><a className="link" href="#how">More in How it works</a></li>
           </ol>
         )}
@@ -1875,7 +1953,7 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                     <div className="kv"><span className="k">Prize backing</span><span>{eth(ev.capital)} ETH</span></div>
                     <div className="kv"><span className="k">{fresh ? 'Needed to open' : 'Required operating capital'}</span><span>{eth(needed)} ETH</span></div>
                     <div className="kv"><span className="k">{fresh ? 'Deposited' : 'Available'}</span><span>{eth(have)} ETH</span></div>
-                    <div className="kv"><span className="k">Sales kept by the pool per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
+                    <div className="kv"><span className="k">{d.creatorFeeAccounting ? 'Retained by bankroll per draw' : d.profitAccounting ? 'Owner proceeds per draw' : 'Sales kept by the pool per draw'}</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
                     <div className="kv"><span className="k">Restocking backing per draw</span><span>{perDraw(-econ.replacementCostsPerDraw)} ETH</span></div>
                     <div className="kv"><span className="k">Left after restocking, per draw</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw)} ETH`}</span></div>
                     <div className="kv"><span className="k">Keeper pay per draw, from your ETH</span><span>{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
@@ -1906,10 +1984,10 @@ function DesignEditor({ d, tx, mode, me, create }: DesignProps) {
                 : <div><span>Above the operating requirement</span>{figureEth(ev && have - needed, 6)}</div>}
             </>
           )}
-          <div><span>Your earnings per draw</span><span>{econ ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
+          <div><span>{d.creatorFeeAccounting ? 'Estimated creator fees per draw' : d.profitAccounting ? 'Estimated creator proceeds per draw' : 'Your earnings per draw'}</span><span>{econ?.creatorEarningsKnown ? `${perDraw(econ.creatorEarningsPerDraw)} ETH` : 'Unavailable'}</span></div>
         </div>
         )}
-        {reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
+        {!d.profitAccounting && reviewedRate === 10_000 ? <p className="note error">100% leaves no new owner proceeds for pool operations.</p>
           : econ?.marginPerDraw !== undefined && econ.marginPerDraw < 0 && <p className="note error">Sales don't cover restocking: {signed(econ.marginPerDraw)} ETH a draw.</p>}
         {panel ? <div className="pin">{panel}</div> : <>{save}{walletSteps}</>}
       </section>
@@ -1923,6 +2001,17 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
   const selectableCurated = curated.filter(isSelectable);
   const [edit, setEdit] = useState<{ id: bigint; value: string }>();
   const [stray, setStray] = useState({ open: false, collection: '', tokenId: '' });
+  const [selected, setSelected] = useState<bigint[]>([]);
+  const [batchValue, setBatchValue] = useState('');
+  const [tokenRescue, setTokenRescue] = useState({ token: '', amount: '' });
+  const picked = curated.filter(l => selected.includes(l.id));
+  const withdrawSelected = () => tx.send('Withdraw selected NFTs', inventoryBatches(picked, d.inventoryBatches).map(batch =>
+    [`Withdraw ${batch.length} NFT(s)`, () => tx.write({ ...B, functionName: d.inventoryBatches ? 'withdrawCuratedBatch' : 'withdrawCurated',
+      args: d.inventoryBatches ? [batch.map(l => l.id), me] : [batch[0].id, me] })] as Step));
+  const repriceSelected = () => tx.send('Change selected values', inventoryBatches(picked, d.inventoryBatches).map(batch =>
+    [`Change ${batch.length} value(s)`, () => tx.write({ ...B, functionName: d.inventoryBatches ? 'updateCuratedPricesBatch' : 'updateCuratedPrice',
+      args: d.inventoryBatches ? [batch.map(l => l.id), batch.map(() => ethOr(batchValue, 0n))] : [batch[0].id, ethOr(batchValue, 0n)] })] as Step));
+
   const odds = (l: Listing) => (d.totalWeight ? Number(l.weight) / Number(d.totalWeight) : 0);
   const name = (l: Listing) => `${d.names[l.collection] ?? short(l.collection)} #${l.tokenId}`;
   return (
@@ -1935,6 +2024,14 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
             <div><h2>Curated NFTs</h2><p className="desc">{selectableCurated.length === 1 ? 'One NFT' : `${word(selectableCurated.length)} NFTs`} players can win. The value is your asking price; a higher value makes it rarer.</p></div>
           </div>
           <div className="group-body nfts-list">
+            {isCreator && curated.length > 0 && <div className="section">
+              <button className="link" onClick={() => setSelected(picked.length === curated.length ? [] : curated.map(l => l.id))}>{picked.length === curated.length ? 'Clear selection' : 'Select all'}</button>
+              <button className="btn sec" disabled={!!tx.busy || picked.length === 0} onClick={withdrawSelected}>Withdraw selected ({picked.length})</button>
+              <label className="form-label" htmlFor="batch-nft-value">Value per selected NFT (ETH)</label>
+              <input id="batch-nft-value" value={batchValue} onChange={e => setBatchValue(e.target.value)} inputMode="decimal" />
+              <button className="btn sec" disabled={!!tx.busy || picked.length === 0 || ethOr(batchValue, 0n) <= 0n} onClick={repriceSelected}>Change selected values</button>
+              {tx.msg && !tx.msg.ok && <p className="note">The failed batch was reverted. Exclude any NFT refusing transfers, or use its individual Withdraw action.</p>}
+            </div>}
             {d.historyLoading && <p className="note">Loading failed delivery history…</p>}
             {d.historyError && <p className="note error">Failed delivery history unavailable: {d.historyError}</p>}
             {curated.length === 0 && d.pending.length === 0 && <p className="note">No curated NFTs listed.</p>}
@@ -1942,6 +2039,7 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
               const editing = edit?.id === l.id;
               return (
                 <div className="nft-row" key={l.id.toString()}>
+                  {isCreator && <input type="checkbox" aria-label={`Select ${name(l)}`} checked={selected.includes(l.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids, l.id] : ids.filter(id => id !== l.id))} />}
                   <Thumb n={{ collection: l.collection, tokenId: l.tokenId }} />
                   <div className="id">
                     <div className="t"><a className="tlink" href={openSeaAsset(l.collection, l.tokenId)} target="_blank" rel="noreferrer" title="View on OpenSea">{name(l)}</a></div>
@@ -1988,6 +2086,14 @@ function Nfts({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boole
       {isCreator && (
         <section className="sticky results">
           <AddNft d={d} tx={tx} me={me} setTab={setTab} />
+          {d.erc20Recovery && <div className="section">
+            <h3>Return ERC20 tokens</h3>
+            <label className="form-label" htmlFor="rescue-token">Token address</label>
+            <input id="rescue-token" value={tokenRescue.token} onChange={e => setTokenRescue({ ...tokenRescue, token: e.target.value })} />
+            <label className="form-label" htmlFor="rescue-amount">Amount in raw token units</label>
+            <input id="rescue-amount" inputMode="numeric" value={tokenRescue.amount} onChange={e => setTokenRescue({ ...tokenRescue, amount: e.target.value })} />
+            <button className="btn sec" disabled={!!tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(tokenRescue.token) || !/^[1-9][0-9]*$/.test(tokenRescue.amount)} onClick={() => tx.send('Return ERC20 tokens', [() => tx.write({ ...B, functionName: 'recoverERC20', args: [tokenRescue.token as Address, BigInt(tokenRescue.amount)] })])}>Return to my wallet</button>
+          </div>}
           <div className="section">
             <button className="disclose quiet" onClick={() => setStray({ ...stray, open: !stray.open })}>Return an NFT sent to the pool directly {stray.open ? '▴' : '▾'}</button>
             {stray.open && (
@@ -2027,6 +2133,7 @@ function ConfirmValuesModal({ items, onClose }: { items: DraftNft[]; onClose: (o
   return <dialog ref={ref} className="modal" aria-labelledby="confirm-values" onCancel={(e) => { e.preventDefault(); onClose(false); }}>
     <h2 className="h" id="confirm-values">Confirm NFT values</h2>
     <p className="desc">Each NFT is listed on FWA at this value.</p>
+    <p className="note">Any new collection approval lets this pool transfer all NFTs you own in that collection.</p>
     <div className="modal-rows">
       {items.map((n, i) => {
         const low = belowFloor(n);
@@ -2070,7 +2177,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
   const inputs: DesignInputs = {
-    curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, creatorRevenueBps: d.creatorRevenueBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!,
+    curatedBases: bases, curatedPrices: listed.map((l) => l.price), markupBps: d.markupBps, profitAccounting: d.profitAccounting, creatorFeeAccounting: d.creatorFeeAccounting, creatorRevenueBps: d.creatorRevenueBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!,
     shapePrices: livePrices, have: d.activeShapes, baseFee: d.baseFee, unreconciled: d.awaitingUpkeep, paidUpkeepEnabled: d.paidUpkeepEnabled, economics: d.economics, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes,
   };
   const before = !d.policyUnavailable && !d.mintFeeUnavailable && plan && bases.length ? evaluate(plan, inputs) : undefined;
@@ -2083,7 +2190,7 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
     if (gone.length) { setRefused(`This wallet doesn't hold ${gone.map(nftLabel).join(', ')}. Remove ${gone.length === 1 ? 'it' : 'them'} to continue.`); return; }
     if (restricted !== key && await refusesContracts(pub, me, picks)) { setRestricted(key); return; }
     const r = await refusedApprovals(pub, me, d.balancer, picks);
-    setRefused(r.length ? `This pool cannot list ${r.join(', ')}: the collection does not let this pool take the NFT.` : undefined);
+    setRefused(r.length ? `Collection approval unavailable for ${r.join(', ')}.` : undefined);
     if (r.length) return;
     if (!(await values.confirm(picks))) return;
     const ok = await tx.send('List NFTs', [
@@ -2131,12 +2238,13 @@ function AddNft({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: (t: 
         </button>
       )}
       {picks.length > 0 && <p className="note" style={{ marginTop: 8 }}>New listings may be staged while draws settle.</p>}
+      {picks.length > 0 && <p className="note">Up to {approvalCollections(picks).length} collection approval{approvalCollections(picks).length === 1 ? '' : 's'} and {Math.ceil(picks.length / LIST_BATCH)} listing transaction{picks.length <= LIST_BATCH ? '' : 's'}, plus maintenance. Collection approval covers all NFTs you own in that collection.</p>}
     </>
   );
 }
 
 /** The live pool: what players pay, what is listed right now, where the ETH is, and what it earns. */
-function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boolean; me: Address; setTab: (t: Tab) => void }) {
+export function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: boolean; me: Address; setTab: (t: Tab) => void }) {
   const B = { address: d.balancer, abi: poolBalancerAbi } as const;
   const [mode, setMode] = useState<'deposit' | 'claim'>();
   const [amount, setAmount] = useState('');
@@ -2156,12 +2264,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const livePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (livePrices[l.denom] ??= []).push(l.price);
   const econ = !d.policyUnavailable && !d.mintFeeUnavailable && plan.some(Boolean)
-    ? economics(actualShapes, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, creatorRevenueBps: d.creatorRevenueBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!, baseFee: d.baseFee, paidUpkeepEnabled: d.paidUpkeepEnabled, shapePrices: livePrices, economics: d.economics, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes })
+    ? economics(actualShapes, { curatedBases: bases, curatedPrices: curated.map((l) => l.price), markupBps: d.markupBps, profitAccounting: d.profitAccounting, creatorFeeAccounting: d.creatorFeeAccounting, creatorRevenueBps: d.creatorRevenueBps, edgeBps: Number(d.edgeBps), mintFee: d.mintFee, restockFee: d.restockFee!, baseFee: d.baseFee, paidUpkeepEnabled: d.paidUpkeepEnabled, shapePrices: livePrices, economics: d.economics, restockFees: d.restockFees, keeperQuotes: d.keeperQuotes })
     : undefined;
-  const month = econ ? econ.creatorEarningsPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
+  const month = econ?.creatorEarningsKnown ? econ.creatorEarningsPerDraw * (Number(assume.perDay) || 0) * 30 : 0;
   const missing = plan.reduce((sum, n, i) => sum + Math.max(0, n - actualShapes[i]), 0);
   const expectedFees = d.listings.filter((listing) => listing.kind === 2 && (isSelectable(listing) || isStaged(listing))).reduce((sum, listing) => sum + listing.price - listing.base, 0n);
-  const fund = d.balance - d.creatorCredit;
+  const fund = operatingCash(d.balance, d.creatorCredit, d.profitAccounting, d.creatorFeeAccounting);
   const idle = d.required !== undefined && fund > d.required ? fund - d.required : 0n;
   const short_ = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
   // E9 / D1: prizes missing because the pool is short of ETH. The creator adds the ETH, or keeps the design without them.
@@ -2172,7 +2280,11 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
   const openingShortfall = opening > fund ? opening - fund : 0n;
   const reopen = !d.enabled && !d.retired && openingShortfall > 0n;
   const suggestedDeposit = openingShortfall > short_ ? openingShortfall : short_;
-  const withdrawable = d.surplus ?? d.creatorCredit;
+  const withdrawals = withdrawalBreakdown(d.creatorCredit, d.surplus, d.profitAccounting, d.creatorFeeAccounting);
+  const withdrawable = withdrawals.total;
+  const spareWithdrawable = withdrawals.capital;
+  const operatingResult = d.creatorFeeAccounting ? bankrollResult(d.balance, backing + stagedBacking, d.creatorCredit, d.contributedCapital, d.unsettled, d.awaitingUpkeep, d.proceeds) : undefined;
+  const feeTopUp = d.creatorFeeAccounting ? d.creatorFeeTopUpAvailable ?? 0n : 0n;
   const start = (m: 'deposit' | 'claim') => { setMode(mode === m ? undefined : m); setAmount(m === 'claim' ? formatEther(withdrawable) : suggestedDeposit > 0n ? formatEther(suggestedDeposit) : '0.01'); };
   const deposit = (value: bigint): Step => () => tx.write({ ...B, functionName: 'depositETH', value });
   const check = rateCheck(d);
@@ -2306,19 +2418,26 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
             {isCreator && pub && <div className="acts">
               <button className="btn" disabled={!!tx.busy} onClick={() => tx.send(`Add ${ethUp(short_)} ETH`, [deposit(short_), upkeepStep(pub, tx, me, d.balancer)])}>Add {ethUp(short_)} ETH</button>
               {missing > 0 && <button className="btn sec" disabled={!!tx.busy || !trimmed.some(Boolean)} onClick={() => {
-                const rate = d.legacy || d.restockFee === undefined ? d.creatorRevenueBps : rateFor(d, trimmed);
+                const rate = d.profitAccounting ? d.creatorRevenueBps : d.legacy || d.restockFee === undefined ? d.creatorRevenueBps : rateFor(d, trimmed);
                 tx.send(`Drop ${goneLabel}`, [() => tx.write({ ...B, functionName: 'configure', args: [d.markupBps, packPlan(trimmed), d.mintFeeCap] }),
                   ...(rate !== d.creatorRevenueBps ? [rateStep(tx, d.balancer, rate)] : []), upkeepStep(pub, tx, me, d.balancer)]);
               }}>Drop {goneLabel}</button>}
               <button className="link" onClick={() => start('deposit')}>Other amount</button>
             </div>}
           </>}
+          {isCreator && d.creatorFeeAccounting && feeTopUp > 0n && <>
+            <p className="foot">Top-up: {formatEther(feeTopUp)} ETH. Remaining creator fees: {formatEther(d.creatorCredit - feeTopUp)} ETH.</p>
+            <div className="acts"><button className="btn sec" disabled={!!tx.busy || !pub} onClick={() => pub && tx.send('Top up from creator fees', [
+              () => tx.write({ address: d.balancer, abi: profitAbi, functionName: 'reinvestCreatorFees', args: [feeTopUp] }),
+              ...(d.enabled ? [upkeepStep(pub, tx, me, d.balancer)] : []),
+            ])}>Top up from creator fees</button></div>
+          </>}
           {reopen && isCreator && <div className="acts">
             <button className="btn" disabled={!!tx.busy} onClick={() => tx.send('Add ETH and reopen', [deposit(openingShortfall), () => tx.write({ ...B, functionName: 'open' })])}>Add {ethUp(openingShortfall)} ETH and reopen</button>
             <button className="link" onClick={() => start('deposit')}>Other amount</button>
           </div>}
           {d.required !== undefined && short_ === 0n && !reopen && <>
-            <p className="foot">{eth(idle, 5)} ETH spare, included in Withdraw. Spare ETH also shortens restocking after big wins.</p>
+            <p className="foot">{d.profitAccounting ? <>{eth(idle, 5)} ETH above the required reserve.</> : <>{eth(idle, 5)} ETH spare, included in Withdraw. Spare ETH also shortens restocking after big wins.</>}</p>
             {isCreator && <div className="acts"><button className={mode === 'deposit' ? 'btn' : 'btn sec'} onClick={() => start('deposit')}>Add ETH</button></div>}
           </>}
           {d.required === undefined && <p className="foot">Operating requirement unavailable.</p>}
@@ -2332,13 +2451,43 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
         </div>
 
         <div className="blk">
-          <h2 className="h">Your earnings</h2>
-          <p className="desc">Your share of every draw sale: {d.creatorRevenueBps / 100}%, set by your markup and mix. It builds up as draws settle and you can withdraw it any time.</p>
+          <h2 className="h">{d.creatorFeeAccounting ? 'Gross creator fees' : d.profitAccounting ? 'Earned creator proceeds' : 'Your earnings'}</h2>
+          <p className="desc">{d.creatorFeeAccounting ? <>Your automatic creator fee: {d.creatorRevenueBps / 100}% of settled owner proceeds. Fees are separate from bankroll profit.</> : d.profitAccounting ? 'Proceeds above contributed ETH capital after recorded costs. Withdrawals retain the ETH needed for restocking and maintenance.' : <>Your share of every draw sale: {d.creatorRevenueBps / 100}%, set by your markup and mix. It builds up as draws settle and you can withdraw it any time.</>}</p>
+          {d.creatorFeeAccounting && d.creatorFeeUpdatePending && <p className="foot">Creator fee updates after pending draws and listings settle.</p>}
+          {d.creatorFeeAccounting && <p className="foot">Bankroll profit / loss: {operatingResult === undefined ? 'Pending settlement' : `${eth(operatingResult, 5)} ETH`}.</p>}
           {check?.stale && <>
             <p className="warn">Out of date. Your markup and mix now set {check.suggested / 100}%.</p>
             {isCreator && <div className="acts"><button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Update earnings rate', [rateStep(tx, d.balancer, check.suggested)])}>Update to {check.suggested / 100}%</button></div>}
           </>}
-          <div style={{ marginTop: 20 }}><span className="fig32">{eth(withdrawable, 5)}</span><span className="u13">ETH ready to withdraw</span></div>
+          <div style={{ marginTop: 20 }}><span className="fig32">{eth(d.creatorCredit, 5)}</span><span className="u13">{d.creatorFeeAccounting ? 'ETH accrued creator fees' : d.profitAccounting ? 'ETH earned proceeds' : 'ETH earnings available'}</span></div>
+          {d.profitAccounting && !d.creatorFeeAccounting && (d.unsettled > 0n || d.awaitingUpkeep > 0) && <p className="foot">Proceeds update after draws and maintenance settle.</p>}
+          {econ?.creatorEarningsKnown ? <>
+            <div className="kvs">
+              <div className="kv"><span className="k">{d.creatorFeeAccounting ? 'Projected creator fees' : d.profitAccounting ? 'Projected cash margin' : 'Estimated earnings'}</span><span className={month < 0 ? 'error' : undefined}>{signed(month)} ETH a month</span></div>
+              {d.creatorFeeAccounting && <div className="kv"><span className="k">Projected bankroll cash margin</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${signed(econ.marginPerDraw * (Number(assume.perDay) || 0) * 30)} ETH a month`}</span></div>}
+            </div>
+            <p className="foot">{perDraw(econ.creatorEarningsPerDraw)} ETH a draw, at {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button>. Assumes sales continue at today's mix. <button className="link" style={{ fontSize: 13 }} onClick={() => setHow(!how)}>How this is worked out</button></p>
+            {assume.open && <div className="acts"><div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div></div>}
+            {how && <div className="kvs">
+              <div className="kv"><span className="k">Expected settled owner proceeds</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
+              {(!d.profitAccounting || d.creatorFeeAccounting) && <div className="kv"><span className="k">Revenue retained per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>}
+              {d.profitAccounting && <div className="kv"><span className="k">Expected replacement backing</span><span>−{econ.replacementCostsPerDraw.toFixed(5)} ETH</span></div>}
+              <div className="kv"><span className="k">Expected replacement mint costs</span><span>{d.profitAccounting && '−'}{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
+              {!d.profitAccounting && <div className="kv"><span className="k">Expected surcharge in drawn prizes</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>}
+              <div className="kv"><span className="k">Estimated keeper pay</span><span>−{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
+              {d.creatorFeeAccounting && <div className="kv"><span className="k">Projected bankroll cash margin per draw</span><span>{econ.marginPerDraw === undefined ? 'Unavailable' : `${perDraw(econ.marginPerDraw)} ETH`}</span></div>}
+              <p className="foot">{d.creatorFeeAccounting ? 'Creator fees are gross revenue. Bankroll cash margin is separate from creator fees.' : d.profitAccounting ? 'Projected cash margin at this mix. Curated NFT acquisition costs are not included. Actual wins and costs vary.' : 'Earnings are separate from overall pool creator net results. Demand, replacement backing, mint costs and keeper costs affect those results.'}</p>
+            </div>}
+          </> : <p className="foot">{d.policyUnavailable || (d.profitAccounting && econ && !econ.creatorEarningsKnown) ? 'Estimate unavailable while keeper quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Estimates appear once a prize is listed and a mix is saved.'}</p>}
+        </div>
+
+        <div className="blk">
+          <h2 className="h">Withdraw ETH</h2>
+          <div className="kvs">
+            <div className="kv"><span className="k">{d.creatorFeeAccounting ? 'Creator fees available to withdraw' : d.profitAccounting ? 'Creator proceeds available to withdraw' : 'Your earnings'}</span><span>{eth(withdrawals.earnings, 5)} ETH</span></div>
+            <div className="kv"><span className="k">{d.creatorFeeAccounting ? (d.enabled ? 'Bankroll profit available to withdraw' : 'Bankroll ETH available to return') : d.profitAccounting ? 'Capital available to return' : 'Spare operating ETH'}</span><span>{spareWithdrawable === undefined ? 'Unavailable' : `${eth(spareWithdrawable, 5)} ETH`}</span></div>
+            <div className="kv sum"><span className="k">Total available to withdraw</span><span>{eth(withdrawable, 5)} ETH</span></div>
+          </div>
           {isCreator && <div className="acts">
             <button className="btn" disabled={!!tx.busy || withdrawable === 0n} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [withdrawable, me] })])}>Withdraw {ethDown(withdrawable)} ETH</button>
             <button className="link" disabled={withdrawable === 0n} onClick={() => start('claim')}>Other amount</button>
@@ -2349,22 +2498,7 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
               <button className="btn" disabled={!!tx.busy || !amount} onClick={() => tx.send('Withdraw', [() => tx.write({ ...B, functionName: 'claimSurplus', args: [ethOr(amount, 0n), me] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH</button>
             </div>
           )}
-          <p className="foot">{d.surplus === undefined ? 'Operating surplus unavailable. Earnings remain withdrawable.' : "Withdrawals take earnings first, then any operating ETH above what's needed."}{d.surplus !== undefined && d.surplus < idle && ' More becomes available as pending draws settle.'}</p>
-          {econ ? <>
-            <div className="kvs">
-              <div className="kv"><span className="k">Estimated earnings</span><span className={month < 0 ? 'error' : undefined}>{signed(month)} ETH a month</span></div>
-            </div>
-            <p className="foot">{perDraw(econ.creatorEarningsPerDraw)} ETH a draw, at {assume.perDay} draws a day. <button className="link" style={{ fontSize: 13 }} onClick={() => setAssume({ ...assume, open: !assume.open })}>Change</button>. Assumes sales continue at today's mix. <button className="link" style={{ fontSize: 13 }} onClick={() => setHow(!how)}>How this is worked out</button></p>
-            {assume.open && <div className="acts"><div className="field" style={{ width: 150 }}><input aria-label="Draws per day" value={assume.perDay} onChange={(e) => setAssume({ ...assume, perDay: e.target.value })} inputMode="numeric" /><span className="u">/DAY</span></div></div>}
-            {how && <div className="kvs">
-              <div className="kv"><span className="k">Expected settled owner proceeds</span><span>{econ.ownerProceeds.toFixed(5)} ETH</span></div>
-              <div className="kv"><span className="k">Revenue retained per draw</span><span>{perDraw(econ.retainedRevenuePerDraw)} ETH</span></div>
-              <div className="kv"><span className="k">Expected replacement mint costs</span><span>{econ.mintFeesPerDraw.toFixed(5)} ETH</span></div>
-              <div className="kv"><span className="k">Expected surcharge in drawn prizes</span><span>{econ.restockFeesPerDraw.toFixed(5)} ETH</span></div>
-              <div className="kv"><span className="k">Estimated keeper pay</span><span>−{econ.keeperCostKnown ? `${econ.keeperPayPerDraw?.toFixed(5)} ETH` : 'Quote unavailable'}</span></div>
-              <p className="foot">Earnings are separate from overall pool creator net results. Demand, replacement backing, mint costs and keeper costs affect those results.</p>
-            </div>}
-          </> : <p className="foot">{d.policyUnavailable ? 'Estimate unavailable while keeper quotes cannot be read.' : d.mintFeeUnavailable ? 'Estimate unavailable while the mint fee cannot be read.' : 'Earnings appear once an NFT is listed and a mix is saved.'}</p>}
+          <p className="foot">{d.profitAccounting ? d.surplus === undefined ? 'Withdrawable proceeds unavailable.' : d.enabled ? 'Restocking and maintenance reserves stay in the pool.' : d.creatorFeeAccounting ? 'Purchases are closed. Available bankroll ETH and creator fees are shown separately.' : 'Purchases are closed. Available capital and earned proceeds are shown separately.' : d.surplus === undefined ? 'Operating surplus unavailable. Earnings remain withdrawable.' : "Withdrawals take earnings first, then any operating ETH above what's needed."}{d.surplus !== undefined && d.surplus < idle && (!d.profitAccounting || d.unsettled > 0n || d.awaitingUpkeep > 0) && ' More becomes available as pending draws settle.'}</p>
           <h3 className="sub">Withdrawals</h3>
           {L ? (claims.length ? <div className="kvs hist" style={{ marginTop: 8 }}>
             {(allClaims ? claims : claims.slice(0, 5)).map((c) => {
@@ -2384,11 +2518,12 @@ function Overview({ d, tx, isCreator, me, setTab }: { d: D; tx: Tx; isCreator: b
           <div className="kvs">
             <div className="kv"><span className="k">Backing listed prizes</span><span>{eth(backing, 5)} ETH</span></div>
             {stagedBacking > 0n && <div className="kv"><span className="k">Staged prize backing</span><span>{eth(stagedBacking, 5)} ETH</span></div>}
-            <div className="kv"><span className="k">Operating ETH</span><span>{eth(fund, 5)} ETH</span></div>
-            <div className="kv"><span className="k">Your earnings</span><span>{eth(d.creatorCredit, 5)} ETH</span></div>
+            <div className="kv"><span className="k">{d.creatorFeeAccounting ? 'Operating ETH' : d.profitAccounting ? 'Pool cash' : 'Operating ETH'}</span><span>{eth(fund, 5)} ETH</span></div>
+            {(!d.profitAccounting || d.creatorFeeAccounting) && <div className="kv"><span className="k">{d.creatorFeeAccounting ? 'Reserved creator fees' : 'Your earnings'}</span><span>{eth(d.creatorCredit, 5)} ETH</span></div>}
             {d.proceeds > 0n && <div className="kv"><span className="k">Sales waiting to be collected</span><span>{eth(d.proceeds, 5)} ETH</span></div>}
           </div>
           {d.proceeds > 0n && me !== ZERO_ADDR && <div className="acts"><button className="btn sec" disabled={!!tx.busy} onClick={() => tx.send('Collect from sales', [() => tx.write({ ...B, functionName: 'collectProceeds' })])}>Collect {eth(d.proceeds, 5)} ETH</button></div>}
+          {d.profitAccounting && d.contributedCapital !== undefined && <p className="foot">Contributed ETH capital target: {eth(d.contributedCapital, 5)} ETH.</p>}
           <h3 className="sub">Where it came from</h3>
           {L ? <>
             <div className="kvs" style={{ marginTop: 8 }}>
@@ -2436,7 +2571,7 @@ function SetupBlock({ d, tx, me, setTab }: { d: D; tx: Tx; me: Address; setTab: 
   const listedN = shapeCount(listedShapeCounts(d.listings));
   const nfts = d.listings.filter((l) => l.kind === 1 && (isSelectable(l) || isStaged(l)));
   const st = statusLine(d);
-  const fund = d.balance - d.creatorCredit;
+  const fund = operatingCash(d.balance, d.creatorCredit, d.profitAccounting, d.creatorFeeAccounting);
   const short_ = d.required !== undefined && d.required > fund ? d.required - fund : 0n;
   const stalled = !opened && st.act === 'fund' && short_ > 0n;
   const url = created && txUrl(created.hash);
@@ -2527,7 +2662,7 @@ function rateFor(d: D, counts: Counts, shapePrices?: bigint[][]) {
 /** The stored rate is current when it is within max(0.25 points, 10%) of the rate for the saved design, or for the board
  *  as listed (listings keep the restocking fee of their listing time, so gas moves the first alone). */
 function rateCheck(d: D) {
-  if (d.legacy || d.restockFee === undefined || !d.target) return undefined;
+  if (d.legacy || d.profitAccounting || d.restockFee === undefined || !d.target) return undefined;
   const counts = unpackPlan(d.target);
   const shapePrices: bigint[][] = [];
   for (const l of d.listings) if (l.kind === 2 && isSelectable(l)) (shapePrices[l.denom] ??= []).push(l.price);
@@ -2537,7 +2672,7 @@ function rateCheck(d: D) {
 }
 
 const rateStep = (tx: Tx, balancer: Address, bps: number): Step =>
-  ['Update earnings rate', () => tx.write({ address: balancer, abi: poolBalancerAbi, functionName: 'setCreatorRevenueBps', args: [bps] })];
+  ['Update earnings rate', () => tx.write({ address: balancer, abi: legacyRateAbi, functionName: 'setCreatorRevenueBps', args: [bps] })];
 
 const GROUPS = [
   ['general', 'General'], ['pauses', 'Automatic pauses'], ['maintenance', 'Maintenance'], ['handoff', 'Hand off or retire'],

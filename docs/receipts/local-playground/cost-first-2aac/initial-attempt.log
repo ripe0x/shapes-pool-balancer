@@ -1,0 +1,154 @@
+{
+  "wins": 1,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1785",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "29285230846083449"
+}
+{
+  "wins": 2,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1776",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "20507075790701462"
+}
+{
+  "wins": 3,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1777",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "11728917439435959"
+}
+{
+  "wins": 4,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1787",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "42950714898848326"
+}
+{
+  "wins": 5,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1790",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "34172560708330470"
+}
+{
+  "wins": 6,
+  "NFT": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D:13",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "35932407120692710"
+}
+{
+  "wins": 7,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1786",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "67163160632395744"
+}
+{
+  "wins": 8,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1780",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "59641573229263376"
+}
+{
+  "wins": 9,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1792",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "52119985827661684"
+}
+{
+  "wins": 10,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1779",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "44579411573022096"
+}
+{
+  "wins": 11,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1795",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "35801255436897885"
+}
+{
+  "wins": 12,
+  "NFT": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D:12",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "37561101803654074"
+}
+{
+  "wins": 13,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1775",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "28782944568325345"
+}
+{
+  "wins": 14,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1789",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "20004788434941734"
+}
+{
+  "wins": 15,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1778",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "11226633401911925"
+}
+{
+  "wins": 16,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1804",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "2447992270749281"
+}
+{
+  "wins": 17,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1797",
+  "restocked": true,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "0"
+}
+{
+  "wins": 18,
+  "NFT": "0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0:1791",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "23692398194879689"
+}
+AssertionError [ERR_ASSERTION]: keeper stopped ticking
+    at maintain (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-cost-first-draws.ts:53:84)
+    at async draws (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-cost-first-draws.ts:63:14) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

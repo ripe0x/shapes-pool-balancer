@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-26T01:08:39.220842+00:00",
+  "helperBaseRevision": "c6ff1204ef01c765dea7f87d710416d6b688908e",
+  "runtimeMonetaryRunnerSha256": "03ce36b4578e2b1736de9f41a42e3f9ffaf853080de383b70276bda73b866292",
+  "postExecutionSourceDelta": "Sticky historical finding provenance only, covered by double-resume pure regression. Diagnostic monetary paths unchanged.",
+  "sha256": {
+    "scripts/local-stress-campaign.ts": "d5c91f0ebd4cde40f2e9dd3f5c558734e8986902f53382a731805a8f36a67bac",
+    "scripts/local-stress-campaign.test.ts": "d3339e8678fe5ffaa6e68e88c06b74af5c2304eaefc1b072669e35fd1deae47e",
+    "scripts/local-stress-branch.ts": "563406d7d059496bdbfd58eb5cf1a6555c6ad493563100e66da0905ec1400ee0",
+    "scripts/local-stress-branch.test.ts": "104052d129fb7373dc6991907e474f3ed9459cddf1d1c719ff793ba15b1384c8",
+    "app/public/stress-results/index.html": "4887de12afa76881898c640235a5d97fc7ff22dd8cc96dd60ca72991828527ee",
+    "app/public/stress-results/results.json": "ae397e55e2434ed49599f6d7f8c1d12a9e038b834fa2c97e8e48b6edc18ae1aa",
+    "docs/receipts/local-stress/20261125-v2-regimes/results.json": "b97ce224a56bf989ad4d987d8455bcb6d6c8aa2bdea537b89d65c389123dba4c"
+  },
+  "commands": [
+    {
+      "command": "npx vitest run scripts/local-stress-campaign.test.ts scripts/local-stress-branch.test.ts",
+      "exit": 0,
+      "scope": "initial integrated pass"
+    },
+    {
+      "command": "npx vitest run scripts/local-stress-branch.test.ts",
+      "exit": 0,
+      "scope": "meter ceiling repair"
+    },
+    {
+      "command": "npx vitest run scripts/local-stress-campaign.test.ts",
+      "exit": 0,
+      "scope": "final affected suite, 9 tests; includes controlled reinvestment and repeated resume regression"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit": 0,
+      "scope": "final source"
+    },
+    {
+      "command": "CANDIDATE_RUN=1 node --import tsx scripts/local-stress-campaign.ts --execute --directory docs/receipts/local-stress/20261125-v2-regimes --budget-ledger docs/receipts/local-stress/20261125-v2/budget.json --branch-metadata docs/receipts/local-stress/20261125-v2/branch.json --resume-results docs/receipts/local-stress/20261125-v2-final/results.json --draws-per-scenario 40",
+      "exit": 0,
+      "scope": "retained18 baselines; executed six focused regimes"
+    }
+  ],
+  "sourceMeter": {
+    "forwarded": 19778,
+    "maxForwardedReads": 24000,
+    "deadline": "2026-11-26T01:10:07.305Z",
+    "closed": true
+  },
+  "physicalBudget": {
+    "limits": {
+      "maxScenarios": 24,
+      "maxDraws": 3000,
+      "maxTransactions": 25000,
+      "maxMilliseconds": 1800000,
+      "gasWei": "500000000000000000000",
+      "purchasesWei": "2000000000000000000000"
+    },
+    "transactions": 6630,
+    "admittedDraws": 2518,
+    "gasWei": "2702275077900000000",
+    "purchasesWei": "49648694402700556593",
+    "elapsedMilliseconds": 1581668
+  },
+  "browserChecks": [
+    "Actual dataset rendering",
+    "Design and rate filters",
+    "Scenario selection and reload",
+    "Signed losses and protected fees displayed separately",
+    "Historical errors labelled and separated from current cases",
+    "Clipped bankroll profit not labelled withdrawable",
+    "Frozen final24case overview and historical provenance annotations"
+  ],
+  "limits": [
+    "Simulated randomness, no authentic VRF proof/delivery/billing acceptance",
+    "No mainnet broadcast",
+    "No economics changes",
+    "Original8545 writes excluded by source read-only proxy",
+    "Actor-wallet gas and curated investment cost excluded from native result",
+    "Refund-credit withdrawal roundtrip not exercised"
+  ],
+  "finalHelperRevision": "054ce39",
+  "independentReview": {
+    "file": "docs/receipts/local-stress/20261125-v2/final-economic-review.md",
+    "sha256": "50fee7def4289bb2b8a66ea3850539666da289775cac483263c22554c5198515",
+    "navGapWei": 0,
+    "feeGapWei": 0,
+    "cases": 24,
+    "tracePoints": 1831,
+    "scope": "Independent arithmetic on frozen saved results; no independent live RPC readback."
+  },
+  "rawEvidenceArchive": {
+    "path": "docs/receipts/local-stress/raw-evidence.tar.gz",
+    "sha256": "0dfde9b6fe34f08f52b217acd4507c9b404bbb629dc9fc227a289b8ab045c6b3",
+    "index": "docs/receipts/local-stress/raw-evidence-index.json",
+    "files": 52,
+    "verified": "Every archived file byte hash matches its unchanged workspace original."
+  }
+}

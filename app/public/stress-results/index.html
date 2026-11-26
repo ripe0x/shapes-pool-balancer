@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local stress results · FWA</title>
+  <style>
+    :root{color-scheme:dark;--bg:#000;--panel:#0b0b0b;--ink:#fff;--soft:#bbb;--muted:#8c8c8c;--line:#2b2b2b;--bad:#ff8578;--good:#b6dfc5;font-family:system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}button,select,input{font:inherit;color:inherit}a{color:inherit}button,select{border:1px solid #555;background:#080808;border-radius:0;padding:10px 12px;min-height:42px}button{cursor:pointer}button:hover{background:#202020}button:disabled{opacity:.5;cursor:wait}:focus-visible{outline:2px solid white;outline-offset:3px}header{border-bottom:1px solid var(--line);padding:22px 4vw;display:flex;align-items:center;gap:24px;justify-content:space-between;flex-wrap:wrap}.wordmark{font-size:18px;font-weight:800;text-decoration:none;letter-spacing:-.04em}.kicker,dt,th,.tiny{font:11px/1.5 ui-monospace,SFMono-Regular,monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}main{max-width:1600px;padding:40px 4vw 70px;margin:auto}h1{font-size:clamp(34px,5vw,64px);letter-spacing:-.055em;line-height:1;margin:10px 0 20px}h2{font-size:23px;letter-spacing:-.03em;margin:0 0 18px}h3{font-size:16px;margin:0 0 12px}p{line-height:1.6;margin:8px 0;color:var(--soft)}.intro{max-width:850px}.toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.toolbar label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)}.notice{padding:15px 18px;border:1px solid var(--line);margin:24px 0;background:var(--panel);font-size:13px}.notice strong{color:var(--ink)}.bad{color:var(--bad)}.good{color:var(--good)}.status{font:12px ui-monospace,monospace;text-transform:uppercase}.metadata{display:flex;gap:10px 30px;flex-wrap:wrap;margin:22px 0;color:var(--muted);font:12px/1.6 ui-monospace,monospace}.metadata span{overflow-wrap:anywhere}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);margin:26px 0 38px}.stat{padding:22px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat b{display:block;font-size:32px;line-height:1.4;letter-spacing:-.04em}.filters{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:18px 0}.filters label{display:grid;gap:7px;font-size:12px;color:var(--soft)}.filters select{min-width:160px}.count{margin-left:auto;font-size:12px;color:var(--muted)}.table-wrap{overflow:auto;border:1px solid var(--line)}table{border-collapse:collapse;width:100%;font-size:13px}caption{text-align:left;padding:14px;color:var(--muted);font-size:12px}th{text-align:right;font-weight:400;white-space:nowrap;background:var(--panel)}th:first-child,td:first-child{text-align:left}th button{font:inherit;min-height:40px;padding:10px 0;background:none;border:0;color:inherit;white-space:nowrap}th button:hover{color:#fff;background:none}td,th{padding:13px 16px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}tbody tr:last-child td{border-bottom:0}tbody tr.selected{background:#171717}tbody tr:hover{background:#101010}.scenario-link{padding:0;min-height:30px;border:0;background:none;text-align:left;color:#fff;text-decoration:underline;text-underline-offset:4px}.sub{display:block;color:var(--muted);font-size:11px;margin-top:5px}.empty{padding:42px 24px;text-align:center;color:var(--muted)}.detail{margin-top:42px;scroll-margin-top:24px}.detail-head{display:flex;justify-content:space-between;gap:20px;align-items:start;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:16px}.detail-head h2{margin-bottom:8px}.detail-head p{font-size:13px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}.panel{border:1px solid var(--line);padding:22px;min-width:0}.wide{grid-column:1/-1}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin:20px 0 0}dl{margin:0}dd{margin:5px 0 0;font-size:20px;overflow-wrap:anywhere}dd small{font-size:11px;color:var(--muted)}.chart{width:100%;height:auto;display:block;margin-top:16px}.legend{display:flex;gap:10px 22px;flex-wrap:wrap;font-size:12px;color:var(--soft)}.legend span:before{content:"";display:inline-block;width:17px;height:3px;background:var(--color);vertical-align:middle;margin-right:7px}.chart-note{font-size:12px;color:var(--muted);margin-top:8px}.flows td,.flows th{padding:11px 0}.flows td:first-child{white-space:normal;color:var(--soft)}.flows th:first-child{color:var(--muted)}.flows th{background:none}.mix-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin:18px 0}.tier{text-align:center;padding:12px 4px;border:1px solid var(--line)}.tier b{display:block;margin-top:6px;font-size:18px}.tier span{font-size:10px;color:var(--muted)}ul{padding-left:20px;margin:8px 0}li{color:var(--soft);font-size:13px;line-height:1.7;margin:6px 0}.findings{margin-top:36px}.findings li b{color:var(--ink)}.foot{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:30px;padding-top:18px}.hidden{display:none!important}@media(max-width:800px){main{padding-top:26px}.detail-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}.metrics{grid-template-columns:1fr 1fr}.mix-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.count{margin-left:0}.panel{padding:16px}td,th{padding:11px 12px}}
+    details{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}summary{cursor:pointer;color:var(--soft);font-size:13px}details pre{font:11px/1.6 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);max-height:460px;overflow:auto;padding:14px;border:1px solid var(--line);background:#050505}
+  </style>
+</head>
+<body>
+<header>
+  <a class="wordmark" href="/">FWA / LOCAL LAB</a>
+  <div class="toolbar"><span id="campaign-status" class="status">Awaiting results</span><label><input id="auto-refresh" type="checkbox" checked> Refresh while running</label><button id="reload" type="button">Reload results</button></div>
+</header>
+<main>
+  <div class="kicker">Fork stress campaign · diagnostic evidence</div>
+  <h1>Follow the money.</h1>
+  <p class="intro">Compare measured scenarios, inspect the bankroll through time, and see where ETH ended up. Each row is one scenario with its own design, draw rate and seed.</p>
+  <div class="notice"><strong>Simulated randomness. Local chain only.</strong> These diagnostics do not exercise authentic VRF delivery or establish production reliability. Rates describe scenario schedules; charts cover only the elapsed simulation horizon. No annualized returns or forecasts are shown.</div>
+  <p id="load-message" role="status" aria-live="polite">Loading ./results.json…</p>
+  <div id="campaign" class="hidden">
+    <div id="metadata" class="metadata"></div>
+    <div id="stats" class="stats"></div>
+    <section aria-labelledby="comparison-title">
+      <h2 id="comparison-title">Scenario comparison</h2>
+      <div class="filters">
+        <label for="design">Design<select id="design"><option value="">All designs</option></select></label>
+        <label for="rate">Nominal draws / day<select id="rate"><option value="">All rates</option></select></label>
+        <label for="outcome">Observed outcome<select id="outcome"><option value="">All outcomes</option><option value="shortfall">Reserve shortfall observed</option><option value="settled">Completed, no observed shortfall</option><option value="active">Queued or running</option><option value="failed">Execution failed</option></select></label>
+        <span id="visible-count" class="count"></span>
+      </div>
+      <div class="table-wrap"><table id="comparison"><caption>Amounts in ETH. Select a scenario for detail. Column headings sort the measured results.</caption><thead><tr></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section id="detail" class="detail" aria-labelledby="detail-title"></section>
+    <section class="findings" aria-labelledby="findings-title"><h2 id="findings-title">Campaign findings</h2><div id="findings"></div></section>
+    <section class="findings" aria-labelledby="limitations-title"><h2 id="limitations-title">Evidence limits</h2><ul id="limitations"></ul></section>
+  </div>
+  <p class="foot">Read-only local results viewer · no RPC requests, wallet connections or transactions. Values are snapshots and flow counters, with overlapping accounting categories. They are not added together as an independent conservation proof.</p>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
+const integer = value => { try { return BigInt(value ?? '0'); } catch { return 0n; } };
+const count = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+const number = value => count(value).toLocaleString('en-US', {maximumFractionDigits: 2});
+// Keep monetary text and sorting in integer wei; floating point is only for SVG coordinates.
+function eth(value, precision = 5) {
+  const wei = integer(value), sign = wei < 0n ? '−' : '', absolute = wei < 0n ? -wei : wei;
+  const whole = absolute / 1000000000000000000n;
+  const fraction = (absolute % 1000000000000000000n).toString().padStart(18, '0');
+  const visible = fraction.slice(0, precision).replace(/0+$/, '');
+  if (absolute && !whole && !visible) return sign + '<0.' + '0'.repeat(precision - 1) + '1';
+  return sign + whole.toLocaleString('en-US') + (visible ? '.' + visible : '');
+}
+function money(value) { const span = node('span', eth(value)); span.title = integer(value).toString() + ' wei'; return span; }
+function duration(seconds) { const value = count(seconds); return value >= 86400 ? number(value / 86400) + ' days' : value >= 3600 ? number(value / 3600) + ' hours' : number(value / 60) + ' minutes'; }
+function date(value) { if (!value) return '—'; const d = new Date(value); return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString(); }
+function hasShortfall(s) { return count(s.shortfallEvents) > 0 || integer(s.final?.shortfallWei) > 0n || (s.trace || []).some(t => integer(t.shortfallWei) > 0n); }
+function outcome(s) { if (s.status === 'failed') return 'failed'; if (hasShortfall(s)) return 'shortfall'; return s.status === 'complete' ? 'settled' : 'active'; }
+const outcomeLabels = {failed:'Execution failed',shortfall:'Reserve shortfall',settled:'No observed shortfall',active:'In progress'};
+let data, selectedId, sortKey = 'design', sortDirection = 1, fetching = false;
+const columns = [
+  ['design','Scenario',s=>String(s.design || '')],['drawsPerDay','Nominal draws / day',s=>count(s.drawsPerDay)],
+  ['drawsSettled','Settled / attempted',s=>count(s.drawsSettled)],['horizon','Measured horizon',s=>count(s.elapsedSimSeconds)],
+  ['cashWei','Cash · ETH',s=>integer(s.final?.cashWei)],['reservedFeesWei','Fee reserve · ETH',s=>integer(s.final?.reservedFeesWei)],
+  ['bankrollPnlWei','Signed bankroll P/L · ETH',s=>integer(s.final?.bankrollPnlWei)],['shortfallEvents','Shortfall events',s=>count(s.shortfallEvents)],
+  ['outcome','Observed outcome',s=>outcome(s)]
+];
+function setOptions(id, values, label) {
+  const select = $(id), previous = select.value; select.replaceChildren(new Option(label, ''));
+  for (const value of values) select.add(new Option(String(value), String(value)));
+  if (values.some(v => String(v) === previous)) select.value = previous;
+}
+function renderCampaign() {
+  $('campaign').classList.remove('hidden'); $('campaign-status').textContent = data.status || 'Unknown status';
+  const meta = [['Revision',data.revision || 'Not recorded'],['Chain',data.chainId ?? 'Not recorded'],['RPC',data.rpcLabel || 'Not recorded'],['Randomness',data.randomness || 'Not recorded'],['Started',date(data.startedAt)],['Finished',date(data.finishedAt)]];
+  $('metadata').replaceChildren(...meta.map(([key,value]) => node('span',key + ': ' + value)));
+  const scenarios = data.scenarios, complete = scenarios.filter(s=>s.status==='complete').length;
+  const stats = [['Scenarios completed',complete + ' / ' + scenarios.length],['Settled draws',number(scenarios.reduce((sum,s)=>sum+count(s.drawsSettled),0))],['Shortfall scenarios',number(scenarios.filter(hasShortfall).length)],['Failed scenarios',number(scenarios.filter(s=>s.status==='failed').length)]];
+  $('stats').replaceChildren(...stats.map(([label,value])=>{ const el=node('div',undefined,'stat'); el.append(node('span',label,'kicker'),node('b',value)); return el; }));
+  setOptions('design',[...new Set(scenarios.map(s=>s.design || 'Unspecified'))].sort(),'All designs');
+  setOptions('rate',[...new Set(scenarios.map(s=>count(s.drawsPerDay)))].sort((a,b)=>a-b),'All rates');
+  renderComparison(); renderFindings();
+  const limits = [
+    'Simulated randomness diagnoses economic behavior. Authentic VRF timing, delivery, failures and costs are not validated by these runs.',
+    'A local fork does not reproduce the live gas market, inclusion ordering, competing callers or live keeper availability.',
+    'Monetary text is truncated for display. Hover an amount for exact wei. SVG charts use approximate floating-point ETH values.',
+    'No observed shortfall describes the recorded samples only. It is not a safety verdict or a guarantee for other seeds and horizons.',
+    ...(Array.isArray(data.limitations) ? data.limitations : [])
+  ];
+  $('limitations').replaceChildren(...limits.map(text=>node('li',text)));
+}
+function renderComparison() {
+  const filtered = data.scenarios.filter(s=>(!$('design').value || (s.design || 'Unspecified')===$('design').value) && (!$('rate').value || String(count(s.drawsPerDay))===$('rate').value) && (!$('outcome').value || ($('outcome').value==='shortfall' ? hasShortfall(s) : $('outcome').value==='active' ? ['queued','running'].includes(s.status) : outcome(s)===$('outcome').value)));
+  const accessor = columns.find(c=>c[0]===sortKey)[2];
+  filtered.sort((a,b)=>{const av=accessor(a),bv=accessor(b); return (av<bv?-1:av>bv?1:String(a.id).localeCompare(String(b.id)))*sortDirection;});
+  $('visible-count').textContent = filtered.length + ' of ' + data.scenarios.length + ' scenarios';
+  const head = $('comparison').tHead.rows[0]; head.replaceChildren(...columns.map(([key,label])=>{
+    const th=node('th'); th.scope='col'; if(key===sortKey) th.setAttribute('aria-sort',sortDirection===1?'ascending':'descending');
+    const button=node('button',label+(key===sortKey?(sortDirection===1?' ↑':' ↓'):'')); button.type='button'; button.addEventListener('click',()=>{sortDirection=sortKey===key?-sortDirection:1;sortKey=key;renderComparison();head.cells[columns.findIndex(c=>c[0]===key)].querySelector('button').focus();}); th.append(button); return th;
+  }));
+  const body = $('comparison').tBodies[0]; body.replaceChildren();
+  if (!filtered.some(s=>s.id===selectedId)) selectedId=filtered[0]?.id;
+  for (const s of filtered) {
+    const tr=node('tr',undefined,s.id===selectedId?'selected':'');
+    const identity=node('td'), button=node('button',s.design || s.id,'scenario-link'); button.type='button';
+    if(s.id===selectedId) button.setAttribute('aria-current','true');
+    button.addEventListener('click',()=>{selectedId=s.id;renderComparison();$('detail-title')?.focus({preventScroll:true});$('detail').scrollIntoView({behavior:'smooth',block:'start'});});
+    identity.append(button,node('span','Seed '+(s.seed ?? '—')+' · '+(s.mode || s.id),'sub')); tr.append(identity);
+    tr.append(node('td',number(s.drawsPerDay)),node('td',number(s.drawsSettled)+' / '+number(s.drawsAttempted)),node('td',duration(s.elapsedSimSeconds)));
+    for (const key of ['cashWei','reservedFeesWei','bankrollPnlWei']) {const td=node('td'); if(s.final?.[key]!==undefined){td.append(money(s.final[key]));if(key==='bankrollPnlWei'&&integer(s.final[key])<0n)td.classList.add('bad');}else td.textContent='—';tr.append(td);}
+    const state=s.status==='queued'?'Queued':s.status==='running'?'Running':s.status==='failed'?'Execution failed':outcomeLabels[outcome(s)];
+    tr.append(node('td',number(s.shortfallEvents)),node('td',state+(hasShortfall(s)&&['running','failed'].includes(s.status)?' · shortfall':''),hasShortfall(s)||s.status==='failed'?'bad':'')); body.append(tr);
+  }
+  if(!filtered.length){const tr=node('tr'),td=node('td',data.scenarios.length?'No scenarios match these filters.':'No measured scenarios yet. Reload as the campaign progresses.','empty');td.colSpan=columns.length;tr.append(td);body.append(tr);}
+  renderDetail(data.scenarios.find(s=>s.id===selectedId));
+}
+function metric(label,value,isMoney=false){const dl=node('dl');dl.append(node('dt',label));const dd=node('dd');if(isMoney&&value!==undefined){dd.append(money(value),node('small',' ETH'));}else dd.textContent=value===undefined?'—':String(value);dl.append(dd);return dl;}
+function panel(title,wide=false){const el=node('div',undefined,'panel'+(wide?' wide':''));el.append(node('h3',title));return el;}
+function chart(title,trace,series){
+  const holder=panel(title), legend=node('div',undefined,'legend');
+  series.forEach(([key,label,color])=>{const item=node('span',label);item.style.setProperty('--color',color);legend.append(item);}); holder.append(legend);
+  const points=trace.filter(t=>series.some(([key])=>t[key]!==undefined));
+  if(!points.length){holder.append(node('p','No trace samples recorded yet.','chart-note'));return holder;}
+  const svgNS='http://www.w3.org/2000/svg', svg=document.createElementNS(svgNS,'svg');svg.classList.add('chart');svg.setAttribute('viewBox','0 0 660 260');svg.setAttribute('role','img');svg.setAttribute('aria-label',title+' in ETH over elapsed simulated days');
+  const values=points.flatMap(t=>series.filter(([key])=>t[key]!==undefined).map(([key])=>Number(integer(t[key]))/1e18));
+  let low=Math.min(0,...values), high=Math.max(0,...values);if(high===low)high=low+1;
+  const maxTime=Math.max(1,...points.map(t=>count(t.timeSeconds))), x=t=>62+count(t.timeSeconds)/maxTime*576,y=value=>216-(value-low)/(high-low)*190;
+  const add=(tag,attrs,text)=>{const el=document.createElementNS(svgNS,tag);for(const [key,value]of Object.entries(attrs))el.setAttribute(key,String(value));if(text!==undefined)el.textContent=text;svg.append(el);return el;};
+  for(let i=0;i<4;i++){const value=low+(high-low)*i/3, yy=y(value);add('line',{x1:62,x2:638,y1:yy,y2:yy,stroke:'#292929'});add('text',{x:52,y:yy+4,fill:'#929292','font-size':10,'text-anchor':'end'},Math.abs(value)>=1000?value.toExponential(1):Number(value.toPrecision(3)).toString());}
+  add('text',{x:62,y:12,fill:'#929292','font-size':10},'ETH');
+  for(let i=0;i<4;i++){const time=maxTime*i/3;add('text',{x:62+576*i/3,y:242,fill:'#929292','font-size':10,'text-anchor':i===0?'start':i===3?'end':'middle'},number(time/86400)+'d');}
+  if(low<0&&high>0)add('line',{x1:62,x2:638,y1:y(0),y2:y(0),stroke:'#777','stroke-dasharray':'3 4'});
+  for(const [key,label,color]of series){const samples=points.filter(t=>t[key]!==undefined);const path=samples.map((t,i)=>(i?'L':'M')+x(t).toFixed(2)+','+y(Number(integer(t[key]))/1e18).toFixed(2)).join(' ');add('path',{d:path,fill:'none',stroke:color,'stroke-width':2,'stroke-linejoin':'round'});if(samples.length===1){const t=samples[0];add('circle',{cx:x(t),cy:y(Number(integer(t[key]))/1e18),r:3,fill:color});}}
+  holder.append(svg,node('p',points.length+' recorded snapshots · elapsed simulation time · separate vertical scale per chart','chart-note'));return holder;
+}
+function renderDetail(s){
+  const detail=$('detail');detail.replaceChildren();if(!s)return;
+  const top=node('div',undefined,'detail-head'),left=node('div'),heading=node('h2',(s.design||'Scenario')+' / '+number(s.drawsPerDay)+' nominal draws per day');heading.id='detail-title';heading.tabIndex=-1;
+  left.append(heading,node('p','Seed '+(s.seed??'—')+' · '+s.id+' · '+(s.mode||'Recorded scenario')+' · '+duration(s.elapsedSimSeconds)+' measured'));top.append(left,node('span',s.status+' · '+outcomeLabels[outcome(s)],'status'+(outcome(s)==='failed'||outcome(s)==='shortfall'?' bad':'')));detail.append(top);
+  if(s.error)detail.append(node('p',s.error,'notice bad'));
+  const grid=node('div',undefined,'detail-grid'),summary=panel('Closing snapshot',true),metrics=node('div',undefined,'metrics');
+  [['Signed bankroll profit / loss','bankrollPnlWei'],['Cash','cashWei'],['Operating balance','operatingWei'],['Reserved fees','reservedFeesWei'],['Bankroll profit above capital','bankrollProfitWei'],['Capital','capitalWei'],['Automatic NFT backing','backingWei'],['Required reserve','reserveWei'],['Reserve shortfall','shortfallWei']].forEach(([label,key])=>{const item=metric(label,s.final?.[key],true);if(key==='bankrollPnlWei'&&integer(s.final?.[key])<0n)item.querySelector('dd').classList.add('bad');metrics.append(item);});
+  const nativeResultRecorded = s.final?.cashWei!==undefined && s.final?.backingWei!==undefined && s.flows?.totalWithdrawnWei!==undefined && s.initialDepositWei!==undefined;
+  const nativeResult = nativeResultRecorded ? integer(s.final.cashWei)+integer(s.final.backingWei)+integer(s.flows.totalWithdrawnWei)-integer(s.initialDepositWei)-integer(s.flows?.additionalCapitalWei) : undefined;
+  const nativeMetric=metric('Overall native result',nativeResult,true);if(nativeResult!==undefined&&nativeResult<0n)nativeMetric.querySelector('dd').classList.add('bad');metrics.prepend(nativeMetric);
+  metrics.append(metric('Initial deposit',s.initialDepositWei,true),metric('Markup',number(count(s.markupBps)/100)+'%'),metric('NFT wins / refunds',number(s.nftWins)+' / '+number(s.refunds)),metric('Curated NFT wins',s.curatedNftWins===undefined?undefined:number(s.curatedNftWins)),metric('Actual draws / day',s.actualDrawsPerDay===undefined?undefined:number(s.actualDrawsPerDay)),metric('Keeper transactions',number(s.keeperTransactions)));
+  summary.append(metrics,node('p','Overall native result = cash + automatic NFT backing + total withdrawals − initial deposit − additional capital. Excludes curated NFT acquisition basis and wallet gas. Reinvested fees are not counted again as external cash flow.','chart-note'),node('p','Signed bankroll P/L = cash + automatic NFT backing − reserved fees − capital. Bankroll profit above capital is clipped at zero; withdrawal availability is separately reserve-gated and is not shown here. Actual draw rate covers the measured elapsed horizon.','chart-note'));grid.append(summary);
+  const trace=Array.isArray(s.trace)?s.trace:[];
+  grid.append(chart('Cash and reserved fees',trace,[['cashWei','Cash','#ffffff'],['reservedFeesWei','Reserved fees','#d7a8ff'],['operatingWei','Operating','#8d9bb1']]),chart('Signed bankroll profit / loss',trace,[['bankrollPnlWei','Signed bankroll P/L','#b6dfc5']]),chart('Backing and required reserve',trace,[['backingWei','Backing','#ffffff'],['reserveWei','Required reserve','#9dbbfa']]),chart('Reserve gap',trace,[['shortfallWei','Reserve shortfall','#ff8578']]));
+  const flows=panel('Measured flow counters'),table=node('table',undefined,'flows'),tbody=node('tbody');
+  const labels=[['buyerGrossPaidWei','Buyer gross paid'],['drawChargeWei','Draw charges'],['vrfChargesWei','VRF charges'],['ownerReceiptsWei','Owner receipts'],['mintFeesWei','Mint fees'],['keeperPayWei','Keeper pay'],['creatorFeesAccruedWei','Creator fees accrued'],['feesReinvestedWei','Fees reinvested'],['withdrawnFeesWei','Fees withdrawn'],['totalWithdrawnWei','Total withdrawals, including closed capital claims'],['wonBackingWei','Backing awarded on wins'],['additionalCapitalWei','Additional capital']];
+  for(const[key,label]of labels){const tr=node('tr'),td=node('td');if(s.flows?.[key]!==undefined)td.append(money(s.flows[key]));else td.textContent='—';tr.append(node('td',label),td);tbody.append(tr);}table.append(tbody);flows.append(table,node('p','ETH, cumulative within this scenario. Fees accrued and fees reinvested can describe the same ETH at different steps. Missing counters are shown as —.','chart-note'));grid.append(flows);
+  const external=panel('ETH outside the Balancer'),externalTable=node('table',undefined,'flows'),externalBody=node('tbody');
+  const externalFields=[['fwaCashWei','FWA contract cash'],['fwaAcquisitionEscrowWei','FWA acquisition escrow'],['fwaDeliveryEscrowWei','FWA delivery escrow'],['fwaRefundCreditTotalWei','FWA total refund credits'],['buyerRefundCreditWei','Buyer refund credit'],['fwaProtocolFeesWei','FWA protocol fees']];
+  for(const[key,label]of externalFields){const tr=node('tr'),td=node('td');if(s.final?.[key]!==undefined)td.append(money(s.final[key]));else td.textContent='—';tr.append(node('td',label),td);externalBody.append(tr);}externalTable.append(externalBody);external.append(externalTable,node('p','Closing snapshot in ETH. Escrows, refund credits and protocol fees are accounting buckets within FWA cash. Buyer refund credit is part of total refund credits. These rows overlap and must not be summed.','chart-note'));grid.append(external);
+  const mix=panel('Actual win mix'),tierWins=Array.isArray(s.tierWins)?s.tierWins:Array.isArray(s.actualWinMix)?s.actualWinMix:null;
+  mix.append(node('p',number(s.nftWins)+' total NFT wins · '+number(s.refunds)+' refunds · '+number(s.drawsSettled)+' settled draws','chart-note'));
+  mix.append(node('p','Curated NFT wins: '+(s.curatedNftWins===undefined?'not recorded':number(s.curatedNftWins))+'. Curated wins are separate from the automatic tier counts below.','chart-note'));
+  if(tierWins){const cells=node('div',undefined,'mix-grid');for(let i=0;i<16;i++){const tier=node('div',undefined,'tier');tier.append(node('span','Tier '+i),node('b',number(tierWins[i])),node('span','target '+number(s.target?.[i])));cells.append(tier);}mix.append(cells,node('p','Actual automatic NFT wins per tier. Target values are configured tier counts, not expected win probabilities.','chart-note'));}
+  else mix.append(node('p','Tier-level win counts were not recorded. Total wins and refunds above are the available actual outcome mix.','chart-note'));
+  if(Array.isArray(s.target))mix.append(node('p','Target tier counts (0–15): '+s.target.map(number).join(' / '),'chart-note'));
+  grid.append(mix);
+  if(s.notes?.length){
+    const notes=panel('Scenario notes',true),list=node('ul'),execution=[];
+    for(const text of s.notes){if(/^(?:sent\b[^:\n]*|mined)\s*:\s*[\[{]/.test(String(text).trim()))execution.push(String(text));else list.append(node('li',text));}
+    if(list.children.length)notes.append(list);
+    if(execution.length){const disclosure=node('details');disclosure.append(node('summary','Execution details ('+execution.length+')'),node('pre',execution.join('\n\n')));notes.append(disclosure);}grid.append(notes);
+  }detail.append(grid);
+}
+function renderFindings(){
+  const container=$('findings');container.replaceChildren();if(!data.findings?.length){container.append(node('p',data.status==='complete'?'No campaign findings were recorded. This is not a safety verdict.':'Findings will appear as the campaign records them.','chart-note'));return;}
+  if(data.findings.every(f=>f.historical===true))container.append(node('p','No findings are recorded for the current attempt. Prior-attempt evidence is retained below.','chart-note'));
+  const list=node('ul');for(const f of data.findings){
+    const item=node('li'),historical=f.historical===true,severity=String(f.severity||'Observation').toUpperCase();
+    item.append(node('b',(historical?'HISTORICAL '+(severity==='ERROR'?'FAILED ATTEMPT':'ATTEMPT')+' · ':'')+severity+' '),document.createTextNode(f.text||''));
+    if(f.scenarioId){
+      if(historical)item.append(node('span','Prior scenario: '+f.scenarioId+' · This finding does not describe the current attempt.','sub'));
+      else{const b=node('button',f.scenarioId,'scenario-link');b.type='button';b.addEventListener('click',()=>{$('design').value='';$('rate').value='';$('outcome').value='';selectedId=f.scenarioId;renderComparison();$('detail').scrollIntoView({behavior:'smooth'});});item.append(document.createTextNode(' · '),b);}
+    }
+    if(historical&&f.attemptSource)item.append(node('span','Prior attempt source: '+f.attemptSource,'sub'));
+    list.append(item);
+  }container.append(list);
+}
+async function reload(){
+  if(fetching)return;fetching=true;$('reload').disabled=true;
+  try{const response=await fetch('./results.json',{cache:'no-store'});if(!response.ok)throw new Error(response.status===404?'No results.json yet. The campaign has not published a snapshot.':'Results request failed: HTTP '+response.status);const next=await response.json();if(next.schema!=='local-stress-v2'||!Array.isArray(next.scenarios))throw new Error('Unsupported results schema. Expected local-stress-v2 with scenarios.');data=next;renderCampaign();$('load-message').textContent='Snapshot loaded '+new Date().toLocaleTimeString()+'.'+(data.status==='running'?' Campaign is still running.':'');$('load-message').classList.remove('bad');}
+  catch(error){$('load-message').textContent=(data?'Previous snapshot retained. ':'')+error.message+(location.protocol==='file:'?' Serve this directory over local HTTP to load JSON.':'');$('load-message').classList.add('bad');}
+  finally{fetching=false;$('reload').disabled=false;}
+}
+$('reload').addEventListener('click',reload);for(const id of ['design','rate','outcome'])$(id).addEventListener('change',renderComparison);
+setInterval(()=>{if($('auto-refresh').checked&&(!data||data.status==='running'))reload();},10000);
+reload();
+</script>
+</body>
+</html>

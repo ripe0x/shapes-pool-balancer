@@ -1,0 +1,29 @@
+{
+  "chainId": 1,
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "factoryFromVerifiedRecord": "deployments/1.creator-fee-v2.verified.json",
+  "signer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "requireCreationPaused": true,
+  "nativeValueWei": "0",
+  "function": "setEconomics",
+  "economics": {
+    "workFee": "20000000000000",
+    "maxGas": 3200000,
+    "overheadGas": 60000,
+    "gasPriceCeiling": "1500000000",
+    "priorityAllowance": "50000000",
+    "restockGas": 940000,
+    "restockFlat": "200000000000000",
+    "baseGas": 200000,
+    "processGas": 1800000,
+    "reconcileGas": 150000,
+    "shapeGas": 700000,
+    "prizeGas": 150000,
+    "processGraceBlocks": 50,
+    "pausedProcessGraceBlocks": 10
+  },
+  "keeperServiceMaxGasPriceGwei": "1.5",
+  "priorityGwei": "0.05",
+  "proposedTransactionGasLimit": "200000",
+  "broadcastAuthorized": false
+}

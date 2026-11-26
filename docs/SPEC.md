@@ -1,3 +1,6 @@
+> Current accounting candidate (2026-11-25): [automatic creator fees and optional replenishment](COST-FIRST-PROCEEDS.md), owner requirements R118–R121. Version 2 separates reserved fees from bankroll profit and permits exact-shortfall reinvestment. Historical readiness below does not establish readiness for this source change; existing clones retain their original behavior. No deployment is included.
+
+
 # Functional specification
 
 Current specification, 2026-11-18. The protected collected-revenue decisions in
@@ -260,6 +263,19 @@ any FWA pool. Curated prices are the creator's reviewed values. Listing interact
 Tracked inventory is never held by the Balancer between transactions (listings and pending deliveries are owned by the
 FWA pool), so `ownerOf == this`, checked under the reentrancy lock, proves the NFT is untracked. It never calls the FWA
 pool or factory.
+
+New implementations also expose `withdrawCuratedBatch(ids,to)`, `updateCuratedPricesBatch(ids,values)` and
+`recoverRefundedBatch(ids,to)`. Each accepts 1–20 distinct listing IDs and is atomic; a failing collection reverts the
+batch. Existing single-item functions remain available. `inventoryBatchVersion() >= 1` is the per-clone batch capability,
+independent of the factory's current implementation. Old clones continue to use single-item calls.
+
+`recoverERC20(token,amount)` returns ERC20 balances held by the Balancer only to the current creator;
+third-party token transfers create no separate depositor claim. This creator-only, non-reentrant path changes no
+operating ETH or credit accounting and sends no approvals. Capability version 2 adds this path and its dashboard form.
+
+New factories start with public creation paused. The policy admin may create its own canary, and only that admin may
+call `setCreationPaused(bool)`. Pausing affects new public creation only; existing pools and their exits remain usable.
+Previously deployed immutable factories cannot acquire this method through an implementation-pointer change.
 
 ## Lifecycle
 

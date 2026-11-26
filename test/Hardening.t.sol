@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {Vm} from "forge-std/Test.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
+import {GasProbe} from "./utils/FlowBreakdown.sol";
+import {KeeperPolicyCalls} from "../src/KeeperPolicyCalls.sol";
 import {MockNFT, FreezableNFT, LyingNFT, ContractBlockingNFT, NonRefundingBuyer} from "./utils/Mocks.sol";
 import {PoolBalancer} from "../src/PoolBalancer.sol";
 import {ListOne} from "./utils/ListOne.sol";
@@ -295,14 +297,39 @@ contract HardeningTest is ForkBase {
         assertEq(b.getActiveShapes()[0], 10, "restocked");
     }
 
-    /// Gas jumps after the pool was stocked: each restock lists its replacement at the new (capped) basefee, and that
-    /// fee covers the keeper's pay for that call.
+    function _launchEconomics() internal returns (KeeperPolicyCalls.Economics memory launch) {
+        launch = factory.economics();
+        launch.gasPriceCeiling = 1.5 gwei;
+        launch.restockGas = 940_000;
+        factory.setEconomics(launch);
+    }
+
+    function test_launchRestockCeilingAndSurcharge() public {
+        _launchEconomics();
+        assertEq(balancer.effectiveEconomics().gasPriceCeiling, 1.5 gwei);
+        _assertRestockCostCoverage(1.5 gwei);
+    }
+
+    /// A creator may raise the launch ceiling locally; the surcharge still covers this exercised path.
     function test_gasJumpRestockPaidByTheNewListingsFee() public {
-        uint256 capFee = V1_RESTOCK_GAS * 5 gwei + 0.0002 ether;
-        vm.fee(80 gwei);
-        vm.txGasPrice(5 gwei);
-        assertEq(balancer.restockFee(), capFee, "fee capped at 5 gwei");
-        uint256 earned;
+        KeeperPolicyCalls.Economics memory local = _launchEconomics();
+        local.gasPriceCeiling = 5 gwei;
+        vm.prank(creator); balancer.setLocalEconomics(local);
+        assertEq(factory.economics().gasPriceCeiling, 1.5 gwei, "launch default stays unchanged");
+        assertEq(balancer.effectiveEconomics().gasPriceCeiling, 5 gwei, "creator may raise only its own pool ceiling");
+        _assertRestockCostCoverage(5 gwei);
+    }
+
+    function _assertRestockCostCoverage(uint64 ceiling) internal {
+        uint256 capFee = uint256(940_000) * ceiling + 0.0002 ether;
+        vm.fee(ceiling - 0.05 gwei);
+        vm.txGasPrice(ceiling);
+        GasProbe probe = new GasProbe();
+        probe.record();
+        assertEq(probe.baseFee(), ceiling - 0.05 gwei, "includable basefee inside a state-changing call");
+        assertEq(probe.gasPrice(), ceiling, "actual bid reaches the reimbursement cap");
+        assertEq(balancer.restockFee(), capFee);
+        uint256 surchargeOffered;
         uint256 paid;
         for (uint256 i; i < 4; ++i) {
             assertTrue(balancer.canPurchase(buyer));
@@ -311,14 +338,20 @@ contract HardeningTest is ForkBase {
             vm.recordLogs();
             upkeep();
             (uint256 reward, uint256 gasUsed) = _fromLogs();
+            assertGt(reward, 0, "actual paid upkeep must emit a nonzero reward");
+            assertGt(gasUsed, 0, "actual paid upkeep must report measured work");
             uint256 fresh = _lastShape();
             assertGt(fresh, before, "a replacement was listed");
             (,,, uint112 base, uint112 price) = balancer.items(fresh);
-            assertEq(price - base, capFee, "listed at the capped fee");
-            earned += price - base;
-            assertGe(reward, gasUsed * 5 gwei, "the keeper is covered at the cap");
+            assertEq(price - base, capFee, "listed at the configured ceiling");
+            surchargeOffered += price - base;
+            assertGe(reward, gasUsed * ceiling, "the keeper is covered at the configured cap");
             paid += reward;
-            assertLe(paid, earned, "the fees listed cover the pay");
+            emit log_named_uint("restock_iteration", i);
+            emit log_named_uint("restock_measured_gas", gasUsed);
+            emit log_named_uint("restock_keeper_reward_wei", reward);
+            emit log_named_uint("restock_listed_surcharge_wei", price - base);
+            assertLe(paid, surchargeOffered, "the fees listed cover the pay");
         }
     }
 

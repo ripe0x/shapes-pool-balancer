@@ -1,0 +1,79 @@
+{
+  "wins": 19,
+  "NFT": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D:14",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "25452240466674389"
+}
+{
+  "wins": 20,
+  "NFT": "0xfE11c0E794475fd86801fb3020d779bd7887cB2D:15",
+  "restocked": false,
+  "earnedWei": "0",
+  "availableWei": "0",
+  "shortfallWei": "27212084938469441"
+}
+{
+  "drawsComplete": true,
+  "fullyRestocked": false,
+  "totalNFTWins": 20,
+  "shortfallWei": "27212084938469441",
+  "missingCounts": [
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "final": {
+    "block": "26486050",
+    "baseFee": "8",
+    "cash": "23726415096490559",
+    "backing": "300000000000000000",
+    "nav": "323726415096490559",
+    "capital": "358133000000000000",
+    "earned": "0",
+    "reserve": "50938500034960000",
+    "available": "0",
+    "issued": "20",
+    "reconciled": "20",
+    "unsettled": "0",
+    "counts": [
+      6,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "target": "44601490397061246283071436545296727307124742",
+    "admission": 0,
+    "ownerProceeds": "0"
+  },
+  "journal": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/local-playground/cost-first-2aac/journal.json"
+}
+Error: draws succeeded, but the final target remains underfunded; no capital topup was authorized
+    at draws (/Users/dd/CascadeProjects/fwa-pool-balancer/scripts/local-cost-first-draws.ts:75:685)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)

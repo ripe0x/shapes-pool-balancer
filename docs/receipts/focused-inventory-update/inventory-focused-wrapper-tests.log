@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ✓ scripts/current-local-rehearsal.test.ts (25 tests | 5 skipped) 1389ms
+ ✓ scripts/local-rehearsal-gate.test.ts (15 tests) 1409ms
+   ✓ local rehearsal gate without chain mutations > keeps guarded checks fail-closed for inputs outside the frozen archive  897ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed | 5 skipped (40)
+   Start at  12:19:32
+   Duration  2.32s (transform 137ms, setup 0ms, collect 1.08s, tests 2.80s, environment 0ms, prepare 96ms)
+

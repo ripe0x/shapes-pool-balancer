@@ -60,6 +60,7 @@ abstract contract ForkBase is Test {
         packs = deployCode("out/ShapePacks.sol/ShapePacks.json", abi.encode(SHAPES, renderer, makeAddr("packsAdmin"), "Pool Prize Packs", "PRIZEPACK", uint256(2)));
         PoolBalancer impl = new PoolBalancer(FWA_FACTORY, FWA_IMPL, FWA_CODEHASH, SHAPES, packs, ENS);
         factory = new BalancerFactory(address(impl), keeperAdmin, address(this));
+        factory.setCreationPaused(false);
         nft = new MockNFT();
         vm.deal(creator, 1_000 ether);
         vm.deal(buyer, 1_000 ether);
@@ -79,7 +80,7 @@ abstract contract ForkBase is Test {
         vm.startPrank(owner);
         nft.approve(predicted, id);
         b = PoolBalancer(payable(factory.createBalancer{value: seed}(salt,
-            PoolBalancer.CreationConfig(MARKUP, 400, 1, shapes.mintFee(), curatedRequired,
+            PoolBalancer.CreationConfig(MARKUP, 0, 1, shapes.mintFee(), curatedRequired,
                 factory.creationSettingsHash()), initial)));
         b.close();
         b.withdrawCurated(b.getActiveIds()[0], owner);

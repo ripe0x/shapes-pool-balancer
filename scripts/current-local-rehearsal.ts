@@ -23,8 +23,12 @@ export const ROLES = Object.fromEntries(['deployer', 'packsAdmin', 'keeperAdmin'
 export const FUNDING = { deployer: ETH, packsAdmin: ETH / 100n, keeperAdmin: ETH / 100n, policyAdmin: ETH / 100n, creatorA: 17n * ETH / 10n, creatorB: 7n * ETH / 10n, keeper: ETH / 5n, buyer: 5n * ETH };
 export const CAPS = { deposits: 2n * ETH, gas: ETH, buyer: 5n * ETH, edge: ETH, vrf: ETH, draws: 160, rounds: 50, replacementCuratedNfts: 8 };
 export const SCENARIO = { targets: [String(20n + (1n << 64n)), String(17n + (3n << 144n))], initialDeposits: [String(15n * ETH / 10n), String(ETH / 2n)], markupBps: 1500, creatorRevenueBps: 400, curatedValues: [String(ETH / 4n), String(ETH / 2n)], curatedRequired: [true, false], curatedPerPool: [2, 0], oracle: 'controlled real-service callbacks selecting small prizes, then the explicit one-ETH prize', maximumMinedBlocks: 1000, closeoutGasReserveWei: String(ETH / 10n), curatedProofRecovery: { round: 0, pool: 0, callerRole: 'buyer', maximumRefreshes: 1, resumedDraws: 1 }, creationReceiptProbe: { creatorRole: 'creatorA', salt: `0x${'00'.repeat(31)}01`, creatorRevenueBps: 10001, valueWei: '0', gasLimit: '5000000', expectedReceipt: 'reverted' } };
+export const INVENTORY_FUNDING = { deployer: ETH, packsAdmin: ETH / 100n, keeperAdmin: ETH / 100n, policyAdmin: ETH, creatorA: ETH / 2n, creatorB: ETH / 2n, keeper: ETH / 10n, buyer: ETH / 10n };
+export const INVENTORY_CAPS = { deposits: ETH / 10n, gas: ETH, buyer: 0n, edge: 0n, vrf: 0n, draws: 0, rounds: 0, replacementCuratedNfts: 0, weth: ETH / 10n, transactions: 30 };
+export const INVENTORY_SCENARIO = { name: 'paused-admin-inventory-closeout', oracle: 'none; no draws or coordinator permission', maximumMinedBlocks: 0, closeoutGasReserveWei: String(ETH / 10n), uiWritesSupported: false, creatorRole: 'policyAdmin', target: '1', depositWei: String(ETH / 10n), curatedIds: ['1', '2'], curatedValues: [String(ETH / 5n), String(3n * ETH / 10n)], repricedValues: [String(4n * ETH / 10n), String(6n * ETH / 10n)], wethWei: String(ETH / 10n) };
+export const inventoryMode = (p: any) => p.schema === 'inventory-local-acceptance-v1';
 const PREFIX = 'docs/receipts/current-rehearsal/';
-const INPUTS = ['src', 'script', 'keeper', 'shared', 'app', 'scripts', 'test', 'foundry.toml', 'package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.gitmodules', '.gitignore', 'asset-flow.json', 'OWNER-REQUIREMENTS.md', 'README.md', 'docs/SPEC.md', 'docs/OPERATIONS.md', 'docs/KEEPER-POLICIES.md', 'docs/RESERVES.md'];
+const INPUTS = ['src', 'script', 'keeper', 'shared', 'app', 'scripts', 'test', 'foundry.toml', 'package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.gitmodules', '.gitignore', 'asset-flow.json', 'deployments/1.legacy.json', 'OWNER-REQUIREMENTS.md', 'README.md', 'docs/SPEC.md', 'docs/OPERATIONS.md', 'docs/KEEPER-POLICIES.md', 'docs/RESERVES.md'];
 const SYSTEM_NAMES = ['KeeperPolicyCalls', 'PoolPage', 'PoolInventory', 'ShapePackRenderer', 'ShapePacks', 'PoolBalancer', 'BalancerFactory'];
 export const ARTIFACTS = [...SYSTEM_NAMES.map(n => `out/${n}.sol/${n}.json`), 'out/DevSetup.s.sol/DemoNFT.json'];
 export const json = (value: unknown) => JSON.stringify(value, (_, v) => typeof v === 'bigint' ? String(v) : v, 2);
@@ -92,16 +96,16 @@ export function sourceCheck(p: any, executedRoot = ROOT) {
 }
 export function forgeArguments(p: any) { return ['--rpc-url', p.rpc, '--unlocked', '--sender', p.roles.deployer, '--with-gas-price', p.maxFeePerGas, '--priority-gas-price', p.maxPriorityFeePerGas, '--slow', '--broadcast']; }
 export function validateCurrentBounds(p: any) {
-    assert.equal(p.schema, 'protected-revenue-local-rehearsal-v1');
+    assert.ok(p.schema === 'protected-revenue-local-rehearsal-v1' || inventoryMode(p), 'known bounded rehearsal schema');
     assert.equal(realpathSync(p.repositoryRoot), p.repositoryRoot);
     assert.equal(p.chainId, 31337);
     assert.match(p.rpc, /^http:\/\/127\.0\.0\.1:187(?:8[6-9]|9[0-5])$/);
     assert.equal(p.upstream, MAINNET);
     assert.match(p.revision, /^[0-9a-f]{40}$/);
     assert.deepEqual(p.roles, ROLES);
-    assert.deepEqual(p.funding, JSON.parse(json(FUNDING)));
-    assert.deepEqual(p.caps, JSON.parse(json(CAPS)));
-    assert.deepEqual(p.scenario, SCENARIO);
+    assert.deepEqual(p.funding, JSON.parse(json(inventoryMode(p) ? INVENTORY_FUNDING : FUNDING)));
+    assert.deepEqual(p.caps, JSON.parse(json(inventoryMode(p) ? INVENTORY_CAPS : CAPS)));
+    assert.deepEqual(p.scenario, inventoryMode(p) ? INVENTORY_SCENARIO : SCENARIO);
     assert.equal(p.maxFeePerGas, '20000000000');
     assert.equal(p.maxPriorityFeePerGas, '50000000');
     assert.equal(p.perTransactionGas, String(MAX_TRANSACTION_GAS));
@@ -111,7 +115,7 @@ export function validateCurrentBounds(p: any) {
     assert.equal(basename(p.planFile), 'bounded-plan.json');
     assert.deepEqual(Object.keys(p.artifacts), ARTIFACTS);
     assert.deepEqual(p.forgeArguments, forgeArguments(p));
-    assert.ok(p.deployment.reduce((n: bigint, a: any) => n + BigInt(a.gasLimit) * BigInt(p.maxFeePerGas), 0n) + BigInt(SCENARIO.closeoutGasReserveWei) <= CAPS.gas, 'deployment reserves fit shared gas cap');
+    assert.ok(p.deployment.reduce((n: bigint, a: any) => n + BigInt(a.gasLimit) * BigInt(p.maxFeePerGas), 0n) + BigInt(p.scenario.closeoutGasReserveWei) <= BigInt(p.caps.gas), 'deployment reserves fit shared gas cap');
     // Reuse mode (the replacement release) creates no Packs or renderer; a library already on the fork is skipped.
     assert.equal(p.reuseDependencies, true, 'current rehearsal exercises the replacement deployment');
     const names = p.deployment.map((a: any) => a.name);
@@ -187,7 +191,7 @@ function stage(p: any) {
     sourceCheck(p, dir);
     return dir;
 }
-export async function prepareCurrentPlan() {
+export async function prepareCurrentPlan(inventory = false) {
     assert.equal(process.argv.length, 3, 'prepare accepts no endpoint, signer or budget overrides');
     const chain = createPublicClient({ transport: http(MAINNET, { timeout: 60000 }), cacheTime: 0 });
     assert.equal(await chain.getChainId(), 1);
@@ -201,7 +205,7 @@ export async function prepareCurrentPlan() {
     const log = openSync(join(evidenceDirectory, 'anvil.log'), 'a');
     const child = spawn(command[0], command.slice(1), { detached: true, stdio: ['ignore', log, log] });
     child.unref();
-    const p: any = { schema: 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(FUNDING)), caps: JSON.parse(json(CAPS)), scenario: SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS), reuseDependencies: true };
+    const p: any = { schema: inventory ? 'inventory-local-acceptance-v1' : 'protected-revenue-local-rehearsal-v1', repositoryRoot: ROOT, revision, inputs, sourceFingerprint: digest(json(inputs)), dependencies: dependencyState(), runtime: runtimeState(), artifacts: Object.fromEntries(ARTIFACTS.map(path => [path, digest(readFileSync(join(ROOT, path)))])), evidenceDirectory, planFile: join(evidenceDirectory, 'bounded-plan.json'), rpc: `http://127.0.0.1:${port}`, chainId: 31337, upstream: MAINNET, forkBlock: String(block.number), forkHash: block.hash, parameters: { mintFeeWei: String(mintFee) }, node: { pid: child.pid, command }, roles: ROLES, funding: JSON.parse(json(inventory ? INVENTORY_FUNDING : FUNDING)), caps: JSON.parse(json(inventory ? INVENTORY_CAPS : CAPS)), scenario: inventory ? INVENTORY_SCENARIO : SCENARIO, maxFeePerGas: '20000000000', maxPriorityFeePerGas: '50000000', perTransactionGas: String(MAX_TRANSACTION_GAS), reuseDependencies: true };
     const local = createPublicClient({ transport: http(p.rpc, { timeout: 1000, retryCount: 0 }), cacheTime: 0 });
     let ready = false;
     for (let n = 0; n < 120; n++) {
@@ -236,6 +240,46 @@ export async function prepareCurrentPlan() {
     console.log(json({ planFile: p.planFile, planHash: packet.planHash, sourceFingerprint: p.sourceFingerprint, preflight, authority: 'new explicit fresh-local request; no historical approval or production signature is inherited', actions: p.deployment, caps: p.caps, scenario: p.scenario }));
     return packet;
 }
+/** Explicit zero-draw permission boundary; UI writes are deliberately unsupported by this packet. */
+export function inventoryPermit(run: { plan: any; factory: Address; journal: any }, actor: Address, to: Address | undefined, fn: string, args: readonly unknown[], value: bigint) {
+    eq(actor, ROLES.policyAdmin);
+    assert.ok(run.journal.receipts.length < Number(run.plan.caps.transactions), 'bounded acceptance transaction count');
+    if (!to) { assert.equal(fn, 'DemoNFT'); assert.equal(value, 0n); return; }
+    const registered = run.journal.pools[0];
+    if (to.toLowerCase() === run.factory.toLowerCase()) {
+        assert.equal(fn, 'createBalancer');
+        assert.equal(value, BigInt(INVENTORY_SCENARIO.depositWei));
+        assert.equal(run.journal.spent.deposits, '0');
+        const config = args[1] as any;
+        assert.equal(String(config.target), INVENTORY_SCENARIO.target);
+        assert.equal(config.markupBps, 1500); assert.equal(config.creatorRevenueBps, 400); assert.equal(config.curatedRequired, false);
+        assert.deepEqual(args[2], []);
+        return;
+    }
+    if (to.toLowerCase() === '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2') {
+        if (fn === 'deposit') { assert.equal(value, BigInt(INVENTORY_SCENARIO.wethWei)); assert.ok(!run.journal.receipts.some((r: any) => r.function === 'deposit')); }
+        else { assert.equal(fn, 'transfer'); assert.equal(value, 0n); eq(String(args[0]), registered.balancer); assert.equal(args[1], BigInt(INVENTORY_SCENARIO.wethWei)); }
+        return;
+    }
+    assert.ok(registered);
+    assert.equal(value, 0n);
+    if (to.toLowerCase() === registered.demo.toLowerCase()) {
+        assert.ok(fn === 'mint' || fn === 'approve');
+        if (fn === 'mint') { eq(String(args[0]), actor); assert.ok([1n, 2n].includes(args[1] as bigint)); }
+        else { eq(String(args[0]), registered.balancer); assert.ok([1n, 2n].includes(args[1] as bigint)); }
+        return;
+    }
+    eq(to, registered.balancer);
+    assert.ok(['close', 'listCuratedBatch', 'updateCuratedPricesBatch', 'withdrawCuratedBatch', 'recoverERC20', 'claimSurplus'].includes(fn));
+    if (fn === 'claimSurplus') { eq(String(args[1]), actor); assert.ok(BigInt(String(args[0])) <= BigInt(INVENTORY_SCENARIO.depositWei)); }
+    if (fn === 'recoverERC20') { eq(String(args[0]), '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'); assert.equal(args[1], BigInt(INVENTORY_SCENARIO.wethWei)); }
+    if (fn === 'withdrawCuratedBatch') { assert.equal((args[0] as unknown[]).length, 2); eq(String(args[1]), actor); }
+    if (fn === 'updateCuratedPricesBatch') { assert.equal((args[0] as unknown[]).length, 2); assert.deepEqual((args[1] as bigint[]).map(String), INVENTORY_SCENARIO.repricedValues); }
+    if (fn === 'listCuratedBatch') {
+        const items = args[0] as any[]; assert.equal(items.length, 2);
+        items.forEach((item, i) => { eq(item.collection, registered.demo); assert.equal(String(item.tokenId), INVENTORY_SCENARIO.curatedIds[i]); assert.equal(String(item.base), INVENTORY_SCENARIO.curatedValues[i]); });
+    }
+}
 export class CurrentRehearsal {
     readonly pub;
     private readonly test;
@@ -256,7 +300,7 @@ export class CurrentRehearsal {
         this.test = createTestClient({ mode: 'anvil', transport: http(this.plan.rpc, { timeout: 60000, retryCount: 0 }) });
         this.wallet = createWalletClient({ transport: http(this.plan.rpc, { timeout: 60000, retryCount: 0 }) });
         this.factory = this.plan.deployment.find((a: any) => a.name === 'BalancerFactory').predictedAddress;
-        this.v1 = this.plan.deployment.find((a: any) => a.name === 'KeeperPolicyV1').predictedAddress;
+        this.v1 = this.plan.deployment.find((a: any) => a.name === 'KeeperPolicyV1')?.predictedAddress ?? '0x0000000000000000000000000000000000000000';
         assert.ok(!existsSync(join(this.directory, 'journal.json')), 'fresh one-shot batch; reconcile interrupted journal instead of replaying');
         this.journal = { planHash: packet.planHash, sourceFingerprint: this.plan.sourceFingerprint, receipts: [], mutations: [], pools: [], draws: [], reports: [], contributions: [], spent: { deposits: '0', buyer: '0', edge: '0', vrf: '0' }, nonces: Object.fromEntries(Object.values(ROLES).map(a => [a.toLowerCase(), 0])), funded: {}, checkedBlock: this.plan.forkBlock, checkedHash: this.plan.forkHash, inFlight: null, completed: false };
         this.save();
@@ -288,21 +332,22 @@ export class CurrentRehearsal {
     }
     private budget(gas: bigint, price: bigint) {
         assert.ok(price <= BigInt(this.plan.maxFeePerGas), 'per-transaction fee ceiling before node mutation or submission');
-        assert.ok(this.gas() + gas * price + (this.closing ? 0n : BigInt(SCENARIO.closeoutGasReserveWei)) <= CAPS.gas, 'shared gas ceiling and retained closeout reserve');
+        assert.ok(this.gas() + gas * price + (this.closing ? 0n : BigInt(this.plan.scenario.closeoutGasReserveWei)) <= BigInt(this.plan.caps.gas), 'shared gas ceiling and retained closeout reserve');
     }
     private async mutation(label: string, action: () => Promise<unknown>) { await this.check(); assert.equal(this.journal.inFlight, null); this.journal.inFlight = { mutation: label }; this.save(); await action(); this.journal.mutations.push(label); this.journal.inFlight = null; this.save(); }
-    async basefee(value: bigint | undefined) { this.stress = value; if (value !== undefined) {
+    async basefee(value: bigint | undefined) { assert.ok(!inventoryMode(this.plan), 'no synthetic fee changes in inventory acceptance'); this.stress = value; if (value !== undefined) {
         await this.mutation(`pin next basefee ${value}`, () => this.test.setNextBlockBaseFeePerGas({ baseFeePerGas: value }));
         await this.mine(1);
     } }
     private async hold() { if (this.stress !== undefined)
         await this.mutation(`pin next inclusion basefee ${this.stress}`, () => this.test.setNextBlockBaseFeePerGas({ baseFeePerGas: this.stress! })); }
-    async mine(count = 1) { assert.ok(this.journal.mutations.filter((s: string) => s === 'mine timing block').length + count <= SCENARIO.maximumMinedBlocks); for (let n = 0; n < count; n++) {
+    async mine(count = 1) { assert.ok(this.journal.mutations.filter((s: string) => s === 'mine timing block').length + count <= this.plan.scenario.maximumMinedBlocks); for (let n = 0; n < count; n++) {
         await this.hold();
         await this.mutation('mine timing block', () => this.test.mine({ blocks: 1 }));
     } }
-    async coordinator(address: Address) { assert.ok(await this.pub.getBalance({ address }) > 0n, 'existing coordinator pays its own exception gas'); this.journal.coordinator = address; this.journal.nonces[address.toLowerCase()] = await this.pub.getTransactionCount({ address, blockTag: 'pending' }); this.save(); await this.mutation('unlock real coordinator only; no funding or protocol storage changes', () => this.test.impersonateAccount({ address })); }
+    async coordinator(address: Address) { assert.ok(!inventoryMode(this.plan), 'no coordinator permission in inventory acceptance'); assert.ok(await this.pub.getBalance({ address }) > 0n, 'existing coordinator pays its own exception gas'); this.journal.coordinator = address; this.journal.nonces[address.toLowerCase()] = await this.pub.getTransactionCount({ address, blockTag: 'pending' }); this.save(); await this.mutation('unlock real coordinator only; no funding or protocol storage changes', () => this.test.impersonateAccount({ address })); }
     private permitted(actor: Address, to: Address | undefined, fn: string, args: readonly unknown[], value: bigint) {
+        if (inventoryMode(this.plan)) { inventoryPermit(this, actor, to, fn, args, value); return; }
         const role = Object.keys(ROLES).find(k => ROLES[k].toLowerCase() === actor.toLowerCase());
         if (!to) {
             assert.ok(fn === 'DemoNFT' && (role === 'creatorA' || role === 'creatorB') || fn === 'KeeperPolicyV2' && role === 'deployer');
@@ -475,6 +520,7 @@ export class CurrentRehearsal {
         tokenId: bigint;
         base: bigint;
     }[], mintFeeCap: bigint) {
+        assert.ok(!inventoryMode(this.plan), 'no negative receipt probe in inventory acceptance');
         const probe = SCENARIO.creationReceiptProbe;
         eq(actor, ROLES[probe.creatorRole]);
         assert.ok(!this.journal.creationReceiptProbe, 'one explicit negative creation only');
@@ -538,7 +584,8 @@ export class CurrentRehearsal {
     async tick() { await this.hold(); await this.keeper.tick(); assert.deepEqual(this.keeper.errors, {}); assert.equal(this.keeper.state.stats.reverted, 0); this.journal.keeperHealth = this.keeper.health(); this.save(); }
     async start() {
         await currentPreflight(this.plan, 'prepare');
-        for (const [role, value] of Object.entries(FUNDING)) {
+        for (const [role, raw] of Object.entries(this.plan.funding)) {
+            const value = BigInt(String(raw));
             const address = ROLES[role];
             await this.mutation(`fund once synthetic ${role} ${value}`, () => this.test.setBalance({ address, value }));
             await this.mutation(`unlock synthetic ${role}`, () => this.test.impersonateAccount({ address }));
@@ -574,17 +621,17 @@ export class CurrentRehearsal {
         }
         this.journal.inFlight = null;
         this.save();
-        eq(await this.read<Address>(this.factory, balancerFactoryAbi, 'defaultKeeperPolicy'), this.v1);
-        this.newKeeper();
+        if (inventoryMode(this.plan)) assert.equal(await this.read<boolean>(this.factory, balancerFactoryAbi, 'creationPaused'), true, 'public creation remains paused');
+        else { eq(await this.read<Address>(this.factory, balancerFactoryAbi, 'defaultKeeperPolicy'), this.v1); this.newKeeper(); }
     }
     beginCloseout() { this.closing = true; }
-    async finish() { this.closing = true; await this.check(); assert.equal(this.journal.inFlight, null); assert.ok(this.gas() <= CAPS.gas); this.journal.completed = true; this.save(); }
+    async finish() { this.closing = true; await this.check(); assert.equal(this.journal.inFlight, null); assert.ok(this.gas() <= BigInt(this.plan.caps.gas)); this.journal.completed = true; this.save(); }
     fail(error: unknown) { this.journal.failure = String(error); this.save(); }
 }
 async function main() {
     const args = process.argv.slice(2);
-    if (args.length === 1 && args[0] === '--prepare') {
-        await prepareCurrentPlan();
+    if (args.length === 1 && (args[0] === '--prepare' || args[0] === '--prepare-inventory')) {
+        await prepareCurrentPlan(args[0] === '--prepare-inventory');
         return;
     }
     assert.ok(args[0] === '--plan' && args[2] === '--approved-plan-hash', 'exact plan and hash flags');
@@ -606,8 +653,8 @@ async function main() {
     const run = new CurrentRehearsal(packet);
     try {
         await run.start();
-        const { runPreparedRehearsal } = await import('../keeper/rehearsal');
-        await runPreparedRehearsal(run);
+        if (inventoryMode(p)) { const { runInventoryAcceptance } = await import('./inventory-acceptance'); await runInventoryAcceptance(run); }
+        else { const { runPreparedRehearsal } = await import('../keeper/rehearsal'); await runPreparedRehearsal(run); }
         await run.finish();
         console.log(json({ completed: true, planHash: packet.planHash, evidenceDirectory: p.evidenceDirectory, gasWei: String(run.gas()), productionApproval: false }));
     }

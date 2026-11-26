@@ -1,0 +1,22 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 20 gwei
+
+Estimated total gas used for script: 46221
+
+Estimated amount required: 0.00092442 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/broadcast/Deploy.s.sol/31337/dry-run/switchImplementation-latest.json
+
+Sensitive values saved to: /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-y0Ow2X/cache/Deploy.s.sol/31337/dry-run/switchImplementation-latest.json

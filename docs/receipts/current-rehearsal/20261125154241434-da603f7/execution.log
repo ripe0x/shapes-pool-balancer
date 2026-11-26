@@ -1,0 +1,17 @@
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper41.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper42.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/src/KeeperPolicyV1.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/src/interfaces/IKeeperPolicy.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper40.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper45.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper39.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper44.sol
+ - /private/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-current-rehearsal-stage-M8TU3I/foundry-pp/DeployHelper46.sol
+{
+  "completed": true,
+  "planHash": "63f25eebe0c29822fbda34a90898c80ca3419810a4145b2aa2e6f27f6871f37b",
+  "evidenceDirectory": "/Users/dd/CascadeProjects/fwa-pool-balancer/docs/receipts/current-rehearsal/20261125154241434-da603f7",
+  "gasWei": "7270741620849468",
+  "productionApproval": false
+}

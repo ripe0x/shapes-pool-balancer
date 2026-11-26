@@ -29,6 +29,20 @@ contract ReserveCapitalTest is ForkBase {
         balancer.depositETH{value: amount}();
     }
 
+    /// @dev Reach a low operating balance through the permitted closed capital-return path, then resume play.
+    function _retainOpenReserve() internal {
+        uint256 keep = balancer.requiredReserve();
+        uint256 cash = address(balancer).balance;
+        assertGt(cash, keep, "paid bootstrap leaves actual capital available for closed recovery");
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(cash - keep, creator);
+        balancer.open();
+        vm.stopPrank();
+        assertEq(address(balancer).balance, keep);
+        assertEq(balancer.withdrawableSurplus(), 0, "retained principal is not earned proceeds");
+    }
+
     function _quoteOpen() internal returns (uint256 required) {
         // policyFunding previews the enabled target after it is already open; opening itself checks this exact value.
         uint256 snapshot = vm.snapshotState();
@@ -132,8 +146,7 @@ contract ReserveCapitalTest is ForkBase {
         _deposit(_quoteOpen());
         vm.prank(creator); balancer.open();
         fillUp();
-        uint256 free = balancer.withdrawableSurplus();
-        vm.prank(creator); balancer.claimSurplus(free,creator);
+        _retainOpenReserve();
         uint256[] memory first = buy(buyer,5);
         // Deliver non-head words first: the real service releases VRF coverage while FWA waits for its queue head.
         // Slot 2 is a Shape: word 0 would win the only curated NFT, and admission must then refuse (status 7).
@@ -163,8 +176,7 @@ contract ReserveCapitalTest is ForkBase {
         listCurated(1,0.2 ether);
         _deposit(_quoteOpen());
         vm.prank(creator); balancer.open(); fillUp();
-        uint256 free=balancer.withdrawableSurplus();
-        vm.prank(creator); balancer.claimSurplus(free,creator);
+        _retainOpenReserve();
         buy(buyer,5);
         assertLt(address(balancer).balance,balancer.requiredReserve());
         vm.roll(vm.getBlockNumber()+ITimeout(address(pool)).selectionTimeoutBlocks()+1);
@@ -181,8 +193,7 @@ contract ReserveCapitalTest is ForkBase {
         _deposit(_quoteOpen());
         vm.prank(creator); balancer.open();
         fillUp();
-        uint256 free = balancer.withdrawableSurplus();
-        vm.prank(creator); balancer.claimSurplus(free,creator);
+        _retainOpenReserve();
         uint256 top = lastListingId();
         (,,,uint256 token,,,uint256 slot,) = pool.listings(top);
         uint256[] memory request = buy(buyer,1);
@@ -193,7 +204,7 @@ contract ReserveCapitalTest is ForkBase {
         assertEq(balancer.getActiveShapes()[8],0,"no cash for immediate100ETH replacement");
         assertEq(balancer.admissionStatus(),0,"small Shapes preserve more than70% of inverse backing weight");
         assertGt(balancer.requiredReserve(),100 ether);
-        assertEq(balancer.withdrawableSurplus(),balancer.creatorCredit(),"missing inventory reserves subsequent operating income");
+        assertEq(balancer.withdrawableSurplus(),0,"the missing prize reserve blocks fee and profit withdrawals");
         uint256 target=balancer.target();
         vm.startPrank(creator); balancer.configure(1600,target, shapes.mintFee()); vm.stopPrank();
         assertFalse(balancer.creatorWork(),"ordinary markup change does not restart initial setup");
@@ -222,10 +233,20 @@ contract ReserveCapitalTest is ForkBase {
         assertTrue(balancer.paidUpkeepEnabled());
         assertEq(balancer.requiredReserve(),0.001993 ether);
         vm.prank(creator); balancer.setPaidUpkeepEnabled(false);
-        uint256 withdrawable=balancer.withdrawableSurplus();
-        assertEq(withdrawable,0.001993 ether,"emergency disable releases the no-longer-necessary payment buffer");
-        vm.prank(creator); balancer.claimSurplus(withdrawable,creator);
+        assertEq(balancer.withdrawableSurplus(),0,"disabling keeper pay does not turn contributed capital into earnings");
+        vm.prank(creator); vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(0.001993 ether,creator);
+        uint256 wallet = creator.balance;
+        uint256 capital = balancer.operatingCapital();
+        vm.startPrank(creator);
+        balancer.close();
+        balancer.claimSurplus(0.001993 ether,creator);
+        balancer.open();
+        vm.stopPrank();
+        assertEq(creator.balance-wallet,0.001993 ether,"closed recovery returns the exact contributed buffer");
+        assertEq(balancer.operatingCapital(),capital-0.001993 ether);
         assertEq(address(balancer).balance,0);
+        assertEq(balancer.bankrollProfit(),0,"reopening creates no positive bankroll profit");
     }
 
     function test_collectedRevenueIsCreditedBeforeTheExpensiveDeficitIsReconciled() public {
@@ -233,8 +254,7 @@ contract ReserveCapitalTest is ForkBase {
         listCurated(1,0.2 ether);
         _deposit(_quoteOpen());
         vm.prank(creator); balancer.open(); fillUp();
-        uint256 free=balancer.withdrawableSurplus();
-        vm.prank(creator); balancer.claimSurplus(free,creator);
+        _retainOpenReserve();
         (,,,,,,uint256 slot,)=pool.listings(lastListingId());
         uint256[] memory request=buy(buyer,1);
         fulfill(request[0],wordForSlot(slot)); settle();
@@ -243,13 +263,30 @@ contract ReserveCapitalTest is ForkBase {
         assertGt(expected,0,"actual owner proceeds receive the stored allocation");
         balancer.collectProceeds();
         assertEq(balancer.creatorCredit(),expected,"creator allocation is preserved before the missing100ETH prize is reconciled");
-        uint256 fund=address(balancer).balance-balancer.creatorCredit();
-        vm.prank(creator); balancer.claimSurplus(expected,creator);
-        assertEq(address(balancer).balance,fund,"claiming existing credit leaves operating funds unchanged");
+        assertEq(balancer.withdrawableSurplus(),0,"unreconciled outcomes block even accrued fees");
+        vm.prank(creator); vm.expectRevert(PoolBalancer.InsufficientSurplus.selector);
+        balancer.claimSurplus(expected,creator);
         _paid();
         assertEq(balancer.getActiveShapes()[8],0);
-        assertEq(balancer.creatorCredit(),0);
+        assertEq(balancer.creatorCredit(),expected,"maintenance preserves fees while the reserve is short");
         assertEq(balancer.withdrawableSurplus(),0,"actual large deficit retains all remaining operating capital");
+        uint256 mintFee = shapes.mintFee();
+        vm.prank(creator); balancer.configure(1500,19,mintFee);
+        assertEq(balancer.withdrawableSurplus(),expected,"removing the missing prize target permits the legitimate fee claim");
+        uint256 fund=address(balancer).balance-expected;
+        uint256 wallet=creator.balance;
+        uint256 capital=balancer.operatingCapital();
+        assertEq(balancer.getActiveShapes()[0],19,"the remaining automatic inventory has 0.19 ETH backing");
+        uint256 operatingAssets=address(balancer).balance+0.19 ether-balancer.creatorCredit();
+        assertLt(operatingAssets,capital,"actual cash and retained backing remain below contributed capital");
+        uint256 loss=capital-operatingAssets;
+        vm.prank(creator); balancer.claimSurplus(expected,creator);
+        assertEq(creator.balance-wallet,expected);
+        assertEq(address(balancer).balance,fund,"claiming funded fees leaves operating funds unchanged");
+        assertEq(balancer.operatingCapital(),capital,"the fee claim does not recover lost backing as capital");
+        assertEq(balancer.creatorCredit(),0);
+        assertEq(balancer.bankrollProfit(),0,"removing the deficit trigger creates no positive profit");
+        assertEq(capital-(address(balancer).balance+0.19 ether-balancer.creatorCredit()),loss,"the actual operating loss persists across the fee claim");
     }
 
     function test_feeAndCapSensitiveBoundForActualWork() public {

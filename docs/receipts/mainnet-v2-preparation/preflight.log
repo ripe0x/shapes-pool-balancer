@@ -1,0 +1,16 @@
+{
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "out": "docs/receipts/mainnet-v2-preparation/preflight.json",
+  "checkedBlock": {
+    "number": "26497133",
+    "hash": "0x06a6b29ece0fdb129a28afd2583fd7b5699d83219c09557993e8ea1802b77f6b",
+    "timestamp": "1795669163"
+  },
+  "ok": true,
+  "problems": [],
+  "legacyPools": {
+    "0x526FbD402624B50861f54c081B592cdCeE322929": 1,
+    "0x91C31Ad620555DE24e62290906aD1aA14C4CE281": 0,
+    "0xA57de1a6Ad66aB053057Ff7829F65eFe1cD57ece": 0
+  }
+}

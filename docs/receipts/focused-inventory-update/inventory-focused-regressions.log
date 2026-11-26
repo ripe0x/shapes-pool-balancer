@@ -1,0 +1,121 @@
+Compiling 2 files with Solc 0.8.28
+Solc 0.8.28 finished in 3.96s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:134:13:
+    |
+134 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:146:9:
+    |
+146 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+
+Ran 5 tests for test/ERC20Recovery.t.sol:ERC20RecoveryTest
+[PASS] test_badTokenAmountAndRefusedTransferLeaveAssetsUntouched() (gas: 295581)
+[PASS] test_partialAndFullRecoveryPayOnlyCreatorAndPreserveOperatingETH() (gas: 180937)
+[PASS] test_pauseCloseAndRetirementDoNotBlockRecovery() (gas: 153296)
+[PASS] test_recoveryFollowsAcceptedCreatorTransfer() (gas: 227027)
+[PASS] test_senderAndOtherActorsHaveNoRecoveryAuthority() (gas: 44654)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 327.24ms (1.69ms CPU time)
+
+Ran 10 tests for test/InventoryBatches.t.sol:InventoryBatchesTest
+[PASS] test_allBatchEntryPointsRequireCreator() (gas: 106851)
+[PASS] test_batchBoundsAndDuplicateIds() (gas: 442901)
+[PASS] test_refusingCollectionRollsBackBatchAndSingleWithdrawalStillWorks() (gas: 2212097)
+[PASS] test_repriceBatchSetsAbsoluteValuesWithoutMarkup() (gas: 420153)
+[PASS] test_repriceFailureRollsBackEarlierPrice() (gas: 355783)
+[PASS] test_reverseNameExtractionPreservesBalancerIdentity() (gas: 243060)
+[PASS] test_shapeRejectedAndPendingRealDrawLocksCuratedBatches() (gas: 2149003)
+[PASS] test_withdrawBatchReturnsExactNFTsAndClearsInventory() (gas: 453945)
+[PASS] test_withdrawMaximumBatch() (gas: 9715274)
+[PASS] test_withdrawRejectsInvalidRecipientAndNonCuratedListing() (gas: 219827)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 335.48ms (16.63ms CPU time)
+
+Ran 6 tests for test/FactoryPause.t.sol:FactoryPauseTest
+[PASS] test_freshFactoryStartsPublicCreationPaused() (gas: 30730)
+[PASS] test_onlyPolicyAdminCanPauseAndResume() (gas: 140586)
+[PASS] test_pausePreservesExistingPoolMaintenanceAndExit() (gas: 3341542)
+[PASS] test_pausedPublicCreationMovesNoETHOrNFTs() (gas: 254573)
+[PASS] test_policyAdminCanCreateCanaryWhilePublicCreationPaused() (gas: 1200876)
+[PASS] test_resumeAllowsPublicCreationWithUnchangedReviewedSettings() (gas: 1216203)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 335.51ms (9.31ms CPU time)
+
+Ran 1 test for test/FocusedInventoryGas.t.sol:FocusedInventoryGasTest
+[PASS] test_maximumCuratedBatchGasAndConservation() (gas: 18358974)
+Logs:
+  20-item batch reprice raw EVM gas: 1476308
+  20 separate reprice calls raw EVM gas: 5558400
+  20-item batch withdraw raw EVM gas: 2010227
+  20 separate withdraw calls raw EVM gas: 6355675
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 350.98ms (19.52ms CPU time)
+
+Ran 3 tests for test/FocusedReleaseFlow.t.sol:FocusedReleaseFlowTest
+[PASS] test_focusedCreationPause() (gas: 2264174)
+Logs:
+  
+  FLOW BREAKDOWN  creation_pause   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   0.1000   100.00%
+    native capital returned                                                       0.1000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        0.1000   100.00%  | returned 0.1000
+
+[PASS] test_focusedERC20Roundtrip() (gas: 4045169)
+Logs:
+  
+  FLOW BREAKDOWN  erc20_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+[PASS] test_focusedInventoryRoundtrip() (gas: 6454265)
+Logs:
+  
+  FLOW BREAKDOWN  inventory_roundtrip   gas 1000000000 / basefee 500000000 wei, fork block 26382349
+  TABLE 1  Where the inflows went
+    in: native capital supplied                                                   1.0000   100.00%
+    native capital returned                                                       1.0000   100.00%
+    held in Balancer native capital (change)                                      0.0000     0.00%
+    inflows - destinations                                                                       0 wei
+  TABLE 2  Where assets sit at the end (held, what counters imply, own stated need)
+    Balancer native capital: held                                                 0.0000     0.00%
+      counters imply                                                              0.0000     0.00%
+    Balancer native capital: held - counters                                                     0 wei
+      stated need                                                                 0.0000     0.00%
+      ABOVE its need                                                              0.0000     0.00%
+  TABLE 3  One-way flows (amount | return)
+    creator native capital roundtrip                                        1.0000   100.00%  | returned 1.0000
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.76s (1.71s CPU time)
+
+Ran 1 test for test/AuthenticEconomicFlows.t.sol:AuthenticEconomicFlowsTest
+[PASS] test_threeAuthenticLaunchDrawsCollectCreditAndCloseCreatorAssets() (gas: 7578771)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.56s (776.90ms CPU time)
+
+Ran 1 test for test/AuthenticRefundRecovery.t.sol:AuthenticRefundRecoveryTest
+[PASS] test_authenticProofReplayAndRefundBatch() (gas: 954467)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.58s (826.25ms CPU time)
+
+Ran 7 test suites in 2.64s (8.26s CPU time): 27 tests passed, 0 failed, 0 skipped (27 total tests)

@@ -1,0 +1,14 @@
+{
+  "rpc": "http://127.0.0.1:8545",
+  "chainId": 31337,
+  "factory": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+  "implementation": "0xc02d40577880fA2C489Fc5461ce3830D4EeD7724",
+  "profitAccountingVersion": 2,
+  "publicCreationPaused": false,
+  "creationSimulation": "passed with real contracts; no broadcast",
+  "simulationSender": "0x000000000000000000000000000000000001e004",
+  "simulatedValueWei": "100000000000000000",
+  "simulatedGasPriceWei": "1000000000",
+  "simulatedResult": "0x03fB7Bb83f8276488944d9df444D9c44d473c205",
+  "block": "26486068"
+}
