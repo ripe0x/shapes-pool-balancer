@@ -1,0 +1,94 @@
+{
+  "planHash": "6248dd0c78ba262acf8b3346b0470e8d1f37f4feb62daa39719b892732a598f6",
+  "receipts": [
+    {
+      "phase": "deploy",
+      "hash": "0x211c70ca37dc884f22548dbec7e029ca117f8d7b3f8800aee28f880b181caf61",
+      "gasUsed": "4209251",
+      "gasPrice": "50000008",
+      "gasWei": "210462583674008",
+      "block": "26486066",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e001",
+      "nonce": 9,
+      "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+      "value": "0"
+    },
+    {
+      "phase": "deploy",
+      "hash": "0x4d71f1759a3e91d52f3ce0d55589f5020b92a55c44e82f04db7d76776426190a",
+      "gasUsed": "5401048",
+      "gasPrice": "50000008",
+      "gasWei": "270052443208384",
+      "block": "26486067",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e001",
+      "nonce": 10,
+      "to": null,
+      "value": "0"
+    },
+    {
+      "phase": "switch",
+      "hash": "0xda886c28c48717042ece4ff12dba7a36e603fba46c8c29fec5b4ce7a97561b41",
+      "gasUsed": "33476",
+      "gasPrice": "50000008",
+      "gasWei": "1673800267808",
+      "block": "26486068",
+      "status": "success",
+      "from": "0x000000000000000000000000000000000001e004",
+      "nonce": 23,
+      "to": "0xbe49677a403f77136e81498e5681f8dc22aa1181",
+      "value": "0"
+    }
+  ],
+  "complete": true,
+  "executionRoot": "/var/folders/ql/fxv4cbz95kz22crsmldp06sm0000gn/T/fwa-playground-bRuqDS",
+  "switchNonce": 23,
+  "postflight": {
+    "verified": true,
+    "operation": "implementation-update",
+    "chainId": 31337,
+    "balancerFactory": "0xbe49677a403F77136e81498e5681f8DC22Aa1181",
+    "previousImplementation": "0x0176016958744B0030c96cC10896bd0817D94855",
+    "poolBalancerImplementation": "0xc02d40577880fA2C489Fc5461ce3830D4EeD7724",
+    "activeAtBlock": "26486068",
+    "activeAtBlockHash": "0xa5d84cff89843a95a3c99f9684add18b005435ccf0e662a94867f4d0fa9e86db",
+    "transactionHash": "0xda886c28c48717042ece4ff12dba7a36e603fba46c8c29fec5b4ce7a97561b41",
+    "block": "26486068",
+    "blockHash": "0xa5d84cff89843a95a3c99f9684add18b005435ccf0e662a94867f4d0fa9e86db",
+    "gasUsed": "33476",
+    "effectiveGasPrice": "50000008",
+    "factoryState": {
+      "implementation": "0xc02d40577880fA2C489Fc5461ce3830D4EeD7724",
+      "keeperAdmin": "0x000000000000000000000000000000000001E003",
+      "policyAdmin": "0x000000000000000000000000000000000001e004",
+      "keepersRestricted": false,
+      "pendingKeeperAdmin": "0x0000000000000000000000000000000000000000",
+      "pendingPolicyAdmin": "0x0000000000000000000000000000000000000000",
+      "economics": {
+        "workFee": "20000000000000",
+        "maxGas": 3200000,
+        "overheadGas": 60000,
+        "gasPriceCeiling": "5000000000",
+        "priorityAllowance": "50000000",
+        "restockGas": 910000,
+        "restockFlat": "200000000000000",
+        "baseGas": 200000,
+        "processGas": 1800000,
+        "reconcileGas": 150000,
+        "shapeGas": 700000,
+        "prizeGas": 150000,
+        "processGraceBlocks": 50,
+        "pausedProcessGraceBlocks": 10
+      },
+      "defaultBucketCapacity": "622000000000000000",
+      "defaultBucketRefill": "4166666666666666",
+      "productLimits": [
+        1000,
+        1000,
+        10000
+      ],
+      "creationPaused": false
+    }
+  }
+}

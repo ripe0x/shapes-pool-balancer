@@ -1,3 +1,5 @@
+> Completed after explicit owner refresh approval. See [deployment and verified restoration](../implementation-20261126000317038/README.md). The preparation status below is historical.
+
 # Local v2 deployment preparation: archive fallback
 
 Owner authorized the v2 implementation deployment/switch on preserved localhost8545, then explicitly authorized the
