@@ -22,7 +22,7 @@ The observed nonce, balance, pool count and addresses are readbacks, not future 
 
 ## After owner-authorized merge
 
-R110 requires the main checkout on `main`, fast-forwarded to `origin/main`. A local commit grants no remote authority. The PR/merge remains for owner approval. Check that main contains the candidate and the public outcome signature; stop on a source digest mismatch. Do not reset unrelated work or switch this dirty checkout automatically.
+R110 requires the main checkout on `main`, fast-forwarded to `origin/main`. The owner's instruction to run all commands up to mainnet deployment authorizes this PR/merge and guarded checkout preparation once checks pass. Check that main contains the candidate and the public outcome signature; stop on a source digest mismatch. Preserve unrelated dirty work and require identical candidate/merged trees before switching this checkout. Mainnet broadcasting still needs separate action-time confirmation.
 
 ```bash
 cd /Users/dd/CascadeProjects/fwa-pool-balancer
