@@ -24,8 +24,32 @@ old-fork creation warning, stamps new local transfers with the actual Anvil inst
 local pending nonce to the wallet. Mainnet behavior is unchanged. Refresh the app after this local reset.
 The app's local development connector completed discovery and exposed Create pool. A curated-NFT review check
 opened Confirm NFT values for Demo Curated #1 at 0.25 ETH and was cancelled before any approval or creation.
-No pool was created during that check. The keeper is healthy and ready to discover the user's next pool;
-it has not yet performed upkeep on a new pool in this fresh deployment.
+No pool was created during that browser check. The user's subsequent creation and keeper work are recorded below.
+
+### Draws on the newly created pool
+
+The owner's new Balancer is `0x8dd80602Ca82cA3b6f14b0F8462DcaAA8c55E48A`.
+The production keeper has discovered it and completed two initial stocking transactions.
+Use the address-based helper for the fresh fork; the historical fixed-pool helpers below remain bound to the old node.
+
+```sh
+X=20
+LOCAL_FACTORY=0xbe49677a403f77136e81498e5681f8dc22aa1181 node --import tsx scripts/local-draws.ts \
+  --balancer 0x8dd80602Ca82cA3b6f14b0F8462DcaAA8c55E48A \
+  --buyer 0x000000000000000000000000000000000001e008 \
+  --count "$X" --max-spend-eth 1 --allow-simulated-randomness --execute
+```
+
+Run one command at a time. X is 1–100; cumulative purchases stop before exceeding 1 test ETH per invocation.
+This mode buys one request at a time, supplies explicitly simulated service callbacks, verifies actual NFT custody
+on a win, and waits for the real keeper. It reports refunds separately and records whether the automatic target
+is fully restored; insufficient operating cash does not trigger an external top-up. It performs no unpaid upkeep.
+Authentic VRF proofs are not exercised. Direct helper gas is capped at 1 test ETH; the independently running keeper
+retains its own operator settings. Removing `--execute` previews the first quote without sending or mining.
+
+The new mode passed typecheck, a read-only quote against this actual pool and independent static review.
+Its execute path was not rerun on the user's pool merely to supply this command. Runtime checks stop on unexpected
+identity, request status, receipt, custody or keeper progress. Simulated delivery is not a guarantee every request wins.
 
 ## Historical cost-first implementation update (prior fork)
 

@@ -1,0 +1,9 @@
+
+> typecheck
+> tsc --noEmit -p tsconfig.json
+
+scripts/local-draws.ts(102,44): error TS2322: Type '"eth_accounts"' is not assignable to type '"eth_getFilterLogs" | "eth_getFilterChanges" | "eth_uninstallFilter" | "web3_clientVersion" | "web3_sha3" | "net_listening" | "net_peerCount" | "net_version" | "eth_blobBaseFee" | ... 38 more ... | "eth_simulateV1"'.
+scripts/local-draws.ts(103,12): error TS18047: 'accounts' is possibly 'null'.
+scripts/local-draws.ts(103,21): error TS2339: Property 'some' does not exist on type 'string | boolean | `0x${string}`[] | Record<`0x${string}`, readonly `0x${string}`[]> | { accessList: AccessList; error?: string | undefined; gasUsed: `0x${string}`; } | { capabilities?: Record<string, unknown> | undefined; raw: `0x${string}`; tx: RpcTransaction; } | ... 8 more ... | readonly (RpcBlock & { ...; })[]'.
+  Property 'some' does not exist on type 'string'.
+scripts/local-draws.ts(103,26): error TS7006: Parameter 'a' implicitly has an 'any' type.
