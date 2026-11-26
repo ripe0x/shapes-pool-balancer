@@ -54,8 +54,9 @@ const rpcs = [rpcUrl, ...(backupRpcUrl ? [backupRpcUrl] : [])].map((url) => http
 
 export const config = createConfig({
   chains: [chain],
-  // Local fork only: an unlocked anvil account signs through the node. Never enabled on mainnet.
-  connectors: chainId === 31337 && import.meta.env.VITE_DEV_ACCOUNT
+  // Local fork dev server only: an unlocked anvil account signs through the node. DEV is false in production builds,
+  // so the branch and the account literal are removed even when a local .env sets VITE_DEV_ACCOUNT.
+  connectors: import.meta.env.DEV && chainId === 31337 && import.meta.env.VITE_DEV_ACCOUNT
     ? [...wallets, mock({ accounts: [import.meta.env.VITE_DEV_ACCOUNT as Address] })]
     : wallets,
   // Reads try each public RPC in order, at most four in flight per RPC, then the browser wallet's own node. The whole
