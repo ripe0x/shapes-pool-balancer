@@ -4,6 +4,11 @@ Browse the measured campaign at <http://127.0.0.1:5280/stress-results/index.html
 Select a design and nominal draw rate, then a scenario to inspect its timeline,
 NFT wins, native ETH flows and final FWA accounting buckets. The viewer is read-only.
 
+**Owner acceptance, 2026-11-25:** R126–R127 accept continued partial-inventory operation and burst slippage
+refunds with nonreturned randomness charges. The frozen reviews retain their original observations; these
+are accepted behavior, not unresolved product blockers or requests for new restrictions. The next release
+step is recorded in [the version 2 status](COST-FIRST-PROCEEDS.md#current-acceptance-and-next-step).
+
 ## Scope and environment
 
 Owner authority is R125 in `OWNER-REQUIREMENTS.md`. This is a diagnostic campaign,

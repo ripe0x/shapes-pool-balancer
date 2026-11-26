@@ -3,7 +3,23 @@
 ## Current candidate: version 2
 
 Owner requirements R118–R121 supersede the version 1 net-profit-only compensation model below.
-New source exposes `profitAccountingVersion() == 2`; no deployment is included. Existing clones remain fixed.
+New source exposes `profitAccountingVersion() == 2`. Version 2 is deployed and selected on the local 8545
+playground under R122–R124; no version 2 mainnet deployment is authorized. Existing clones remain fixed.
+
+### Current acceptance and next step
+
+The [local stress diagnostics](local-stress-diagnostics.md) completed 24 cases with 2,360 settled requests,
+including actual keeper recovery, creator-fee reinvestment, claims and wind-down. The independent saved-result
+accounting review reconciles all 24 cases. Randomness is simulated; this does not replace authentic-proof tests.
+R126–R127 accept partial-inventory operation and the measured slippage-refund/randomness-charge behavior.
+Those observations remain in the frozen reports but require no product or contract repair.
+
+**Next action:** finish the focused version 2 release evidence: the previously RPC-blocked genuine-proof
+contract regressions, transactional UI acceptance for the new fee/reinvestment flow, and binding the focused
+gate/review to the version 2 candidate. Reuse valid deployment, stress and review evidence. Keep the full economic
+campaign separate under R113; do not add a whole-repository audit or repeat broad simulations by default.
+Then prepare the exact production deployment and factory actions for owner review. Existing deployment,
+signature and external-action controls still apply; no mainnet transaction follows from this status update.
 
 | Bucket | Rule |
 | --- | --- |
@@ -37,9 +53,10 @@ Example: 0.05 ETH accrued fees and 0.02 ETH needed uses 0.02 ETH, leaves 0.03 ET
 for replacement. If fees are only 0.01 ETH, it uses 0.01 ETH and leaves a 0.01 ETH gap. Native deposits still create
 zero fees or profit. A user must fund any remaining gap or reduce the target. No automatic fee reinvestment occurs.
 
-Focused implementation evidence is in [creator-fee verification](receipts/creator-fee-v2/REPORT.md). The full
-economic campaign, production-path rehearsal, real browser-wallet transactions and release approvals remain
-separate. In particular gross fees do not prove that a pool is sustainably profitable.
+The [creator-fee implementation checkpoint](receipts/creator-fee-v2/REPORT.md) preserves its original blocked
+test results and static review. Subsequent local deployment and stress evidence have their own scopes and
+do not relabel that blocked batch as passed. The full economic campaign, real browser-wallet transactions and
+production release approvals remain separate. Gross fees do not prove that a pool is sustainably profitable.
 
 ## Historical version 1
 

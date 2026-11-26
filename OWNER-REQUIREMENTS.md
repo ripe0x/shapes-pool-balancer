@@ -498,3 +498,8 @@ Accepted and documented; no contract behavior change and no outcome bound change
 ## Local stress diagnostics (owner, 2026-11-25)
 
 - R125. "run a bunch of different sims on the local fork contract so i can browse the results. different pool designs, different draw rates, etc. stress test this shit! you have approval for wharever you need". Authorizes the local diagnostic campaign, synthetic actor funding, actual clone/game/keeper transactions and explicitly labelled simulated randomness, with browsable results. Preserve the existing8545 playground by using its isolated child fork; no mainnet broadcasts or economic rule changes. Stored Alchemy use remains sparing. Scenario counts and execution caps are agent choices, not owner-approved profitability outcomes or release requirements.
+
+## Accepted stress-diagnostic behavior (owner, 2026-11-25)
+
+- R126. On continued purchases with the jackpot absent and a replacement-funding gap: "the creator can choose their settings differently if they want to. this is not a problem." Retain creator-selected admission/settings and partial-inventory operation. This observation does not require a new jackpot-availability or reserve-shortfall purchase pause and is not an unresolved product blocker.
+- R127. On burst slippage refunds and charged randomness fees that are not returned: "this is fine too." Retain the existing FWA price protection and refund semantics. The measured top-heavy case had 90 refunds from 120 requests with 0.11583 ETH of charged VRF fees on those requests. These observations remain documented, accepted behavior; they do not require a new batch restriction or pricing change. Acceptance is not a forecast of other scenarios, a security finding resolution, or mainnet broadcast authority.
