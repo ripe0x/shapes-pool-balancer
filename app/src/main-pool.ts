@@ -3,6 +3,7 @@ import { simulateCalls } from 'viem/actions';
 import { fwaV2Abi, packManagerAbi, packManagerFactoryAbi, packVaultAbi } from '../../shared/main-pool-abi';
 import { shapesAbi } from '../../shared/abi';
 import { incrementalRange } from './ledger';
+import { decodeMix, sizesOf } from '../../shared/manager-design';
 
 /** FWA main pool products (ripe0x/shapes-fwa-pool). Each is hidden while its address is unset. */
 /** Launch switch: while false the main pool pages show their content but take no deposits or creations, and the app
@@ -22,12 +23,16 @@ export const POSITION_VALUE = parseEther('0.1248');
 export const MIN_DEPOSIT = parseEther('0.01');
 const ACTIVE = 1, ALLOCATED = 2, OWED = 3;
 
-/** deploy/manager.json in shapes-fwa-pool: the default PackManagerFactory.create parameters. */
+/** deploy/manager.json in shapes-fwa-pool: the default PackManagerFactory.create parameters. The designer sets
+ *  packUnitsMask from the chosen mix. */
 export const MANAGER_PARAMS = {
-  minEdgeBps: 100, bufferBps: 0, distributionBps: 0, payMarkupBps: 0, keeperShareBps: 2500, allocatedBoundBps: 0,
-  packUnitsMask: 64n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n, workFee: 20000000000000n,
-  routineCap: 30000000000000000n, routineRate: 10000000000000000n, essentialCap: 10000000000000000n,
-  essentialRate: 5000000000000000n, reserve: 5000000000000000n, tvlCap: 0n,
+  minEdgeBps: 100, bufferBps: 0, distributionBps: 0, payMarkupBps: 0, keeperShareBps: 2500, upliftBoundBps: 25,
+  packUnitsMask: 8n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n,
+  workFee: 20000000000000n, routineCap: 30000000000000000n, routineRate: 10000000000000000n,
+  essentialCap: 10000000000000000n, essentialRate: 5000000000000000n, reserve: 6000000000000000n, tvlCap: 0n,
+  backingRatioBps: 16667, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
+  minDistribution: 10000000000000000n,
+  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 360000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, liquidate: 75000, liquidatePack: 80000, redeemShape: 35000, recoveryBase: 100000, recoveryShape: 35000, recoveryUnseal: 70000, harvest: 125000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
 } as const;
 
 // Events the strategy libraries emit by DELEGATECALL: they are logged by the account but absent from its ABI.
@@ -200,12 +205,14 @@ export async function readManager(pub: Pub, manager: Address) {
     pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee', blockNumber }) as Promise<bigint>,
   ]);
   const book = await readBook(pub, manager, packManagerAbi, fwa, blockNumber);
+  const design = await r<bigint>('design');
+  const held = Object.fromEntries(await Promise.all(sizesOf(decodeMix(design)).map(async (u) => [u, Number(await r<bigint>('recipeCount', [BigInt(u)]))] as const)));
   const logs = await accountLogs(pub, manager, [POSITION_UPDATED, CASH_RECEIPT, KEEPER_PAID, TOKENS_BURNED, WITHDRAWN], deploymentBlock, blockNumber);
   const updates = named(logs, 'PositionUpdated').map((l) => argsOf<{ listingId: bigint; state: number }>(l));
   const keeps = named(logs, 'CashReceipt').map((l) => argsOf<{ listingId: bigint; outcome: number }>(l)).filter((a) => a.outcome === 1).map((a) => a.listingId);
   const total = (name: string) => named(logs, name).reduce((t, l) => t + argsOf<{ amount: bigint }>(l).amount, 0n);
   return {
-    manager, owner, blockNumber, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth,
+    manager, owner, blockNumber, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth, design, held,
     ...outcomes(updates, keeps), keeperPay: total('KeeperPaid'), tokensBurned: total('TokensBurned'), withdrawn: total('Withdrawn'),
   };
 }
