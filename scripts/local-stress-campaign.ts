@@ -38,6 +38,10 @@ export function acquisitionOutcome(status: number): 'nft' | 'expired' | 'refunde
   if (status === 2) return 'nft'; if (status === 3) return 'expired'; if (status === 4) return 'refunded';
   throw new Error(`acquisition not settled as delivery or pull refund: ${status}`);
 }
+export function scenarioDeposit(mode: string, backing: bigint, mintCost: bigint, initialReserve: bigint) {
+  const buffer = mode === 'feeReinvestOnGap' ? 0n : backing / 5n;
+  return max(backing + mintCost + buffer + ETH / 100n, initialReserve + ETH / 100n);
+}
 export function bankrollValues(cash: bigint, backing: bigint, fees: bigint, capital: bigint) {
   assert.ok(cash >= fees, 'creator fees exceed cash');
   const signed = cash + backing - fees - capital; return { operating: cash - fees, signed, clipped: max(0n, signed) };
@@ -50,7 +54,7 @@ export function resumeEvidence(previous: any, source: string) {
   assert.equal(previous.schema, 'local-stress-v2'); assert.equal(previous.chainId, 31337); assert.equal(previous.randomness, 'simulated');
   const retained = previous.scenarios.filter((scenario: { status: string }) => ['complete', 'paused'].includes(scenario.status));
   const retainedIds = new Set(retained.map((scenario: { id: string }) => scenario.id));
-  return { scenarios: retained, findings: (previous.findings ?? []).map((finding: any) => ({ ...finding, attemptSource: source, historical: Boolean(finding.scenarioId && !retainedIds.has(finding.scenarioId)) })), priorAttempts: [...(previous.priorAttempts ?? []), { source, status: previous.status, startedAt: previous.startedAt, finishedAt: previous.finishedAt, revision: previous.revision, budget: previous.budget, scenarios: previous.scenarios.filter((scenario: { id: string }) => !retainedIds.has(scenario.id)) }] };
+  return { scenarios: retained, findings: (previous.findings ?? []).map((finding: any) => ({ ...finding, attemptSource: finding.attemptSource ?? source, historical: Boolean(finding.historical || (finding.scenarioId && !retainedIds.has(finding.scenarioId))) })), priorAttempts: [...(previous.priorAttempts ?? []), { source, status: previous.status, startedAt: previous.startedAt, finishedAt: previous.finishedAt, revision: previous.revision, budget: previous.budget, scenarios: previous.scenarios.filter((scenario: { id: string }) => !retainedIds.has(scenario.id)) }] };
 }
 const DESIGNS = [
   { name: 'small', counts: target([[0, 20]]), markup: 1500 },
@@ -359,7 +363,8 @@ class Campaign {
       const backing = s.target.reduce((a, n, d) => a + BigInt(n) * DENOMS[d], 0n);
       const mintCost = s.target.reduce((a, n, d) => a + BigInt(n * SHAPES_IN[d]) * fee, 0n);
       const reserve = requiredReserveAt(s.target, Array(16).fill(0), fee, 0, econ as Economics, BASE);
-      s.initialDepositWei = max(backing + mintCost + backing / 5n + ETH / 100n, reserve + ETH / 100n);
+      s.initialDepositWei = scenarioDeposit(plan.mode, backing, mintCost, reserve);
+      if (plan.mode === 'feeReinvestOnGap') s.notes.push('Controlled reinvestment diagnostic: initial capital omits the usual 20% backing buffer, retains initial reserve plus 0.01 ETH, and the first word selects the largest active prize. This is not an unbiased sample.');
       const salt = STRESS_CREATION_SALT;
       this.balancer = getAddress(await this.read(STRESS_SCOPE.factory, balancerFactoryAbi, 'predictBalancer', [STRESS_SCOPE.creator, salt])); s.balancer = this.balancer;
       const curated: { collection: Address; tokenId: bigint; base: bigint }[] = [];
@@ -417,7 +422,7 @@ class Campaign {
         const requests: { id: bigint; forced?: number; ownerBase: bigint }[] = [];
         for (let k = 1; k <= n; k++) {
           const id = await this.p('requestIdAtSequence', [before.issued + BigInt(k)]);
-          const forced = plan.mode === 'forcedLargest' && s.drawsAttempted === n && k === 1 ? await this.forcedLargestWord() : undefined;
+          const forced = ['forcedLargest', 'feeReinvestOnGap'].includes(plan.mode) && s.drawsAttempted === n && k === 1 ? await this.forcedLargestWord() : undefined;
           const word = forced?.word ?? BigInt(keccak256(encodePacked(['string', 'uint256', 'uint256'], ['local-stress-v2', BigInt(plan.seed), id])));
           await this.fulfill(id, word); requests.push({ id, forced: forced?.denom, ownerBase });
         }
@@ -451,6 +456,11 @@ class Campaign {
         assert.equal(current.fwaRefundCreditTotalWei, s.expectedRefundCreditWei, 'fresh pool refund bucket contains exactly buyer refunds');
         assert.equal(s.flows.ownerReceiptsWei - f.ownerReceiptsWei, expectedReceipts, 'absolute owner receipts equal genuine request base prices for delivered NFTs');
         this.checkCycle(before, current, f); this.point(current);
+        if (plan.mode === 'feeReinvestOnGap' && window === 0) {
+          assert.ok(current.shortfallWei > 0n, 'controlled first largest win must create an actual refill gap');
+          assert.ok(current.reservedFeesWei > 0n, 'controlled refill gap must coexist with actual accrued creator fees');
+          assert.equal(await this.b('withdrawableSurplus'), 0n, 'actual reserve gap blocks every surplus withdrawal despite accrued creator fees');
+        }
         if (plan.mode === 'feeWithdrawEvery20' && s.drawsSettled % 20 === 0) {
           const available: bigint = await this.b('withdrawableSurplus'); const amount = available < current.reservedFeesWei ? available : current.reservedFeesWei;
           if (amount > 0n) { current = await this.creatorAction('claimSurplus', [amount, STRESS_SCOPE.creator]); this.point(current); }
@@ -459,7 +469,7 @@ class Campaign {
       }
       if (s.status === 'running') s.status = s.drawsAttempted === limit ? 'complete' : 'attempt-limit';
       if (['keeperOutage', 'gasSpike'].includes(plan.mode) && !s.notes.some(note => note.includes('one-hour disruption removed'))) s.notes.push(`${plan.mode} disruption not reached: admission paused or the admitted-draw cap ended before window 10.`);
-      if (plan.mode === 'feeReinvestOnGap' && s.flows.feesReinvestedWei === 0n) s.notes.push('Reinvestment was not reached: no eligible refill gap with creator fees arose within the admitted-draw cap.');
+      if (plan.mode === 'feeReinvestOnGap') assert.ok(s.flows.feesReinvestedWei > 0n, 'controlled reinvestment regime must execute an actual positive creator-fee reinvestment');
       if (plan.mode === 'feeWithdrawEvery20' && s.flows.withdrawnFeesWei === 0n) s.notes.push('Fee withdrawal was not reached within the admitted-draw cap and reserve conditions.');
       if (plan.mode === 'forcedLargest') s.notes.push('Controlled adverse first outcome selects the largest active tier; this regime is not an unbiased sample.');
       if (s.refunds) this.results.findings.push({ severity: 'info', scenarioId: s.id, text: `${s.refunds} actual pull refunds: ${s.expiredRefunds} status-3 expiries, ${s.selectionRefunds} status-4 selection/slippage refunds. Buyer credit ${s.expectedRefundCreditWei} wei remains at FWA.` });

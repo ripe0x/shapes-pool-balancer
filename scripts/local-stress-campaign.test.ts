@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { encodePacked, getAddress, keccak256 } from 'viem';
-import { acquisitionOutcome, bankrollValues, requestOwnerBase, resumeEvidence, STRESS_CREATION_SALT, STRESS_SCOPE, stressPlan } from './local-stress-campaign';
+import { acquisitionOutcome, bankrollValues, requestOwnerBase, resumeEvidence, scenarioDeposit, STRESS_CREATION_SALT, STRESS_SCOPE, stressPlan } from './local-stress-campaign';
 
 it('bounds the exact campaign to 18 design/rate pairs and six independent stress regimes', () => {
   const plans = stressPlan(), baseline = plans.filter(p => p.mode === 'baseline');
@@ -57,4 +57,25 @@ it('retains completed and paused evidence while preserving failed attempts and t
   expect(resumed.priorAttempts[0].budget).toEqual({ transactions: 99 });
   expect(resumed.findings[0]).toMatchObject({ historical: true, text: 'meter stopped', attemptSource: '/original/results.json' });
   expect(previous.scenarios).toHaveLength(3);
+});
+
+
+it('lowers capital only for the controlled reinvestment regime while retaining its full opening reserve', () => {
+  const eth = 10n ** 18n, backing = 460n * eth / 1000n, mint = 11n * eth / 1000n;
+  const reserve = 475n * eth / 1000n;
+  expect(scenarioDeposit('feeReinvestOnGap', backing, mint, reserve)).toBe(485n * eth / 1000n);
+  for (const mode of ['baseline', 'forcedLargest', 'feeWithdrawEvery20', 'gasSpike', 'keeperOutage', 'zeroDemandWinddown'])
+    expect(scenarioDeposit(mode, backing, mint, reserve)).toBe(573n * eth / 1000n);
+  expect(scenarioDeposit('feeReinvestOnGap', backing, mint, 0n)).toBe(481n * eth / 1000n);
+});
+
+
+it('preserves original historical failure provenance across a second resume after the same scenario succeeds', () => {
+  const original = { schema: 'local-stress-v2', chainId: 31337, randomness: 'simulated', status: 'stopped', scenarios: [{ id: 'balanced-10', status: 'failed' }], findings: [{ severity: 'error', scenarioId: 'balanced-10', text: 'original source cap' }] };
+  const first = resumeEvidence(original, '/original/results.json');
+  const continued = { ...original, ...first, scenarios: [{ id: 'balanced-10', status: 'complete' }] };
+  const second = resumeEvidence(continued, '/continuation/results.json');
+  expect(second.scenarios).toEqual([{ id: 'balanced-10', status: 'complete' }]);
+  expect(second.findings[0]).toMatchObject({ historical: true, attemptSource: '/original/results.json', text: 'original source cap' });
+  expect(first.findings[0]).toEqual(second.findings[0]);
 });
