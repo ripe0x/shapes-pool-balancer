@@ -23,8 +23,15 @@ Total **11,514,210 gas, 0.001571642619637461 ETH** (approved cap 0.0039301835 ET
 
 Readback of `economics()` matches [launch-values.json](../mainnet-v2-preparation/launch-values.json) exactly, including **gasPriceCeiling 1.5 gwei and restockGas 940000**. `creationPaused()` still true.
 
+## Cutover
+
+- `0x6F018fF718Ab5A4287F937e4e4729Aa65610f53b` is packaged as `community-v3` in `deployments/1.legacy.json` with its deployed ABI (`shared/abi.ts` at `ab60c4b`, unchanged through its deployment commit `418233f`). It has no creation pause, so any pool created on it later stays discoverable and serviced.
+- Post-deployment rescan through Alchemy at block **26500013** (after factory block 26499988): `ok: true`, no problems; community-v3 0 pools, community-v2 1 pool (known), community-v1 0, community-v0 0; no missing ABI selectors for v3. Output: [`deployments/1.creator-fee-v2.postdeploy-preflight.json`](../../../deployments/1.creator-fee-v2.postdeploy-preflight.json).
+- Keeper `keeper/fly.toml`: `FACTORY` 0x96fd…7671, `FROM_BLOCK` 26499988, `LEGACY_FACTORIES` `community-v3,community-v2`. Dashboard: Netlify `VITE_FACTORY` and `VITE_FROM_BLOCK` to the same values.
+- Checks: typecheck; 8 affected vitest files, 56 passed, 4 skipped. Local preview against mainnet loaded the new factory's economics without console errors; legacy pool listing needs a connected wallet and was not exercised in the preview.
+
 ## Not done
 
-Post-deployment legacy-factory rescan, app/keeper cutover to factory `0x96fd…7671` (start block 26499988), and `setCreationPaused(false)` each require separate owner approval. No mainnet canary (R83).
+`setCreationPaused(false)` requires separate owner signing. No mainnet canary (R83).
 
 Things that don't make sense: none.

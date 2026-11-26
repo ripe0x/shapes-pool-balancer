@@ -7,10 +7,10 @@ kill_timeout = "30s"
 
 [env]
   EXPECTED_CHAIN_ID = "1"
-  FACTORY = "0x6F018fF718Ab5A4287F937e4e4729Aa65610f53b"
-  FROM_BLOCK = "26489613"
+  FACTORY = "0x96fd7B2e83E04Ea2e78be415e0BC82A1332e7671"
+  FROM_BLOCK = "26499988"
   RPC_URL = "https://mainnet.gateway.tenderly.co"
-  LEGACY_FACTORIES = "community-v2"
+  LEGACY_FACTORIES = "community-v3,community-v2"
   STATE_FILE = "/data/keeper-state.json"
   POLL_MS = "12000"
   HEALTH_PORT = "8787"
