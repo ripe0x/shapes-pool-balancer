@@ -1,0 +1,116 @@
+
+ RUN  v3.2.7 /Users/dd/CascadeProjects/fwa-pool-balancer
+
+ ❯ app/src/transfer.test.ts (7 tests | 1 failed) 29ms
+   ✓ keys a pending transfer by chain, sender and contract, ignoring address case 1ms
+   ✓ a reservation made before the wallet opened blocks until the hold ends 0ms
+   ✓ throws instead of permitting a transfer when the node cannot answer 3ms
+   ✓ never asks mainnet for Anvil metadata and fails closed when local identity is unavailable 0ms
+   ✓ keeps unknown legacy records and mainnet reservations blocked across local instance changes 0ms
+   × blocks while unmined, learns the real nonce, and survives a lower nonce mining first 17ms
+     → The total cost (gas * gas fee + value) of executing this transaction exceeds the balance of the account.
+
+This error could arise when the account does not have enough funds to:
+ - pay for the total gas fee,
+ - pay for the value to send.
+ 
+The cost of the transaction is calculated as `gas * gas fee + value`, where:
+ - `gas` is the amount of gas needed for transaction to execute,
+ - `gas fee` is the gas fee,
+ - `value` is the amount of ether to send to the recipient.
+ 
+Request Arguments:
+  from:   0x00000000000000000000000000000000000d0e02
+  to:     0x00000000000000000000000000000000000d0e02
+  value:  0.001 ETH
+  gas:    21000
+
+Details: Insufficient funds for gas * price + value
+Version: viem@2.57.17
+   ✓ uses real Anvil identities and retires only proven old local hashes on the configured instance 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/src/transfer.test.ts > blocks while unmined, learns the real nonce, and survives a lower nonce mining first
+TransactionExecutionError: The total cost (gas * gas fee + value) of executing this transaction exceeds the balance of the account.
+
+This error could arise when the account does not have enough funds to:
+ - pay for the total gas fee,
+ - pay for the value to send.
+ 
+The cost of the transaction is calculated as `gas * gas fee + value`, where:
+ - `gas` is the amount of gas needed for transaction to execute,
+ - `gas fee` is the gas fee,
+ - `value` is the amount of ether to send to the recipient.
+ 
+Request Arguments:
+  from:   0x00000000000000000000000000000000000d0e02
+  to:     0x00000000000000000000000000000000000d0e02
+  value:  0.001 ETH
+  gas:    21000
+
+Details: Insufficient funds for gas * price + value
+Version: viem@2.57.17
+ ❯ getTransactionError node_modules/viem/utils/errors/getTransactionError.ts:44:10
+ ❯ sendTransaction node_modules/viem/actions/wallet/sendTransaction.ts:411:11
+ ❯ app/src/transfer.test.ts:52:18
+     50|   try {
+     51|     const base = { chainId: 31337, from, to: from, since: Date.now() };
+     52|     const hash = await wallet.sendTransaction({ to: from, value: parse…
+       |                  ^
+     53|     const sent = { ...base, hash };
+     54|     const first = await transferState(pub, sent);
+
+Caused by: InsufficientFundsError: The total cost (gas * gas fee + value) of executing this transaction exceeds the balance of the account.
+
+This error could arise when the account does not have enough funds to:
+ - pay for the total gas fee,
+ - pay for the value to send.
+ 
+The cost of the transaction is calculated as `gas * gas fee + value`, where:
+ - `gas` is the amount of gas needed for transaction to execute,
+ - `gas fee` is the gas fee,
+ - `value` is the amount of ether to send to the recipient.
+
+Details: Insufficient funds for gas * price + value
+Version: viem@2.57.17
+ ❯ getNodeError node_modules/viem/utils/errors/getNodeError.ts:103:12
+ ❯ node_modules/viem/utils/errors/getTransactionError.ts:37:19
+ ❯ getTransactionError node_modules/viem/utils/errors/getTransactionError.ts:43:5
+ ❯ sendTransaction node_modules/viem/actions/wallet/sendTransaction.ts:411:11
+ ❯ app/src/transfer.test.ts:52:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { details: 'Insufficient funds for gas * price + value', docsPath: undefined, metaMessages: [ 'This error could arise when the account does not have enough funds to:', ' - pay for the total gas fee,', ' - pay for the value to send.', ' ', 'The cost of the transaction is calculated as `gas * gas fee + value`, where:', ' - `gas` is the amount of gas needed for transaction to execute,', ' - `gas fee` is the gas fee,', ' - `value` is the amount of ether to send to the recipient.' ], shortMessage: 'The total cost (gas * gas fee + value) of executing this transaction exceeds the balance of the account.', version: '2.57.17', walk: 'Function<walk>' }
+Caused by: TransactionRejectedRpcError: Transaction creation failed.
+
+URL: http://127.0.0.1:18559
+Request body: {"method":"eth_sendTransaction","params":[{"from":"0x00000000000000000000000000000000000d0e02","gas":"0x5208","to":"0x00000000000000000000000000000000000d0e02","value":"0x38d7ea4c68000"}]}
+
+Details: Insufficient funds for gas * price + value
+Version: viem@2.57.17
+ ❯ withRetry.delay.count.count node_modules/viem/utils/buildRequest.ts:199:25
+ ❯ attemptRetry node_modules/viem/utils/promise/withRetry.ts:67:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { details: 'Insufficient funds for gas * price + value', docsPath: undefined, metaMessages: [ 'URL: http://127.0.0.1:18559', 'Request body: {"method":"eth_sendTransaction","params":[{"from":"0x00000000000000000000000000000000000d0e02","gas":"0x5208","to":"0x00000000000000000000000000000000000d0e02","value":"0x38d7ea4c68000"}]}' ], shortMessage: 'Transaction creation failed.', version: '2.57.17', code: -32003, walk: 'Function<walk>' }
+Caused by: RpcRequestError: RPC Request failed.
+
+URL: http://127.0.0.1:18559
+Request body: {"method":"eth_sendTransaction","params":[{"from":"0x00000000000000000000000000000000000d0e02","gas":"0x5208","to":"0x00000000000000000000000000000000000d0e02","value":"0x38d7ea4c68000"}]}
+
+Details: Insufficient funds for gas * price + value
+Version: viem@2.57.17
+ ❯ request node_modules/viem/clients/transports/http.ts:184:19
+ ❯ withRetry.delay.count.count node_modules/viem/utils/buildRequest.ts:164:22
+ ❯ attemptRetry node_modules/viem/utils/promise/withRetry.ts:67:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { details: 'Insufficient funds for gas * price + value', docsPath: undefined, metaMessages: [ 'URL: http://127.0.0.1:18559', 'Request body: {"method":"eth_sendTransaction","params":[{"from":"0x00000000000000000000000000000000000d0e02","gas":"0x5208","to":"0x00000000000000000000000000000000000d0e02","value":"0x38d7ea4c68000"}]}' ], shortMessage: 'RPC Request failed.', version: '2.57.17', code: -32003, data: undefined, headers: undefined, status: undefined, url: 'http://127.0.0.1:18559', walk: 'Function<walk>' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  21:29:06
+   Duration  303ms (transform 28ms, setup 0ms, collect 102ms, tests 29ms, environment 0ms, prepare 28ms)

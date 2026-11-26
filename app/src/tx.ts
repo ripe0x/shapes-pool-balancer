@@ -94,7 +94,27 @@ export async function confirmAction(pub: ConfirmationClient, hash: Hash, intent:
 /** A reserved or sent ETH transfer. `hash` is set once the wallet returns it; `nonce` only once a node has shown that
  *  transaction, so it is the transfer's own nonce, never one guessed before the wallet chose it. `id` names the attempt
  *  that wrote it, so a failed attempt removes only its own record. */
-export interface PendingTransfer { chainId: number; from: Address; to: Address; since: number; id?: string; hash?: Hash; nonce?: number }
+export interface PendingTransfer { chainId: number; from: Address; to: Address; since: number; id?: string; hash?: Hash; nonce?: number; forkInstanceId?: Hash }
+
+export interface LocalForkReset { instanceId: string; retiredHashes: readonly string[] }
+export interface LocalTransferContext { instanceId: Hash; retiredHashes: readonly string[] }
+const instanceHash = (value: unknown): value is Hash => typeof value === 'string' && /^0x[0-9a-f]{64}$/i.test(value);
+
+/** Only an actual local Anvil instance can retire records from a discarded test fork. */
+export async function localTransferContext(pub: Pick<PublicClient, 'request'>, chainId: number,
+  reset?: LocalForkReset): Promise<LocalTransferContext | undefined> {
+  if (chainId !== 31337) return undefined;
+  const metadata = await pub.request({ method: 'anvil_metadata' as never }) as unknown as { instanceId?: unknown; chainId?: unknown };
+  if (Number(metadata.chainId) !== 31337 || !instanceHash(metadata.instanceId)) throw new Error('The local fork identity is unavailable. Retry once the local node is ready.');
+  const instanceId = metadata.instanceId.toLowerCase() as Hash;
+  if (reset && (!instanceHash(reset.instanceId) || !reset.retiredHashes.every(instanceHash))) throw new Error('Invalid local fork reset record.');
+  return { instanceId, retiredHashes: reset?.instanceId.toLowerCase() === instanceId ? reset.retiredHashes.map(h => h.toLowerCase()) : [] };
+}
+
+/** Wallets may retain a higher nonce after a local reset; production wallets keep choosing their own nonce. */
+export async function localTransactionNonce(pub: Pick<PublicClient, 'getTransactionCount'>, chainId: number, from: Address) {
+  return chainId === 31337 ? pub.getTransactionCount({ address: from, blockTag: 'pending' }) : undefined;
+}
 
 /** How long a transfer no node has shown keeps blocking another one. Its nonce is unknown, so nothing on chain can
  *  prove it will never mine. */
@@ -108,12 +128,17 @@ export const transferKey = (i: Pick<TransactionIntent, 'chainId' | 'from' | 'to'
  *  A transfer never seen by the node blocks for UNSEEN_HOLD_MS. Returns the transaction's nonce when the node shows it,
  *  for the caller to keep. RPC failures throw, so an unknown state never permits a second transfer. */
 export async function transferState(pub: Pick<PublicClient, 'getTransaction' | 'getTransactionCount'>, p: PendingTransfer,
-  now = Date.now()): Promise<{ unresolved: boolean; nonce?: number }> {
+  now = Date.now(), local?: LocalTransferContext): Promise<{ unresolved: boolean; nonce?: number }> {
   const transaction = p.hash ? await pub.getTransaction({ hash: p.hash }).catch((e: Error) => {
     if (e.name === 'TransactionNotFoundError') return undefined;
     throw e;
   }) : undefined;
   if (transaction?.blockNumber != null) return { unresolved: false };
+  // Keep the existing storage/lock key so old and new tabs still exclude each other. A legacy record needs
+  // explicit reset evidence; a missing hash alone never establishes that an unseen payment is safe to repeat.
+  if (!transaction && p.chainId === 31337 && local && instanceHash(local.instanceId)
+    && ((instanceHash(p.forkInstanceId) && p.forkInstanceId.toLowerCase() !== local.instanceId.toLowerCase())
+      || (!p.forkInstanceId && p.hash && local.retiredHashes.includes(p.hash.toLowerCase())))) return { unresolved: false };
   const nonce = transaction?.nonce ?? p.nonce;
   if (nonce === undefined) return { unresolved: now - p.since < UNSEEN_HOLD_MS };
   return { unresolved: await pub.getTransactionCount({ address: p.from, blockTag: 'latest' }) <= nonce, nonce };

@@ -11,7 +11,7 @@ accounts instead. No private keys are needed or should be imported.
 - App: http://127.0.0.1:5280/; discovery starts at block 26485620, not the old fork's later deployment block.
 - Factory: `0xbe49677a403f77136e81498e5681f8dc22aa1181`; creation is unpaused.
 - Implementation: `0x940815eE17aa44E861bEfe77e6812EB0f2da9710`; accounting version 2.
-- Anvil PID 13432 and app PID 20512 are detached. Anvil saves current state every 30 seconds to
+- Anvil PID 13432 and app PID 35250 are detached. Anvil saves current state every 30 seconds to
   `/tmp/fwa-8545-fresh-current-state.json`. The file remains subject to operating-system temporary-file cleanup.
 - Production keeper PID 22144 watches this factory from block 26485620, every two seconds, with no legacy factories.
   Its unsigned local account is `0x000000000000000000000000000000000001e004`, cap 5 gwei and modeled loss allowance 0.
@@ -19,6 +19,9 @@ accounts instead. No private keys are needed or should be imported.
 - ripe0x.eth (`0xCB43078C32423F5348Cab5885911C3B5faE217F9`) received 1,000 additional test ETH on the fresh fork.
 
 Receipts: [fresh deployment](receipts/local-playground/20261126020950842/README.md).
+The [local transfer reset fix](receipts/local-playground/transfer-reset-fix/README.md) retires the exact proven
+old-fork creation warning, stamps new local transfers with the actual Anvil instance and supplies the current
+local pending nonce to the wallet. Mainnet behavior is unchanged. Refresh the app after this local reset.
 The app's local development connector completed discovery and exposed Create pool. A curated-NFT review check
 opened Confirm NFT values for Demo Curated #1 at 0.25 ETH and was cancelled before any approval or creation.
 No pool was created during that check. The keeper is healthy and ready to discover the user's next pool;

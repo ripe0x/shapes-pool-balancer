@@ -9,8 +9,8 @@ import {
   BY_VALUE, DENOMS, MAX_BATCH, capitalOf, economics, evaluate, packPlan, requiredReserveAt, reserveBreakdownAt, pendingDrawsAdmitted, prizeLabel, shapeCount, suggestedCreatorRevenueBps, unpackPlan, type Counts,
 } from '../../shared/planner';
 import { BIG_WIN_SHARE, JACKPOT_MULTIPLE, ethNeeded, mixOf, playerView, presetCounts, presetMaxSmall, type DesignInputs, type Style } from '../../shared/design';
-import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL } from './chain';
-import { confirmAction, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
+import { APP_NAME, chain, FACTORY, FROM_BLOCK, FWA_POOL_URL, LOCAL_FORK_RESET } from './chain';
+import { confirmAction, localTransactionNonce, localTransferContext, prepareTransfer, prepareWrite, reviewedIntent, runTransactionSteps, transferKey, transferState, type PendingTransfer, type TransactionIntent, type TransactionStep } from './tx';
 import { incrementalRange, poolEthLedger } from './ledger';
 import { canRetryCreation, creationContextMatches, creationNotSubmitted, creationStatus, recoverCreation, sameCreation, sameSubmission, submitCreation, waitForCreation, type CreationAttempt, type CreationOutcome } from './creation';
 import { explain } from './errors';
@@ -323,15 +323,17 @@ export function useTx(onDone: () => void) {
   const submitted = useRef<{ hash: Hash; intent: TransactionIntent }>();
   const { sendTransactionAsync } = useSendTransaction();
   /** Every reviewed send: an ETH transfer first passes the pending-transfer guard, then the wallet submits. */
-  const submit = async (intent: TransactionIntent, send: () => Promise<Hash>, beforeWallet?: () => void) => {
+  const submit = async (intent: TransactionIntent, send: (nonce?: number) => Promise<Hash>, beforeWallet?: () => void) => {
     const key = intent.value > 0n ? transferKey(intent) : undefined;
-    const reservation = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
+    const reservation: PendingTransfer & { id: string } = { chainId: intent.chainId, from: intent.from, to: intent.to, since: Date.now(), id: crypto.randomUUID() };
     if (key) {
       if (!navigator.locks) throw new Error(NO_STORAGE);
       // Check and reserve as one step across this site's tabs, so two tabs cannot both find no earlier transfer.
       await navigator.locks.request(key, async () => {
+        const local = await localTransferContext(pub!, intent.chainId, LOCAL_FORK_RESET);
+        if (local) reservation.forkInstanceId = local.instanceId;
         const earlier = loadPending(key);
-        const state = earlier && await transferState(pub!, earlier);
+        const state = earlier && await transferState(pub!, earlier, Date.now(), local);
         if (earlier && state?.unresolved) {
           if (state.nonce !== undefined && earlier.nonce === undefined) savePending(key, { ...earlier, nonce: state.nonce });
           throw new Error(earlier.hash
@@ -345,13 +347,15 @@ export function useTx(onDone: () => void) {
     beforeWallet?.();
     let hash: Hash;
     try {
-      hash = await send();
+      const nonce = await localTransactionNonce(pub!, intent.chainId, intent.from);
+      hash = await send(nonce);
     } catch (e) {
       if (key) releasePending(key, reservation.id);
       throw e;
     }
     if (key) {
-      // The wallet chooses the nonce; keep it once a node shows the transaction. If saving fails now, the hashless
+      // Production wallets choose the nonce; local requests suggest the node's pending nonce. Record the actual
+      // nonce only once the node shows the transaction. If saving fails now, the hashless
       // reservation still blocks.
       const seen = await pub!.getTransaction({ hash }).catch(() => undefined);
       try { if (loadPending(key)?.id === reservation.id) savePending(key, { ...reservation, hash, nonce: seen?.nonce }); } catch { /* reservation stays */ }
@@ -364,12 +368,12 @@ export function useTx(onDone: () => void) {
   // Simulate before sending so a revert is reported by name, and send with 30% gas-limit headroom over the estimate.
   const write = (async (params: Record<string, unknown>, beforeWallet?: () => void) => {
     const prepared = await prepareWrite(pub!, address, params);
-    return submit(reviewedIntent(prepared), () => writeContractAsync(prepared as never), beforeWallet);
+    return submit(reviewedIntent(prepared), (nonce) => writeContractAsync({ ...prepared, ...(nonce === undefined ? {} : { nonce }) } as never), beforeWallet);
   }) as typeof writeContractAsync & ((params: Record<string, unknown>, beforeWallet: () => void) => Promise<Hash>);
   /** A plain ETH transfer (to a contract's receive function), reviewed and guarded like `write`. */
   const transfer = async (to: Address, value: bigint) => {
     const { prepared, intent } = await prepareTransfer(pub!, address, to, value);
-    return submit(intent, () => sendTransactionAsync(prepared as never));
+    return submit(intent, (nonce) => sendTransactionAsync({ ...prepared, ...(nonce === undefined ? {} : { nonce }) } as never));
   };
   const [busy, setBusy] = useState<string>();
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
