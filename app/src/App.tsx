@@ -41,6 +41,15 @@ type PoolIndex = { created: { factory: Address; balancer: Address; creator: Addr
 const fetchPoolIndex = async (): Promise<PoolIndex | undefined> => POOL_INDEX_URL
   ? fetch(POOL_INDEX_URL, { signal: AbortSignal.timeout(8_000) }).then((r) => (r.ok ? r.json() as Promise<PoolIndex> : undefined)).catch(() => undefined)
   : undefined;
+// Pools this browser created, per wallet: listed at once although the index is cached for up to 10 minutes. They are
+// candidates like any other and still confirmed on chain, so a stale or edited record lists nothing it shouldn't.
+const createdKey = (me: Address) => `created-pools:${chain.id}:${me.toLowerCase()}`;
+const rememberedPools = (me: Address): Address[] => {
+  try { const v = JSON.parse(localStorage.getItem(createdKey(me)) ?? '[]'); return Array.isArray(v) ? v.filter((b) => /^0x[0-9a-fA-F]{40}$/.test(b)) : []; } catch { return []; }
+};
+const rememberPool = (me: Address, b: Address) => {
+  try { localStorage.setItem(createdKey(me), JSON.stringify([...new Set([...rememberedPools(me), b])])); } catch { /* listed once the index refreshes */ }
+};
 const DRAWN = parseAbiItem('event ItemDrawn(uint256 indexed listingId, uint8 kind, uint8 denom, bool delivered)');
 /** Pool lifetime activity, independent of the current creator or connected viewer. */
 const LEDGER = [
@@ -641,12 +650,14 @@ export function App() {
       : (await Promise.all(sources.map((s) => pub.getLogs({ address: s.factory, event: CREATED, fromBlock: s.fromBlock })))).flat()
         .map((l) => ({ factory: l.address as Address, balancer: l.args.balancer!, creator: l.args.creator! }));
     const factoryOf = new Map(all.map((c) => [c.balancer.toLowerCase(), c.factory]));
+    const mineHere = rememberedPools(address);
+    for (const b of mineHere) if (!factoryOf.has(b.toLowerCase())) factoryOf.set(b.toLowerCase(), FACTORY);
     const created = all.filter((c) => chain.id === 31337 || c.creator.toLowerCase() === address.toLowerCase());
     const pools = all.map((c) => c.balancer);
     const received = index
       ? index.transfers.filter((t) => t.newCreator.toLowerCase() === address.toLowerCase()).map((t) => t.balancer)
       : pools.length ? (await pub.getLogs({ address: pools, event: CREATOR_TRANSFERRED, args: { newCreator: address }, fromBlock: sources.reduce((m, s) => (s.fromBlock < m ? s.fromBlock : m), FROM_BLOCK) })).map((l) => l.address as Address) : [];
-    const candidates = [...new Set([...created.map((c) => c.balancer), ...received])].filter((b) => factoryOf.has(b.toLowerCase()));
+    const candidates = [...new Map([...created.map((c) => c.balancer), ...received, ...mineHere].map((b) => [b.toLowerCase(), b])).values()].filter((b) => factoryOf.has(b.toLowerCase()));
     // Any contract can emit CreatorTransferred: only Balancers this dashboard's factories deployed are listed.
     const owned = await Promise.all(candidates.map(async (b) => {
       const [ours, c] = await Promise.all([
@@ -756,7 +767,7 @@ export function App() {
       </main>}
       {fresh && (
         <NewPool me={isConnected ? address : undefined} prereq={prereq}
-          onCreated={(b) => { setJustCreated(b); open(b); reload(); }} />
+          onCreated={(b) => { if (address) rememberPool(address, b); setJustCreated(b); open(b); reload(); }} />
       )}
       {isConnected && loaded && view === 'list' && <PoolList pools={mine} names={names} onOpen={open} onNew={() => { setPage('new'); }} />}
       {view === 'pool' && selected && <PoolView key={selected} balancer={selected} me={address ?? ZERO_ADDR} tab={tab} setTab={setTab} onBack={() => setPage('list')} created={justCreated?.toLowerCase() === selected.toLowerCase()} />}

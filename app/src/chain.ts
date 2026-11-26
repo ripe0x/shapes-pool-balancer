@@ -51,12 +51,13 @@ export const walletReads = custom({
 // Mainnet only: a second keyless RPC for when the first refuses (Tenderly's free tier caps response data per IP per day).
 export const backupRpcUrl = chain.id === mainnet.id ? 'https://ethereum-rpc.publicnode.com' : undefined;
 // Production mainnet only: the site's read-only proxy (netlify/functions/rpc.mts) holds the Alchemy key server-side.
-// A dev server has no functions, so it starts at the public RPCs.
+// It comes after the free public RPCs, so Alchemy quota is spent only on reads they refuse (throttling, deep log
+// ranges). A dev server has no functions, so it uses the public RPCs alone.
 const site = chain.id === mainnet.id && !import.meta.env.DEV && typeof location !== 'undefined' ? location.origin : undefined;
 const proxyRpcUrl = site && `${site}/.netlify/functions/rpc`;
 /** Server-side pool index (netlify/functions/pools.mts): candidates only, each confirmed on chain before listing. */
 export const POOL_INDEX_URL = site && `${site}/.netlify/functions/pools`;
-const rpcs = [...(proxyRpcUrl ? [proxyRpcUrl] : []), rpcUrl, ...(backupRpcUrl ? [backupRpcUrl] : [])].map((url) => http(url, { fetchFn: limitConcurrency(fetch, 4), retryCount: 0 }));
+const rpcs = [rpcUrl, ...(backupRpcUrl ? [backupRpcUrl] : []), ...(proxyRpcUrl ? [proxyRpcUrl] : [])].map((url) => http(url, { fetchFn: limitConcurrency(fetch, 4), retryCount: 0 }));
 
 export const config = createConfig({
   chains: [chain],
