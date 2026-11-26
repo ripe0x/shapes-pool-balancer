@@ -1,0 +1,33 @@
+check	Run forge test --match-path test/Settings.t.sol	﻿2026-11-26T05:22:30.6230926Z ##[group]Run forge test --match-path test/Settings.t.sol
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:30.6231277Z ^[[36;1mforge test --match-path test/Settings.t.sol^[[0m
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:30.6250667Z shell: /usr/bin/bash -e {0}
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:30.6250886Z ##[endgroup]
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:30.7871480Z No files changed, compilation skipped
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3495095Z Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3495471Z
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3495650Z Ran 11 tests for test/Settings.t.sol:SettingsTest
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3496075Z [PASS] test_creatorTransferKeepsPolicyDisabledStateAndAllowance() (gas: 15951766)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3496647Z [FAIL: assertion failed: 0 <= 0] test_economicsChangeRequiresMaintenanceFunding() (block: 26382349) (gas: 16101017)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3497203Z [PASS] test_emergencyDisableSurvivesFactoryAndReenablesImmediately() (gas: 16052512)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3497883Z [PASS] test_factoryAndPoolEconomicsChangesAreImmediate() (gas: 16093246)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3498397Z [PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 16812462)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3498849Z [PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 18648940)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3499236Z [PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185387)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3499728Z [PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 3151598)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3500129Z [PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 17500625)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3500522Z [PASS] test_unpaidWholePathAndRestrictedKeeper() (gas: 20172977)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3500853Z [PASS] test_writePolicyQuoteFixture() (gas: 187438)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3501261Z Suite result: FAILED. 10 passed; 1 failed; 0 skipped; finished in 541.02ms (361.39ms CPU time)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3501758Z   lastCallGas(): replaced by `lastFrameGas`
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3604204Z
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3604638Z Ran 1 test suite in 552.35ms (541.02ms CPU time): 10 tests passed, 1 failed, 0 skipped (11 total tests)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3637177Z
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3637568Z Failing tests:
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3638001Z Encountered 1 failing test in test/Settings.t.sol:SettingsTest
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3640925Z [FAIL: assertion failed: 0 <= 0] test_economicsChangeRequiresMaintenanceFunding() (block: 26382349) (gas: 16101017)
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3641445Z
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3641808Z Encountered a total of 1 failing tests, 10 tests succeeded
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3642063Z
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3642294Z Tip: Run `forge test --rerun` to retry only the 1 failed test
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3642859Z Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
+check	Run forge test --match-path test/Settings.t.sol	2026-11-26T05:22:31.3681963Z ##[error]Process completed with exit code 1.

@@ -1,0 +1,22 @@
+{
+  "rpc": "https://mainnet.gateway.tenderly.co",
+  "chainId": 1,
+  "blockNumber": "26497137",
+  "blockHash": "0xf3606d3f9f66bc85de91184151c0453bf297c2090bd736ee14c926798915063f",
+  "baseFeePerGas": "45557154",
+  "signer": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "balance": "173556986201324617",
+  "nonceLatest": 4251,
+  "noncePending": 4251,
+  "signerCode": "0xef0100612373d7003d694220f7800eeaf8e3924c0951d3",
+  "factory": "0x6F018fF718Ab5A4287F937e4e4729Aa65610f53b",
+  "implementation": "0xfEBaFdbFf526afb2bE2DCCedcb740962B5E91089",
+  "policyAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "keeperAdmin": "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+  "factoryCodeHash": "0xb767d7a4707a0cc77c5471f30bc943444d8b3940998fed26317f5ce78c06aa70",
+  "pools": {
+    "pools": [],
+    "bad": []
+  },
+  "creationPauseSupported": false
+}

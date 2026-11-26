@@ -1,0 +1,16 @@
+{
+  "command": [
+    "bash",
+    "script/deploy.sh",
+    "--rpc-url",
+    "https://mainnet.gateway.tenderly.co",
+    "--sender",
+    "0xCB43078C32423F5348Cab5885911C3B5faE217F9",
+    "--slow"
+  ],
+  "revision": "8db66c24f2b06c9e455f3ba7ec825121d6f9058b",
+  "branch": "codex/batch-inventory-closeout",
+  "scope": "read-only candidate simulation; no broadcast or keystore unlock; production broadcast still requires main checkout",
+  "exit": 0,
+  "elapsedSeconds": 22.349900722503662
+}

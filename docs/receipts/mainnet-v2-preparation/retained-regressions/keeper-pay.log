@@ -1,0 +1,190 @@
+Compiling 1 files with Solc 0.8.28
+Solc 0.8.28 finished in 4.06s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:166:46:
+    |
+166 |     function topUpAvailable(State storage s, uint256 reserve) public view returns (uint256) {
+    |                                              ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:172:57:
+    |
+172 |     function reinvest(State storage s, uint256 maximum, uint256 reserve) public returns (uint256 amount) {
+    |                                                         ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:182:92:
+    |
+182 |     function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
+    |                                                                                            ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:302:13:
+    |
+302 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:314:9:
+    |
+314 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to pure
+  --> test/KeeperPay.t.sol:18:5:
+   |
+18 |     function noop() external returns (uint256) { return 42; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 9 tests for test/KeeperPay.t.sol:KeeperPayTest
+[PASS] test_closedWithNothingOwedHoldsNothing() (gas: 10599539)
+[PASS] test_creatorCannotClaimHeldPayWhileClosed() (gas: 12552301)
+[PASS] test_keeperWalletNotLower_fiveGwei() (gas: 25532359)
+Logs:
+  setup fill
+    reward: 0.013378520000000000
+    reward less gas: 0.000276780000000000
+  setup fill
+    reward: 0.013198720000000000
+    reward less gas: 0.000276780000000000
+  reconcile 1 timed-out draw
+    reward: 0.000985515000000000
+    reward less gas: 0.000055320000000000
+  reconcile 1 NFT win
+    reward: 0.001538585000000000
+    reward less gas: 0.000227320000000000
+  reconcile and replace 1 Shape
+    reward: 0.004837920000000000
+    reward less gas: 0.000396820000000000
+  reconcile and replace 5 Shapes
+    reward: 0.013829495000000000
+    reward less gas: 0.000844800000000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.002077820000000000
+
+[PASS] test_keeperWalletNotLower_halfGwei() (gas: 25532491)
+Logs:
+  setup fill
+    reward: 0.001560637200000000
+    reward less gas: 0.000119445800000000
+  setup fill
+    reward: 0.001540859200000000
+    reward less gas: 0.000119445800000000
+  reconcile 1 timed-out draw
+    reward: 0.000126206650000000
+    reward less gas: 0.000023885200000000
+  reconcile 1 NFT win
+    reward: 0.000187044350000000
+    reward less gas: 0.000042805200000000
+  reconcile and replace 1 Shape
+    reward: 0.000567771200000000
+    reward less gas: 0.000079250200000000
+  reconcile and replace 5 Shapes
+    reward: 0.001699244450000000
+    reward less gas: 0.000270928000000000
+  paid calls: 6
+  keeper wallet change (ETH): 0.000655760200000000
+
+[PASS] test_noWorkCallIsPaidNothing() (gas: 11819326)
+[PASS] test_overheadCoversBilledGasPerOperationClass() (gas: 32995861)
+Logs:
+  setup fill (5 Shape units)
+    measured gas: 2595704
+    billed gas: 2620348
+    billed - measured: 24644
+    paid (ETH): 0.013378520000000000
+    billed cost (ETH): 0.013101740000000000
+    keeper net (ETH): 0.000276780000000000
+  setup fill (5 Shape units)
+    measured gas: 2559744
+    billed gas: 2584388
+    billed - measured: 24644
+    paid (ETH): 0.013198720000000000
+    billed cost (ETH): 0.012921940000000000
+    keeper net (ETH): 0.000276780000000000
+  reconcile 1 timed-out draw
+    measured gas: 133103
+    billed gas: 186039
+    billed - measured: 52936
+    paid (ETH): 0.000985515000000000
+    billed cost (ETH): 0.000930195000000000
+    keeper net (ETH): 0.000055320000000000
+  reconcile 1 timed-out draw processed on FWA
+    measured gas: 133103
+    billed gas: 186039
+    billed - measured: 52936
+    paid (ETH): 0.000985515000000000
+    billed cost (ETH): 0.000930195000000000
+    keeper net (ETH): 0.000055320000000000
+  reconcile 1 NFT win
+    measured gas: 243717
+    billed gas: 262253
+    billed - measured: 18536
+    paid (ETH): 0.001538585000000000
+    billed cost (ETH): 0.001311265000000000
+    keeper net (ETH): 0.000227320000000000
+  reconcile and replace 1 Shape
+    measured gas: 899645
+    billed gas: 888281
+    billed - measured: 0
+    paid (ETH): 0.004838225000000000
+    billed cost (ETH): 0.004441405000000000
+    keeper net (ETH): 0.000396820000000000
+  reconcile and replace 5 Shapes
+    measured gas: 2665943
+    billed gas: 2596983
+    billed - measured: 0
+    paid (ETH): 0.013829715000000000
+    billed cost (ETH): 0.012984915000000000
+    keeper net (ETH): 0.000844800000000000
+  process 1 stuck draw and reconcile 2
+    measured gas: 738292
+    billed gas: 641531
+    billed - measured: 0
+    paid (ETH): 0.004051460000000000
+    billed cost (ETH): 0.003207655000000000
+    keeper net (ETH): 0.000843805000000000
+  closed: reconcile 5 timed-out draws
+    measured gas: 175136
+    billed gas: 230076
+    billed - measured: 54940
+    paid (ETH): 0.001275680000000000
+    billed cost (ETH): 0.001150380000000000
+    keeper net (ETH): 0.000125300000000000
+  largest billed - measured (gas): 54940
+  configured overhead (gas): 60000
+
+[PASS] test_postCloseReconcileIsPaidFromHeldAmount() (gas: 13189743)
+Logs:
+  held at close: 0.006277500000000000
+  paid to the keeper: 0.000229324800000000
+
+[PASS] test_reconcileOnlyCallIsPaid() (gas: 12198994)
+[PASS] test_splitCallsArePaidOncePerProcessedDraw() (gas: 15555954)
+Logs:
+  paid for one batched call: 0.000214240700000000
+  paid for four split calls: 0.000544057000000000
+  keeper net from batched upkeep: 0.000083885200000000
+  keeper net from split upkeep: 0.000095540800000000
+
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 587.64ms (206.51ms CPU time)
+
+Ran 1 test suite in 595.12ms (587.64ms CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

@@ -1,0 +1,57 @@
+[
+  {
+    "label": "general",
+    "command": [
+      "forge",
+      "test",
+      "--match-contract",
+      "^(SettingsTest|PolicyLifecycleTest|PolicyPreviewTest|PolicyModelParity|ReserveCapitalTest|HardeningTest|ConcurrentRecoveryTest|KeeperAdversarialTest|CuratedAdmissionTest|BalancerTest|ParityFixture)$",
+      "--threads",
+      "1",
+      "-vv"
+    ],
+    "exit": 1,
+    "elapsedSeconds": 52.839552879333496
+  },
+  {
+    "label": "keeper-pay",
+    "command": [
+      "forge",
+      "test",
+      "--match-contract",
+      "^KeeperPayTest$",
+      "--isolate",
+      "--threads",
+      "1",
+      "-vv"
+    ],
+    "exit": 0,
+    "elapsedSeconds": 5.3482019901275635
+  },
+  {
+    "label": "gas",
+    "command": [
+      "forge",
+      "test",
+      "--match-contract",
+      "^GasBench$",
+      "--isolate",
+      "--threads",
+      "1",
+      "-vv"
+    ],
+    "exit": 0,
+    "elapsedSeconds": 4.476706027984619
+  },
+  {
+    "label": "fresh-model",
+    "command": [
+      "npx",
+      "vitest",
+      "run",
+      "shared/policy-money-path.test.ts"
+    ],
+    "exit": 0,
+    "elapsedSeconds": 0.9851751327514648
+  }
+]

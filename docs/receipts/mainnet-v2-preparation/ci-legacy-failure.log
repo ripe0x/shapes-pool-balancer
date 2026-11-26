@@ -1,0 +1,54 @@
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	﻿2026-11-26T05:04:25.7307411Z ##[group]Run forge test --match-path test/CommunityConfigAcceptance.t.sol
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:25.7307896Z ^[[36;1mforge test --match-path test/CommunityConfigAcceptance.t.sol^[[0m
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:25.7339437Z shell: /usr/bin/bash -e {0}
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:25.7339670Z ##[endgroup]
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:25.8754651Z No files changed, compilation skipped
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.2944823Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.2945523Z Ran 1 test for test/CommunityConfigAcceptance.t.sol:CommunityLegacyFactoryAcceptanceTest
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.2946640Z [PASS] test_case16_oldFactoryPoolOperableAfterReplacementFactory() (gas: 10419992)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.2947185Z Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 400.85ms (24.53ms CPU time)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4873538Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4874170Z Ran 28 tests for test/CommunityConfigAcceptance.t.sol:CommunityConfigAcceptanceTest
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4874562Z [PASS] test_case00_initialValues() (gas: 1386654)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4874943Z [PASS] test_case01_followersAdoptFactoryUpdateImmediately_pinnedKeepsActualValues() (gas: 16719687)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4875390Z [PASS] test_case01b_pinnedFallbackUsesPinnedSchedule() (gas: 3609344)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4875750Z [PASS] test_case02_resumeFollowingAdoptsLatestFactoryConfiguration() (gas: 4285779)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4876145Z [PASS] test_case03_feeChangeSamePolicyAddress_hashPreviewsAndPaymentsUpdate() (gas: 7531473)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4877054Z [PASS] test_case04_disableSurvivesFactory_reenableAndLocalChangesNeedNoTimeAdvance() (gas: 9073278)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4877605Z [PASS] test_case05_unauthorizedSettingsChangesFail() (gas: 3127409)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4878072Z [FAIL: InvalidConfig()] test_case06a_underfundedFollower_updateSucceeds_paidLimitedByCash_unpaidAndCreditUsable() (block: 26382349) (gas: 1109338)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4878517Z [PASS] test_case06b_paidSpendingLimitedByBucket_unpaidUnaffected() (gas: 10264482)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4878849Z [PASS] test_case07a_prizeMaximum_lowerKeepsExistingDesign() (gas: 12220952)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4879157Z [PASS] test_case07b_markupRange_noStrandingNoSilentReprice() (gas: 11010914)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4879494Z [PASS] test_case07c_fillThreshold_zeroKeepsUnavailableInventoryCheck() (gas: 8059849)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4879831Z [PASS] test_case07d_backlogThreshold_allowsTPlusFourOutstanding() (gas: 39403226)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4880167Z [PASS] test_case07e_zeroFillRefusesADrawAgainstNoUnreservedPrize() (gas: 9445582)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4880500Z [PASS] test_case07f_zeroFillNoOutstandingDrawsNoShapesAdmits() (gas: 5145093)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4880832Z [PASS] test_case08a_paymentAndRestockAboveFormerCeilings_thenLower() (gas: 6946200)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4881180Z [PASS] test_case08b_gasPriceAboveFormer50Gwei_largerEnvelope_thenLower() (gas: 5579826)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4881569Z [PASS] test_case09_oneEffectiveConfiguration_quotePaymentReserveRestockFallbackAgree() (gas: 7610891)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4881920Z [PASS] test_case10a_staleCreationFailsBeforeSideEffects() (gas: 4213115)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4882251Z [PASS] test_case10b_staleUpkeepFailsBeforeWork_minimumPaymentRespected() (gas: 9252264)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4882570Z [PASS] test_case11_bucketAccrualClampNoRefillNoReset() (gas: 9258221)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4882849Z [PASS] test_case12_mintFeeDownAndUp_realShapesAdmin() (gas: 10085097)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4883129Z [PASS] test_case13a_shapesOnly_unpaidRecoveryWithPaidOff() (gas: 6168300)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4883479Z [FAIL: InvalidConfig()] test_case13b_curatedInventory_creatorCredit() (block: 26382349) (gas: 1108753)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4883810Z [PASS] test_case14a_listingBoundedByUnitsAndSizes() (gas: 15200066)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4884097Z [PASS] test_case14b_reconcileBounded_noDuplicateRewards() (gas: 22892121)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4884424Z [PASS] test_case14c_stuckDrawsProcessedAfterGrace_boundedAndPaidOnce() (gas: 19959777)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4884790Z [FAIL: InvalidConfig()] test_case15_lifecycle_absoluteEthPerFlow() (block: 26382349) (gas: 1111409)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4885166Z Suite result: FAILED. 25 passed; 3 failed; 0 skipped; finished in 593.75ms (730.62ms CPU time)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4979608Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.4980095Z Ran 2 test suites in 604.74ms (994.60ms CPU time): 26 tests passed, 3 failed, 0 skipped (29 total tests)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5014046Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5014195Z Failing tests:
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5014628Z Encountered 3 failing tests in test/CommunityConfigAcceptance.t.sol:CommunityConfigAcceptanceTest
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5015165Z [FAIL: InvalidConfig()] test_case06a_underfundedFollower_updateSucceeds_paidLimitedByCash_unpaidAndCreditUsable() (block: 26382349) (gas: 1109338)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5015641Z [FAIL: InvalidConfig()] test_case13b_curatedInventory_creatorCredit() (block: 26382349) (gas: 1108753)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5016025Z [FAIL: InvalidConfig()] test_case15_lifecycle_absoluteEthPerFlow() (block: 26382349) (gas: 1111409)
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5016219Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5016345Z Encountered a total of 3 failing tests, 26 tests succeeded
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5016482Z
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5016738Z Tip: Run `forge test --rerun` to retry only the 3 failed tests
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5017060Z Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
+check	Run forge test --match-path test/CommunityConfigAcceptance.t.sol	2026-11-26T05:04:26.5087468Z ##[error]Process completed with exit code 1.

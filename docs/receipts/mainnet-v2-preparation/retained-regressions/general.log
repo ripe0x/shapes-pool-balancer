@@ -1,0 +1,308 @@
+Compiling 5 files with Solc 0.8.28
+Solc 0.8.28 finished in 16.74s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:166:46:
+    |
+166 |     function topUpAvailable(State storage s, uint256 reserve) public view returns (uint256) {
+    |                                              ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:172:57:
+    |
+172 |     function reinvest(State storage s, uint256 maximum, uint256 reserve) public returns (uint256 amount) {
+    |                                                         ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:182:92:
+    |
+182 |     function withdrawable(State storage s, IFWAPool pool, uint64 reconciled, bool enabled, uint256 reserve)
+    |                                                                                            ^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:156:5:
+    |
+156 |     function reserve(State storage s, KeeperPolicyCalls.Economics memory econ, KeeperPolicyCalls.Reserve memory r,
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> src/PoolInventory.sol:302:13:
+    |
+302 |             uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |             ^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> src/PoolInventory.sol:314:9:
+    |
+314 |         uint256 lost = unavailable * (1e36 / 0.01 ether);
+    |         ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/ReserveCapital.t.sol:286:5:
+    |
+286 |     function test_feeAndCapSensitiveBoundForActualWork() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Ran 30 tests for test/Balancer.t.sol:BalancerTest
+[PASS] test_basefeeSpikeCappedAtMaxGasPrice() (gas: 1111225)
+[PASS] test_blockedRefundRecoveryDoesNotBrickUpkeep() (gas: 7340640)
+[PASS] test_claimDuringUnsettledDraw() (gas: 1607002)
+[PASS] test_claimSurplusRespectsReserveWhileOpen() (gas: 4036534)
+[PASS] test_claimToRejectingRecipientReverts() (gas: 572119)
+[PASS] test_configureRejectsBadTargets() (gas: 542118)
+[PASS] test_creatorTransferTwoStep() (gas: 295341)
+[PASS] test_curatedBatchRepriceWithdraw() (gas: 2147181)
+[PASS] test_curatedOpsAndUnsettledDraws() (gas: 3072658)
+[PASS] test_ensReverseAndForward() (gas: 424371)
+[PASS] test_factory_isolatedBalancersAndPools() (gas: 6463273)
+[PASS] test_factory_setImplementation_newPoolsOnly() (gas: 3394654)
+[PASS] test_failedCuratedDeliveryRefundAndRecovery() (gas: 3796951)
+[PASS] test_gasGriefingCollectionCannotTaxUpkeep() (gas: 6091322)
+[PASS] test_gateRefusesUnrefundablePurchasers() (gas: 353182)
+[PASS] test_lowInventoryGate() (gas: 5378028)
+[PASS] test_manyCuratedListingsUnderStipend() (gas: 49644776)
+Logs:
+  canPurchase gas with 120+ listings: 52577
+
+[PASS] test_markupAppliesAtListingOnly() (gas: 3032048)
+[PASS] test_noRewardForUnnecessaryWork() (gas: 3193171)
+[PASS] test_onlyCreator() (gas: 854960)
+[PASS] test_priorityOverbidIsNotReimbursed() (gas: 7420038)
+[PASS] test_realMintFeeChange() (gas: 3854701)
+[PASS] test_reentrantCollectionCannotReenter() (gas: 3741730)
+[PASS] test_refundOnlyBatchIsPaid() (gas: 980654)
+[PASS] test_rejectingKeeperIsStillPaidAndCannotBlock() (gas: 2678148)
+[PASS] test_rejectsShapesAndLyingCollections() (gas: 875766)
+[PASS] test_reserveMath() (gas: 213483)
+[PASS] test_retireIsIrreversibleAndKeepsExits() (gas: 1906042)
+[PASS] test_settledAfterRetryNeedsNoUpkeep() (gas: 3457452)
+[PASS] test_unlistShapesInBoundedSteps() (gas: 18074876)
+Suite result: ok. 30 passed; 0 failed; 0 skipped; finished in 945.94ms (655.16ms CPU time)
+
+Ran 1 test for test/ConcurrentRecovery.t.sol:ConcurrentRecoveryTest
+[PASS] test_minimumCapitalConcurrentBuyersHostilePolicyAndUnpaidCloseout() (gas: 31129874)
+Logs:
+  exact minimum opening after closed principal recovery
+  deposited: 0.229565000000000000
+  Balancer liquid ETH: 0.001993000000000000
+  creator credit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.001993000000000000
+  current reserve target: 0.001993000000000000
+  FWA separate ETH obligations: 0.000000000000000000
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.001405731800000000
+  actual keeper transfers: 0.006166268200000000
+  hostile maximum payment
+  deposited: 0.229565000000000000
+  Balancer liquid ETH: 0.001837448850000000
+  creator credit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.001837448850000000
+  current reserve target: 0.001993000000000000
+  FWA separate ETH obligations: 0.031201333864613884
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.001405731800000000
+  actual keeper transfers: 0.006321819350000000
+  unpaid recovery of both purchaser claims
+  deposited: 0.229565000000000000
+  Balancer liquid ETH: 0.001993000000000000
+  creator credit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.001993000000000000
+  current reserve target: 0.000000000000000000
+  FWA separate ETH obligations: 0.031201333864613884
+  actual remaining Shape backing: 0.200000000000000000
+  actual creator claims: 0.001405731800000000
+  actual keeper transfers: 0.006166268200000000
+  complete creator closeout; FWA purchaser/protocol rights remain separate
+  deposited: 0.229565000000000000
+  Balancer liquid ETH: 0.000000000000000000
+  creator credit included in liquid: 0.000000000000000000
+  creator-owned operating cash: 0.000000000000000000
+  current reserve target: 0.000000000000000000
+  FWA separate ETH obligations: 0.031201333864613884
+  actual remaining Shape backing: 0.000000000000000000
+  actual creator claims: 0.203398731800000000
+  actual keeper transfers: 0.006166268200000000
+  purchaser principal shortfall: 0.000000000000000000
+  nonrefundable VRF cost for the two expired draws: 0.002574000000000000
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 348.49ms (59.37ms CPU time)
+
+Ran 7 tests for test/CuratedAdmission.t.sol:CuratedAdmissionTest
+[PASS] test_activeCountProofDoesNotDependOnLostWitness() (gas: 25072860)
+[PASS] test_coldWitnessHookAtThousandShapesAndHundredCuratedAdmitsFive() (gas: 594139032)
+Logs:
+  cold curated witness canPurchase gas: 64255
+  VRF required after additional requests: 3.050000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.104721629473774037
+  external synthetic sponsor VRF contribution: 0.345411994884955013
+
+[PASS] test_fourOutstandingRequestsStillAdmitAnotherFiveRequestBatch() (gas: 25915152)
+Logs:
+  VRF required after additional requests: 4.400000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.108582629473774037
+  external synthetic sponsor VRF contribution: 1.691550994884955013
+
+[PASS] test_lastCuratedWithdrawalIsKnownAbsence() (gas: 22843856)
+[PASS] test_lostWitnessPausesUntilOnePermissionlessRefreshAndCannotBeChurned() (gas: 33945409)
+Logs:
+  cold permissionless curated refresh gas: 79660
+  VRF required after additional requests: 3.050000000000000000
+  VRF actual subscription before contribution: 2.599866375641270950
+  VRF actual treasury before contribution: 0.104721629473774037
+  external synthetic sponsor VRF contribution: 0.345411994884955013
+
+[PASS] test_stagedCuratedBehindTwelveShapesCannotAuthorizePurchase() (gas: 33191718)
+[PASS] test_withdrawnCuratedAndReusedSlotCannotAuthorizeStagedCurated() (gas: 30625035)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 2.94s (2.94s CPU time)
+
+Ran 13 tests for test/Hardening.t.sol:HardeningTest
+[PASS] test_cannotRecoverProtectedAssets() (gas: 4467670)
+[PASS] test_creatorTopUpWhileOpenSetsNoCreatorWork() (gas: 241199)
+[PASS] test_creatorWorkPaysFullAndRefusesPurchases() (gas: 7414295)
+[PASS] test_curatedDrawReconcileIsPaid() (gas: 1741101)
+[FAIL: the fees listed cover the pay: 4838035000000000 > 4750000000000000] test_gasJumpRestockPaidByTheNewListingsFee() (block: 26382349) (gas: 3048305)
+[PASS] test_griefingBoundForRestrictedCurated() (gas: 3746147)
+Logs:
+  expected attacker cost to lock (ETH): 0.856086399379690218
+
+[PASS] test_griefingThinPoolIsCheap() (gas: 6665056)
+Logs:
+  thin pool: expected cost to lock a 0.5 ETH NFT (ETH): 0.140973006325517952
+
+[PASS] test_historicalRefundsDoNotGrowUpkeepGas() (gas: 1009302258)
+Logs:
+  shape upkeep gas before: 920082
+  shape upkeep gas after 200 refunds: 912220
+
+[PASS] test_minimumMarkupStillFundsKeepers() (gas: 12974394)
+[PASS] test_poolPageApprovalIsNarrow() (gas: 560472)
+[PASS] test_reconcileBoundPerCall() (gas: 58222845)
+[PASS] test_recoverUntrackedNFTs() (gas: 1269428)
+[PASS] test_reserveExactFormula() (gas: 10310898)
+Suite result: FAILED. 12 passed; 1 failed; 0 skipped; finished in 4.09s (3.80s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 8 tests for test/KeeperAdversarial.t.sol:KeeperAdversarialTest
+[PASS] test_callerRefundsDoNotChangePoolPayment() (gas: 15141237)
+[PASS] test_creatorActionDuringOutstandingBatchBound() (gas: 15555375)
+[PASS] test_depositDoesNotUnlockFullIncentive() (gas: 15341563)
+[PASS] test_inflatedBidOrGasLimitDoesNotRaiseReward() (gas: 14218779)
+[PASS] test_noPurchasesDuringCreatorWork() (gas: 16134219)
+[PASS] test_selfDealingDrainsOnlyCheapCurated() (gas: 12009801)
+Logs:
+  drain the only cheap curated NFT, PnL (ETH): -0.001096311557426735
+
+[PASS] test_selfDealingRepeatedLowValuePurchases() (gas: 54416038)
+Logs:
+  cumulative PnL (ETH): -0.079760715727254294
+
+[PASS] test_selfDealingSingleDrawCheapPool() (gas: 13678073)
+Logs:
+  single cheap draw PnL (ETH): -0.002730178652487967
+
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 3.37s (3.00s CPU time)
+
+Ran 1 test for test/PolicyLifecycle.t.sol:PolicyLifecycleTest
+[PASS] test_threePoolsV1V2AndPolicyFailureNoAssetMigration() (gas: 93862032)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 413.43ms (143.45ms CPU time)
+
+Ran 1 test for test/PolicyModelParity.t.sol:PolicyModelParity
+[PASS] test_writePolicyModelParity() (gas: 96726937)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.16s (1.88s CPU time)
+
+Ran 1 test for test/Parity.t.sol:ParityFixture
+[PASS] test_writeParityFixture() (gas: 79456528)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 7.57s (7.31s CPU time)
+
+Ran 1 test for test/PolicyPreview.t.sol:PolicyPreviewTest
+[PASS] test_poolContextQuotesMatchCallerSensitiveExecution() (gas: 24575032)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 320.66ms (319.68ms CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/ReserveCapital.t.sol:ReserveCapitalTest
+[FAIL: Unauthorized()] test_collectedRevenueIsCreditedBeforeTheExpensiveDeficitIsReconciled() (block: 26382349) (gas: 16502833)
+[PASS] test_exactMinimumMixed47PaidBootstrap() (gas: 30842599)
+Logs:
+  exact minimum opening: 1.779609000000000000
+  actual setup reward: 0.016952652750000000
+  actual setup billed gas: 28314577
+  largest reached upkeep billed gas: 2621676
+  paid setup calls: 12
+  stocked reserve: 0.001993000000000000
+
+[PASS] test_exactMinimumThousandExpensivePackPaidBootstrap() (gas: 577741281)
+Logs:
+  exact minimum opening: 84.666463000000000000
+  actual setup reward: 0.341517058700000000
+  actual setup billed gas: 570946194
+  largest reached upkeep billed gas: 2689086
+  paid setup calls: 240
+  stocked reserve: 0.001993000000000000
+
+[PASS] test_exactMinimumTwentyShapeOpeningAndPaidSetup() (gas: 12972739)
+Logs:
+  exact twenty opening: 0.229565000000000000
+  actual twenty setup reward: 0.006166268200000000
+  actual setup billed gas: 10342748
+  stocked reserve: 0.001993000000000000
+  post setup withdrawable: 0.000000000000000000
+
+[PASS] test_expensiveTopPrizeDoesNotNeedDuplicateBacking() (gas: 12781137)
+Logs:
+  top prize opening: 100.219565000000000000
+
+[PASS] test_feeAndCapSensitiveBoundForActualWork() (gas: 33104)
+[PASS] test_nineOutstandingDrawsAreReservedFromActualSequences() (gas: 24472407)
+[PASS] test_partialExpensiveDeficitCanTradeAndMarkupEditDoesNotRestartSetup() (gas: 16705455)
+[PASS] test_refundReconciliationMaySpendBelowWorkingTarget() (gas: 15483041)
+[PASS] test_unpaidBootstrapNeedsOnlyActualInventoryAndDelayedReenableFunding() (gas: 13018375)
+[PASS] test_writeImmutableEnforcementFixture() (gas: 79285)
+Suite result: FAILED. 10 passed; 1 failed; 0 skipped; finished in 15.31s (15.03s CPU time)
+
+Warning: the following cheatcode(s) are deprecated and will be removed in future versions:
+  lastCallGas(): replaced by `lastFrameGas`
+Ran 11 tests for test/Settings.t.sol:SettingsTest
+[PASS] test_creatorTransferKeepsPolicyDisabledStateAndAllowance() (gas: 15951844)
+[PASS] test_economicsChangeRequiresMaintenanceFunding() (gas: 16324749)
+[PASS] test_emergencyDisableSurvivesFactoryAndReenablesImmediately() (gas: 16052512)
+[PASS] test_factoryAndPoolEconomicsChangesAreImmediate() (gas: 16093313)
+[PASS] test_maximumPolicyRewardRemainsBoundedAndAllowanceNeverResets() (gas: 16812462)
+[PASS] test_minimumPaymentRevertsWorkAtomically() (gas: 18648940)
+[PASS] test_pinnedFoundryGasCounterIsAlreadyBilled() (gas: 185387)
+Logs:
+  storage span before refund: 5007
+  five-field raw used (billed): 22503
+  five-field refund counter: 4800
+
+[PASS] test_policyV1FormulaAbsoluteAndFixture() (gas: 3151598)
+[PASS] test_priceScaledMinimumSurvivesFallingBasefee() (gas: 17500625)
+[PASS] test_unpaidWholePathAndRestrictedKeeper() (gas: 20172977)
+[PASS] test_writePolicyQuoteFixture() (gas: 187438)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 423.61ms (155.71ms CPU time)
+
+Ran 11 test suites in 35.33s (37.89s CPU time): 83 tests passed, 2 failed, 0 skipped (85 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/Hardening.t.sol:HardeningTest
+[FAIL: the fees listed cover the pay: 4838035000000000 > 4750000000000000] test_gasJumpRestockPaidByTheNewListingsFee() (block: 26382349) (gas: 3048305)
+
+Encountered 1 failing test in test/ReserveCapital.t.sol:ReserveCapitalTest
+[FAIL: Unauthorized()] test_collectedRevenueIsCreditedBeforeTheExpensiveDeficitIsReconciled() (block: 26382349) (gas: 16502833)
+
+Encountered a total of 2 failing tests, 83 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
+Tip: Run `forge test --debug --match-test <TEST_NAME>` to inspect one failing test in the debugger
