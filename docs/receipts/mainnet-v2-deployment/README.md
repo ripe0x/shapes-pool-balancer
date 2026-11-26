@@ -1,6 +1,6 @@
 # Mainnet v2 deployment record, 2026-11-26
 
-**Deployed, verified and configured on Ethereum mainnet. Public creation remains paused.** Owner-approved broadcasts from the main checkout at `6d94d01` (code candidate `cf4dccd`), signer `0xCB43078C32423F5348Cab5885911C3B5faE217F9` via keystore `ripe0x`, through Alchemy because Tenderly returned 429. Approval packet: [APPROVAL.md](../mainnet-v2-preparation/APPROVAL.md).
+**Deployed, verified, configured, cut over and open on Ethereum mainnet.** Owner-approved broadcasts from the main checkout at `6d94d01` (code candidate `cf4dccd`), signer `0xCB43078C32423F5348Cab5885911C3B5faE217F9` via keystore `ripe0x`, through Alchemy because Tenderly returned 429. Approval packet: [APPROVAL.md](../mainnet-v2-preparation/APPROVAL.md).
 
 ## Deployment, nonces 4251–4254
 
@@ -36,8 +36,8 @@ Readback of `economics()` matches [launch-values.json](../mainnet-v2-preparation
 - Netlify site `shapes-pool-balancer` (pools.shapes.ripe.wtf): `VITE_FACTORY` and `VITE_FROM_BLOCK` set in all four contexts, then `netlify deploy --build --prod`. The live bundle `index-BtStD0ip.js` contains the new factory and block; no localhost RPC.
 - Keeper `shapes-community-keeper`, machine `80e9615a750398`, deployed via `keeper/deploy.sh` at `4fda6dc`: env reads back `FACTORY` 0x96fd…7671, `FROM_BLOCK` 26499988, `LEGACY_FACTORIES` community-v3,community-v2, `MAX_GAS_PRICE_GWEI` 1.5, expected signer `0x8D23…949d`. `/health` ok at block 26500043 with 1 balancer, no alerts, pending or errors.
 
-## Not done
+## Public opening
 
-`setCreationPaused(false)` requires separate owner signing. No mainnet canary (R83).
+`setCreationPaused(false)` on the new factory, nonce 4256, tx `0xe3c250a03b237020830df7c0a237be767008274917dc6b79e0148c3078bca030`, block 26500054, status 1, 29,919 gas at 0.147043365 gwei. `creationPaused()` reads back `false`. Receipt: [`deployments/1.creator-fee-v2.unpause-receipt.json`](../../../deployments/1.creator-fee-v2.unpause-receipt.json). No mainnet canary (R83).
 
-Things that don't make sense: none.
+Things that don't make sense: the local Netlify build embedded the public anvil `VITE_DEV_ACCOUNT` from `app/.env.local`; it is only used on chain 31337 and inert on mainnet. `keeper/community-acceptance.ts` (fork-only) still names the community-v3 factory.
