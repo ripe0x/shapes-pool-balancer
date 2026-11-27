@@ -9,7 +9,7 @@ import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
 import { eth, short, useTx } from './App';
 import {
-  HAND_SIZES, MAX_PACKS, MAX_PER_SIZE, decodeMix, encodeMix, fundingFor, mixText, packCount, presetMix, scaleMix, sizeLabel, sizesOf,
+  HAND_SIZES, MAX_BACKING_BPS, MAX_PACKS, MAX_PER_SIZE, MIN_BACKING_BPS, backingText, decodeMix, encodeMix, fundingFor, mixText, packCount, presetMix, scaleMix, sizeLabel, sizesOf,
   type PackMix, type PackStyle,
 } from '../../shared/manager-design';
 import {
@@ -433,7 +433,7 @@ function CreationView({ record, state, onDiscard }: { record: ManagerCreation; s
 }
 
 const DRAFT_KEY = 'manager-draft';
-type MixDraft = { style?: PackStyle | null; mix?: PackMix };
+type MixDraft = { style?: PackStyle | null; mix?: PackMix; backing?: number };
 const loadMixDraft = (): MixDraft => { try { return (JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as MixDraft | null) ?? {}; } catch { return {}; } };
 const PACK_STYLE_TILES: { key: PackStyle; label: string; hint: string }[] = [
   { key: 'small', label: 'Small packs', hint: '0.03 ETH packs. Lowest entry.' },
@@ -444,16 +444,16 @@ const DEFAULT_PACKS = 3;
 
 /** One pack's ETH per size from PackManagerFactory.preview (its opening cash less the reserve), at current gas and
  *  mint fee; undefined until read. */
-function usePackCosts(sizes: number[]) {
+function usePackCosts(sizes: number[], backing: number) {
   const pub = usePublicClient();
-  const key = sizes.join(',');
+  const key = `${sizes.join(',')}@${backing}`;
   const [costs, setCosts] = useState<{ key: string; perPack: Record<number, bigint>; error?: string }>();
   useEffect(() => {
     if (!pub || !MANAGER_FACTORY || !sizes.length) return;
     let live = true;
     Promise.all(sizes.map(async (u) => {
       const [, , , , openingCash] = await pub.readContract({ address: MANAGER_FACTORY!, abi: packManagerFactoryAbi, functionName: 'preview',
-        args: [{ ...MANAGER_PARAMS, packUnitsMask: 1n << BigInt(u) }] });
+        args: [{ ...MANAGER_PARAMS, backingRatioBps: backing, packUnitsMask: 1n << BigInt(u) }] });
       return [u, openingCash - MANAGER_PARAMS.reserve] as const;
     })).then((rows) => live && setCosts({ key, perPack: Object.fromEntries(rows) }),
       (e) => live && setCosts({ key, perPack: {}, error: explain(e) }));
@@ -464,8 +464,8 @@ function usePackCosts(sizes: number[]) {
 
 /** The pack mix controls, as in the community designer: a preset, the pack count it scales to, and exact counts by
  *  hand (which leave the preset). `perPack` is one pack's ETH per size when known. */
-function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mix: PackMix; perPack?: Record<number, bigint>;
-  onChange: (style: PackStyle | undefined, mix: PackMix) => void }) {
+function PackDesigner({ style, mix, perPack, backing, onChange, onBacking }: { style?: PackStyle; mix: PackMix; perPack?: Record<number, bigint>;
+  backing: number; onChange: (style: PackStyle | undefined, mix: PackMix) => void; onBacking: (bps: number) => void }) {
   const [byHand, setByHand] = useState(false);
   const total = packCount(mix);
   const choose = (st: PackStyle) => onChange(st, presetMix(st, total));
@@ -510,6 +510,12 @@ function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mi
                 onChange={(e) => setTotal(Number(e.target.value))} />
               <p className="note">With one pack the result is mostly luck.</p>
             </div>
+            <div className="rule" style={{ marginTop: 24 }}>
+              <div className="ctl-row"><label className="ctl" htmlFor="backing">Backing</label><span className="big-v">{backingText(backing)}</span></div>
+              <input id="backing" type="range" min={MIN_BACKING_BPS} max={MAX_BACKING_BPS} step={100} value={backing} aria-valuetext={backingText(backing)}
+                onChange={(e) => onBacking(Number(e.target.value))} />
+              <p className="note">A 0.03 ETH pack posts {ethText(BigInt(backing) * 3n * 10n ** 12n)} ETH. Higher backing: rarer picks, larger wins.</p>
+            </div>
     </>
   );
 }
@@ -520,13 +526,14 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
   const [saved] = useState(loadMixDraft);
   const [style, setStyleState] = useState<PackStyle | undefined>(saved.mix && saved.style === null ? undefined : saved.style ?? 'small');
   const [mix, setMixState] = useState<PackMix>(saved.mix && packCount(saved.mix) ? saved.mix : presetMix(saved.style ?? 'small', DEFAULT_PACKS));
-  const keep = (st: PackStyle | undefined, m: PackMix) => {
-    setStyleState(st); setMixState(m);
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ style: st ?? null, mix: m })); } catch { /* storage unavailable */ }
+  const [backing, setBackingState] = useState(saved.backing ?? MANAGER_PARAMS.backingRatioBps);
+  const keep = (st: PackStyle | undefined, m: PackMix, b = backing) => {
+    setStyleState(st); setMixState(m); setBackingState(b);
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ style: st ?? null, mix: m, backing: b })); } catch { /* storage unavailable */ }
   };
   const total = packCount(mix);
   const sizes = sizesOf(mix);
-  const costs = usePackCosts(sizes);
+  const costs = usePackCosts(sizes, backing);
   const value = costs && !costs.error ? fundingFor(mix, costs.perPack, MANAGER_PARAMS.reserve) : undefined;
   const wallet = useBalance(me);
   const disabled = !MANAGER_FACTORY ? 'Manager creation is not open yet'
@@ -537,7 +544,7 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
   const run = async () => {
     if (!pub || !me || !value || disabled || !MANAGER_FACTORY) return;
     const { design, mask } = encodeMix(mix);
-    const params = { ...MANAGER_PARAMS, packUnitsMask: mask };
+    const params = { ...MANAGER_PARAMS, backingRatioBps: backing, packUnitsMask: mask };
     const record: ManagerCreation = { chainId: chain.id, factory: MANAGER_FACTORY, owner: me, value: String(value),
       fromBlock: String(await pub.getBlockNumber()), since: Date.now() };
     const ok = await tx.send('Create manager', [['Create manager', async () => {
@@ -565,7 +572,7 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
           <h1 className="title">Create a personal manager</h1>
           <p className="lead">It runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee.</p>
           <Group title="Packs" desc="Shape packs your manager builds and keeps listed on FWA's main pool. Each pack posts backing at the same ratio to its value.">
-            <PackDesigner style={style} mix={mix} perPack={costs?.perPack} onChange={keep} />
+            <PackDesigner style={style} mix={mix} perPack={costs?.perPack} backing={backing} onChange={keep} onBacking={(b) => keep(style, mix, b)} />
           </Group>
         </section>
         <section className="sticky results">
@@ -611,7 +618,7 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   const [numbers, setNumbers] = useState(false);
   const pub = usePublicClient();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<{ style?: PackStyle; mix: PackMix }>({ mix: {} });
+  const [draft, setDraft] = useState<{ style?: PackStyle; mix: PackMix; backing: number }>({ mix: {}, backing: 0 });
   if (!m) return <p className={`txline${error ? ' bad' : ''}`}>{error ?? 'Loading your manager…'}</p>;
   const M = { address: manager, abi: packManagerAbi } as const;
   // One more pack's ETH: its Shapes, this manager's live backing and the work to build it (the vault's quote).
@@ -635,9 +642,10 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   // The design sets counts; packUnitsMask must admit exactly the chosen sizes, so it changes with them when needed.
   const saveMix = async () => {
     const { design, mask } = encodeMix(draft.mix);
-    const steps = [() => tx.write({ ...M, functionName: 'setDesign', args: [design] })];
-    if (mask !== m.params.packUnitsMask) steps.push(async () => tx.write({ ...M, functionName: 'setParams',
-      args: [{ ...m.params, packUnitsMask: mask }, await pub!.readContract({ ...M, functionName: 'configurationHash' })] } as never));
+    const steps = design === m.design ? [] : [() => tx.write({ ...M, functionName: 'setDesign', args: [design] })];
+    if (mask !== m.params.packUnitsMask || draft.backing !== m.params.backingRatioBps) steps.push(async () => tx.write({ ...M, functionName: 'setParams',
+      args: [{ ...m.params, packUnitsMask: mask, backingRatioBps: draft.backing }, await pub!.readContract({ ...M, functionName: 'configurationHash' })] } as never));
+    if (!steps.length) return setEditing(false);
     if (await tx.send('Save packs', steps)) setEditing(false);
   };
   const control = (name: string, fn: string, args: unknown[]) => tx.send(name, [() => tx.write({ ...M, functionName: fn, args } as never)]);
@@ -673,14 +681,15 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
               </div>
               {editing ? (
                 <div style={{ marginTop: 14 }}>
-                  <PackDesigner style={draft.style} mix={draft.mix} onChange={(style, mix) => setDraft({ style, mix })} />
-                  <p className="note" style={{ marginTop: 10 }}>Lower counts stop new builds of that size. Packs already held stay listed.</p>
+                  <PackDesigner style={draft.style} mix={draft.mix} backing={draft.backing} onChange={(style, mix) => setDraft({ ...draft, style, mix })}
+                    onBacking={(backing) => setDraft({ ...draft, backing })} />
+                  <p className="note" style={{ marginTop: 10 }}>Lower counts stop new builds of that size. Packs already held stay listed. New backing applies to packs listed from now on.</p>
                   <span className="row" style={{ marginTop: 14 }}>
                     <button className="link quiet" onClick={() => setEditing(false)}>Cancel</button>
                     <button className="btn sec" disabled={busy || !owner || !packCount(draft.mix)} onClick={saveMix}>Save packs</button>
                   </span>
                 </div>
-              ) : <button className="btn sec" style={{ marginTop: 14 }} disabled={busy || !owner} onClick={() => { setDraft({ mix: target.length ? targetMix : presetMix('small', 1) }); setEditing(true); }}>Change packs</button>}
+              ) : <button className="btn sec" style={{ marginTop: 14 }} disabled={busy || !owner} onClick={() => { setDraft({ mix: target.length ? targetMix : presetMix('small', 1), backing: m.params.backingRatioBps }); setEditing(true); }}>Change packs</button>}
               <div className="kvs">
                 <div className="kv"><span className="k">Kept by buyers, then rebuilt</span><span>{m.keeps}</span></div>
                 <div className="kv"><span className="k">Bid back, then relisted</span><span>{m.bids}</span></div>
