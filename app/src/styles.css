@@ -504,6 +504,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .pp .mono { font-size: 13px; }
 
 /* Overview blocks: heading, description, content, footnote. */
+.ov > section { min-width: 0; }
 .ov .blk { padding-top: 40px; border-top: 1px solid var(--line); margin-top: 56px; }
 .ov section > .blk:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
 .ov .blk-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }

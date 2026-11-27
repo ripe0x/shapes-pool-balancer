@@ -48,7 +48,7 @@ const claimedAbi = parseAbi(['event Claimed(address indexed holder, uint256 amou
 
 type Pub = PublicClient;
 type Params = { reserve: bigint; tvlCap: bigint; gasCeiling: bigint; essentialCeiling: bigint; workFee: bigint; minEdgeBps: number;
-  routineCap: bigint; routineRate: bigint; essentialCap: bigint; essentialRate: bigint; maxTip: bigint; packUnitsMask: bigint };
+  routineCap: bigint; routineRate: bigint; essentialCap: bigint; essentialRate: bigint; maxTip: bigint; packUnitsMask: bigint; backingRatioBps: number };
 
 /** Account logs from `from`, fetched once and then only past the last fetched block less a reorg window. */
 type EventLog = { eventName?: string; blockNumber: bigint | null; args?: unknown };
