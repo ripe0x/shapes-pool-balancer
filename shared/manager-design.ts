@@ -10,10 +10,6 @@ export const MAX_UNITS = 30;
 export const MAX_PER_SIZE = 255;
 /** The pack-count control's top. */
 export const MAX_PACKS = 100;
-/** Backing control, as basis points of pack value. The floor clears the contract's keep check (value x 20/19). */
-export const MIN_BACKING_BPS = 10_600;
-export const MAX_BACKING_BPS = 30_000;
-export const backingText = (bps: number) => `${(bps / 10_000).toFixed(2)}× pack value`;
 
 /** Units -> pack count. Sizes without packs are absent or 0. */
 export type PackMix = Record<number, number>;
