@@ -40,7 +40,7 @@ export const MANAGER_PARAMS = {
   reserve: 6000000000000000n, tvlCap: 0n,
   backingRatioBps: 11053, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
   minDistribution: 10000000000000000n,
-  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 360000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
+  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 540000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
 } as const;
 
 // Events the strategy libraries emit by DELEGATECALL: they are logged by the account but absent from its ABI.
