@@ -82,5 +82,10 @@ export function fundingFor(m: PackMix, perPack: Record<number, bigint>, reserve:
   return total;
 }
 
+/** VaultLib backing for a pack of `u` units: value x ratio, floored to 10,000 wei. */
+export const backingOf = (u: number, bps: number) => BigInt(u) * 10n ** 16n * BigInt(bps) / 10_000n / 10_000n * 10_000n;
+/** A weight's share of a total, as a probability. */
+export const shareOf = (w: bigint, total: bigint) => (total > 0n ? Number((w * 10n ** 12n) / total) / 1e12 : 0);
+
 export const sizeLabel = (u: number) => `${(u / 100).toFixed(2)} ETH pack`;
 export const mixText = (m: PackMix) => sizesOf(m).map((u) => `${m[u]} × ${(u / 100).toFixed(2)}`).join(', ');

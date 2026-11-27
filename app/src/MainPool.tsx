@@ -7,14 +7,16 @@ import { chain } from './chain';
 import { explain } from './errors';
 import { creationNotSubmitted } from './creation';
 import { createLatestRefresh } from './refresh';
-import { eth, short, useTx } from './App';
+import { InventoryGrid, SHADES, TxLine, eth, oneIn, pctOf, short, useTx, type InvItem } from './App';
+import { SRow } from './PoolSettings';
+import { weightOf } from '../../shared/planner';
 import {
-  HAND_SIZES, MAX_PACKS, MAX_PER_SIZE, decodeMix, encodeMix, fundingFor, mixText, packCount, presetMix, scaleMix, sizeLabel, sizesOf,
+  HAND_SIZES, MAX_PACKS, MAX_PER_SIZE, backingOf, decodeMix, encodeMix, mixText, packCount, presetMix, scaleMix, shareOf, sizeLabel, sizesOf,
   type PackMix, type PackStyle,
 } from '../../shared/manager-design';
 import {
   MAIN_POOL_OPEN, MANAGER_FACTORY, MANAGER_PARAMS, MIN_DEPOSIT, POSITION_VALUE, VAULT, checkCreation, clearManagerCreation,
-  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readManager, readVault, redeemCharge,
+  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readMainPool, readManager, readVault, redeemCharge,
   saveManagerCreation, vaultStatus, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
 
@@ -442,19 +444,20 @@ const PACK_STYLE_TILES: { key: PackStyle; label: string; hint: string }[] = [
 ];
 const DEFAULT_PACKS = 3;
 
-/** One pack's ETH per size from PackManagerFactory.preview (its opening cash less the reserve), at current gas and
- *  mint fee; undefined until read. */
-function usePackCosts(sizes: number[]) {
+/** One pack's cost per size from PackManagerFactory.preview at current gas and mint fee: its Shapes, backing, mint fees,
+ *  and in `total` also its build pay (opening cash less the reserve). Undefined until read. */
+type PackCost = { principal: bigint; backing: bigint; mint: bigint; total: bigint };
+function usePackCosts(sizes: number[], params: object = MANAGER_PARAMS) {
   const pub = usePublicClient();
-  const key = sizes.join(',');
-  const [costs, setCosts] = useState<{ key: string; perPack: Record<number, bigint>; error?: string }>();
+  const key = `${sizes.join(',')}:${(params as { backingRatioBps: number }).backingRatioBps}`;
+  const [costs, setCosts] = useState<{ key: string; perPack: Record<number, PackCost>; error?: string }>();
   useEffect(() => {
     if (!pub || !MANAGER_FACTORY || !sizes.length) return;
     let live = true;
     Promise.all(sizes.map(async (u) => {
-      const [, , , , openingCash] = await pub.readContract({ address: MANAGER_FACTORY!, abi: packManagerFactoryAbi, functionName: 'preview',
-        args: [{ ...MANAGER_PARAMS, packUnitsMask: 1n << BigInt(u) }] });
-      return [u, openingCash - MANAGER_PARAMS.reserve] as const;
+      const [, principal, backing, mint, openingCash] = await pub.readContract({ address: MANAGER_FACTORY!, abi: packManagerFactoryAbi, functionName: 'preview',
+        args: [{ ...(params as typeof MANAGER_PARAMS), packUnitsMask: 1n << BigInt(u) }] });
+      return [u, { principal, backing, mint, total: openingCash - (params as typeof MANAGER_PARAMS).reserve }] as const;
     })).then((rows) => live && setCosts({ key, perPack: Object.fromEntries(rows) }),
       (e) => live && setCosts({ key, perPack: {}, error: explain(e) }));
     return () => { live = false; };
@@ -462,9 +465,104 @@ function usePackCosts(sizes: number[]) {
   return costs?.key === key ? costs : undefined;
 }
 
+/** The main pool's total weight and draw price, read once. */
+function useMainPool() {
+  const pub = usePublicClient();
+  const [pool, setPool] = useState<{ totalWeight: bigint; drawPrice: bigint }>();
+  useEffect(() => {
+    if (!pub) return;
+    let live = true;
+    readMainPool(pub).then((p) => live && setPool(p), () => undefined);
+    return () => { live = false; };
+  }, [pub]);
+  return pool;
+}
+
+/** Pack shades as in the community designer: with several sizes the largest is white, the rest darkest first. */
+const shadeOf = (u: number, sizes: number[]): CSSProperties =>
+  ({ background: sizes.length > 1 && u === sizes[sizes.length - 1] ? '#fff' : SHADES[Math.min(SHADES.length - 1, sizes.indexOf(u))] });
+
+type MixView = { sizes: number[]; each: Record<number, number>; any: number; drawPrice: bigint; backing: (u: number) => bigint };
+/** A mix as the main pool would hold it: each pack's chance per draw is its weight over the pool's weight with the mix
+ *  listed in place of `listedWeight`, the weight the manager lists now. */
+function mixView(mix: PackMix, pool: { totalWeight: bigint; drawPrice: bigint } | undefined, bps: number, listedWeight = 0n): MixView | undefined {
+  if (!pool) return undefined;
+  const sizes = sizesOf(mix);
+  const backing = (u: number) => backingOf(u, bps);
+  const total = pool.totalWeight - listedWeight + sizes.reduce((t, u) => t + weightOf(backing(u)) * BigInt(mix[u]), 0n);
+  const each = Object.fromEntries(sizes.map((u) => [u, shareOf(weightOf(backing(u)), total)]));
+  return { sizes, each, any: sizes.reduce((t, u) => t + each[u] * mix[u], 0), drawPrice: pool.drawPrice, backing };
+}
+
+/** One square per pack, most numerous size first, as the community inventory. */
+function mixItems(mix: PackMix, view: MixView): InvItem[] {
+  return [...view.sizes].sort((a, b) => mix[b] - mix[a] || a - b).flatMap((u) => Array.from({ length: mix[u] }, (_, j) => ({
+    key: `${u}-${j}`, label: sizeLabel(u), nft: false, value: view.backing(u), price: view.backing(u), p: view.each[u],
+    mult: Number(view.backing(u)) / Number(view.drawPrice), style: shadeOf(u, view.sizes),
+  })));
+}
+
+/** The community designer's side blocks for a pack mix: the headline chance, the inventory or 100-draw grid with its
+ *  key, and the main pool facts. */
+function usePackBlocks({ mix, view, note }: { mix: PackMix; view?: MixView; note?: string }) {
+  const [gridView, setGridView] = useState<'inventory' | 'draws'>('inventory');
+  const [showKey, setShowKey] = useState(false);
+  const other: CSSProperties = { boxShadow: 'inset 0 0 0 1px var(--line-control)' };
+  // Whole draws out of 100, largest remainder, the rest to other listings.
+  const groups = view ? view.sizes.map((u) => ({ u, raw: view.each[u] * mix[u] * 100 })) : [];
+  const whole = groups.map((g) => Math.floor(g.raw));
+  const spare = Math.round(groups.reduce((t, g) => t + g.raw, 0)) - whole.reduce((a, b) => a + b, 0);
+  groups.map((g, k) => [g.raw - whole[k], k] as const).sort((a, b) => b[0] - a[0]).slice(0, Math.max(0, spare)).forEach(([, k]) => whole[k]++);
+  const rest = 100 - whole.reduce((a, b) => a + b, 0);
+  const cells = [...groups.flatMap((g, k) => Array<CSSProperties>(whole[k]).fill(shadeOf(g.u, view!.sizes))), ...Array<CSSProperties>(rest).fill(other)];
+  const pay = (
+    <div>
+      <h2 className="side-h">Chance per draw</h2>
+      <div className="pay">{view && view.any > 0
+        ? <><span className="fig56">{oneIn(view.any)}</span><span className="u13">DRAWS</span></>
+        : <span className="fig56 ghost">—</span>}</div>
+      {view && view.any > 0 && note && <p className="note">{note}</p>}
+    </div>
+  );
+  const play = view && view.any > 0 ? (
+    <div className="players">
+      <div className="kv"><span className="k">Main pool draw price</span><span>{eth(view.drawPrice, 5)} ETH</span></div>
+      <div className="kv"><span className="k">A picked pack pays</span><span>{view.sizes.map((u) => eth(view.backing(u), 4)).join(' · ')} ETH</span></div>
+    </div>
+  ) : null;
+  const grid = (
+    <div>
+      <div className="grid-head">
+        <div className="seg sm" role="group" aria-label="View">
+          <button aria-pressed={gridView === 'inventory' || !view} onClick={() => setGridView('inventory')}>Inventory</button>
+          <button aria-pressed={gridView === 'draws' && !!view} disabled={!view} onClick={() => setGridView('draws')}>Out of 100 draws</button>
+        </div>
+        {view && <button className="disclose key" aria-expanded={showKey} onClick={() => setShowKey(!showKey)}>Key {showKey ? '▴' : '▾'}</button>}
+      </div>
+      <div className="g20">
+        {!view ? null : gridView === 'inventory' ? <InventoryGrid items={mixItems(mix, view).slice(0, 100)} />
+          : <div className="grid100" aria-hidden="true">{cells.map((s, k) => <span key={k} style={s} />)}</div>}
+      </div>
+      {view && gridView === 'inventory' && packCount(mix) > 100 && <p className="note">+ {(packCount(mix) - 100).toLocaleString()} more</p>}
+      {view && showKey && (gridView === 'inventory' ? (
+        <div className="legend">
+          {view.sizes.map((u) => <div key={u}><span className="sw" style={shadeOf(u, view.sizes)} /><span><b>{mix[u]}</b> × {sizeLabel(u)} · each {oneIn(view.each[u])}</span></div>)}
+        </div>
+      ) : (
+        <div className="legend">
+          {groups.map((g, k) => <div key={g.u}><span className="sw" style={shadeOf(g.u, view.sizes)} /><span><b>{whole[k] === 0 ? '<1' : whole[k]}</b> pick one of your {sizeLabel(g.u)}s</span></div>)}
+          <div><span className="sw" style={other} /><span><b>{rest}</b> pick another listing</span></div>
+          <p className="note">Rounded to whole draws.</p>
+        </div>
+      ))}
+    </div>
+  );
+  return { pay, play, grid };
+}
+
 /** The pack mix controls, as in the community designer: a preset, the pack count it scales to, and exact counts by
- *  hand (which leave the preset). `perPack` is one pack's ETH per size when known. */
-function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mix: PackMix; perPack?: Record<number, bigint>;
+ *  hand (which leave the preset). */
+function PackDesigner({ style, mix, view, onChange }: { style?: PackStyle; mix: PackMix; view?: MixView;
   onChange: (style: PackStyle | undefined, mix: PackMix) => void }) {
   const [byHand, setByHand] = useState(false);
   const total = packCount(mix);
@@ -478,41 +576,135 @@ function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mi
   const shown = [...new Set([...HAND_SIZES, ...sizesOf(mix)])].sort((a, b) => a - b);
   return (
     <>
-            <div>
-            <div className="tiles three" role="group" aria-label="Pack style">
-              {PACK_STYLE_TILES.map((g) => (
-                <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
-                  <span className="t">{g.label}</span><span className="s">{g.hint}</span>
-                </button>
-              ))}
-            </div>
-            <div className="row" style={{ marginTop: 14, gap: 16 }}>
-              <button className="disclose" aria-expanded={byHand} onClick={() => setByHand(!byHand)}>Adjust packs by hand {byHand ? '▴' : '▾'}</button>
-              {!style && total > 0 && <span className="note">Custom: {mixText(mix)}</span>}
-            </div>
-            {byHand && (
-              <div style={{ marginTop: 14 }}>
-                <p className="note" style={{ marginBottom: 6 }}>Exact pack counts. Any size can be zero.</p>
-                {shown.map((u) => (
-                  <div className="mixrow" key={u}>
-                    <div><div className="t">{sizeLabel(u)}</div>{perPack?.[u] !== undefined && <div className="s">{ethText(perPack[u])} ETH each</div>}</div>
-                    <div className="stepper end">
-                      <button aria-label={`One fewer ${sizeLabel(u)}`} disabled={!mix[u]} onClick={() => setCountAt(u, (mix[u] ?? 0) - 1)}>−</button>
-                      <output aria-live="polite">{mix[u] ?? 0}</output>
-                      <button aria-label={`One more ${sizeLabel(u)}`} disabled={total >= MAX_PACKS || (mix[u] ?? 0) >= MAX_PER_SIZE} onClick={() => setCountAt(u, (mix[u] ?? 0) + 1)}>+</button>
+      <div>
+        <div className="tiles three" role="group" aria-label="Pack style">
+          {PACK_STYLE_TILES.map((g) => (
+            <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
+              <span className="t">{g.label}</span><span className="s">{g.hint}</span>
+            </button>
+          ))}
+        </div>
+        <div className="row" style={{ marginTop: 14, gap: 16 }}>
+          <button className="disclose" aria-expanded={byHand} onClick={() => setByHand(!byHand)}>Adjust packs by hand {byHand ? '▴' : '▾'}</button>
+          {!style && total > 0 && <span className="note">Custom: {mixText(mix)}</span>}
+        </div>
+        {byHand && (
+          <div style={{ marginTop: 14 }}>
+            <p className="note" style={{ marginBottom: 6 }}>Exact pack counts. Any size can be zero. Bigger packs need more ETH and come up less often.</p>
+            {shown.map((u) => {
+              const b = view && mix[u] ? view.backing(u) : undefined;
+              return (
+                <div className="mixrow" key={u}>
+                  <div><div className="t">{sizeLabel(u)}</div>{b !== undefined && <div className="s">Each {oneIn(view!.each[u])} draws · {(Number(b) / Number(view!.drawPrice)).toFixed(1)}× the draw</div>}</div>
+                  <div className="stepper end">
+                    <button aria-label={`One fewer ${sizeLabel(u)}`} disabled={!mix[u]} onClick={() => setCountAt(u, (mix[u] ?? 0) - 1)}>−</button>
+                    <output aria-live="polite">{mix[u] ?? 0}</output>
+                    <button aria-label={`One more ${sizeLabel(u)}`} disabled={total >= MAX_PACKS || (mix[u] ?? 0) >= MAX_PER_SIZE} onClick={() => setCountAt(u, (mix[u] ?? 0) + 1)}>+</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="rule">
+        <div className="ctl-row"><label className="ctl" htmlFor="packs">Number of packs</label><span className="big-v">{total}</span></div>
+        <input id="packs" type="range" min={1} max={MAX_PACKS} step={1} value={Math.max(1, total)} aria-valuetext={`${total} packs`}
+          onChange={(e) => setTotal(Number(e.target.value))} />
+        <p className="note">More packs come up more often. With one pack the result is mostly luck.</p>
+      </div>
+    </>
+  );
+}
+
+/** ETH breakdown of building `count` packs per size, as the community cost rows. */
+function costParts(counts: PackMix, perPack: Record<number, PackCost>) {
+  const t = { principal: 0n, backing: 0n, mint: 0n, total: 0n };
+  for (const u of sizesOf(counts)) {
+    const c = perPack[u], n = BigInt(counts[u]);
+    if (!c) return undefined;
+    t.principal += c.principal * n; t.backing += c.backing * n; t.mint += c.mint * n; t.total += c.total * n;
+  }
+  return t;
+}
+
+/** The community designer's layout for a manager's packs. `fresh` is creation; otherwise it is the Packs tab of a
+ *  live manager. */
+function ManagerDesign({ fresh, style, mix, onChange, onReset, view, note, error, side, pin }: {
+  fresh: boolean; style?: PackStyle; mix: PackMix; onChange: (style: PackStyle | undefined, mix: PackMix) => void; onReset: () => void;
+  view?: MixView; note?: string; error?: string; side: ReactNode; pin: ReactNode }) {
+  const [how, setHow] = useState(false);
+  const [numbers, setNumbers] = useState(false);
+  const blocks = usePackBlocks({ mix, view, note });
+  const secHead = (n: string, t: string, desc: string) => (
+    <div className="sec-head"><span className="sec-n">{n}</span><div><h2 className="sec-t">{t}</h2><p className="sec-d">{desc}</p></div></div>
+  );
+  return (
+    <main className="page cols design">
+      <section>
+        {fresh
+          ? <><span className="crumb">Main pool /</span><h1 className="page-t">Design your manager</h1></>
+          : <h2 className="title t2">Packs</h2>}
+        <p className="lead">{fresh
+          ? 'Your own account on the main pool. It builds Shape packs from your ETH and keeps them listed. You own it from the moment it is created; the factory keeps no control and charges no fee.'
+          : 'How many packs of each size the manager keeps listed on the main pool.'}</p>
+        <div className="row" style={{ marginTop: 14, gap: 24 }}>
+          {fresh && <button className="disclose" aria-expanded={how} onClick={() => setHow(!how)}>How a manager works {how ? '▴' : '▾'}</button>}
+          <button className="link quiet" onClick={onReset}>{fresh ? 'Reset to defaults' : 'Reset to saved'}</button>
+        </div>
+        {how && fresh && (
+          <ol className="how">
+            <li>Every draw on the main pool picks one listing. Packs with lower backing come up more often.</li>
+            <li>When a pack is picked, the buyer keeps it or takes its backing in ETH. Either way the manager is paid and lists a pack again.</li>
+            <li>Backing is {(MANAGER_PARAMS.backingRatioBps / 10_000).toFixed(4)}× pack value, so a kept pack repays its Shapes and mint fees.</li>
+            <li>Only you can withdraw. Exit mode turns every pack back into ETH.</li>
+          </ol>
+        )}
+        <div className="dsec">
+          {secHead('01', 'Packs', 'Shape packs your manager builds and keeps listed. When one is picked, the manager lists a pack again.')}
+          <div className="sec-body">
+            <PackDesigner style={style} mix={mix} view={view} onChange={onChange} />
+          </div>
+        </div>
+        <div className="mobile-only" style={{ marginTop: 40 }}>{blocks.pay}{blocks.play}{blocks.grid}</div>
+        <div className="dsec">
+          {secHead('02', fresh ? 'Before you create' : 'Before you save', 'Costs are quoted at current gas and mint fees. If either rises, packs need more ETH and are built in stages.')}
+          <div className="sec-body">
+            {!fresh && <p className="note">Lower counts stop new builds of that size. Packs already listed stay listed.</p>}
+            <p className="note">The operating reserve of {eth(MANAGER_PARAMS.reserve, 5)} ETH stays in the manager to pay keepers.</p>
+            {error && <p className="note error" role="status">{error}</p>}
+            {view && (
+              <div>
+                <button className="disclose" aria-expanded={numbers} onClick={() => setNumbers(!numbers)}>All numbers {numbers ? '▴' : '▾'}</button>
+                {numbers && (
+                  <div className="numbers">
+                    <div className="kv-group">
+                      <span className="label">Main pool</span>
+                      <div className="kv"><span className="k">Draw price</span><span>{eth(view.drawPrice, 5)} ETH</span></div>
+                      <div className="kv"><span className="k">One of your packs picked</span><span>{oneIn(view.any)} · {pctOf(view.any)}</span></div>
+                      {view.sizes.map((u) => <div className="kv" key={u}><span className="k">Each {sizeLabel(u)}</span><span>{oneIn(view.each[u])} · backing {eth(view.backing(u), 5)} ETH</span></div>)}
+                    </div>
+                    <div className="kv-group">
+                      <span className="label">For you</span>
+                      <div className="kv"><span className="k">Backing</span><span>{(MANAGER_PARAMS.backingRatioBps / 10_000).toFixed(4)}× pack value</span></div>
+                      <div className="kv"><span className="k">Operating reserve</span><span>{eth(MANAGER_PARAMS.reserve, 5)} ETH</span></div>
+                      <div className="kv"><span className="k">Factory fee</span><span>None</span></div>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
-            </div>
-            <div className="rule">
-              <div className="ctl-row"><label className="ctl" htmlFor="packs">Number of packs</label><span className="big-v">{total}</span></div>
-              <input id="packs" type="range" min={1} max={MAX_PACKS} step={1} value={Math.max(1, total)} aria-valuetext={`${total} packs`}
-                onChange={(e) => setTotal(Number(e.target.value))} />
-              <p className="note">With one pack the result is mostly luck.</p>
-            </div>
-    </>
+          </div>
+        </div>
+      </section>
+      <section className="sticky results side">
+        <div className="desktop-only">{blocks.pay}</div>
+        {blocks.play && <div className="desktop-only">{blocks.play}</div>}
+        <div className="desktop-only">{blocks.grid}</div>
+        {side}
+        {pin}
+      </section>
+    </main>
   );
 }
 
@@ -526,17 +718,18 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
     setStyleState(st); setMixState(m);
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ style: st ?? null, mix: m })); } catch { /* storage unavailable */ }
   };
-  const [how, setHow] = useState(false);
   const total = packCount(mix);
-  const sizes = sizesOf(mix);
-  const costs = usePackCosts(sizes);
-  const value = costs && !costs.error ? fundingFor(mix, costs.perPack, MANAGER_PARAMS.reserve) : undefined;
+  const costs = usePackCosts(sizesOf(mix));
+  const pool = useMainPool();
+  const view = mixView(mix, pool, MANAGER_PARAMS.backingRatioBps);
+  const parts = costs && !costs.error ? costParts(mix, costs.perPack) : undefined;
+  const value = parts && parts.total + MANAGER_PARAMS.reserve;
   const wallet = useBalance(me);
   const disabled = !MANAGER_FACTORY ? 'Manager creation is not open yet'
     : !total ? 'Choose at least one pack'
     : costs?.error ? 'Current costs are unavailable'
     : value === undefined ? 'Reading current costs'
-    : wallet !== undefined && value > wallet ? `Your wallet has ${eth(wallet)} ETH` : undefined;
+    : wallet !== undefined && value > wallet ? `Your wallet has ${eth(wallet, 5)} ETH` : undefined;
   const run = async () => {
     if (!pub || !me || !value || disabled || !MANAGER_FACTORY) return;
     const { design, mask } = encodeMix(mix);
@@ -560,77 +753,37 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
     }]]);
     if (ok) onCreated();
   };
+  const pinPrice = <span className="pin-price">{value !== undefined ? <><b>{eth(value, 5)}</b> ETH</> : '–'}</span>;
   return (
-    <ManagerDesign crumb="Main pool /" title="Design your manager" how={how} setHow={setHow}
-      lead="Your own account on FWA's main pool. It builds Shape packs from your ETH and keeps them listed. You own it from the moment it is created; the factory keeps no control and charges no fee."
-      onReset={() => keep('small', presetMix('small', DEFAULT_PACKS))} style={style} mix={mix} perPack={costs?.perPack} onChange={keep}
-      error={costs?.error} sumLabel="To create the manager" sum={value}
-      rows={<>{sizes.map((u) => (
-        <div className="sub" key={u}><span>{mix[u]} × {sizeLabel(u)}</span><span>{costs?.perPack[u] === undefined ? '–' : ethText(costs.perPack[u] * BigInt(mix[u]))}</span></div>
-      ))}<div className="sub"><span>Operating reserve</span><span>{ethText(MANAGER_PARAMS.reserve)}</span></div>
-        <div className="row2"><span className="k">Fee</span><span>None</span></div></>}>
-      {!me ? <Connect className="btn lg" />
-        : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : disabled ?? `Create manager with ${ethText(value!)} ETH`}</button>}
-      <TxHelper tx={tx}>One confirmation.</TxHelper>
-    </ManagerDesign>
-  );
-}
-
-/** The community designer's layout for a manager's packs: numbered sections on the left, the pack count, its squares
- *  and the cost on the right. Creation and Change packs both use it. */
-function ManagerDesign({ crumb, title, lead, how, setHow, onReset, style, mix, perPack, onChange, error, sumLabel, sum, rows, children }: {
-  crumb: ReactNode; title: string; lead: string; how?: boolean; setHow?: (b: boolean) => void; onReset: () => void;
-  style?: PackStyle; mix: PackMix; perPack?: Record<number, bigint>; onChange: (style: PackStyle | undefined, mix: PackMix) => void;
-  error?: string; sumLabel: string; sum?: bigint; rows: ReactNode; children: ReactNode }) {
-  const secHead = (n: string, t: string, desc: string) => (
-    <div className="sec-head"><span className="sec-n">{n}</span><div><h2 className="sec-t">{t}</h2><p className="sec-d">{desc}</p></div></div>
-  );
-  const sizes = sizesOf(mix);
-  return (
-    <main className="page cols design">
-      <section>
-        <span className="crumb">{crumb}</span><h1 className="page-t">{title}</h1>
-        <p className="lead">{lead}</p>
-        <div className="row" style={{ marginTop: 14, gap: 24 }}>
-          {setHow && <button className="disclose" aria-expanded={how} onClick={() => setHow(!how)}>How a manager works {how ? '▴' : '▾'}</button>}
-          <button className="link quiet" onClick={onReset}>{setHow ? 'Reset to defaults' : 'Reset to saved'}</button>
-        </div>
-        {how && (
-          <ol className="how">
-            <li>Every draw on FWA's main pool pays each listed pack a share of its fee, picked or not.</li>
-            <li>When a pack is picked, the buyer keeps it or takes its backing in ETH. Either way the manager is paid and lists a pack again.</li>
-            <li>Backing is {(MANAGER_PARAMS.backingRatioBps / 10_000).toFixed(4)}× pack value: a kept pack repays its Shapes and mint fees.</li>
-            <li>Only you can withdraw. Exit mode turns every pack back into ETH.</li>
-          </ol>
-        )}
-        <div className="dsec">
-          {secHead('01', 'Packs', 'Shape packs your manager builds and keeps listed on the main pool.')}
-          <div className="sec-body">
-            <PackDesigner style={style} mix={mix} perPack={perPack} onChange={onChange} />
-          </div>
-        </div>
-        <div className="dsec">
-          {secHead('02', setHow ? 'Before you create' : 'Before you save', 'Costs are quoted at current gas and mint fees. If either rises, packs need more ETH and are built in stages.')}
-          <div className="sec-body">
-            {setHow ? <p className="note">The operating reserve of {ethText(MANAGER_PARAMS.reserve)} ETH stays in the manager to pay keepers.</p>
-              : <p className="note">Lower counts stop new builds of that size. Packs already held stay listed.</p>}
-            {error && <p className="note error" role="status">{error}</p>}
-          </div>
-        </div>
-      </section>
-      <section className="sticky results side">
-        <div>
-          <h2 className="side-h">Packs</h2>
-          <div className="pay"><span className="fig56">{packCount(mix)}</span></div>
-          <div className="packs" aria-hidden="true" style={{ marginTop: 16 }}>{sizes.flatMap((u) => Array.from({ length: mix[u] }, (_, i) => <span key={`${u}-${i}`} title={sizeLabel(u)} style={{ background: '#fff', width: 12 + u, height: 12 + u }} />))}</div>
-        </div>
+    <ManagerDesign fresh style={style} mix={mix} onChange={keep} onReset={() => keep('small', presetMix('small', DEFAULT_PACKS))}
+      view={view} note="Projected. Packs aren't listed until the manager is created." error={costs?.error}
+      side={(
         <div className="cost">
-          <div className="sum"><span>{sumLabel}</span><span><b>{sum === undefined ? '–' : ethText(sum)}</b><span className="u13">ETH</span></span></div>
-          {rows}
+          <div className="sum"><span>To create the manager</span><span><b>{value === undefined ? '–' : eth(value, 5)}</b><span className="u13">ETH</span></span></div>
+          {parts && <>
+            <div className="sub"><span>Pack Shapes</span><span>{eth(parts.principal, 5)}</span></div>
+            <div className="sub"><span>Pack backing</span><span>{eth(parts.backing, 5)}</span></div>
+            <div className="sub"><span>Shapes mint fees</span><span>{eth(parts.mint, 5)}</span></div>
+            <div className="sub"><span>Listing budget and reserve</span><span>{eth(value! - parts.principal - parts.backing - parts.mint, 5)}</span></div>
+          </>}
+          <div className="row2"><span className="k">Factory fee</span><span>None</span></div>
         </div>
-        <div className="pin">{children}</div>
-      </section>
-    </main>
+      )}
+      pin={<>
+        <div className="pin">
+          {disabled && me && <p className="note" style={{ marginBottom: 12 }}>{disabled}</p>}
+          <div className="pin-bar">
+            {pinPrice}
+            {!me ? <Connect className="btn lg" label="Connect wallet to create this manager" />
+              : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : `Create manager · ${value === undefined ? '–' : eth(value, 5)} ETH`}</button>}
+          </div>
+          <TxHelper tx={tx} />
+        </div>
+        {me && <div className="wsteps">
+          <span className="lbl">1 wallet confirmation</span>
+          <ol><li><span className="n">1</span><span>Create the manager and deposit {value === undefined ? '–' : eth(value, 5)} ETH</span></li></ol>
+        </div>}
+      </>} />
   );
 }
 
@@ -647,43 +800,18 @@ function useBalance(me?: Address) {
   return bal && bal.me === me ? bal.wei : undefined;
 }
 
+type ManagerTab = 'overview' | 'packs' | 'settings';
+const MANAGER_TABS: [ManagerTab, string][] = [['overview', 'Overview'], ['packs', 'Packs'], ['settings', 'Settings']];
+
+/** A live manager, laid out as a community pool: header, tabs, status, then the tab. */
 function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Address; v?: Vault; me: Address; count: number; index: number; setIndex: (i: number) => void }) {
   const { data: m, error, refresh } = useManager(manager);
   const tx = useTx(refresh);
-  const [mode, setMode] = useState<'add' | 'withdraw'>();
-  const [amount, setAmount] = useState('');
-  const [confirmExit, setConfirmExit] = useState(false);
-  const [numbers, setNumbers] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<ManagerTab>('overview');
   if (!m) return <p className={`txline${error ? ' bad' : ''}`}>{error ?? 'Loading your manager…'}</p>;
-  const M = { address: manager, abi: packManagerAbi } as const;
-  // One more pack's ETH: its Shapes, this manager's live backing and the work to build it (the vault's quote).
   const cost = v && m.edge[2] ? packCost(m.edge[1], v.deployCharge) : undefined;
   const st = managerStatus(m, cost);
-  const seg = mode ?? (m.book.listed === 0 ? 'add' : 'withdraw');
-  const value = parse(amount);
-  const busy = !!tx.busy;
   const owner = m.owner.toLowerCase() === me.toLowerCase();
-  const disabled = !owner ? 'Only the owner can do this' : !value ? 'Enter an amount'
-    : seg === 'withdraw' && value > m.balance ? `${eth(m.balance)} ETH is available`
-    : seg === 'add' && v?.holder && value > v.holder.wallet ? `Your wallet has ${eth(v.holder.wallet)} ETH` : undefined;
-  const label = disabled ?? (seg === 'withdraw' ? `Withdraw ${amount} ETH` : `Add ${amount} ETH`);
-  const submit = () => {
-    if (!value) return;
-    tx.send(label, [seg === 'withdraw' ? () => tx.write({ ...M, functionName: 'withdraw', args: [me, value] }) : () => tx.transfer(manager, value)])
-      .then((ok) => ok && setAmount(''));
-  };
-  const targetMix = decodeMix(m.design);
-  const target = sizesOf(targetMix);
-  const control = (name: string, fn: string, args: unknown[]) => tx.send(name, [() => tx.write({ ...M, functionName: fn, args } as never)]);
-  const squares: CSSProperties[] = [
-    ...Array<CSSProperties>(m.book.listed).fill({ background: '#fff' }),
-    ...Array<CSSProperties>(m.book.bought).fill({ outline: '2px dashed #fff', outlineOffset: -2 }),
-    ...Array<CSSProperties>(m.book.idle).fill({ background: '#333' }),
-  ];
-  const canList = cost === undefined ? undefined : packsFor(m.balance + (value ?? 0n), m.params.reserve, cost);
-  const budget = (cap: bigint, rate: bigint, now: bigint) => `${eth(now, 4)} of ${eth(cap, 3)} ETH · ${eth(rate, 3)} ETH a day`;
-  if (editing) return <EditPacks m={m} manager={manager} owner={owner} onDone={() => { setEditing(false); refresh(); }} />;
   return (
     <div className="pp">
       <div className="poolhead">
@@ -703,152 +831,264 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
             </div>
           </div>
         </div>
+        <nav className="tabs" aria-label="Sections">
+          {MANAGER_TABS.map(([t, label]) => <button key={t} aria-current={tab === t ? 'page' : undefined} onClick={() => setTab(t)}>{label}</button>)}
+        </nav>
       </div>
       <div className="status" role="status"><span><b>{st.head}</b> {st.body}</span></div>
+      <TxLine tx={tx} />
       {error && <p className="txline bad">{error}</p>}
-      {!owner && <p className="txline">The connected wallet does not own this manager.</p>}
-      <main className="page cols ov">
-        <section>
-          <div className="blk">
-            <h2 className="h">Value</h2>
-            <div style={{ marginTop: 12 }}><span className="fig56">{eth(m.book.nav)}</span><span className="u13">ETH</span></div>
-            <p className="desc">ETH in the manager and in its packs. Only you can withdraw; the factory that created it has no access.</p>
-          </div>
-
-          <div className="blk">
-            <div className="blk-head"><h2 className="h">Packs</h2>{owner && <button className="link" disabled={busy} onClick={() => setEditing(true)}>Change packs</button>}</div>
-            <p className="desc">Your target mix against what the manager holds now. Keepers build up to each count from the manager's ETH.</p>
-            {squares.length > 0 ? <div className="packs" aria-hidden="true" style={{ marginTop: 20 }}>{squares.map((s, i) => <span key={i} style={s} />)}</div>
-              : <p className="foot">No packs yet. Keepers build them from the manager's ETH.</p>}
-            <div className="ptab" role="table" aria-label="Packs">
-              <div className="tr th" role="row"><span>Pack</span><span>Held</span><span>Target</span></div>
-              {target.map((u) => (
-                <div className="tr" role="row" key={u}>
-                  <span>{sizeLabel(u)}</span>
-                  <span className={(m.held[u] ?? 0) < targetMix[u] ? 'error' : undefined}>{m.held[u] ?? 0}</span>
-                  <span>{targetMix[u]}</span>
-                </div>
-              ))}
-              {!target.length && <div className="tr" role="row"><span>No counts set</span><span>{m.book.listed + m.book.bought + m.book.idle}</span><span>–</span></div>}
-              <div className="tr sum" role="row"><span>Listed · bought · idle</span><span />
-                <span>{m.book.listed} · {m.book.bought} · {m.book.idle}</span></div>
-            </div>
-          </div>
-
-          <div className="blk">
-            <h2 className="h">Results</h2>
-            <p className="desc">What happened to picked packs, since the manager was created.</p>
-            <div className="kvs">
-              <div className="kv"><span className="k">Kept by buyers, then rebuilt</span><span>{m.keeps}</span></div>
-              <div className="kv"><span className="k">Bid back, then relisted</span><span>{m.bids}</span></div>
-              <div className="kv"><span className="k">Keeper pay to date</span><span>{eth(m.keeperPay, 5)} ETH</span></div>
-              <div className="kv"><span className="k">Withdrawn to date</span><span>{eth(m.withdrawn, 4)} ETH</span></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="sticky">
-          <div className="blk">
-            <h2 className="h">{seg === 'withdraw' ? 'Withdraw ETH' : 'Add ETH'}</h2>
-            <div className="seg" role="group" aria-label="Action" style={{ marginTop: 16 }}>
-              <button aria-pressed={seg === 'add'} onClick={() => { setMode('add'); setAmount(''); }}>Add ETH</button>
-              <button aria-pressed={seg === 'withdraw'} onClick={() => { setMode('withdraw'); setAmount(''); }}>Withdraw</button>
-            </div>
-            <Amount label="Amount" value={amount} onChange={setAmount} unit="ETH" max={seg === 'withdraw' ? () => setAmount(formatEther(m.balance)) : undefined} />
-            <div className="kvs">
-              {seg === 'withdraw' ? <>
-                <div className="kv"><span className="k">Available now</span><span>{eth(m.balance)} ETH</span></div>
-                <div className="kv"><span className="k">In listed packs</span><span>{eth(m.book.inListed)} ETH</span></div>
-                {m.book.inBought > 0n && <div className="kv"><span className="k">In the bought pack{m.book.bought === 1 ? '' : 's'}</span><span>{eth(m.book.inBought)} ETH</span></div>}
-              </> : <>
-                <div className="kv"><span className="k">Packs it can list</span><span>{canList === undefined ? '–' : canList.toString()}</span></div>
-                <div className="kv"><span className="k">Reserve kept</span><span>{eth(m.params.reserve)} ETH</span></div>
-              </>}
-            </div>
-            <div className="acts">
-              <button className="btn" disabled={busy || !!disabled} onClick={submit}>{tx.busy ? `${tx.busy}…` : label}</button>
-            </div>
-            <TxHelper tx={tx}>{seg === 'withdraw' ? 'To withdraw ETH in listed packs, start exit mode.' : undefined}</TxHelper>
-          </div>
-
-          <div className="blk">
-            <h2 className="h">Controls</h2>
-            <div className="kvs">
-              <div className="kv"><span className="k">Pause new listings. Listed packs stay listed.</span>
-                <button className="link" disabled={busy || !owner || m.exiting} onClick={() => control(m.listingPaused ? 'Resume listings' : 'Pause new listings', 'setListingPaused', [!m.listingPaused])}>{m.listingPaused ? 'Resume' : 'Pause'}</button></div>
-              <div className="kv"><span className="k">{confirmExit ? 'Every pack will be unlisted and turned back into ETH.' : 'Exit mode: unlist every pack and turn it back into ETH.'}</span>
-                {m.exiting
-                  ? <button className="link" disabled={busy || !owner} onClick={() => control('Leave exit mode', 'setExiting', [false])}>Leave exit mode</button>
-                  : confirmExit
-                    ? <span className="row"><button className="link quiet" onClick={() => setConfirmExit(false)}>Cancel</button><button className="link" disabled={busy} onClick={() => { setConfirmExit(false); control('Start exit', 'setExiting', [true]); }}>Confirm exit</button></span>
-                    : <button className="link" disabled={busy || !owner} onClick={() => setConfirmExit(true)}>Start exit</button>}</div>
-              <div className="kv"><span className="k">Withdraw idle packs to your wallet.{m.book.idle === 0 ? ' None are idle now.' : ''}</span>
-                <button className="link" disabled={busy || !owner || m.book.idle === 0} onClick={() => control('Withdraw packs', 'withdrawPacks', [me, BigInt(m.book.idle)])}>Withdraw packs</button></div>
-            </div>
-          </div>
-
-          <div className="blk">
-            <div className="blk-head"><h2 className="h">ETH in the manager</h2><span className="total">{eth(m.book.nav)} ETH</span></div>
-            <div className="kvs">
-              <div className="kv"><span className="k">Available now</span><span>{eth(m.balance)} ETH</span></div>
-              <div className="kv"><span className="k">In listed packs</span><span>{eth(m.book.inListed)} ETH</span></div>
-              {m.book.inBought > 0n && <div className="kv"><span className="k">In bought packs</span><span>{eth(m.book.inBought)} ETH</span></div>}
-            </div>
-            <button className="disclose" style={{ marginTop: 16 }} aria-expanded={numbers} onClick={() => setNumbers(!numbers)}>All numbers {numbers ? '▴' : '▾'}</button>
-            {numbers && (
-              <div className="kvs">
-                <div className="kv"><span className="k">Reserve</span><span>{eth(m.params.reserve, 4)} ETH</span></div>
-                <div className="kv"><span className="k">Backing</span><span>{(m.params.backingRatioBps / 10_000).toFixed(4)}× pack value</span></div>
-                <div className="kv"><span className="k">Routine keeper budget</span><span>{budget(m.params.routineCap, m.params.routineRate, m.budget[0])}</span></div>
-                <div className="kv"><span className="k">Essential keeper budget</span><span>{budget(m.params.essentialCap, m.params.essentialRate, m.budget[1])}</span></div>
-                <div className="kv"><span className="k">Gas ceiling</span><span>{(Number(m.params.gasCeiling) / 1e9).toFixed(2)} gwei</span></div>
-                <div className="kv"><span className="k">Min edge</span><span>{(m.params.minEdgeBps / 100).toFixed(2)}%</span></div>
-                <div className="kv"><span className="k">Pack sizes allowed</span><span>{Array.from({ length: 31 }, (_, u) => u).filter((u) => (m.params.packUnitsMask >> BigInt(u)) & 1n).map((u) => (u / 100).toFixed(2)).join(', ')} ETH</span></div>
-                <div className="kv"><span className="k">Shapes mint fee now</span><span>{eth(m.mintFee, 4)} ETH a Shape</span></div>
-                <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{eth(m.tokensBurned, 2)} FWA · valued at 0</span></div>
-              </div>
-            )}
-          </div>
-        </section>
-      </main>
+      {!owner && <p className="txline">You are not the manager's owner. Changes need the owner's wallet.</p>}
+      {tab === 'overview' && <ManagerOverview m={m} manager={manager} me={me} owner={owner} tx={tx} setTab={setTab} />}
+      {tab === 'packs' && (owner ? <EditPacks m={m} manager={manager} tx={tx} onDone={() => setTab('overview')} />
+        : <main className="page"><p className="lead">Only the owner can change packs.</p></main>)}
+      {tab === 'settings' && <ManagerSettings m={m} manager={manager} me={me} owner={owner} tx={tx} />}
     </div>
   );
 }
 
-/** Change packs: the creation layout on a live manager. Costs cover the packs still to build at the new counts. */
-function EditPacks({ m, manager, owner, onDone }: { m: NonNullable<ReturnType<typeof useManager>['data']>; manager: Address; owner: boolean; onDone: () => void }) {
+type LiveManager = NonNullable<ReturnType<typeof useManager>['data']>;
+type ManagerTx = ReturnType<typeof useTx>;
+
+/** Each listed position's units and backing, by size. */
+const listedBySize = (m: LiveManager) => {
+  const by: Record<number, bigint[]> = {};
+  for (const p of m.book.active) (by[Number(p.value / 10n ** 16n)] ??= []).push(p.backing);
+  return by;
+};
+
+function ManagerOverview({ m, manager, me, owner, tx, setTab }: { m: LiveManager; manager: Address; me: Address; owner: boolean; tx: ManagerTx; setTab: (t: ManagerTab) => void }) {
+  const [mode, setMode] = useState<'deposit' | 'claim'>();
+  const [amount, setAmount] = useState('');
+  const target = decodeMix(m.design);
+  const listed = listedBySize(m);
+  const sizes = [...new Set([...sizesOf(target), ...Object.keys(listed).map(Number)])].sort((a, b) => a - b);
+  const costs = usePackCosts(sizesOf(target), m.params);
+  const toBuild: PackMix = Object.fromEntries(sizesOf(target).map((u) => [u, Math.max(0, target[u] - (m.held[u] ?? 0))]));
+  const buildCost = costs && !costs.error ? costParts(toBuild, costs.perPack)?.total : undefined;
+  const needed = buildCost === undefined ? undefined : buildCost + m.params.reserve;
+  const short_ = needed !== undefined && needed > m.balance ? needed - m.balance : 0n;
+  const missingPacks = sizesOf(toBuild).reduce((t, u) => t + toBuild[u], 0);
+  const chance = (b: bigint) => shareOf(weightOf(b), m.pool.totalWeight);
+  const items: InvItem[] = [...sizes].sort((a, b) => (listed[b]?.length ?? 0) - (listed[a]?.length ?? 0) || a - b).flatMap((u) => (listed[u] ?? []).map((b, j) => ({
+    key: `${u}-${j}`, label: sizeLabel(u), nft: false, value: b, price: b, p: chance(b), mult: Number(b) / Number(m.pool.drawPrice), style: shadeOf(u, sizes),
+  })));
+  const missing = sizesOf(toBuild).flatMap((u) => Array.from({ length: Math.max(0, target[u] - (listed[u]?.length ?? 0)) }, (_, j) => ({ key: `${u}-${j}`, label: sizeLabel(u) })));
+  const any = items.reduce((t, x) => t + x.p, 0);
+  const deposit = (wei: bigint) => tx.send(`Add ${eth(wei, 5)} ETH`, [() => tx.transfer(manager, wei)]);
+  const value = parse(amount);
+  const start = (k: 'deposit' | 'claim') => { setMode(mode === k ? undefined : k); setAmount(''); };
+  const signedEth = (w: bigint) => `${w < 0n ? '−' : ''}${eth(w < 0n ? -w : w, 5)}`;
+  return (
+    <main className="page cols ov">
+      <section>
+        <div className="blk">
+          <h2 className="h">Value</h2>
+          <div style={{ marginTop: 12 }}><span className="fig56">{eth(m.book.nav, 5)}</span><span className="u13">ETH</span></div>
+          <p className="desc">ETH in the manager and in the packs it lists. Only you can withdraw; the factory that created it has no access.</p>
+        </div>
+
+        <div className="blk">
+          <div className="blk-head"><h2 className="h">Packs</h2>{owner && <button className="link" onClick={() => setTab('packs')}>Change packs</button>}</div>
+          <p className="desc">Your target mix against what's listed on FWA now. Each draw picks one listing; packs with lower backing come up more often.</p>
+          {items.length || missing.length ? <InventoryGrid items={items} missing={missing} /> : <p className="foot">No packs are listed on FWA right now.</p>}
+          <div className="ptab" role="table" aria-label="Packs">
+            <div className="tr th" role="row"><span>Pack</span><span>Listed</span><span>Chance per draw</span></div>
+            {sizes.map((u) => (
+              <div className="tr" role="row" key={u}>
+                <span><span className={`sw${listed[u]?.length ? '' : ' miss'}`} style={listed[u]?.length ? shadeOf(u, sizes) : undefined} />{sizeLabel(u)}</span>
+                <span className={(listed[u]?.length ?? 0) < (target[u] ?? 0) ? 'error' : undefined}>{listed[u]?.length ?? 0} of {target[u] ?? 0}</span>
+                <span>{listed[u]?.length ? oneIn(chance(listed[u][0])) : <span className="off">Not listed</span>}</span>
+              </div>
+            ))}
+            {m.book.bought > 0 && <div className="tr" role="row"><span>{m.book.bought} bought · waiting on keep or bid</span><span /><span /></div>}
+            {m.book.idle > 0 && <div className="tr" role="row"><span>{m.book.idle} idle · not listed</span><span /><span /></div>}
+            {items.length > 0 && <div className="tr sum" role="row"><span>One of your packs picked</span><span /><span>{oneIn(any)}</span></div>}
+          </div>
+          {items.length > 0 && <p className="foot">At the main pool's current listings and its {eth(m.pool.drawPrice, 5)} ETH draw price.</p>}
+        </div>
+
+        <div className="blk">
+          <h2 className="h">Lifetime results</h2>
+          <p className="desc">What happened to picked packs, and what the manager paid, since it was created.</p>
+          <div className="kvs">
+            <div className="kv"><span className="k">Kept by buyers, then rebuilt</span><span>{m.keeps}</span></div>
+            <div className="kv"><span className="k">Bid back, then relisted</span><span>{m.bids}</span></div>
+            <div className="kv"><span className="k">Paid to keepers</span><span>{signedEth(-m.keeperPay)} ETH</span></div>
+            <div className="kv"><span className="k">Token rewards claimed and burned</span><span>{eth(m.tokensBurned, 2)} FWA</span></div>
+          </div>
+          <p className="foot">Through block {m.blockNumber.toLocaleString()}. Leaves out deposits and withdrawals.</p>
+        </div>
+      </section>
+
+      <section className="sticky">
+        <div className="blk" id="operating-eth">
+          <div className="blk-head">
+            <h2 className="h">Operating ETH</h2>
+            {needed === undefined ? <span className="tag">–</span> : short_ > 0n ? <span className="tag bad">{eth(short_, 5)} ETH short</span> : <span className="tag">Funded</span>}
+          </div>
+          <p className="desc">ETH the manager uses to build the packs in your target and to pay keepers. It keeps a {eth(m.params.reserve, 5)} ETH reserve.</p>
+          {needed !== undefined && <>
+            <div className="bar" aria-hidden>
+              <i style={{ width: `${needed > 0n && m.balance < needed ? Number(m.balance * 10_000n / needed) / 100 : 100}%` }} />
+              {short_ > 0n && <b style={{ width: `${Number(short_ * 10_000n / needed) / 100}%` }} />}
+            </div>
+            <div className="bar-l"><span><b>{eth(m.balance, 5)}</b> ETH in the manager</span><span><b>{eth(needed, 5)}</b> ETH needed</span></div>
+          </>}
+          {short_ > 0n && <>
+            <p className="warn">{`That's why ${missingPacks === 1 ? "one pack isn't" : `${missingPacks} packs aren't`} built yet. Add the difference to build ${missingPacks === 1 ? 'it' : 'them'}, or lower the counts.`}</p>
+            {owner && <div className="acts">
+              <button className="btn" disabled={!!tx.busy} onClick={() => deposit(short_)}>Add {eth(short_, 5)} ETH</button>
+              <button className="link" onClick={() => setTab('packs')}>Change packs</button>
+              <button className="link" onClick={() => start('deposit')}>Other amount</button>
+            </div>}
+          </>}
+          {needed !== undefined && short_ === 0n && <>
+            <p className="foot">{eth(m.balance - needed, 5)} ETH spare, included in Withdraw.</p>
+            {owner && <div className="acts"><button className={mode === 'deposit' ? 'btn' : 'btn sec'} onClick={() => start('deposit')}>Add ETH</button></div>}
+          </>}
+          {owner && mode === 'deposit' && (
+            <div className="acts">
+              <div className="field" style={{ width: 180 }}><input aria-label="Deposit amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+              <button className="btn" disabled={!!tx.busy || !value} onClick={() => value && deposit(value).then((ok) => ok && setMode(undefined))}>Deposit {amount || '0'} ETH</button>
+            </div>
+          )}
+        </div>
+
+        <div className="blk">
+          <h2 className="h">Withdraw ETH</h2>
+          <div className="kvs">
+            <div className="kv"><span className="k">Not in packs</span><span>{eth(m.balance, 5)} ETH</span></div>
+            <div className="kv"><span className="k">In listed packs</span><span>{eth(m.book.inListed, 5)} ETH</span></div>
+            <div className="kv sum"><span className="k">Total available to withdraw</span><span>{eth(m.balance, 5)} ETH</span></div>
+          </div>
+          {owner && <div className="acts">
+            <button className="btn" disabled={!!tx.busy || m.balance === 0n} onClick={() => tx.send('Withdraw', [() => tx.write({ address: manager, abi: packManagerAbi, functionName: 'withdraw', args: [me, m.balance] })])}>Withdraw {eth(m.balance, 5)} ETH</button>
+            <button className="link" disabled={m.balance === 0n} onClick={() => start('claim')}>Other amount</button>
+          </div>}
+          {owner && mode === 'claim' && (
+            <div className="acts">
+              <div className="field" style={{ width: 180 }}><input aria-label="Withdraw amount" className="big" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><span className="u">ETH</span></div>
+              <button className="btn" disabled={!!tx.busy || !value || value > m.balance} onClick={() => value && tx.send('Withdraw', [() => tx.write({ address: manager, abi: packManagerAbi, functionName: 'withdraw', args: [me, value] })]).then((ok) => ok && setMode(undefined))}>Withdraw {amount || '0'} ETH</button>
+            </div>
+          )}
+          <p className="foot">ETH in listed packs comes back when they are picked, or all at once with exit mode in Settings.</p>
+        </div>
+
+        <div className="blk">
+          <div className="blk-head"><h2 className="h">ETH in the manager</h2><span className="total">{eth(m.book.nav, 5)} ETH</span></div>
+          <p className="desc">Everything the manager holds and what it's for.</p>
+          <div className="kvs">
+            <div className="kv"><span className="k">Listed packs, Shapes and backing</span><span>{eth(m.book.inListed, 5)} ETH</span></div>
+            {m.book.inBought > 0n && <div className="kv"><span className="k">Bought packs, waiting on keep or bid</span><span>{eth(m.book.inBought, 5)} ETH</span></div>}
+            {m.book.fees > 0n && <div className="kv"><span className="k">Draw fees earned, not yet collected</span><span>{eth(m.book.fees, 5)} ETH</span></div>}
+            <div className="kv"><span className="k">Not in packs</span><span>{eth(m.balance, 5)} ETH</span></div>
+          </div>
+          <p className="foot">Withdrawn to date: {eth(m.withdrawn, 5)} ETH.</p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+/** The Packs tab: the creation layout on a live manager. Saving deposits what building the new counts needs. */
+function EditPacks({ m, manager, tx, onDone }: { m: LiveManager; manager: Address; tx: ManagerTx; onDone: () => void }) {
   const pub = usePublicClient();
-  const tx = useTx(onDone);
   const saved = decodeMix(m.design);
   const start = sizesOf(saved).length ? saved : presetMix('small', 1);
   const [draft, setDraft] = useState<{ style?: PackStyle; mix: PackMix }>({ mix: start });
   const sizes = sizesOf(draft.mix);
-  const costs = usePackCosts(sizes);
-  const toBuild = (u: number) => Math.max(0, draft.mix[u] - (m.held[u] ?? 0));
-  const build = costs && !costs.error ? sizes.reduce((t, u) => t + costs.perPack[u] * BigInt(toBuild(u)), 0n) : undefined;
+  const costs = usePackCosts(sizes, m.params);
+  const listedWeight = m.book.active.reduce((t, p) => t + weightOf(p.backing), 0n);
+  const view = mixView(draft.mix, m.pool, m.params.backingRatioBps, listedWeight);
+  const toBuild: PackMix = Object.fromEntries(sizes.map((u) => [u, Math.max(0, draft.mix[u] - (m.held[u] ?? 0))]));
+  const build = costs && !costs.error ? costParts(toBuild, costs.perPack)?.total : undefined;
+  const needed = build === undefined ? undefined : build + m.params.reserve;
+  const shortBy = needed !== undefined && needed > m.balance ? needed - m.balance : 0n;
+  const { design, mask } = packCount(draft.mix) ? encodeMix(draft.mix) : { design: 0n, mask: 0n };
+  const changed = design !== m.design;
   const M = { address: manager, abi: packManagerAbi } as const;
   // The design sets counts; packUnitsMask must admit exactly the chosen sizes, so it changes with them when needed.
+  const actions = [changed && 'Save the pack counts', mask !== m.params.packUnitsMask && 'allow the new pack sizes', changed && shortBy > 0n && `deposit ${eth(shortBy, 5)} ETH`].filter(Boolean) as string[];
   const save = async () => {
-    const { design, mask } = encodeMix(draft.mix);
-    const steps = design === m.design ? [] : [() => tx.write({ ...M, functionName: 'setDesign', args: [design] })];
+    const steps = [() => tx.write({ ...M, functionName: 'setDesign', args: [design] })];
     if (mask !== m.params.packUnitsMask) steps.push(async () => tx.write({ ...M, functionName: 'setParams',
       args: [{ ...m.params, packUnitsMask: mask }, await pub!.readContract({ ...M, functionName: 'configurationHash' })] } as never));
-    if (!steps.length) return onDone();
-    await tx.send('Save packs', steps);
+    if (shortBy > 0n) steps.push(() => tx.transfer(manager, shortBy));
+    if (await tx.send('Save changes', steps)) onDone();
   };
-  const short = build !== undefined && build > m.balance ? build - m.balance : 0n;
+  const figureEth = (w: bigint | undefined) => (w === undefined
+    ? <span className="figure-s muted">—</span>
+    : <span><span className="figure-s">{eth(w, 5)}</span><span className="unit">ETH</span></span>);
   return (
-    <ManagerDesign crumb={<><button className="link quiet" onClick={onDone}>Your manager</button> /</>} title="Change packs"
-      lead="Set how many packs of each size the manager keeps listed." onReset={() => setDraft({ mix: start })}
-      style={draft.style} mix={draft.mix} perPack={costs?.perPack} onChange={(style, mix) => setDraft({ style, mix })}
-      error={costs?.error} sumLabel="To build" sum={build}
-      rows={<>{sizes.filter((u) => toBuild(u) > 0).map((u) => (
-        <div className="sub" key={u}><span>{toBuild(u)} × {sizeLabel(u)}</span><span>{costs?.perPack[u] === undefined ? '–' : ethText(costs.perPack[u] * BigInt(toBuild(u)))}</span></div>
-      ))}<div className="sub"><span>Available in the manager</span><span>{ethText(m.balance)}</span></div>
-        {short > 0n && <div className="row2"><span className="k">Add to build all</span><span>{ethText(short)} ETH</span></div>}</>}>
-      <button className="btn lg" disabled={!!tx.busy || !owner || !packCount(draft.mix)} onClick={save}>{tx.busy ? `${tx.busy}…` : 'Save packs'}</button>
-      <TxHelper tx={tx}><button className="link quiet" onClick={onDone}>Cancel</button></TxHelper>
-    </ManagerDesign>
+    <ManagerDesign fresh={false} style={draft.style} mix={draft.mix} onChange={(style, mix) => setDraft({ style, mix })} onReset={() => setDraft({ mix: start })}
+      view={view} note={changed ? 'Projected at the new counts.' : m.book.active.length < packCount(draft.mix) ? 'Projected: some packs not listed yet.' : undefined} error={costs?.error}
+      side={(
+        <div className="totals">
+          <div><span>Needed to build the target</span>{figureEth(needed)}</div>
+          <div><span>Available in the manager</span>{figureEth(m.balance)}</div>
+          {shortBy > 0n
+            ? <div><b>Deposited when you save</b>{figureEth(shortBy)}</div>
+            : <div><span>Above what's needed</span>{figureEth(needed === undefined ? undefined : m.balance - needed)}</div>}
+        </div>
+      )}
+      pin={(
+        <div className="pin">
+          <div className="pin-bar">
+            <span className="pin-price">{view ? <><b>{oneIn(view.any)}</b> draws</> : '–'}</span>
+            <button className="btn lg" disabled={!!tx.busy || !changed || !packCount(draft.mix)} onClick={save}>{tx.busy ? `${tx.busy}…` : 'Save changes'}</button>
+          </div>
+          {changed && <p className="note steps-note" style={{ marginTop: 10 }}>{actions.join(', ').replace(/^./, (c) => c.toUpperCase())}. Up to {actions.length} confirmation{actions.length === 1 ? '' : 's'} in your wallet.</p>}
+        </div>
+      )} />
   );
 }
 
+const SETTING_GROUPS: [string, string][] = [['general', 'General'], ['numbers', 'Numbers']];
+
+/** The Settings tab, as the community pool settings: an index and grouped rows. */
+function ManagerSettings({ m, manager, me, owner, tx }: { m: LiveManager; manager: Address; me: Address; owner: boolean; tx: ManagerTx }) {
+  const [at, setAt] = useState('general');
+  const [confirmExit, setConfirmExit] = useState(false);
+  const busy = !!tx.busy;
+  const control = (name: string, fn: string, args: unknown[]) => tx.send(name, [() => tx.write({ address: manager, abi: packManagerAbi, functionName: fn, args } as never)]);
+  const go = (id: string) => { setAt(id); document.getElementById(`set-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const budget = (cap: bigint, rate: bigint, now: bigint) => `${eth(now, 4)} of ${eth(cap, 3)} ETH · ${eth(rate, 3)} ETH a day`;
+  const group = (id: string, title: string, desc: string, rows: ReactNode) => (
+    <div className="grp" id={`set-${id}`}><h2 className="h">{title}</h2><p className="desc">{desc}</p>{rows}</div>
+  );
+  return (
+    <main className="page st">
+      <nav className="idx" aria-label="Settings sections">
+        {SETTING_GROUPS.map(([id, title]) => <button key={id} aria-current={at === id} onClick={() => go(id)}>{title}</button>)}
+      </nav>
+      <section>
+        {group('general', 'General', 'Whether the manager lists new packs, and taking everything back out.', <>
+          <SRow label="New listings" desc="Pausing stops new listings. Listed packs stay listed." value={m.listingPaused ? 'Paused' : 'On'}>
+            <button className="btn sec" disabled={busy || !owner || m.exiting} onClick={() => control(m.listingPaused ? 'Resume listings' : 'Pause new listings', 'setListingPaused', [!m.listingPaused])}>{m.listingPaused ? 'Resume' : 'Pause'}</button>
+          </SRow>
+          <SRow label="Exit mode" desc={confirmExit ? 'Every pack will be unlisted and turned back into ETH. Confirm to send.' : 'Unlists every pack and turns it back into ETH. You can leave exit mode later.'} value={m.exiting ? 'On' : 'Off'}>
+            {m.exiting
+              ? <button className="btn sec" disabled={busy || !owner} onClick={() => control('Leave exit mode', 'setExiting', [false])}>Leave exit mode</button>
+              : confirmExit
+                ? <><button className="link quiet" onClick={() => setConfirmExit(false)}>Cancel</button><button className="btn sec" disabled={busy} onClick={() => { setConfirmExit(false); control('Start exit', 'setExiting', [true]); }}>Confirm exit</button></>
+                : <button className="btn sec" disabled={busy || !owner} onClick={() => setConfirmExit(true)}>Start exit</button>}
+          </SRow>
+          <SRow label="Idle packs" desc="Takes unlisted packs to your wallet." value={String(m.book.idle)}>
+            <button className="btn sec" disabled={busy || !owner || m.book.idle === 0} onClick={() => control('Withdraw packs', 'withdrawPacks', [me, BigInt(m.book.idle)])}>Withdraw packs</button>
+          </SRow>
+        </>)}
+        {group('numbers', 'Numbers', 'The settings the manager was created with.', <>
+          <SRow label="Backing" value={`${(m.params.backingRatioBps / 10_000).toFixed(4)}× pack value`} />
+          <SRow label="Operating reserve" value={`${eth(m.params.reserve, 5)} ETH`} />
+          <SRow label="Pack sizes allowed" value={`${Array.from({ length: 31 }, (_, u) => u).filter((u) => (m.params.packUnitsMask >> BigInt(u)) & 1n).map((u) => (u / 100).toFixed(2)).join(', ')} ETH`} />
+          <SRow label="Routine keeper budget" value={budget(m.params.routineCap, m.params.routineRate, m.budget[0])} />
+          <SRow label="Essential keeper budget" value={budget(m.params.essentialCap, m.params.essentialRate, m.budget[1])} />
+          <SRow label="Gas ceiling" value={`${(Number(m.params.gasCeiling) / 1e9).toFixed(2)} gwei`} />
+          <SRow label="Minimum edge" value={`${(m.params.minEdgeBps / 100).toFixed(2)}%`} />
+          <SRow label="Shapes mint fee now" value={`${eth(m.mintFee, 6)} ETH a Shape`} />
+        </>)}
+      </section>
+    </main>
+  );
+}

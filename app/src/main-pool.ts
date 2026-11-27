@@ -15,6 +15,14 @@ export const MANAGER_FACTORY = (import.meta.env?.VITE_MANAGER_FACTORY as string 
 export const MAIN_FROM_BLOCK = BigInt(import.meta.env?.VITE_MAIN_FROM_BLOCK as string | undefined ?? 0);
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
+export const FWA: Address = '0x958C41181182e76F221331b2755b77D9e1426A98';
+
+/** The main pool's total listing weight and its draw price (FWA acquisitionFee). */
+export async function readMainPool(pub: Pub, fwa: Address = FWA, blockNumber?: bigint) {
+  const r = (functionName: 'totalWeight' | 'acquisitionFee') => pub.readContract({ address: fwa, abi: fwaV2Abi, functionName, blockNumber }) as Promise<bigint>;
+  const [totalWeight, drawPrice] = await Promise.all([r('totalWeight'), r('acquisitionFee')]);
+  return { totalWeight, drawPrice };
+}
 /** VaultLib constants: the reference pack (one 0.05 and one 0.01 ETH Shape) and the position value charges scale by. */
 export const PACK_UNITS = 6n;
 export const PACK_VALUE = parseEther('0.06');
@@ -84,7 +92,7 @@ async function readBook(pub: Pub, address: Address, abi: typeof packVaultAbi | t
   const pendingFees = fees.reduce((a, b) => a + b, 0n);
   const sum = (state: number, f: (p: (typeof positions)[number]) => bigint) => positions.filter((p) => p.state === state).reduce((a, p) => a + f(p), 0n);
   return {
-    ids, listed: Number(activeCount), bought: positions.filter((p) => p.state === ALLOCATED || p.state === OWED).length, idle: Number(idlePacks),
+    ids, positions: ids.map((id, i) => ({ id, ...positions[i] })), active: positions.filter((p) => p.state === ACTIVE), listed: Number(activeCount), bought: positions.filter((p) => p.state === ALLOCATED || p.state === OWED).length, idle: Number(idlePacks),
     inListed: sum(ACTIVE, (p) => p.value + p.backing), inBought: sum(ALLOCATED, (p) => p.value) + sum(OWED, (p) => p.value),
     // NAV = free ETH + tracked Shapes backing + active FWA backing + pending active fees + live FWA fee credit.
     freeEth, tracked, backing, fees: pendingFees + credit, allocated, nav: freeEth + tracked + backing + pendingFees + credit,
@@ -206,13 +214,14 @@ export async function readManager(pub: Pub, manager: Address) {
   ]);
   const book = await readBook(pub, manager, packManagerAbi, fwa, blockNumber);
   const design = await r<bigint>('design');
+  const pool = await readMainPool(pub, fwa, blockNumber);
   const held = Object.fromEntries(await Promise.all(sizesOf(decodeMix(design)).map(async (u) => [u, Number(await r<bigint>('recipeCount', [BigInt(u)]))] as const)));
   const logs = await accountLogs(pub, manager, [POSITION_UPDATED, CASH_RECEIPT, KEEPER_PAID, TOKENS_BURNED, WITHDRAWN], deploymentBlock, blockNumber);
   const updates = named(logs, 'PositionUpdated').map((l) => argsOf<{ listingId: bigint; state: number }>(l));
   const keeps = named(logs, 'CashReceipt').map((l) => argsOf<{ listingId: bigint; outcome: number }>(l)).filter((a) => a.outcome === 1).map((a) => a.listingId);
   const total = (name: string) => named(logs, name).reduce((t, l) => t + argsOf<{ amount: bigint }>(l).amount, 0n);
   return {
-    manager, owner, blockNumber, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth, design, held,
+    manager, owner, blockNumber, pool, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth, design, held,
     ...outcomes(updates, keeps), keeperPay: total('KeeperPaid'), tokensBurned: total('TokensBurned'), withdrawn: total('Withdrawn'),
   };
 }
