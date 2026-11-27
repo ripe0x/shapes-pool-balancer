@@ -34,13 +34,13 @@ const ACTIVE = 1, ALLOCATED = 2, OWED = 3;
 /** deploy/manager.json in shapes-fwa-pool: the default PackManagerFactory.create parameters. The designer sets
  *  packUnitsMask from the chosen mix. */
 export const MANAGER_PARAMS = {
-  minEdgeBps: 100, bufferBps: 0, distributionBps: 0, payMarkupBps: 0, keeperShareBps: 2500, upliftBoundBps: 25,
+  minEdgeBps: 100, distributionBps: 0, keeperShareBps: 2500, upliftBoundBps: 25,
   packUnitsMask: 8n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n,
   workFee: 20000000000000n, routineCap: 30000000000000000n, routineRate: 10000000000000000n,
-  essentialCap: 10000000000000000n, essentialRate: 5000000000000000n, reserve: 6000000000000000n, tvlCap: 0n,
+  reserve: 6000000000000000n, tvlCap: 0n,
   backingRatioBps: 11053, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
   minDistribution: 10000000000000000n,
-  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 360000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, liquidate: 75000, liquidatePack: 80000, redeemShape: 35000, recoveryBase: 100000, recoveryShape: 35000, recoveryUnseal: 70000, harvest: 125000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
+  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 360000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
 } as const;
 
 // Events the strategy libraries emit by DELEGATECALL: they are logged by the account but absent from its ABI.
@@ -56,7 +56,7 @@ const claimedAbi = parseAbi(['event Claimed(address indexed holder, uint256 amou
 
 type Pub = PublicClient;
 type Params = { reserve: bigint; tvlCap: bigint; gasCeiling: bigint; essentialCeiling: bigint; workFee: bigint; minEdgeBps: number;
-  routineCap: bigint; routineRate: bigint; essentialCap: bigint; essentialRate: bigint; maxTip: bigint; packUnitsMask: bigint; backingRatioBps: number };
+  routineCap: bigint; routineRate: bigint; maxTip: bigint; packUnitsMask: bigint; backingRatioBps: number };
 
 /** Account logs from `from`, fetched once and then only past the last fetched block less a reorg window. */
 type EventLog = { eventName?: string; blockNumber: bigint | null; args?: unknown };
@@ -121,12 +121,12 @@ export async function readVault(pub: Pub, vault: Address, me?: Address) {
     pub.readContract({ address: vault, abi: packVaultAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
   const fwa = await r<Address>('fwa');
   const [totalShares, lastNav, epoch, highWaterMark, depositsPaused, windingDown, pendingDepositTotal, lockedShares,
-    redemptionReserve, claimableTotal, distributionReserve, lastCheckpointInterval, requestCharge, deployCharge, unwindCharge,
+    redemptionReserve, claimableTotal, distributionReserve, lastCheckpointInterval, requestCharge, deployCharge,
     params, budget, deploymentBlock, edge] = await Promise.all([
     r<bigint>('totalShares'), r<bigint>('lastNav'), r<bigint>('epoch'), r<bigint>('highWaterMark'), r<boolean>('depositsPaused'),
     r<boolean>('windingDown'), r<bigint>('pendingDepositTotal'), r<bigint>('lockedShares'), r<bigint>('redemptionReserve'),
     r<bigint>('claimableTotal'), r<bigint>('distributionReserve'), r<bigint>('lastCheckpointInterval'), r<bigint>('requestCharge'),
-    r<bigint>('deployCharge'), r<bigint>('unwindCharge'), r<Params>('getParams'), r<readonly [bigint, bigint]>('budget'),
+    r<bigint>('deployCharge'), r<Params>('getParams'), r<bigint>('budget'),
     r<bigint>('deploymentBlock'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]),
   ]);
   const book = await readBook(pub, vault, packVaultAbi, fwa, blockNumber);
@@ -142,7 +142,7 @@ export async function readVault(pub: Pub, vault: Address, me?: Address) {
   return {
     vault, fwa, blockNumber, now: block.timestamp, totalShares, lastNav, epoch, highWaterMark, depositsPaused, windingDown,
     pendingDepositTotal, lockedShares, claims: redemptionReserve + claimableTotal + distributionReserve, lastCheckpointInterval,
-    requestCharge, deployCharge, unwindCharge, params, budget, edge, book, pricePerShare, lastCheckpoint, keeperPaySince, tokensBurned,
+    requestCharge, deployCharge, params, budget, edge, book, pricePerShare, lastCheckpoint, keeperPaySince, tokensBurned,
     holder: me ? await readHolder(pub, vault, me, blockNumber, epoch) : undefined,
   };
 }
@@ -181,13 +181,6 @@ export function depositShares(value: bigint, v: Pick<Vault, 'requestCharge' | 'd
   return ((net - charge) * 10n ** 18n) / v.pricePerShare;
 }
 
-/** ETH a redemption request must carry (PackVault.requestRedeem): the request charge plus the unwind charge on the
- *  shares' value at the last checkpoint. */
-export function redeemCharge(shares: bigint, v: Pick<Vault, 'requestCharge' | 'unwindCharge' | 'lastNav' | 'totalShares'>) {
-  if (v.totalShares === 0n) return v.requestCharge;
-  return v.requestCharge + (((shares * v.lastNav) / v.totalShares) * v.unwindCharge) / POSITION_VALUE;
-}
-
 export function vaultStatus(v: Pick<Vault, 'windingDown' | 'depositsPaused' | 'pendingDepositTotal' | 'lockedShares' | 'lastCheckpointInterval' | 'now'>) {
   if (v.windingDown) return { head: 'Winding down.', body: "The vault is returning every holder's share. Claims stay open." };
   if (v.depositsPaused) return { head: 'Deposits paused.', body: 'Redemptions and claims still work.' };
@@ -209,7 +202,7 @@ export async function readManager(pub: Pub, manager: Address) {
   const fwa = await r<Address>('fwa');
   const [owner, listingPaused, exiting, params, budget, edge, deploymentBlock, mintFee] = await Promise.all([
     r<Address>('owner'), r<boolean>('listingPaused'), r<boolean>('windingDown'), r<Params>('getParams'),
-    r<readonly [bigint, bigint]>('budget'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]), r<bigint>('deploymentBlock'),
+    r<bigint>('budget'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]), r<bigint>('deploymentBlock'),
     pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee', blockNumber }) as Promise<bigint>,
   ]);
   const book = await readBook(pub, manager, packManagerAbi, fwa, blockNumber);

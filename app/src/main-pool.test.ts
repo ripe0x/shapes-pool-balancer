@@ -1,6 +1,6 @@
 import { parseEther } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { POSITION_VALUE, creationState, depositShares, managerStatus, outcomes, packCost, packsFor, redeemCharge, vaultStatus, type ManagerCreation } from './main-pool';
+import { POSITION_VALUE, creationState, depositShares, managerStatus, outcomes, packCost, packsFor, vaultStatus, type ManagerCreation } from './main-pool';
 
 const eth = parseEther;
 
@@ -18,13 +18,6 @@ describe('vault request math (mirrors PackVault.deposit and requestRedeem)', () 
 
   it('buys nothing at or below the request charge', () => {
     expect(depositShares(1000n, { requestCharge: 1000n, deployCharge: 0n, pricePerShare: eth('1') })).toBe(0n);
-  });
-
-  it('charges the request charge plus the unwind charge on the shares value at the last checkpoint', () => {
-    const v = { requestCharge: eth('0.0001'), unwindCharge: eth('0.001'), lastNav: eth('20'), totalShares: eth('2') };
-    // 0.5 shares are worth 5 ETH; 5 / 0.1248 positions at 0.001 ETH each.
-    expect(redeemCharge(eth('0.5'), v)).toBe(eth('0.0001') + (eth('5') * eth('0.001')) / POSITION_VALUE);
-    expect(redeemCharge(eth('0.5'), { ...v, unwindCharge: 0n })).toBe(eth('0.0001'));
   });
 });
 

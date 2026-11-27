@@ -16,7 +16,7 @@ import {
 } from '../../shared/manager-design';
 import {
   MAIN_POOL_OPEN, MANAGER_FACTORY, MANAGER_PARAMS, MIN_DEPOSIT, POSITION_VALUE, VAULT, checkCreation, clearManagerCreation,
-  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readMainPool, readManager, readVault, redeemCharge,
+  depositShares, findManagers, loadManagerCreation, managerStatus, packCost, packsFor, readMainPool, readManager, readVault,
   saveManagerCreation, vaultStatus, type CreationState, type Manager, type ManagerCreation, type Vault,
 } from './main-pool';
 
@@ -230,7 +230,7 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
   const busy = !!tx.busy;
 
   // Deposit: ETH in, shares out at the next checkpoint. Redeem: shares in, ETH to claim after it.
-  const fee = mode === 'deposit' ? v.requestCharge : value === undefined ? v.requestCharge : redeemCharge(value, v);
+  const fee = v.requestCharge;
   const net = value !== undefined && value > v.requestCharge ? value - v.requestCharge : 0n;
   const building = (net * v.deployCharge) / (POSITION_VALUE + v.deployCharge);
   const disabled = !me ? undefined
@@ -245,7 +245,7 @@ function VaultPage({ vault, me }: { vault: ReturnType<typeof useVault>; me?: Add
     if (!value) return;
     const step = mode === 'deposit'
       ? async () => tx.write({ ...V, functionName: 'deposit', args: [await expected()], value })
-      : async () => tx.write({ ...V, functionName: 'requestRedeem', args: [value, await expected()], value: redeemCharge(value, v) });
+      : async () => tx.write({ ...V, functionName: 'requestRedeem', args: [value, await expected()], value: v.requestCharge });
     tx.send(label, [step]).then((ok) => ok && setAmount(''));
   };
   const cancel = () => tx.send('Cancel deposit', [() => tx.write({ ...V, functionName: 'cancelDeposit' })]);
@@ -1094,8 +1094,7 @@ function ManagerSettings({ m, manager, me, owner, tx }: { m: LiveManager; manage
           <SRow label="Backing" value={`${(m.params.backingRatioBps / 10_000).toFixed(4)}× pack value`} />
           <SRow label="Operating reserve" value={`${eth(m.params.reserve, 5)} ETH`} />
           <SRow label="Pack sizes allowed" value={`${Array.from({ length: 31 }, (_, u) => u).filter((u) => (m.params.packUnitsMask >> BigInt(u)) & 1n).map((u) => (u / 100).toFixed(2)).join(', ')} ETH`} />
-          <SRow label="Routine keeper budget" value={budget(m.params.routineCap, m.params.routineRate, m.budget[0])} />
-          <SRow label="Essential keeper budget" value={budget(m.params.essentialCap, m.params.essentialRate, m.budget[1])} />
+          <SRow label="Keeper budget" value={budget(m.params.routineCap, m.params.routineRate, m.budget)} />
           <SRow label="Gas ceiling" value={`${(Number(m.params.gasCeiling) / 1e9).toFixed(2)} gwei`} />
           <SRow label="Minimum edge" value={`${(m.params.minEdgeBps / 100).toFixed(2)}%`} />
           <SRow label="Shapes mint fee now" value={`${eth(m.mintFee, 6)} ETH a Shape`} />
