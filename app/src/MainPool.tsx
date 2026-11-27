@@ -478,7 +478,8 @@ function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mi
   const shown = [...new Set([...HAND_SIZES, ...sizesOf(mix)])].sort((a, b) => a - b);
   return (
     <>
-            <div className="tiles" role="group" aria-label="Pack style">
+            <div>
+            <div className="tiles three" role="group" aria-label="Pack style">
               {PACK_STYLE_TILES.map((g) => (
                 <button key={g.key} aria-pressed={style === g.key} onClick={() => choose(g.key)}>
                   <span className="t">{g.label}</span><span className="s">{g.hint}</span>
@@ -504,7 +505,8 @@ function PackDesigner({ style, mix, perPack, onChange }: { style?: PackStyle; mi
                 ))}
               </div>
             )}
-            <div className="rule" style={{ marginTop: 24 }}>
+            </div>
+            <div className="rule">
               <div className="ctl-row"><label className="ctl" htmlFor="packs">Number of packs</label><span className="big-v">{total}</span></div>
               <input id="packs" type="range" min={1} max={MAX_PACKS} step={1} value={Math.max(1, total)} aria-valuetext={`${total} packs`}
                 onChange={(e) => setTotal(Number(e.target.value))} />
@@ -524,6 +526,7 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
     setStyleState(st); setMixState(m);
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ style: st ?? null, mix: m })); } catch { /* storage unavailable */ }
   };
+  const [how, setHow] = useState(false);
   const total = packCount(mix);
   const sizes = sizesOf(mix);
   const costs = usePackCosts(sizes);
@@ -557,35 +560,61 @@ function CreateManager({ me, onCreated }: { me?: Address; onCreated: () => void 
     }]]);
     if (ok) onCreated();
   };
+  const secHead = (n: string, title: string, desc: string) => (
+    <div className="sec-head"><span className="sec-n">{n}</span><div><h2 className="sec-t">{title}</h2><p className="sec-d">{desc}</p></div></div>
+  );
   return (
-    <>
-      <StatusBar head="No manager yet." body="Nothing is sent until you create it and confirm in your wallet." />
-      <main className="page cols design mp">
-        <section>
-          <h1 className="title">Create a personal manager</h1>
-          <p className="lead">It runs the shared vault's strategy with only your ETH. You own it from the moment it is created; the factory keeps no control and charges no fee.</p>
-          <Group title="Packs" desc="Shape packs your manager builds and keeps listed on FWA's main pool. Each pack posts backing at the same ratio to its value.">
+    <main className="page cols design">
+      <section>
+        <span className="crumb">Main pool /</span><h1 className="page-t">Design your manager</h1>
+        <p className="lead">Your own account on FWA's main pool. It builds Shape packs from your ETH and keeps them listed. You own it from the moment it is created; the factory keeps no control and charges no fee.</p>
+        <div className="row" style={{ marginTop: 14, gap: 24 }}>
+          <button className="disclose" aria-expanded={how} onClick={() => setHow(!how)}>How a manager works {how ? '▴' : '▾'}</button>
+          <button className="link quiet" onClick={() => keep('small', presetMix('small', DEFAULT_PACKS))}>Reset to defaults</button>
+        </div>
+        {how && (
+          <ol className="how">
+            <li>Every draw on FWA's main pool pays each listed pack a share of its fee, picked or not.</li>
+            <li>When a pack is picked, the buyer keeps it or takes its backing in ETH. Either way the manager is paid and lists a pack again.</li>
+            <li>Backing is {(MANAGER_PARAMS.backingRatioBps / 10_000).toFixed(4)}× pack value: a kept pack repays its Shapes and mint fees.</li>
+            <li>Only you can withdraw. Exit mode turns every pack back into ETH.</li>
+          </ol>
+        )}
+        <div className="dsec">
+          {secHead('01', 'Packs', 'Shape packs your manager builds and keeps listed on the main pool.')}
+          <div className="sec-body">
             <PackDesigner style={style} mix={mix} perPack={costs?.perPack} onChange={keep} />
-          </Group>
-        </section>
-        <section className="sticky results">
-          <div className="kvs">
-            {sizes.map((u) => (
-              <div className="kv" key={u}><span className="k">{mix[u]} × {sizeLabel(u)}</span><span>{costs?.perPack[u] === undefined ? '–' : `${ethText(costs.perPack[u] * BigInt(mix[u]))} ETH`}</span></div>
-            ))}
-            <div className="kv"><span className="k">Operating reserve</span><span>{ethText(MANAGER_PARAMS.reserve)} ETH</span></div>
-            <div className="kv"><span className="k">To fund</span><span>{value === undefined ? '–' : `${ethText(value)} ETH`}</span></div>
-            <div className="kv"><span className="k">Fee</span><span>None</span></div>
           </div>
-          {costs?.error && <p className="note error" role="status">{costs.error}</p>}
-          <div className="pin">
-            {!me ? <Connect className="btn lg" />
-              : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : disabled ?? `Create manager with ${ethText(value!)} ETH`}</button>}
-            <TxHelper tx={tx}>One confirmation.</TxHelper>
+        </div>
+        <div className="dsec">
+          {secHead('02', 'Before you create', 'Costs are quoted at current gas and mint fees. If either rises, packs need more ETH and are built in stages.')}
+          <div className="sec-body">
+            <p className="note">The operating reserve of {ethText(MANAGER_PARAMS.reserve)} ETH stays in the manager to pay keepers.</p>
+            {costs?.error && <p className="note error" role="status">{costs.error}</p>}
           </div>
-        </section>
-      </main>
-    </>
+        </div>
+      </section>
+      <section className="sticky results side">
+        <div>
+          <h2 className="side-h">Packs</h2>
+          <div className="pay"><span className="fig56">{total}</span></div>
+          <div className="packs" aria-hidden="true" style={{ marginTop: 16 }}>{sizes.flatMap((u) => Array.from({ length: mix[u] }, (_, i) => <span key={`${u}-${i}`} title={sizeLabel(u)} style={{ background: '#fff', width: 12 + u, height: 12 + u }} />))}</div>
+        </div>
+        <div className="cost">
+          <div className="sum"><span>To create the manager</span><span><b>{value === undefined ? '–' : ethText(value)}</b><span className="u13">ETH</span></span></div>
+          {sizes.map((u) => (
+            <div className="sub" key={u}><span>{mix[u]} × {sizeLabel(u)}</span><span>{costs?.perPack[u] === undefined ? '–' : ethText(costs.perPack[u] * BigInt(mix[u]))}</span></div>
+          ))}
+          <div className="sub"><span>Operating reserve</span><span>{ethText(MANAGER_PARAMS.reserve)}</span></div>
+          <div className="row2"><span className="k">Fee</span><span>None</span></div>
+        </div>
+        <div className="pin">
+          {!me ? <Connect className="btn lg" />
+            : <button className="btn lg" disabled={!!tx.busy || !!disabled} onClick={run}>{tx.busy ? `${tx.busy}…` : disabled ?? `Create manager with ${ethText(value!)} ETH`}</button>}
+          <TxHelper tx={tx}>One confirmation.</TxHelper>
+        </div>
+      </section>
+    </main>
   );
 }
 

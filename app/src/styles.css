@@ -629,6 +629,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .rulerow .seg { margin: 0; }
 .rulerow .seg button { font-size: 15px; white-space: nowrap; }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .design > section.side { gap: 24px; }
 .side-h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
 .design .pay { margin-top: 12px; display: flex; align-items: baseline; }
@@ -658,6 +659,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 }
 @media (max-width: 900px) {
   .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tiles.three { grid-template-columns: 1fr; }
   .sec-body { margin-left: 0; }
   .nrow { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 14px; }
   .nrow .thumb { width: 48px; height: 48px; }
