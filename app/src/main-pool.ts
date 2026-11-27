@@ -38,7 +38,7 @@ export const MANAGER_PARAMS = {
   packUnitsMask: 8n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n,
   workFee: 20000000000000n, routineCap: 30000000000000000n, routineRate: 10000000000000000n,
   essentialCap: 10000000000000000n, essentialRate: 5000000000000000n, reserve: 6000000000000000n, tvlCap: 0n,
-  backingRatioBps: 10607, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
+  backingRatioBps: 11053, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
   minDistribution: 10000000000000000n,
   gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 360000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, liquidate: 75000, liquidatePack: 80000, redeemShape: 35000, recoveryBase: 100000, recoveryShape: 35000, recoveryUnseal: 70000, harvest: 125000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
 } as const;
