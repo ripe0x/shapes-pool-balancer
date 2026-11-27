@@ -18,7 +18,7 @@ import { readFactoryCreation } from './factory-creation';
 import { bankrollResult, operatingCash, profitAbi, readProfitVersion, withdrawalBreakdown } from './profit';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
-import { MAIN_POOL_OPEN, VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
 import { activationBatch, closeoutState, curatedWitness, deliveryHistory, inventoryBatches, isHeld, isRefunded, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -730,7 +730,7 @@ export function App() {
         <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
-          {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
+          {(VAULT || MANAGER_FACTORY) && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
           <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (

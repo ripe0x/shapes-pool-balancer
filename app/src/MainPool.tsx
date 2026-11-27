@@ -21,8 +21,8 @@ import {
 } from './main-pool';
 
 export type MainTab = 'overview' | 'vault' | 'manager';
-/** Without a manager factory there is nothing to compare: the section is the vault alone. */
-export const mainTabFor = (t: MainTab): MainTab => (MANAGER_FACTORY ? t : 'vault');
+/** With only one product configured the section is that product alone; nothing to compare. */
+export const mainTabFor = (t: MainTab): MainTab => (!MANAGER_FACTORY ? 'vault' : !VAULT ? 'manager' : t);
 const TABS: { key: MainTab; label: string }[] = [
   { key: 'overview', label: 'Overview' }, { key: 'vault', label: 'Shared vault' }, { key: 'manager', label: 'Your manager' },
 ];
@@ -92,7 +92,7 @@ export function StatusBar({ head, body, link }: { head: string; body: string; li
 export function Home({ hasPools, onNew, onList, onMain }: { hasPools: boolean; onNew: () => void; onList: () => void; onMain: (t: MainTab) => void }) {
   const { data: v } = useVault();
   return (
-    <main className={`home${VAULT ? '' : ' single'}`}>
+    <main className={`home${VAULT || MANAGER_FACTORY ? '' : ' single'}`}>
       <section>
         <span className="eyebrow">For creators</span>
         <h1 className="title">Community pools</h1>
@@ -102,14 +102,18 @@ export function Home({ hasPools, onNew, onList, onMain }: { hasPools: boolean; o
           {hasPools && <button className="link" onClick={onList}>Your community pools →</button>}
         </div>
       </section>
-      {VAULT && (
+      {(VAULT || MANAGER_FACTORY) && (
         <section>
           <span className="eyebrow">For depositors</span>
           <h1 className="title">Main pool</h1>
-          <p className="lead">Earn on FWA's main pool. Your ETH builds 0.06 ETH Shape packs and lists them. Deposit with other holders, or run your own manager.</p>
+          <p className="lead">{VAULT
+            ? "Earn on FWA's main pool. Your ETH builds Shape packs and lists them. Deposit with other holders, or run your own manager."
+            : "Earn on FWA's main pool. Your ETH builds Shape packs and lists them in your own manager."}</p>
           <div className="acts">
-            <button className="btn big" onClick={() => onMain('vault')}>Deposit in the shared vault</button>
-            {MANAGER_FACTORY && <button className="link" onClick={() => onMain('manager')}>Create a manager →</button>}
+            {VAULT && <button className="btn big" onClick={() => onMain('vault')}>Deposit in the shared vault</button>}
+            {MANAGER_FACTORY && (VAULT
+              ? <button className="link" onClick={() => onMain('manager')}>Create a manager →</button>
+              : <button className="btn big" onClick={() => onMain('manager')}>Create a manager</button>)}
           </div>
           {v && <p className="fact">Shared vault: {eth(v.book.nav, 2)} ETH, {v.book.listed} packs listed.</p>}
         </section>
@@ -127,7 +131,7 @@ export function MainPool({ tab, setTab }: { tab: MainTab; setTab: (t: MainTab) =
   const t = mainTabFor(tab);
   return (
     <>
-      {MANAGER_FACTORY && (
+      {MANAGER_FACTORY && VAULT && (
         <nav className="tabs sub" aria-label="Main pool">
           {TABS.map((x) => <button key={x.key} aria-current={t === x.key ? 'page' : undefined} onClick={() => setTab(x.key)}>{x.label}</button>)}
         </nav>
