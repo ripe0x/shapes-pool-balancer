@@ -227,13 +227,21 @@ export async function readManager(pub: Pub, manager: Address) {
 }
 
 /** `cost` is one more pack's ETH (`packCost`), undefined when unknown. */
-export function managerStatus(m: Pick<Manager, 'exiting' | 'listingPaused' | 'edge' | 'book' | 'balance' | 'params'>, cost: bigint | undefined) {
+/** `target`: packs below the owner's counts and the ETH short of building them with the reserve, when counts are set. */
+export function managerStatus(m: Pick<Manager, 'exiting' | 'listingPaused' | 'edge' | 'book' | 'balance' | 'params'>, cost: bigint | undefined,
+  target?: { missing: number; short: bigint }) {
   if (m.exiting) return { head: 'Exiting.', body: 'Packs are being unlisted and turned back into ETH.' };
   if (m.listingPaused) return { head: 'Listing paused.', body: 'Listed packs stay listed. New packs are not built.' };
   if (!m.edge[2]) return { head: 'New investment paused.', body: "FWA conditions don't allow new packs right now. Withdrawals still work." };
   const need = cost === undefined ? 0n : cost + m.params.reserve;
   if (m.book.listed === 0 && m.book.idle === 0 && cost !== undefined && m.balance < need) {
     return { head: 'Not enough ETH to list.', body: `Add at least ${trim(need - m.balance)} ETH to build a pack.`, short: need - m.balance };
+  }
+  if (target && target.missing > 0) {
+    const packs = `${target.missing} pack${target.missing === 1 ? '' : 's'}`;
+    return target.short > 0n
+      ? { head: 'Not enough ETH.', body: `${packs} in your target ${target.missing === 1 ? "isn't" : "aren't"} built. Add ${trim(target.short)} ETH or lower the counts.`, short: target.short }
+      : { head: 'Building.', body: `${packs} in your target ${target.missing === 1 ? 'is' : 'are'} funded and wait for the next keeper run.` };
   }
   return { head: 'Listing.', body: `${m.book.listed} pack${m.book.listed === 1 ? '' : 's'} on FWA's main pool. Nothing needs attention.` };
 }

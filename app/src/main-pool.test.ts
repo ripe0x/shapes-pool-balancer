@@ -57,6 +57,14 @@ describe('manager status and capacity', () => {
     expect(st.head).toBe('Not enough ETH to list.');
     expect(st.short).toBe(cost + eth('0.005') - eth('0.1'));
   });
+  it('reports packs below the target before listing', () => {
+    expect(managerStatus(m as never, cost, { missing: 0, short: 0n }).head).toBe('Listing.');
+    expect(managerStatus(m as never, cost, { missing: 2, short: 0n }).body).toBe('2 packs in your target are funded and wait for the next keeper run.');
+    const st = managerStatus(m as never, cost, { missing: 1, short: eth('0.0004') });
+    expect(st.body).toBe("1 pack in your target isn't built. Add 0.0004 ETH or lower the counts.");
+    expect(st.short).toBe(eth('0.0004'));
+    expect(managerStatus({ ...m, listingPaused: true } as never, cost, { missing: 1, short: 1n }).head).toBe('Listing paused.');
+  });
   it('counts whole packs above the reserve', () => {
     expect(cost).toBe(eth('0.127'));
     expect(packsFor(eth('1'), eth('0.005'), cost)).toBe(7n);

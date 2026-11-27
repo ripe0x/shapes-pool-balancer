@@ -810,7 +810,6 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
   const [tab, setTab] = useState<ManagerTab>('overview');
   if (!m) return <p className={`txline${error ? ' bad' : ''}`}>{error ?? 'Loading your manager…'}</p>;
   const cost = v && m.edge[2] ? packCost(m.edge[1], v.deployCharge) : undefined;
-  const st = managerStatus(m, cost);
   const owner = m.owner.toLowerCase() === me.toLowerCase();
   return (
     <div className="pp">
@@ -835,7 +834,7 @@ function ManagerPage({ manager, v, me, count, index, setIndex }: { manager: Addr
           {MANAGER_TABS.map(([t, label]) => <button key={t} aria-current={tab === t ? 'page' : undefined} onClick={() => setTab(t)}>{label}</button>)}
         </nav>
       </div>
-      <div className="status" role="status"><span><b>{st.head}</b> {st.body}</span></div>
+      <ManagerStatus m={m} cost={cost} />
       <TxLine tx={tx} />
       {error && <p className="txline bad">{error}</p>}
       {!owner && <p className="txline">You are not the manager's owner. Changes need the owner's wallet.</p>}
@@ -857,18 +856,31 @@ const listedBySize = (m: LiveManager) => {
   return by;
 };
 
+/** The owner's target against what the manager holds: packs still to build and the ETH short of building them
+ *  with the reserve, quoted at the manager's own parameters. */
+function useTargetFunding(m: LiveManager) {
+  const target = decodeMix(m.design);
+  const costs = usePackCosts(sizesOf(target), m.params);
+  const toBuild: PackMix = Object.fromEntries(sizesOf(target).map((u) => [u, Math.max(0, target[u] - (m.held[u] ?? 0))]));
+  const build = costs && !costs.error ? costParts(toBuild, costs.perPack)?.total : undefined;
+  const needed = build === undefined ? undefined : build + m.params.reserve;
+  const short = needed !== undefined && needed > m.balance ? needed - m.balance : 0n;
+  return { target, toBuild, missing: sizesOf(toBuild).reduce((t, u) => t + toBuild[u], 0), needed, short };
+}
+
+/** The status line, with the target's funding once it is quoted. */
+function ManagerStatus({ m, cost }: { m: LiveManager; cost?: bigint }) {
+  const f = useTargetFunding(m);
+  const st = managerStatus(m, cost, f.needed === undefined ? undefined : { missing: f.missing, short: f.short });
+  return <div className="status" role="status"><span><b>{st.head}</b> {st.body}</span></div>;
+}
+
 function ManagerOverview({ m, manager, me, owner, tx, setTab }: { m: LiveManager; manager: Address; me: Address; owner: boolean; tx: ManagerTx; setTab: (t: ManagerTab) => void }) {
   const [mode, setMode] = useState<'deposit' | 'claim'>();
   const [amount, setAmount] = useState('');
-  const target = decodeMix(m.design);
+  const { target, toBuild, needed, short: short_, missing: missingPacks } = useTargetFunding(m);
   const listed = listedBySize(m);
   const sizes = [...new Set([...sizesOf(target), ...Object.keys(listed).map(Number)])].sort((a, b) => a - b);
-  const costs = usePackCosts(sizesOf(target), m.params);
-  const toBuild: PackMix = Object.fromEntries(sizesOf(target).map((u) => [u, Math.max(0, target[u] - (m.held[u] ?? 0))]));
-  const buildCost = costs && !costs.error ? costParts(toBuild, costs.perPack)?.total : undefined;
-  const needed = buildCost === undefined ? undefined : buildCost + m.params.reserve;
-  const short_ = needed !== undefined && needed > m.balance ? needed - m.balance : 0n;
-  const missingPacks = sizesOf(toBuild).reduce((t, u) => t + toBuild[u], 0);
   const chance = (b: bigint) => shareOf(weightOf(b), m.pool.totalWeight);
   const items: InvItem[] = [...sizes].sort((a, b) => (listed[b]?.length ?? 0) - (listed[a]?.length ?? 0) || a - b).flatMap((u) => (listed[u] ?? []).map((b, j) => ({
     key: `${u}-${j}`, label: sizeLabel(u), nft: false, value: b, price: b, p: chance(b), mult: Number(b) / Number(m.pool.drawPrice), style: shadeOf(u, sizes),
