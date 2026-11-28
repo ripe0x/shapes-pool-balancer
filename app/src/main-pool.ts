@@ -3,6 +3,7 @@ import { simulateCalls } from 'viem/actions';
 import { fwaV2Abi, packManagerAbi, packManagerFactoryAbi, packVaultAbi } from '../../shared/main-pool-abi';
 import { shapesAbi } from '../../shared/abi';
 import { incrementalRange } from './ledger';
+import { decodeMix, sizesOf } from '../../shared/manager-design';
 
 /** FWA main pool products (ripe0x/shapes-fwa-pool). Each is hidden while its address is unset. */
 /** Launch switch: while false the main pool pages show their content but take no deposits or creations, and the app
@@ -14,6 +15,14 @@ export const MANAGER_FACTORY = (import.meta.env?.VITE_MANAGER_FACTORY as string 
 export const MAIN_FROM_BLOCK = BigInt(import.meta.env?.VITE_MAIN_FROM_BLOCK as string | undefined ?? 0);
 
 const SHAPES: Address = '0x6fE9193276bF7aBCbEE44AB7aFd717d637D6FAf0';
+export const FWA: Address = '0x958C41181182e76F221331b2755b77D9e1426A98';
+
+/** The main pool's total listing weight and its draw price (FWA acquisitionFee). */
+export async function readMainPool(pub: Pub, fwa: Address = FWA, blockNumber?: bigint) {
+  const r = (functionName: 'totalWeight' | 'acquisitionFee') => pub.readContract({ address: fwa, abi: fwaV2Abi, functionName, blockNumber }) as Promise<bigint>;
+  const [totalWeight, drawPrice] = await Promise.all([r('totalWeight'), r('acquisitionFee')]);
+  return { totalWeight, drawPrice };
+}
 /** VaultLib constants: the reference pack (one 0.05 and one 0.01 ETH Shape) and the position value charges scale by. */
 export const PACK_UNITS = 6n;
 export const PACK_VALUE = parseEther('0.06');
@@ -22,12 +31,16 @@ export const POSITION_VALUE = parseEther('0.1248');
 export const MIN_DEPOSIT = parseEther('0.01');
 const ACTIVE = 1, ALLOCATED = 2, OWED = 3;
 
-/** deploy/manager.json in shapes-fwa-pool: the default PackManagerFactory.create parameters. */
+/** deploy/manager.json in shapes-fwa-pool: the default PackManagerFactory.create parameters. The designer sets
+ *  packUnitsMask from the chosen mix. */
 export const MANAGER_PARAMS = {
-  minEdgeBps: 100, bufferBps: 0, distributionBps: 0, payMarkupBps: 0, keeperShareBps: 2500, allocatedBoundBps: 0,
-  packUnitsMask: 64n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n, workFee: 20000000000000n,
-  routineCap: 30000000000000000n, routineRate: 10000000000000000n, essentialCap: 10000000000000000n,
-  essentialRate: 5000000000000000n, reserve: 5000000000000000n, tvlCap: 0n,
+  minEdgeBps: 100, distributionBps: 0, keeperShareBps: 2500, upliftBoundBps: 25,
+  packUnitsMask: 8n, gasCeiling: 500000000n, essentialCeiling: 500000000n, maxTip: 50000000n,
+  workFee: 20000000000000n, routineCap: 30000000000000000n, routineRate: 10000000000000000n,
+  reserve: 6000000000000000n, tvlCap: 0n,
+  backingRatioBps: 11053, acceptedMintFee: 500000000000000n, minDeposit: 10000000000000000n,
+  minDistribution: 10000000000000000n,
+  gasSchedule: { checkpoint: 500000, allocationEntry: 6000, allocationRead: 30000, build: 540000, buildPack: 300000, buildShape: 130000, list: 380000, listed: 825000, sync: 125000, requiredTail: 120000, distributionProof: 80000, journal: 22000, scan: 30000, selected: 225000, synced: 285000, pruned: 45000, unlist: 340000, unlisted: 285000, harvested: 80000, credit: 40000, fund: 40000, overhead: 50000 },
 } as const;
 
 // Events the strategy libraries emit by DELEGATECALL: they are logged by the account but absent from its ABI.
@@ -43,7 +56,7 @@ const claimedAbi = parseAbi(['event Claimed(address indexed holder, uint256 amou
 
 type Pub = PublicClient;
 type Params = { reserve: bigint; tvlCap: bigint; gasCeiling: bigint; essentialCeiling: bigint; workFee: bigint; minEdgeBps: number;
-  routineCap: bigint; routineRate: bigint; essentialCap: bigint; essentialRate: bigint; maxTip: bigint; packUnitsMask: bigint };
+  routineCap: bigint; routineRate: bigint; maxTip: bigint; packUnitsMask: bigint; backingRatioBps: number };
 
 /** Account logs from `from`, fetched once and then only past the last fetched block less a reorg window. */
 type EventLog = { eventName?: string; blockNumber: bigint | null; args?: unknown };
@@ -79,7 +92,7 @@ async function readBook(pub: Pub, address: Address, abi: typeof packVaultAbi | t
   const pendingFees = fees.reduce((a, b) => a + b, 0n);
   const sum = (state: number, f: (p: (typeof positions)[number]) => bigint) => positions.filter((p) => p.state === state).reduce((a, p) => a + f(p), 0n);
   return {
-    ids, listed: Number(activeCount), bought: positions.filter((p) => p.state === ALLOCATED || p.state === OWED).length, idle: Number(idlePacks),
+    ids, positions: ids.map((id, i) => ({ id, ...positions[i] })), active: positions.filter((p) => p.state === ACTIVE), listed: Number(activeCount), bought: positions.filter((p) => p.state === ALLOCATED || p.state === OWED).length, idle: Number(idlePacks),
     inListed: sum(ACTIVE, (p) => p.value + p.backing), inBought: sum(ALLOCATED, (p) => p.value) + sum(OWED, (p) => p.value),
     // NAV = free ETH + tracked Shapes backing + active FWA backing + pending active fees + live FWA fee credit.
     freeEth, tracked, backing, fees: pendingFees + credit, allocated, nav: freeEth + tracked + backing + pendingFees + credit,
@@ -108,12 +121,12 @@ export async function readVault(pub: Pub, vault: Address, me?: Address) {
     pub.readContract({ address: vault, abi: packVaultAbi, functionName: functionName as never, args: args as never, blockNumber }) as Promise<T>;
   const fwa = await r<Address>('fwa');
   const [totalShares, lastNav, epoch, highWaterMark, depositsPaused, windingDown, pendingDepositTotal, lockedShares,
-    redemptionReserve, claimableTotal, distributionReserve, lastCheckpointInterval, requestCharge, deployCharge, unwindCharge,
+    redemptionReserve, claimableTotal, distributionReserve, lastCheckpointInterval, requestCharge, deployCharge,
     params, budget, deploymentBlock, edge] = await Promise.all([
     r<bigint>('totalShares'), r<bigint>('lastNav'), r<bigint>('epoch'), r<bigint>('highWaterMark'), r<boolean>('depositsPaused'),
     r<boolean>('windingDown'), r<bigint>('pendingDepositTotal'), r<bigint>('lockedShares'), r<bigint>('redemptionReserve'),
     r<bigint>('claimableTotal'), r<bigint>('distributionReserve'), r<bigint>('lastCheckpointInterval'), r<bigint>('requestCharge'),
-    r<bigint>('deployCharge'), r<bigint>('unwindCharge'), r<Params>('getParams'), r<readonly [bigint, bigint]>('budget'),
+    r<bigint>('deployCharge'), r<Params>('getParams'), r<bigint>('budget'),
     r<bigint>('deploymentBlock'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]),
   ]);
   const book = await readBook(pub, vault, packVaultAbi, fwa, blockNumber);
@@ -129,7 +142,7 @@ export async function readVault(pub: Pub, vault: Address, me?: Address) {
   return {
     vault, fwa, blockNumber, now: block.timestamp, totalShares, lastNav, epoch, highWaterMark, depositsPaused, windingDown,
     pendingDepositTotal, lockedShares, claims: redemptionReserve + claimableTotal + distributionReserve, lastCheckpointInterval,
-    requestCharge, deployCharge, unwindCharge, params, budget, edge, book, pricePerShare, lastCheckpoint, keeperPaySince, tokensBurned,
+    requestCharge, deployCharge, params, budget, edge, book, pricePerShare, lastCheckpoint, keeperPaySince, tokensBurned,
     holder: me ? await readHolder(pub, vault, me, blockNumber, epoch) : undefined,
   };
 }
@@ -168,13 +181,6 @@ export function depositShares(value: bigint, v: Pick<Vault, 'requestCharge' | 'd
   return ((net - charge) * 10n ** 18n) / v.pricePerShare;
 }
 
-/** ETH a redemption request must carry (PackVault.requestRedeem): the request charge plus the unwind charge on the
- *  shares' value at the last checkpoint. */
-export function redeemCharge(shares: bigint, v: Pick<Vault, 'requestCharge' | 'unwindCharge' | 'lastNav' | 'totalShares'>) {
-  if (v.totalShares === 0n) return v.requestCharge;
-  return v.requestCharge + (((shares * v.lastNav) / v.totalShares) * v.unwindCharge) / POSITION_VALUE;
-}
-
 export function vaultStatus(v: Pick<Vault, 'windingDown' | 'depositsPaused' | 'pendingDepositTotal' | 'lockedShares' | 'lastCheckpointInterval' | 'now'>) {
   if (v.windingDown) return { head: 'Winding down.', body: "The vault is returning every holder's share. Claims stay open." };
   if (v.depositsPaused) return { head: 'Deposits paused.', body: 'Redemptions and claims still work.' };
@@ -196,28 +202,39 @@ export async function readManager(pub: Pub, manager: Address) {
   const fwa = await r<Address>('fwa');
   const [owner, listingPaused, exiting, params, budget, edge, deploymentBlock, mintFee] = await Promise.all([
     r<Address>('owner'), r<boolean>('listingPaused'), r<boolean>('windingDown'), r<Params>('getParams'),
-    r<readonly [bigint, bigint]>('budget'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]), r<bigint>('deploymentBlock'),
+    r<bigint>('budget'), r<readonly [bigint, bigint, boolean]>('edge', [PACK_UNITS]), r<bigint>('deploymentBlock'),
     pub.readContract({ address: SHAPES, abi: shapesAbi, functionName: 'mintFee', blockNumber }) as Promise<bigint>,
   ]);
   const book = await readBook(pub, manager, packManagerAbi, fwa, blockNumber);
+  const design = await r<bigint>('design');
+  const pool = await readMainPool(pub, fwa, blockNumber);
+  const held = Object.fromEntries(await Promise.all(sizesOf(decodeMix(design)).map(async (u) => [u, Number(await r<bigint>('recipeCount', [BigInt(u)]))] as const)));
   const logs = await accountLogs(pub, manager, [POSITION_UPDATED, CASH_RECEIPT, KEEPER_PAID, TOKENS_BURNED, WITHDRAWN], deploymentBlock, blockNumber);
   const updates = named(logs, 'PositionUpdated').map((l) => argsOf<{ listingId: bigint; state: number }>(l));
   const keeps = named(logs, 'CashReceipt').map((l) => argsOf<{ listingId: bigint; outcome: number }>(l)).filter((a) => a.outcome === 1).map((a) => a.listingId);
   const total = (name: string) => named(logs, name).reduce((t, l) => t + argsOf<{ amount: bigint }>(l).amount, 0n);
   return {
-    manager, owner, blockNumber, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth,
+    manager, owner, blockNumber, pool, listingPaused, exiting, params, budget, edge, mintFee, book, balance: book.freeEth, design, held,
     ...outcomes(updates, keeps), keeperPay: total('KeeperPaid'), tokensBurned: total('TokensBurned'), withdrawn: total('Withdrawn'),
   };
 }
 
 /** `cost` is one more pack's ETH (`packCost`), undefined when unknown. */
-export function managerStatus(m: Pick<Manager, 'exiting' | 'listingPaused' | 'edge' | 'book' | 'balance' | 'params'>, cost: bigint | undefined) {
+/** `target`: packs below the owner's counts and the ETH short of building them with the reserve, when counts are set. */
+export function managerStatus(m: Pick<Manager, 'exiting' | 'listingPaused' | 'edge' | 'book' | 'balance' | 'params'>, cost: bigint | undefined,
+  target?: { missing: number; short: bigint }) {
   if (m.exiting) return { head: 'Exiting.', body: 'Packs are being unlisted and turned back into ETH.' };
   if (m.listingPaused) return { head: 'Listing paused.', body: 'Listed packs stay listed. New packs are not built.' };
   if (!m.edge[2]) return { head: 'New investment paused.', body: "FWA conditions don't allow new packs right now. Withdrawals still work." };
   const need = cost === undefined ? 0n : cost + m.params.reserve;
   if (m.book.listed === 0 && m.book.idle === 0 && cost !== undefined && m.balance < need) {
     return { head: 'Not enough ETH to list.', body: `Add at least ${trim(need - m.balance)} ETH to build a pack.`, short: need - m.balance };
+  }
+  if (target && target.missing > 0) {
+    const packs = `${target.missing} pack${target.missing === 1 ? '' : 's'}`;
+    return target.short > 0n
+      ? { head: 'Not enough ETH.', body: `${packs} in your target ${target.missing === 1 ? "isn't" : "aren't"} built. Add ${trim(target.short)} ETH or lower the counts.`, short: target.short }
+      : { head: 'Building.', body: `${packs} in your target ${target.missing === 1 ? 'is' : 'are'} funded and wait for the next keeper run.` };
   }
   return { head: 'Listing.', body: `${m.book.listed} pack${m.book.listed === 1 ? '' : 's'} on FWA's main pool. Nothing needs attention.` };
 }

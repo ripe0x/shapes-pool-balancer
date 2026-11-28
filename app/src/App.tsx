@@ -18,7 +18,7 @@ import { readFactoryCreation } from './factory-creation';
 import { bankrollResult, operatingCash, profitAbi, readProfitVersion, withdrawalBreakdown } from './profit';
 import { HowItWorks, HowItWorksMain } from './HowItWorks';
 import { Home, MainPool, mainTabFor, type MainTab } from './MainPool';
-import { MAIN_POOL_OPEN, VAULT } from './main-pool';
+import { MAIN_POOL_OPEN, MANAGER_FACTORY, VAULT } from './main-pool';
 import { maxPaymentOf, maxSurchargeOf, policyEconomics, type Economics } from './policy';
 import { activationBatch, closeoutState, curatedWitness, deliveryHistory, inventoryBatches, isHeld, isRefunded, isSelectable, isStaged, listedShapeCounts } from './inventory';
 import { collectionTokens, nftImage, openSeaAsset, walletCollections, type Collection, type WalletNft } from './wallet';
@@ -441,7 +441,7 @@ type StepState = { label: string; state: 'next' | 'wallet' | 'submitted' | 'done
 
 const txUrl = (hash: Hash) => (chain.id === 1 ? `https://etherscan.io/tx/${hash}` : undefined);
 /** The current or last transaction: what it is waiting for or how it ended, with a link to it. Stays in view. */
-function TxLine({ tx }: { tx: Tx }) {
+export function TxLine({ tx }: { tx: Tx }) {
   if (!tx.busy && !tx.msg) return null;
   const url = tx.hash && txUrl(tx.hash);
   return <p className={`txline sticky-tx${tx.msg && !tx.msg.ok ? ' bad' : ''}`} aria-live="polite">
@@ -473,8 +473,8 @@ const signedEth = (wei: bigint) => (wei === 0n ? '0.00000' : `${wei < 0n ? '−'
 const signed = (x: number, d = 5) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}`;
 /** A per-draw amount: "0" when it rounds to nothing, else signed. */
 const perDraw = (x: number) => (Math.abs(x) < 5e-6 ? '0' : signed(x));
-const oneIn = (p: number) => (p <= 0 ? '–' : p >= 0.995 ? 'every draw' : `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.round(1 / p).toLocaleString()}`);
-const pctOf = (p: number) => `${(p * 100).toFixed(p < 0.01 ? 2 : 1)}%`;
+export const oneIn = (p: number) => (p <= 0 ? '–' : p >= 0.995 ? 'every draw' : `1 in ${1 / p < 10 ? (1 / p).toFixed(1) : Math.round(1 / p).toLocaleString()}`);
+export const pctOf = (p: number) => `${(p * 100).toFixed(p < 0.01 ? 2 : 1)}%`;
 const ethOr = (s: string, fallback: bigint) => { try { return parseEther(s || '0'); } catch { return fallback; } };
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const word = (n: number) => WORDS[n] ?? String(n);
@@ -730,7 +730,7 @@ export function App() {
         <a className="wordmark" href="/" onClick={(e) => { e.preventDefault(); if (MAIN_POOL_OPEN) go('home'); else toCommunity(); }}>{APP_NAME}</a>
         <nav className="topnav" aria-label="Main">
           <button aria-current={!help && community ? 'page' : undefined} onClick={toCommunity}>Community pools</button>
-          {VAULT && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
+          {(VAULT || MANAGER_FACTORY) && <button aria-current={!help && view === 'main' ? 'page' : undefined} onClick={() => go('main')}>Main pool</button>}
           <button aria-current={help ? 'page' : undefined} onClick={() => { location.hash = 'how'; }}>How it works</button>
         </nav>
         {!isConnected && (
@@ -1238,7 +1238,7 @@ const upkeepStep = (pub: Pub, tx: Tx, me: Address, balancer: Address): Step => [
 }];
 
 // Grid shades by prize rank, smallest first; the top Shape prize is white, NFTs are outlined.
-const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
+export const SHADES = ['#333', '#555', '#7a7a7a', '#b5b5b5'];
 
 type Mode = 'preview' | 'new' | 'pool';
 type Create = { creationAllowed?: boolean; wallet?: bigint; prereq?: Prereq; onCreated: (b: Address) => void; trackCreation: (attempt: CreationAttempt, previous?: CreationAttempt) => void; rejectCreation: (attempt: CreationAttempt) => void; resumeCreation: (attempt: CreationAttempt) => void; reviewedHash?: Hex; bucket?: Bucket; reload?: () => void; fetched?: number; attempt?: CreationAttempt; outcome?: CreationOutcome };
@@ -2974,10 +2974,10 @@ function Thumb({ n, small }: { n: Pick<WalletNft, 'collection' | 'tokenId' | 'im
   return <span ref={ref} className={small ? 'thumb pt sm' : 'thumb pt'}>{src ? <img src={src} alt="" loading="lazy" onError={() => setSrc(null)} /> : <span>{src === null ? 'No image' : ''}</span>}</span>;
 }
 
-type InvItem = { key: string; label: string; nft: boolean; value: bigint; price: bigint; p: number; mult: number; style: React.CSSProperties };
+export type InvItem = { key: string; label: string; nft: boolean; value: bigint; price: bigint; p: number; mult: number; style: React.CSSProperties };
 
 /** One square per pool item; hovering, focusing or tapping a square shows its chance, value and price. */
-function InventoryGrid({ items, missing = [] }: { items: InvItem[]; missing?: { key: string; label: string }[] }) {
+export function InventoryGrid({ items, missing = [] }: { items: InvItem[]; missing?: { key: string; label: string }[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ i: number; x: number; y: number }>();
   const show = (i: number, el: HTMLElement) => {

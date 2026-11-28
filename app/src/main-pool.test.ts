@@ -1,6 +1,6 @@
 import { parseEther } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { POSITION_VALUE, creationState, depositShares, managerStatus, outcomes, packCost, packsFor, redeemCharge, vaultStatus, type ManagerCreation } from './main-pool';
+import { POSITION_VALUE, creationState, depositShares, managerStatus, outcomes, packCost, packsFor, vaultStatus, type ManagerCreation } from './main-pool';
 
 const eth = parseEther;
 
@@ -18,13 +18,6 @@ describe('vault request math (mirrors PackVault.deposit and requestRedeem)', () 
 
   it('buys nothing at or below the request charge', () => {
     expect(depositShares(1000n, { requestCharge: 1000n, deployCharge: 0n, pricePerShare: eth('1') })).toBe(0n);
-  });
-
-  it('charges the request charge plus the unwind charge on the shares value at the last checkpoint', () => {
-    const v = { requestCharge: eth('0.0001'), unwindCharge: eth('0.001'), lastNav: eth('20'), totalShares: eth('2') };
-    // 0.5 shares are worth 5 ETH; 5 / 0.1248 positions at 0.001 ETH each.
-    expect(redeemCharge(eth('0.5'), v)).toBe(eth('0.0001') + (eth('5') * eth('0.001')) / POSITION_VALUE);
-    expect(redeemCharge(eth('0.5'), { ...v, unwindCharge: 0n })).toBe(eth('0.0001'));
   });
 });
 
@@ -56,6 +49,14 @@ describe('manager status and capacity', () => {
     const st = managerStatus({ ...m, book: { listed: 0, idle: 0 }, balance: eth('0.1') } as never, cost);
     expect(st.head).toBe('Not enough ETH to list.');
     expect(st.short).toBe(cost + eth('0.005') - eth('0.1'));
+  });
+  it('reports packs below the target before listing', () => {
+    expect(managerStatus(m as never, cost, { missing: 0, short: 0n }).head).toBe('Listing.');
+    expect(managerStatus(m as never, cost, { missing: 2, short: 0n }).body).toBe('2 packs in your target are funded and wait for the next keeper run.');
+    const st = managerStatus(m as never, cost, { missing: 1, short: eth('0.0004') });
+    expect(st.body).toBe("1 pack in your target isn't built. Add 0.0004 ETH or lower the counts.");
+    expect(st.short).toBe(eth('0.0004'));
+    expect(managerStatus({ ...m, listingPaused: true } as never, cost, { missing: 1, short: 1n }).head).toBe('Listing paused.');
   });
   it('counts whole packs above the reserve', () => {
     expect(cost).toBe(eth('0.127'));

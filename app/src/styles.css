@@ -504,6 +504,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .pp .mono { font-size: 13px; }
 
 /* Overview blocks: heading, description, content, footnote. */
+.ov > section { min-width: 0; }
 .ov .blk { padding-top: 40px; border-top: 1px solid var(--line); margin-top: 56px; }
 .ov section > .blk:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
 .ov .blk-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
@@ -629,6 +630,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 .rulerow .seg { margin: 0; }
 .rulerow .seg button { font-size: 15px; white-space: nowrap; }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .design > section.side { gap: 24px; }
 .side-h { font-weight: 700; font-size: 20px; letter-spacing: -.02em; margin: 0; }
 .design .pay { margin-top: 12px; display: flex; align-items: baseline; }
@@ -658,6 +660,7 @@ input[type="range"]::-moz-range-progress { height: 2px; background: var(--ink); 
 }
 @media (max-width: 900px) {
   .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tiles.three { grid-template-columns: 1fr; }
   .sec-body { margin-left: 0; }
   .nrow { grid-template-columns: 48px minmax(0, 1fr); gap: 8px 14px; }
   .nrow .thumb { width: 48px; height: 48px; }
