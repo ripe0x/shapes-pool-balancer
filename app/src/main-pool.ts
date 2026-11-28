@@ -8,7 +8,7 @@ import { decodeMix, sizesOf } from '../../shared/manager-design';
 /** FWA main pool products (ripe0x/shapes-fwa-pool). Each is hidden while its address is unset. */
 /** Launch switch: while false the main pool pages show their content but take no deposits or creations, and the app
  * lands on Community pools instead of Home. */
-export const MAIN_POOL_OPEN = false;
+export const MAIN_POOL_OPEN = true;
 export const VAULT = (import.meta.env?.VITE_VAULT as string | undefined || undefined) as Address | undefined;
 export const MANAGER_FACTORY = (import.meta.env?.VITE_MANAGER_FACTORY as string | undefined || undefined) as Address | undefined;
 /** Block the manager factory was deployed in: manager discovery scans its events from here. */
